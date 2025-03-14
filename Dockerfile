@@ -36,5 +36,5 @@ ENV NODE_ENV=production
 EXPOSE 3001
 
 # Command to run the application
-# Use shell form to allow environment variable expansion
-CMD ["python3", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "${PORT:-3001}"]
+# Use a more direct approach to start the application
+CMD ["python3", "-c", "import os, uvicorn; uvicorn.run('backend.main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))"]
