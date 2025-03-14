@@ -1,1 +1,1 @@
-web: cd /app/backend && python3 -m uvicorn main:app --host=0.0.0.0 --port=${PORT:-8080}
+web: cd /app && python3 -m uvicorn backend.main:app --host=0.0.0.0 --port=${PORT:-8080}
