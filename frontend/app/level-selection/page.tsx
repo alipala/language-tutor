@@ -75,6 +75,8 @@ export default function LevelSelection() {
   };
 
   const handleLevelSelect = (levelCode: string) => {
+    // Set loading state while navigating
+    setIsLoading(true);
     setSelectedLevel(levelCode);
     
     // Store the selection in session storage
@@ -118,8 +120,24 @@ export default function LevelSelection() {
     }
     */
     
-    // Direct navigation without sound effects
-    router.push('/speech');
+    // Use a more reliable approach with window.location for hard navigation
+    // This bypasses any potential issues with Next.js client-side routing
+    try {
+      // First try the Next.js router
+      router.push('/speech');
+      
+      // Set a fallback with direct navigation after a short delay
+      setTimeout(() => {
+        if (window.location.pathname.includes('level-selection')) {
+          // If we're still on the level selection page, force a hard navigation
+          window.location.href = '/speech';
+        }
+      }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // If router fails, use direct navigation
+      window.location.href = '/speech';
+    }
   };
 
   // Format the levels for display

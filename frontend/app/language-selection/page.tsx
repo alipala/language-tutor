@@ -33,6 +33,8 @@ export default function LanguageSelection() {
   ];
 
   const handleLanguageSelect = (languageCode: string) => {
+    // Set loading state while navigating
+    setIsLoading(true);
     setSelectedLanguage(languageCode);
     
     // Store the selection in session storage
@@ -76,8 +78,24 @@ export default function LanguageSelection() {
     }
     */
     
-    // Direct navigation without sound effects
-    router.push('/level-selection');
+    // Use a more reliable approach with window.location for hard navigation
+    // This bypasses any potential issues with Next.js client-side routing
+    try {
+      // First try the Next.js router
+      router.push('/level-selection');
+      
+      // Set a fallback with direct navigation after a short delay
+      setTimeout(() => {
+        if (window.location.pathname.includes('language-selection')) {
+          // If we're still on the language selection page, force a hard navigation
+          window.location.href = '/level-selection';
+        }
+      }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // If router fails, use direct navigation
+      window.location.href = '/level-selection';
+    }
   };
 
   return (

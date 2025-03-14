@@ -1,39 +1,41 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
-
-// Import the component with no SSR
-const ClientHome = dynamic(() => import('./client-home'), {
-  ssr: false
-});
+import { useEffect } from 'react';
 
 // Export the main component
 export default function Home() {
-  const router = useRouter();
-  const hasRedirected = useRef(false);
-  
-  useEffect(() => {
-    // Check if we're already on the language selection page to prevent loops
-    const isLanguageSelectionPath = window.location.pathname.includes('language-selection');
-    
-    // Only redirect if we're not already on the language selection page and haven't redirected yet
-    if (!hasRedirected.current && !isLanguageSelectionPath) {
-      hasRedirected.current = true;
-      
-      // Use a timeout to ensure the router is fully initialized
-      setTimeout(() => {
-        router.replace('/language-selection');
-      }, 100);
-    }
-  }, [router]);
-  
-  // Return loading state while redirecting
+  // Using a simple loading state for the initial render
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(250,70%,97%)] to-[hsl(var(--background-end))] dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90 bg-pattern">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      <p className="mt-4 text-muted-foreground dark:text-slate-400">Loading...</p>
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <h1 className="text-2xl font-bold text-center">Language Tutor</h1>
+        <p className="text-center text-gray-500 dark:text-gray-400">Redirecting to language selection...</p>
+      </div>
+      <RedirectComponent />
     </div>
   );
+}
+
+// Separate component for redirection logic
+function RedirectComponent() {
+  useEffect(() => {
+    // Ensure we're in the browser
+    if (typeof window === 'undefined') return;
+    
+    // Check if we're already on the language selection page to prevent loops
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('language-selection')) return;
+    
+    // Use a more reliable approach with a delay and a hard redirect
+    const redirectTimer = setTimeout(() => {
+      // Force a hard navigation instead of using Next.js router
+      window.location.href = '/language-selection';
+    }, 500);
+    
+    // Clean up timer if component unmounts
+    return () => clearTimeout(redirectTimer);
+  }, []);
+  
+  return null;
 }
