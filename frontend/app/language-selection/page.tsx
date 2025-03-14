@@ -32,6 +32,17 @@ export default function LanguageSelection() {
     },
   ];
 
+  // Add a useEffect to check if we're stuck on this page
+  useEffect(() => {
+    // Check if we have a selected language in session storage but we're still on this page
+    const storedLanguage = sessionStorage.getItem('selectedLanguage');
+    if (storedLanguage && window.location.pathname.includes('language-selection')) {
+      console.log('Detected stuck on language selection page with stored language:', storedLanguage);
+      // Force navigation to level selection
+      window.location.href = '/level-selection';
+    }
+  }, []);
+
   const handleLanguageSelect = (languageCode: string) => {
     // Set loading state while navigating
     setIsLoading(true);
@@ -40,26 +51,12 @@ export default function LanguageSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLanguage', languageCode);
     
-    // Simple navigation approach with fallback for Railway
-    try {
-      // First try the Next.js router for smooth client-side navigation
-      router.push('/level-selection');
-      
-      // Set a fallback with direct navigation after a short delay
-      // This is specifically needed for Railway deployment
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('language-selection')) {
-          // If we're still on the language selection page, force a hard navigation
-          window.location.href = '/level-selection';
-        }
-      }, 300);
-      
-      return () => clearTimeout(fallbackTimer);
-    } catch (error) {
-      console.error('Navigation error:', error);
-      // If router fails, use direct navigation as fallback
-      window.location.href = '/level-selection';
-    }
+    // Use a direct window.location approach for Railway
+    // This bypasses any client-side routing issues
+    window.location.href = '/level-selection';
+    
+    // Log the navigation attempt
+    console.log('Navigating to level selection with language:', languageCode);
   };
 
   return (

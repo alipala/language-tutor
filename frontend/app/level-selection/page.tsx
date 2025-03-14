@@ -74,6 +74,18 @@ export default function LevelSelection() {
     }
   };
 
+  // Add a useEffect to check if we're stuck on this page
+  useEffect(() => {
+    // Check if we have both language and level in session storage but we're still on this page
+    const storedLanguage = sessionStorage.getItem('selectedLanguage');
+    const storedLevel = sessionStorage.getItem('selectedLevel');
+    if (storedLanguage && storedLevel && window.location.pathname.includes('level-selection')) {
+      console.log('Detected stuck on level selection page with stored selections');
+      // Force navigation to speech page
+      window.location.href = '/speech';
+    }
+  }, []);
+
   const handleLevelSelect = (levelCode: string) => {
     // Set loading state while navigating
     setIsLoading(true);
@@ -82,26 +94,12 @@ export default function LevelSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLevel', levelCode);
     
-    // Simple navigation approach with fallback for Railway
-    try {
-      // First try the Next.js router for smooth client-side navigation
-      router.push('/speech');
-      
-      // Set a fallback with direct navigation after a short delay
-      // This is specifically needed for Railway deployment
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('level-selection')) {
-          // If we're still on the level selection page, force a hard navigation
-          window.location.href = '/speech';
-        }
-      }, 300);
-      
-      return () => clearTimeout(fallbackTimer);
-    } catch (error) {
-      console.error('Navigation error:', error);
-      // If router fails, use direct navigation as fallback
-      window.location.href = '/speech';
-    }
+    // Use a direct window.location approach for Railway
+    // This bypasses any client-side routing issues
+    window.location.href = '/speech';
+    
+    // Log the navigation attempt
+    console.log('Navigating to speech page with level:', levelCode);
   };
 
   // Format the levels for display

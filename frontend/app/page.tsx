@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 // Export the main component
 export default function Home() {
-  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     // Only run in browser
@@ -15,25 +14,24 @@ export default function Home() {
     const currentPath = window.location.pathname;
     if (currentPath.includes('language-selection')) return;
     
-    // Try Next.js router first
-    router.push('/language-selection');
+    // Add a small delay before redirecting for better UX
+    const redirectTimer = setTimeout(() => {
+      console.log('Redirecting from home page to language selection');
+      // Use direct window.location for most reliable navigation in Railway
+      window.location.href = '/language-selection';
+    }, 300);
     
-    // Fallback to direct navigation after a delay if router doesn't work
-    const fallbackTimer = setTimeout(() => {
-      // If we're still on the home page, use direct navigation
-      if (!window.location.pathname.includes('language-selection')) {
-        window.location.href = '/language-selection';
-      }
-    }, 500);
-    
-    return () => clearTimeout(fallbackTimer);
-  }, [router]);
+    return () => clearTimeout(redirectTimer);
+  }, []);
   
   // Return loading state while redirecting
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(250,70%,97%)] to-[hsl(var(--background-end))] dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90 bg-pattern">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      <p className="mt-4 text-muted-foreground dark:text-slate-400">Loading...</p>
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <h1 className="text-2xl font-bold text-center">Language Tutor</h1>
+        <p className="text-center text-gray-500 dark:text-gray-400">Redirecting to language selection...</p>
+      </div>
     </div>
   );
 }

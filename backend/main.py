@@ -219,6 +219,18 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         # Determine which path to use
         frontend_path = docker_frontend_path if docker_frontend_path.exists() else local_frontend_path
         print(f"Looking for index.html in: {frontend_path}")
+        print(f"Requested path: {full_path}")
+        
+        # For client-side routing in Next.js, we need to serve index.html for all routes
+        # except for static files and API routes
+        
+        # Check if the request is for a static file (has extension)
+        if '.' in full_path and not full_path.endswith('.html'):
+            # Try to serve the static file directly
+            static_file_path = frontend_path / "public" / full_path
+            if static_file_path.exists():
+                print(f"Serving static file from: {static_file_path}")
+                return FileResponse(str(static_file_path))
         
         # Try different possible paths for the index.html file
         possible_paths = [
@@ -235,6 +247,9 @@ async def serve_frontend(full_path: str = "", request: Request = None):
             frontend_path / ".next/static/index.html",
             frontend_path / ".next/index.html",
             frontend_path / "public/index.html",
+            # Additional paths to check
+            frontend_path / "index.html",
+            frontend_path / ".next/standalone/frontend/out/index.html",
         ]
         
         for path in possible_paths:
@@ -247,7 +262,7 @@ async def serve_frontend(full_path: str = "", request: Request = None):
                 continue
         
         # If no index.html is found, send a basic HTML response
-        html_content = """
+        html_content = f"""
         <!DOCTYPE html>
         <html>
           <head>
@@ -258,6 +273,7 @@ async def serve_frontend(full_path: str = "", request: Request = None):
           <body>
             <h1>Welcome to Tutor App</h1>
             <p>The application is running, but the frontend build was not found.</p>
+            <p>Requested path: {full_path}</p>
           </body>
         </html>
         """
