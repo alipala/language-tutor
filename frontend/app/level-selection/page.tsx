@@ -73,22 +73,45 @@ export default function LevelSelection() {
   };
 
   const handleLevelSelect = (levelCode: string) => {
-    // Play selection sound effect
-    playSelectionSound();
-    
     setSelectedLevel(levelCode);
     
     // Store the selection in session storage
     sessionStorage.setItem('selectedLevel', levelCode);
     
-    // Add a slight delay before navigation for the sound to play and animation to complete
-    setTimeout(() => {
-      // Play success sound when navigating
-      playSuccessSound();
+    // Try to play the selection sound, but don't wait if it fails
+    try {
+      // Play selection sound effect and handle navigation
+      const soundPromise = playSelectionSound() || Promise.resolve();
       
-      // Navigate to the conversation page
-      router.push('/speech');
-    }, 500);
+      // Use the sound promise to coordinate navigation
+      soundPromise
+        .then(() => {
+          // Add a minimal delay for better UX
+          setTimeout(() => {
+            // Try to play success sound but don't block navigation if it fails
+            try {
+              playSuccessSound();
+            } catch (error) {
+              console.warn('Error playing success sound:', error);
+            }
+            
+            // Navigate to the conversation page
+            router.push('/speech');
+          }, 100);
+        })
+        .catch(() => {
+          // If sound fails, still navigate after a short delay
+          setTimeout(() => {
+            router.push('/speech');
+          }, 100);
+        });
+    } catch (error) {
+      console.warn('Error in level selection:', error);
+      // If anything fails, ensure navigation still happens
+      setTimeout(() => {
+        router.push('/speech');
+      }, 100);
+    }
   };
 
   // Format the levels for display
