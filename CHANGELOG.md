@@ -5,6 +5,20 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-03-14
+
+### Fixed
+- Fixed API issues with language and level parameters not being properly passed to the backend
+- Resolved CORS issues when accessing the API from different origins
+- Added proper error handling for missing language and level parameters
+- Fixed TypeScript errors in the speech-client component
+- Ensured language and level parameters are preserved during conversation reinitialization
+
+### Added
+- Added test endpoint to verify API connectivity
+- Improved debugging logs throughout the application
+- Added type declarations for speech-client component
+
 ## [2.1.0] - 2025-03-14
 
 ### Added

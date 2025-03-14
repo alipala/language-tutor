@@ -26,7 +26,13 @@ export class RealtimeService {
   /**
    * Initialize the realtime service
    */
-  public async initialize(onMessage: (event: RealtimeEvent) => void, onConnected?: () => void, onDisconnected?: () => void): Promise<boolean> {
+  public async initialize(
+    onMessage: (event: RealtimeEvent) => void, 
+    onConnected?: () => void, 
+    onDisconnected?: () => void,
+    language?: string,
+    level?: string
+  ): Promise<boolean> {
     try {
       console.log('Initializing realtime service...');
       // Clean up any existing connections first
@@ -38,14 +44,20 @@ export class RealtimeService {
       this.reconnectAttempts = 0;
       
       // Use the correct backend URL (default to localhost:3001 if running locally)
-      this.backendUrl = typeof window !== 'undefined' ? 
-        (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '') : '';
+      this.backendUrl = '';
+      if (typeof window !== 'undefined') {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          this.backendUrl = 'http://localhost:3001';
+        }
+      }
       
       console.log('Using backend URL:', this.backendUrl);
       
       // Test the connection to the backend first
       try {
-        const testResponse = await fetch(`${this.backendUrl}/api/test`);
+        const testResponse = await fetch(`${this.backendUrl}/api/test`, {
+        credentials: 'same-origin'
+      });
         if (!testResponse.ok) {
           console.error('Backend connection test failed:', await testResponse.text());
           return false;
@@ -58,8 +70,8 @@ export class RealtimeService {
       }
       
       try {
-        // Get ephemeral key from backend
-        const token = await this.getEphemeralKey();
+        // Get ephemeral key from backend with language and level if provided
+        const token = await this.getEphemeralKey(language, level);
         if (!token) {
           console.error('Failed to get ephemeral key (empty token)');
           return false;
@@ -498,13 +510,30 @@ export class RealtimeService {
   /**
    * Get an ephemeral key from the backend
    */
-  private async getEphemeralKey(): Promise<string> {
+  private async getEphemeralKey(language?: string, level?: string): Promise<string> {
     try {
       console.log('Getting ephemeral key from backend...');
+      console.log('Language:', language);
+      console.log('Level:', level);
+      
+      // Ensure we have both language and level
+      if (!language || !level) {
+        console.error('Missing language or level parameters');
+        throw new Error('Language and level are required parameters');
+      }
       
       // First try the real endpoint
       let endpoint = `${this.backendUrl}/api/realtime/token`;
       console.log('Fetching ephemeral key from:', endpoint);
+      
+      // Prepare request body with language and level
+      const requestBody = {
+        language: language,
+        level: level,
+        voice: 'alloy' // Default voice
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody));
       
       try {
         const response = await fetch(endpoint, {
@@ -512,8 +541,9 @@ export class RealtimeService {
           headers: {
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify(requestBody),
           // Add credentials to ensure cookies are sent
-          credentials: 'include',
+          credentials: 'omit',
         });
         
         if (response.ok) {
@@ -525,6 +555,9 @@ export class RealtimeService {
           } else if (data.client_secret && data.client_secret.value) {
             return data.client_secret.value;
           }
+        } else {
+          const errorText = await response.text();
+          console.error('Error from real endpoint:', errorText);
         }
         
         // If we get here, the real endpoint failed, so try the mock endpoint
@@ -537,13 +570,15 @@ export class RealtimeService {
       // Try the mock endpoint as a fallback
       endpoint = `${this.backendUrl}/api/mock-token`;
       console.log('Fetching mock ephemeral key from:', endpoint);
+      console.log('Mock request body:', JSON.stringify(requestBody));
       
       const mockResponse = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        body: JSON.stringify(requestBody),
+        credentials: 'omit',
       });
       
       if (!mockResponse.ok) {

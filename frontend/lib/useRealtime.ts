@@ -46,8 +46,19 @@ export function useRealtime() {
     }
   }, []);
 
+  // Store language and level parameters for reinitialization
+  const languageRef = useRef<string | undefined>();
+  const levelRef = useRef<string | undefined>();
+
   // Initialize the realtime service
-  const initialize = useCallback(async () => {
+  const initialize = useCallback(async (language?: string, level?: string) => {
+    // If language and level are provided, store them for future use
+    if (language) languageRef.current = language;
+    if (level) levelRef.current = level;
+    
+    // Use stored values if not provided
+    const langToUse = language || languageRef.current;
+    const levelToUse = level || levelRef.current;
     if (initializationAttemptRef.current) return true; // Return true if already initializing
     initializationAttemptRef.current = true;
     
@@ -68,7 +79,9 @@ export function useRealtime() {
           console.log('Disconnected from realtime service');
           setIsConnected(false);
           setIsRecording(false);
-        }
+        },
+        langToUse,
+        levelToUse
       );
       
       if (success) {
@@ -220,6 +233,7 @@ export function useRealtime() {
     toggleConversation,
     startConversation,
     stopConversation,
-    clearError: () => setError(null)
+    clearError: () => setError(null),
+    initialize
   };
 }

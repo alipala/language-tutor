@@ -14,6 +14,8 @@ A language learning voice conversation application with a modern UI that allows 
 ## Features
 
 - 🎙️ Language learning voice conversation with OpenAI integration
+- 🌍 Support for multiple languages (currently Dutch and English)
+- 🎓 Six proficiency levels (A1, A2, B1, B2, C1, C2) following CEFR standards
 - 🌐 WebRTC for real-time communication
 - 🚀 FastAPI backend for high performance
 - 🎨 Modern dark gradient UI
@@ -22,7 +24,29 @@ A language learning voice conversation application with a modern UI that allows 
 
 ## About This Fork
 
-This Language Tutor Application is a specialized fork of the original Tutor Application, focused on language learning capabilities. The core architecture and functionality remain the same, with planned enhancements for language learning features.
+This Language Tutor Application is a specialized fork of the original Tutor Application, focused on language learning capabilities. The core architecture and functionality remain the same, with enhancements specifically for language learning features.
+
+## Language Learning Features
+
+### Supported Languages
+- **Dutch**: Complete support with all proficiency levels
+- **English**: Complete support with all proficiency levels
+
+### Proficiency Levels
+The application follows the Common European Framework of Reference for Languages (CEFR) with six levels:
+
+- **A1 (Beginner)**: Can understand and use familiar everyday expressions and very basic phrases
+- **A2 (Elementary)**: Can communicate in simple and routine tasks on familiar topics
+- **B1 (Intermediate)**: Can deal with most situations likely to arise while traveling
+- **B2 (Upper Intermediate)**: Can interact with a degree of fluency and spontaneity
+- **C1 (Advanced)**: Can express ideas fluently and spontaneously without much searching for expressions
+- **C2 (Proficiency)**: Can express with precision in complex situations
+
+### Conversation Flow
+1. Select your target language (Dutch or English)
+2. Choose your proficiency level (A1-C2)
+3. Start a voice conversation with the language tutor
+4. Practice speaking and receive feedback appropriate to your level
 
 ## Architecture
 

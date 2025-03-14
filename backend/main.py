@@ -26,7 +26,14 @@ if os.getenv("NODE_ENV") == "production":
     frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
     origins = [frontend_url]
 else:
-    origins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003"]
+    origins = [
+        "http://localhost:3000", 
+        "http://localhost:3001", 
+        "http://localhost:3002", 
+        "http://localhost:3003",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:55340",  # For browser preview
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +42,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Simple test endpoint to verify API connectivity
+@app.get("/api/test")
+async def test_endpoint():
+    return {"message": "Backend API is working correctly"}
 
 # Health check endpoint
 @app.get("/api/health")
@@ -80,6 +92,12 @@ if os.getenv("NODE_ENV") == "production":
             print(f"Mounting /static from {public_path}")
             app.mount("/static", StaticFiles(directory=str(public_path)), name="public")
 
+# Define models for request validation
+class TutorSessionRequest(BaseModel):
+    language: str
+    level: str
+    voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+
 # Simple endpoint for testing connection
 @app.get("/api/test")
 async def test_connection():
@@ -87,8 +105,11 @@ async def test_connection():
 
 # Mock ephemeral key endpoint for testing when OpenAI API key is not available
 @app.post("/api/mock-token")
-async def mock_token():
-    print("Providing mock ephemeral key for testing")
+async def mock_token(request: TutorSessionRequest):
+    # Log the request data for debugging
+    print(f"Providing mock ephemeral key for testing with language: {request.language}, level: {request.level}, voice: {request.voice}")
+    print(f"Request body received: language={request.language}, level={request.level}, voice={request.voice}")
+    
     from datetime import datetime, timedelta
     
     expiry = datetime.now() + timedelta(hours=1)
@@ -97,16 +118,67 @@ async def mock_token():
         "expires_at": expiry.isoformat()
     }
 
-# Endpoint to generate ephemeral keys for OpenAI Realtime API
-@app.post("/api/realtime/token")
-async def generate_token():
+# Endpoint to get available languages and levels
+@app.get("/api/languages")
+async def get_languages():
     try:
+        # Load the tutor instructions from the JSON file
+        instructions_path = Path(__file__).parent / "tutor_instructions.json"
+        if not instructions_path.exists():
+            raise HTTPException(status_code=404, detail="Tutor instructions not found")
+        
+        with open(instructions_path, "r") as f:
+            tutor_data = json.load(f)
+        
+        # Extract just the languages and levels structure (without the full instructions)
+        languages_data = {}
+        for lang_code, lang_data in tutor_data.get("languages", {}).items():
+            languages_data[lang_code] = {
+                "name": lang_data.get("name", ""),
+                "levels": {level: data.get("description", "") for level, data in lang_data.get("levels", {}).items()}
+            }
+        
+        return languages_data
+    except Exception as e:
+        print(f"Error retrieving languages: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve languages: {str(e)}")
+
+# Endpoint to generate ephemeral keys for OpenAI Realtime API with language tutor instructions
+@app.post("/api/realtime/token")
+async def generate_token(request: TutorSessionRequest):
+    try:
+        # Log the request data for debugging
+        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}")
+        
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
             print("ERROR: OPENAI_API_KEY is not configured in .env file")
             raise HTTPException(status_code=500, detail="OpenAI API key is not configured")
         
-        print("Generating ephemeral key with OpenAI API...")
+        # Load the tutor instructions from the JSON file
+        instructions_path = Path(__file__).parent / "tutor_instructions.json"
+        if not instructions_path.exists():
+            raise HTTPException(status_code=404, detail="Tutor instructions not found")
+        
+        with open(instructions_path, "r") as f:
+            tutor_data = json.load(f)
+        
+        # Get the instructions for the selected language and level
+        language = request.language.lower()
+        level = request.level.upper()
+        
+        if language not in tutor_data.get("languages", {}):
+            raise HTTPException(status_code=400, detail=f"Language '{language}' not supported")
+        
+        language_data = tutor_data["languages"][language]
+        
+        if level not in language_data.get("levels", {}):
+            raise HTTPException(status_code=400, detail=f"Level '{level}' not supported for language '{language}'")
+        
+        # Get the instructions for the selected language and level
+        instructions = language_data["levels"][level].get("instructions", "")
+        
+        print(f"Generating ephemeral key with OpenAI API for {language} at level {level}...")
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -117,7 +189,9 @@ async def generate_token():
                 },
                 json={
                     "model": "gpt-4o-realtime-preview-2024-12-17",
-                    "voice": "alloy",  # Options: alloy, echo, fable, onyx, nova, shimmer
+                    "voice": request.voice,
+                    "instructions": instructions,
+                    "modalities": ["audio", "text"]
                 },
                 timeout=30.0
             )
