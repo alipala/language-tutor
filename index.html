@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Input UI</title>
+  <style>
+    /* Base styles */
+    :root {
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent-color: #f43f5e;
+      --text-color: #1e293b;
+      --text-light: #64748b;
+      --bg-color: #f8fafc;
+      --bg-dark: #0f172a;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --radius: 0.5rem;
+      --transition: all 0.2s ease;
+    }
+
+    /* Reset and base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    /* Container styles */
+    .container {
+      width: 100%;
+      max-width: 28rem;
+      margin: 0 auto;
+      padding: 2rem;
+      background-color: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-color);
+    }
+
+    .header p {
+      color: var(--text-light);
+      font-size: 0.875rem;
+    }
+
+    /* Form styles */
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .input {
+      width: 100%;
+      height: 2.5rem;
+      padding: 0 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      transition: var(--transition);
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .input.error {
+      border-color: var(--accent-color);
+    }
+
+    .error-message {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      color: var(--accent-color);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Button styles */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 2.5rem;
+      padding: 0 1rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      padding: 0;
+      border-radius: 50%;
+    }
+
+    .btn-submit {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+
+    /* Recording state */
+    .btn-recording {
+      background-color: var(--accent-color);
+      animation: pulse 1.5s infinite;
+    }
+
+    .btn-recording:hover {
+      background-color: #e11d48;
+    }
+
+    /* Icon styles */
+    .icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      transition: transform 0.2s ease;
+    }
+
+    .btn-recording .icon {
+      transform: scale(1.1);
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    /* Accessibility */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* Responsive styles */
+    @media (max-width: 640px) {
+      .container {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Voice Input</h1>
+      <p>Enter your text or use the microphone to record</p>
+    </div>
+
+    <form id="inputForm" class="form">
+      <div class="input-group">
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            id="textInput" 
+            class="input" 
+            placeholder="Enter your text here" 
+            aria-label="Text input"
+          >
+          <div id="errorMessage" class="error-message" role="alert"></div>
+        </div>
+        <button 
+          type="button" 
+          id="recordButton" 
+          class="btn btn-icon" 
+          aria-label="Start recording"
+        >
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" x2="12" y1="19" y2="22" />
+          </svg>
+        </button>
+      </div>
+
+      <button type="submit" class="btn btn-submit">Submit</button>
+    </form>
+  </div>
+
+  <script>
+    // DOM Elements
+    const form = document.getElementById('inputForm');
+    const textInput = document.getElementById('textInput');
+    const recordButton = document.getElementById('recordButton');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    // State
+    let isRecording = false;
+    
+    // Event Listeners
+    form.addEventListener('submit', handleSubmit);
+    recordButton.addEventListener('click', toggleRecording);
+    textInput.addEventListener('input', clearError);
+    
+    /**
+     * Handle form submission
+     * @param {Event} e - Form submit event
+     */
+    function handleSubmit(e) {
+      e.preventDefault();
+      
+      if (validateInput()) {
+        // Here you would handle the actual form submission
+        console.log('Submitted text:', textInput.value);
+        
+        // Visual feedback for submission
+        const originalText = textInput.value;
+        textInput.value = 'Submitted successfully!';
+        textInput.disabled = true;
+        
+        // Reset form after delay
+        setTimeout(() => {
+          textInput.value = '';
+          textInput.disabled = false;
+          textInput.focus();
+        }, 1500);
+      }
+    }
+    
+    /**
+     * Validate the text input
+     * @returns {boolean} - Whether input is valid
+     */
+    function validateInput() {
+      if (!textInput.value.trim()) {
+        showError('Please enter some text');
+        return false;
+      }
+      
+      return true;
+    }
+    
+    /**
+     * Show error message and highlight input
+     * @param {string} message - Error message to display
+     */
+    function showError(message) {
+      errorMessage.textContent = message;
+      textInput.classList.add('error');
+      textInput.setAttribute('aria-invalid', 'true');
+    }
+    
+    /**
+     * Clear error message when input changes
+     */
+    function clearError() {
+      if (errorMessage.textContent) {
+        errorMessage.textContent = '';
+        textInput.classList.remove('error');
+        textInput.setAttribute('aria-invalid', 'false');
+      }
+    }
+    
+    /**
+     * Toggle recording state
+     */
+    function toggleRecording() {
+      isRecording = !isRecording;
+      
+      // Update button appearance
+      if (isRecording) {
+        recordButton.classList.add('btn-recording');
+        recordButton.setAttribute('aria-label', 'Stop recording');
+      } else {
+        recordButton.classList.remove('btn-recording');
+        recordButton.setAttribute('aria-label', 'Start recording');
+      }
+      
+      // Here you would implement actual audio recording functionality
+      console.log(isRecording ? 'Started recording' : 'Stopped recording');
+      
+      // Focus back on the input after toggling recording
+      textInput.focus();
+    }
+  </script>
+</body>
+</html>

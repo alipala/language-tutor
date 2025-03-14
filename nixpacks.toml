@@ -1,0 +1,24 @@
+[phases.setup]
+npmVersion = "10"
+nodeVersion = "20"
+pythonVersion = "3.11.9"
+aptPkgs = ["python3-pip", "python3-dev", "build-essential"]
+
+[phases.install]
+cmds = [
+  "cd /app/backend && npm install",
+  "cd /app/frontend && npm install",
+  "python3 -m pip install --upgrade pip setuptools wheel",
+  "cd /app/backend && python3 -m pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = [
+  "cd /app/frontend && npm run build",
+  "mkdir -p /app/frontend/out",
+  "ls -la /app/frontend/.next || echo '.next directory not found'",
+  "ls -la /app/frontend/out || echo 'out directory not found'"
+]
+
+[start]
+cmd = "cd /app/backend && node server.js"
