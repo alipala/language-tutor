@@ -82,60 +82,24 @@ export default function LevelSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLevel', levelCode);
     
-    // Sound effects temporarily disabled
-    /*
-    // Try to play the selection sound, but don't wait if it fails
+    // Simple navigation approach with fallback for Railway
     try {
-      // Play selection sound effect and handle navigation
-      const soundPromise = playSelectionSound() || Promise.resolve();
-      
-      // Use the sound promise to coordinate navigation
-      soundPromise
-        .then(() => {
-          // Add a minimal delay for better UX
-          setTimeout(() => {
-            // Try to play success sound but don't block navigation if it fails
-            try {
-              playSuccessSound();
-            } catch (error) {
-              console.warn('Error playing success sound:', error);
-            }
-            
-            // Navigate to the conversation page
-            router.push('/speech');
-          }, 100);
-        })
-        .catch(() => {
-          // If sound fails, still navigate after a short delay
-          setTimeout(() => {
-            router.push('/speech');
-          }, 100);
-        });
-    } catch (error) {
-      console.warn('Error in level selection:', error);
-      // If anything fails, ensure navigation still happens
-      setTimeout(() => {
-        router.push('/speech');
-      }, 100);
-    }
-    */
-    
-    // Use a more reliable approach with window.location for hard navigation
-    // This bypasses any potential issues with Next.js client-side routing
-    try {
-      // First try the Next.js router
+      // First try the Next.js router for smooth client-side navigation
       router.push('/speech');
       
       // Set a fallback with direct navigation after a short delay
-      setTimeout(() => {
+      // This is specifically needed for Railway deployment
+      const fallbackTimer = setTimeout(() => {
         if (window.location.pathname.includes('level-selection')) {
           // If we're still on the level selection page, force a hard navigation
           window.location.href = '/speech';
         }
       }, 300);
+      
+      return () => clearTimeout(fallbackTimer);
     } catch (error) {
       console.error('Navigation error:', error);
-      // If router fails, use direct navigation
+      // If router fails, use direct navigation as fallback
       window.location.href = '/speech';
     }
   };
