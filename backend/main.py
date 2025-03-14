@@ -222,12 +222,19 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         
         # Try different possible paths for the index.html file
         possible_paths = [
+            # Standalone output paths
+            frontend_path / ".next/standalone/frontend/app/index.html",
+            frontend_path / ".next/standalone/index.html",
+            frontend_path / ".next/standalone/frontend/index.html",
+            # Static export paths
             frontend_path / "out/index.html",
+            # Server component paths
+            frontend_path / ".next/server/app/index.html",
             frontend_path / ".next/server/pages/index.html",
+            # Other possible paths
             frontend_path / ".next/static/index.html",
             frontend_path / ".next/index.html",
             frontend_path / "public/index.html",
-            # Add more fallback paths if needed
         ]
         
         for path in possible_paths:

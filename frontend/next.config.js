@@ -1,13 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Changed to false to prevent double rendering in production
+  reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
-  // Changed from 'export' to standalone to support proper routing in Railway
   output: 'standalone',
   distDir: '.next',
-  // Removed outDir as it's not compatible with standalone output
-  trailingSlash: false, // Changed to false to prevent redirect loops
-  // Remove the rewrites since we're handling routing in Express
+  trailingSlash: false, // Prevent redirect loops
+  // Configure basePath for Railway deployment
+  basePath: '',
+  // Ensure Next.js knows it's being served from the root
+  assetPrefix: process.env.NODE_ENV === 'production' ? '' : undefined,
+  // Environment variables
   env: {
     BACKEND_URL: process.env.NODE_ENV === 'production'
       ? process.env.BACKEND_URL || ''
@@ -16,6 +18,10 @@ const nextConfig = {
   // Disable image optimization since it requires a server component
   images: {
     unoptimized: true,
+  },
+  // Explicitly set the output file tracing to include the entire frontend directory
+  experimental: {
+    outputFileTracingRoot: require('path').join(__dirname, '../'),
   },
 }
 

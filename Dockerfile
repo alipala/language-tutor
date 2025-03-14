@@ -25,6 +25,13 @@ WORKDIR /app/frontend
 RUN npm install
 RUN npm run build
 
+# For standalone output mode, copy the standalone output to a location the backend can find
+RUN mkdir -p /app/frontend/public
+RUN cp -r /app/frontend/.next/standalone/frontend/* /app/frontend/
+RUN cp -r /app/frontend/.next/static /app/frontend/public/
+# Create a symlink to help the backend find the build
+RUN ln -sf /app/frontend/.next/standalone /app/frontend/out
+
 # Back to app directory
 WORKDIR /app
 
