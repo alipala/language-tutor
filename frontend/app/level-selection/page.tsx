@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAudio } from '@/lib/useAudio';
+// Sound effects temporarily disabled
+// import { useAudio } from '@/lib/useAudio';
 
 interface Level {
   code: string;
@@ -17,7 +18,8 @@ export default function LevelSelection() {
   const [levels, setLevels] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { playSelectionSound, playSuccessSound } = useAudio();
+  // Sound effects temporarily disabled
+  // const { playSelectionSound, playSuccessSound } = useAudio();
 
   useEffect(() => {
     // Retrieve the selected language from session storage
@@ -78,6 +80,8 @@ export default function LevelSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLevel', levelCode);
     
+    // Sound effects temporarily disabled
+    /*
     // Try to play the selection sound, but don't wait if it fails
     try {
       // Play selection sound effect and handle navigation
@@ -112,6 +116,10 @@ export default function LevelSelection() {
         router.push('/speech');
       }, 100);
     }
+    */
+    
+    // Direct navigation without sound effects
+    router.push('/speech');
   };
 
   // Format the levels for display

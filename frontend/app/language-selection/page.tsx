@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAudio } from '@/lib/useAudio';
+// Sound effects temporarily disabled
+// import { useAudio } from '@/lib/useAudio';
 
 interface Language {
   code: string;
@@ -15,7 +16,8 @@ export default function LanguageSelection() {
   const router = useRouter();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { playSelectionSound, playSuccessSound } = useAudio();
+  // Sound effects temporarily disabled
+  // const { playSelectionSound, playSuccessSound } = useAudio();
 
   const languages: Language[] = [
     {
@@ -36,6 +38,8 @@ export default function LanguageSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLanguage', languageCode);
     
+    // Sound effects temporarily disabled
+    /*
     // Try to play the selection sound, but don't wait if it fails
     try {
       // Play selection sound effect and handle navigation
@@ -70,6 +74,10 @@ export default function LanguageSelection() {
         router.push('/level-selection');
       }, 100);
     }
+    */
+    
+    // Direct navigation without sound effects
+    router.push('/level-selection');
   };
 
   return (
