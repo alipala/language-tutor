@@ -1,11 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Changed to false to prevent double rendering in production
   swcMinify: true,
-  output: 'export', // Static HTML export
+  // Changed from 'export' to standalone to support proper routing in Railway
+  output: 'standalone',
   distDir: '.next',
-  outDir: 'out', // Explicitly set the output directory
-  trailingSlash: true, // Add trailing slashes to all URLs
+  // Removed outDir as it's not compatible with standalone output
+  trailingSlash: false, // Changed to false to prevent redirect loops
   // Remove the rewrites since we're handling routing in Express
   env: {
     BACKEND_URL: process.env.NODE_ENV === 'production'

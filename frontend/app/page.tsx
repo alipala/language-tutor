@@ -15,11 +15,17 @@ export default function Home() {
   const hasRedirected = useRef(false);
   
   useEffect(() => {
-    // Prevent multiple redirects
-    if (!hasRedirected.current) {
+    // Check if we're already on the language selection page to prevent loops
+    const isLanguageSelectionPath = window.location.pathname.includes('language-selection');
+    
+    // Only redirect if we're not already on the language selection page and haven't redirected yet
+    if (!hasRedirected.current && !isLanguageSelectionPath) {
       hasRedirected.current = true;
-      // Redirect to language selection page
-      router.replace('/language-selection');
+      
+      // Use a timeout to ensure the router is fully initialized
+      setTimeout(() => {
+        router.replace('/language-selection');
+      }, 100);
     }
   }, [router]);
   
