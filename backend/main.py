@@ -26,14 +26,8 @@ if os.getenv("NODE_ENV") == "production":
     frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
     origins = [frontend_url]
 else:
-    origins = [
-        "http://localhost:3000", 
-        "http://localhost:3001", 
-        "http://localhost:3002", 
-        "http://localhost:3003",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:55340",  # For browser preview
-    ]
+    # Allow all origins during development
+    origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -267,5 +261,5 @@ async def serve_frontend(full_path: str = "", request: Request = None):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "3001"))
+    port = int(os.getenv("PORT", "8001"))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

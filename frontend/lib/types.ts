@@ -2,6 +2,7 @@
 export interface RealtimeMessage {
   role: 'user' | 'assistant';
   content: string;
+  itemId?: string; // Optional ID to track which conversation item this message belongs to
 }
 
 export interface RealtimeEvent {
@@ -28,5 +29,29 @@ export interface RealtimeResponseCreateEvent extends RealtimeEvent {
   response: {
     modalities: string[];
     instructions?: string;
+  };
+}
+
+export interface RealtimeConversationItemCreatedEvent extends RealtimeEvent {
+  type: 'conversation.item.created';
+  item: {
+    role: 'user' | 'assistant';
+    input?: {
+      content: {
+        text: string;
+      };
+    };
+    content?: Array<{
+      type: string;
+      transcript?: string;
+      [key: string]: any;
+    }>;
+  };
+}
+
+export interface RealtimeAudioTranscriptDeltaEvent extends RealtimeEvent {
+  type: 'response.audio_transcript.delta';
+  delta: {
+    text: string;
   };
 }

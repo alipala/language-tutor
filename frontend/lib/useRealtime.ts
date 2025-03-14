@@ -16,7 +16,8 @@ export function useRealtime() {
 
   // Handle incoming messages from the realtime service
   const handleMessage = useCallback((event: RealtimeEvent) => {
-    console.log('Received event:', event);
+    console.log('Received event:', event.type);
+    console.log('Event details:', JSON.stringify(event, null, 2));
     
     // Handle different event types
     if (event.type === 'response.text.delta') {
@@ -38,10 +39,147 @@ export function useRealtime() {
         }
       });
     } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
-      const transcriptionEvent = event as RealtimeAudioTranscriptionEvent;
+      console.log('Transcription completed event:', event);
       // Add user's transcribed message
-      if (transcriptionEvent.transcription?.text) {
-        setMessages(prev => [...prev, { role: 'user', content: transcriptionEvent.transcription.text }]);
+      if (event.transcript) {
+        const transcriptionText = event.transcript;
+        console.log('Adding user transcription:', transcriptionText);
+        setMessages(prev => {
+          // Find if we already have a placeholder message for this item_id
+          const existingIndex = prev.findIndex(msg => 
+            msg.role === 'user' && msg.content === '...' && msg.itemId === event.item_id
+          );
+          
+          if (existingIndex >= 0) {
+            // Update the placeholder message
+            const updatedMessages = [...prev];
+            updatedMessages[existingIndex] = {
+              role: 'user', 
+              content: transcriptionText,
+              itemId: event.item_id
+            };
+            return updatedMessages;
+          } else {
+            // Add as a new message if no placeholder exists
+            return [...prev, { 
+              role: 'user', 
+              content: transcriptionText,
+              itemId: event.item_id 
+            }];
+          }
+        });
+      }
+    } else if (event.type === 'conversation.item.created') {
+      // Handle conversation item created events which can contain user transcripts
+      console.log('Item created event:', event);
+      if (event.item?.role === 'user') {
+        // Check for content in different formats
+        let userText = '';
+        
+        // Check for direct text content
+        if (event.item?.input?.content?.text) {
+          userText = event.item.input.content.text;
+          console.log('Found text content:', userText);
+        } 
+        // Check for input_audio content with transcript
+        else if (event.item?.content && Array.isArray(event.item.content)) {
+          // Look for input_audio type content with transcript
+          console.log('Checking content array:', event.item.content);
+          for (const content of event.item.content) {
+            console.log('Content item:', content);
+            if (content.type === 'input_audio' && content.transcript) {
+              userText = content.transcript;
+              console.log('Found transcript in content:', userText);
+              break;
+            }
+          }
+        }
+        
+        if (userText) {
+          console.log('Adding user text to messages:', userText);
+          setMessages(prev => {
+            // Check if this exact message already exists to avoid duplicates
+            const messageExists = prev.some(msg => 
+              msg.role === 'user' && msg.content === userText
+            );
+            
+            if (!messageExists) {
+              return [...prev, { 
+                role: 'user', 
+                content: userText,
+                itemId: event.item.id 
+              }];
+            }
+            return prev;
+          });
+        } else {
+          // Add a placeholder message that will be updated when transcription completes
+          console.log('No user text found in the event, adding placeholder message');
+          setMessages(prev => {
+            // Check if we already have a placeholder for this item
+            const placeholderExists = prev.some(msg => 
+              msg.role === 'user' && msg.itemId === event.item.id
+            );
+            
+            if (!placeholderExists) {
+              return [...prev, { 
+                role: 'user', 
+                content: '...', // Placeholder content
+                itemId: event.item.id 
+              }];
+            }
+            return prev;
+          });
+        }
+      }
+    } else if (event.type === 'response.audio_transcript.delta') {
+      // Handle assistant messages from audio transcript delta events
+      setMessages(prev => {
+        const lastMessage = prev.length > 0 ? prev[prev.length - 1] : null;
+        
+        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.itemId === event.item_id) {
+          // Update the last message
+          const updatedMessages = [...prev];
+          updatedMessages[prev.length - 1] = {
+            ...lastMessage,
+            content: lastMessage.content + (event.delta || '')
+          };
+          return updatedMessages;
+        } else {
+          // Create a new message
+          return [...prev, { 
+            role: 'assistant', 
+            content: event.delta || '',
+            itemId: event.item_id 
+          }];
+        }
+      });
+    } else if (event.type === 'response.audio_transcript.done') {
+      if (event.transcript) {
+        // Find if we already have a message for this item_id
+        setMessages(prev => {
+          const existingIndex = prev.findIndex(msg => 
+            msg.role === 'assistant' && msg.itemId === event.item_id
+          );
+          
+          if (existingIndex >= 0) {
+            // Update the existing message
+            const updatedMessages = [...prev];
+            updatedMessages[existingIndex] = {
+              role: 'assistant', 
+              content: event.transcript,
+              itemId: event.item_id
+            };
+            return updatedMessages;
+          } else {
+            // Add as a new message
+            return [...prev, { 
+              role: 'assistant', 
+              content: event.transcript,
+              itemId: event.item_id 
+            }];
+          }
+        });
       }
     }
   }, []);

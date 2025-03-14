@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -12,10 +12,15 @@ const ClientHome = dynamic(() => import('./client-home'), {
 // Export the main component
 export default function Home() {
   const router = useRouter();
+  const hasRedirected = useRef(false);
   
   useEffect(() => {
-    // Redirect to language selection page
-    router.push('/language-selection');
+    // Prevent multiple redirects
+    if (!hasRedirected.current) {
+      hasRedirected.current = true;
+      // Redirect to language selection page
+      router.replace('/language-selection');
+    }
   }, [router]);
   
   // Return loading state while redirecting

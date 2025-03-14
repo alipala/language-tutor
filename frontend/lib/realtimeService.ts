@@ -43,11 +43,11 @@ export class RealtimeService {
       this.onDisconnectedCallback = onDisconnected || null;
       this.reconnectAttempts = 0;
       
-      // Use the correct backend URL (default to localhost:3001 if running locally)
+      // Use the correct backend URL (default to localhost:8001 if running locally)
       this.backendUrl = '';
       if (typeof window !== 'undefined') {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          this.backendUrl = 'http://localhost:3001';
+          this.backendUrl = 'http://localhost:8001';
         }
       }
       
@@ -111,14 +111,32 @@ export class RealtimeService {
         }
       };
       
-      // Set up data channel
+      // Set up data channel with specific configuration for transcription
       this.dataChannel = this.peerConnection.createDataChannel('oai-events', {
-        ordered: true
+        ordered: true,
+        maxRetransmits: 3  // Add retry mechanism for reliability
       });
       
       this.dataChannel.onopen = () => {
         console.log('Data channel opened');
         this.isConnected = true;
+        
+        // As soon as the data channel opens, send a session.update event to enable transcription
+        // This is critical for ensuring transcription works from the beginning
+        const sessionUpdateEvent = {
+          type: 'session.update',
+          session: {
+            modalities: ['text', 'audio'],
+            input_audio_transcription: {
+              model: 'whisper-1'
+            }
+          }
+        };
+        
+        // Send the session update event
+        const sent = this.sendMessage(sessionUpdateEvent);
+        console.log('Initial session.update event sent:', sent);
+        
         if (this.onConnectedCallback) this.onConnectedCallback();
       };
       
@@ -132,6 +150,18 @@ export class RealtimeService {
         if (this.onMessageCallback) {
           try {
             const eventData = JSON.parse(e.data) as RealtimeEvent;
+            console.log('Received message type:', eventData.type);
+            
+            // Log specific details for transcription events
+            if (eventData.type === 'conversation.item.created') {
+              console.log('Conversation item created:', 
+                eventData.item?.role, 
+                eventData.item?.content ? 'Content array present' : 'No content array',
+                eventData.item?.input ? 'Input present' : 'No input');
+            } else if (eventData.type === 'conversation.item.input_audio_transcription.completed') {
+              console.log('Transcription completed:', eventData.transcription?.text);
+            }
+            
             this.onMessageCallback(eventData);
           } catch (error) {
             console.error('Error parsing message:', error);
@@ -434,6 +464,28 @@ export class RealtimeService {
     // Add a small delay to ensure the data channel is fully ready
     await new Promise(resolve => setTimeout(resolve, 500));
     
+    // First, send a session.update event to enable transcription
+    const sessionUpdateEvent = {
+      type: 'session.update',
+      session: {
+        modalities: ['text', 'audio'],
+        input_audio_transcription: {
+          model: 'whisper-1'
+        }
+      }
+    };
+    
+    // Send the session update event
+    const sessionUpdateSuccess = this.sendMessage(sessionUpdateEvent);
+    if (!sessionUpdateSuccess) {
+      console.error('Failed to send session update event');
+      return false;
+    }
+    
+    // Add a small delay after sending the session update
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Then send the response.create event to start the conversation
     const event: RealtimeResponseCreateEvent = {
       type: 'response.create',
       response: {

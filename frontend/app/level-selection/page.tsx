@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAudio } from '@/lib/useAudio';
 
 interface Level {
   code: string;
@@ -16,6 +17,7 @@ export default function LevelSelection() {
   const [levels, setLevels] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { playSelectionSound, playSuccessSound } = useAudio();
 
   useEffect(() => {
     // Retrieve the selected language from session storage
@@ -42,11 +44,13 @@ export default function LevelSelection() {
       
       // Handle localhost and 127.0.0.1 cases
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        baseUrl = 'http://localhost:3001';
+        baseUrl = 'http://localhost:8001';
       }
       
       console.log('Using API base URL:', baseUrl);
       
+      // Make sure we're using the correct endpoint format
+      // The backend expects direct calls to /api/languages
       const response = await fetch(`${baseUrl}/api/languages`);
       
       if (!response.ok) {
@@ -69,13 +73,22 @@ export default function LevelSelection() {
   };
 
   const handleLevelSelect = (levelCode: string) => {
+    // Play selection sound effect
+    playSelectionSound();
+    
     setSelectedLevel(levelCode);
     
     // Store the selection in session storage
     sessionStorage.setItem('selectedLevel', levelCode);
     
-    // Navigate to the conversation page
-    router.push('/speech');
+    // Add a slight delay before navigation for the sound to play and animation to complete
+    setTimeout(() => {
+      // Play success sound when navigating
+      playSuccessSound();
+      
+      // Navigate to the conversation page
+      router.push('/speech');
+    }, 500);
   };
 
   // Format the levels for display

@@ -39,12 +39,10 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     }
   }, [isRecording]);
 
-  // Show messages panel when we have messages
+  // Always show messages panel
   useEffect(() => {
-    if (messages.length > 0) {
-      setShowMessages(true);
-    }
-  }, [messages]);
+    setShowMessages(true);
+  }, []);
 
   // Handle realtime errors
   useEffect(() => {
@@ -152,9 +150,9 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
 
         <div className="flex-1 flex flex-col items-center justify-center">
           {/* Main Content Area - Split into two sections when messages are shown */}
-          <div className={`w-full flex ${showMessages ? 'flex-row lg:flex-row md:flex-col sm:flex-col' : 'flex-col items-center'} gap-8`}>
+          <div className={`w-full flex ${showMessages ? 'flex-col md:flex-row' : 'flex-col items-center'} gap-6 md:gap-8`}>
             {/* Microphone Section */}
-            <div className={`${showMessages ? 'w-1/2 lg:w-1/2 md:w-full sm:w-full' : 'w-full'} flex flex-col items-center justify-center`}>
+            <div className="w-full md:w-1/2 flex flex-col items-center justify-center">
               {/* Microphone UI - Only shown when not recording */}
               {!isRecording && !isAttemptingToRecord ? (
                 <div className="relative flex items-center justify-center transform transition-all duration-500">
@@ -251,29 +249,70 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
               )}
             </div>
             
-            {/* Messages Section - Only shown when there are messages */}
+            {/* Conversation Transcript Section - Enhanced Design */}
             {showMessages && (
-              <div className="w-1/2 lg:w-1/2 md:w-full sm:w-full flex flex-col">
-                <div className="bg-white/5 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4 h-[400px] overflow-y-auto">
-                  <div className="space-y-4">
-                    {messages.map((message, index) => (
-                      <div 
-                        key={index}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div 
-                          className={`max-w-[80%] p-3 rounded-lg ${
-                            message.role === 'user' 
-                              ? 'bg-indigo-500/20 text-indigo-50 dark:bg-indigo-600/30 dark:text-indigo-100 rounded-tr-none' 
-                              : 'bg-purple-500/20 text-purple-50 dark:bg-purple-600/30 dark:text-purple-100 rounded-tl-none'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
+              <div className="w-full md:w-1/2 flex flex-col">
+                <div className="relative">
+                  <h3 className="text-lg font-semibold mb-2 text-indigo-600 dark:text-indigo-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    Conversation Transcript
+                  </h3>
+                  <div className="bg-gradient-to-br from-white/10 to-white/5 dark:from-slate-800/50 dark:to-slate-900/80 backdrop-blur-sm rounded-xl border border-white/20 dark:border-indigo-500/20 shadow-lg shadow-indigo-500/5 dark:shadow-purple-500/10 p-4 h-[300px] md:h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
+                    {/* Debug info removed */}
+                    
+                    <div className="space-y-4">
+                      {messages.length > 0 ? (
+                        messages.map((message, index) => (
+                          <div 
+                            key={index}
+                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                          >
+                          {message.role !== 'user' && (
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
+                              <span className="text-xs font-bold text-white">T</span>
+                            </div>
+                          )}
+                          <div 
+                            className={`max-w-[80%] p-3 rounded-lg shadow-sm ${
+                              message.role === 'user' 
+                                ? 'bg-gradient-to-r from-indigo-500/80 to-indigo-600/80 text-white rounded-tr-none border-r border-t border-indigo-400/30' 
+                                : 'bg-gradient-to-r from-purple-500/80 to-purple-600/80 text-white rounded-tl-none border-l border-t border-purple-400/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold opacity-90">
+                                {message.role === 'user' ? 'You' : 'Tutor'}
+                              </span>
+                              <span className="text-xs opacity-60">
+                                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}  
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium leading-relaxed">{message.content || '(empty message)'}</p>
+                          </div>
+                          {message.role === 'user' && (
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
+                              <span className="text-xs font-bold text-white">U</span>
+                            </div>
+                          )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex justify-center items-center h-full">
+                          <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto mb-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <p className="text-indigo-300 font-medium">Your conversation will appear here</p>
+                            <p className="text-indigo-200/70 text-sm mt-2">Click the microphone button to start talking</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
                   </div>
+                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 h-1 w-1/3 rounded-full opacity-70"></div>
                 </div>
               </div>
             )}
