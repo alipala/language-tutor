@@ -37,4 +37,4 @@ EXPOSE 3001
 
 # Command to run the application
 # Use shell form to allow environment variable expansion
-CMD python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+CMD ["python3", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "${PORT:-3001}"]
