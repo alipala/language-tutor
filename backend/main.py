@@ -26,14 +26,18 @@ app = FastAPI(title="Language Tutor Backend API")
 origins = []
 if os.getenv("NODE_ENV") == "production":
     # In Railway, we need to be more permissive with CORS
-    frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
+    # Use the correct Railway URL as the default
+    frontend_url = os.getenv("FRONTEND_URL", "https://taaco.up.railway.app")
+    
     # Add both the Railway URL and any custom domain
     origins = [
         frontend_url,
-        "https://taco.up.railway.app",
-        "https://taaco.up.railway.app",  # Handle potential typos in the URL
+        "https://taaco.up.railway.app",  # Correct URL
         "https://language-tutor.up.railway.app",
     ]
+    
+    print(f"Configured CORS with origins: {origins}")
+    
     # If we're in Railway, also allow the request from any origin
     # This is more permissive but ensures the app works in Railway's environment
     if os.getenv("RAILWAY") == "true":
