@@ -51,11 +51,38 @@ export default function LevelSelection() {
       
       console.log('Using API base URL:', baseUrl);
       
-      // Make sure we're using the correct endpoint format
-      // The backend expects direct calls to /api/languages
-      const response = await fetch(`${baseUrl}/api/languages`);
+      // Add retry logic for better reliability
+      let response;
+      let retries = 0;
+      const maxRetries = 3;
       
-      if (!response.ok) {
+      while (retries < maxRetries) {
+        try {
+          // Make sure we're using the correct endpoint format
+          response = await fetch(`${baseUrl}/api/languages`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          });
+          
+          if (response.ok) break;
+          
+        } catch (fetchError) {
+          console.log(`Fetch attempt ${retries + 1} failed:`, fetchError);
+        }
+        
+        retries++;
+        if (retries < maxRetries) {
+          console.log(`Retrying fetch (${retries}/${maxRetries})...`);
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      // Check if response exists and is ok
+      if (!response || !response.ok) {
         throw new Error('Failed to fetch languages and levels');
       }
       
@@ -76,22 +103,56 @@ export default function LevelSelection() {
 
   // Add a useEffect to check if we're stuck on this page
   useEffect(() => {
+    console.log('Level selection page loaded at:', new Date().toISOString());
+    console.log('Current URL:', window.location.href);
+    
+    // Check for redirect loop
+    const redirectAttemptKey = 'levelSelectionRedirectAttempt';
+    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
+    console.log('Level selection page loaded, redirect attempts:', redirectAttempts);
+    
+    // If we've tried to redirect too many times, reset the counter and stay on this page
+    if (redirectAttempts > 3) {
+      console.log('Too many redirect attempts detected, resetting counter');
+      sessionStorage.setItem(redirectAttemptKey, '0');
+      // Clear any potentially problematic navigation flags
+      sessionStorage.removeItem('intentionalNavigation');
+      return;
+    }
+    
     // Check if we have both language and level in session storage but we're still on this page
     const storedLanguage = sessionStorage.getItem('selectedLanguage');
     const storedLevel = sessionStorage.getItem('selectedLevel');
+    const intentionalNavigation = sessionStorage.getItem('intentionalNavigation');
+    
+    // Only increment the redirect attempt counter if we're trying to redirect
+    if ((!storedLanguage) || (storedLanguage && storedLevel)) {
+      sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
+    }
     
     // If we don't have a language, we should be on language selection
     if (!storedLanguage && window.location.pathname.includes('level-selection')) {
       console.log('No language selected, redirecting to language selection');
-      window.location.href = '/language-selection';
+      // Add a small delay before redirecting
+      setTimeout(() => {
+        window.location.href = '/language-selection';
+      }, 300);
       return;
     }
     
     // If we have both language and level, we should be on speech page
     if (storedLanguage && storedLevel && window.location.pathname.includes('level-selection')) {
       console.log('Detected stuck on level selection page with stored selections');
-      // Force navigation to speech page
-      window.location.href = '/speech';
+      // Force navigation to speech page with a small delay
+      setTimeout(() => {
+        window.location.href = '/speech';
+      }, 300);
+    }
+    
+    // Clear the intentional navigation flag if it exists
+    if (intentionalNavigation) {
+      console.log('Clearing intentional navigation flag');
+      sessionStorage.removeItem('intentionalNavigation');
     }
   }, []);
   
