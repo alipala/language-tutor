@@ -88,30 +88,52 @@ export default function Home() {
     // Mark that we're intentionally navigating
     sessionStorage.setItem('intentionalNavigation', 'true');
     
+    // RAILWAY SPECIFIC: Add a flag to indicate we're in Railway environment
+    const isRailway = window.location.hostname.includes('railway.app');
+    console.log('Is Railway environment:', isRailway);
+    
+    // For Railway, use a more direct approach with full URL
+    if (isRailway) {
+      console.log('Using Railway-specific navigation approach');
+      // Use the full URL to ensure proper navigation in Railway
+      const fullUrl = `${window.location.origin}/language-selection`;
+      console.log('Navigating to full URL:', fullUrl);
+      
+      // Try with a form submission approach which is more reliable in some environments
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = fullUrl;
+      document.body.appendChild(form);
+      
+      // Add a small delay to ensure the form is in the DOM
+      setTimeout(() => {
+        console.log('Submitting form for navigation');
+        try {
+          form.submit();
+        } catch (e) {
+          console.error('Form submission failed, falling back to direct navigation', e);
+          // Fallback to direct navigation
+          window.location.href = fullUrl;
+        }
+      }, 100);
+      
+      return;
+    }
+    
+    // Standard navigation for non-Railway environments
     // Add a small delay before redirecting for better UX
     const redirectTimer = setTimeout(() => {
       console.log('Redirecting from home page to language selection');
-      // Use direct window.location for most reliable navigation in Railway
+      // Use direct window.location for most reliable navigation
       window.location.href = '/language-selection';
       
-      // Fallback navigation in case the first attempt fails (for Railway)
+      // Fallback navigation in case the first attempt fails
       const fallbackTimer = setTimeout(() => {
         console.log('Fallback navigation triggered');
         if (window.location.pathname === '/' || window.location.pathname === '') {
           console.log('Still on home page, using fallback navigation');
           // Try a different navigation method
           window.location.replace('/language-selection');
-          
-          // Final fallback - if we're still here after another second, try a different approach
-          setTimeout(() => {
-            if (window.location.pathname === '/' || window.location.pathname === '') {
-              console.log('Still on home page after multiple attempts, trying final fallback');
-              // Try with full URL including origin
-              const fullUrl = `${window.location.origin}/language-selection`;
-              console.log('Navigating to full URL:', fullUrl);
-              window.location.href = fullUrl;
-            }
-          }, 1000);
         }
       }, 1000);
       

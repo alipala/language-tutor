@@ -37,10 +37,25 @@ export default function LanguageSelection() {
     // Only run in browser
     if (typeof window === 'undefined') return;
     
+    // RAILWAY SPECIFIC: Detect Railway environment
+    const isRailway = window.location.hostname.includes('railway.app');
+    console.log('Is Railway environment:', isRailway);
+    
     console.log('Language selection page loaded at:', new Date().toISOString());
     console.log('Current URL:', window.location.href);
     console.log('Current pathname:', window.location.pathname);
     console.log('Document referrer:', document.referrer);
+    
+    // For Railway environment, ensure we're using the correct path format
+    if (isRailway && window.location.pathname !== '/language-selection') {
+      // If we're in Railway but the path isn't exactly what we expect, normalize it
+      console.log('Normalizing Railway path to /language-selection');
+      // This shouldn't happen, but just in case
+      if (!window.location.pathname.endsWith('/language-selection')) {
+        window.location.replace('/language-selection');
+        return;
+      }
+    }
     
     // Check for redirect loop
     const redirectAttemptKey = 'languageSelectionRedirectAttempt';
@@ -130,13 +145,54 @@ export default function LanguageSelection() {
     // Log the navigation attempt
     console.log('Navigating to level selection with language:', languageCode);
     
-    // Use a direct window.location approach for Railway with a small delay
+    // RAILWAY SPECIFIC: Detect Railway environment
+    const isRailway = window.location.hostname.includes('railway.app');
+    console.log('Is Railway environment:', isRailway);
+    
+    // For Railway, use a more direct approach with full URL
+    if (isRailway) {
+      console.log('Using Railway-specific navigation approach');
+      // Use the full URL to ensure proper navigation in Railway
+      const fullUrl = `${window.location.origin}/level-selection`;
+      console.log('Navigating to full URL:', fullUrl);
+      
+      // Try with a form submission approach which is more reliable in some environments
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = fullUrl;
+      document.body.appendChild(form);
+      
+      // Add a small delay to ensure the form is in the DOM
+      setTimeout(() => {
+        console.log('Submitting form for navigation');
+        try {
+          form.submit();
+        } catch (e) {
+          console.error('Form submission failed, falling back to direct navigation', e);
+          // Fallback to direct navigation
+          window.location.href = fullUrl;
+          
+          // Final fallback if still on this page after 1 second
+          setTimeout(() => {
+            if (window.location.pathname.includes('language-selection')) {
+              console.log('Still on language selection page, using window.location.replace');
+              window.location.replace(fullUrl);
+            }
+          }, 1000);
+        }
+      }, 100);
+      
+      return;
+    }
+    
+    // Standard navigation for non-Railway environments
+    // Use a direct window.location approach with a small delay
     // This bypasses any client-side routing issues
     setTimeout(() => {
       console.log('Executing navigation to level selection');
       window.location.href = '/level-selection';
       
-      // Fallback navigation in case the first attempt fails (for Railway)
+      // Fallback navigation in case the first attempt fails
       const fallbackTimer = setTimeout(() => {
         console.log('Checking if fallback navigation is needed');
         if (window.location.pathname.includes('language-selection')) {

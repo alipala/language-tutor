@@ -25,11 +25,25 @@ app = FastAPI(title="Language Tutor Backend API")
 # CORS configuration
 origins = []
 if os.getenv("NODE_ENV") == "production":
+    # In Railway, we need to be more permissive with CORS
     frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
-    origins = [frontend_url]
+    # Add both the Railway URL and any custom domain
+    origins = [
+        frontend_url,
+        "https://taco.up.railway.app",
+        "https://taaco.up.railway.app",  # Handle potential typos in the URL
+        "https://language-tutor.up.railway.app",
+    ]
+    # If we're in Railway, also allow the request from any origin
+    # This is more permissive but ensures the app works in Railway's environment
+    if os.getenv("RAILWAY") == "true":
+        origins = ["*"]
+        print("Running in Railway environment, allowing all origins")
 else:
     # Allow all origins during development
     origins = ["*"]
+
+print(f"Configured CORS with origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -261,6 +275,20 @@ async def generate_token(request: TutorSessionRequest):
 @app.get("/", response_class=HTMLResponse)
 @app.get("/{full_path:path}")
 async def serve_frontend(full_path: str = "", request: Request = None):
+    # Log request details for debugging Railway issues
+    print(f"Requested path: {full_path}")
+    if request:
+        print(f"Request headers: {request.headers}")
+    
+    # Special handling for Railway environment
+    is_railway = os.getenv("RAILWAY") == "true"
+    if is_railway:
+        print(f"Railway environment detected, handling request for path: {full_path}")
+        
+        # For Railway, we need special handling for client-side routing paths
+        if full_path in ["language-selection", "level-selection", "speech"]:
+            print(f"Detected client-side route: {full_path}, serving index.html")
+    
     # Skip API routes
     if full_path and full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not Found")
@@ -273,7 +301,6 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         # Determine which path to use
         frontend_path = docker_frontend_path if docker_frontend_path.exists() else local_frontend_path
         print(f"Looking for index.html in: {frontend_path}")
-        print(f"Requested path: {full_path}")
         
         # Log the request headers for debugging
         print(f"Request headers: {request.headers if request else 'No request object'}")
