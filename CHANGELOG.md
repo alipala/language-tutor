@@ -5,6 +5,27 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-03-15
+
+### Added
+- Enhanced server-side routing for improved SPA behavior in Railway environments
+- Custom HTML generation for client-side routes to ensure seamless navigation
+- Advanced stuck-state detection and auto-recovery for navigation issues
+- Loading indicators during page transitions for better user experience
+- Comprehensive logging system for debugging production environments
+
+### Fixed
+- Resolved navigation issues with "Start Learning" button in Railway deployment
+- Fixed infinite loading states when navigating between pages
+- Corrected routing inconsistencies between development and production environments
+- Improved resilience against client-side routing failures
+
+### Changed
+- Refactored backend route handling for better Next.js compatibility
+- Improved error state visualization and feedback across the application
+- Enhanced Railway compatibility with more robust SSR support
+- Optimized client-side navigation with direct URL handling
+
 ## [2.2.0] - 2025-03-14
 
 ### Fixed

@@ -2,7 +2,7 @@
 
 > Forked from the original [Tutor Application](https://github.com/yourusername/tutor) on March 14, 2025.
 
-A language learning voice conversation application with a modern UI that allows users to interact through voice. The application uses FastAPI for the backend and Next.js for the frontend, with WebRTC for real-time communication. This project is specialized for language learning and practice.
+A language learning voice conversation application with a modern UI that allows users to interact through voice. The application uses FastAPI for the backend and Next.js for the frontend, with WebRTC for real-time communication. This project is specialized for language learning and practice with robust production deployment on Railway.
 
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-0.104.1-009688?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
@@ -21,6 +21,10 @@ A language learning voice conversation application with a modern UI that allows 
 - 🎨 Modern dark gradient UI
 - 📱 Responsive design for mobile and desktop
 - 🔄 Seamless frontend-backend integration
+- ⚡ Robust navigation with automatic recovery from stuck states
+- 🔍 Advanced debugging with comprehensive logging system
+- 🛡️ Enhanced error handling and user feedback
+- 🌊 Optimized for reliable production deployment on Railway
 
 ## About This Fork
 
@@ -69,7 +73,7 @@ The application follows a modern architecture with a clear separation between fr
 
 ## Railway.app Deployment Guide
 
-This application is configured for easy deployment on Railway.app.
+This application is configured for easy deployment on Railway.app with optimized settings for reliable production performance.
 
 ### Prerequisites
 
@@ -99,6 +103,27 @@ This application is configured for easy deployment on Railway.app.
 
 4. **Deploy the Application**
    - Railway will automatically detect the configuration and deploy your application
+
+### Railway-Specific Optimizations
+
+This application includes several optimizations for reliable production deployment on Railway:
+
+1. **Next.js Configuration:**
+   - Uses `output: 'standalone'` instead of 'export' for proper server-side rendering
+   - Sets `reactStrictMode: false` to prevent double rendering in production
+   - Sets `trailingSlash: false` to prevent redirect loops
+
+2. **Navigation System:**
+   - Uses direct `window.location.href` for reliable page transitions in production
+   - Implements stuck-state detection and automatic recovery
+   - Provides fallback navigation through multiple methods
+   - Enhanced error handling and user feedback during transitions
+
+3. **Backend Routing:**
+   - Smart path detection and normalization
+   - Custom HTML generation for client-side routes
+   - Improved static file handling for Next.js assets
+   - Comprehensive logging for production debugging
    - The deployment process will:
      - Install Python dependencies for the backend
      - Install Node.js dependencies and build the Next.js frontend
