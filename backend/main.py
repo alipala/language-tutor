@@ -29,11 +29,10 @@ if os.getenv("NODE_ENV") == "production":
     # Use the correct Railway URL as the default
     frontend_url = os.getenv("FRONTEND_URL", "https://taaco.up.railway.app")
     
-    # Add both the Railway URL and any custom domain
+    # Add the Railway URL as the origin
     origins = [
         frontend_url,
         "https://taaco.up.railway.app",  # Correct URL
-        "https://language-tutor.up.railway.app",
     ]
     
     print(f"Configured CORS with origins: {origins}")
