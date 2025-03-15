@@ -1,8 +1,10 @@
 import os
 import json
+import traceback
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -37,15 +39,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Global error handler for better debugging in Railway
+@app.middleware("http")
+async def error_handling_middleware(request: Request, call_next):
+    try:
+        # Process the request and get the response
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        # Log the error with traceback
+        error_detail = f"Error processing request: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        
+        # Return a JSON response with error details
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal Server Error",
+                "detail": str(e),
+                "path": request.url.path,
+                "railway": os.getenv("RAILWAY") == "true",
+                "environment": os.getenv("NODE_ENV", "development")
+            }
+        )
+
 # Simple test endpoint to verify API connectivity
 @app.get("/api/test")
 async def test_endpoint():
     return {"message": "Backend API is working correctly"}
 
-# Health check endpoint
+# Enhanced health check endpoint with detailed status information
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok"}
+    import platform
+    import sys
+    import time
+    
+    # Get environment information
+    is_production = os.getenv("NODE_ENV") == "production"
+    environment = "production" if is_production else "development"
+    
+    # Get system information
+    system_info = {
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "timestamp": time.time(),
+        "environment": environment,
+        "railway": os.getenv("RAILWAY") == "true"
+    }
+    
+    # Return comprehensive health data
+    return {
+        "status": "ok",
+        "version": "1.0.0",
+        "uptime": time.time(),  # You could track actual uptime if needed
+        "system_info": system_info,
+        "api_routes": [
+            "/api/languages",
+            "/api/realtime/token",
+            "/api/test"
+        ]
+    }
 
 # Serve static files in production
 if os.getenv("NODE_ENV") == "production":
@@ -221,28 +275,52 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         print(f"Looking for index.html in: {frontend_path}")
         print(f"Requested path: {full_path}")
         
+        # Log the request headers for debugging
+        print(f"Request headers: {request.headers if request else 'No request object'}")
+        
         # For client-side routing in Next.js, we need to serve index.html for all routes
         # except for static files and API routes
+        
+        # First check for Next.js static files
+        if full_path.startswith('_next/') or full_path.startswith('static/'):
+            # Try to find the file in various locations
+            possible_static_paths = [
+                frontend_path / ".next" / full_path.replace('_next/', ''),
+                frontend_path / ".next" / full_path,
+                frontend_path / full_path,
+                frontend_path / "public" / full_path,
+            ]
+            
+            for path in possible_static_paths:
+                if path.exists() and path.is_file():
+                    print(f"Serving Next.js static file from: {path}")
+                    return FileResponse(str(path))
         
         # Check if the request is for a static file (has extension)
         if '.' in full_path and not full_path.endswith('.html'):
             # Try to serve the static file directly
-            static_file_path = frontend_path / "public" / full_path
-            if static_file_path.exists():
-                print(f"Serving static file from: {static_file_path}")
-                return FileResponse(str(static_file_path))
+            static_file_paths = [
+                frontend_path / "public" / full_path,
+                frontend_path / full_path,
+                frontend_path / ".next" / "static" / full_path,
+            ]
+            
+            for path in static_file_paths:
+                if path.exists() and path.is_file():
+                    print(f"Serving static file from: {path}")
+                    return FileResponse(str(path))
         
         # Try different possible paths for the index.html file
         possible_paths = [
+            # Standalone output paths (most likely for Railway deployment)
+            frontend_path / ".next/server/app/index.html",  # Next.js 13+ app router
+            frontend_path / ".next/server/pages/index.html", # Next.js pages router
             # Standalone output paths
             frontend_path / ".next/standalone/frontend/app/index.html",
             frontend_path / ".next/standalone/index.html",
             frontend_path / ".next/standalone/frontend/index.html",
             # Static export paths
             frontend_path / "out/index.html",
-            # Server component paths
-            frontend_path / ".next/server/app/index.html",
-            frontend_path / ".next/server/pages/index.html",
             # Other possible paths
             frontend_path / ".next/static/index.html",
             frontend_path / ".next/index.html",
@@ -251,6 +329,16 @@ async def serve_frontend(full_path: str = "", request: Request = None):
             frontend_path / "index.html",
             frontend_path / ".next/standalone/frontend/out/index.html",
         ]
+        
+        # Also check for route-specific HTML files for static exports
+        if full_path:
+            route_specific_paths = [
+                frontend_path / ".next/server/app" / full_path / "index.html",
+                frontend_path / ".next/server/pages" / full_path / "index.html",
+                frontend_path / "out" / full_path / "index.html",
+                frontend_path / full_path / "index.html",
+            ]
+            possible_paths = route_specific_paths + possible_paths
         
         for path in possible_paths:
             try:

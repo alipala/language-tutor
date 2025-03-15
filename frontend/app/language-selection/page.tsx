@@ -34,8 +34,13 @@ export default function LanguageSelection() {
 
   // Add a useEffect to check if we're stuck on this page
   useEffect(() => {
+    // Only run in browser
+    if (typeof window === 'undefined') return;
+    
     console.log('Language selection page loaded at:', new Date().toISOString());
     console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    console.log('Document referrer:', document.referrer);
     
     // Check for redirect loop
     const redirectAttemptKey = 'languageSelectionRedirectAttempt';
@@ -66,7 +71,18 @@ export default function LanguageSelection() {
       console.log('Detected stuck on language selection page with stored language and level');
       // Force navigation to speech page after a small delay
       setTimeout(() => {
+        console.log('Navigating to speech page');
         window.location.href = '/speech';
+        
+        // Fallback navigation in case the first attempt fails (for Railway)
+        const fallbackTimer = setTimeout(() => {
+          if (window.location.pathname.includes('language-selection')) {
+            console.log('Still on language selection page, using fallback navigation to speech');
+            window.location.replace('/speech');
+          }
+        }, 1000);
+        
+        return () => clearTimeout(fallbackTimer);
       }, 300);
       return;
     }
@@ -76,7 +92,18 @@ export default function LanguageSelection() {
       console.log('Detected stuck on language selection page with stored language:', storedLanguage);
       // Force navigation to level selection after a small delay
       setTimeout(() => {
+        console.log('Navigating to level selection page');
         window.location.href = '/level-selection';
+        
+        // Fallback navigation in case the first attempt fails (for Railway)
+        const fallbackTimer = setTimeout(() => {
+          if (window.location.pathname.includes('language-selection')) {
+            console.log('Still on language selection page, using fallback navigation to level selection');
+            window.location.replace('/level-selection');
+          }
+        }, 1000);
+        
+        return () => clearTimeout(fallbackTimer);
       }, 300);
     }
     
@@ -106,7 +133,19 @@ export default function LanguageSelection() {
     // Use a direct window.location approach for Railway with a small delay
     // This bypasses any client-side routing issues
     setTimeout(() => {
+      console.log('Executing navigation to level selection');
       window.location.href = '/level-selection';
+      
+      // Fallback navigation in case the first attempt fails (for Railway)
+      const fallbackTimer = setTimeout(() => {
+        console.log('Checking if fallback navigation is needed');
+        if (window.location.pathname.includes('language-selection')) {
+          console.log('Still on language selection page, using fallback navigation');
+          window.location.replace('/level-selection');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(fallbackTimer);
     }, 300);
   };
 

@@ -209,7 +209,18 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     
     // Use setTimeout to ensure the navigation happens after the current event loop
     setTimeout(() => {
+      console.log('Executing navigation to language selection');
       window.location.href = '/language-selection';
+      
+      // Fallback navigation in case the first attempt fails (for Railway)
+      const fallbackTimer = setTimeout(() => {
+        if (window.location.pathname.includes('speech')) {
+          console.log('Still on speech page, using fallback navigation to language selection');
+          window.location.replace('/language-selection');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(fallbackTimer);
     }, 100);
   };
 
@@ -224,7 +235,18 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     
     // Use setTimeout to ensure the navigation happens after the current event loop
     setTimeout(() => {
+      console.log('Executing navigation to level selection');
       window.location.href = '/level-selection';
+      
+      // Fallback navigation in case the first attempt fails (for Railway)
+      const fallbackTimer = setTimeout(() => {
+        if (window.location.pathname.includes('speech')) {
+          console.log('Still on speech page, using fallback navigation to level selection');
+          window.location.replace('/level-selection');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(fallbackTimer);
     }, 100);
   };
   
@@ -246,7 +268,18 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     
     // Use setTimeout to ensure the navigation happens after the current event loop
     setTimeout(() => {
+      console.log('Executing navigation to home page');
       window.location.href = '/';
+      
+      // Fallback navigation in case the first attempt fails (for Railway)
+      const fallbackTimer = setTimeout(() => {
+        if (window.location.pathname.includes('speech')) {
+          console.log('Still on speech page, using fallback navigation to home');
+          window.location.replace('/');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(fallbackTimer);
     }, 100);
   };
 

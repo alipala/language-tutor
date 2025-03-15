@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { verifyBackendConnectivity } from '../../lib/healthCheck';
 // Sound effects temporarily disabled
 // import { useAudio } from '@/lib/useAudio';
 
@@ -18,6 +19,7 @@ export default function LevelSelection() {
   const [levels, setLevels] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
   // Sound effects temporarily disabled
   // const { playSelectionSound, playSuccessSound } = useAudio();
 
@@ -32,8 +34,27 @@ export default function LevelSelection() {
     
     setSelectedLanguage(language);
     
-    // Fetch the available languages and levels from the backend
-    fetchLanguagesAndLevels(language);
+    // First verify backend connectivity
+    verifyBackendConnectivity()
+      .then(connected => {
+        console.log('Backend connectivity check result:', connected);
+        setBackendConnected(connected);
+        
+        if (connected) {
+          // If connected, proceed to fetch languages and levels
+          fetchLanguagesAndLevels(language);
+        } else {
+          // If not connected, show an error
+          setError('Unable to connect to the backend server. Please try again later.');
+          setIsLoading(false);
+        }
+      })
+      .catch(err => {
+        console.error('Backend connectivity check failed:', err);
+        setBackendConnected(false);
+        setError('Failed to verify backend connectivity. Please refresh the page or try again later.');
+        setIsLoading(false);
+      });
   }, [router]);
 
   const fetchLanguagesAndLevels = async (language: string) => {
@@ -46,8 +67,12 @@ export default function LevelSelection() {
       
       // Handle localhost and 127.0.0.1 cases
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        baseUrl = 'http://localhost:8003';
+        baseUrl = 'http://localhost:8001';
       }
+      
+      // Log the environment and API URL for debugging
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Using API base URL:', baseUrl);
       
       console.log('Using API base URL:', baseUrl);
       
@@ -103,8 +128,13 @@ export default function LevelSelection() {
 
   // Add a useEffect to check if we're stuck on this page
   useEffect(() => {
+    // Only run in browser
+    if (typeof window === 'undefined') return;
+    
     console.log('Level selection page loaded at:', new Date().toISOString());
     console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    console.log('Document referrer:', document.referrer);
     
     // Check for redirect loop
     const redirectAttemptKey = 'levelSelectionRedirectAttempt';
@@ -135,7 +165,18 @@ export default function LevelSelection() {
       console.log('No language selected, redirecting to language selection');
       // Add a small delay before redirecting
       setTimeout(() => {
+        console.log('Navigating to language selection page');
         window.location.href = '/language-selection';
+        
+        // Fallback navigation in case the first attempt fails (for Railway)
+        const fallbackTimer = setTimeout(() => {
+          if (window.location.pathname.includes('level-selection')) {
+            console.log('Still on level selection page, using fallback navigation to language selection');
+            window.location.replace('/language-selection');
+          }
+        }, 1000);
+        
+        return () => clearTimeout(fallbackTimer);
       }, 300);
       return;
     }
@@ -145,7 +186,18 @@ export default function LevelSelection() {
       console.log('Detected stuck on level selection page with stored selections');
       // Force navigation to speech page with a small delay
       setTimeout(() => {
+        console.log('Navigating to speech page');
         window.location.href = '/speech';
+        
+        // Fallback navigation in case the first attempt fails (for Railway)
+        const fallbackTimer = setTimeout(() => {
+          if (window.location.pathname.includes('level-selection')) {
+            console.log('Still on level selection page, using fallback navigation to speech');
+            window.location.replace('/speech');
+          }
+        }, 1000);
+        
+        return () => clearTimeout(fallbackTimer);
       }, 300);
     }
     
@@ -160,8 +212,16 @@ export default function LevelSelection() {
     // Clear all session storage
     sessionStorage.clear();
     // Navigate to home page
-    window.location.href = '/';
     console.log('Starting over - cleared session storage');
+    window.location.href = '/';
+    
+    // Fallback navigation in case the first attempt fails (for Railway)
+    setTimeout(() => {
+      if (window.location.pathname.includes('level-selection')) {
+        console.log('Still on level selection page, using fallback navigation for start over');
+        window.location.replace('/');
+      }
+    }, 1000);
   };
   
   const handleChangeLanguage = () => {
@@ -169,8 +229,16 @@ export default function LevelSelection() {
     sessionStorage.removeItem('selectedLanguage');
     sessionStorage.removeItem('selectedLevel');
     // Navigate to language selection
-    window.location.href = '/language-selection';
     console.log('Navigating to language selection, cleared language and level selections');
+    window.location.href = '/language-selection';
+    
+    // Fallback navigation in case the first attempt fails (for Railway)
+    setTimeout(() => {
+      if (window.location.pathname.includes('level-selection')) {
+        console.log('Still on level selection page, using fallback navigation to language selection');
+        window.location.replace('/language-selection');
+      }
+    }, 1000);
   };
 
   const handleLevelSelect = (levelCode: string) => {
@@ -181,12 +249,29 @@ export default function LevelSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLevel', levelCode);
     
-    // Use a direct window.location approach for Railway
-    // This bypasses any client-side routing issues
-    window.location.href = '/speech';
+    // Mark that we're intentionally navigating
+    sessionStorage.setItem('intentionalNavigation', 'true');
     
     // Log the navigation attempt
     console.log('Navigating to speech page with level:', levelCode);
+    
+    // Use a direct window.location approach for Railway with a small delay
+    // This bypasses any client-side routing issues
+    setTimeout(() => {
+      console.log('Executing navigation to speech page');
+      window.location.href = '/speech';
+      
+      // Fallback navigation in case the first attempt fails (for Railway)
+      const fallbackTimer = setTimeout(() => {
+        console.log('Checking if fallback navigation is needed');
+        if (window.location.pathname.includes('level-selection')) {
+          console.log('Still on level selection page, using fallback navigation');
+          window.location.replace('/speech');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(fallbackTimer);
+    }, 300);
   };
 
   // Format the levels for display
@@ -224,15 +309,40 @@ export default function LevelSelection() {
         </div>
 
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+            <p className="text-muted-foreground dark:text-slate-400">Loading available levels...</p>
+            {backendConnected === false && (
+              <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <p className="text-amber-500 dark:text-amber-400 text-sm">Warning: Backend connectivity issues detected.</p>
+              </div>
+            )}
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
               <p className="text-red-500 dark:text-red-400">{error}</p>
               <button
-                onClick={() => fetchLanguagesAndLevels(selectedLanguage || 'english')}
+                onClick={() => {
+                  setIsLoading(true);
+                  setError(null);
+                  // First verify connectivity, then fetch data
+                  verifyBackendConnectivity()
+                    .then(connected => {
+                      setBackendConnected(connected);
+                      if (connected) {
+                        fetchLanguagesAndLevels(selectedLanguage || 'english');
+                      } else {
+                        setError('Still unable to connect to the backend server.');
+                        setIsLoading(false);
+                      }
+                    })
+                    .catch(() => {
+                      setBackendConnected(false);
+                      setError('Failed to verify backend connectivity.');
+                      setIsLoading(false);
+                    });
+                }}
                 className="mt-4 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors"
               >
                 Try Again

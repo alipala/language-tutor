@@ -17,7 +17,7 @@ const nextConfig = {
   env: {
     BACKEND_URL: process.env.NODE_ENV === 'production'
       ? process.env.BACKEND_URL || ''
-      : 'http://localhost:8003',
+      : 'http://localhost:8001',
   },
   // Disable image optimization since it requires a server component
   images: {
@@ -27,6 +27,12 @@ const nextConfig = {
   experimental: {
     outputFileTracingRoot: require('path').join(__dirname, '../'),
   },
+  // Improve static generation for Railway
+  poweredByHeader: false,
+  // Increase the timeout for generating static pages
+  staticPageGenerationTimeout: 180,
+  // Compress responses for better performance
+  compress: true,
 }
 
 module.exports = nextConfig

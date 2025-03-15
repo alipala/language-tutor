@@ -70,6 +70,16 @@ export default function SpeechPage() {
       setTimeout(() => {
         console.log('Executing navigation to language selection');
         window.location.href = '/language-selection';
+        
+        // Fallback navigation in case the first attempt fails (for Railway)
+        const fallbackTimer = setTimeout(() => {
+          if (window.location.pathname.includes('speech')) {
+            console.log('Still on speech page, using fallback navigation to language selection');
+            window.location.replace('/language-selection');
+          }
+        }, 1000);
+        
+        return () => clearTimeout(fallbackTimer);
       }, 100);
       return;
     }

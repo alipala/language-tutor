@@ -47,7 +47,7 @@ export class RealtimeService {
       this.backendUrl = '';
       if (typeof window !== 'undefined') {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          this.backendUrl = 'http://localhost:8003';
+          this.backendUrl = 'http://localhost:8001';
         }
       }
       
