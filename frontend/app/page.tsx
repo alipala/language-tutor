@@ -10,9 +10,28 @@ export default function Home() {
     // Only run in browser
     if (typeof window === 'undefined') return;
     
+    // Add a flag to detect and prevent redirect loops
+    const redirectAttemptKey = 'homePageRedirectAttempt';
+    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
+    console.log('Home page loaded, redirect attempts:', redirectAttempts);
+    
+    // If we've tried to redirect too many times, reset the counter and stay on this page
+    if (redirectAttempts > 3) {
+      console.log('Too many redirect attempts detected, resetting counter');
+      sessionStorage.setItem(redirectAttemptKey, '0');
+      setIsLoading(false);
+      return;
+    }
+    
+    // Increment the redirect attempt counter
+    sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
+    
     // Check if we're already on the language selection page to prevent loops
     const currentPath = window.location.pathname;
-    if (currentPath.includes('language-selection')) return;
+    if (currentPath.includes('language-selection')) {
+      console.log('Already on language selection page, preventing redirect');
+      return;
+    }
     
     // Check for reset parameter or if user explicitly navigated to home page
     const urlParams = new URLSearchParams(window.location.search);
@@ -23,6 +42,8 @@ export default function Home() {
     if (shouldReset || isDirectHomeNavigation) {
       console.log('Clearing session storage due to reset request or direct navigation');
       sessionStorage.clear();
+      // Make sure to reset the redirect attempt counter too
+      sessionStorage.setItem(redirectAttemptKey, '1');
     }
     
     // Check if we should continue to speech page
@@ -35,14 +56,20 @@ export default function Home() {
       return;
     }
     
+    // Mark that we're intentionally navigating
+    sessionStorage.setItem('intentionalNavigation', 'true');
+    
     // Add a small delay before redirecting for better UX
     const redirectTimer = setTimeout(() => {
       console.log('Redirecting from home page to language selection');
       // Use direct window.location for most reliable navigation in Railway
       window.location.href = '/language-selection';
-    }, 300);
+    }, 500);
     
-    return () => clearTimeout(redirectTimer);
+    return () => {
+      clearTimeout(redirectTimer);
+      console.log('Home page navigation effect cleanup');
+    };
   }, []);
   
   // Return loading state while redirecting

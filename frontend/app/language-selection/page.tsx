@@ -34,23 +34,56 @@ export default function LanguageSelection() {
 
   // Add a useEffect to check if we're stuck on this page
   useEffect(() => {
+    console.log('Language selection page loaded at:', new Date().toISOString());
+    console.log('Current URL:', window.location.href);
+    
+    // Check for redirect loop
+    const redirectAttemptKey = 'languageSelectionRedirectAttempt';
+    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
+    console.log('Language selection page loaded, redirect attempts:', redirectAttempts);
+    
+    // If we've tried to redirect too many times, reset the counter and stay on this page
+    if (redirectAttempts > 3) {
+      console.log('Too many redirect attempts detected, resetting counter');
+      sessionStorage.setItem(redirectAttemptKey, '0');
+      // Clear any potentially problematic navigation flags
+      sessionStorage.removeItem('intentionalNavigation');
+      return;
+    }
+    
     // Check if we have a selected language in session storage but we're still on this page
     const storedLanguage = sessionStorage.getItem('selectedLanguage');
     const storedLevel = sessionStorage.getItem('selectedLevel');
+    const intentionalNavigation = sessionStorage.getItem('intentionalNavigation');
+    
+    // Only increment the redirect attempt counter if we're trying to redirect
+    if ((storedLanguage && storedLevel) || (storedLanguage && !intentionalNavigation)) {
+      sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
+    }
     
     // If we have both language and level, we should be on speech page
     if (storedLanguage && storedLevel && window.location.pathname.includes('language-selection')) {
       console.log('Detected stuck on language selection page with stored language and level');
-      // Force navigation to speech page
-      window.location.href = '/speech';
+      // Force navigation to speech page after a small delay
+      setTimeout(() => {
+        window.location.href = '/speech';
+      }, 300);
       return;
     }
     
     // If we only have language, we should be on level selection
-    if (storedLanguage && window.location.pathname.includes('language-selection')) {
+    if (storedLanguage && !storedLevel && window.location.pathname.includes('language-selection')) {
       console.log('Detected stuck on language selection page with stored language:', storedLanguage);
-      // Force navigation to level selection
-      window.location.href = '/level-selection';
+      // Force navigation to level selection after a small delay
+      setTimeout(() => {
+        window.location.href = '/level-selection';
+      }, 300);
+    }
+    
+    // Clear the intentional navigation flag if it exists
+    if (intentionalNavigation) {
+      console.log('Clearing intentional navigation flag');
+      sessionStorage.removeItem('intentionalNavigation');
     }
   }, []);
   
@@ -64,12 +97,17 @@ export default function LanguageSelection() {
     // Store the selection in session storage
     sessionStorage.setItem('selectedLanguage', languageCode);
     
-    // Use a direct window.location approach for Railway
-    // This bypasses any client-side routing issues
-    window.location.href = '/level-selection';
+    // Mark that we're intentionally navigating
+    sessionStorage.setItem('intentionalNavigation', 'true');
     
     // Log the navigation attempt
     console.log('Navigating to level selection with language:', languageCode);
+    
+    // Use a direct window.location approach for Railway with a small delay
+    // This bypasses any client-side routing issues
+    setTimeout(() => {
+      window.location.href = '/level-selection';
+    }, 300);
   };
 
   return (
