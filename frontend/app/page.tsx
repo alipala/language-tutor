@@ -21,10 +21,16 @@ export default function Home() {
     console.log('Current URL:', window.location.href);
     console.log('Full origin:', window.location.origin);
     
-    // Immediately check if we're already at language selection to avoid loops
+    // RAILWAY SPECIFIC: Check for the unusual routing situation
+    // where URL is language-selection but we're still on the home page component
     if (window.location.pathname === '/language-selection') {
-      console.log('Already at language selection, showing home page UI instead');
-      setIsLoading(false);
+      console.log('URL is /language-selection but still on home page component - force reload');
+      
+      // We're in a strange state where the URL is language-selection but we're 
+      // still on the home page component. Let's try to recover by forcing a reload
+      // which should properly render the language selection component
+      const fullUrl = `${window.location.origin}/language-selection`;
+      window.location.replace(fullUrl);
       return;
     }
     
