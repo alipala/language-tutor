@@ -1,10 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 // Export the main component
+// Language interface for type safety
+interface Language {
+  code: string;
+  name: string;
+  flagSrc: string;
+}
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
+  const [showLanguageSelection, setShowLanguageSelection] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  
+  // Define available languages
+  const languages: Language[] = [
+    {
+      code: 'dutch',
+      name: 'Dutch',
+      flagSrc: '/images/netherlands-flag.svg',
+    },
+    {
+      code: 'english',
+      name: 'English',
+      flagSrc: '/images/uk-flag.svg',
+    },
+  ];
   
   useEffect(() => {
     // Only run in browser
@@ -13,67 +37,8 @@ export default function Home() {
     // Log environment information for debugging
     console.log('Home page loaded at:', new Date().toISOString());
     console.log('Environment:', process.env.NODE_ENV);
-    console.log('Base path:', process.env.NEXT_PUBLIC_BASE_PATH || '/');
-    
-    // Add a flag to detect and prevent redirect loops
-    const redirectAttemptKey = 'homePageRedirectAttempt';
-    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
-    console.log('Home page loaded, redirect attempts:', redirectAttempts);
-    
-    // If we've tried to redirect too many times, reset the counter and stay on this page
-    if (redirectAttempts > 3) {
-      console.log('Too many redirect attempts detected, resetting counter');
-      sessionStorage.setItem(redirectAttemptKey, '0');
-      // Clear any potentially problematic session data
-      sessionStorage.removeItem('intentionalNavigation');
-      // Display the page instead of redirecting
-      setIsLoading(false);
-      
-      // Add a manual navigation button for the user
-      // This will be shown in the UI when isLoading is false
-      return;
-    }
-    
-    // Increment the redirect attempt counter
-    sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
-    
-    // Check if we're already on the language selection page to prevent loops
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('language-selection')) {
-      console.log('Already on language selection page, preventing redirect');
-      setIsLoading(false);
-      return;
-    }
-    
-    // Check for Railway-specific path issues
-    // In Railway, sometimes the path might have unexpected formats
-    if (currentPath !== '/' && !currentPath.endsWith('/') && !currentPath.includes('.')) {
-      console.log('Detected non-standard path in Railway:', currentPath);
-      // Try to normalize the path
-      if (!sessionStorage.getItem('pathNormalized')) {
-        sessionStorage.setItem('pathNormalized', 'true');
-        window.location.replace('/');
-        return;
-      }
-    }
-    
-    // Debug information for Railway deployment
     console.log('Current pathname:', window.location.pathname);
     console.log('Current URL:', window.location.href);
-    console.log('Document referrer:', document.referrer);
-    
-    // Check for reset parameter or if user explicitly navigated to home page
-    const urlParams = new URLSearchParams(window.location.search);
-    const shouldReset = urlParams.get('reset') === 'true';
-    const isDirectHomeNavigation = document.referrer && !document.referrer.includes(window.location.host);
-    
-    // Clear session storage if reset is requested or direct navigation to home
-    if (shouldReset || isDirectHomeNavigation) {
-      console.log('Clearing session storage due to reset request or direct navigation');
-      sessionStorage.clear();
-      // Make sure to reset the redirect attempt counter too
-      sessionStorage.setItem(redirectAttemptKey, '1');
-    }
     
     // Check if we should continue to speech page
     const hasLanguage = sessionStorage.getItem('selectedLanguage');
@@ -81,66 +46,48 @@ export default function Home() {
     
     if (hasLanguage && hasLevel) {
       console.log('Found existing language and level, redirecting to speech page');
-      window.location.href = '/speech';
+      window.location.replace('/speech');
       return;
     }
+    
+    // Check if we should continue to level selection
+    if (hasLanguage && !hasLevel) {
+      console.log('Found existing language, redirecting to level selection');
+      window.location.replace('/level-selection');
+      return;
+    }
+    
+    // Display the page after a short delay
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+  
+  // Function to handle language selection
+  const handleLanguageSelect = (languageCode: string) => {
+    console.log('Language selected:', languageCode);
+    setSelectedLanguage(languageCode);
+    
+    // Store the selection in session storage
+    sessionStorage.setItem('selectedLanguage', languageCode);
     
     // Mark that we're intentionally navigating
     sessionStorage.setItem('intentionalNavigation', 'true');
     
-    // RAILWAY SPECIFIC: Add a flag to indicate we're in Railway environment
+    // Navigate to level selection
     const isRailway = window.location.hostname.includes('railway.app');
-    console.log('Is Railway environment:', isRailway);
+    const fullUrl = `${window.location.origin}/level-selection`;
+    console.log('Navigating to level selection:', fullUrl);
     
-    // For Railway, use a more direct approach with full URL
-    if (isRailway) {
-      console.log('Using Railway-specific navigation approach');
-      // Use the full URL to ensure proper navigation in Railway
-      const fullUrl = `${window.location.origin}/language-selection`;
-      console.log('Navigating to full URL:', fullUrl);
-      
-      // Use direct location replacement which is most reliable
-      window.location.replace(fullUrl);
-      
-      // Fallback with hard refresh if needed
-      setTimeout(() => {
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          console.log('Still on home page, forcing hard refresh to:', fullUrl);
-          window.location.href = fullUrl + '?t=' + new Date().getTime();
-        }
-      }, 1000);
-      
-      return;
-    }
-    
-    // Standard navigation for non-Railway environments
-    // Add a small delay before redirecting for better UX
-    const redirectTimer = setTimeout(() => {
-      console.log('Redirecting from home page to language selection');
-      // Use direct window.location for most reliable navigation
-      window.location.href = '/language-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        console.log('Fallback navigation triggered');
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          console.log('Still on home page, using fallback navigation');
-          // Try a different navigation method
-          window.location.replace('/language-selection');
-        }
-      }, 1000);
-      
-      // Clear the fallback timer if the component unmounts
-      return () => clearTimeout(fallbackTimer);
-    }, 500);
-    
-    return () => {
-      clearTimeout(redirectTimer);
-      console.log('Home page navigation effect cleanup');
-    };
-  }, []);
+    // Use direct location replacement which is most reliable
+    window.location.replace(fullUrl);
+  };
   
-  // Return loading state while redirecting or manual navigation option if we hit the redirect limit
+  // Return loading state while redirecting or language selection if we hit the redirect limit
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(250,70%,97%)] to-[hsl(var(--background-end))] dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90 bg-pattern">
       <div className="flex flex-col items-center justify-center space-y-4">
@@ -149,9 +96,39 @@ export default function Home() {
         {isLoading ? (
           <>
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-            <p className="text-center text-gray-500 dark:text-gray-400">Redirecting to language selection...</p>
+            <p className="text-center text-gray-500 dark:text-gray-400">Loading...</p>
           </>
+        ) : showLanguageSelection ? (
+          // Language selection view
+          <div className="flex flex-col items-center space-y-6 mt-8">
+            <h2 className="text-2xl font-semibold text-center">Select a Language</h2>
+            <p className="text-center text-gray-600 dark:text-gray-300 max-w-md">
+              Choose a language to start practicing your conversation skills with an AI tutor.
+            </p>
+            
+            <div className="grid grid-cols-2 gap-6 mt-4 w-full max-w-md">
+              {languages.map((language) => (
+                <button
+                  key={language.code}
+                  onClick={() => handleLanguageSelect(language.code)}
+                  className={`flex flex-col items-center p-4 rounded-lg transition-all ${selectedLanguage === language.code ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
+                >
+                  <div className="relative w-24 h-24 mb-3 overflow-hidden rounded-md shadow-md">
+                    <Image
+                      src={language.flagSrc}
+                      alt={`${language.name} flag`}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </div>
+                  <span className="font-medium text-lg">{language.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
+          // Welcome view with start button
           <div className="flex flex-col items-center space-y-6 mt-8">
             <p className="text-center text-gray-600 dark:text-gray-300 max-w-md">
               Welcome to Language Tutor! Choose a language and level to start practicing your conversation skills with an AI tutor.
@@ -160,49 +137,15 @@ export default function Home() {
             <div className="flex flex-col space-y-4 w-full max-w-xs">
               <button 
                 onClick={() => {
-                  // Clear session storage and redirect
+                  // Clear session storage and show language selection
                   sessionStorage.clear();
-                  console.log('Start Learning button clicked, navigating to language selection');
-                  
-                  // Reset the redirect attempt counter
-                  sessionStorage.setItem('homePageRedirectAttempt', '0');
-                  
-                  // RAILWAY SPECIFIC: Use a more direct approach for Railway
-                  const isRailway = window.location.hostname.includes('railway.app');
-                  
-                  if (isRailway) {
-                    console.log('Using Railway-specific navigation from button click');
-                    // Use the full URL to ensure proper navigation in Railway
-                    const fullUrl = `${window.location.origin}/language-selection`;
-                    console.log('Navigating to:', fullUrl);
-                    
-                    // Use direct location replacement which is most reliable
-                    window.location.replace(fullUrl);
-                    
-                    // Fallback with hard refresh if needed
-                    setTimeout(() => {
-                      if (window.location.pathname === '/' || window.location.pathname === '') {
-                        console.log('Still on home page, forcing hard refresh to:', fullUrl);
-                        window.location.href = fullUrl + '?t=' + new Date().getTime();
-                      }
-                    }, 1000);
-                  } else {
-                    // Standard navigation for non-Railway environments
-                    window.location.href = '/language-selection';
-                  }
+                  console.log('Start Learning button clicked, showing language selection');
+                  setShowLanguageSelection(true);
                 }}
                 className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
               >
                 Start Learning
               </button>
-              
-              {parseInt(sessionStorage.getItem('homePageRedirectAttempt') || '0') > 2 && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg mt-4">
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                    We detected navigation issues. If you're having trouble, try clearing your browser cache or using a different browser.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}
