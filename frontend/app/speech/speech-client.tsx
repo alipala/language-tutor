@@ -12,12 +12,33 @@ interface SpeechClientProps {
 }
 
 export default function SpeechClient({ language, level }: SpeechClientProps) {
+  console.log('SpeechClient initializing with language:', language, 'level:', level, 'at:', new Date().toISOString());
+  
   const router = useRouter();
   const [localError, setLocalError] = useState<string | null>(null);
   const [showMessages, setShowMessages] = useState(false);
   const [isAttemptingToRecord, setIsAttemptingToRecord] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const micPermissionDeniedRef = useRef(false);
+  
+  // Add a useEffect to track component mounting and unmounting
+  useEffect(() => {
+    console.log('SpeechClient component mounted at:', new Date().toISOString());
+    console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    
+    // Store a flag to detect if the component unmounts unexpectedly
+    const mountTimestamp = Date.now();
+    sessionStorage.setItem('speechClientMountTime', mountTimestamp.toString());
+    
+    return () => {
+      console.log('SpeechClient component unmounting at:', new Date().toISOString());
+      console.log('Component was mounted for:', Date.now() - mountTimestamp, 'ms');
+      
+      // Store the unmount reason to help with debugging
+      sessionStorage.setItem('speechClientUnmountReason', 'normal_unmount');
+    };
+  }, []);
   
   // Use the Realtime API hook
   const {
@@ -66,13 +87,31 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     }
   }, [messages, showMessages]);
 
-  const handleToggleRecording = async () => {
+  const handleToggleRecording = async (e?: React.MouseEvent | React.TouchEvent) => {
+    // Prevent default browser behavior that might cause page refresh
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Toggle recording event prevented at:', new Date().toISOString());
+    }
+    
+    console.log('handleToggleRecording called - isRecording:', isRecording, 'isAttemptingToRecord:', isAttemptingToRecord);
+    
+    // Set a flag in session storage to indicate we're in a conversation
+    // This will be used by the beforeunload handler to prevent accidental refreshes
+    if (!isRecording) {
+      sessionStorage.setItem('isInConversation', 'true');
+    } else {
+      sessionStorage.removeItem('isInConversation');
+    }
+    
     // Clear any previous errors
     setLocalError(null);
     clearError();
     
     // If already recording, just stop
     if (isRecording) {
+      console.log('Already recording, stopping conversation...');
       stopConversation();
       return;
     }
@@ -86,10 +125,47 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     // Otherwise, attempt to start recording
     setIsAttemptingToRecord(true);
     try {
+      console.log('Starting microphone initialization sequence...');
+      
+      // First, ensure we're fully disconnected from any previous session
+      stopConversation();
+      
+      // Add a small delay to ensure cleanup is complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Initialize with language and level
       console.log('Initializing with language:', language, 'and level:', level);
-      await initialize(language, level);
       
+      // Store the current URL to detect navigation issues
+      const currentUrl = window.location.href;
+      sessionStorage.setItem('lastMicrophoneInitUrl', currentUrl);
+      
+      const initSuccess = await initialize(language, level);
+      
+      // Check if we're still on the same page after initialization
+      if (window.location.href !== currentUrl) {
+        console.error('Page URL changed during initialization, aborting microphone start');
+        return;
+      }
+      
+      if (!initSuccess) {
+        console.error('Failed to initialize realtime service');
+        setLocalError('Failed to initialize voice service. Please try again.');
+        setIsAttemptingToRecord(false);
+        sessionStorage.removeItem('isInConversation');
+        return;
+      }
+      
+      // Add a small delay after initialization
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Check again if we're still on the same page
+      if (window.location.href !== currentUrl) {
+        console.error('Page URL changed before starting conversation, aborting');
+        return;
+      }
+      
+      console.log('Starting conversation...');
       const success = await toggleConversation();
       
       // If the toggle was not successful and no error was set in the hook,
@@ -97,28 +173,81 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
       if (!success && !realtimeError) {
         setLocalError('Failed to start recording. Please try again.');
         setIsAttemptingToRecord(false);
+        sessionStorage.removeItem('isInConversation');
       }
     } catch (err) {
       setLocalError('An error occurred while starting the conversation');
-      console.error(err);
+      console.error('Error in handleToggleRecording:', err);
       setIsAttemptingToRecord(false);
+      sessionStorage.removeItem('isInConversation');
     }
   };
 
-  const handleEndConversation = () => {
+  const handleEndConversation = (e?: React.MouseEvent | React.TouchEvent) => {
+    // Prevent default browser behavior that might cause page refresh
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Remove the conversation flag since we're ending the conversation
+    sessionStorage.removeItem('isInConversation');
+    
     stopConversation();
     setIsAttemptingToRecord(false);
     // Don't hide messages when ending conversation
   };
 
-  const handleChangeLanguage = () => {
+  const handleChangeLanguage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     stopConversation();
-    router.push('/language-selection');
+    // Clear the language selection to force re-selection
+    sessionStorage.removeItem('selectedLanguage');
+    console.log('Navigating to language selection');
+    
+    // Use setTimeout to ensure the navigation happens after the current event loop
+    setTimeout(() => {
+      window.location.href = '/language-selection';
+    }, 100);
   };
 
-  const handleChangeLevel = () => {
+  const handleChangeLevel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     stopConversation();
-    router.push('/level-selection');
+    // Keep the language but clear the level
+    sessionStorage.removeItem('selectedLevel');
+    console.log('Navigating to level selection');
+    
+    // Use setTimeout to ensure the navigation happens after the current event loop
+    setTimeout(() => {
+      window.location.href = '/level-selection';
+    }, 100);
+  };
+  
+  const handleStartOver = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    stopConversation();
+    
+    // Mark that we're intentionally navigating away
+    sessionStorage.setItem('intentionalNavigation', 'true');
+    console.log('Starting over - clearing session storage');
+    
+    // Clear all session storage
+    sessionStorage.clear();
+    
+    // Immediately set the intentional navigation flag again since we just cleared it
+    sessionStorage.setItem('intentionalNavigation', 'true');
+    
+    // Use setTimeout to ensure the navigation happens after the current event loop
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 100);
   };
 
   return (
@@ -134,16 +263,25 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
           </p>
           <div className="flex justify-center mt-2 space-x-4">
             <button 
+              type="button"
               onClick={handleChangeLanguage}
               className="text-sm text-indigo-500 hover:text-indigo-400 dark:text-indigo-400 dark:hover:text-indigo-300"
             >
               Change Language
             </button>
             <button 
+              type="button"
               onClick={handleChangeLevel}
               className="text-sm text-indigo-500 hover:text-indigo-400 dark:text-indigo-400 dark:hover:text-indigo-300"
             >
               Change Level
+            </button>
+            <button 
+              type="button"
+              onClick={handleStartOver}
+              className="text-sm text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300"
+            >
+              Start Over
             </button>
           </div>
         </div>
@@ -164,7 +302,8 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
                   {/* Microphone Button with gradient */}
                   <Button
                     type="button"
-                    onClick={handleToggleRecording}
+                    onClick={(e) => handleToggleRecording(e)}
+                    onTouchStart={(e) => e.preventDefault()}
                     aria-label="Start recording"
                     className="mic-btn relative z-10 rounded-full w-28 h-28 flex items-center justify-center transition-all duration-500 touch-target"
                   >
@@ -239,7 +378,8 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
                 <div className="mt-8">
                   <Button
                     type="button"
-                    onClick={handleEndConversation}
+                    onClick={(e) => handleEndConversation(e)}
+                    onTouchStart={(e) => e.preventDefault()}
                     variant="destructive"
                     className="px-6 py-2 rounded-full"
                   >

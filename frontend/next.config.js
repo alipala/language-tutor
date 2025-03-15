@@ -2,18 +2,22 @@
 const nextConfig = {
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
-  output: 'standalone',
+  output: 'standalone', // Required for proper server-side rendering on Railway
   distDir: '.next',
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',
   // Ensure Next.js knows it's being served from the root
   assetPrefix: process.env.NODE_ENV === 'production' ? '' : undefined,
+  // Disable page reloads during development
+  devIndicators: {
+    buildActivity: false,
+  },
   // Environment variables
   env: {
     BACKEND_URL: process.env.NODE_ENV === 'production'
       ? process.env.BACKEND_URL || ''
-      : 'http://localhost:8001',
+      : 'http://localhost:8003',
   },
   // Disable image optimization since it requires a server component
   images: {
