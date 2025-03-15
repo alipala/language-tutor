@@ -283,15 +283,6 @@ async def serve_frontend(full_path: str = "", request: Request = None):
     if request:
         print(f"Request headers: {request.headers}")
     
-    # Special handling for Railway environment
-    is_railway = os.getenv("RAILWAY") == "true"
-    if is_railway:
-        print(f"Railway environment detected, handling request for path: {full_path}")
-        
-        # For Railway, we need special handling for client-side routing paths
-        if full_path in ["language-selection", "level-selection", "speech"]:
-            print(f"Detected client-side route: {full_path}, serving index.html")
-    
     # Skip API routes
     if full_path and full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not Found")
@@ -307,9 +298,6 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         
         # Log the request headers for debugging
         print(f"Request headers: {request.headers if request else 'No request object'}")
-        
-        # For client-side routing in Next.js, we need to serve index.html for all routes
-        # except for static files and API routes
         
         # First check for Next.js static files
         if full_path.startswith('_next/') or full_path.startswith('static/'):
@@ -340,35 +328,98 @@ async def serve_frontend(full_path: str = "", request: Request = None):
                     print(f"Serving static file from: {path}")
                     return FileResponse(str(path))
         
-        # Try different possible paths for the index.html file
-        possible_paths = [
-            # Standalone output paths (most likely for Railway deployment)
-            frontend_path / ".next/server/app/index.html",  # Next.js 13+ app router
-            frontend_path / ".next/server/pages/index.html", # Next.js pages router
-            # Standalone output paths
-            frontend_path / ".next/standalone/frontend/app/index.html",
-            frontend_path / ".next/standalone/index.html",
-            frontend_path / ".next/standalone/frontend/index.html",
-            # Static export paths
-            frontend_path / "out/index.html",
-            # Other possible paths
-            frontend_path / ".next/static/index.html",
-            frontend_path / ".next/index.html",
-            frontend_path / "public/index.html",
-            # Additional paths to check
-            frontend_path / "index.html",
-            frontend_path / ".next/standalone/frontend/out/index.html",
-        ]
+        # SPECIAL HANDLING FOR CLIENT-SIDE ROUTES
+        # Check for specific client-side routes and serve appropriate content
+        client_side_routes = ["language-selection", "level-selection", "speech"]
         
-        # Also check for route-specific HTML files for static exports
-        if full_path:
+        # For client-side routes, we want to serve the specific HTML file if it exists
+        # Otherwise, serve a version of index.html that has the correct meta tags for the route
+        if full_path in client_side_routes:
+            print(f"Detected client-side route: {full_path}, looking for specific HTML file")
+            
+            # Look for route-specific HTML
             route_specific_paths = [
                 frontend_path / ".next/server/app" / full_path / "index.html",
                 frontend_path / ".next/server/pages" / full_path / "index.html",
                 frontend_path / "out" / full_path / "index.html",
-                frontend_path / full_path / "index.html",
+                frontend_path / ".next/server/app" / f"{full_path}.html"
             ]
-            possible_paths = route_specific_paths + possible_paths
+            
+            for path in route_specific_paths:
+                if path.exists():
+                    print(f"Found route-specific file for {full_path} at {path}")
+                    return FileResponse(str(path))
+            
+            # If we're in Railway and it's a known client-side route but no specific file exists,
+            # we need to create a custom HTML that will properly redirect on the client side
+            print(f"No specific HTML found for {full_path}, creating a special redirect page")
+            
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Language Tutor - {full_path.replace('-', ' ').title()}</title>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <meta name="route" content="/{full_path}">
+                <script>
+                  // Handle client-side routing for Next.js
+                  window.addEventListener('DOMContentLoaded', function() {{
+                    // Force the browser to the correct route path
+                    const targetPath = '{full_path}';
+                    if (window.location.pathname.endsWith(targetPath)) {{
+                      // We're on the right URL, let Next.js take over when loaded
+                      console.log('Target route already in URL - waiting for Next.js');
+                    }} else {{
+                      // Redirect to the proper URL
+                      window.location.href = window.location.origin + '/' + targetPath;
+                    }}
+                  }});
+                </script>
+                <!-- Pull in Next.js scripts -->
+                <link rel="stylesheet" href="/_next/static/css/cc3ec16c3199f2fd.css" />
+              </head>
+              <body>
+                <div id="__next">
+                  <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column;">
+                    <h1 style="color: #6466f1;">Language Tutor</h1>
+                    <div style="margin-top: 20px;">
+                      <div style="border: 4px solid #6466f1; border-radius: 50%; width: 40px; height: 40px; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+                    </div>
+                    <p style="margin-top: 20px;">Redirecting to {full_path.replace('-', ' ')}...</p>
+                  </div>
+                </div>
+                <style>
+                  @keyframes spin {{
+                    0% {{ transform: rotate(0deg); }}
+                    100% {{ transform: rotate(360deg); }}
+                  }}
+                </style>
+                <script src="/_next/static/chunks/webpack-2e864253d8c6645c.js" defer></script>
+                <script src="/_next/static/chunks/fd9d1056-bfe8cd6c9c7c7e45.js" defer></script>
+                <script src="/_next/static/chunks/938-a9dc5eeaa9cbd612.js" defer></script>
+                <script src="/_next/static/chunks/main-app-c5d0a9511a5ba1de.js" defer></script>
+                <script src="/_next/static/chunks/app/page-5f60a265695a008d.js" defer></script>
+              </body>
+            </html>
+            """
+            return HTMLResponse(content=html_content)
+        
+        # For all other paths, try standard Next.js file locations
+        possible_paths = [
+            # For root path
+            frontend_path / ".next/server/app/index.html",  # Next.js 13+ app router
+            frontend_path / ".next/server/pages/index.html", # Next.js pages router
+            frontend_path / ".next/standalone/frontend/app/index.html",
+            frontend_path / ".next/standalone/index.html",
+            frontend_path / ".next/standalone/frontend/index.html",
+            frontend_path / "out/index.html",
+            frontend_path / ".next/static/index.html",
+            frontend_path / ".next/index.html",
+            frontend_path / "public/index.html",
+            frontend_path / "index.html",
+            frontend_path / ".next/standalone/frontend/out/index.html",
+        ]
         
         for path in possible_paths:
             try:
