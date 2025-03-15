@@ -36,12 +36,25 @@ export default function LanguageSelection() {
   useEffect(() => {
     // Check if we have a selected language in session storage but we're still on this page
     const storedLanguage = sessionStorage.getItem('selectedLanguage');
+    const storedLevel = sessionStorage.getItem('selectedLevel');
+    
+    // If we have both language and level, we should be on speech page
+    if (storedLanguage && storedLevel && window.location.pathname.includes('language-selection')) {
+      console.log('Detected stuck on language selection page with stored language and level');
+      // Force navigation to speech page
+      window.location.href = '/speech';
+      return;
+    }
+    
+    // If we only have language, we should be on level selection
     if (storedLanguage && window.location.pathname.includes('language-selection')) {
       console.log('Detected stuck on language selection page with stored language:', storedLanguage);
       // Force navigation to level selection
       window.location.href = '/level-selection';
     }
   }, []);
+  
+  // No need for handleStartOver since this is the starting screen
 
   const handleLanguageSelect = (languageCode: string) => {
     // Set loading state while navigating
@@ -70,6 +83,7 @@ export default function LanguageSelection() {
           <p className="text-muted-foreground dark:text-slate-400 mt-2 text-improved">
             Choose the language you want to practice
           </p>
+          {/* No Start Over button needed on the initial screen */}
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center">

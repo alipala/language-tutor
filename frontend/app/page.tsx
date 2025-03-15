@@ -14,6 +14,27 @@ export default function Home() {
     const currentPath = window.location.pathname;
     if (currentPath.includes('language-selection')) return;
     
+    // Check for reset parameter or if user explicitly navigated to home page
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldReset = urlParams.get('reset') === 'true';
+    const isDirectHomeNavigation = document.referrer && !document.referrer.includes(window.location.host);
+    
+    // Clear session storage if reset is requested or direct navigation to home
+    if (shouldReset || isDirectHomeNavigation) {
+      console.log('Clearing session storage due to reset request or direct navigation');
+      sessionStorage.clear();
+    }
+    
+    // Check if we should continue to speech page
+    const hasLanguage = sessionStorage.getItem('selectedLanguage');
+    const hasLevel = sessionStorage.getItem('selectedLevel');
+    
+    if (hasLanguage && hasLevel) {
+      console.log('Found existing language and level, redirecting to speech page');
+      window.location.href = '/speech';
+      return;
+    }
+    
     // Add a small delay before redirecting for better UX
     const redirectTimer = setTimeout(() => {
       console.log('Redirecting from home page to language selection');

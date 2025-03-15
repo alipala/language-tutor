@@ -47,7 +47,7 @@ export class RealtimeService {
       this.backendUrl = '';
       if (typeof window !== 'undefined') {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          this.backendUrl = 'http://localhost:8001';
+          this.backendUrl = 'http://localhost:8003';
         }
       }
       
@@ -199,14 +199,28 @@ export class RealtimeService {
       
       // Set up WebRTC if not already done
       if (!this.peerConnection) {
+        console.log('Setting up WebRTC connection first...');
         const setupSuccess = this.setupWebRTC();
-        if (!setupSuccess) return false;
+        if (!setupSuccess) {
+          console.error('Failed to set up WebRTC connection');
+          return false;
+        }
+        
+        // Add a small delay after WebRTC setup to ensure it's ready
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      // Release any existing stream
+      // Release any existing stream to avoid resource leaks
       if (this.localStream) {
-        this.localStream.getTracks().forEach(track => track.stop());
+        console.log('Releasing existing media stream...');
+        this.localStream.getTracks().forEach(track => {
+          track.stop();
+          console.log(`Stopped track: ${track.kind}`);
+        });
         this.localStream = null;
+        
+        // Add a small delay after stopping tracks to ensure they're fully released
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
       // Request microphone access with constraints
@@ -218,8 +232,32 @@ export class RealtimeService {
         }
       };
       
-      this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('Microphone access granted', this.localStream);
+      console.log('Requesting user media with constraints:', JSON.stringify(constraints));
+      
+      try {
+        // First try with a timeout to prevent hanging if permission dialog is ignored
+        const getUserMediaPromise = navigator.mediaDevices.getUserMedia(constraints);
+        const timeoutPromise = new Promise<MediaStream>((_, reject) => {
+          setTimeout(() => reject(new Error('Microphone access request timed out')), 10000);
+        });
+        
+        this.localStream = await Promise.race([getUserMediaPromise, timeoutPromise]);
+        console.log('Microphone access granted', this.localStream);
+      } catch (mediaError) {
+        console.error('First attempt to get user media failed:', mediaError);
+        
+        // Wait a moment and try again with a simpler constraint
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Retrying with simpler constraints...');
+        
+        try {
+          this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('Microphone access granted on second attempt');
+        } catch (retryError) {
+          console.error('Second attempt to get user media failed:', retryError);
+          throw retryError; // Re-throw to be caught by the outer catch block
+        }
+      }
       
       // Add audio track to peer connection
       if (this.peerConnection && this.localStream) {
@@ -230,13 +268,35 @@ export class RealtimeService {
         }
         
         console.log('Adding audio track to peer connection', audioTracks[0].label);
-        this.peerConnection.addTrack(audioTracks[0], this.localStream);
-        return true;
+        
+        try {
+          const sender = this.peerConnection.addTrack(audioTracks[0], this.localStream);
+          console.log('Track added successfully, sender created:', sender ? 'Yes' : 'No');
+          
+          // Add a small delay after adding track to ensure it's properly registered
+          await new Promise(resolve => setTimeout(resolve, 200));
+          return true;
+        } catch (trackError) {
+          console.error('Error adding track to peer connection:', trackError);
+          return false;
+        }
       }
       
       return false;
     } catch (error) {
       console.error('Error starting microphone:', error);
+      
+      // Specific error handling for common issues
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          console.error('Microphone permission denied by user');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          console.error('No microphone found on this device');
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+          console.error('Microphone is already in use by another application');
+        }
+      }
+      
       return false;
     }
   }
@@ -252,6 +312,11 @@ export class RealtimeService {
         return false;
       }
       
+      // Clear any existing timeout
+      if (this.connectionAttemptTimeout) {
+        clearTimeout(this.connectionAttemptTimeout);
+      }
+      
       // Set connection timeout
       this.connectionAttemptTimeout = setTimeout(() => {
         console.error('Connection attempt timed out');
@@ -261,48 +326,72 @@ export class RealtimeService {
       // Make sure data channel is created before creating the offer
       if (!this.dataChannel || this.dataChannel.readyState === 'closed') {
         console.log('Creating new data channel before offer...');
-        this.dataChannel = this.peerConnection.createDataChannel('oai-events', {
-          ordered: true
-        });
-        
-        this.dataChannel.onopen = () => {
-          console.log('Data channel opened');
-          this.isConnected = true;
-          if (this.onConnectedCallback) this.onConnectedCallback();
-        };
-        
-        this.dataChannel.onclose = () => {
-          console.log('Data channel closed');
-          this.isConnected = false;
-          if (this.onDisconnectedCallback) this.onDisconnectedCallback();
-        };
-        
-        this.dataChannel.onmessage = (e) => {
-          if (this.onMessageCallback) {
-            try {
-              const eventData = JSON.parse(e.data) as RealtimeEvent;
-              this.onMessageCallback(eventData);
-            } catch (error) {
-              console.error('Error parsing message:', error);
+        try {
+          this.dataChannel = this.peerConnection.createDataChannel('oai-events', {
+            ordered: true
+          });
+          
+          console.log('Data channel created successfully');
+          
+          this.dataChannel.onopen = () => {
+            console.log('Data channel opened');
+            this.isConnected = true;
+            if (this.onConnectedCallback) this.onConnectedCallback();
+          };
+          
+          this.dataChannel.onclose = () => {
+            console.log('Data channel closed');
+            this.isConnected = false;
+            if (this.onDisconnectedCallback) this.onDisconnectedCallback();
+          };
+          
+          this.dataChannel.onmessage = (e) => {
+            if (this.onMessageCallback) {
+              try {
+                const eventData = JSON.parse(e.data) as RealtimeEvent;
+                this.onMessageCallback(eventData);
+              } catch (error) {
+                console.error('Error parsing message:', error);
+              }
             }
-          }
-        };
+          };
+          
+          // Add a small delay after creating the data channel
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (channelError) {
+          console.error('Error creating data channel:', channelError);
+          return false;
+        }
       }
       
       // Create offer
       console.log('Creating offer...');
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveAudio: true
-      });
+      // Variable to store the complete offer with ICE candidates
+      let completeOffer: RTCSessionDescriptionInit | null = null;
       
-      console.log('Setting local description...');
-      await this.peerConnection.setLocalDescription(offer);
-      
-      // Wait for ICE gathering to complete
-      console.log('Waiting for ICE gathering to complete...');
-      const completeOffer = await this.waitForIceComplete();
-      if (!completeOffer) {
-        console.error('Failed to gather ICE candidates');
+      try {
+        const offer = await this.peerConnection.createOffer({
+          offerToReceiveAudio: true
+        });
+        
+        console.log('Setting local description...');
+        await this.peerConnection.setLocalDescription(offer);
+        console.log('Local description set successfully');
+        
+        // Add a small delay after setting local description
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Wait for ICE gathering to complete
+        console.log('Waiting for ICE gathering to complete...');
+        completeOffer = await this.waitForIceComplete();
+        if (!completeOffer) {
+          console.error('Failed to gather ICE candidates');
+          return false;
+        }
+        
+        console.log('ICE gathering completed successfully');
+      } catch (offerError) {
+        console.error('Error creating or processing offer:', offerError);
         return false;
       }
       

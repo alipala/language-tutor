@@ -46,7 +46,7 @@ export default function LevelSelection() {
       
       // Handle localhost and 127.0.0.1 cases
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        baseUrl = 'http://localhost:8001';
+        baseUrl = 'http://localhost:8003';
       }
       
       console.log('Using API base URL:', baseUrl);
@@ -79,12 +79,38 @@ export default function LevelSelection() {
     // Check if we have both language and level in session storage but we're still on this page
     const storedLanguage = sessionStorage.getItem('selectedLanguage');
     const storedLevel = sessionStorage.getItem('selectedLevel');
+    
+    // If we don't have a language, we should be on language selection
+    if (!storedLanguage && window.location.pathname.includes('level-selection')) {
+      console.log('No language selected, redirecting to language selection');
+      window.location.href = '/language-selection';
+      return;
+    }
+    
+    // If we have both language and level, we should be on speech page
     if (storedLanguage && storedLevel && window.location.pathname.includes('level-selection')) {
       console.log('Detected stuck on level selection page with stored selections');
       // Force navigation to speech page
       window.location.href = '/speech';
     }
   }, []);
+  
+  const handleStartOver = () => {
+    // Clear all session storage
+    sessionStorage.clear();
+    // Navigate to home page
+    window.location.href = '/';
+    console.log('Starting over - cleared session storage');
+  };
+  
+  const handleChangeLanguage = () => {
+    // Clear both the language and level to ensure proper navigation
+    sessionStorage.removeItem('selectedLanguage');
+    sessionStorage.removeItem('selectedLevel');
+    // Navigate to language selection
+    window.location.href = '/language-selection';
+    console.log('Navigating to language selection, cleared language and level selections');
+  };
 
   const handleLevelSelect = (levelCode: string) => {
     // Set loading state while navigating
@@ -120,6 +146,20 @@ export default function LevelSelection() {
           <p className="text-muted-foreground dark:text-slate-400 mt-2 text-improved">
             Choose your proficiency level in {selectedLanguage && selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
           </p>
+          <div className="flex justify-center mt-4 space-x-4">
+            <button 
+              onClick={handleChangeLanguage}
+              className="text-sm text-indigo-500 hover:text-indigo-400 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              Change Language
+            </button>
+            <button 
+              onClick={handleStartOver}
+              className="text-sm text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300"
+            >
+              Start Over
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
