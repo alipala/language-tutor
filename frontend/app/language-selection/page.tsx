@@ -156,31 +156,16 @@ export default function LanguageSelection() {
       const fullUrl = `${window.location.origin}/level-selection`;
       console.log('Navigating to full URL:', fullUrl);
       
-      // Try with a form submission approach which is more reliable in some environments
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = fullUrl;
-      document.body.appendChild(form);
+      // Use direct location replacement which is most reliable
+      window.location.replace(fullUrl);
       
-      // Add a small delay to ensure the form is in the DOM
+      // Fallback with hard refresh if needed
       setTimeout(() => {
-        console.log('Submitting form for navigation');
-        try {
-          form.submit();
-        } catch (e) {
-          console.error('Form submission failed, falling back to direct navigation', e);
-          // Fallback to direct navigation
-          window.location.href = fullUrl;
-          
-          // Final fallback if still on this page after 1 second
-          setTimeout(() => {
-            if (window.location.pathname.includes('language-selection')) {
-              console.log('Still on language selection page, using window.location.replace');
-              window.location.replace(fullUrl);
-            }
-          }, 1000);
+        if (window.location.pathname.includes('language-selection')) {
+          console.log('Still on language selection page, forcing hard refresh to:', fullUrl);
+          window.location.href = fullUrl + '?t=' + new Date().getTime();
         }
-      }, 100);
+      }, 1000);
       
       return;
     }

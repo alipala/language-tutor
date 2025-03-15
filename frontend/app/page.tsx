@@ -99,23 +99,16 @@ export default function Home() {
       const fullUrl = `${window.location.origin}/language-selection`;
       console.log('Navigating to full URL:', fullUrl);
       
-      // Try with a form submission approach which is more reliable in some environments
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = fullUrl;
-      document.body.appendChild(form);
+      // Use direct location replacement which is most reliable
+      window.location.replace(fullUrl);
       
-      // Add a small delay to ensure the form is in the DOM
+      // Fallback with hard refresh if needed
       setTimeout(() => {
-        console.log('Submitting form for navigation');
-        try {
-          form.submit();
-        } catch (e) {
-          console.error('Form submission failed, falling back to direct navigation', e);
-          // Fallback to direct navigation
-          window.location.href = fullUrl;
+        if (window.location.pathname === '/' || window.location.pathname === '') {
+          console.log('Still on home page, forcing hard refresh to:', fullUrl);
+          window.location.href = fullUrl + '?t=' + new Date().getTime();
         }
-      }, 100);
+      }, 1000);
       
       return;
     }
@@ -169,7 +162,34 @@ export default function Home() {
                 onClick={() => {
                   // Clear session storage and redirect
                   sessionStorage.clear();
-                  window.location.href = '/language-selection';
+                  console.log('Start Learning button clicked, navigating to language selection');
+                  
+                  // Reset the redirect attempt counter
+                  sessionStorage.setItem('homePageRedirectAttempt', '0');
+                  
+                  // RAILWAY SPECIFIC: Use a more direct approach for Railway
+                  const isRailway = window.location.hostname.includes('railway.app');
+                  
+                  if (isRailway) {
+                    console.log('Using Railway-specific navigation from button click');
+                    // Use the full URL to ensure proper navigation in Railway
+                    const fullUrl = `${window.location.origin}/language-selection`;
+                    console.log('Navigating to:', fullUrl);
+                    
+                    // Use direct location replacement which is most reliable
+                    window.location.replace(fullUrl);
+                    
+                    // Fallback with hard refresh if needed
+                    setTimeout(() => {
+                      if (window.location.pathname === '/' || window.location.pathname === '') {
+                        console.log('Still on home page, forcing hard refresh to:', fullUrl);
+                        window.location.href = fullUrl + '?t=' + new Date().getTime();
+                      }
+                    }, 1000);
+                  } else {
+                    // Standard navigation for non-Railway environments
+                    window.location.href = '/language-selection';
+                  }
                 }}
                 className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
               >
