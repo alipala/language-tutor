@@ -32,100 +32,72 @@ export default function LanguageSelection() {
     },
   ];
 
-  // Add a useEffect to check if we're stuck on this page
+  // Add a useEffect to handle page initialization and react to state changes
   useEffect(() => {
     // Only run in browser
     if (typeof window === 'undefined') return;
     
-    // RAILWAY SPECIFIC: Detect Railway environment
-    const isRailway = window.location.hostname.includes('railway.app');
-    console.log('Is Railway environment:', isRailway);
-    
+    // Log debug information
     console.log('Language selection page loaded at:', new Date().toISOString());
     console.log('Current URL:', window.location.href);
     console.log('Current pathname:', window.location.pathname);
-    console.log('Document referrer:', document.referrer);
+    console.log('Full origin:', window.location.origin);
     
-    // For Railway environment, ensure we're using the correct path format
-    if (isRailway && window.location.pathname !== '/language-selection') {
-      // If we're in Railway but the path isn't exactly what we expect, normalize it
-      console.log('Normalizing Railway path to /language-selection');
-      // This shouldn't happen, but just in case
-      if (!window.location.pathname.endsWith('/language-selection')) {
+    // RAILWAY SPECIFIC: Check if we're in Railway environment
+    const isRailway = window.location.hostname.includes('railway.app');
+    console.log('Is Railway environment:', isRailway);
+    
+    // Normalize URL if needed to ensure consistent path format
+    const currentPath = window.location.pathname;
+    if (isRailway) {
+      // Different path handling for Railway
+      // If URL doesn't end with /language-selection (accounting for trailing slashes)
+      const normalizedPath = currentPath.endsWith('/') 
+        ? currentPath.slice(0, -1) 
+        : currentPath;
+        
+      if (normalizedPath !== '/language-selection') {
+        // Only fix the path if we're not already on the correct one
+        console.log('Path appears incorrect, normalizing to /language-selection');
         window.location.replace('/language-selection');
         return;
       }
     }
     
-    // Check for redirect loop
-    const redirectAttemptKey = 'languageSelectionRedirectAttempt';
-    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
-    console.log('Language selection page loaded, redirect attempts:', redirectAttempts);
-    
-    // If we've tried to redirect too many times, reset the counter and stay on this page
-    if (redirectAttempts > 3) {
-      console.log('Too many redirect attempts detected, resetting counter');
-      sessionStorage.setItem(redirectAttemptKey, '0');
-      // Clear any potentially problematic navigation flags
-      sessionStorage.removeItem('intentionalNavigation');
-      return;
-    }
-    
-    // Check if we have a selected language in session storage but we're still on this page
+    // Check if we should redirect based on existing state
     const storedLanguage = sessionStorage.getItem('selectedLanguage');
     const storedLevel = sessionStorage.getItem('selectedLevel');
-    const intentionalNavigation = sessionStorage.getItem('intentionalNavigation');
     
-    // Only increment the redirect attempt counter if we're trying to redirect
-    if ((storedLanguage && storedLevel) || (storedLanguage && !intentionalNavigation)) {
-      sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
+    // Handle case where this is an initial direct load of the language selection page
+    // This is the expected behavior: user coming from home page
+    if (!storedLanguage && !storedLevel) {
+      console.log('Fresh visit to language selection page, allowing normal flow');
+      // Let the normal component render proceed
+      return;
     }
     
-    // If we have both language and level, we should be on speech page
-    if (storedLanguage && storedLevel && window.location.pathname.includes('language-selection')) {
-      console.log('Detected stuck on language selection page with stored language and level');
-      // Force navigation to speech page after a small delay
+    // If we have both language and level, we should go to speech page
+    if (storedLanguage && storedLevel) {
+      console.log('Found existing language and level, redirecting to speech page');
+      // Use the most direct approach with a delay to avoid navigation race conditions
       setTimeout(() => {
-        console.log('Navigating to speech page');
-        window.location.href = '/speech';
-        
-        // Fallback navigation in case the first attempt fails (for Railway)
-        const fallbackTimer = setTimeout(() => {
-          if (window.location.pathname.includes('language-selection')) {
-            console.log('Still on language selection page, using fallback navigation to speech');
-            window.location.replace('/speech');
-          }
-        }, 1000);
-        
-        return () => clearTimeout(fallbackTimer);
+        const fullUrl = `${window.location.origin}/speech`;
+        console.log('Navigating to speech page:', fullUrl);
+        window.location.href = fullUrl;
       }, 300);
       return;
     }
     
-    // If we only have language, we should be on level selection
-    if (storedLanguage && !storedLevel && window.location.pathname.includes('language-selection')) {
-      console.log('Detected stuck on language selection page with stored language:', storedLanguage);
-      // Force navigation to level selection after a small delay
+    // If we have just language selected, we should go to level selection
+    if (storedLanguage && !storedLevel) {
+      console.log('Found existing language, redirecting to level selection');
+      // Use the most direct approach with a delay to avoid navigation race conditions
       setTimeout(() => {
-        console.log('Navigating to level selection page');
-        window.location.href = '/level-selection';
-        
-        // Fallback navigation in case the first attempt fails (for Railway)
-        const fallbackTimer = setTimeout(() => {
-          if (window.location.pathname.includes('language-selection')) {
-            console.log('Still on language selection page, using fallback navigation to level selection');
-            window.location.replace('/level-selection');
-          }
-        }, 1000);
-        
-        return () => clearTimeout(fallbackTimer);
+        const fullUrl = `${window.location.origin}/level-selection`;
+        console.log('Navigating to level selection page:', fullUrl);
+        window.location.href = fullUrl;
       }, 300);
-    }
-    
-    // Clear the intentional navigation flag if it exists
-    if (intentionalNavigation) {
-      console.log('Clearing intentional navigation flag');
-      sessionStorage.removeItem('intentionalNavigation');
+      return;
     }
   }, []);
   

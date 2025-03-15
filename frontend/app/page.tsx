@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 // Export the main component
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     // Only run in browser
@@ -15,67 +16,28 @@ export default function Home() {
     console.log('Environment:', process.env.NODE_ENV);
     console.log('Base path:', process.env.NEXT_PUBLIC_BASE_PATH || '/');
     
-    // Add a flag to detect and prevent redirect loops
-    const redirectAttemptKey = 'homePageRedirectAttempt';
-    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
-    console.log('Home page loaded, redirect attempts:', redirectAttempts);
-    
-    // If we've tried to redirect too many times, reset the counter and stay on this page
-    if (redirectAttempts > 3) {
-      console.log('Too many redirect attempts detected, resetting counter');
-      sessionStorage.setItem(redirectAttemptKey, '0');
-      // Clear any potentially problematic session data
-      sessionStorage.removeItem('intentionalNavigation');
-      // Display the page instead of redirecting
-      setIsLoading(false);
-      
-      // Add a manual navigation button for the user
-      // This will be shown in the UI when isLoading is false
-      return;
-    }
-    
-    // Increment the redirect attempt counter
-    sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
-    
-    // Check if we're already on the language selection page to prevent loops
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('language-selection')) {
-      console.log('Already on language selection page, preventing redirect');
-      setIsLoading(false);
-      return;
-    }
-    
-    // Check for Railway-specific path issues
-    // In Railway, sometimes the path might have unexpected formats
-    if (currentPath !== '/' && !currentPath.endsWith('/') && !currentPath.includes('.')) {
-      console.log('Detected non-standard path in Railway:', currentPath);
-      // Try to normalize the path
-      if (!sessionStorage.getItem('pathNormalized')) {
-        sessionStorage.setItem('pathNormalized', 'true');
-        window.location.replace('/');
-        return;
-      }
-    }
-    
-    // Debug information for Railway deployment
+    // Get current location info for debugging
     console.log('Current pathname:', window.location.pathname);
     console.log('Current URL:', window.location.href);
-    console.log('Document referrer:', document.referrer);
+    console.log('Full origin:', window.location.origin);
     
-    // Check for reset parameter or if user explicitly navigated to home page
-    const urlParams = new URLSearchParams(window.location.search);
-    const shouldReset = urlParams.get('reset') === 'true';
-    const isDirectHomeNavigation = document.referrer && !document.referrer.includes(window.location.host);
-    
-    // Clear session storage if reset is requested or direct navigation to home
-    if (shouldReset || isDirectHomeNavigation) {
-      console.log('Clearing session storage due to reset request or direct navigation');
-      sessionStorage.clear();
-      // Make sure to reset the redirect attempt counter too
-      sessionStorage.setItem(redirectAttemptKey, '1');
+    // Immediately check if we're already at language selection to avoid loops
+    if (window.location.pathname === '/language-selection') {
+      console.log('Already at language selection, showing home page UI instead');
+      setIsLoading(false);
+      return;
     }
     
-    // Check if we should continue to speech page
+    // Check for reset parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldReset = urlParams.get('reset') === 'true';
+    
+    if (shouldReset) {
+      console.log('Reset parameter detected, clearing session storage');
+      sessionStorage.clear();
+    }
+    
+    // Check if we should continue to a specific page based on stored data
     const hasLanguage = sessionStorage.getItem('selectedLanguage');
     const hasLevel = sessionStorage.getItem('selectedLevel');
     
@@ -83,71 +45,23 @@ export default function Home() {
       console.log('Found existing language and level, redirecting to speech page');
       window.location.href = '/speech';
       return;
-    }
-    
-    // Mark that we're intentionally navigating
-    sessionStorage.setItem('intentionalNavigation', 'true');
-    
-    // RAILWAY SPECIFIC: Add a flag to indicate we're in Railway environment
-    const isRailway = window.location.hostname.includes('railway.app');
-    console.log('Is Railway environment:', isRailway);
-    
-    // For Railway, use a more direct approach with anchor element
-    if (isRailway) {
-      console.log('Using Railway-specific navigation approach');
-      
-      try {
-        // Create an anchor element for navigation
-        const a = document.createElement('a');
-        a.href = '/language-selection';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        
-        // Trigger a click on the anchor element
-        console.log('Using anchor element click for navigation');
-        a.click();
-        
-        // Fallback with direct location navigation if needed
-        setTimeout(() => {
-          if (window.location.pathname === '/' || window.location.pathname === '') {
-            console.log('Fallback: using direct location navigation');
-            window.location.href = '/language-selection';
-          }
-        }, 500);
-      } catch (e) {
-        console.error('Navigation error:', e);
-        // Final fallback
-        window.location.href = '/language-selection';
-      }
-      
+    } else if (hasLanguage) {
+      console.log('Found existing language, redirecting to level selection');
+      window.location.href = '/level-selection';
       return;
     }
     
-    // Standard navigation for non-Railway environments
-    // Add a small delay before redirecting for better UX
-    const redirectTimer = setTimeout(() => {
-      console.log('Redirecting from home page to language selection');
-      // Use direct window.location for most reliable navigation
-      window.location.href = '/language-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        console.log('Fallback navigation triggered');
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          console.log('Still on home page, using fallback navigation');
-          // Try a different navigation method
-          window.location.replace('/language-selection');
-        }
-      }, 1000);
-      
-      // Clear the fallback timer if the component unmounts
-      return () => clearTimeout(fallbackTimer);
-    }, 500);
+    // Check if we're on the root path and should show the welcome page
+    if (window.location.pathname === '/' || window.location.pathname === '') {
+      // On root path, show the UI instead of auto-redirecting
+      console.log('On root path, showing welcome page');
+      setIsLoading(false);
+      return;
+    }
     
-    return () => {
-      clearTimeout(redirectTimer);
-      console.log('Home page navigation effect cleanup');
-    };
+    // If we're not on a recognized path, normalize to home page
+    console.log('Unrecognized path, normalizing to home');
+    window.location.replace('/');
   }, []);
   
   // Return loading state while redirecting or manual navigation option if we hit the redirect limit
@@ -170,42 +84,57 @@ export default function Home() {
             <div className="flex flex-col space-y-4 w-full max-w-xs">
               <button 
                 onClick={() => {
-                  // Clear session storage and redirect
-                  sessionStorage.clear();
-                  console.log('Start Learning button clicked, navigating to language selection');
-                  
-                  // Reset the redirect attempt counter
-                  sessionStorage.setItem('homePageRedirectAttempt', '0');
-                  
-                  // Force a direct navigation to language selection
-                  // This approach works more reliably in Railway environment
                   try {
-                    // Create an anchor element for navigation
-                    const a = document.createElement('a');
-                    a.href = '/language-selection';
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
+                    // Show loading state
+                    setIsLoading(true);
+                    setError(null);
                     
-                    // Trigger a click on the anchor element
-                    console.log('Using anchor element click for navigation');
-                    a.click();
+                    // Clear any existing session data
+                    sessionStorage.clear();
                     
-                    // Fallback with direct location navigation if needed
+                    // Log the navigation attempt
+                    console.log('Start Learning button clicked at:', new Date().toISOString());
+                    console.log('Current pathname before navigation:', window.location.pathname);
+                    
+                    // Use the most direct and reliable navigation approach
+                    // By using the full URL with origin, we ensure proper navigation in Railway
+                    const fullUrl = `${window.location.origin}/language-selection`;
+                    console.log('Navigating to:', fullUrl);
+                    
+                    // IMPORTANT: For Railway, use direct window.location.href navigation
+                    // This bypasses Next.js client-side routing which may be causing issues
+                    window.location.href = fullUrl;
+                    
+                    // Set a fallback timer to detect navigation failures
                     setTimeout(() => {
                       if (window.location.pathname === '/' || window.location.pathname === '') {
-                        console.log('Fallback: using direct location navigation');
-                        window.location.href = '/language-selection';
+                        console.error('Navigation failed, still on homepage after timeout');
+                        setIsLoading(false);
+                        setError('Navigation to language selection failed. Please try again.');
                       }
-                    }, 500);
+                    }, 3000);
                   } catch (e) {
                     console.error('Navigation error:', e);
-                    // Final fallback
-                    window.location.href = '/language-selection';
+                    setIsLoading(false);
+                    setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                   }
                 }}
-                className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-lg px-5 py-3 text-center shadow transition-all duration-300 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                disabled={isLoading}
               >
-                Start Learning
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    <span>Navigating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Start Learning</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </>
+                )}
               </button>
               
               {parseInt(sessionStorage.getItem('homePageRedirectAttempt') || '0') > 2 && (
