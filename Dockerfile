@@ -37,7 +37,7 @@ WORKDIR /app
 
 # Set environment variables
 ENV PORT=3001
-ENV NODE_ENV=production
+ENV ENVIRONMENT=production
 
 # Expose the port
 EXPOSE 3001

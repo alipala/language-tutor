@@ -4,20 +4,16 @@
   "description": "Voice conversation tutor application",
   "private": true,
   "scripts": {
-    "install:all": "npm run install:backend && npm run install:frontend",
-    "install:backend": "npm --prefix backend install",
     "install:frontend": "npm --prefix frontend install",
     "build": "npm --prefix frontend run build",
     "start": "python -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-3001}",
-    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
-    "postinstall": "npm run install:backend && npm run install:frontend && npm run build"
+    "dev": "concurrently \"cd backend && python run.py\" \"npm --prefix frontend run dev\"",
+    "postinstall": "npm run install:frontend && npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

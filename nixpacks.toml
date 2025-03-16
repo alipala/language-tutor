@@ -6,7 +6,6 @@ aptPkgs = ["python3-pip", "python3-dev", "build-essential"]
 
 [phases.install]
 cmds = [
-  "npm --prefix ./backend install",
   "npm --prefix ./frontend install",
   "python3 -m pip install --upgrade pip setuptools wheel",
   "python3 -m pip install -r backend/requirements.txt"

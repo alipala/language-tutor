@@ -1,13 +1,9 @@
 #!/bin/bash
 
-# Install dependencies
-echo "Installing dependencies..."
-npm install
-
 # Install backend dependencies
 echo "Installing backend dependencies..."
 cd backend
-npm install
+pip install -r requirements.txt
 cd ..
 
 # Install frontend dependencies
