@@ -159,9 +159,12 @@ export default function SpeechPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(250,70%,97%)] to-[hsl(var(--background-end))] dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90 bg-pattern">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        <p className="mt-4 text-muted-foreground dark:text-slate-400">Loading conversation...</p>
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-slate-900 to-slate-800 text-white">
+        <div className="relative w-20 h-20 mb-6">
+          <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-indigo-200/20 animate-pulse"></div>
+          <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-transparent border-t-indigo-500 animate-spin"></div>
+        </div>
+        <p className="mt-4 text-indigo-200 animate-pulse">Loading conversation...</p>
       </main>
     );
   }
@@ -173,27 +176,27 @@ export default function SpeechPage() {
       {/* Modern Leave Site Warning Modal */}
       {showLeaveWarning && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all border border-slate-700">
             <div className="p-6">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30 flex items-center justify-center mr-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Leave site?</h3>
+                <h3 className="text-lg font-semibold text-white">Leave site?</h3>
               </div>
-              <p className="text-slate-600 dark:text-slate-300 mb-6">Changes that you made may not be saved.</p>
+              <p className="text-slate-300 mb-6">Changes that you made may not be saved.</p>
               <div className="flex justify-end space-x-3">
                 <button 
                   onClick={() => handleLeaveConfirmation(false)}
-                  className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                  className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 rounded-full shadow-lg transition-all duration-300 transform hover:translate-y-[-2px]" 
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={() => handleLeaveConfirmation(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 rounded-full shadow-lg hover:shadow-red-500/20 transition-all duration-300 transform hover:translate-y-[-2px]" 
                 >
                   Leave
                 </button>

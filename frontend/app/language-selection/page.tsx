@@ -9,7 +9,7 @@ import Image from 'next/image';
 interface Language {
   code: string;
   name: string;
-  flagSrc: string;
+  description?: string;
 }
 
 export default function LanguageSelection() {
@@ -23,12 +23,10 @@ export default function LanguageSelection() {
     {
       code: 'dutch',
       name: 'Dutch',
-      flagSrc: '/images/netherlands-flag.svg',
     },
     {
       code: 'english',
       name: 'English',
-      flagSrc: '/images/uk-flag.svg',
     },
   ];
 
@@ -163,74 +161,131 @@ export default function LanguageSelection() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
+        {/* Header with animated elements */}
+        <div className="text-center mb-12 relative">
+          {/* Animated background blob */}
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          
+          <h1 className="text-5xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 relative z-10">
             Choose Your Language
           </h1>
-          <p className="text-slate-600 dark:text-slate-300 mt-3 text-lg">
+          <p className="text-slate-300 mt-4 text-lg max-w-md mx-auto">
             Select a language to start your learning journey
           </p>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+        <div className="flex-1 flex flex-col items-center justify-center relative">
+          {/* Decorative elements */}
+          <div className="absolute -top-40 -right-20 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl"></div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-2xl relative z-10">
             {languages.map((language) => (
               <button
                 key={language.code}
                 onClick={() => handleLanguageSelect(language.code)}
                 className={`
-                  relative overflow-hidden flex flex-col items-center justify-center p-8 rounded-2xl 
-                  transition-all duration-300 transform hover:scale-102 hover:shadow-xl
+                  group relative overflow-hidden rounded-xl 
+                  transition-all duration-500 ease-out 
+                  border border-slate-700/50 backdrop-blur-sm
+                  bg-slate-800/40 hover:bg-slate-700/40
+                  hover:shadow-lg hover:shadow-blue-900/20
                   ${
                     selectedLanguage === language.code
-                      ? 'bg-white dark:bg-slate-800 shadow-lg ring-4 ring-blue-500/50 dark:ring-blue-400/50'
-                      : 'bg-white/90 dark:bg-slate-800/90 shadow-md hover:ring-2 hover:ring-blue-400/30 dark:hover:ring-blue-500/30'
+                      ? 'ring-2 ring-blue-500/50 shadow-blue-500/20 shadow-md'
+                      : 'hover:border-blue-500/30'
                   }
                 `}
               >
-                {/* Background pattern */}
-                <div className="absolute inset-0 opacity-5 dark:opacity-10 bg-[radial-gradient(circle_at_center,rgba(120,119,198,0.8),transparent_70%)]" />
-                
-                <div className="relative w-32 h-32 mb-6 overflow-hidden rounded-full shadow-md transition-all duration-300 transform hover:scale-105 border-4 border-white dark:border-slate-700">
-                  <Image
-                    src={language.flagSrc}
-                    alt={`${language.name} flag`}
-                    fill
-                    priority
-                    style={{ objectFit: 'cover' }}
-                    className="transition-all duration-300"
-                  />
-                </div>
-                <h2 className="text-2xl font-bold text-center text-slate-800 dark:text-white mb-2">
-                  {language.name}
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {language.code === 'dutch' ? 'Learn Dutch vocabulary and conversation' : 'Practice English speaking and listening'}
-                </p>
-                {selectedLanguage === language.code && (
-                  <div className="absolute top-4 right-4">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-violet-600 flex items-center justify-center shadow-md">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="white"
-                        className="w-5 h-5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+                {/* Interactive card content with animations */}
+                <div className="relative z-10 p-6">
+                  <div className="flex items-start gap-5">
+                    {/* Modern animated language symbol */}
+                    <div 
+                      className={`
+                        flex-shrink-0 w-20 h-20 flex items-center justify-center rounded-lg 
+                        bg-gradient-to-br from-slate-700/80 to-slate-800/80 
+                        shadow-lg group-hover:shadow-xl transition-all duration-500
+                        border border-slate-600/30 group-hover:border-blue-500/30
+                        overflow-hidden relative
+                        ${
+                          selectedLanguage === language.code
+                            ? 'from-blue-900/30 to-indigo-900/30 border-blue-500/40'
+                            : ''
+                        }
+                      `}
+                    >
+                      {/* Animated pulsing background */}
+                      <div className="absolute inset-0 opacity-20 overflow-hidden">
+                        <div className="w-full h-full relative">
+                          {/* Top left gradient blob */}
+                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-blue-600/40 rounded-full blur-xl animate-pulse"></div>
+                          {/* Bottom right gradient blob */}
+                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-violet-600/40 rounded-full blur-xl animate-pulse delay-700"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Language identifier - animated on hover */}
+                      <div className="relative z-10 p-2 w-full h-full flex items-center justify-center">
+                        {language.code === 'dutch' && (
+                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">NL</span>
+                        )}
+                        {language.code === 'english' && (
+                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">EN</span>
+                        )}
+                      </div>
                     </div>
+                    
+                    {/* Language details */}
+                    <div className="flex-1 text-left pt-1">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors duration-300">
+                        {language.name}
+                      </h3>
+                      
+                      <p className="text-slate-300 text-sm group-hover:text-slate-100 transition-colors duration-300">
+                        {language.code === 'dutch' ? 'Learn Dutch vocabulary and conversation' : 'Practice English speaking and listening'}
+                      </p>
+                    </div>
+                    
+                    {/* Selection indicator */}
+                    {selectedLanguage === language.code && (
+                      <div className="absolute top-4 right-4 animate-fade-in">
+                        <div className="w-7 h-7 rounded-full bg-blue-500/80 flex items-center justify-center shadow-md">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="white"
+                            className="w-4 h-4"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
                 
-                {/* Animated accent */}
-                <div className={`absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-violet-600 transition-all duration-500 ${selectedLanguage === language.code ? 'w-full' : 'w-0'}`} />
+                {/* Bottom flowing accent line with animation */}
+                <div 
+                  className={`
+                    absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-violet-500
+                    transition-all duration-700 ease-out opacity-80
+                    ${
+                      selectedLanguage === language.code
+                        ? 'w-full'
+                        : 'w-0 group-hover:w-full'
+                    }
+                  `}
+                ></div>
+                
+                {/* Additional hover effects */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </button>
             ))}
           </div>

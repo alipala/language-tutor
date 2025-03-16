@@ -16,6 +16,20 @@ module.exports = {
       },
     },
     extend: {
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-out forwards",
+        "pulse": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: 0 },
+          "100%": { opacity: 1 },
+        },
+        pulse: {
+          "0%, 100%": { opacity: 0.6 },
+          "50%": { opacity: 0.3 },
+        },
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

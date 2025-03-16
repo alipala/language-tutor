@@ -282,20 +282,20 @@ export default function LevelSelection() {
   }));
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90">
-      <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
+    <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4 md:p-8">
+      <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
+        <div className="text-center">
+          <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500 mb-4 animate-fade-in">
             Select Your Level
           </h1>
-          <p className="text-slate-600 dark:text-slate-300 mt-3 text-lg">
+          <p className="text-slate-300 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             Choose your proficiency level in {selectedLanguage && selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
           </p>
-          <div className="flex justify-center mt-6 space-x-6">
+          <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
               onClick={handleChangeLanguage}
-              className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm hover:shadow transition-all duration-200 flex items-center space-x-1"
+              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-blue-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -304,7 +304,7 @@ export default function LevelSelection() {
             </button>
             <button 
               onClick={handleStartOver}
-              className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm hover:shadow transition-all duration-200 flex items-center space-x-1"
+              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 rounded-full shadow-lg hover:shadow-red-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -316,21 +316,27 @@ export default function LevelSelection() {
 
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-200 border-t-blue-600 mb-6"></div>
-            <p className="text-slate-600 dark:text-slate-300">Loading available levels...</p>
+            <div className="relative w-20 h-20 mb-6">
+              <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-indigo-200/20 animate-pulse"></div>
+              <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-transparent border-t-indigo-500 animate-spin"></div>
+            </div>
+            <p className="text-indigo-200 animate-pulse">Loading available levels...</p>
             {backendConnected === false && (
-              <div className="mt-6 p-4 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl shadow-sm">
-                <p className="text-amber-700 dark:text-amber-400 text-sm font-medium">Warning: Backend connectivity issues detected.</p>
+              <div className="mt-8 p-5 bg-gradient-to-r from-amber-900/30 to-red-900/30 border border-amber-700/50 rounded-xl shadow-lg">
+                <p className="text-amber-400 text-sm font-medium">Warning: Backend connectivity issues detected.</p>
               </div>
             )}
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl shadow-sm max-w-md">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-red-500 dark:text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p className="text-red-700 dark:text-red-400 font-medium mb-4">{error}</p>
+            <div className="text-center p-8 bg-gradient-to-br from-red-900/30 to-red-900/10 border border-red-700/30 rounded-xl shadow-lg backdrop-blur-sm max-w-md animate-fade-in">
+              <div className="relative w-20 h-20 mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-red-500 absolute top-0 left-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl animate-pulse"></div>
+              </div>
+              <p className="text-red-400 font-medium mb-6 text-lg">{error}</p>
               <button
                 onClick={() => {
                   setIsLoading(true);
@@ -352,7 +358,7 @@ export default function LevelSelection() {
                       setIsLoading(false);
                     });
                 }}
-                className="mt-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-sm hover:shadow transition-all duration-200 font-medium"
+                className="px-8 py-3 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-full shadow-lg hover:shadow-red-500/30 transition-all duration-300 font-medium transform hover:translate-y-[-2px]"
               >
                 Try Again
               </button>
@@ -360,27 +366,36 @@ export default function LevelSelection() {
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
               {formattedLevels.map((level) => {
                 // Determine level color scheme based on level code
                 const getLevelColors = (code: string) => {
                   if (code.startsWith('A')) return {
                     bg: 'from-green-500 to-emerald-600',
                     border: 'border-green-500',
+                    glow: 'shadow-green-500/20',
                     ring: 'ring-green-400',
-                    icon: 'bg-gradient-to-r from-green-500 to-emerald-600'
+                    icon: 'bg-gradient-to-r from-green-500 to-emerald-600',
+                    badge: 'bg-gradient-to-br from-green-400 to-emerald-500 via-green-500',
+                    badgeShadow: 'shadow-green-500/30'
                   };
                   if (code.startsWith('B')) return {
                     bg: 'from-blue-500 to-indigo-600',
                     border: 'border-blue-500',
+                    glow: 'shadow-blue-500/20',
                     ring: 'ring-blue-400',
-                    icon: 'bg-gradient-to-r from-blue-500 to-indigo-600'
+                    icon: 'bg-gradient-to-r from-blue-500 to-indigo-600',
+                    badge: 'bg-gradient-to-br from-blue-400 to-indigo-500 via-blue-500',
+                    badgeShadow: 'shadow-blue-500/30'
                   };
                   return {
                     bg: 'from-purple-500 to-violet-600',
                     border: 'border-purple-500',
+                    glow: 'shadow-purple-500/20',
                     ring: 'ring-purple-400',
-                    icon: 'bg-gradient-to-r from-purple-500 to-violet-600'
+                    icon: 'bg-gradient-to-r from-purple-500 to-violet-600',
+                    badge: 'bg-gradient-to-br from-purple-400 to-violet-500 via-purple-500',
+                    badgeShadow: 'shadow-purple-500/30'
                   };
                 };
                 
@@ -392,52 +407,56 @@ export default function LevelSelection() {
                     onClick={() => handleLevelSelect(level.code)}
                     className={`
                       relative overflow-hidden flex flex-col items-start p-6 rounded-xl text-left
-                      transition-all duration-300 transform hover:scale-102 hover:shadow-xl
+                      transition-all duration-300 transform hover:scale-105 hover:shadow-xl
+                      backdrop-blur-sm animate-fade-in h-[220px]
                       ${
                         selectedLevel === level.code
-                          ? `bg-white dark:bg-slate-800 shadow-lg ring-4 ${colors.ring}/50 dark:${colors.ring}/30`
-                          : 'bg-white dark:bg-slate-800 shadow-md hover:ring-2 hover:ring-blue-400/30 dark:hover:ring-blue-500/30'
+                          ? `bg-slate-800/80 border border-slate-700 shadow-xl shadow-${colors.bg.split(' ')[1]}/20 ring-2 ${colors.ring}/50`
+                          : 'bg-slate-800/60 border border-slate-700/50 hover:border-slate-600 shadow-lg hover:shadow-lg hover:shadow-slate-700/50'
                       }
                     `}
+                    style={{animationDelay: `${300 + parseInt(level.code.charAt(1)) * 100}ms`}}
                   >
                     {/* Level badge */}
                     <div className={`absolute -top-3 -right-3 w-16 h-16 flex items-center justify-center overflow-hidden`}>
-                      <div className={`absolute transform rotate-45 w-24 h-8 bg-gradient-to-r ${colors.bg} top-2 right-[-6px]`}></div>
+                      <div className={`absolute transform rotate-45 w-24 h-8 ${colors.badge} top-2 right-[-6px] shadow-lg ${colors.badgeShadow}`}>
+                        <div className="absolute inset-0 opacity-20 animate-pulse"></div>
+                      </div>
                       <span className="relative text-white font-bold text-xs">{level.code}</span>
                     </div>
                     
-                    <h2 className="text-xl font-bold mb-3 text-slate-800 dark:text-white">
+                    <h2 className="text-xl font-bold mb-3 text-white bg-clip-text">
                       {level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
                        level.code === 'B1' || level.code === 'B2' ? 'Intermediate' : 'Advanced'}
                     </h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                    <p className="text-sm text-slate-300 mb-4">
                       {level.description}
                     </p>
                     
                     {/* Skill indicators */}
                     <div className="flex flex-wrap gap-2 mt-auto">
                       {level.code.startsWith('A') && (
-                        <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-full">Basic Vocabulary</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm">Basic Vocabulary</span>
                       )}
                       {(level.code === 'A2' || level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-full">Conversation</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm">Conversation</span>
                       )}
                       {(level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400 rounded-full">Complex Topics</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm">Complex Topics</span>
                       )}
                       {level.code.startsWith('C') && (
-                        <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400 rounded-full">Fluent Expression</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm">Fluent Expression</span>
                       )}
                     </div>
                     
                     {selectedLevel === level.code && (
                       <div className="absolute top-4 left-4">
-                        <div className={`w-8 h-8 rounded-full ${colors.icon} flex items-center justify-center shadow-md`}>
+                        <div className={`w-8 h-8 rounded-full ${colors.icon} flex items-center justify-center shadow-lg ${colors.glow} animate-pulse`}>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="white"
-                            className="w-5 h-5"
+                            className="w-5 h-5 animate-fade-in"
                           >
                             <path
                               fillRule="evenodd"
