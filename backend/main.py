@@ -24,7 +24,7 @@ app = FastAPI(title="Language Tutor Backend API")
 
 # CORS configuration
 origins = []
-if os.getenv("NODE_ENV") == "production":
+if os.getenv("ENVIRONMENT") == "production":
     # In Railway, we need to be more permissive with CORS
     # Use the correct Railway URL as the default
     frontend_url = os.getenv("FRONTEND_URL", "https://taaco.up.railway.app")
@@ -76,7 +76,7 @@ async def error_handling_middleware(request: Request, call_next):
                 "detail": str(e),
                 "path": request.url.path,
                 "railway": os.getenv("RAILWAY") == "true",
-                "environment": os.getenv("NODE_ENV", "development")
+                "environment": os.getenv("ENVIRONMENT", "development")
             }
         )
 
@@ -93,7 +93,7 @@ async def health_check():
     import time
     
     # Get environment information
-    is_production = os.getenv("NODE_ENV") == "production"
+    is_production = os.getenv("ENVIRONMENT") == "production"
     environment = "production" if is_production else "development"
     
     # Get system information
@@ -119,7 +119,7 @@ async def health_check():
     }
 
 # Serve static files in production
-if os.getenv("NODE_ENV") == "production":
+if os.getenv("ENVIRONMENT") == "production":
     # Check for Docker environment first
     docker_frontend_path = Path("/app/frontend")
     local_frontend_path = Path(__file__).parent.parent / "frontend"
