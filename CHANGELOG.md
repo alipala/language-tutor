@@ -5,6 +5,27 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-03-16
+
+### Added
+- Modern UI design with consistent dark theme across all application screens
+- Animated UI elements with subtle fade-ins and hover effects
+- Gradient backgrounds and buttons with interactive hover states
+- Fixed-height level buttons for consistent visual appearance
+- Enhanced loading animations with pulsing effects
+
+### Changed
+- Redesigned language selection page with modern animated elements
+- Updated level selection interface with consistent styling
+- Modernized speech screen with matching dark theme
+- Standardized navigation buttons across all screens
+- Improved modal dialogs with gradient backgrounds
+
+### Fixed
+- Ensured conversation transcript window maintains fixed height with proper scrolling
+- Maintained reliable navigation between screens using direct URL approach
+- Preserved all Railway deployment compatibility fixes
+
 ## [2.3.0] - 2025-03-15
 
 ### Added
