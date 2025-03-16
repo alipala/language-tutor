@@ -95,6 +95,10 @@ export default function SpeechPage() {
     }, 2000);
   }, []);
   
+  // State for showing the leave site warning modal
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+  
   // Add a separate effect for handling beforeunload events
   useEffect(() => {
     // Add an event listener to prevent page refreshes from F5 or browser refresh
@@ -104,21 +108,54 @@ export default function SpeechPage() {
       if (isInConversation) {
         console.log('User attempted to refresh during conversation');
         // Standard way to show a confirmation dialog before page unload
+        const message = 'Leave site? Changes that you made may not be saved.';
         e.preventDefault();
-        e.returnValue = '';
-        return '';
+        e.returnValue = message;
+        return message;
       }
     };
     
-    // Add the event listener
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Custom warning dialog for navigation within the app
+    const handleLinkClick = (e: MouseEvent) => {
+      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
+      if (isInConversation) {
+        const linkElement = (e.target as HTMLElement).closest('a');
+        if (linkElement && linkElement.getAttribute('href')) {
+          const href = linkElement.getAttribute('href');
+          // Only intercept internal navigation, not external links
+          if (href && (href.startsWith('/') || href.startsWith('#'))) {
+            e.preventDefault();
+            setPendingNavigationUrl(href);
+            setShowLeaveWarning(true);
+          }
+        }
+      }
+    };
     
-    // Clean up the event listener when component unmounts
+    // Add the event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('click', handleLinkClick);
+    
+    // Clean up the event listeners when component unmounts
     return () => {
       console.log('Speech page component unmounting');
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', handleLinkClick);
     };
   }, []);
+  
+  // Function to handle navigation after warning
+  const handleLeaveConfirmation = (confirmed: boolean) => {
+    setShowLeaveWarning(false);
+    
+    if (confirmed && pendingNavigationUrl) {
+      // Navigate to the pending URL
+      window.location.href = pendingNavigationUrl;
+    }
+    
+    // Reset the pending URL
+    setPendingNavigationUrl(null);
+  };
 
   if (isLoading) {
     return (
@@ -129,5 +166,42 @@ export default function SpeechPage() {
     );
   }
 
-  return <SpeechClient language={selectedLanguage!} level={selectedLevel!} />;
+  return (
+    <>
+      <SpeechClient language={selectedLanguage!} level={selectedLevel!} />
+      
+      {/* Modern Leave Site Warning Modal */}
+      {showLeaveWarning && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mr-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Leave site?</h3>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 mb-6">Changes that you made may not be saved.</p>
+              <div className="flex justify-end space-x-3">
+                <button 
+                  onClick={() => handleLeaveConfirmation(false)}
+                  className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => handleLeaveConfirmation(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

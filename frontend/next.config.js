@@ -17,7 +17,7 @@ const nextConfig = {
   env: {
     BACKEND_URL: process.env.NODE_ENV === 'production'
       ? process.env.BACKEND_URL || ''
-      : 'http://localhost:8001',
+      : 'http://localhost:8000',
   },
   // Disable image optimization since it requires a server component
   images: {

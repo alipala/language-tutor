@@ -1,4 +1,5 @@
 {
+  "general_instructions": "Dont ask many questions. The tutor should ask 1 question at a time. Especially for the lower level of the language.",
   "languages": {
     "dutch": {
       "name": "Dutch",

@@ -43,11 +43,11 @@ export class RealtimeService {
       this.onDisconnectedCallback = onDisconnected || null;
       this.reconnectAttempts = 0;
       
-      // Use the correct backend URL (default to localhost:8001 if running locally)
+      // Use the correct backend URL (default to localhost:8000 if running locally)
       this.backendUrl = '';
       if (typeof window !== 'undefined') {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          this.backendUrl = 'http://localhost:8001';
+          this.backendUrl = 'http://localhost:8000';
         }
       }
       

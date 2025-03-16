@@ -27,12 +27,12 @@ origins = []
 if os.getenv("ENVIRONMENT") == "production":
     # In Railway, we need to be more permissive with CORS
     # Use the correct Railway URL as the default
-    frontend_url = os.getenv("FRONTEND_URL", "https://taaco.up.railway.app")
+    frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
     
     # Add the Railway URL as the origin
     origins = [
         frontend_url,
-        "https://taaco.up.railway.app",  # Correct URL
+        "https://taco.up.railway.app",  # Correct URL
     ]
     
     print(f"Configured CORS with origins: {origins}")
