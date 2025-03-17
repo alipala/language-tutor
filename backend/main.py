@@ -162,6 +162,7 @@ class TutorSessionRequest(BaseModel):
     language: str
     level: str
     voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+    topic: Optional[str] = None  # Topic to focus the conversation on
 
 # Simple endpoint for testing connection
 @app.get("/api/test")
@@ -172,8 +173,8 @@ async def test_connection():
 @app.post("/api/mock-token")
 async def mock_token(request: TutorSessionRequest):
     # Log the request data for debugging
-    print(f"Providing mock ephemeral key for testing with language: {request.language}, level: {request.level}, voice: {request.voice}")
-    print(f"Request body received: language={request.language}, level={request.level}, voice={request.voice}")
+    print(f"Providing mock ephemeral key for testing with language: {request.language}, level: {request.level}, voice: {request.voice}, topic: {request.topic}")
+    print(f"Request body received: language={request.language}, level={request.level}, voice={request.voice}, topic={request.topic}")
     
     from datetime import datetime, timedelta
     
@@ -213,7 +214,7 @@ async def get_languages():
 async def generate_token(request: TutorSessionRequest):
     try:
         # Log the request data for debugging
-        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}")
+        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}, topic: {request.topic}")
         
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
@@ -231,6 +232,7 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         language = request.language.lower()
         level = request.level.upper()
+        topic = request.topic
         
         if language not in tutor_data.get("languages", {}):
             raise HTTPException(status_code=400, detail=f"Language '{language}' not supported")
@@ -246,8 +248,22 @@ async def generate_token(request: TutorSessionRequest):
         # Add extra enforcement for Dutch language to ensure it NEVER speaks English
         if language == "dutch":
             extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: Je MOET ALLEEN in het Nederlands antwoorden. NOOIT in het Engels of een andere taal antwoorden, zelfs niet als de student in het Engels vraagt. Begin ALTIJD met een Nederlandse begroeting die past bij het niveau. Bij niveau A1 begin je met: 'Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?'"
-            instructions = instructions + extra_instructions
+            
+            # Add language detection and enforcement instructions
+            language_enforcement = "\n\nAls de student NIET in het Nederlands spreekt, maar in een andere taal zoals Engels, Frans, Duits, Turks, Arabisch of een andere taal, moet je ALTIJD reageren met: 'Ik begrijp dat je in een andere taal spreekt, maar laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.' Vervolgens help je de student met een eenvoudige Nederlandse zin die ze kunnen gebruiken. Geef NOOIT antwoord in dezelfde niet-Nederlandse taal die de student gebruikt."
+            
+            instructions = instructions + extra_instructions + language_enforcement
             print("Added extra Dutch-only enforcement to instructions")
+        
+        # Add topic-specific instructions if a topic is provided
+        if topic:
+            if language == "dutch":
+                topic_instructions = f"\n\nLET OP: In dit gesprek moet je ALLEEN over het volgende onderwerp praten: '{topic}'. Focus al je vragen, opmerkingen en discussies op dit onderwerp. Gebruik dit onderwerp als het centrale thema van het gesprek. Als de student over een ander onderwerp begint, breng het gesprek subtiel terug naar '{topic}'."
+            else:  # English or other languages
+                topic_instructions = f"\n\nIMPORTANT: In this conversation, you must ONLY talk about the following topic: '{topic}'. Focus all your questions, comments, and discussions on this topic. Use this topic as the central theme of the conversation. If the student starts talking about something else, gently bring the conversation back to '{topic}'."
+            
+            instructions = instructions + topic_instructions
+            print(f"Added topic-specific instructions for topic: {topic}")
         
         print(f"Generating ephemeral key with OpenAI API for {language} at level {level}...")
         

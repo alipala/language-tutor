@@ -31,7 +31,8 @@ export class RealtimeService {
     onConnected?: () => void, 
     onDisconnected?: () => void,
     language?: string,
-    level?: string
+    level?: string,
+    topic?: string
   ): Promise<boolean> {
     try {
       console.log('Initializing realtime service...');
@@ -71,7 +72,7 @@ export class RealtimeService {
       
       try {
         // Get ephemeral key from backend with language and level if provided
-        const token = await this.getEphemeralKey(language, level);
+        const token = await this.getEphemeralKey(language, level, topic);
         if (!token) {
           console.error('Failed to get ephemeral key (empty token)');
           return false;
@@ -651,11 +652,12 @@ export class RealtimeService {
   /**
    * Get an ephemeral key from the backend
    */
-  private async getEphemeralKey(language?: string, level?: string): Promise<string> {
+  private async getEphemeralKey(language?: string, level?: string, topic?: string): Promise<string> {
     try {
       console.log('Getting ephemeral key from backend...');
       console.log('Language:', language);
       console.log('Level:', level);
+      console.log('Topic:', topic);
       
       // Ensure we have both language and level
       if (!language || !level) {
@@ -671,7 +673,8 @@ export class RealtimeService {
       const requestBody = {
         language: language,
         level: level,
-        voice: 'alloy' // Default voice
+        voice: 'alloy', // Default voice
+        topic: topic || null // Add topic if provided
       };
       
       console.log('Request body:', JSON.stringify(requestBody));

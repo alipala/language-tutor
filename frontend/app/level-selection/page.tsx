@@ -225,45 +225,44 @@ export default function LevelSelection() {
   };
   
   const handleChangeLanguage = () => {
-    // Clear both the language and level to ensure proper navigation
+    // Clear the language and level to ensure proper navigation
     sessionStorage.removeItem('selectedLanguage');
     sessionStorage.removeItem('selectedLevel');
+    sessionStorage.removeItem('selectedTopic');
     // Navigate to language selection
-    console.log('Navigating to language selection, cleared language and level selections');
+    console.log('Navigating to language selection, cleared selections');
     window.location.href = '/language-selection';
-    
-    // Fallback navigation in case the first attempt fails (for Railway)
-    setTimeout(() => {
-      if (window.location.pathname.includes('level-selection')) {
-        console.log('Still on level selection page, using fallback navigation to language selection');
-        window.location.replace('/language-selection');
-      }
-    }, 1000);
+  };
+  
+  const handleChangeTopic = () => {
+    // Keep language but clear the topic
+    sessionStorage.removeItem('selectedTopic');
+    // Navigate to topic selection
+    console.log('Navigating to topic selection');
+    window.location.href = '/topic-selection';
   };
 
-  const handleLevelSelect = (levelCode: string) => {
+  const handleLevelSelect = (level: string) => {
     // Set loading state while navigating
     setIsLoading(true);
-    setSelectedLevel(levelCode);
+    setSelectedLevel(level);
     
     // Store the selection in session storage
-    sessionStorage.setItem('selectedLevel', levelCode);
+    sessionStorage.setItem('selectedLevel', level);
     
     // Mark that we're intentionally navigating
     sessionStorage.setItem('intentionalNavigation', 'true');
     
     // Log the navigation attempt
-    console.log('Navigating to speech page with level:', levelCode);
+    console.log('Navigating to speech with level:', level);
     
-    // Use a direct window.location approach for Railway with a small delay
-    // This bypasses any client-side routing issues
+    // Use direct navigation for reliability
     setTimeout(() => {
       console.log('Executing navigation to speech page');
       window.location.href = '/speech';
       
-      // Fallback navigation in case the first attempt fails (for Railway)
+      // Fallback navigation in case the first attempt fails
       const fallbackTimer = setTimeout(() => {
-        console.log('Checking if fallback navigation is needed');
         if (window.location.pathname.includes('level-selection')) {
           console.log('Still on level selection page, using fallback navigation');
           window.location.replace('/speech');
@@ -301,6 +300,15 @@ export default function LevelSelection() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
               </svg>
               <span>Change Language</span>
+            </button>
+            <button 
+              onClick={handleChangeTopic}
+              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-full shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+              </svg>
+              <span>Change Topic</span>
             </button>
             <button 
               onClick={handleStartOver}
