@@ -1,0 +1,35 @@
+tasks:
+  - name: ScheduledScrapingTask
+    description: >
+      This task is responsible for periodically scraping the nos.nl website to fetch the latest Dutch news articles.
+      The ScraperAgent will extract metadata including URLs, titles, and raw texts.
+    expected_output: "A list of articles with metadata (URL, title, raw text)."
+    agents:
+      - ScraperAgent
+
+  - name: DataProcessingTask
+    description: >
+      This task cleans and preprocesses the raw text of each scraped article.
+      ProcessingAgent then computes embeddings using the text-embedding-ada-002 model.
+    expected_output: "Articles enhanced with clean text and their corresponding embeddings."
+    agents:
+      - ProcessingAgent
+
+  - name: VectorStorageTask
+    description: >
+      In this task, the processed articles (with embeddings) are stored in a vector database.
+      VectorStorageAgent uses the WeaviateVectorSearchTool to ensure that the data is indexed
+      and ready for fast similarity searches.
+    expected_output: "An updated vector database containing new article embeddings that are searchable."
+    agents:
+      - VectorStorageAgent
+
+  - name: QueryHandlingTask
+    description: >
+      This task handles user queries by embedding the query, retrieving relevant articles from
+      the vector database, and injecting the retrieved context into a conversation. QueryAgent
+      then calls the LLM (using the gpt-4o-realtime-preview-2024-12-17 model) to generate an answer
+      that merges internal knowledge with the fresh context.
+    expected_output: "A comprehensive, contextually enriched answer to the user's query."
+    agents:
+      - QueryAgent
