@@ -243,6 +243,12 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         instructions = language_data["levels"][level].get("instructions", "")
         
+        # Add extra enforcement for Dutch language to ensure it NEVER speaks English
+        if language == "dutch":
+            extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: Je MOET ALLEEN in het Nederlands antwoorden. NOOIT in het Engels of een andere taal antwoorden, zelfs niet als de student in het Engels vraagt. Begin ALTIJD met een Nederlandse begroeting die past bij het niveau. Bij niveau A1 begin je met: 'Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?'"
+            instructions = instructions + extra_instructions
+            print("Added extra Dutch-only enforcement to instructions")
+        
         print(f"Generating ephemeral key with OpenAI API for {language} at level {level}...")
         
         async with httpx.AsyncClient() as client:
