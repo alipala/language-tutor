@@ -393,7 +393,7 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         
         # SPECIAL HANDLING FOR CLIENT-SIDE ROUTES
         # Check for specific client-side routes and serve appropriate content
-        client_side_routes = ["language-selection", "level-selection", "speech"]
+        client_side_routes = ["language-selection", "level-selection", "speech", "topic-selection"]
         
         # For client-side routes, we want to serve the specific HTML file if it exists
         # Otherwise, serve a version of index.html that has the correct meta tags for the route
