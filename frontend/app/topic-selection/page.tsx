@@ -73,21 +73,46 @@ export default function TopicSelection() {
     // Only run in browser
     if (typeof window === 'undefined') return;
     
+    console.log('Topic selection page loaded at:', new Date().toISOString());
+    console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    
     // Retrieve the selected language from session storage
     const language = sessionStorage.getItem('selectedLanguage');
     if (!language) {
       // If no language is selected, redirect to language selection
-      router.push('/language-selection');
+      console.log('No language selected, redirecting to language selection');
+      window.location.href = '/language-selection';
       return;
     }
     
     setSelectedLanguage(language);
     
+    // Check if we came from level selection page intentionally
+    const fromLevelSelection = sessionStorage.getItem('fromLevelSelection');
+    if (fromLevelSelection) {
+      // Clear the flag as we've now handled it
+      sessionStorage.removeItem('fromLevelSelection');
+      console.log('Detected navigation from level selection, staying on topic selection page');
+      // We intentionally came here to change the topic, so don't redirect
+      return;
+    }
+    
     // If we already have a topic selected and language, go to level selection
+    // but only if we didn't explicitly navigate here to change the topic
     const existingTopic = sessionStorage.getItem('selectedTopic');
     if (existingTopic) {
-      // Should redirect to level selection
-      router.push('/level-selection');
+      console.log('Topic already selected, redirecting to level selection');
+      // Use direct navigation for reliability
+      window.location.href = '/level-selection';
+      
+      // Fallback navigation in case the first attempt fails
+      setTimeout(() => {
+        if (window.location.pathname.includes('topic-selection')) {
+          console.log('Still on topic selection page, using fallback navigation');
+          window.location.replace('/level-selection');
+        }
+      }, 1000);
     }
   }, [router]);
 
@@ -123,6 +148,14 @@ export default function TopicSelection() {
     
     // Mark that we're intentionally navigating
     sessionStorage.setItem('intentionalNavigation', 'true');
+    
+    // Add detailed logging
+    console.log('Topic selected:', topicId);
+    console.log('Session storage state:', {
+      selectedLanguage: sessionStorage.getItem('selectedLanguage'),
+      selectedTopic: topicId,
+      intentionalNavigation: true
+    });
     
     // Navigate to level selection
     console.log('Navigating to level selection with topic:', topicId);

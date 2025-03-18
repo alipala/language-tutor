@@ -77,7 +77,7 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
     // Only run this effect when these values change, not on every re-render
   }, [language, level, topic, initialize]);
 
-  // Process messages to filter out empty ones and detect language validation messages
+  // Process messages to filter out empty ones, ensure proper formatting, and detect language validation messages
   const processedMessages = messages.filter(message => {
     // Filter out messages that are empty or just placeholders
     if (!message.content || message.content.trim() === '' || message.content === '...') {
@@ -85,10 +85,22 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
     }
     // Include messages that have actual content
     return true;
-  }).map(message => ({
-    ...message,
-    content: message.content.trim() // Ensure content is trimmed
-  }));
+  }).map(message => {
+    // Ensure proper spacing in content by removing excessive spaces
+    const formattedContent = message.content.trim()
+      .replace(/\s+/g, ' ')  // Replace multiple spaces with a single space
+      .replace(/\s([.,!?:;])/g, '$1'); // Remove spaces before punctuation
+    
+    // Log message processing for debugging
+    console.log(`Processing message: ${message.role}, content: ${formattedContent.substring(0, 30)}..., timestamp: ${message.timestamp || 'none'}`);
+    
+    return {
+      ...message,
+      content: formattedContent,
+      // Ensure timestamp exists
+      timestamp: message.timestamp || new Date().toISOString()
+    };
+  });
 
   // Check for language validation messages
   useEffect(() => {
@@ -509,45 +521,66 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
                   <div className="bg-gradient-to-br from-white/10 to-white/5 dark:from-slate-800/50 dark:to-slate-900/80 backdrop-blur-sm rounded-xl border border-white/20 dark:border-indigo-500/20 shadow-lg shadow-indigo-500/5 dark:shadow-purple-500/10 p-4 h-[300px] md:h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
                     <div className="space-y-4">
                       {processedMessages.length > 0 ? (
-                        processedMessages.map((message, index) => (
-                          <div 
-                            key={index}
-                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-                          >
-                          {message.role !== 'user' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
-                              <span className="text-xs font-bold text-white">T</span>
-                            </div>
-                          )}
-                          <div 
-                            className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
-                              message.role === 'user' 
-                                ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white ml-2 rounded-tr-none' 
-                                : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white mr-2 rounded-tl-none'
-                            }`}
-                            style={{
-                              wordBreak: 'break-word',
-                              overflowWrap: 'break-word',
-                              whiteSpace: 'pre-wrap'
-                            }}
-                          >
-                            <div className="flex items-center justify-between mb-1 text-white/90">
-                              <span className="text-xs font-semibold">
-                                {message.role === 'user' ? 'You' : 'Tutor'}
-                              </span>
-                              <span className="text-xs opacity-75 ml-2">
-                                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                              </span>
-                            </div>
-                            <p className="text-sm leading-relaxed text-white/95 mt-1">{message.content}</p>
-                          </div>
-                          {message.role === 'user' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
-                              <span className="text-xs font-bold text-white">U</span>
-                            </div>
-                          )}
-                          </div>
-                        ))
+                        // Sort messages by timestamp if available, otherwise use the array order
+                        [...processedMessages]
+                          .sort((a, b) => {
+                            if (a.timestamp && b.timestamp) {
+                              return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                            }
+                            return 0;
+                          })
+                          .map((message, index) => {
+                            // Parse timestamp for display or use current time as fallback
+                            const messageTime = message.timestamp 
+                              ? new Date(message.timestamp) 
+                              : new Date();
+                            
+                            // Format the time for display
+                            const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            
+                            // Log message for debugging
+                            console.log(`Rendering message ${index}: ${message.role}, content: ${message.content.substring(0, 30)}..., timestamp: ${timeDisplay}`);
+                            
+                            return (
+                              <div 
+                                key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
+                                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                              >
+                                {message.role !== 'user' && (
+                                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
+                                    <span className="text-xs font-bold text-white">T</span>
+                                  </div>
+                                )}
+                                <div 
+                                  className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
+                                    message.role === 'user' 
+                                      ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white ml-2 rounded-tr-none' 
+                                      : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white mr-2 rounded-tl-none'
+                                  }`}
+                                  style={{
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    whiteSpace: 'pre-wrap'
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between mb-1 text-white/90">
+                                    <span className="text-xs font-semibold">
+                                      {message.role === 'user' ? 'You' : 'Tutor'}
+                                    </span>
+                                    <span className="text-xs opacity-75 ml-2">
+                                      {timeDisplay}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm leading-relaxed text-white/95 mt-1">{message.content}</p>
+                                </div>
+                                {message.role === 'user' && (
+                                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
+                                    <span className="text-xs font-bold text-white">U</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
                       ) : (
                         <div className="flex justify-center items-center h-full">
                           <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn">

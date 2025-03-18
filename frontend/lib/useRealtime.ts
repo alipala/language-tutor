@@ -8,6 +8,8 @@ export function useRealtime() {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<RealtimeMessage[]>([]);
+  // Add a ref to track the last message timestamp for proper ordering
+  const lastMessageTimestampRef = useRef<string>(new Date().toISOString());
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initializationAttemptRef = useRef(false);
@@ -22,31 +24,93 @@ export function useRealtime() {
   // Reduce number of logs to prevent console spam
   const shouldLogEvent = useRef(true);
 
+  // Helper function to determine if we need a space between text segments
+  const needSpaceBetween = (currentText: string, newText: string): boolean => {
+    if (!currentText || !newText) return false;
+    
+    return currentText.length > 0 && 
+      !currentText.endsWith(' ') && 
+      !currentText.endsWith('.') && 
+      !currentText.endsWith(',') && 
+      !currentText.endsWith('!') && 
+      !currentText.endsWith('?') && 
+      !currentText.endsWith(':') && 
+      !currentText.endsWith(';') && 
+      !currentText.endsWith('-') && 
+      !newText.startsWith(' ') && 
+      !newText.startsWith('.') && 
+      !newText.startsWith(',') && 
+      !newText.startsWith('!') && 
+      !newText.startsWith('?') && 
+      !newText.startsWith(':') && 
+      !newText.startsWith(';') && 
+      !newText.startsWith('-');
+  };
+
   // Handle incoming messages from the realtime service
   const handleMessage = useCallback((event: RealtimeEvent) => {
     // Log important events
     if (event.type === 'conversation.item.created' || 
         event.type === 'conversation.item.input_audio_transcription.completed' ||
-        event.type === 'response.audio_transcript.done') {
+        event.type === 'response.audio_transcript.done' ||
+        event.type === 'response.text.delta') {
       console.log('Received important event:', event.type);
-      console.log('Event details:', event);
+      console.log('Event details:', JSON.stringify(event, null, 2));
     }
     
     if (event.type === 'response.text.delta') {
       const textEvent = event as RealtimeTextDeltaEvent;
-      if (!textEvent.delta?.text?.trim()) return;
+      if (!textEvent.delta?.text) return;
+      
+      // Log the incoming delta for debugging
+      console.log('Received text delta:', JSON.stringify(textEvent.delta));
       
       setMessages(prev => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage?.role === 'assistant' && !lastMessage.itemId) {
+        // Check if we have a user message first
+        if (prev.length === 0 || prev[prev.length - 1].role !== 'user') {
+          // If there's no user message yet or the last message is not from the user,
+          // we might be in an initialization state. In this case, just create a new assistant message.
+          const existingAssistantMessage = prev.find(msg => msg.role === 'assistant' && !msg.itemId);
+          
+          if (existingAssistantMessage) {
+            // If we already have an assistant message without an itemId, update it instead of creating a new one
+            return prev.map(msg => 
+              (msg.role === 'assistant' && !msg.itemId) 
+                ? { 
+                    ...msg, 
+                    content: msg.content + (needSpaceBetween(msg.content, textEvent.delta.text) ? ' ' : '') + textEvent.delta.text 
+                  }
+                : msg
+            );
+          }
+          
+          // Create a new assistant message
+          return [...prev, { 
+            role: 'assistant', 
+            content: textEvent.delta.text,
+            timestamp: new Date().toISOString()
+          }];
+        }
+        
+        // Find the last assistant message that doesn't have an itemId (current streaming message)
+        const lastAssistantIndex = prev.findIndex(msg => 
+          msg.role === 'assistant' && !msg.itemId
+        );
+        
+        if (lastAssistantIndex >= 0) {
           // Update existing message
+          const lastAssistantMsg = prev[lastAssistantIndex];
+          // Add a space before the new text if needed (when the last character isn't a space or punctuation)
+          const needsSpace = needSpaceBetween(lastAssistantMsg.content, textEvent.delta.text);
+          
           return prev.map((msg, idx) => 
-            idx === prev.length - 1 
-              ? { ...msg, content: msg.content + textEvent.delta.text }
+            idx === lastAssistantIndex 
+              ? { ...msg, content: msg.content + (needsSpace ? ' ' : '') + textEvent.delta.text }
               : msg
           );
         }
-        // Create new message
+        
+        // If we don't have an existing assistant message without an itemId, create a new one
         return [...prev, { 
           role: 'assistant', 
           content: textEvent.delta.text,
@@ -127,13 +191,35 @@ export function useRealtime() {
       const delta = event.delta?.trim() || '';
       if (!delta) return;
       
+      // Log the audio transcript delta for debugging
+      console.log('Received audio transcript delta:', delta);
+      
       setMessages(prev => {
         const lastMessage = prev[prev.length - 1];
         if (lastMessage?.role === 'assistant' && lastMessage.itemId === event.item_id) {
           // Update existing message
+          // Add a space before the new text if needed
+          const needsSpace = lastMessage.content.length > 0 && 
+                            !lastMessage.content.endsWith(' ') && 
+                            !lastMessage.content.endsWith('.') && 
+                            !lastMessage.content.endsWith(',') && 
+                            !lastMessage.content.endsWith('!') && 
+                            !lastMessage.content.endsWith('?') && 
+                            !lastMessage.content.endsWith(':') && 
+                            !lastMessage.content.endsWith(';') && 
+                            !lastMessage.content.endsWith('-') && 
+                            !delta.startsWith(' ') && 
+                            !delta.startsWith('.') && 
+                            !delta.startsWith(',') && 
+                            !delta.startsWith('!') && 
+                            !delta.startsWith('?') && 
+                            !delta.startsWith(':') && 
+                            !delta.startsWith(';') && 
+                            !delta.startsWith('-');
+          
           return prev.map((msg, idx) => 
             idx === prev.length - 1
-              ? { ...msg, content: msg.content + delta }
+              ? { ...msg, content: msg.content + (needsSpace ? ' ' : '') + delta }
               : msg
           );
         }

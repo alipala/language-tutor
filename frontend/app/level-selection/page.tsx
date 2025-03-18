@@ -237,9 +237,21 @@ export default function LevelSelection() {
   const handleChangeTopic = () => {
     // Keep language but clear the topic
     sessionStorage.removeItem('selectedTopic');
+    // Set a flag to indicate we're intentionally going to topic selection
+    sessionStorage.setItem('fromLevelSelection', 'true');
     // Navigate to topic selection
-    console.log('Navigating to topic selection');
+    console.log('Navigating to topic selection with fromLevelSelection flag');
+    
+    // Use direct navigation for reliability
     window.location.href = '/topic-selection';
+    
+    // Fallback navigation in case the first attempt fails
+    setTimeout(() => {
+      if (window.location.pathname.includes('level-selection')) {
+        console.log('Still on level selection page, using fallback navigation to topic selection');
+        window.location.replace('/topic-selection');
+      }
+    }, 1000);
   };
 
   const handleLevelSelect = (level: string) => {
