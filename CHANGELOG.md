@@ -5,6 +5,24 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2025-03-18
+
+### Added
+- Topic selection feature allowing users to choose conversation topics
+- Eight predefined topics including Travel, Food & Cooking, Hobbies, Culture, Movies & TV, Music, Technology, and Environment
+- Skip topic option for free-form conversations
+
+### Fixed
+- Resolved issue with concurrent model responses in conversations
+- Fixed message handling logic to ensure proper text formatting
+- Corrected topic selection route handling in Railway deployment
+- Improved session storage management for navigation between screens
+
+### Changed
+- Enhanced conversation flow with better message spacing
+- Improved error handling and logging for debugging
+- Optimized navigation between language, topic, and level selection screens
+
 ## [2.4.0] - 2025-03-16
 
 ### Added

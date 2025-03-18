@@ -16,6 +16,7 @@ A language learning voice conversation application with a modern UI that allows 
 - 🎙️ Language learning voice conversation with OpenAI integration
 - 🌍 Support for multiple languages (currently Dutch and English)
 - 🎓 Six proficiency levels (A1, A2, B1, B2, C1, C2) following CEFR standards
+- 🗣️ Topic selection for focused conversation practice
 - 🌐 WebRTC for real-time communication
 - 🚀 FastAPI backend for high performance
 - 🎨 Modern dark gradient UI
@@ -46,11 +47,26 @@ The application follows the Common European Framework of Reference for Languages
 - **C1 (Advanced)**: Can express ideas fluently and spontaneously without much searching for expressions
 - **C2 (Proficiency)**: Can express with precision in complex situations
 
+### Topic Selection
+The application offers a variety of conversation topics to focus your language practice:
+
+- **Travel** ✈️: Discuss travel destinations, experiences, and planning trips
+- **Food & Cooking** 🍲: Talk about cuisines, recipes, restaurants, and cooking techniques
+- **Hobbies & Interests** 🎨: Share your favorite activities, sports, games, or pastimes
+- **Culture & Traditions** 🏛️: Explore cultural aspects, traditions, festivals, and customs
+- **Movies & TV Shows** 🎬: Discuss films, series, actors, directors, and entertainment
+- **Music** 🎵: Talk about music genres, artists, concerts, and preferences
+- **Technology** 💻: Discuss gadgets, apps, innovations, and digital trends
+- **Environment & Nature** 🌳: Explore environmental issues, sustainability, and the natural world
+
+You can also choose to skip topic selection for a free-form conversation.
+
 ### Conversation Flow
 1. Select your target language (Dutch or English)
-2. Choose your proficiency level (A1-C2)
-3. Start a voice conversation with the language tutor
-4. Practice speaking and receive feedback appropriate to your level
+2. Choose a conversation topic (optional)
+3. Select your proficiency level (A1-C2)
+4. Start a voice conversation with the language tutor
+5. Practice speaking and receive feedback appropriate to your level
 
 ## Architecture
 
