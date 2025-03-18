@@ -113,7 +113,7 @@ export default function LanguageSelection() {
     sessionStorage.setItem('intentionalNavigation', 'true');
     
     // Log the navigation attempt
-    console.log('Navigating to level selection with language:', languageCode);
+    console.log('Navigating to topic selection with language:', languageCode);
     
     // RAILWAY SPECIFIC: Detect Railway environment
     const isRailway = window.location.hostname.includes('railway.app');
@@ -123,7 +123,7 @@ export default function LanguageSelection() {
     if (isRailway) {
       console.log('Using Railway-specific navigation approach');
       // Use the full URL to ensure proper navigation in Railway
-      const fullUrl = `${window.location.origin}/level-selection`;
+      const fullUrl = `${window.location.origin}/topic-selection`;
       console.log('Navigating to full URL:', fullUrl);
       
       // Use direct location replacement which is most reliable
@@ -144,15 +144,15 @@ export default function LanguageSelection() {
     // Use a direct window.location approach with a small delay
     // This bypasses any client-side routing issues
     setTimeout(() => {
-      console.log('Executing navigation to level selection');
-      window.location.href = '/level-selection';
+      console.log('Executing navigation to topic selection');
+      window.location.href = '/topic-selection';
       
       // Fallback navigation in case the first attempt fails
       const fallbackTimer = setTimeout(() => {
         console.log('Checking if fallback navigation is needed');
         if (window.location.pathname.includes('language-selection')) {
           console.log('Still on language selection page, using fallback navigation');
-          window.location.replace('/level-selection');
+          window.location.replace('/topic-selection');
         }
       }, 1000);
       

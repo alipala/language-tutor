@@ -9,10 +9,12 @@ import { useRouter } from 'next/navigation';
 interface SpeechClientProps {
   language: string;
   level: string;
+  topic?: string;
 }
 
-export default function SpeechClient({ language, level }: SpeechClientProps) {
-  console.log('SpeechClient initializing with language:', language, 'level:', level, 'at:', new Date().toISOString());
+export default function SpeechClient({ language, level, topic }: SpeechClientProps) {
+  // Moving the console.log out of the component body to prevent excessive logging
+  const initialRenderRef = useRef(true);
   
   const router = useRouter();
   const [localError, setLocalError] = useState<string | null>(null);
@@ -20,6 +22,18 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
   const [isAttemptingToRecord, setIsAttemptingToRecord] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const micPermissionDeniedRef = useRef(false);
+  
+  // Add language alert state
+  const [showLanguageAlert, setShowLanguageAlert] = useState(false);
+  const languageAlertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Only log on initial render, not on every re-render
+  useEffect(() => {
+    if (initialRenderRef.current) {
+      console.log('SpeechClient initializing with language:', language, 'level:', level, 'topic:', topic, 'at:', new Date().toISOString());
+      initialRenderRef.current = false;
+    }
+  }, [language, level, topic]);
   
   // Add a useEffect to track component mounting and unmounting
   useEffect(() => {
@@ -50,6 +64,75 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     clearError,
     initialize
   } = useRealtime();
+
+  // Initialize the realtime service when the component mounts
+  useEffect(() => {
+    // Initialize the realtime service with the language, level, and topic parameters
+    const initializeService = async () => {
+      console.log('Initializing realtime service with language:', language, 'level:', level, 'topic:', topic);
+      await initialize(language, level, topic);
+    };
+    
+    initializeService();
+    // Only run this effect when these values change, not on every re-render
+  }, [language, level, topic, initialize]);
+
+  // Process messages to filter out empty ones, ensure proper formatting, and detect language validation messages
+  const processedMessages = messages.filter(message => {
+    // Filter out messages that are empty or just placeholders
+    if (!message.content || message.content.trim() === '' || message.content === '...') {
+      return false;
+    }
+    // Include messages that have actual content
+    return true;
+  }).map(message => {
+    // Ensure proper spacing in content by removing excessive spaces
+    const formattedContent = message.content.trim()
+      .replace(/\s+/g, ' ')  // Replace multiple spaces with a single space
+      .replace(/\s([.,!?:;])/g, '$1'); // Remove spaces before punctuation
+    
+    // Log message processing for debugging
+    console.log(`Processing message: ${message.role}, content: ${formattedContent.substring(0, 30)}..., timestamp: ${message.timestamp || 'none'}`);
+    
+    return {
+      ...message,
+      content: formattedContent,
+      // Ensure timestamp exists
+      timestamp: message.timestamp || new Date().toISOString()
+    };
+  });
+
+  // Check for language validation messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      
+      if (language === 'dutch' && 
+          lastMessage?.role === 'assistant' && 
+          lastMessage.content && 
+          typeof lastMessage.content === 'string' && (
+          lastMessage.content.includes('Ik begrijp dat je in een andere taal spreekt') || 
+          lastMessage.content.includes('laten we Nederlands oefenen') ||
+          lastMessage.content.includes('Probeer het in het Nederlands'))) {
+        
+        setShowLanguageAlert(true);
+        
+        if (languageAlertTimeoutRef.current) {
+          clearTimeout(languageAlertTimeoutRef.current);
+        }
+        
+        languageAlertTimeoutRef.current = setTimeout(() => {
+          setShowLanguageAlert(false);
+        }, 6000);
+      }
+    }
+    
+    return () => {
+      if (languageAlertTimeoutRef.current) {
+        clearTimeout(languageAlertTimeoutRef.current);
+      }
+    };
+  }, [messages, language]);
 
   // Clear error when recording state changes
   useEffect(() => {
@@ -85,7 +168,7 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
     if (messagesEndRef.current && showMessages) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, showMessages]);
+  }, [processedMessages, showMessages]);
 
   const handleToggleRecording = async (e?: React.MouseEvent | React.TouchEvent) => {
     // Prevent default browser behavior that might cause page refresh
@@ -133,51 +216,35 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
       // Add a small delay to ensure cleanup is complete
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Initialize with language and level
-      console.log('Initializing with language:', language, 'and level:', level);
-      
       // Store the current URL to detect navigation issues
       const currentUrl = window.location.href;
       sessionStorage.setItem('lastMicrophoneInitUrl', currentUrl);
       
-      const initSuccess = await initialize(language, level);
+      // We don't need to initialize again since we already do it on component mount
+      // and the values are stored in the useRealtime hook
       
       // Check if we're still on the same page after initialization
       if (window.location.href !== currentUrl) {
         console.error('Page URL changed during initialization, aborting microphone start');
         return;
       }
-      
-      if (!initSuccess) {
-        console.error('Failed to initialize realtime service');
-        setLocalError('Failed to initialize voice service. Please try again.');
-        setIsAttemptingToRecord(false);
-        sessionStorage.removeItem('isInConversation');
-        return;
-      }
-      
-      // Add a small delay after initialization
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Check again if we're still on the same page
-      if (window.location.href !== currentUrl) {
-        console.error('Page URL changed before starting conversation, aborting');
-        return;
-      }
-      
+        
       console.log('Starting conversation...');
       const success = await toggleConversation();
       
-      // If the toggle was not successful and no error was set in the hook,
-      // we need to show a fallback error
-      if (!success && !realtimeError) {
-        setLocalError('Failed to start recording. Please try again.');
+      if (!success) {
+        console.error('Failed to start conversation');
+        setLocalError('Failed to start conversation. Please try again.');
+        
+        // Reset state and flags
         setIsAttemptingToRecord(false);
         sessionStorage.removeItem('isInConversation');
+      } else {
+        console.log('Conversation started successfully');
       }
     } catch (err) {
-      setLocalError('An error occurred while starting the conversation');
-      console.error('Error in handleToggleRecording:', err);
+      console.error('Error starting conversation:', err);
+      setLocalError('An error occurred while starting the conversation. Please try again.');
       setIsAttemptingToRecord(false);
       sessionStorage.removeItem('isInConversation');
     }
@@ -286,6 +353,16 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4">
       <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
+        {/* Language alert notification */}
+        {showLanguageAlert && language === 'dutch' && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-amber-600 text-white px-6 py-3 rounded-md shadow-lg z-50 animate-fade-in flex items-center space-x-2 max-w-md">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Dit is een Nederlandse les. Probeer alsjeblieft in het Nederlands te spreken.</span>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">
@@ -442,44 +519,68 @@ export default function SpeechClient({ language, level }: SpeechClientProps) {
                     Conversation Transcript
                   </h3>
                   <div className="bg-gradient-to-br from-white/10 to-white/5 dark:from-slate-800/50 dark:to-slate-900/80 backdrop-blur-sm rounded-xl border border-white/20 dark:border-indigo-500/20 shadow-lg shadow-indigo-500/5 dark:shadow-purple-500/10 p-4 h-[300px] md:h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
-                    {/* Debug info removed */}
-                    
                     <div className="space-y-4">
-                      {messages.length > 0 ? (
-                        messages.map((message, index) => (
-                          <div 
-                            key={index}
-                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-                          >
-                          {message.role !== 'user' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
-                              <span className="text-xs font-bold text-white">T</span>
-                            </div>
-                          )}
-                          <div 
-                            className={`max-w-[80%] p-3 rounded-lg shadow-sm ${
-                              message.role === 'user' 
-                                ? 'bg-gradient-to-r from-indigo-500/80 to-indigo-600/80 text-white rounded-tr-none border-r border-t border-indigo-400/30' 
-                                : 'bg-gradient-to-r from-purple-500/80 to-purple-600/80 text-white rounded-tl-none border-l border-t border-purple-400/30'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-semibold opacity-90">
-                                {message.role === 'user' ? 'You' : 'Tutor'}
-                              </span>
-                              <span className="text-xs opacity-60">
-                                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}  
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium leading-relaxed">{message.content || '(empty message)'}</p>
-                          </div>
-                          {message.role === 'user' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
-                              <span className="text-xs font-bold text-white">U</span>
-                            </div>
-                          )}
-                          </div>
-                        ))
+                      {processedMessages.length > 0 ? (
+                        // Sort messages by timestamp if available, otherwise use the array order
+                        [...processedMessages]
+                          .sort((a, b) => {
+                            if (a.timestamp && b.timestamp) {
+                              return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                            }
+                            return 0;
+                          })
+                          .map((message, index) => {
+                            // Parse timestamp for display or use current time as fallback
+                            const messageTime = message.timestamp 
+                              ? new Date(message.timestamp) 
+                              : new Date();
+                            
+                            // Format the time for display
+                            const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            
+                            // Log message for debugging
+                            console.log(`Rendering message ${index}: ${message.role}, content: ${message.content.substring(0, 30)}..., timestamp: ${timeDisplay}`);
+                            
+                            return (
+                              <div 
+                                key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
+                                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                              >
+                                {message.role !== 'user' && (
+                                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
+                                    <span className="text-xs font-bold text-white">T</span>
+                                  </div>
+                                )}
+                                <div 
+                                  className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
+                                    message.role === 'user' 
+                                      ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white ml-2 rounded-tr-none' 
+                                      : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white mr-2 rounded-tl-none'
+                                  }`}
+                                  style={{
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    whiteSpace: 'pre-wrap'
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between mb-1 text-white/90">
+                                    <span className="text-xs font-semibold">
+                                      {message.role === 'user' ? 'You' : 'Tutor'}
+                                    </span>
+                                    <span className="text-xs opacity-75 ml-2">
+                                      {timeDisplay}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm leading-relaxed text-white/95 mt-1">{message.content}</p>
+                                </div>
+                                {message.role === 'user' && (
+                                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
+                                    <span className="text-xs font-bold text-white">U</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
                       ) : (
                         <div className="flex justify-center items-center h-full">
                           <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn">

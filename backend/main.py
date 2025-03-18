@@ -162,6 +162,7 @@ class TutorSessionRequest(BaseModel):
     language: str
     level: str
     voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+    topic: Optional[str] = None  # Topic to focus the conversation on
 
 # Simple endpoint for testing connection
 @app.get("/api/test")
@@ -172,8 +173,8 @@ async def test_connection():
 @app.post("/api/mock-token")
 async def mock_token(request: TutorSessionRequest):
     # Log the request data for debugging
-    print(f"Providing mock ephemeral key for testing with language: {request.language}, level: {request.level}, voice: {request.voice}")
-    print(f"Request body received: language={request.language}, level={request.level}, voice={request.voice}")
+    print(f"Providing mock ephemeral key for testing with language: {request.language}, level: {request.level}, voice: {request.voice}, topic: {request.topic}")
+    print(f"Request body received: language={request.language}, level={request.level}, voice={request.voice}, topic={request.topic}")
     
     from datetime import datetime, timedelta
     
@@ -213,7 +214,7 @@ async def get_languages():
 async def generate_token(request: TutorSessionRequest):
     try:
         # Log the request data for debugging
-        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}")
+        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}, topic: {request.topic}")
         
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
@@ -231,6 +232,7 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         language = request.language.lower()
         level = request.level.upper()
+        topic = request.topic
         
         if language not in tutor_data.get("languages", {}):
             raise HTTPException(status_code=400, detail=f"Language '{language}' not supported")
@@ -243,11 +245,66 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         instructions = language_data["levels"][level].get("instructions", "")
         
+        # Add universal formatting instructions for proper spacing and readability
+        formatting_instructions = "\n\nFORMATTING INSTRUCTIONS: Always use proper spacing between words and sentences. Ensure there is a space after punctuation marks like periods, commas, question marks, and exclamation points. Maintain proper paragraph structure with line breaks between paragraphs. Use proper capitalization at the beginning of sentences."
+        
+        # Add instructions for proper speech pacing and clarity
+        speech_instructions = "\n\nSPEECH CLARITY: When speaking, maintain a natural pace with slight pauses between sentences. Articulate words clearly and avoid running words together. Use proper intonation to indicate questions, statements, and emphasis."
+        
         # Add extra enforcement for Dutch language to ensure it NEVER speaks English
         if language == "dutch":
             extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: Je MOET ALLEEN in het Nederlands antwoorden. NOOIT in het Engels of een andere taal antwoorden, zelfs niet als de student in het Engels vraagt. Begin ALTIJD met een Nederlandse begroeting die past bij het niveau. Bij niveau A1 begin je met: 'Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?'"
-            instructions = instructions + extra_instructions
+            
+            # Add language detection and enforcement instructions
+            language_enforcement = "\n\nAls de student NIET in het Nederlands spreekt, maar in een andere taal zoals Engels, Frans, Duits, Turks, Arabisch of een andere taal, moet je ALTIJD reageren met: 'Ik begrijp dat je in een andere taal spreekt, maar laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.' Vervolgens help je de student met een eenvoudige Nederlandse zin die ze kunnen gebruiken. Geef NOOIT antwoord in dezelfde niet-Nederlandse taal die de student gebruikt."
+            
+            # Add Dutch-specific formatting instructions
+            dutch_formatting = "\n\nZorg voor correcte spatiëring tussen woorden en na leestekens. Gebruik hoofdletters aan het begin van zinnen. Spreek duidelijk en articuleer woorden goed, met natuurlijke pauzes tussen zinnen."
+            
+            instructions = instructions + extra_instructions + language_enforcement + dutch_formatting
             print("Added extra Dutch-only enforcement to instructions")
+        else:
+            # For English and other languages, add general language quality instructions
+            language_quality = "\n\nLANGUAGE QUALITY: Use natural, conversational language appropriate for the student's level. Avoid overly complex vocabulary or grammar for lower levels. For higher levels, introduce more sophisticated language patterns gradually."
+            
+            instructions = instructions + language_quality
+        
+        # Add universal formatting and speech instructions
+        instructions = instructions + formatting_instructions + speech_instructions
+        
+        # Add topic-specific instructions if a topic is provided
+        if topic:
+            if language == "dutch":
+                topic_instructions = f"\n\nLET OP: In dit gesprek moet je ALLEEN over het volgende onderwerp praten: '{topic}'. Focus al je vragen, opmerkingen en discussies op dit onderwerp. Gebruik dit onderwerp als het centrale thema van het gesprek. Als de student over een ander onderwerp begint, breng het gesprek subtiel terug naar '{topic}'."
+                
+                # Add Dutch vocabulary suggestions for the topic
+                if topic == "travel" or topic == "reizen":
+                    topic_vocabulary = "\n\nGebruik deze woorden in het gesprek: reis, vakantie, bestemming, hotel, vliegen, trein, strand, bergen, paspoort, koffer, boeken, reserveren."
+                elif topic == "food" or topic == "eten":
+                    topic_vocabulary = "\n\nGebruik deze woorden in het gesprek: eten, drinken, restaurant, menu, bestellen, lekker, recept, koken, proeven, ingrediënten, maaltijd, ontbijt, lunch, diner."
+                elif topic == "hobbies" or topic == "hobby's":
+                    topic_vocabulary = "\n\nGebruik deze woorden in het gesprek: hobby, vrije tijd, sport, lezen, muziek, film, dansen, schilderen, wandelen, fietsen, verzamelen, spelen."
+                else:
+                    topic_vocabulary = "\n\nIntroduceer geleidelijk relevante woordenschat voor dit onderwerp, passend bij het niveau van de student."
+                
+                topic_instructions += topic_vocabulary
+            else:  # English or other languages
+                topic_instructions = f"\n\nIMPORTANT: In this conversation, you must ONLY talk about the following topic: '{topic}'. Focus all your questions, comments, and discussions on this topic. Use this topic as the central theme of the conversation. If the student starts talking about something else, gently bring the conversation back to '{topic}'."
+                
+                # Add English vocabulary suggestions for the topic
+                if topic == "travel":
+                    topic_vocabulary = "\n\nIncorporate these words in the conversation: travel, vacation, destination, hotel, flight, train, beach, mountains, passport, suitcase, booking, reservation."
+                elif topic == "food":
+                    topic_vocabulary = "\n\nIncorporate these words in the conversation: food, drink, restaurant, menu, order, delicious, recipe, cook, taste, ingredients, meal, breakfast, lunch, dinner."
+                elif topic == "hobbies":
+                    topic_vocabulary = "\n\nIncorporate these words in the conversation: hobby, free time, sports, reading, music, movies, dancing, painting, walking, cycling, collecting, playing."
+                else:
+                    topic_vocabulary = "\n\nGradually introduce relevant vocabulary for this topic, appropriate to the student's level."
+                
+                topic_instructions += topic_vocabulary
+            
+            instructions = instructions + topic_instructions
+            print(f"Added topic-specific instructions for topic: {topic}")
         
         print(f"Generating ephemeral key with OpenAI API for {language} at level {level}...")
         
@@ -336,7 +393,7 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         
         # SPECIAL HANDLING FOR CLIENT-SIDE ROUTES
         # Check for specific client-side routes and serve appropriate content
-        client_side_routes = ["language-selection", "level-selection", "speech"]
+        client_side_routes = ["language-selection", "level-selection", "speech", "topic-selection"]
         
         # For client-side routes, we want to serve the specific HTML file if it exists
         # Otherwise, serve a version of index.html that has the correct meta tags for the route

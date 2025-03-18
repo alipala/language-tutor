@@ -8,239 +8,317 @@ export function useRealtime() {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<RealtimeMessage[]>([]);
+  // Add a ref to track the last message timestamp for proper ordering
+  const lastMessageTimestampRef = useRef<string>(new Date().toISOString());
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initializationAttemptRef = useRef(false);
   const maxRetries = 2;
   const retryCountRef = useRef(0);
 
+  // Store language and level parameters for reinitialization
+  const languageRef = useRef<string | undefined>();
+  const levelRef = useRef<string | undefined>();
+  const topicRef = useRef<string | undefined>();
+  
+  // Reduce number of logs to prevent console spam
+  const shouldLogEvent = useRef(true);
+
+  // Helper function to determine if we need a space between text segments
+  const needSpaceBetween = (currentText: string, newText: string): boolean => {
+    if (!currentText || !newText) return false;
+    
+    return currentText.length > 0 && 
+      !currentText.endsWith(' ') && 
+      !currentText.endsWith('.') && 
+      !currentText.endsWith(',') && 
+      !currentText.endsWith('!') && 
+      !currentText.endsWith('?') && 
+      !currentText.endsWith(':') && 
+      !currentText.endsWith(';') && 
+      !currentText.endsWith('-') && 
+      !newText.startsWith(' ') && 
+      !newText.startsWith('.') && 
+      !newText.startsWith(',') && 
+      !newText.startsWith('!') && 
+      !newText.startsWith('?') && 
+      !newText.startsWith(':') && 
+      !newText.startsWith(';') && 
+      !newText.startsWith('-');
+  };
+
   // Handle incoming messages from the realtime service
   const handleMessage = useCallback((event: RealtimeEvent) => {
-    console.log('Received event:', event.type);
-    console.log('Event details:', JSON.stringify(event, null, 2));
+    // Log important events
+    if (event.type === 'conversation.item.created' || 
+        event.type === 'conversation.item.input_audio_transcription.completed' ||
+        event.type === 'response.audio_transcript.done' ||
+        event.type === 'response.text.delta') {
+      console.log('Received important event:', event.type);
+      console.log('Event details:', JSON.stringify(event, null, 2));
+    }
     
-    // Handle different event types
     if (event.type === 'response.text.delta') {
       const textEvent = event as RealtimeTextDeltaEvent;
+      if (!textEvent.delta?.text) return;
+      
+      // Log the incoming delta for debugging
+      console.log('Received text delta:', JSON.stringify(textEvent.delta));
+      
       setMessages(prev => {
-        const lastMessage = prev[prev.length - 1];
-        
-        if (lastMessage && lastMessage.role === 'assistant') {
-          // Update the last message
-          const updatedMessages = [...prev];
-          updatedMessages[prev.length - 1] = {
-            ...lastMessage,
-            content: lastMessage.content + (textEvent.delta?.text || '')
-          };
-          return updatedMessages;
-        } else {
-          // Create a new message
-          return [...prev, { role: 'assistant', content: textEvent.delta?.text || '' }];
+        // Check if we have a user message first
+        if (prev.length === 0 || prev[prev.length - 1].role !== 'user') {
+          // If there's no user message yet or the last message is not from the user,
+          // we might be in an initialization state. In this case, just create a new assistant message.
+          const existingAssistantMessage = prev.find(msg => msg.role === 'assistant' && !msg.itemId);
+          
+          if (existingAssistantMessage) {
+            // If we already have an assistant message without an itemId, update it instead of creating a new one
+            return prev.map(msg => 
+              (msg.role === 'assistant' && !msg.itemId) 
+                ? { 
+                    ...msg, 
+                    content: msg.content + (needSpaceBetween(msg.content, textEvent.delta.text) ? ' ' : '') + textEvent.delta.text 
+                  }
+                : msg
+            );
+          }
+          
+          // Create a new assistant message
+          return [...prev, { 
+            role: 'assistant', 
+            content: textEvent.delta.text,
+            timestamp: new Date().toISOString()
+          }];
         }
+        
+        // Find the last assistant message that doesn't have an itemId (current streaming message)
+        const lastAssistantIndex = prev.findIndex(msg => 
+          msg.role === 'assistant' && !msg.itemId
+        );
+        
+        if (lastAssistantIndex >= 0) {
+          // Update existing message
+          const lastAssistantMsg = prev[lastAssistantIndex];
+          // Add a space before the new text if needed (when the last character isn't a space or punctuation)
+          const needsSpace = needSpaceBetween(lastAssistantMsg.content, textEvent.delta.text);
+          
+          return prev.map((msg, idx) => 
+            idx === lastAssistantIndex 
+              ? { ...msg, content: msg.content + (needsSpace ? ' ' : '') + textEvent.delta.text }
+              : msg
+          );
+        }
+        
+        // If we don't have an existing assistant message without an itemId, create a new one
+        return [...prev, { 
+          role: 'assistant', 
+          content: textEvent.delta.text,
+          timestamp: new Date().toISOString()
+        }];
       });
     } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
-      console.log('Transcription completed event:', event);
-      // Add user's transcribed message
-      if (event.transcript) {
-        const transcriptionText = event.transcript;
-        console.log('Adding user transcription:', transcriptionText);
-        setMessages(prev => {
-          // Find if we already have a placeholder message for this item_id
-          const existingIndex = prev.findIndex(msg => 
-            msg.role === 'user' && msg.content === '...' && msg.itemId === event.item_id
+      if (!event.transcript?.trim()) return;
+      
+      const transcriptionText = event.transcript.trim();
+      
+      setMessages(prev => {
+        // Check if this transcription already exists
+        const existingIndex = prev.findIndex(msg => 
+          msg.role === 'user' && 
+          msg.itemId === event.item_id
+        );
+        
+        if (existingIndex >= 0) {
+          // Update existing message
+          return prev.map((msg, idx) => 
+            idx === existingIndex
+              ? { 
+                  role: 'user',
+                  content: transcriptionText,
+                  itemId: event.item_id,
+                  timestamp: new Date().toISOString()
+                }
+              : msg
           );
-          
-          if (existingIndex >= 0) {
-            // Update the placeholder message
-            const updatedMessages = [...prev];
-            updatedMessages[existingIndex] = {
-              role: 'user', 
-              content: transcriptionText,
-              itemId: event.item_id
-            };
-            return updatedMessages;
-          } else {
-            // Add as a new message if no placeholder exists
-            return [...prev, { 
-              role: 'user', 
-              content: transcriptionText,
-              itemId: event.item_id 
-            }];
-          }
-        });
-      }
+        }
+        
+        // Add new message
+        return [...prev, {
+          role: 'user',
+          content: transcriptionText,
+          itemId: event.item_id,
+          timestamp: new Date().toISOString()
+        }];
+      });
     } else if (event.type === 'conversation.item.created') {
-      // Handle conversation item created events which can contain user transcripts
-      console.log('Item created event:', event);
       if (event.item?.role === 'user') {
-        // Check for content in different formats
         let userText = '';
         
-        // Check for direct text content
+        // Try to get text content from different possible locations
         if (event.item?.input?.content?.text) {
-          userText = event.item.input.content.text;
-          console.log('Found text content:', userText);
-        } 
-        // Check for input_audio content with transcript
-        else if (event.item?.content && Array.isArray(event.item.content)) {
-          // Look for input_audio type content with transcript
-          console.log('Checking content array:', event.item.content);
+          userText = event.item.input.content.text.trim();
+        } else if (event.item?.content && Array.isArray(event.item.content)) {
           for (const content of event.item.content) {
-            console.log('Content item:', content);
             if (content.type === 'input_audio' && content.transcript) {
-              userText = content.transcript;
-              console.log('Found transcript in content:', userText);
+              userText = content.transcript.trim();
               break;
             }
           }
         }
         
         if (userText) {
-          console.log('Adding user text to messages:', userText);
           setMessages(prev => {
-            // Check if this exact message already exists to avoid duplicates
-            const messageExists = prev.some(msg => 
-              msg.role === 'user' && msg.content === userText
+            // Check for duplicate messages
+            const isDuplicate = prev.some(msg => 
+              msg.role === 'user' && 
+              msg.content === userText &&
+              msg.itemId === event.item.id
             );
             
-            if (!messageExists) {
-              return [...prev, { 
-                role: 'user', 
-                content: userText,
-                itemId: event.item.id 
-              }];
-            }
-            return prev;
-          });
-        } else {
-          // Add a placeholder message that will be updated when transcription completes
-          console.log('No user text found in the event, adding placeholder message');
-          setMessages(prev => {
-            // Check if we already have a placeholder for this item
-            const placeholderExists = prev.some(msg => 
-              msg.role === 'user' && msg.itemId === event.item.id
-            );
+            if (isDuplicate) return prev;
             
-            if (!placeholderExists) {
-              return [...prev, { 
-                role: 'user', 
-                content: '...', // Placeholder content
-                itemId: event.item.id 
-              }];
-            }
-            return prev;
+            return [...prev, {
+              role: 'user',
+              content: userText,
+              itemId: event.item.id,
+              timestamp: new Date().toISOString()
+            }];
           });
         }
       }
     } else if (event.type === 'response.audio_transcript.delta') {
-      // Handle assistant messages from audio transcript delta events
+      const delta = event.delta?.trim() || '';
+      if (!delta) return;
+      
+      // Log the audio transcript delta for debugging
+      console.log('Received audio transcript delta:', delta);
+      
       setMessages(prev => {
-        const lastMessage = prev.length > 0 ? prev[prev.length - 1] : null;
-        
-        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.itemId === event.item_id) {
-          // Update the last message
-          const updatedMessages = [...prev];
-          updatedMessages[prev.length - 1] = {
-            ...lastMessage,
-            content: lastMessage.content + (event.delta || '')
-          };
-          return updatedMessages;
-        } else {
-          // Create a new message
-          return [...prev, { 
-            role: 'assistant', 
-            content: event.delta || '',
-            itemId: event.item_id 
-          }];
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage?.role === 'assistant' && lastMessage.itemId === event.item_id) {
+          // Update existing message
+          // Add a space before the new text if needed
+          const needsSpace = lastMessage.content.length > 0 && 
+                            !lastMessage.content.endsWith(' ') && 
+                            !lastMessage.content.endsWith('.') && 
+                            !lastMessage.content.endsWith(',') && 
+                            !lastMessage.content.endsWith('!') && 
+                            !lastMessage.content.endsWith('?') && 
+                            !lastMessage.content.endsWith(':') && 
+                            !lastMessage.content.endsWith(';') && 
+                            !lastMessage.content.endsWith('-') && 
+                            !delta.startsWith(' ') && 
+                            !delta.startsWith('.') && 
+                            !delta.startsWith(',') && 
+                            !delta.startsWith('!') && 
+                            !delta.startsWith('?') && 
+                            !delta.startsWith(':') && 
+                            !delta.startsWith(';') && 
+                            !delta.startsWith('-');
+          
+          return prev.map((msg, idx) => 
+            idx === prev.length - 1
+              ? { ...msg, content: msg.content + (needsSpace ? ' ' : '') + delta }
+              : msg
+          );
         }
+        
+        // Create new message
+        return [...prev, {
+          role: 'assistant',
+          content: delta,
+          itemId: event.item_id,
+          timestamp: new Date().toISOString()
+        }];
       });
     } else if (event.type === 'response.audio_transcript.done') {
-      if (event.transcript) {
-        // Find if we already have a message for this item_id
-        setMessages(prev => {
-          const existingIndex = prev.findIndex(msg => 
-            msg.role === 'assistant' && msg.itemId === event.item_id
+      if (!event.transcript?.trim()) return;
+      
+      const transcript = event.transcript.trim();
+      
+      setMessages(prev => {
+        const existingIndex = prev.findIndex(msg => 
+          msg.role === 'assistant' && 
+          msg.itemId === event.item_id
+        );
+        
+        if (existingIndex >= 0) {
+          // Update existing message
+          return prev.map((msg, idx) => 
+            idx === existingIndex
+              ? {
+                  role: 'assistant',
+                  content: transcript,
+                  itemId: event.item_id,
+                  timestamp: new Date().toISOString()
+                }
+              : msg
           );
-          
-          if (existingIndex >= 0) {
-            // Update the existing message
-            const updatedMessages = [...prev];
-            updatedMessages[existingIndex] = {
-              role: 'assistant', 
-              content: event.transcript,
-              itemId: event.item_id
-            };
-            return updatedMessages;
-          } else {
-            // Add as a new message
-            return [...prev, { 
-              role: 'assistant', 
-              content: event.transcript,
-              itemId: event.item_id 
-            }];
-          }
-        });
-      }
+        }
+        
+        // Add new message
+        return [...prev, {
+          role: 'assistant',
+          content: transcript,
+          itemId: event.item_id,
+          timestamp: new Date().toISOString()
+        }];
+      });
     }
   }, []);
 
-  // Store language and level parameters for reinitialization
-  const languageRef = useRef<string | undefined>();
-  const levelRef = useRef<string | undefined>();
-
   // Initialize the realtime service
-  const initialize = useCallback(async (language?: string, level?: string) => {
-    // If language and level are provided, store them for future use
-    if (language) languageRef.current = language;
-    if (level) levelRef.current = level;
-    
-    // Use stored values if not provided
-    const langToUse = language || languageRef.current;
-    const levelToUse = level || levelRef.current;
-    if (initializationAttemptRef.current) return true; // Return true if already initializing
-    initializationAttemptRef.current = true;
+  const initialize = useCallback(async (language?: string, level?: string, topic?: string) => {
+    if (!isBrowser) return false;
+    if (!realtimeService) return false;
     
     try {
-      console.log('Initializing realtime service...');
+      console.log('Initializing...');
       setError(null);
       
-      // First, ensure any existing connections are closed
-      realtimeService.disconnect();
+      // Store the parameters in refs for future use
+      if (language) languageRef.current = language;
+      if (level) levelRef.current = level;
+      if (topic) topicRef.current = topic;
       
+      // Use either the provided parameters or the stored references
+      const langToUse = language || languageRef.current;
+      const levelToUse = level || levelRef.current;
+      const topicToUse = topic || topicRef.current;
+      
+      // Initialize with language and level if provided
+      console.log('Initializing with language:', langToUse, 'level:', levelToUse, 'topic:', topicToUse);
       const success = await realtimeService.initialize(
-        handleMessage,
+        handleMessage, // Use the handleMessage callback directly
         () => {
-          console.log('Connected to realtime service');
+          console.log('Connected to service');
           setIsConnected(true);
         },
         () => {
-          console.log('Disconnected from realtime service');
+          console.log('Disconnected from service');
           setIsConnected(false);
           setIsRecording(false);
         },
         langToUse,
-        levelToUse
+        levelToUse,
+        topicToUse
       );
       
-      if (success) {
-        console.log('Realtime service initialized successfully');
-        setIsInitialized(true);
-        initializationAttemptRef.current = false;
-        retryCountRef.current = 0;
-        return true;
-      } else {
-        console.error('Failed to initialize realtime service');
-        setError('Failed to initialize realtime service');
-        initializationAttemptRef.current = false;
+      if (!success) {
+        setError('Failed to initialize voice service. Please try again.');
+        console.error('Failed to initialize voice service');
         return false;
       }
+      
+      setIsInitialized(true);
+      return true;
     } catch (err) {
-      console.error('Error initializing realtime service:', err);
-      setError('Error initializing realtime service');
-      initializationAttemptRef.current = false;
+      console.error('Error in initialize:', err);
+      setError('An error occurred during initialization');
       return false;
     }
-  }, [handleMessage]);
+  }, [isBrowser, handleMessage]); // Add handleMessage to dependencies
 
   // Start a conversation
   const startConversation = useCallback(async () => {
@@ -253,7 +331,8 @@ export function useRealtime() {
       // Make sure we're initialized
       if (!isInitialized) {
         console.log('Not initialized, initializing first...');
-        const initSuccess = await initialize();
+        // Pass stored refs to ensure parameters are maintained
+        const initSuccess = await initialize(languageRef.current, levelRef.current, topicRef.current);
         
         // Wait a bit for initialization to complete
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -336,7 +415,9 @@ export function useRealtime() {
   }, []);
 
   // Toggle the conversation state
-  const toggleConversation = useCallback(async () => {
+  const toggleConversation = useCallback(async (instructions?: string) => {
+    if (!isBrowser || !realtimeService) return false;
+    
     try {
       if (isRecording) {
         console.log('Already recording, stopping conversation...');

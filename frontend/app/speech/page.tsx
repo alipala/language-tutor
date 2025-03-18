@@ -8,55 +8,50 @@ import dynamic from 'next/dynamic';
 interface SpeechClientProps {
   language: string;
   level: string;
+  topic?: string;
 }
 
-// Import the component with no SSR and specify the props type
-const SpeechClient = dynamic<SpeechClientProps>(() => import('@/app/speech/speech-client'), {
-  ssr: false
-});
+// Dynamically import SpeechClient with no SSR
+const SpeechClient = dynamic(() => import('./speech-client'), { ssr: false });
 
 export default function SpeechPage() {
   const router = useRouter();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Add a reference to track if we've already handled navigation
   const navigationHandledRef = useRef(false);
+  
+  // Set up session refresh prevention
+  const refreshCountKey = 'speechPageRefreshCount';
   
   useEffect(() => {
     // Prevent multiple executions of this effect
     if (navigationHandledRef.current) {
-      console.log('Navigation already handled, skipping');
       return;
     }
     
-    // Debug information about the current page
-    console.log('Speech page loaded at:', new Date().toISOString());
-    console.log('Current URL:', window.location.href);
-    console.log('Current pathname:', window.location.pathname);
+    // Check for excessive page refreshes
+    const refreshCount = parseInt(sessionStorage.getItem(refreshCountKey) || '0', 10);
+    sessionStorage.setItem(refreshCountKey, (refreshCount + 1).toString());
+    console.log('Speech page refresh count:', refreshCount + 1);
     
-    // Check if we're in a refresh loop
-    const refreshCountKey = 'speechPageRefreshCount';
-    const refreshCount = parseInt(sessionStorage.getItem(refreshCountKey) || '0');
-    console.log('Current refresh count:', refreshCount);
-    
-    if (refreshCount > 3) {
-      console.log('Detected potential refresh loop, resetting session storage');
-      // Clear only navigation-related items, not the language/level selections
-      sessionStorage.removeItem(refreshCountKey);
-      sessionStorage.removeItem('speechPageLoadTime');
-      sessionStorage.removeItem('hasNavigatedFromSpeechPage');
-    } else {
-      // Increment refresh count
-      sessionStorage.setItem(refreshCountKey, (refreshCount + 1).toString());
+    // If we've refreshed too many times, it could be a navigation loop
+    if (refreshCount > 5) {
+      console.error('Too many speech page refreshes detected, possible navigation loop');
+      // Clear session to break the loop
+      sessionStorage.clear();
+      // Force reload the page to start fresh
+      window.location.href = '/';
+      return;
     }
     
     // Retrieve the selected language and level from session storage
     const language = sessionStorage.getItem('selectedLanguage');
     const level = sessionStorage.getItem('selectedLevel');
+    const topic = sessionStorage.getItem('selectedTopic');
     
-    console.log('Retrieved from sessionStorage - language:', language, 'level:', level);
+    console.log('Retrieved from sessionStorage - language:', language, 'level:', level, 'topic:', topic);
     
     // Mark that we've handled navigation
     navigationHandledRef.current = true;
@@ -87,6 +82,7 @@ export default function SpeechPage() {
     // If we have language and level, update the state
     setSelectedLanguage(language);
     setSelectedLevel(level);
+    setSelectedTopic(topic);
     setIsLoading(false);
     
     // Reset refresh count when successfully loaded
@@ -99,111 +95,118 @@ export default function SpeechPage() {
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
   
-  // Add a separate effect for handling beforeunload events
+  // Show warning before leaving the conversation
   useEffect(() => {
-    // Add an event listener to prevent page refreshes from F5 or browser refresh
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only prevent unload if we're in a conversation
-      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
-      if (isInConversation) {
-        console.log('User attempted to refresh during conversation');
-        // Standard way to show a confirmation dialog before page unload
-        const message = 'Leave site? Changes that you made may not be saved.';
+      // Only show warning if conversation is active
+      if (sessionStorage.getItem('isInConversation') === 'true') {
+        const message = 'You are in the middle of a conversation. Are you sure you want to leave?';
         e.preventDefault();
         e.returnValue = message;
         return message;
       }
+      return undefined;
     };
     
-    // Custom warning dialog for navigation within the app
-    const handleLinkClick = (e: MouseEvent) => {
-      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
-      if (isInConversation) {
-        const linkElement = (e.target as HTMLElement).closest('a');
-        if (linkElement && linkElement.getAttribute('href')) {
-          const href = linkElement.getAttribute('href');
-          // Only intercept internal navigation, not external links
-          if (href && (href.startsWith('/') || href.startsWith('#'))) {
-            e.preventDefault();
-            setPendingNavigationUrl(href);
-            setShowLeaveWarning(true);
-          }
-        }
-      }
-    };
-    
-    // Add the event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('click', handleLinkClick);
-    
-    // Clean up the event listeners when component unmounts
     return () => {
-      console.log('Speech page component unmounting');
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('click', handleLinkClick);
     };
   }, []);
   
-  // Function to handle navigation after warning
-  const handleLeaveConfirmation = (confirmed: boolean) => {
-    setShowLeaveWarning(false);
-    
-    if (confirmed && pendingNavigationUrl) {
-      // Navigate to the pending URL
+  // Handle change language action - show a warning if needed
+  const handleChangeLanguage = () => {
+    if (sessionStorage.getItem('isInConversation') === 'true') {
+      setShowLeaveWarning(true);
+      setPendingNavigationUrl('/language-selection');
+    } else {
+      window.location.href = '/language-selection';
+    }
+  };
+  
+  // Handle change level action - show a warning if needed
+  const handleChangeLevel = () => {
+    if (sessionStorage.getItem('isInConversation') === 'true') {
+      setShowLeaveWarning(true);
+      setPendingNavigationUrl('/level-selection');
+    } else {
+      window.location.href = '/level-selection';
+    }
+  };
+  
+  // Confirm navigation after warning
+  const handleConfirmNavigation = () => {
+    sessionStorage.removeItem('isInConversation');
+    if (pendingNavigationUrl) {
       window.location.href = pendingNavigationUrl;
     }
-    
-    // Reset the pending URL
-    setPendingNavigationUrl(null);
+    setShowLeaveWarning(false);
   };
-
+  
+  // Cancel navigation after warning
+  const handleCancelNavigation = () => {
+    setPendingNavigationUrl(null);
+    setShowLeaveWarning(false);
+  };
+  
   if (isLoading) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-slate-900 to-slate-800 text-white">
-        <div className="relative w-20 h-20 mb-6">
-          <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-indigo-200/20 animate-pulse"></div>
-          <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-transparent border-t-indigo-500 animate-spin"></div>
+      <div className="flex h-screen items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <div className="animate-pulse flex flex-col items-center">
+            <div className="rounded-full h-16 w-16 bg-blue-500/20 mb-4 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <p className="text-blue-400 text-xl font-medium">Loading...</p>
+            <p className="text-slate-400 text-sm mt-2">Starting conversation</p>
+          </div>
         </div>
-        <p className="mt-4 text-indigo-200 animate-pulse">Loading conversation...</p>
-      </main>
+      </div>
     );
   }
 
   return (
     <>
-      <SpeechClient language={selectedLanguage!} level={selectedLevel!} />
-      
-      {/* Modern Leave Site Warning Modal */}
+      {/* Warning Modal for conversation interruption */}
       {showLeaveWarning && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all border border-slate-700">
-            <div className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30 flex items-center justify-center mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-white">Leave site?</h3>
-              </div>
-              <p className="text-slate-300 mb-6">Changes that you made may not be saved.</p>
-              <div className="flex justify-end space-x-3">
-                <button 
-                  onClick={() => handleLeaveConfirmation(false)}
-                  className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 rounded-full shadow-lg transition-all duration-300 transform hover:translate-y-[-2px]" 
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => handleLeaveConfirmation(true)}
-                  className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 rounded-full shadow-lg hover:shadow-red-500/20 transition-all duration-300 transform hover:translate-y-[-2px]" 
-                >
-                  Leave
-                </button>
-              </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-slate-700">
+            <div className="flex items-center text-amber-500 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-lg font-medium">End current conversation?</h3>
+            </div>
+            <p className="text-slate-300 mb-6">You're currently in a conversation. Leaving this page will end your current session.</p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+              <button
+                type="button"
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
+                onClick={handleCancelNavigation}
+              >
+                Continue Conversation
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
+                onClick={handleConfirmNavigation}
+              >
+                End Conversation
+              </button>
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Main Content */}
+      {selectedLanguage && selectedLevel && (
+        <SpeechClient 
+          language={selectedLanguage} 
+          level={selectedLevel} 
+          topic={selectedTopic || undefined}
+        />
       )}
     </>
   );

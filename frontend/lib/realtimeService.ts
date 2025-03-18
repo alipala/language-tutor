@@ -31,7 +31,8 @@ export class RealtimeService {
     onConnected?: () => void, 
     onDisconnected?: () => void,
     language?: string,
-    level?: string
+    level?: string,
+    topic?: string
   ): Promise<boolean> {
     try {
       console.log('Initializing realtime service...');
@@ -71,7 +72,7 @@ export class RealtimeService {
       
       try {
         // Get ephemeral key from backend with language and level if provided
-        const token = await this.getEphemeralKey(language, level);
+        const token = await this.getEphemeralKey(language, level, topic);
         if (!token) {
           console.error('Failed to get ephemeral key (empty token)');
           return false;
@@ -651,11 +652,15 @@ export class RealtimeService {
   /**
    * Get an ephemeral key from the backend
    */
-  private async getEphemeralKey(language?: string, level?: string): Promise<string> {
+  private async getEphemeralKey(language?: string, level?: string, topic?: string): Promise<string> {
+    // Flag to track if we're using the mock token endpoint
+    let usedMockToken = false;
+    
     try {
       console.log('Getting ephemeral key from backend...');
       console.log('Language:', language);
       console.log('Level:', level);
+      console.log('Topic:', topic);
       
       // Ensure we have both language and level
       if (!language || !level) {
@@ -671,10 +676,14 @@ export class RealtimeService {
       const requestBody = {
         language: language,
         level: level,
-        voice: 'alloy' // Default voice
+        voice: 'alloy', // Default voice
+        topic: topic || null // Add topic if provided
       };
       
       console.log('Request body:', JSON.stringify(requestBody));
+      
+      // Variable to store error from real endpoint if it fails
+      let realEndpointError: any = null;
       
       try {
         const response = await fetch(endpoint, {
@@ -692,54 +701,110 @@ export class RealtimeService {
           console.log('Received response from backend:', data);
           
           if (data.ephemeral_key) {
+            console.log('Successfully obtained real ephemeral key');
             return data.ephemeral_key;
           } else if (data.client_secret && data.client_secret.value) {
+            console.log('Successfully obtained client secret value');
             return data.client_secret.value;
+          } else {
+            console.error('Response did not contain expected token format:', data);
+            throw new Error('Invalid response format from token endpoint');
           }
         } else {
-          const errorText = await response.text();
-          console.error('Error from real endpoint:', errorText);
+          // Try to parse the error as JSON first
+          let errorData: any = null;
+          try {
+            errorData = await response.json();
+            console.error('Error response from token endpoint:', response.status, errorData);
+          } catch (jsonError) {
+            // If it's not JSON, get it as text
+            const errorText = await response.text();
+            console.error('Error from real endpoint (status ' + response.status + '):', errorText);
+            errorData = errorText;
+          }
+          
+          realEndpointError = {
+            status: response.status,
+            data: errorData
+          };
+          
+          throw new Error(`Token endpoint returned ${response.status}`);
         }
-        
-        // If we get here, the real endpoint failed, so try the mock endpoint
-        console.log('Real endpoint failed, trying mock endpoint...');
       } catch (error) {
         console.error('Error with real endpoint:', error);
-        console.log('Trying mock endpoint...');
+        realEndpointError = error;
+        console.log('Real endpoint failed, trying mock endpoint as fallback...');
       }
       
       // Try the mock endpoint as a fallback
+      usedMockToken = true;
       endpoint = `${this.backendUrl}/api/mock-token`;
       console.log('Fetching mock ephemeral key from:', endpoint);
       console.log('Mock request body:', JSON.stringify(requestBody));
       
-      const mockResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        credentials: 'omit',
-      });
-      
-      if (!mockResponse.ok) {
-        const errorText = await mockResponse.text();
-        console.error('Failed to get mock ephemeral key:', errorText);
-        throw new Error(`Failed to get ephemeral key: ${errorText}`);
-      }
-      
-      const mockData = await mockResponse.json();
-      console.log('Received mock response from backend:', mockData);
-      
-      if (mockData.ephemeral_key) {
-        console.log('Using mock ephemeral key for testing');
-        return mockData.ephemeral_key;
-      } else {
-        console.error('Invalid mock response format:', mockData);
-        throw new Error('Invalid mock response format');
+      try {
+        const mockResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          credentials: 'omit',
+        });
+        
+        if (!mockResponse.ok) {
+          let errorInfo = '';
+          try {
+            const errorData = await mockResponse.json();
+            errorInfo = JSON.stringify(errorData);
+          } catch (e) {
+            errorInfo = await mockResponse.text();
+          }
+          
+          console.error(`Failed to get mock ephemeral key (status ${mockResponse.status}):`, errorInfo);
+          
+          // If both real and mock endpoints failed, provide comprehensive error
+          if (realEndpointError) {
+            throw new Error(`Real endpoint failed: ${realEndpointError.message || JSON.stringify(realEndpointError)}. Mock endpoint also failed (${mockResponse.status}): ${errorInfo}`);
+          }
+          
+          throw new Error(`Failed to get mock token: ${errorInfo}`);
+        }
+        
+        const mockData = await mockResponse.json();
+        console.log('Received mock response from backend');
+        
+        if (mockData.ephemeral_key) {
+          console.log('Using mock ephemeral key for testing');
+          return mockData.ephemeral_key;
+        } else {
+          console.error('Invalid mock response format:', mockData);
+          throw new Error('Invalid mock response format');
+        }
+      } catch (mockError) {
+        console.error('Error with mock endpoint:', mockError);
+        
+        // If both endpoints failed, provide a comprehensive error message
+        if (realEndpointError) {
+          throw new Error(`Real endpoint error: ${realEndpointError.message || JSON.stringify(realEndpointError)}. Mock endpoint error: ${mockError instanceof Error ? mockError.message : String(mockError)}`);
+        }
+        
+        throw mockError;
       }
     } catch (error) {
       console.error('Error getting ephemeral key:', error);
+      
+      // Log detailed debugging information
+      console.error('Detailed error context:', {
+        error,
+        language,
+        level,
+        topic,
+        backendUrl: this.backendUrl,
+        usedMockToken: usedMockToken || false
+      });
+      
+      // Return empty string to indicate failure
       return '';
     }
   }

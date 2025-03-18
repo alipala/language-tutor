@@ -3,6 +3,7 @@ export interface RealtimeMessage {
   role: 'user' | 'assistant';
   content: string;
   itemId?: string; // Optional ID to track which conversation item this message belongs to
+  timestamp?: string; // ISO string timestamp for message ordering
 }
 
 export interface RealtimeEvent {
