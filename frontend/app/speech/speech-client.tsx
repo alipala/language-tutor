@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import PronunciationAssessment from '@/components/pronunciation-assessment';
 
 interface SpeechClientProps {
   language: string;
@@ -27,6 +28,9 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
   const languageAlertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Add state for transcript processing
+  const [currentTranscript, setCurrentTranscript] = useState<string>('');
+  
   // Only log on initial render, not on every re-render
   useEffect(() => {
     if (initialRenderRef.current) {
@@ -46,85 +50,52 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
     sessionStorage.setItem('speechClientMountTime', mountTimestamp.toString());
     
     return () => {
-      console.log('SpeechClient component unmounting at:', new Date().toISOString());
-      console.log('Component was mounted for:', Date.now() - mountTimestamp, 'ms');
-      
-      // Store the unmount reason to help with debugging
-      sessionStorage.setItem('speechClientUnmountReason', 'normal_unmount');
+      console.log('SpeechClient component unmounted at:', new Date().toISOString());
+      console.log('Component was mounted for:', (Date.now() - mountTimestamp) / 1000, 'seconds');
+      sessionStorage.removeItem('speechClientMountTime');
     };
   }, []);
   
-  // Use the Realtime API hook
-  const {
-    isRecording,
-    messages,
-    error: realtimeError,
-    toggleConversation,
-    stopConversation,
-    clearError,
-    initialize
-  } = useRealtime();
-
-  // Initialize the realtime service when the component mounts
-  useEffect(() => {
-    // Initialize the realtime service with the language, level, and topic parameters
-    const initializeService = async () => {
-      console.log('Initializing realtime service with language:', language, 'level:', level, 'topic:', topic);
-      await initialize(language, level, topic);
-    };
-    
-    initializeService();
-    // Only run this effect when these values change, not on every re-render
-  }, [language, level, topic, initialize]);
-
-  // Process messages to filter out empty ones, ensure proper formatting, and detect language validation messages
-  const processedMessages = messages.filter(message => {
-    // Filter out messages that are empty or just placeholders
-    if (!message.content || message.content.trim() === '' || message.content === '...') {
-      return false;
-    }
-    // Include messages that have actual content
-    return true;
-  }).map(message => {
-    // Ensure proper spacing in content by removing excessive spaces
-    const formattedContent = message.content.trim()
-      .replace(/\s+/g, ' ')  // Replace multiple spaces with a single space
-      .replace(/\s([.,!?:;])/g, '$1'); // Remove spaces before punctuation
-    
-    // Log message processing for debugging
-    console.log(`Processing message: ${message.role}, content: ${formattedContent.substring(0, 30)}..., timestamp: ${message.timestamp || 'none'}`);
-    
+  // Initialize the realtime service and handle messages
+  const { isRecording, messages, error, toggleConversation, stopConversation, initialize } = useRealtime();
+  
+  // Process messages for display
+  const processedMessages = messages.map((message, index) => {
     return {
       ...message,
-      content: formattedContent,
-      // Ensure timestamp exists
-      timestamp: message.timestamp || new Date().toISOString()
+      itemId: `message-${index}`,
+      role: message.role === 'assistant' ? 'assistant' : 'user'
     };
   });
-
-  // Check for language validation messages
+  
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+  
+  // Show messages container when conversation starts
+  useEffect(() => {
+    if (messages.length > 0 && !showMessages) {
+      setShowMessages(true);
+    }
+  }, [messages, showMessages]);
+  
+  // Handle language alert
+  useEffect(() => {
+    if (isRecording && language === 'dutch' && !showLanguageAlert) {
+      setShowLanguageAlert(true);
       
-      if (language === 'dutch' && 
-          lastMessage?.role === 'assistant' && 
-          lastMessage.content && 
-          typeof lastMessage.content === 'string' && (
-          lastMessage.content.includes('Ik begrijp dat je in een andere taal spreekt') || 
-          lastMessage.content.includes('laten we Nederlands oefenen') ||
-          lastMessage.content.includes('Probeer het in het Nederlands'))) {
-        
-        setShowLanguageAlert(true);
-        
-        if (languageAlertTimeoutRef.current) {
-          clearTimeout(languageAlertTimeoutRef.current);
-        }
-        
-        languageAlertTimeoutRef.current = setTimeout(() => {
-          setShowLanguageAlert(false);
-        }, 6000);
+      // Clear any existing timeout
+      if (languageAlertTimeoutRef.current) {
+        clearTimeout(languageAlertTimeoutRef.current);
       }
+      
+      // Set timeout to hide the alert after 5 seconds
+      languageAlertTimeoutRef.current = setTimeout(() => {
+        setShowLanguageAlert(false);
+      }, 5000);
     }
     
     return () => {
@@ -132,227 +103,108 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         clearTimeout(languageAlertTimeoutRef.current);
       }
     };
-  }, [messages, language]);
-
-  // Clear error when recording state changes
+  }, [isRecording, language, showLanguageAlert]);
+  
+  // Handle errors
   useEffect(() => {
-    if (isRecording) {
-      setLocalError(null);
-      setIsAttemptingToRecord(false);
-      micPermissionDeniedRef.current = false;
-    }
-  }, [isRecording]);
-
-  // Always show messages panel
-  useEffect(() => {
-    setShowMessages(true);
-  }, []);
-
-  // Handle realtime errors
-  useEffect(() => {
-    if (realtimeError) {
-      // If the error is about microphone access, mark it
-      if (realtimeError.includes('microphone')) {
-        micPermissionDeniedRef.current = true;
-      }
-      
-      // Stop attempting to record if there's an error
-      if (isAttemptingToRecord) {
-        setIsAttemptingToRecord(false);
-      }
-    }
-  }, [realtimeError, isAttemptingToRecord]);
-
-  // Scroll to bottom of messages
-  useEffect(() => {
-    if (messagesEndRef.current && showMessages) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [processedMessages, showMessages]);
-
-  const handleToggleRecording = async (e?: React.MouseEvent | React.TouchEvent) => {
-    // Prevent default browser behavior that might cause page refresh
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('Toggle recording event prevented at:', new Date().toISOString());
-    }
-    
-    console.log('handleToggleRecording called - isRecording:', isRecording, 'isAttemptingToRecord:', isAttemptingToRecord);
-    
-    // Set a flag in session storage to indicate we're in a conversation
-    // This will be used by the beforeunload handler to prevent accidental refreshes
-    if (!isRecording) {
-      sessionStorage.setItem('isInConversation', 'true');
+    if (error) {
+      console.error('Realtime error:', error);
+      setLocalError(error);
     } else {
-      sessionStorage.removeItem('isInConversation');
+      setLocalError(null);
     }
+  }, [error]);
+  
+  // Initialize the realtime service
+  useEffect(() => {
+    const initializeService = async () => {
+      try {
+        // Make sure language and level are defined before initializing
+        if (!language || !level) {
+          console.error('Missing required parameters: language or level');
+          setLocalError('Missing language or level. Please try again.');
+          return;
+        }
+        
+        // Log the parameters being passed to the initialize function
+        console.log('Initializing with parameters - language:', language, 'level:', level, 'topic:', topic || 'none');
+        
+        // Pass the language, level, and topic parameters to the initialize function
+        await initialize(language, level, topic);
+        console.log('Realtime service initialized successfully');
+      } catch (err) {
+        console.error('Failed to initialize realtime service:', err);
+        setLocalError('Failed to initialize the speech service. Please try again.');
+      }
+    };
     
-    // Clear any previous errors
-    setLocalError(null);
-    clearError();
+    initializeService();
+  }, [initialize, language, level, topic]);
+  
+  // Handle transcript updates
+  useEffect(() => {
+    // Extract the latest user message for the transcript
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    if (userMessages.length > 0) {
+      const latestUserMessage = userMessages[userMessages.length - 1];
+      setCurrentTranscript(latestUserMessage.content);
+    }
+  }, [messages]);
+  
+  // Handle recording toggle
+  const handleToggleRecording = async (e: React.MouseEvent) => {
+    e.preventDefault();
     
-    // If already recording, just stop
     if (isRecording) {
-      console.log('Already recording, stopping conversation...');
-      stopConversation();
+      handleEndConversation();
       return;
     }
     
-    // Check if microphone permission was previously denied
-    if (micPermissionDeniedRef.current) {
-      setLocalError('Microphone access was denied. Please grant microphone permissions and reload the page.');
-      return;
-    }
-    
-    // Otherwise, attempt to start recording
     setIsAttemptingToRecord(true);
+    
     try {
-      console.log('Starting microphone initialization sequence...');
-      
-      // First, ensure we're fully disconnected from any previous session
-      stopConversation();
-      
-      // Add a small delay to ensure cleanup is complete
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Store the current URL to detect navigation issues
-      const currentUrl = window.location.href;
-      sessionStorage.setItem('lastMicrophoneInitUrl', currentUrl);
-      
-      // We don't need to initialize again since we already do it on component mount
-      // and the values are stored in the useRealtime hook
-      
-      // Check if we're still on the same page after initialization
-      if (window.location.href !== currentUrl) {
-        console.error('Page URL changed during initialization, aborting microphone start');
-        return;
-      }
-        
-      console.log('Starting conversation...');
-      const success = await toggleConversation();
-      
-      if (!success) {
-        console.error('Failed to start conversation');
-        setLocalError('Failed to start conversation. Please try again.');
-        
-        // Reset state and flags
-        setIsAttemptingToRecord(false);
-        sessionStorage.removeItem('isInConversation');
-      } else {
-        console.log('Conversation started successfully');
-      }
-    } catch (err) {
-      console.error('Error starting conversation:', err);
-      setLocalError('An error occurred while starting the conversation. Please try again.');
+      await toggleConversation();
       setIsAttemptingToRecord(false);
-      sessionStorage.removeItem('isInConversation');
+    } catch (err) {
+      console.error('Error toggling conversation:', err);
+      setIsAttemptingToRecord(false);
+      
+      if (err instanceof Error && err.message.includes('Permission denied')) {
+        micPermissionDeniedRef.current = true;
+        setLocalError('Microphone permission denied. Please allow microphone access and try again.');
+      } else {
+        setLocalError('Failed to start recording. Please try again.');
+      }
     }
-  };
-
-  const handleEndConversation = (e?: React.MouseEvent | React.TouchEvent) => {
-    // Prevent default browser behavior that might cause page refresh
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    // Remove the conversation flag since we're ending the conversation
-    sessionStorage.removeItem('isInConversation');
-    
-    stopConversation();
-    setIsAttemptingToRecord(false);
-    // Don't hide messages when ending conversation
-  };
-
-  const handleChangeLanguage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    stopConversation();
-    // Clear the language selection to force re-selection
-    sessionStorage.removeItem('selectedLanguage');
-    console.log('Navigating to language selection');
-    
-    // Use setTimeout to ensure the navigation happens after the current event loop
-    setTimeout(() => {
-      console.log('Executing navigation to language selection');
-      window.location.href = '/language-selection';
-      
-      // Fallback navigation in case the first attempt fails (for Railway)
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('speech')) {
-          console.log('Still on speech page, using fallback navigation to language selection');
-          window.location.replace('/language-selection');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 100);
-  };
-
-  const handleChangeLevel = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    stopConversation();
-    // Keep the language but clear the level
-    sessionStorage.removeItem('selectedLevel');
-    console.log('Navigating to level selection');
-    
-    // Use setTimeout to ensure the navigation happens after the current event loop
-    setTimeout(() => {
-      console.log('Executing navigation to level selection');
-      window.location.href = '/level-selection';
-      
-      // Fallback navigation in case the first attempt fails (for Railway)
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('speech')) {
-          console.log('Still on speech page, using fallback navigation to level selection');
-          window.location.replace('/level-selection');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 100);
   };
   
-  const handleStartOver = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  // Handle end conversation
+  const handleEndConversation = () => {
     stopConversation();
-    
-    // Mark that we're intentionally navigating away
-    sessionStorage.setItem('intentionalNavigation', 'true');
-    console.log('Starting over - clearing session storage');
-    
-    // Clear all session storage
-    sessionStorage.clear();
-    
-    // Immediately set the intentional navigation flag again since we just cleared it
-    sessionStorage.setItem('intentionalNavigation', 'true');
-    
-    // Use setTimeout to ensure the navigation happens after the current event loop
-    setTimeout(() => {
-      console.log('Executing navigation to home page');
-      window.location.href = '/';
-      
-      // Fallback navigation in case the first attempt fails (for Railway)
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('speech')) {
-          console.log('Still on speech page, using fallback navigation to home');
-          window.location.replace('/');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 100);
   };
-
+  
+  // Handle continue learning
+  const handleContinueLearning = () => {
+    // Slight delay to allow the UI to update
+    setTimeout(() => {
+      console.log('Continuing conversation from where we left off');
+      toggleConversation();
+    }, 300);
+  };
+  
+  // Handle change language
+  const handleChangeLanguage = () => {
+    router.push('/topic-selection');
+  };
+  
+  // Handle change level
+  const handleChangeLevel = () => {
+    router.push(`/level-selection?language=${language}`);
+  };
+  
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4">
-      <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
+    <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4 overflow-x-hidden">
+      <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
         {/* Language alert notification */}
         {showLanguageAlert && language === 'dutch' && (
           <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-amber-600 text-white px-6 py-3 rounded-md shadow-lg z-50 animate-fade-in flex items-center space-x-2 max-w-md">
@@ -363,239 +215,224 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
           </div>
         )}
         
-        {/* Header */}
-        <div className="text-center mb-8">
+        {/* Header - Redesigned */}
+        <div className="text-center mb-6">
           <h1 className="text-4xl font-bold tracking-tight gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">
             {language.charAt(0).toUpperCase() + language.slice(1)} Conversation
           </h1>
           <p className="text-muted-foreground dark:text-slate-400 mt-2 text-improved">
             Level: {level.toUpperCase()} - Click the microphone to start talking
           </p>
-          <div className="flex flex-wrap justify-center gap-4 mb-8 animate-fade-in" style={{animationDelay: '200ms'}}>
+          
+          {/* Redesigned Navigation Controls */}
+          <div className="flex flex-wrap justify-center gap-3 mt-5 mb-6 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
               type="button"
               onClick={handleChangeLanguage}
-              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-blue-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-md shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-              </svg>
-              <span>Change Language</span>
+              Change Language
             </button>
             <button 
               type="button"
               onClick={handleChangeLevel}
-              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-full shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-md shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-              <span>Change Level</span>
-            </button>
-            <button 
-              type="button"
-              onClick={handleStartOver}
-              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 rounded-full shadow-lg hover:shadow-red-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Start Over</span>
+              Change Level
             </button>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          {/* Main Content Area - Split into two sections when messages are shown */}
-          <div className={`w-full flex ${showMessages ? 'flex-col md:flex-row' : 'flex-col items-center'} gap-6 md:gap-8`}>
-            {/* Microphone Section */}
-            <div className="w-full md:w-1/2 flex flex-col items-center justify-center">
-              {/* Microphone UI - Only shown when not recording */}
-              {!isRecording && !isAttemptingToRecord ? (
-                <div className="relative flex items-center justify-center transform transition-all duration-500">
-                  {/* Decorative rings */}
-                  <div className="absolute w-40 h-40 rounded-full mic-btn-ring"></div>
-                  <div className="absolute w-36 h-36 rounded-full mic-btn-ring" style={{ animationDelay: '0.5s' }}></div>
-                  <div className="absolute w-32 h-32 rounded-full mic-btn-ring" style={{ animationDelay: '1s' }}></div>
-                  
-                  {/* Microphone Button with gradient */}
-                  <Button
-                    type="button"
-                    onClick={(e) => handleToggleRecording(e)}
-                    onTouchStart={(e) => e.preventDefault()}
-                    aria-label="Start recording"
-                    className="mic-btn relative z-10 rounded-full w-28 h-28 flex items-center justify-center transition-all duration-500 touch-target"
-                  >
-                    <MicrophoneIcon isRecording={false} size={32} />
-                  </Button>
-                </div>
-              ) : (
-                /* Audio Visualization - Shown when recording or attempting to record */
-                <div className="my-12 flex flex-col items-center justify-center">
-                  <div className="relative w-48 h-48 flex items-center justify-center">
-                    {/* Animated rings */}
-                    <div className="absolute w-full h-full rounded-full bg-purple-500/5 animate-ping-slow"></div>
-                    <div className="absolute w-[110%] h-[110%] rounded-full bg-blue-500/5 animate-ping-slower"></div>
-                    
-                    {/* Central audio visualization */}
-                    <div className="relative w-32 h-32 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full flex items-center justify-center">
-                        <div className="flex items-center justify-center w-full h-full">
-                          {Array.from({ length: 24 }).map((_, i) => {
-                            const angle = (i * 15) * Math.PI / 180;
-                            const x = Math.cos(angle) * 50;
-                            const y = Math.sin(angle) * 50;
-                            return (
-                              <div 
-                                key={i}
-                                className="absolute w-1.5 bg-gradient-to-t from-blue-500 to-purple-600 rounded-full animate-sound-wave"
-                                style={{
-                                  height: `${Math.max(10, Math.min(40, 15 + Math.sin(i/3) * 25))}px`,
-                                  animationDelay: `${i * 0.05}s`,
-                                  transform: `translate(${x}px, ${y}px) rotate(${angle + Math.PI/2}rad)`,
-                                  transformOrigin: 'bottom',
-                                }}
-                              ></div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div className="text-lg font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
-                        <span className="animate-pulse">Live</span>
-                      </div>
+          {/* Main Content Area - Redesigned for better responsiveness and alignment */}
+          <div className="w-full max-w-6xl mx-auto relative">
+            {/* Microphone Section - Centered when no conversation, animates out when recording starts */}
+            <div className={`flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${isRecording || showMessages ? 'opacity-0 scale-90 pointer-events-none absolute top-0 left-1/2 transform -translate-x-1/2' : 'opacity-100 mb-12'}`}>
+              {/* Microphone UI with improved animations */}
+              <div className="relative flex items-center justify-center transform transition-all duration-500">
+                {/* Decorative rings with improved animations */}
+                <div className="absolute w-40 h-40 rounded-full mic-btn-ring"></div>
+                <div className="absolute w-36 h-36 rounded-full mic-btn-ring" style={{ animationDelay: '0.5s' }}></div>
+                <div className="absolute w-32 h-32 rounded-full mic-btn-ring" style={{ animationDelay: '1s' }}></div>
+                
+                {/* Enhanced overlay for initializing state */}
+                {isAttemptingToRecord && !isRecording && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-full z-20 flex items-center justify-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs text-white/80 animate-pulse">Initializing...</span>
                     </div>
                   </div>
-                </div>
-              )}
-              
-              {/* Status Text */}
-              <div className="mt-6 text-center">
-                <p className="text-lg font-medium gradient-text dark:from-indigo-400 dark:to-purple-400">
-                  {isRecording ? "I'm listening..." : isAttemptingToRecord ? "Starting..." : "Click to speak"}
-                </p>
-                {(localError || realtimeError) && (
-                  <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800/30 max-w-xs mx-auto">
-                    <p className="text-sm text-red-600 dark:text-red-400">
-                      {localError || realtimeError}
-                    </p>
-                    <button 
-                      onClick={() => {
-                        setLocalError(null);
-                        clearError();
-                        setIsAttemptingToRecord(false);
-                      }}
-                      className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 mt-1 underline"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
                 )}
+                
+                {/* Microphone Button with gradient */}
+                <Button
+                  type="button"
+                  onClick={(e) => handleToggleRecording(e)}
+                  onTouchStart={(e) => e.preventDefault()}
+                  aria-label="Start recording"
+                  className={`mic-btn relative z-10 rounded-full w-28 h-28 flex items-center justify-center transition-all duration-500 touch-target ${isAttemptingToRecord && !isRecording ? 'opacity-70' : 'opacity-100'}`}
+                  disabled={isAttemptingToRecord && !isRecording}
+                >
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-90"></div>
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 opacity-0 hover:opacity-90 transition-opacity duration-300"></div>
+                  
+                  {/* Microphone icon with animation */}
+                  <div className="relative z-10 flex items-center justify-center">
+                    <div className="relative">
+                      {/* Animated rings when recording */}
+                      {isRecording && (
+                        <>
+                          <div className="absolute w-full h-full rounded-full bg-purple-500/5 animate-ping-slow"></div>
+                          <div className="absolute w-[110%] h-[110%] rounded-full bg-blue-500/5 animate-ping-slower"></div>
+                        </>
+                      )}
+                      
+                      {/* Audio wave animation when recording */}
+                      {isRecording ? (
+                        <div className="flex items-center justify-center h-10 w-10">
+                          <div className="relative h-10 w-10">
+                            <div className="audio-wave">
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <MicrophoneIcon isRecording={isRecording} size={32} />
+                      )}
+                    </div>
+                  </div>
+                </Button>
               </div>
               
-              {/* Recording Controls - Only shown when recording */}
-              {isRecording && (
-                <div className="mt-8">
-                  <Button
-                    type="button"
-                    onClick={(e) => handleEndConversation(e)}
-                    onTouchStart={(e) => e.preventDefault()}
-                    variant="destructive"
-                    className="px-6 py-2 rounded-full"
-                  >
-                    End Conversation
-                  </Button>
+              <p className="mt-6 text-lg text-slate-300 animate-fade-in">
+                {isAttemptingToRecord ? 'Initializing microphone...' : 'Click to start speaking'}
+              </p>
+              
+              {/* Error message */}
+              {localError && (
+                <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center animate-fade-in">
+                  <p>{localError}</p>
                 </div>
               )}
             </div>
             
-            {/* Conversation Transcript Section - Enhanced Design */}
+            {/* Transcript Sections - Animate in when conversation starts */}
             {showMessages && (
-              <div className="w-full md:w-1/2 flex flex-col">
-                <div className="relative">
-                  <h3 className="text-lg font-semibold mb-2 text-indigo-600 dark:text-indigo-300 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                    Conversation Transcript
-                  </h3>
-                  <div className="bg-gradient-to-br from-white/10 to-white/5 dark:from-slate-800/50 dark:to-slate-900/80 backdrop-blur-sm rounded-xl border border-white/20 dark:border-indigo-500/20 shadow-lg shadow-indigo-500/5 dark:shadow-purple-500/10 p-4 h-[300px] md:h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
-                    <div className="space-y-4">
-                      {processedMessages.length > 0 ? (
-                        // Sort messages by timestamp if available, otherwise use the array order
-                        [...processedMessages]
-                          .sort((a, b) => {
-                            if (a.timestamp && b.timestamp) {
-                              return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-                            }
-                            return 0;
-                          })
-                          .map((message, index) => {
-                            // Parse timestamp for display or use current time as fallback
-                            const messageTime = message.timestamp 
-                              ? new Date(message.timestamp) 
-                              : new Date();
-                            
-                            // Format the time for display
-                            const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                            
-                            // Log message for debugging
-                            console.log(`Rendering message ${index}: ${message.role}, content: ${message.content.substring(0, 30)}..., timestamp: ${timeDisplay}`);
-                            
-                            return (
-                              <div 
-                                key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
-                                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-                              >
-                                {message.role !== 'user' && (
-                                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
-                                    <span className="text-xs font-bold text-white">T</span>
-                                  </div>
-                                )}
-                                <div 
-                                  className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
-                                    message.role === 'user' 
-                                      ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white ml-2 rounded-tr-none' 
-                                      : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white mr-2 rounded-tl-none'
-                                  }`}
-                                  style={{
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word',
-                                    whiteSpace: 'pre-wrap'
-                                  }}
-                                >
-                                  <div className="flex items-center justify-between mb-1 text-white/90">
-                                    <span className="text-xs font-semibold">
-                                      {message.role === 'user' ? 'You' : 'Tutor'}
-                                    </span>
-                                    <span className="text-xs opacity-75 ml-2">
-                                      {timeDisplay}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm leading-relaxed text-white/95 mt-1">{message.content}</p>
-                                </div>
-                                {message.role === 'user' && (
-                                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
-                                    <span className="text-xs font-bold text-white">U</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                      ) : (
-                        <div className="flex justify-center items-center h-full">
-                          <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto mb-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <p className="text-indigo-300 font-medium">Your conversation will appear here</p>
-                            <p className="text-indigo-200/70 text-sm mt-2">Click the microphone button to start talking</p>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
+              <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                  {/* Real-time Transcript Component */}
+                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 shadow-lg animate-fade-in" style={{animationDelay: '200ms'}}>
+                    <h3 className="text-lg font-semibold mb-3 text-blue-400 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      Real-time Transcript
+                    </h3>
+                    <PronunciationAssessment
+                      transcript={currentTranscript}
+                      isRecording={isRecording}
+                      onStopRecording={handleEndConversation}
+                      onContinueLearning={handleContinueLearning}
+                      language={language}
+                      level={level}
+                    />
                   </div>
-                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 h-1 w-1/3 rounded-full opacity-70"></div>
+                  
+                  {/* Conversation Transcript Section */}
+                  <div className="relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 shadow-lg animate-fade-in" style={{animationDelay: '300ms'}}>
+                    <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      Conversation Transcript
+                    </h3>
+                    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 h-[300px] md:h-[400px] overflow-y-auto custom-scrollbar">
+                      <div className="space-y-4">
+                        {processedMessages.length > 0 ? (
+                          // Sort messages by timestamp if available, otherwise use the array order
+                          [...processedMessages]
+                            .sort((a, b) => {
+                              if (a.timestamp && b.timestamp) {
+                                return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                              }
+                              return 0;
+                            })
+                            .map((message, index) => {
+                              // Parse timestamp for display or use current time as fallback
+                              const messageTime = message.timestamp 
+                                ? new Date(message.timestamp) 
+                                : new Date();
+                              
+                              // Format the time for display
+                              const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                              
+                              // Log message for debugging
+                              console.log(`Rendering message ${index}: ${message.role}, content: ${message.content.substring(0, 30)}..., timestamp: ${timeDisplay}`);
+                              
+                              return (
+                                <div 
+                                  key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
+                                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                                >
+                                  {message.role !== 'user' && (
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-2 shadow-md">
+                                      <span className="text-xs font-bold text-white">T</span>
+                                    </div>
+                                  )}
+                                  <div 
+                                    className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
+                                      message.role === 'user' 
+                                        ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white ml-2 rounded-tr-none' 
+                                        : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white mr-2 rounded-tl-none'
+                                    }`}
+                                    style={{
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      whiteSpace: 'pre-wrap'
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between mb-1 text-white/90">
+                                      <span className="text-xs font-semibold">
+                                        {message.role === 'user' ? 'You' : 'Tutor'}
+                                      </span>
+                                      <span className="text-xs opacity-75 ml-2">
+                                        {timeDisplay}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm leading-relaxed text-white/95 mt-1">{message.content}</p>
+                                  </div>
+                                  {message.role === 'user' && (
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center ml-2 shadow-md">
+                                      <span className="text-xs font-bold text-white">U</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                        ) : (
+                          <div className="flex justify-center items-center h-full">
+                            <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto mb-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              <p className="text-indigo-300 font-medium">Your conversation will appear here</p>
+                              <p className="text-indigo-200/70 text-sm mt-2">Click the microphone button to start talking</p>
+                            </div>
+                          </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </div>
+                    <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 h-1 w-1/3 rounded-full opacity-70"></div>
+                  </div>
                 </div>
               </div>
             )}
