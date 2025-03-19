@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 
 // Define types for pronunciation assessment
 export interface TranscriptSegment {
@@ -16,6 +17,7 @@ export interface PronunciationAssessmentProps {
   onStopRecording: () => void;
   language: string;
   level: string;
+  onContinueLearning?: () => void;
 }
 
 export default function PronunciationAssessment({
@@ -23,12 +25,15 @@ export default function PronunciationAssessment({
   isRecording,
   onStopRecording,
   language,
-  level
+  level,
+  onContinueLearning
 }: PronunciationAssessmentProps) {
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [isAssessing, setIsAssessing] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const prevTranscriptRef = useRef('');
   const segmentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
   // Process transcript changes to create segments
   useEffect(() => {
@@ -159,11 +164,19 @@ export default function PronunciationAssessment({
     }
   };
 
+  // Scroll to bottom of transcript when new segments are added
+  useEffect(() => {
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
+  }, [segments]);
+
   // Handle review button click
   const handleReviewPronunciation = () => {
     // Stop recording
     onStopRecording();
     setIsAssessing(true);
+    setShowModal(true);
     
     // Assess any remaining unassessed segments
     setSegments(prev => {
@@ -181,8 +194,25 @@ export default function PronunciationAssessment({
     });
   };
 
-  // Reset assessment state
+  // Reset assessment state and continue conversation
   const handleContinue = () => {
+    // Reset assessment state
+    setIsAssessing(false);
+    setShowModal(false);
+    
+    // Signal to parent that we're continuing the conversation
+    if (isRecording === false && onContinueLearning) {
+      // This will restart the conversation in the parent component
+      setTimeout(() => {
+        console.log('Continuing conversation from pronunciation assessment');
+        onContinueLearning(); // Use the dedicated continue learning handler
+      }, 300);
+    }
+  };
+  
+  // Close modal without continuing conversation
+  const handleCloseModal = () => {
+    setShowModal(false);
     setIsAssessing(false);
   };
 
@@ -233,15 +263,19 @@ export default function PronunciationAssessment({
 
       {/* Assessment Results */}
       {segments.length > 0 && (
-        <div className={`rounded-xl border border-white/20 p-4 ${isAssessing ? 'bg-slate-800/50' : 'bg-transparent'}`}>
+        <div className={`rounded-xl border border-white/20 p-4 ${isAssessing && !showModal ? 'bg-slate-800/50' : 'bg-transparent'}`}>
           <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
             </svg>
-            {isAssessing ? 'Pronunciation Assessment' : 'Real-time Transcript'}
+            {isAssessing && !showModal ? 'Pronunciation Assessment' : 'Real-time Transcript'}
           </h3>
 
-          <div className="space-y-3">
+          {/* Scrollable container for transcript */}
+          <div 
+            ref={transcriptContainerRef}
+            className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar"
+          >
             {segments.map((segment, index) => (
               <div 
                 key={index} 
@@ -251,7 +285,7 @@ export default function PronunciationAssessment({
                   {segment.text}
                 </p>
                 
-                {isAssessing && segment.assessment !== 'unassessed' && (
+                {isAssessing && !showModal && segment.assessment !== 'unassessed' && (
                   <div className="mt-2 flex items-center">
                     <div className="w-full bg-gray-700/30 rounded-full h-2.5">
                       <div 
@@ -273,7 +307,7 @@ export default function PronunciationAssessment({
           </div>
 
           {/* Legend - Only show in assessment mode */}
-          {isAssessing && (
+          {isAssessing && !showModal && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <h4 className="text-sm font-medium text-gray-300 mb-2">Color Guide:</h4>
               <div className="flex flex-wrap gap-3">
@@ -294,7 +328,7 @@ export default function PronunciationAssessment({
           )}
 
           {/* Continue Button - Only show in assessment mode */}
-          {isAssessing && (
+          {isAssessing && !showModal && (
             <div className="mt-4 flex justify-center">
               <Button
                 onClick={handleContinue}
@@ -304,6 +338,89 @@ export default function PronunciationAssessment({
               </Button>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Modal for Pronunciation Assessment */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <h2 className="text-xl font-bold text-indigo-400 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                </svg>
+                Pronunciation Assessment
+              </h2>
+              <button 
+                onClick={handleCloseModal}
+                className="p-1 rounded-full hover:bg-slate-700 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="h-6 w-6 text-slate-400 hover:text-white" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-10rem)]">
+              <div className="space-y-4">
+                {segments.map((segment, index) => (
+                  <div 
+                    key={index} 
+                    className={`p-4 rounded-lg border ${getBackgroundClass(segment.assessment)}`}
+                  >
+                    <p className={`text-lg ${getColorClass(segment.assessment)}`}>
+                      {segment.text}
+                    </p>
+                    
+                    {segment.assessment !== 'unassessed' && (
+                      <div className="mt-3 flex items-center">
+                        <div className="w-full bg-gray-700/30 rounded-full h-3">
+                          <div 
+                            className={`h-3 rounded-full ${
+                              segment.assessment === 'correct' ? 'bg-green-500' : 
+                              segment.assessment === 'minor' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`} 
+                            style={{ width: `${(segment.confidence || 0.5) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="ml-3 text-sm text-gray-300 min-w-[80px] text-right">
+                          {segment.assessment === 'correct' ? 'Good' : 
+                           segment.assessment === 'minor' ? 'Fair' : 'Needs Work'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-slate-700">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Color Guide:</h4>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                    <span className="text-sm text-gray-300">Good pronunciation</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                    <span className="text-sm text-gray-300">Minor issues</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                    <span className="text-sm text-gray-300">Needs improvement</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-slate-700 flex justify-center">
+              <Button
+                onClick={handleContinue}
+                className="px-8 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-full shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 text-base"
+              >
+                Continue Learning
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
