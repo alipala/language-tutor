@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import PronunciationAssessment from '@/components/pronunciation-assessment';
 
 interface SpeechClientProps {
   language: string;
@@ -26,6 +27,9 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   // Add language alert state
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
   const languageAlertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Add state for transcript processing
+  const [currentTranscript, setCurrentTranscript] = useState<string>('');
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -101,6 +105,24 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
       timestamp: message.timestamp || new Date().toISOString()
     };
   });
+  
+  // Update current transcript for user messages in a useEffect to avoid infinite re-renders
+  useEffect(() => {
+    // Find the latest user message
+    const userMessages = messages.filter(message => message.role === 'user');
+    if (userMessages.length > 0) {
+      const latestUserMessage = userMessages[userMessages.length - 1];
+      const formattedContent = latestUserMessage.content.trim()
+        .replace(/\s+/g, ' ')
+        .replace(/\s([.,!?:;])/g, '$1');
+      
+      setCurrentTranscript(prev => {
+        // Only append if this is a new message or content has changed
+        const isNewOrUpdated = !prev.includes(formattedContent);
+        return isNewOrUpdated ? `${prev} ${formattedContent}`.trim() : prev;
+      });
+    }
+  }, [messages]);
 
   // Check for language validation messages
   useEffect(() => {
@@ -508,9 +530,19 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
               )}
             </div>
             
-            {/* Conversation Transcript Section - Enhanced Design */}
+            {/* Pronunciation Assessment Section */}
             {showMessages && (
-              <div className="w-full md:w-1/2 flex flex-col">
+              <div className="w-full md:w-1/2 flex flex-col space-y-6">
+                {/* Add Pronunciation Assessment Component */}
+                <PronunciationAssessment
+                  transcript={currentTranscript}
+                  isRecording={isRecording}
+                  onStopRecording={handleEndConversation}
+                  language={language}
+                  level={level}
+                />
+                
+                {/* Conversation Transcript Section - Enhanced Design */}
                 <div className="relative">
                   <h3 className="text-lg font-semibold mb-2 text-indigo-600 dark:text-indigo-300 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
