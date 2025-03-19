@@ -1,8 +1,8 @@
-# Language Tutor Application
+# 🌍 Language Tutor Application
 
 > Forked from the original [Tutor Application](https://github.com/yourusername/tutor) on March 14, 2025.
 
-A language learning voice conversation application with a modern UI that allows users to interact through voice. The application uses FastAPI for the backend and Next.js for the frontend, with WebRTC for real-time communication. This project is specialized for language learning and practice with robust production deployment on Railway.
+A cutting-edge language learning voice conversation application with a sleek, modern UI that enables interactive voice-based learning. The application combines FastAPI's backend performance with Next.js's frontend capabilities and WebRTC for seamless real-time communication. Designed specifically for language learning with robust production deployment on Railway.
 
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-0.104.1-009688?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
@@ -11,15 +11,25 @@ A language learning voice conversation application with a modern UI that allows 
   <img src="https://img.shields.io/badge/WebRTC-Real--time-4285F4?style=for-the-badge&logo=webrtc" alt="WebRTC"/>
 </p>
 
-## Features
+## ✨ Features
 
+### Core Features
 - 🎙️ Language learning voice conversation with OpenAI integration
 - 🌍 Support for multiple languages (currently Dutch and English)
 - 🎓 Six proficiency levels (A1, A2, B1, B2, C1, C2) following CEFR standards
 - 🗣️ Topic selection for focused conversation practice
+
+### Pronunciation & Learning
+- 🔊 Real-time pronunciation assessment with color-coded feedback
+- 📊 Visual confidence indicators for pronunciation quality
+- 🎯 Interactive pronunciation review modal with detailed feedback
+- 📝 Scrollable real-time transcript with custom styling
+- 🔄 "Continue Learning" functionality to seamlessly resume conversations
+
+### Technical Features
 - 🌐 WebRTC for real-time communication
 - 🚀 FastAPI backend for high performance
-- 🎨 Modern dark gradient UI
+- 🎨 Modern dark gradient UI with animations
 - 📱 Responsive design for mobile and desktop
 - 🔄 Seamless frontend-backend integration
 - ⚡ Robust navigation with automatic recovery from stuck states
@@ -27,27 +37,29 @@ A language learning voice conversation application with a modern UI that allows 
 - 🛡️ Enhanced error handling and user feedback
 - 🌊 Optimized for reliable production deployment on Railway
 
-## About This Fork
+## 🔍 About This Fork
 
-This Language Tutor Application is a specialized fork of the original Tutor Application, focused on language learning capabilities. The core architecture and functionality remain the same, with enhancements specifically for language learning features.
+This Language Tutor Application is a specialized fork of the original Tutor Application, focused on language learning capabilities. The core architecture and functionality remain the same, with enhancements specifically for language learning features and an improved user experience.
 
-## Language Learning Features
+## 🎓 Language Learning Features
 
-### Supported Languages
+### 🌐 Supported Languages
 - **Dutch**: Complete support with all proficiency levels
 - **English**: Complete support with all proficiency levels
 
-### Proficiency Levels
+### 📊 Proficiency Levels
 The application follows the Common European Framework of Reference for Languages (CEFR) with six levels:
 
-- **A1 (Beginner)**: Can understand and use familiar everyday expressions and very basic phrases
-- **A2 (Elementary)**: Can communicate in simple and routine tasks on familiar topics
-- **B1 (Intermediate)**: Can deal with most situations likely to arise while traveling
-- **B2 (Upper Intermediate)**: Can interact with a degree of fluency and spontaneity
-- **C1 (Advanced)**: Can express ideas fluently and spontaneously without much searching for expressions
-- **C2 (Proficiency)**: Can express with precision in complex situations
+| Level | Name | Description |
+|-------|------|-------------|
+| **A1** | Beginner | Can understand and use familiar everyday expressions and very basic phrases |
+| **A2** | Elementary | Can communicate in simple and routine tasks on familiar topics |
+| **B1** | Intermediate | Can deal with most situations likely to arise while traveling |
+| **B2** | Upper Intermediate | Can interact with a degree of fluency and spontaneity |
+| **C1** | Advanced | Can express ideas fluently and spontaneously without much searching for expressions |
+| **C2** | Proficiency | Can express with precision in complex situations |
 
-### Topic Selection
+### 🗣️ Topic Selection
 The application offers a variety of conversation topics to focus your language practice:
 
 - **Travel** ✈️: Discuss travel destinations, experiences, and planning trips
@@ -67,6 +79,21 @@ You can also choose to skip topic selection for a free-form conversation.
 3. Select your proficiency level (A1-C2)
 4. Start a voice conversation with the language tutor
 5. Practice speaking and receive feedback appropriate to your level
+
+### 🔊 Pronunciation Assessment
+The application provides real-time pronunciation assessment with color-coded feedback:
+
+- **🟢 Green**: Correctly pronounced words
+- **🟡 Yellow**: Minor pronunciation issues
+- **🔴 Red**: Significant pronunciation errors
+
+Users can review their pronunciation after speaking to get detailed feedback on their language skills.
+
+#### New Pronunciation Features
+- **Interactive Review Modal**: Review your pronunciation with a dedicated modal interface
+- **Visual Feedback**: Animated microphone states show recording status clearly
+- **Seamless Learning Flow**: Continue your conversation after reviewing pronunciation
+- **Real-time Scrolling Transcript**: Never lose track of your conversation with auto-scrolling transcript
 
 ## Architecture
 

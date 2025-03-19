@@ -5,6 +5,28 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2025-03-19
+
+### Added
+- Interactive pronunciation review modal with exit button and escape key support
+- Gray-out effect with backdrop blur during microphone initialization
+- Scrollable real-time transcript with custom scrollbar styling
+- Microphone button animations and visual feedback during recording
+- "Continue Learning" button functionality to seamlessly resume conversations
+- Audio wave animations for better visual feedback during recording
+
+### Changed
+- Enhanced user experience with improved visual feedback during state transitions
+- Optimized component rendering for smoother animations
+- Improved accessibility with clearer visual indicators for microphone states
+- Added consistent styling across modals and interactive elements
+
+### Fixed
+- Resolved scrolling issues in the real-time transcript window
+- Fixed microphone initialization feedback to provide clearer user guidance
+- Corrected "Continue Learning" functionality to properly resume conversations
+- Improved modal behavior with proper focus management
+
 ## [2.6.0] - 2025-03-19
 
 ### Added
