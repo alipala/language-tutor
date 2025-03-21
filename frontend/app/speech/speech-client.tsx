@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
@@ -24,9 +24,10 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const micPermissionDeniedRef = useRef(false);
   
-  // Add language alert state
+  // Language alert state - simplified
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
   const languageAlertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const globalSafetyTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Backup safety mechanism
   
   // Add state for transcript processing
   const [currentTranscript, setCurrentTranscript] = useState<string>('');
@@ -84,48 +85,91 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   
   // Track detected language for language alert
   const [detectedWrongLanguage, setDetectedWrongLanguage] = useState(false);
-  // Add state for animation
+  // Add state for animation with better naming for clarity
   const [alertAnimationState, setAlertAnimationState] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden');
+  // Add ref to track if animation is in progress
+  const animationInProgressRef = useRef(false);
 
-  // Handle language alert - only show when user speaks a different language
-  useEffect(() => {
-    if (isRecording && language === 'dutch' && detectedWrongLanguage && alertAnimationState === 'hidden') {
-      // Start the entering animation
-      setAlertAnimationState('entering');
-      // Show the alert
-      setShowLanguageAlert(true);
+  // Simplified function to show and auto-hide the language alert
+  const showAndHideLanguageAlert = useCallback(() => {
+    console.log('Showing language alert notification');
+    
+    // Clear any existing timeouts first
+    if (languageAlertTimeoutRef.current) {
+      clearTimeout(languageAlertTimeoutRef.current);
+      languageAlertTimeoutRef.current = null;
+    }
+    
+    // Clear any existing global safety timeout
+    if (globalSafetyTimeoutRef.current) {
+      clearTimeout(globalSafetyTimeoutRef.current);
+      globalSafetyTimeoutRef.current = null;
+    }
+    
+    // Show the alert with enter animation
+    setShowLanguageAlert(true);
+    setAlertAnimationState('entering');
+    
+    // Wait a tiny bit for entering animation to apply
+    setTimeout(() => {
+      // Set to visible state
+      setAlertAnimationState('visible');
       
-      // Clear any existing timeout
-      if (languageAlertTimeoutRef.current) {
-        clearTimeout(languageAlertTimeoutRef.current);
-      }
-      
-      // After entering animation completes, set to visible state
-      setTimeout(() => {
-        setAlertAnimationState('visible');
-      }, 300); // Match this with CSS animation duration
-      
-      // Set timeout to hide the alert after 5 seconds
+      // Set primary timeout to hide after exactly 2 seconds
       languageAlertTimeoutRef.current = setTimeout(() => {
         // Start exit animation
         setAlertAnimationState('exiting');
         
-        // After exit animation completes, hide the alert
+        // Wait for exit animation to complete
         setTimeout(() => {
+          // Hide alert entirely
           setShowLanguageAlert(false);
           setAlertAnimationState('hidden');
-          // Reset the detected language flag after hiding the alert
           setDetectedWrongLanguage(false);
-        }, 300); // Match this with CSS animation duration
-      }, 5000);
+        }, 350); // Slightly longer than animation duration for safety
+      }, 2000); // Show for exactly 2 seconds
+      
+      // Set a guaranteed fallback timeout that will force-hide regardless
+      // This is our safety net in case animations fail
+      globalSafetyTimeoutRef.current = setTimeout(() => {
+        // If we're still showing the alert after 2.5 seconds, force hide it
+        console.log('Global safety timeout check');
+        
+        // Force hide the alert regardless of state
+        setShowLanguageAlert(false);
+        setAlertAnimationState('hidden');
+        setDetectedWrongLanguage(false);
+        
+        // Direct DOM manipulation as last resort
+        const alertElement = document.getElementById('language-alert-notification');
+        if (alertElement) {
+          alertElement.style.display = 'none';
+        }
+      }, 2500); // 2.5 seconds total (2s display + 0.5s buffer)
+    }, 10);
+  }, []);
+  
+  // Handle language alert - only show when user speaks a different language
+  useEffect(() => {
+    // Only proceed if we're recording, using Dutch, detected wrong language, and not currently animating/showing alert
+    if (isRecording && language === 'dutch' && detectedWrongLanguage && !showLanguageAlert) {
+      showAndHideLanguageAlert();
     }
     
+    // Cleanup function to prevent memory leaks
     return () => {
       if (languageAlertTimeoutRef.current) {
         clearTimeout(languageAlertTimeoutRef.current);
+        languageAlertTimeoutRef.current = null;
+      }
+      
+      // Also clear the global safety timeout
+      if (globalSafetyTimeoutRef.current) {
+        clearTimeout(globalSafetyTimeoutRef.current);
+        globalSafetyTimeoutRef.current = null;
       }
     };
-  }, [isRecording, language, alertAnimationState, detectedWrongLanguage]);
+  }, [isRecording, language, showLanguageAlert, detectedWrongLanguage, showAndHideLanguageAlert]);
   
   // Handle errors
   useEffect(() => {
@@ -195,10 +239,18 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         // Check if the text contains English patterns
         const containsEnglish = englishPatterns.some(pattern => pattern.test(text));
         
+        // More precise language detection
+        const hasNonDutchCharacters = /[qwxyz]/i.test(text) && text.length > 3; // These characters are rare in Dutch
+        const hasDutchSpecificCombinations = /\b(ij|aa|ee|oo|uu|eu|oe|ui)\b/i.test(text);
+        
         // If the text contains more English patterns than Dutch patterns, it's likely not Dutch
         if ((containsEnglish && !containsDutch) || 
-            (text.length > 5 && !containsDutch && !text.includes('ij') && !text.includes('aa') && !text.includes('ee') && !text.includes('oo') && !text.includes('uu'))) {
-          setDetectedWrongLanguage(true);
+            (text.length > 5 && !containsDutch && !hasDutchSpecificCombinations) ||
+            hasNonDutchCharacters) {
+          // Only set to true if we're not already showing the alert
+          if (!showLanguageAlert || alertAnimationState === 'hidden') {
+            setDetectedWrongLanguage(true);
+          }
         } else if (containsDutch && !containsEnglish) {
           // If the user is now speaking Dutch, hide the alert with animation
           if (showLanguageAlert && alertAnimationState !== 'exiting' && alertAnimationState !== 'hidden') {
@@ -273,14 +325,22 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
       <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
         {/* Language alert notification with animation states */}
         {showLanguageAlert && language === 'dutch' && (
-          <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-amber-600 text-white px-6 py-3 rounded-md shadow-lg z-50 flex items-center space-x-2 max-w-md
-            ${alertAnimationState === 'entering' ? 'animate-slide-in-top' : ''}
-            ${alertAnimationState === 'exiting' ? 'animate-slide-out-top' : ''}
-          `}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div 
+            className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white px-6 py-3 rounded-lg border border-amber-400/20 z-50 flex items-center space-x-3 max-w-md
+              ${alertAnimationState === 'entering' ? 'animate-slide-in-top' : ''}
+              ${alertAnimationState === 'exiting' ? 'animate-slide-out-top' : ''}
+            `}
+            role="alert"
+            aria-live="assertive"
+            id="language-alert-notification"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <span>Dit is een Nederlandse les. Probeer alsjeblieft in het Nederlands te spreken.</span>
+            <div className="flex flex-col">
+              <span className="text-sm md:text-base font-medium">Dit is een Nederlandse les.</span>
+              <span className="text-xs md:text-sm text-amber-100">Probeer alsjeblieft in het Nederlands te spreken.</span>
+            </div>
           </div>
         )}
         
@@ -309,6 +369,7 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
             >
               Change Level
             </button>
+            {/* Test button removed as requested */}
           </div>
         </div>
 

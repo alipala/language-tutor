@@ -1,3 +1,5 @@
+/* eslint-disable */
+/* This file uses Tailwind CSS directives which are processed during build time */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -140,12 +142,13 @@
   }
 }
 
+/* Tailwind layer directives */
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Tailwind apply directive */
   }
   body {
-    @apply text-foreground;
+    @apply text-foreground; /* Tailwind apply directive */
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Improved touch interaction */
     touch-action: manipulation;
@@ -596,6 +599,49 @@
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Slide-in-top animation for notifications */
+@keyframes slideInTop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.animate-slide-in-top {
+  animation: slideInTop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: transform, opacity, box-shadow;
+  animation-fill-mode: forwards;
+}
+
+/* Slide-out-top animation for notifications */
+@keyframes slideOutTop {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    visibility: hidden;
+  }
+}
+
+.animate-slide-out-top {
+  animation: slideOutTop 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+  will-change: transform, opacity, box-shadow;
+  animation-fill-mode: forwards;
+  pointer-events: none; /* Prevent interaction with disappearing element */
 }
 
 /* Custom scrollbar for transcript */
