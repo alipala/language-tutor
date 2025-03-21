@@ -82,9 +82,12 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
     }
   }, [messages, showMessages]);
   
-  // Handle language alert
+  // Track detected language for language alert
+  const [detectedWrongLanguage, setDetectedWrongLanguage] = useState(false);
+
+  // Handle language alert - only show when user speaks a different language
   useEffect(() => {
-    if (isRecording && language === 'dutch' && !showLanguageAlert) {
+    if (isRecording && language === 'dutch' && detectedWrongLanguage && !showLanguageAlert) {
       setShowLanguageAlert(true);
       
       // Clear any existing timeout
@@ -95,6 +98,8 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
       // Set timeout to hide the alert after 5 seconds
       languageAlertTimeoutRef.current = setTimeout(() => {
         setShowLanguageAlert(false);
+        // Reset the detected language flag after hiding the alert
+        setDetectedWrongLanguage(false);
       }, 5000);
     }
     
@@ -103,7 +108,7 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         clearTimeout(languageAlertTimeoutRef.current);
       }
     };
-  }, [isRecording, language, showLanguageAlert]);
+  }, [isRecording, language, showLanguageAlert, detectedWrongLanguage]);
   
   // Handle errors
   useEffect(() => {
@@ -141,15 +146,46 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
     initializeService();
   }, [initialize, language, level, topic]);
   
-  // Handle transcript updates
+  // Handle transcript updates and language detection
   useEffect(() => {
     // Extract the latest user message for the transcript
     const userMessages = messages.filter(msg => msg.role === 'user');
     if (userMessages.length > 0) {
       const latestUserMessage = userMessages[userMessages.length - 1];
       setCurrentTranscript(latestUserMessage.content);
+      
+      // Simple language detection for Dutch vs non-Dutch
+      if (language === 'dutch') {
+        // List of common Dutch words and patterns
+        const dutchPatterns = [
+          /\b(ik|je|het|de|een|en|is|zijn|hebben|mijn|jouw|hoe|wat|waar|waarom|wanneer|wie)\b/i,
+          /\b(goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig)\b/i,
+          /\b(hallo|dag|goedemorgen|goedemiddag|goedenavond|doei|tot ziens)\b/i
+        ];
+        
+        // List of common English words that would indicate English is being spoken
+        const englishPatterns = [
+          /\b(i|you|he|she|it|we|they|am|is|are|was|were|have|has|had|my|your|how|what|where|why|when|who)\b/i,
+          /\b(good|bad|nice|ugly|big|small|new|old|many|few)\b/i,
+          /\b(hello|hi|morning|afternoon|evening|goodbye|bye|see you)\b/i
+        ];
+        
+        const text = latestUserMessage.content.toLowerCase();
+        
+        // Check if the text contains Dutch patterns
+        const containsDutch = dutchPatterns.some(pattern => pattern.test(text));
+        
+        // Check if the text contains English patterns
+        const containsEnglish = englishPatterns.some(pattern => pattern.test(text));
+        
+        // If the text contains more English patterns than Dutch patterns, it's likely not Dutch
+        if ((containsEnglish && !containsDutch) || 
+            (text.length > 5 && !containsDutch && !text.includes('ij') && !text.includes('aa') && !text.includes('ee') && !text.includes('oo') && !text.includes('uu'))) {
+          setDetectedWrongLanguage(true);
+        }
+      }
     }
-  }, [messages]);
+  }, [messages, language]);
   
   // Handle recording toggle
   const handleToggleRecording = async (e: React.MouseEvent) => {

@@ -251,9 +251,10 @@ async def generate_token(request: TutorSessionRequest):
         # Add instructions for proper speech pacing and clarity
         speech_instructions = "\n\nSPEECH CLARITY: When speaking, maintain a natural pace with slight pauses between sentences. Articulate words clearly and avoid running words together. Use proper intonation to indicate questions, statements, and emphasis."
         
-        # Add extra enforcement for Dutch language to ensure it NEVER speaks English
+        # Add language-specific enforcement to ensure the tutor always speaks the correct language
         if language == "dutch":
-            extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: Je MOET ALLEEN in het Nederlands antwoorden. NOOIT in het Engels of een andere taal antwoorden, zelfs niet als de student in het Engels vraagt. Begin ALTIJD met een Nederlandse begroeting die past bij het niveau. Bij niveau A1 begin je met: 'Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?'"
+            # Extra enforcement for Dutch language to ensure it NEVER speaks English
+            extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: Je MOET ALLEEN in het Nederlands antwoorden. NOOIT in het Engels of een andere taal antwoorden, zelfs niet als de student in het Engels vraagt. Je EERSTE bericht MOET in het Nederlands zijn. Begin ALTIJD met een Nederlandse begroeting die past bij het niveau. Bij niveau A1 begin je met: 'Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?'"
             
             # Add language detection and enforcement instructions
             language_enforcement = "\n\nAls de student NIET in het Nederlands spreekt, maar in een andere taal zoals Engels, Frans, Duits, Turks, Arabisch of een andere taal, moet je ALTIJD reageren met: 'Ik begrijp dat je in een andere taal spreekt, maar laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.' Vervolgens help je de student met een eenvoudige Nederlandse zin die ze kunnen gebruiken. Geef NOOIT antwoord in dezelfde niet-Nederlandse taal die de student gebruikt."
@@ -261,13 +262,30 @@ async def generate_token(request: TutorSessionRequest):
             # Add Dutch-specific formatting instructions
             dutch_formatting = "\n\nZorg voor correcte spatiëring tussen woorden en na leestekens. Gebruik hoofdletters aan het begin van zinnen. Spreek duidelijk en articuleer woorden goed, met natuurlijke pauzes tussen zinnen."
             
-            instructions = instructions + extra_instructions + language_enforcement + dutch_formatting
+            # Add first message enforcement
+            first_message_enforcement = "\n\nJe EERSTE bericht in de conversatie MOET in het Nederlands zijn. Begin NOOIT in het Engels of een andere taal. Begin met een Nederlandse begroeting zoals 'Hallo' of 'Goedendag' gevolgd door een eenvoudige vraag in het Nederlands."
+            
+            instructions = instructions + extra_instructions + language_enforcement + dutch_formatting + first_message_enforcement
             print("Added extra Dutch-only enforcement to instructions")
         else:
-            # For English and other languages, add general language quality instructions
-            language_quality = "\n\nLANGUAGE QUALITY: Use natural, conversational language appropriate for the student's level. Avoid overly complex vocabulary or grammar for lower levels. For higher levels, introduce more sophisticated language patterns gradually."
-            
-            instructions = instructions + language_quality
+            # For English language
+            if language == "english":
+                # Add English-specific instructions
+                english_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: You MUST ONLY respond in English. Your FIRST message MUST be in English. Always start with an English greeting appropriate for the level. For A1 level, start with: 'Hello! I am your English language tutor. How are you today?'"
+                
+                # Add first message enforcement
+                first_message_enforcement = "\n\nYour FIRST message in the conversation MUST be in English. NEVER start in any other language. Begin with an English greeting like 'Hello' or 'Good day' followed by a simple question in English."
+                
+                instructions = instructions + english_instructions + first_message_enforcement
+                print("Added English-only enforcement to instructions")
+            else:
+                # For other languages, add general language quality instructions
+                language_quality = "\n\nLANGUAGE QUALITY: Use natural, conversational language appropriate for the student's level. Avoid overly complex vocabulary or grammar for lower levels. For higher levels, introduce more sophisticated language patterns gradually. ALWAYS start with a greeting in the selected language."
+                
+                # Add first message enforcement for other languages
+                first_message_enforcement = "\n\nYour FIRST message in the conversation MUST be in the selected language. NEVER start in any other language."
+                
+                instructions = instructions + language_quality + first_message_enforcement
         
         # Add universal formatting and speech instructions
         instructions = instructions + formatting_instructions + speech_instructions
