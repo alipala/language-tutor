@@ -151,7 +151,7 @@ export default function SpeechPage() {
   
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-900">
+      <div className="flex h-screen items-center justify-center app-background">
         <div className="text-center">
           <div className="animate-pulse flex flex-col items-center">
             <div className="rounded-full h-16 w-16 bg-blue-500/20 mb-4 flex items-center justify-center">
@@ -183,14 +183,14 @@ export default function SpeechPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
+                className="app-button"
                 onClick={handleCancelNavigation}
               >
                 Continue Conversation
               </button>
               <button
                 type="button"
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
+                className="app-button"
                 onClick={handleConfirmNavigation}
               >
                 End Conversation

@@ -413,14 +413,14 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
             <button 
               type="button"
               onClick={handleChangeLanguage}
-              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-md shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+              className="app-button"
             >
               Change Language
             </button>
             <button 
               type="button"
               onClick={handleChangeLevel}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-md shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+              className="app-button"
             >
               Change Level
             </button>

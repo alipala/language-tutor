@@ -72,7 +72,7 @@ export default function Home() {
   
   // Return loading state while redirecting or manual navigation option if we hit the redirect limit
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(250,70%,97%)] to-[hsl(var(--background-end))] dark:from-slate-900 dark:via-indigo-950/90 dark:to-purple-950/90 bg-pattern">
+    <div className="flex min-h-screen flex-col items-center justify-center p-4 app-background">
       <div className="flex flex-col items-center justify-center space-y-4">
         <h1 className="text-4xl font-bold text-center gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">Language Tutor</h1>
         
@@ -125,7 +125,7 @@ export default function Home() {
                     setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                   }
                 }}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-lg px-5 py-3 text-center shadow transition-all duration-300 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                className="w-full app-button flex items-center justify-center"
                 disabled={isLoading}
               >
                 {isLoading ? (

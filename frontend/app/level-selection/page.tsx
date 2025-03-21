@@ -293,7 +293,7 @@ export default function LevelSelection() {
   }));
 
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4 md:p-8">
+    <main className="flex min-h-screen flex-col app-background text-white p-4 md:p-8">
       <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
@@ -306,7 +306,7 @@ export default function LevelSelection() {
           <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
               onClick={handleChangeLanguage}
-              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-blue-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
+              className="app-button flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -315,7 +315,7 @@ export default function LevelSelection() {
             </button>
             <button 
               onClick={handleChangeTopic}
-              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-full shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
+              className="app-button flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -324,7 +324,7 @@ export default function LevelSelection() {
             </button>
             <button 
               onClick={handleStartOver}
-              className="px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 rounded-full shadow-lg hover:shadow-red-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]" 
+              className="app-button flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -378,7 +378,7 @@ export default function LevelSelection() {
                       setIsLoading(false);
                     });
                 }}
-                className="px-8 py-3 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-full shadow-lg hover:shadow-red-500/30 transition-all duration-300 font-medium transform hover:translate-y-[-2px]"
+                className="app-button"
               >
                 Try Again
               </button>
