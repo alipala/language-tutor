@@ -14,6 +14,9 @@ export class RealtimeService {
   private connectionAttemptTimeout: NodeJS.Timeout | null = null;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 3;
+  private currentLanguage: string = '';
+  private currentLanguageIsoCode: string = '';
+  private sessionUpdated: boolean = false;
 
   constructor() {
     // Only initialize Audio in browser environments
@@ -43,6 +46,13 @@ export class RealtimeService {
       this.onConnectedCallback = onConnected || null;
       this.onDisconnectedCallback = onDisconnected || null;
       this.reconnectAttempts = 0;
+      
+      // Store the language for use in transcription
+      if (language) {
+        this.currentLanguage = language.toLowerCase();
+        this.currentLanguageIsoCode = this.getLanguageIsoCode(this.currentLanguage);
+        console.log('Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
+      }
       
       // Use the correct backend URL (default to localhost:8000 if running locally)
       this.backendUrl = '';
@@ -124,19 +134,10 @@ export class RealtimeService {
         
         // As soon as the data channel opens, send a session.update event to enable transcription
         // This is critical for ensuring transcription works from the beginning
-        const sessionUpdateEvent = {
-          type: 'session.update',
-          session: {
-            modalities: ['text', 'audio'],
-            input_audio_transcription: {
-              model: 'whisper-1'
-            }
-          }
-        };
+        this.updateSession();
         
-        // Send the session update event
-        const sent = this.sendMessage(sessionUpdateEvent);
-        console.log('Initial session.update event sent:', sent);
+        // Mark that we've already sent the session update
+        this.sessionUpdated = true;
         
         if (this.onConnectedCallback) this.onConnectedCallback();
       };
@@ -554,22 +555,21 @@ export class RealtimeService {
     // Add a small delay to ensure the data channel is fully ready
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // First, send a session.update event to enable transcription
-    const sessionUpdateEvent = {
-      type: 'session.update',
-      session: {
-        modalities: ['text', 'audio'],
-        input_audio_transcription: {
-          model: 'whisper-1'
-        }
+    // Only send session.update if we haven't already sent it when the data channel opened
+    if (!this.sessionUpdated) {
+      console.log('Sending initial session update...');
+      const updateSuccess = this.updateSession();
+      if (!updateSuccess) {
+        console.error('Failed to send session update event');
+        return false;
       }
-    };
-    
-    // Send the session update event
-    const sessionUpdateSuccess = this.sendMessage(sessionUpdateEvent);
-    if (!sessionUpdateSuccess) {
-      console.error('Failed to send session update event');
-      return false;
+      
+      this.sessionUpdated = true;
+      
+      // Add a small delay after sending the session update
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } else {
+      console.log('Session already updated, skipping duplicate update');
     }
     
     // Add a small delay after sending the session update
@@ -588,6 +588,34 @@ export class RealtimeService {
   }
   
   /**
+   * Update the session configuration with transcription settings
+   */
+  private updateSession(): boolean {
+    console.log('Updating session with transcription language:', this.currentLanguage || 'auto-detect', 'ISO code:', this.currentLanguageIsoCode || 'auto-detect');
+    
+    // Create session update event with language parameter
+    const sessionUpdateEvent = {
+      type: 'session.update',
+      session: {
+        modalities: ['text', 'audio'],
+        input_audio_transcription: {
+          model: 'gpt-4o-mini-transcribe', // Using the newer model for better transcription accuracy
+          language: this.currentLanguageIsoCode || undefined // Pass language in ISO-639-1 format if available
+        },
+        turn_detection: {
+          type: 'semantic_vad' // Using improved voice activity detection
+        }
+      }
+    };
+    
+    // Send the session update event
+    const sent = this.sendMessage(sessionUpdateEvent);
+    console.log('Session update event sent:', sent);
+    
+    return sent;
+  }
+  
+  /**
    * Disconnect and clean up all resources
    */
   public disconnect(): void {
@@ -598,6 +626,9 @@ export class RealtimeService {
         clearTimeout(this.connectionAttemptTimeout);
         this.connectionAttemptTimeout = null;
       }
+      
+      // Reset session updated flag
+      this.sessionUpdated = false;
       
       // Stop all media tracks first
       if (this.localStream) {
@@ -647,6 +678,58 @@ export class RealtimeService {
       console.log('Disconnected');
       if (this.onDisconnectedCallback) this.onDisconnectedCallback();
     }
+  }
+  
+  /**
+   * Get an ephemeral key from the backend
+   */
+  /**
+   * Convert language name to ISO-639-1 code
+   */
+  private getLanguageIsoCode(language: string): string {
+    // Map common language names to ISO-639-1 codes
+    const languageMap: {[key: string]: string} = {
+      'english': 'en',
+      'dutch': 'nl',
+      'nederlands': 'nl',
+      'french': 'fr',
+      'français': 'fr',
+      'german': 'de',
+      'deutsch': 'de',
+      'spanish': 'es',
+      'español': 'es',
+      'italian': 'it',
+      'italiano': 'it',
+      'portuguese': 'pt',
+      'português': 'pt',
+      'russian': 'ru',
+      'chinese': 'zh',
+      'japanese': 'ja',
+      'korean': 'ko',
+      'arabic': 'ar',
+      'hindi': 'hi',
+      'bengali': 'bn',
+      'turkish': 'tr',
+      'swedish': 'sv',
+      'norwegian': 'no',
+      'danish': 'da',
+      'finnish': 'fi',
+      'polish': 'pl',
+      'romanian': 'ro',
+      'greek': 'el',
+      'hungarian': 'hu',
+      'czech': 'cs',
+      'thai': 'th',
+      'vietnamese': 'vi',
+      'indonesian': 'id',
+      'malay': 'ms',
+      'hebrew': 'he',
+      'ukrainian': 'uk'
+    };
+    
+    // Return the ISO code if found, otherwise return the original language name
+    // This allows for direct ISO code input as well
+    return languageMap[language.toLowerCase()] || language.toLowerCase();
   }
   
   /**
