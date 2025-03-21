@@ -31,6 +31,10 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   
   // Add state for transcript processing
   const [currentTranscript, setCurrentTranscript] = useState<string>('');
+  // State to track if conversation is paused for review (not ended)
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  // Ref to store conversation history when pausing
+  const conversationHistoryRef = useRef<string>('');
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -58,7 +62,7 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   }, []);
   
   // Initialize the realtime service and handle messages
-  const { isRecording, messages, error, toggleConversation, stopConversation, initialize } = useRealtime();
+  const { isRecording, messages, error, toggleConversation, stopConversation, startConversation, initialize, getFormattedConversationHistory } = useRealtime();
   
   // Process messages for display and deduplicate assistant messages
   const processedMessages = useMemo(() => {
@@ -310,6 +314,8 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
       return;
     }
     
+    // If starting a brand new conversation, reset the paused state
+    setIsPaused(false);
     setIsAttemptingToRecord(true);
     
     try {
@@ -330,15 +336,32 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   
   // Handle end conversation
   const handleEndConversation = () => {
+    // Store the conversation history before pausing
+    conversationHistoryRef.current = getFormattedConversationHistory();
+    console.log('Storing conversation history before pausing:', conversationHistoryRef.current);
+    
+    // Set the conversation as paused for pronunciation review
+    setIsPaused(true);
     stopConversation();
   };
   
   // Handle continue learning
   const handleContinueLearning = () => {
     // Slight delay to allow the UI to update
-    setTimeout(() => {
+    setTimeout(async () => {
       console.log('Continuing conversation from where we left off');
-      toggleConversation();
+      
+      if (isPaused && conversationHistoryRef.current) {
+        console.log('Resuming paused conversation with previous context:', conversationHistoryRef.current);
+        // Instead of toggling conversation (which would reset everything),
+        // we use startConversation with the saved conversation history
+        setShowMessages(true);
+        await startConversation(conversationHistoryRef.current);
+        setIsPaused(false);
+      } else {
+        // Only if not paused (fully ended), start a new conversation
+        toggleConversation();
+      }
     }, 300);
   };
   

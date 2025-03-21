@@ -320,8 +320,21 @@ export function useRealtime() {
     }
   }, [isBrowser, handleMessage]); // Add handleMessage to dependencies
 
+  // Format messages into a conversation history string
+  const getFormattedConversationHistory = useCallback(() => {
+    if (messages.length === 0) return '';
+    
+    // Create a formatted string with roles and content
+    const formattedHistory = messages.map(msg => {
+      const role = msg.role === 'assistant' ? 'Tutor' : 'Student';
+      return `${role}: ${msg.content}`;
+    }).join('\n');
+    
+    return formattedHistory;
+  }, [messages]);
+
   // Start a conversation
-  const startConversation = useCallback(async () => {
+  const startConversation = useCallback(async (conversationHistory?: string) => {
     if (!isBrowser) return false;
     
     try {
@@ -366,7 +379,14 @@ export function useRealtime() {
       // Start the conversation
       console.log('Starting the conversation...');
       try {
-        const startSuccess = await realtimeService.startConversation();
+        // If there's conversation history, include it in the instructions
+        let instructions = undefined;
+        if (conversationHistory) {
+          console.log('Continuing with previous conversation history');
+          instructions = `Continue the conversation exactly where it left off. Here's the previous conversation history:\n\n${conversationHistory}\n\nDO NOT GREET THE USER AGAIN, just continue the conversation where it stopped.`;
+        }
+        
+        const startSuccess = await realtimeService.startConversation(instructions);
         if (!startSuccess) {
           console.error('Failed to start conversation');
           setError('Failed to start conversation');
@@ -453,6 +473,7 @@ export function useRealtime() {
     startConversation,
     stopConversation,
     clearError: () => setError(null),
-    initialize
+    initialize,
+    getFormattedConversationHistory
   };
 }
