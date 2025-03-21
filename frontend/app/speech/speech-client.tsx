@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
@@ -60,14 +60,46 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   // Initialize the realtime service and handle messages
   const { isRecording, messages, error, toggleConversation, stopConversation, initialize } = useRealtime();
   
-  // Process messages for display
-  const processedMessages = messages.map((message, index) => {
-    return {
+  // Process messages for display and deduplicate assistant messages
+  const processedMessages = useMemo(() => {
+    // First, map the messages to add consistent IDs
+    const mappedMessages = messages.map((message, index) => ({
       ...message,
       itemId: `message-${index}`,
       role: message.role === 'assistant' ? 'assistant' : 'user'
-    };
-  });
+    }));
+
+    // Deduplicate assistant messages by filtering out those with very similar content
+    const filteredMessages: typeof mappedMessages = [];
+    const seenContents: string[] = [];
+
+    for (const message of mappedMessages) {
+      if (message.role === 'user') {
+        // Always keep user messages
+        filteredMessages.push(message);
+      } else {
+        // For assistant messages, check if we've seen very similar content recently
+        const contentToCheck = message.content.trim();
+        let isDuplicate = false;
+
+        // Check if this content is a duplicate or subset of a message we've already seen
+        for (const seenContent of seenContents) {
+          // If the content is very similar (one contains the other), consider it a duplicate
+          if (seenContent.includes(contentToCheck) || contentToCheck.includes(seenContent)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+
+        if (!isDuplicate) {
+          seenContents.push(contentToCheck);
+          filteredMessages.push(message);
+        }
+      }
+    }
+
+    return filteredMessages;
+  }, [messages]);
   
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -488,14 +520,14 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
                       <div className="space-y-4">
                         {processedMessages.length > 0 ? (
                           // Sort messages by timestamp if available, otherwise use the array order
-                          [...processedMessages]
-                            .sort((a, b) => {
+                          processedMessages
+                            .sort((a: any, b: any) => {
                               if (a.timestamp && b.timestamp) {
                                 return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
                               }
                               return 0;
                             })
-                            .map((message, index) => {
+                            .map((message: any, index: number) => {
                               // Parse timestamp for display or use current time as fallback
                               const messageTime = message.timestamp 
                                 ? new Date(message.timestamp) 

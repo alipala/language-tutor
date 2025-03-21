@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added consistent styling across modals and interactive elements
 
 ### Fixed
+- Fixed tutor transcript duplication issue by implementing content-based deduplication
+- Made language alert notification reliably disappear after 2 seconds with smooth animations
 - Resolved scrolling issues in the real-time transcript window
 - Fixed microphone initialization feedback to provide clearer user guidance
 - Corrected "Continue Learning" functionality to properly resume conversations
