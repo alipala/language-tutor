@@ -84,10 +84,15 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   
   // Track detected language for language alert
   const [detectedWrongLanguage, setDetectedWrongLanguage] = useState(false);
+  // Add state for animation
+  const [alertAnimationState, setAlertAnimationState] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden');
 
   // Handle language alert - only show when user speaks a different language
   useEffect(() => {
-    if (isRecording && language === 'dutch' && detectedWrongLanguage && !showLanguageAlert) {
+    if (isRecording && language === 'dutch' && detectedWrongLanguage && alertAnimationState === 'hidden') {
+      // Start the entering animation
+      setAlertAnimationState('entering');
+      // Show the alert
       setShowLanguageAlert(true);
       
       // Clear any existing timeout
@@ -95,11 +100,23 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         clearTimeout(languageAlertTimeoutRef.current);
       }
       
+      // After entering animation completes, set to visible state
+      setTimeout(() => {
+        setAlertAnimationState('visible');
+      }, 300); // Match this with CSS animation duration
+      
       // Set timeout to hide the alert after 5 seconds
       languageAlertTimeoutRef.current = setTimeout(() => {
-        setShowLanguageAlert(false);
-        // Reset the detected language flag after hiding the alert
-        setDetectedWrongLanguage(false);
+        // Start exit animation
+        setAlertAnimationState('exiting');
+        
+        // After exit animation completes, hide the alert
+        setTimeout(() => {
+          setShowLanguageAlert(false);
+          setAlertAnimationState('hidden');
+          // Reset the detected language flag after hiding the alert
+          setDetectedWrongLanguage(false);
+        }, 300); // Match this with CSS animation duration
       }, 5000);
     }
     
@@ -108,7 +125,7 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         clearTimeout(languageAlertTimeoutRef.current);
       }
     };
-  }, [isRecording, language, showLanguageAlert, detectedWrongLanguage]);
+  }, [isRecording, language, alertAnimationState, detectedWrongLanguage]);
   
   // Handle errors
   useEffect(() => {
@@ -182,6 +199,19 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         if ((containsEnglish && !containsDutch) || 
             (text.length > 5 && !containsDutch && !text.includes('ij') && !text.includes('aa') && !text.includes('ee') && !text.includes('oo') && !text.includes('uu'))) {
           setDetectedWrongLanguage(true);
+        } else if (containsDutch && !containsEnglish) {
+          // If the user is now speaking Dutch, hide the alert with animation
+          if (showLanguageAlert && alertAnimationState !== 'exiting' && alertAnimationState !== 'hidden') {
+            // Start exit animation
+            setAlertAnimationState('exiting');
+            
+            // After exit animation completes, hide the alert
+            setTimeout(() => {
+              setShowLanguageAlert(false);
+              setAlertAnimationState('hidden');
+              setDetectedWrongLanguage(false);
+            }, 300); // Match this with CSS animation duration
+          }
         }
       }
     }
@@ -241,9 +271,12 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4 overflow-x-hidden">
       <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
-        {/* Language alert notification */}
+        {/* Language alert notification with animation states */}
         {showLanguageAlert && language === 'dutch' && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-amber-600 text-white px-6 py-3 rounded-md shadow-lg z-50 animate-fade-in flex items-center space-x-2 max-w-md">
+          <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-amber-600 text-white px-6 py-3 rounded-md shadow-lg z-50 flex items-center space-x-2 max-w-md
+            ${alertAnimationState === 'entering' ? 'animate-slide-in-top' : ''}
+            ${alertAnimationState === 'exiting' ? 'animate-slide-out-top' : ''}
+          `}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
