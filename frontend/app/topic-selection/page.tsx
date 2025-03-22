@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, KeyboardEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface Topic {
@@ -15,6 +15,10 @@ export default function TopicSelection() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCustomTopicActive, setIsCustomTopicActive] = useState(false);
+  const [customTopicText, setCustomTopicText] = useState('');
+  const [isExtendingKnowledge, setIsExtendingKnowledge] = useState(false);
+  const customInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Define topics - these can be expanded later
   const topics: Topic[] = [
@@ -65,6 +69,12 @@ export default function TopicSelection() {
       name: 'Environment & Nature',
       description: 'Explore environmental issues, sustainability, and the natural world.',
       icon: '🌳'
+    },
+    {
+      id: 'custom',
+      name: 'Custom Topic',
+      description: 'Create your own topic for a personalized conversation experience.',
+      icon: '🔍'
     },
   ];
 
@@ -139,6 +149,18 @@ export default function TopicSelection() {
   };
 
   const handleTopicSelect = (topicId: string) => {
+    // If custom topic is selected, show the modal input overlay instead of navigating
+    if (topicId === 'custom') {
+      setIsCustomTopicActive(true);
+      // Focus the input field after a short delay to ensure it's rendered
+      setTimeout(() => {
+        if (customInputRef.current) {
+          customInputRef.current.focus();
+        }
+      }, 100);
+      return;
+    }
+    
     // Set loading state while navigating
     setIsLoading(true);
     setSelectedTopic(topicId);
@@ -175,6 +197,52 @@ export default function TopicSelection() {
       
       return () => clearTimeout(fallbackTimer);
     }, 300);
+  };
+
+  const handleCustomTopicSubmit = () => {
+    if (!customTopicText.trim()) return;
+    
+    // Show the extending knowledge message
+    setIsExtendingKnowledge(true);
+    
+    // Store the custom topic in session storage
+    sessionStorage.setItem('selectedTopic', 'custom');
+    sessionStorage.setItem('customTopicText', customTopicText);
+    sessionStorage.setItem('intentionalNavigation', 'true');
+    
+    // Add detailed logging
+    console.log('Custom topic submitted:', customTopicText);
+    console.log('Session storage state:', {
+      selectedLanguage: sessionStorage.getItem('selectedLanguage'),
+      selectedTopic: 'custom',
+      customTopicText: customTopicText,
+      intentionalNavigation: true
+    });
+    
+    // Navigate to level selection after a short delay to show the message
+    setTimeout(() => {
+      console.log('Executing navigation to level selection with custom topic');
+      window.location.href = '/level-selection';
+      
+      // Fallback navigation in case the first attempt fails
+      const fallbackTimer = setTimeout(() => {
+        if (window.location.pathname.includes('topic-selection')) {
+          console.log('Still on topic selection page, using fallback navigation');
+          window.location.replace('/level-selection');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(fallbackTimer);
+    }, 2000); // Longer delay to show the message
+  };
+  
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleCustomTopicSubmit();
+    } else if (e.key === 'Escape') {
+      setIsCustomTopicActive(false);
+      setCustomTopicText('');
+    }
   };
 
   return (
@@ -225,9 +293,11 @@ export default function TopicSelection() {
             <button
               key={topic.id}
               onClick={() => handleTopicSelect(topic.id)}
-              disabled={isLoading}
+              disabled={isLoading || isExtendingKnowledge}
               className={`group relative overflow-hidden rounded-xl transition-all duration-300 bg-gradient-to-br from-slate-800 to-slate-700 hover:from-indigo-900 hover:to-blue-900 border border-slate-700 hover:border-indigo-500 shadow-lg hover:shadow-indigo-500/20 flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                (isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+              } ${
+                isCustomTopicActive && topic.id === 'custom' ? 'from-indigo-900 to-blue-900 border-indigo-500 shadow-indigo-500/20' : ''
               }`}
             >
               {/* Glow effect on hover */}
@@ -245,9 +315,80 @@ export default function TopicSelection() {
               <p className="text-slate-300 text-sm group-hover:text-slate-200 transition-colors duration-300">
                 {topic.description}
               </p>
+              
+              {/* We no longer show the input field inside the topic box */}
             </button>
           ))}
         </div>
+        
+        {/* Custom Topic Input Modal - Only show when active */}
+        {isCustomTopicActive && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 md:p-8 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/20 w-full max-w-md mx-4">
+              <h3 className="text-xl md:text-2xl font-semibold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+                Create Your Custom Topic
+              </h3>
+              <p className="text-slate-300 text-sm md:text-base mb-6">
+                What would you like to talk about in your {selectedLanguage && selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} conversation?
+              </p>
+              
+              <div className="mb-6">
+                <textarea
+                  ref={customInputRef}
+                  value={customTopicText}
+                  onChange={(e) => setCustomTopicText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleCustomTopicSubmit();
+                    } else if (e.key === 'Escape') {
+                      setIsCustomTopicActive(false);
+                      setCustomTopicText('');
+                    }
+                  }}
+                  placeholder="Describe your topic here..."
+                  className="w-full p-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 min-h-[100px] resize-none"
+                  disabled={isExtendingKnowledge}
+                />
+                <p className="text-xs text-slate-400 mt-2">
+                  Press Enter to submit or Shift+Enter for a new line
+                </p>
+              </div>
+              
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setIsCustomTopicActive(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors duration-300 text-sm md:text-base"
+                  disabled={isExtendingKnowledge}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCustomTopicSubmit}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white transition-colors duration-300 text-sm md:text-base"
+                  disabled={!customTopicText.trim() || isExtendingKnowledge}
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Knowledge Extension Message */}
+        {isExtendingKnowledge && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 md:p-8 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/20 w-full max-w-md mx-4 text-center">
+              <div className="text-4xl mb-4 animate-pulse">🧠</div>
+              <h3 className="text-xl md:text-2xl font-semibold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+                Your taalcoach knowledge is being extended. Hold on please!
+              </h3>
+              <div className="flex justify-center">
+                <div className="w-12 h-1 bg-indigo-500 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
