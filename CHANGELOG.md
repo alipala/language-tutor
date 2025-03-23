@@ -5,6 +5,24 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2025-03-23
+
+### Added
+- Web search functionality for custom topics, allowing tutors to access real-time information
+- Custom topic input field in the topic selection page
+- Backend integration with OpenAI's web search capabilities
+- Support for passing user prompts from frontend to backend
+- Enhanced tutor instructions to incorporate web search results
+
+### Changed
+- Improved topic handling to use actual user prompt content instead of generic "custom" label
+- Enhanced tutor conversation flow by making tutors start discussions with the selected topic
+- Increased topic length limit from 30 to 100 characters for better context
+- Updated backend to process and integrate web search results into tutor instructions
+
+### Fixed
+- Fixed issue where tutors were treating "custom" as the literal topic name rather than using the content of the user prompt
+
 ## [2.7.0] - 2025-03-19
 
 ### Added

@@ -18,6 +18,7 @@ A cutting-edge language learning voice conversation application with a sleek, mo
 - 🌍 Support for multiple languages (currently Dutch and English)
 - 🎓 Six proficiency levels (A1, A2, B1, B2, C1, C2) following CEFR standards
 - 🗣️ Topic selection for focused conversation practice
+- 🔍 Web search functionality for custom topics with real-time information
 
 ### Pronunciation & Learning
 - 🔊 Real-time pronunciation assessment with color-coded feedback
@@ -70,12 +71,13 @@ The application offers a variety of conversation topics to focus your language p
 - **Music** 🎵: Talk about music genres, artists, concerts, and preferences
 - **Technology** 💻: Discuss gadgets, apps, innovations, and digital trends
 - **Environment & Nature** 🌳: Explore environmental issues, sustainability, and the natural world
+- **Custom Topic** 🔍: Enter any topic of your interest and the tutor will use web search to provide up-to-date information
 
 You can also choose to skip topic selection for a free-form conversation.
 
 ### Conversation Flow
 1. Select your target language (Dutch or English)
-2. Choose a conversation topic (optional)
+2. Choose a conversation topic or enter a custom topic with the web search feature
 3. Select your proficiency level (A1-C2)
 4. Start a voice conversation with the language tutor
 5. Practice speaking and receive feedback appropriate to your level
@@ -94,6 +96,41 @@ Users can review their pronunciation after speaking to get detailed feedback on 
 - **Visual Feedback**: Animated microphone states show recording status clearly
 - **Seamless Learning Flow**: Continue your conversation after reviewing pronunciation
 - **Real-time Scrolling Transcript**: Never lose track of your conversation with auto-scrolling transcript
+
+### 🔍 Web Search for Custom Topics
+
+The Language Tutor now features an integrated web search capability that allows tutors to access real-time information about any topic you choose.
+
+#### How to Use Web Search
+
+1. **Select a Custom Topic**:
+   - On the topic selection page, choose "Custom Topic" or enter your own topic in the input field
+   - Type a specific query, question, or topic you'd like to discuss (e.g., "Latest developments in quantum computing" or "Current situation in Istanbul politics")
+
+2. **Benefit from Real-time Information**:
+   - The tutor will use web search to gather the latest information about your topic
+   - All responses will incorporate up-to-date facts and details relevant to your chosen topic
+   - The tutor will start the conversation by explicitly mentioning your chosen topic
+
+3. **Learn with Current Context**:
+   - Practice language skills while discussing current events, recent developments, or specialized topics
+   - Receive vocabulary and expressions that are contextually relevant to your topic of interest
+   - Engage in more meaningful conversations with accurate and timely information
+
+#### Example Use Cases
+
+- **Current Events**: "Recent elections in France" or "Latest climate change agreements"
+- **Technology**: "New features in iOS 19" or "Advancements in electric vehicles"
+- **Culture**: "Traditional festivals in Japan this month" or "Recent art exhibitions in Paris"
+- **Sports**: "Results from yesterday's football matches" or "Upcoming Olympic events"
+- **Science**: "Recent discoveries about black holes" or "Latest COVID-19 research"
+
+#### Technical Details
+
+- The web search feature uses OpenAI's browsing capabilities to retrieve current information
+- Search results are processed and integrated into the tutor's knowledge base
+- The tutor is instructed to incorporate this information naturally into the conversation
+- The system can handle topics up to 100 characters in length for detailed queries
 
 ## Architecture
 
