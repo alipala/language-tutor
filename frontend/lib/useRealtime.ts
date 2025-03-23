@@ -269,7 +269,7 @@ export function useRealtime() {
   }, []);
 
   // Initialize the realtime service
-  const initialize = useCallback(async (language?: string, level?: string, topic?: string) => {
+  const initialize = useCallback(async (language?: string, level?: string, topic?: string, userPrompt?: string) => {
     if (!isBrowser) return false;
     if (!realtimeService) return false;
     
@@ -282,13 +282,27 @@ export function useRealtime() {
       if (level) levelRef.current = level;
       if (topic) topicRef.current = topic;
       
+      // Store the userPrompt in sessionStorage if it's a custom topic
+      if (topic === 'custom' && userPrompt) {
+        console.log('Storing custom topic prompt for realtime service');
+        sessionStorage.setItem('customTopicPrompt', userPrompt);
+      }
+      
       // Use either the provided parameters or the stored references
       const langToUse = language || languageRef.current;
       const levelToUse = level || levelRef.current;
       const topicToUse = topic || topicRef.current;
       
+      // Get userPrompt from parameter or sessionStorage
+      const userPromptToUse = userPrompt || 
+        (topicToUse === 'custom' ? sessionStorage.getItem('customTopicPrompt') || undefined : undefined);
+      
       // Initialize with language and level if provided
       console.log('Initializing with language:', langToUse, 'level:', levelToUse, 'topic:', topicToUse);
+      if (topicToUse === 'custom' && userPromptToUse) {
+        console.log('Using custom topic with prompt:', userPromptToUse.substring(0, 50) + (userPromptToUse.length > 50 ? '...' : ''));
+      }
+      
       const success = await realtimeService.initialize(
         handleMessage, // Use the handleMessage callback directly
         () => {
@@ -302,7 +316,8 @@ export function useRealtime() {
         },
         langToUse,
         levelToUse,
-        topicToUse
+        topicToUse,
+        userPromptToUse
       );
       
       if (!success) {
@@ -345,7 +360,11 @@ export function useRealtime() {
       if (!isInitialized) {
         console.log('Not initialized, initializing first...');
         // Pass stored refs to ensure parameters are maintained
-        const initSuccess = await initialize(languageRef.current, levelRef.current, topicRef.current);
+        // Get userPrompt from sessionStorage if it's a custom topic
+        const storedUserPrompt = topicRef.current === 'custom' ? 
+          sessionStorage.getItem('customTopicPrompt') || undefined : undefined;
+        
+        const initSuccess = await initialize(languageRef.current, levelRef.current, topicRef.current, storedUserPrompt);
         
         // Wait a bit for initialization to complete
         await new Promise(resolve => setTimeout(resolve, 500));

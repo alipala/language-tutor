@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import httpx
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
@@ -163,6 +164,7 @@ class TutorSessionRequest(BaseModel):
     level: str
     voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
     topic: Optional[str] = None  # Topic to focus the conversation on
+    user_prompt: Optional[str] = None  # User prompt for custom topics
 
 # Simple endpoint for testing connection
 @app.get("/api/test")
@@ -294,6 +296,9 @@ async def generate_token(request: TutorSessionRequest):
         if topic:
             if language == "dutch":
                 topic_instructions = f"\n\nLET OP: In dit gesprek moet je ALLEEN over het volgende onderwerp praten: '{topic}'. Focus al je vragen, opmerkingen en discussies op dit onderwerp. Gebruik dit onderwerp als het centrale thema van het gesprek. Als de student over een ander onderwerp begint, breng het gesprek subtiel terug naar '{topic}'."
+
+                # Add instruction to start by mentioning the topic
+                topic_instructions += f"\n\nBELANGRIJK: Begin je EERSTE bericht door het onderwerp '{topic}' te noemen. Bijvoorbeeld: 'Hallo! Laten we vandaag over {topic} praten. Wat vind je van {topic}?'"
                 
                 # Add Dutch vocabulary suggestions for the topic
                 if topic == "travel" or topic == "reizen":
@@ -308,6 +313,9 @@ async def generate_token(request: TutorSessionRequest):
                 topic_instructions += topic_vocabulary
             else:  # English or other languages
                 topic_instructions = f"\n\nIMPORTANT: In this conversation, you must ONLY talk about the following topic: '{topic}'. Focus all your questions, comments, and discussions on this topic. Use this topic as the central theme of the conversation. If the student starts talking about something else, gently bring the conversation back to '{topic}'."
+
+                # Add instruction to start by mentioning the topic
+                topic_instructions += f"\n\nCRITICAL: In your FIRST message, explicitly mention the topic '{topic}'. For example: 'Hello! Today we're going to talk about {topic}. What are your thoughts on {topic}?'"
                 
                 # Add English vocabulary suggestions for the topic
                 if topic == "travel":
@@ -316,6 +324,37 @@ async def generate_token(request: TutorSessionRequest):
                     topic_vocabulary = "\n\nIncorporate these words in the conversation: food, drink, restaurant, menu, order, delicious, recipe, cook, taste, ingredients, meal, breakfast, lunch, dinner."
                 elif topic == "hobbies":
                     topic_vocabulary = "\n\nIncorporate these words in the conversation: hobby, free time, sports, reading, music, movies, dancing, painting, walking, cycling, collecting, playing."
+                elif topic == "custom" and hasattr(request, 'user_prompt') and request.user_prompt:
+                    # For custom topics with user prompts, fetch information using web search
+                    print(f"Processing custom topic with user prompt: {request.user_prompt[:50]}...")
+                    try:
+                        # Call the custom_topic function to get web search results
+                        custom_topic_request = CustomTopicRequest(
+                            language=language,
+                            level=level,
+                            voice=request.voice,
+                            topic="custom",
+                            user_prompt=request.user_prompt
+                        )
+                        
+                        # Use the custom_topic function directly (not as an endpoint)
+                        custom_response = await custom_topic(custom_topic_request)
+                        
+                        # Extract a topic name from the user prompt (first 100 chars)
+                        short_topic_name = request.user_prompt[:100] + "..." if len(request.user_prompt) > 100 else request.user_prompt
+                        
+                        # Override the topic instructions to use the actual user prompt instead of 'custom'
+                        topic_instructions = f"\n\nIMPORTANT: In this conversation, you must ONLY talk about the following topic: '{short_topic_name}'. Focus all your questions, comments, and discussions on this topic. Use this topic as the central theme of the conversation. If the student starts talking about something else, gently bring the conversation back to this topic."
+                        
+                        # Add instruction to start by mentioning the actual topic content
+                        topic_instructions += f"\n\nCRITICAL: In your FIRST message, explicitly mention that we'll be discussing '{short_topic_name}'. For example: 'Hello! Today we're going to talk about {short_topic_name}. What are your thoughts on this topic?'"
+                        
+                        # Add the web search results to the topic instructions
+                        topic_vocabulary = f"\n\nHere is the latest information about this topic that you should incorporate in your conversation:\n{custom_response['response']}\n\nGradually introduce relevant vocabulary from this information, appropriate to the student's level."
+                        print("Successfully added web search results to topic instructions")
+                    except Exception as e:
+                        print(f"Error fetching web search results: {str(e)}")
+                        topic_vocabulary = "\n\nGradually introduce relevant vocabulary for this topic, appropriate to the student's level."
                 else:
                     topic_vocabulary = "\n\nGradually introduce relevant vocabulary for this topic, appropriate to the student's level."
                 
@@ -354,6 +393,153 @@ async def generate_token(request: TutorSessionRequest):
     except httpx.RequestError as e:
         print(f"Error generating ephemeral key: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate ephemeral key: {str(e)}")
+
+# Define a new model for custom topic prompts
+class CustomTopicRequest(BaseModel):
+    language: str
+    level: str
+    voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+    topic: Optional[str] = None  # Topic to focus the conversation on
+    user_prompt: str  # The custom prompt from the user
+
+# Initialize OpenAI client
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Warning: OPENAI_API_KEY not found in environment variables")
+
+# Initialize OpenAI client with error handling
+try:
+    client = OpenAI(api_key=api_key)
+    print("OpenAI client initialized successfully")
+except TypeError as e:
+    if "proxies" in str(e):
+        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+        # Alternative initialization without proxies
+        client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        print("OpenAI client initialized with alternative method")
+    else:
+        print(f"Error initializing OpenAI client: {str(e)}")
+        raise
+
+# Endpoint to handle custom topic prompts
+@app.post("/api/custom-topic")
+async def custom_topic(request: CustomTopicRequest):
+    try:
+        # Extract user input from request
+        user_prompt = request.user_prompt
+        language = request.language.lower()
+        level = request.level.upper()
+        
+        # Log the request for debugging
+        print(f"Processing custom topic request: language={language}, level={level}, prompt={user_prompt[:50]}...")
+        
+        # Prepare system prompt based on language learning context
+        system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
+        system_prompt += "Provide information that helps the user learn the language while answering their question. "
+        system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
+        system_prompt += "Use web search to get the latest information when needed."
+        
+        try:
+            # First try to use the OpenAI API with web search capabilities
+            import httpx
+            import json
+            
+            # Prepare the request payload
+            payload = {
+                "model": "gpt-4o",
+                "input": [
+                    {
+                        "role": "system",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": system_prompt
+                            }
+                        ]
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": user_prompt
+                            }
+                        ]
+                    }
+                ],
+                "tools": [
+                    {
+                        "type": "web_search_preview",
+                        "search_context_size": "medium"
+                    }
+                ],
+                "temperature": 1,
+                "max_output_tokens": 2048,
+                "top_p": 1,
+                "store": True
+            }
+            
+            # Make the API request
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            async with httpx.AsyncClient() as async_client:
+                response = await async_client.post(
+                    "https://api.openai.com/v1/responses",
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0
+                )
+                
+                # Process the response
+                if response.status_code == 200:
+                    response_data = response.json()
+                    print("Web search response received successfully")
+                    
+                    # Extract the response content
+                    for output_item in response_data.get("output", []):
+                        if output_item.get("type") == "message":
+                            for content_item in output_item.get("content", []):
+                                if content_item.get("type") == "output_text":
+                                    return {"response": content_item.get("text", "")}
+                    
+                    # If we couldn't find the expected structure, return the raw response
+                    return {"response": str(response_data)}
+                else:
+                    print(f"Web search API request failed with status code: {response.status_code}")
+                    print(f"Response: {response.text}")
+                    raise Exception(f"API request failed with status code: {response.status_code}")
+                    
+        except Exception as web_search_error:
+            # If web search fails, fall back to standard chat completions
+            print(f"Web search failed, falling back to standard chat: {str(web_search_error)}")
+            
+            # Call OpenAI API to generate response using the standard chat completions endpoint
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=1,
+                max_tokens=2048,
+                top_p=1
+            )
+            
+            # Extract the response content
+            if response and hasattr(response, 'choices') and response.choices:
+                # Get the first choice's message content
+                content = response.choices[0].message.content
+                return {"response": content}
+            
+            # Fallback if response structure is unexpected
+            return {"response": "I couldn't process your request at this time. Please try again later."}
+    
+    except Exception as e:
+        print(f"Error processing custom topic request: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process custom topic request: {str(e)}")
 
 # Fallback route for serving the index.html in production
 @app.get("/", response_class=HTMLResponse)

@@ -11,9 +11,10 @@ interface SpeechClientProps {
   language: string;
   level: string;
   topic?: string;
+  userPrompt?: string;
 }
 
-export default function SpeechClient({ language, level, topic }: SpeechClientProps) {
+export default function SpeechClient({ language, level, topic, userPrompt }: SpeechClientProps) {
   // Moving the console.log out of the component body to prevent excessive logging
   const initialRenderRef = useRef(true);
   
@@ -40,9 +41,12 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
   useEffect(() => {
     if (initialRenderRef.current) {
       console.log('SpeechClient initializing with language:', language, 'level:', level, 'topic:', topic, 'at:', new Date().toISOString());
+      if (topic === 'custom' && userPrompt) {
+        console.log('Custom topic prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
+      }
       initialRenderRef.current = false;
     }
-  }, [language, level, topic]);
+  }, [language, level, topic, userPrompt]);
   
   // Add a useEffect to track component mounting and unmounting
   useEffect(() => {
@@ -230,9 +234,12 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
         
         // Log the parameters being passed to the initialize function
         console.log('Initializing with parameters - language:', language, 'level:', level, 'topic:', topic || 'none');
+        if (topic === 'custom' && userPrompt) {
+          console.log('Custom topic prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
+        }
         
-        // Pass the language, level, and topic parameters to the initialize function
-        await initialize(language, level, topic);
+        // Pass the language, level, topic, and userPrompt parameters to the initialize function
+        await initialize(language, level, topic, userPrompt);
         console.log('Realtime service initialized successfully');
       } catch (err) {
         console.error('Failed to initialize realtime service:', err);
@@ -241,7 +248,7 @@ export default function SpeechClient({ language, level, topic }: SpeechClientPro
     };
     
     initializeService();
-  }, [initialize, language, level, topic]);
+  }, [initialize, language, level, topic, userPrompt]);
   
   // Handle transcript updates and language detection
   useEffect(() => {

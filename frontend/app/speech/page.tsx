@@ -9,6 +9,7 @@ interface SpeechClientProps {
   language: string;
   level: string;
   topic?: string;
+  userPrompt?: string;
 }
 
 // Dynamically import SpeechClient with no SSR
@@ -19,6 +20,7 @@ export default function SpeechPage() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [customTopicPrompt, setCustomTopicPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigationHandledRef = useRef(false);
   
@@ -50,8 +52,12 @@ export default function SpeechPage() {
     const language = sessionStorage.getItem('selectedLanguage');
     const level = sessionStorage.getItem('selectedLevel');
     const topic = sessionStorage.getItem('selectedTopic');
+    const customPrompt = sessionStorage.getItem('customTopicText');
     
     console.log('Retrieved from sessionStorage - language:', language, 'level:', level, 'topic:', topic);
+    if (topic === 'custom' && customPrompt) {
+      console.log('Custom topic prompt:', customPrompt.substring(0, 50) + (customPrompt.length > 50 ? '...' : ''));
+    }
     
     // Mark that we've handled navigation
     navigationHandledRef.current = true;
@@ -83,6 +89,7 @@ export default function SpeechPage() {
     setSelectedLanguage(language);
     setSelectedLevel(level);
     setSelectedTopic(topic);
+    setCustomTopicPrompt(customPrompt);
     setIsLoading(false);
     
     // Reset refresh count when successfully loaded
@@ -206,6 +213,7 @@ export default function SpeechPage() {
           language={selectedLanguage} 
           level={selectedLevel} 
           topic={selectedTopic || undefined}
+          userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
         />
       )}
     </>
