@@ -294,6 +294,7 @@ async def generate_token(request: TutorSessionRequest):
         
         # Add topic-specific instructions if a topic is provided
         if topic:
+            # Find this section in the /api/realtime/token endpoint where topic-specific instructions are generated for Dutch
             if language == "dutch":
                 topic_instructions = f"\n\nLET OP: In dit gesprek moet je ALLEEN over het volgende onderwerp praten: '{topic}'. Focus al je vragen, opmerkingen en discussies op dit onderwerp. Gebruik dit onderwerp als het centrale thema van het gesprek. Als de student over een ander onderwerp begint, breng het gesprek subtiel terug naar '{topic}'."
 
@@ -307,6 +308,37 @@ async def generate_token(request: TutorSessionRequest):
                     topic_vocabulary = "\n\nGebruik deze woorden in het gesprek: eten, drinken, restaurant, menu, bestellen, lekker, recept, koken, proeven, ingrediënten, maaltijd, ontbijt, lunch, diner."
                 elif topic == "hobbies" or topic == "hobby's":
                     topic_vocabulary = "\n\nGebruik deze woorden in het gesprek: hobby, vrije tijd, sport, lezen, muziek, film, dansen, schilderen, wandelen, fietsen, verzamelen, spelen."
+                elif topic == "custom" and hasattr(request, 'user_prompt') and request.user_prompt:
+                    # For custom topics with user prompts in Dutch, fetch information using web search
+                    print(f"Processing custom topic with user prompt in Dutch: {request.user_prompt[:50]}...")
+                    try:
+                        # Call the custom_topic function to get web search results
+                        custom_topic_request = CustomTopicRequest(
+                            language=language,
+                            level=level,
+                            voice=request.voice,
+                            topic="custom",
+                            user_prompt=request.user_prompt
+                        )
+                        
+                        # Use the custom_topic function directly (not as an endpoint)
+                        custom_response = await custom_topic(custom_topic_request)
+                        
+                        # Extract a topic name from the user prompt (first 100 chars)
+                        short_topic_name = request.user_prompt[:100] + "..." if len(request.user_prompt) > 100 else request.user_prompt
+                        
+                        # Override the topic instructions to use the actual user prompt instead of 'custom'
+                        topic_instructions = f"\n\nLET OP: In dit gesprek moet je ALLEEN over het volgende onderwerp praten: '{short_topic_name}'. Focus al je vragen, opmerkingen en discussies op dit onderwerp. Gebruik dit onderwerp als het centrale thema van het gesprek. Als de student over een ander onderwerp begint, breng het gesprek subtiel terug naar dit onderwerp."
+                        
+                        # Add instruction to start by mentioning the actual topic content
+                        topic_instructions += f"\n\nBELANGRIJK: Begin je EERSTE bericht door het onderwerp '{short_topic_name}' te noemen. Bijvoorbeeld: 'Hallo! Laten we vandaag over {short_topic_name} praten. Wat vind je van dit onderwerp?'"
+                        
+                        # Add the web search results to the topic instructions
+                        topic_vocabulary = f"\n\nHier is de nieuwste informatie over dit onderwerp die je in je gesprek kunt verwerken:\n{custom_response['response']}\n\nIntroduceer geleidelijk relevante woordenschat uit deze informatie, passend bij het niveau van de student."
+                        print("Successfully added web search results to Dutch topic instructions")
+                    except Exception as e:
+                        print(f"Error fetching web search results for Dutch: {str(e)}")
+                        topic_vocabulary = "\n\nIntroduceer geleidelijk relevante woordenschat voor dit onderwerp, passend bij het niveau van de student."
                 else:
                     topic_vocabulary = "\n\nIntroduceer geleidelijk relevante woordenschat voor dit onderwerp, passend bij het niveau van de student."
                 
