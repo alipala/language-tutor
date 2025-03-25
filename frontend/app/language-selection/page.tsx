@@ -86,8 +86,13 @@ export default function LanguageSelection() {
       return;
     }
     
-    // If we have just language selected, we should go to level selection
-    if (storedLanguage && !storedLevel) {
+    // If we have just language selected, we should go to level selection,
+    // but only if we didn't explicitly navigate here to change the language
+    const fromTopicSelection = sessionStorage.getItem('fromTopicSelection');
+    const fromLevelSelection = sessionStorage.getItem('fromLevelSelection');
+    const fromSpeechPage = sessionStorage.getItem('fromSpeechPage');
+    
+    if (storedLanguage && !storedLevel && !fromTopicSelection && !fromLevelSelection && !fromSpeechPage) {
       console.log('Found existing language, redirecting to level selection');
       // Use the most direct approach with a delay to avoid navigation race conditions
       setTimeout(() => {
@@ -96,6 +101,20 @@ export default function LanguageSelection() {
         window.location.href = fullUrl;
       }, 300);
       return;
+    }
+    
+    // Clear the navigation flags if they exist
+    if (fromTopicSelection) {
+      console.log('Clearing fromTopicSelection flag');
+      sessionStorage.removeItem('fromTopicSelection');
+    }
+    if (fromLevelSelection) {
+      console.log('Clearing fromLevelSelection flag');
+      sessionStorage.removeItem('fromLevelSelection');
+    }
+    if (fromSpeechPage) {
+      console.log('Clearing fromSpeechPage flag');
+      sessionStorage.removeItem('fromSpeechPage');
     }
   }, []);
   

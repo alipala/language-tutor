@@ -234,6 +234,9 @@ export default function LevelSelection() {
     sessionStorage.removeItem('fromLevelSelection');
     sessionStorage.removeItem('intentionalNavigation');
     
+    // Set a flag to indicate we're intentionally going to language selection
+    sessionStorage.setItem('fromLevelSelection', 'true');
+    
     // Navigate to language selection
     console.log('Navigating to language selection from level selection, cleared selections');
     window.location.href = '/language-selection';

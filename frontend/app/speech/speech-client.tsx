@@ -382,6 +382,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     sessionStorage.removeItem('fromLevelSelection');
     sessionStorage.removeItem('intentionalNavigation');
     
+    // Set a flag to indicate we're intentionally going to language selection
+    sessionStorage.setItem('fromSpeechPage', 'true');
+    
     console.log('Navigating to language selection from speech client');
     window.location.href = '/language-selection';
     

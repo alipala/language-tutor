@@ -137,6 +137,11 @@ export default function TopicSelection() {
   const handleChangeLanguage = () => {
     // Go back to language selection
     sessionStorage.removeItem('selectedTopic');
+    sessionStorage.removeItem('customTopicText');
+    
+    // Set a flag to indicate we're intentionally going to language selection
+    sessionStorage.setItem('fromTopicSelection', 'true');
+    
     // Navigate to language selection
     console.log('Navigating to language selection from topic selection');
     window.location.href = '/language-selection';
