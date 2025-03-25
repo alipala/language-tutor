@@ -127,7 +127,24 @@ export default function SpeechPage() {
       setShowLeaveWarning(true);
       setPendingNavigationUrl('/language-selection');
     } else {
+      // Clear all selections except language which will be reselected
+      sessionStorage.removeItem('selectedLevel');
+      sessionStorage.removeItem('selectedTopic');
+      sessionStorage.removeItem('customTopicText');
+      // Clear any navigation flags
+      sessionStorage.removeItem('fromLevelSelection');
+      sessionStorage.removeItem('intentionalNavigation');
+      
+      console.log('Navigating to language selection from speech page');
       window.location.href = '/language-selection';
+      
+      // Fallback navigation in case the first attempt fails
+      setTimeout(() => {
+        if (window.location.pathname.includes('speech')) {
+          console.log('Still on speech page, using fallback navigation to language selection');
+          window.location.replace('/language-selection');
+        }
+      }, 1000);
     }
   };
   
@@ -137,16 +154,81 @@ export default function SpeechPage() {
       setShowLeaveWarning(true);
       setPendingNavigationUrl('/level-selection');
     } else {
+      // Clear level selection but keep language and topic
+      sessionStorage.removeItem('selectedLevel');
+      // Clear any navigation flags
+      sessionStorage.removeItem('intentionalNavigation');
+      
+      console.log('Navigating to level selection from speech page');
       window.location.href = '/level-selection';
+      
+      // Fallback navigation in case the first attempt fails
+      setTimeout(() => {
+        if (window.location.pathname.includes('speech')) {
+          console.log('Still on speech page, using fallback navigation to level selection');
+          window.location.replace('/level-selection');
+        }
+      }, 1000);
+    }
+  };
+  
+  // Handle change topic action - show a warning if needed
+  const handleChangeTopic = () => {
+    if (sessionStorage.getItem('isInConversation') === 'true') {
+      setShowLeaveWarning(true);
+      setPendingNavigationUrl('/topic-selection');
+    } else {
+      // Clear topic selection but keep language
+      sessionStorage.removeItem('selectedTopic');
+      sessionStorage.removeItem('customTopicText');
+      sessionStorage.removeItem('selectedLevel');
+      // Set a flag to indicate we're intentionally going to topic selection
+      sessionStorage.setItem('fromLevelSelection', 'true');
+      // Clear any navigation flags
+      sessionStorage.removeItem('intentionalNavigation');
+      
+      console.log('Navigating to topic selection from speech page');
+      window.location.href = '/topic-selection';
+      
+      // Fallback navigation in case the first attempt fails
+      setTimeout(() => {
+        if (window.location.pathname.includes('speech')) {
+          console.log('Still on speech page, using fallback navigation to topic selection');
+          window.location.replace('/topic-selection');
+        }
+      }, 1000);
     }
   };
   
   // Confirm navigation after warning
   const handleConfirmNavigation = () => {
     sessionStorage.removeItem('isInConversation');
+    
     if (pendingNavigationUrl) {
+      // If navigating to language selection, clear relevant storage items
+      if (pendingNavigationUrl === '/language-selection') {
+        // Clear all selections except language which will be reselected
+        sessionStorage.removeItem('selectedLevel');
+        sessionStorage.removeItem('selectedTopic');
+        sessionStorage.removeItem('customTopicText');
+        // Clear any navigation flags
+        sessionStorage.removeItem('fromLevelSelection');
+        sessionStorage.removeItem('intentionalNavigation');
+      }
+      
+      console.log(`Confirming navigation to ${pendingNavigationUrl}`);
       window.location.href = pendingNavigationUrl;
+      
+      // Fallback navigation in case the first attempt fails
+      const currentPath = window.location.pathname;
+      setTimeout(() => {
+        if (window.location.pathname === currentPath) {
+          console.log(`Still on ${currentPath}, using fallback navigation to ${pendingNavigationUrl}`);
+          window.location.replace(pendingNavigationUrl);
+        }
+      }, 1000);
     }
+    
     setShowLeaveWarning(false);
   };
   

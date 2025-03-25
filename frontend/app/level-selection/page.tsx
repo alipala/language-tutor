@@ -229,9 +229,22 @@ export default function LevelSelection() {
     sessionStorage.removeItem('selectedLanguage');
     sessionStorage.removeItem('selectedLevel');
     sessionStorage.removeItem('selectedTopic');
+    sessionStorage.removeItem('customTopicText');
+    // Clear any navigation flags
+    sessionStorage.removeItem('fromLevelSelection');
+    sessionStorage.removeItem('intentionalNavigation');
+    
     // Navigate to language selection
-    console.log('Navigating to language selection, cleared selections');
+    console.log('Navigating to language selection from level selection, cleared selections');
     window.location.href = '/language-selection';
+    
+    // Fallback navigation in case the first attempt fails
+    setTimeout(() => {
+      if (window.location.pathname.includes('level-selection')) {
+        console.log('Still on level selection page, using fallback navigation to language selection');
+        window.location.replace('/language-selection');
+      }
+    }, 1000);
   };
   
   const handleChangeTopic = () => {

@@ -374,12 +374,66 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   
   // Handle change language
   const handleChangeLanguage = () => {
-    router.push('/topic-selection');
+    // Clear all selections except language which will be reselected
+    sessionStorage.removeItem('selectedLevel');
+    sessionStorage.removeItem('selectedTopic');
+    sessionStorage.removeItem('customTopicText');
+    // Clear any navigation flags
+    sessionStorage.removeItem('fromLevelSelection');
+    sessionStorage.removeItem('intentionalNavigation');
+    
+    console.log('Navigating to language selection from speech client');
+    window.location.href = '/language-selection';
+    
+    // Fallback navigation in case the first attempt fails
+    setTimeout(() => {
+      if (window.location.pathname.includes('speech')) {
+        console.log('Still on speech page, using fallback navigation to language selection');
+        window.location.replace('/language-selection');
+      }
+    }, 1000);
+  };
+  
+  // Handle change topic
+  const handleChangeTopic = () => {
+    // Keep language but clear topic and level
+    sessionStorage.removeItem('selectedTopic');
+    sessionStorage.removeItem('customTopicText');
+    sessionStorage.removeItem('selectedLevel');
+    // Set a flag to indicate we're intentionally going to topic selection
+    sessionStorage.setItem('fromLevelSelection', 'true');
+    // Clear any other navigation flags
+    sessionStorage.removeItem('intentionalNavigation');
+    
+    console.log('Navigating to topic selection from speech client');
+    window.location.href = '/topic-selection';
+    
+    // Fallback navigation in case the first attempt fails
+    setTimeout(() => {
+      if (window.location.pathname.includes('speech')) {
+        console.log('Still on speech page, using fallback navigation to topic selection');
+        window.location.replace('/topic-selection');
+      }
+    }, 1000);
   };
   
   // Handle change level
   const handleChangeLevel = () => {
-    router.push(`/level-selection?language=${language}`);
+    // Clear level selection but keep language and topic
+    sessionStorage.removeItem('selectedLevel');
+    // Clear any navigation flags
+    sessionStorage.removeItem('intentionalNavigation');
+    
+    console.log('Navigating to level selection from speech client');
+    window.location.href = '/level-selection';
+    
+    // Fallback navigation in case the first attempt fails
+    setTimeout(() => {
+      if (window.location.pathname.includes('speech')) {
+        console.log('Still on speech page, using fallback navigation to level selection');
+        window.location.replace('/level-selection');
+      }
+    }, 1000);
   };
   
   return (
@@ -426,12 +480,18 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             </button>
             <button 
               type="button"
+              onClick={handleChangeTopic}
+              className="app-button"
+            >
+              Change Topic
+            </button>
+            <button 
+              type="button"
               onClick={handleChangeLevel}
               className="app-button"
             >
               Change Level
             </button>
-            {/* Test button removed as requested */}
           </div>
         </div>
 

@@ -138,7 +138,16 @@ export default function TopicSelection() {
     // Go back to language selection
     sessionStorage.removeItem('selectedTopic');
     // Navigate to language selection
+    console.log('Navigating to language selection from topic selection');
     window.location.href = '/language-selection';
+    
+    // Fallback navigation in case the first attempt fails
+    setTimeout(() => {
+      if (window.location.pathname.includes('topic-selection')) {
+        console.log('Still on topic selection page, using fallback navigation to language selection');
+        window.location.replace('/language-selection');
+      }
+    }, 1000);
   };
 
   const handleSkipTopic = () => {
