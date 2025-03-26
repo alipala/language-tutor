@@ -13,6 +13,10 @@ import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# Import sentence assessment functionality
+from sentence_assessment import SentenceAssessmentRequest, SentenceAssessmentResponse, GrammarIssue, \
+    recognize_speech, analyze_sentence, generate_exercises
+
 # Load environment variables
 load_dotenv()
 
@@ -749,6 +753,86 @@ async def serve_frontend(full_path: str = "", request: Request = None):
     
     # In development, return a 404 for non-API routes
     raise HTTPException(status_code=404, detail="Not Found")
+
+# Add endpoint for sentence construction assessment
+@app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
+async def assess_sentence_construction(request: SentenceAssessmentRequest):
+    try:
+        # Determine the text to analyze - prioritize transcript over audio
+        recognized_text = None
+        
+        # First check if a transcript is provided - prioritize this
+        if request.transcript and request.transcript.strip():
+            print(f"Using provided transcript: '{request.transcript}'")
+            recognized_text = request.transcript
+        # If no transcript, try to transcribe audio if provided
+        elif request.audio_base64:
+            try:
+                print("Attempting to transcribe audio...")
+                recognized_text = await recognize_speech(request.audio_base64, request.language)
+                print(f"Successfully transcribed audio: '{recognized_text}'")
+            except Exception as audio_err:
+                print(f"Error transcribing audio: {str(audio_err)}")
+                # No need to fall back to transcript as we already checked it
+        # Use context as last resort if provided
+        elif request.context:
+            print(f"Using context as fallback: '{request.context}'")
+            recognized_text = request.context
+        
+        if not recognized_text or recognized_text.strip() == "":
+            print("No valid text found for analysis")
+            raise HTTPException(status_code=400, detail="No speech detected or text provided for analysis")
+        
+        print(f"Proceeding with analysis of: '{recognized_text}'")
+        
+        # Analyze sentence
+        assessment = await analyze_sentence(
+            text=recognized_text,
+            language=request.language,
+            level=request.level,
+            exercise_type=request.exercise_type,
+            target_grammar=request.target_grammar
+        )
+        
+        # Combine the recognized text with the assessment results
+        result = SentenceAssessmentResponse(
+            recognized_text=recognized_text,
+            **assessment
+        )
+        
+        return result
+    
+    except Exception as e:
+        print(f"Error in sentence assessment: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sentence assessment failed: {str(e)}")
+
+
+# Define a model for exercise requests
+class ExerciseRequest(BaseModel):
+    language: str
+    level: str
+    exercise_type: str
+    target_grammar: Optional[List[str]] = None
+
+
+# Add endpoint for generating practice exercises
+@app.post("/api/sentence/exercises")
+async def generate_sentence_exercises(request: ExerciseRequest):
+    try:
+        # Generate exercises
+        exercises = await generate_exercises(
+            language=request.language,
+            level=request.level,
+            exercise_type=request.exercise_type,
+            target_grammar=request.target_grammar
+        )
+        
+        return exercises
+    
+    except Exception as e:
+        print(f"Error generating exercises: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Exercise generation failed: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn
