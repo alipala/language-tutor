@@ -1,5 +1,19 @@
 import { GrammarIssue, AssessmentResult } from '@/components/sentence-construction-assessment';
 
+// Function to determine the API URL based on environment
+function getApiUrl(): string {
+  // Check if we're in a browser
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If we're not on localhost, use the same origin for API calls
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return window.location.origin;
+    }
+  }
+  // Default to environment variable or localhost
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+}
+
 // Function to encode audio data as base64
 export const encodeAudioData = (audioBlob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -57,8 +71,8 @@ export const assessSentence = async (
       }
     }
     
-    // Get the API URL from environment or default to localhost
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // Get the API URL
+    const apiUrl = getApiUrl();
     
     // Make the API request
     const response = await fetch(`${apiUrl}/api/sentence/assess`, {
@@ -115,8 +129,8 @@ export const fetchExercises = async (
       target_grammar: targetGrammar
     };
     
-    // Get the API URL from environment or default to localhost
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // Get the API URL
+    const apiUrl = getApiUrl();
     
     // Make the API request
     const response = await fetch(`${apiUrl}/api/sentence/exercises`, {
