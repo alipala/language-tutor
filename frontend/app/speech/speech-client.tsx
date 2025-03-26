@@ -606,15 +606,15 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 shadow-lg animate-fade-in" style={{animationDelay: '300ms'}}>
+                  <div className="relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 shadow-lg animate-fade-in flex flex-col" style={{animationDelay: '300ms'}}>
                     <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                       Conversation Transcript
                     </h3>
-                    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 h-[300px] md:h-[400px] overflow-y-auto custom-scrollbar">
-                      <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 flex-1 min-h-[300px] md:min-h-[400px] max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
+                      <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (
                           // Sort messages by timestamp if available, otherwise use the array order
                           processedMessages
@@ -677,8 +677,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                               );
                             })
                         ) : (
-                          <div className="flex justify-center items-center h-full">
-                            <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn">
+                          <div className="flex justify-center items-center h-full flex-1">
+                            <div className="text-center p-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 animate-fadeIn w-full">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto mb-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                               </svg>
@@ -687,7 +687,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                             </div>
                           </div>
                         )}
-                        <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef} className="mt-auto" />
                       </div>
                     </div>
                     <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 h-1 w-1/3 rounded-full opacity-70"></div>

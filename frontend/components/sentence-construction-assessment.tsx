@@ -281,7 +281,7 @@ export default function SentenceConstructionAssessment({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full flex flex-col">
       {/* Exercise Type Selector */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
@@ -347,7 +347,7 @@ export default function SentenceConstructionAssessment({
 
       {/* Previous Assessments History */}
       {assessmentHistory.length > 0 && (
-        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 flex-shrink-0">
           <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -380,7 +380,7 @@ export default function SentenceConstructionAssessment({
       
       {/* Progress Tracking - Show when we have history */}
       {progress.gradeHistory.length > 0 && (
-        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 flex-shrink-0">
           <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -420,7 +420,7 @@ export default function SentenceConstructionAssessment({
 
       {/* Assessment Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn overflow-hidden">
           <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-white">Sentence Assessment</h2>
