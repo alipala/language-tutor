@@ -53,6 +53,17 @@ export default function SentenceConstructionAssessment({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Add state for storing assessment history
+  const [assessmentHistory, setAssessmentHistory] = useState<Array<{
+    transcript: string;
+    result: AssessmentResult;
+    timestamp: Date;
+  }>>([]);
+  
+  // Add state for selected historical assessment
+  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState<number | null>(null);
+  
   const [progress, setProgress] = useState<{
     gradeHistory: number[];
     errorReduction: number;
@@ -191,6 +202,21 @@ export default function SentenceConstructionAssessment({
       // Update assessment result
       setAssessmentResult(result);
       
+      // Add to assessment history
+      if (transcript && transcript.trim() !== '') {
+        setAssessmentHistory(prev => [
+          ...prev,
+          {
+            transcript: transcript,
+            result: result,
+            timestamp: new Date()
+          }
+        ]);
+        
+        // Reset selected history index when adding a new assessment
+        setSelectedHistoryIndex(null);
+      }
+      
       // Update progress tracking
       setProgress(prev => {
         const newHistory = [...prev.gradeHistory, result.overall_score];
@@ -230,6 +256,14 @@ export default function SentenceConstructionAssessment({
   const handleCloseModal = () => {
     setShowModal(false);
     setIsAssessing(false);
+  };
+  
+  // Handle selecting a historical assessment
+  const handleSelectHistoricalAssessment = (index: number) => {
+    setSelectedHistoryIndex(index);
+    const historicalItem = assessmentHistory[index];
+    setAssessmentResult(historicalItem.result);
+    setShowModal(true);
   };
 
   // Get color class based on score
@@ -311,6 +345,39 @@ export default function SentenceConstructionAssessment({
         </div>
       )}
 
+      {/* Previous Assessments History */}
+      {assessmentHistory.length > 0 && (
+        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+          <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Previous Sentences
+          </h3>
+          <div className="max-h-[150px] overflow-y-auto custom-scrollbar">
+            {assessmentHistory.map((item, index) => (
+              <div 
+                key={index} 
+                className={`p-3 mb-2 rounded-lg border ${index === selectedHistoryIndex ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-800/50 border-slate-700/50'} hover:bg-slate-700/50 cursor-pointer transition-colors`}
+                onClick={() => handleSelectHistoricalAssessment(index)}
+              >
+                <div className="flex justify-between items-center">
+                  <p className="text-white truncate">{item.transcript}</p>
+                  <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                    <span className="text-xs px-2 py-1 rounded-full bg-indigo-900/70 text-indigo-200">
+                      Score: {item.result.overall_score.toFixed(1)}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       {/* Progress Tracking - Show when we have history */}
       {progress.gradeHistory.length > 0 && (
         <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
