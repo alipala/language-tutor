@@ -584,11 +584,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             {/* Transcript Sections - Animate in when conversation starts */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                   {/* Real-time Transcript Component */}
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 shadow-lg animate-fade-in" style={{animationDelay: '200ms'}}>
-                    <h3 className="text-lg font-semibold mb-3 text-blue-400 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 shadow-lg animate-fade-in" style={{animationDelay: '200ms'}}>
+                    <h3 className="text-sm font-semibold mb-2 text-blue-400 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                       Real-time Transcript
@@ -606,14 +606,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 shadow-lg animate-fade-in flex flex-col" style={{animationDelay: '300ms'}}>
-                    <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 shadow-lg animate-fade-in flex flex-col" style={{animationDelay: '300ms'}}>
+                    <h3 className="text-sm font-semibold mb-2 text-indigo-400 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                       Conversation Transcript
                     </h3>
-                    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 flex-1 min-h-[300px] md:min-h-[400px] max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
+                    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-700/50 p-3 flex-1 min-h-[250px] md:min-h-[320px] max-h-[60vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (
                           // Sort messages by timestamp if available, otherwise use the array order

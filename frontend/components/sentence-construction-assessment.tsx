@@ -282,28 +282,28 @@ export default function SentenceConstructionAssessment({
 
   return (
     <div className="w-full flex flex-col">
-      {/* Exercise Type Selector */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {/* Exercise Type Selector - Compact */}
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold mb-1 text-indigo-400 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Exercise Type
         </h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+        <div className="flex flex-wrap gap-1 justify-start">
           {[
-            { id: 'free', label: 'Free Production' },
-            { id: 'guided', label: 'Guided Construction' },
-            { id: 'transformation', label: 'Transformation' },
-            { id: 'correction', label: 'Error Correction' },
+            { id: 'free', label: 'Free' },
+            { id: 'guided', label: 'Guided' },
+            { id: 'transformation', label: 'Transform' },
+            { id: 'correction', label: 'Correction' },
             { id: 'translation', label: 'Translation' },
           ].map(type => (
             <Button
               key={type.id}
               onClick={() => onChangeExerciseType && onChangeExerciseType(type.id)}
-              className={`text-sm px-4 py-2 transition-all duration-300 ${
+              className={`text-xs px-2 py-1 transition-all duration-300 ${
                 exerciseType === type.id 
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-sm' 
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
               }`}
             >
@@ -313,16 +313,16 @@ export default function SentenceConstructionAssessment({
         </div>
       </div>
       
-      {/* Current Exercise Display */}
+      {/* Current Exercise Display - Condensed */}
       {currentExercises.length > 0 && (
-        <div className="mb-6 bg-slate-800/50 rounded-xl border border-slate-700/50 p-4">
-          <h3 className="text-lg font-semibold mb-3 text-indigo-400">Current Exercise</h3>
-          <div className="space-y-4">
+        <div className="mb-4 bg-slate-800/50 rounded-lg border border-slate-700/50 p-3">
+          <h3 className="text-sm font-semibold mb-1 text-indigo-400">Current Exercise</h3>
+          <div className="space-y-2">
             {currentExercises.slice(0, 1).map((exercise, idx) => (
-              <div key={idx} className="space-y-2">
-                <p className="text-white font-medium">{exercise.prompt}</p>
+              <div key={idx} className="space-y-1">
+                <p className="text-white text-sm">{exercise.prompt}</p>
                 {exercise.example && (
-                  <p className="text-slate-400 text-sm italic">Example: {exercise.example}</p>
+                  <p className="text-slate-400 text-xs italic">Example: {exercise.example}</p>
                 )}
               </div>
             ))}
@@ -345,20 +345,20 @@ export default function SentenceConstructionAssessment({
         </div>
       )}
 
-      {/* Previous Assessments History */}
+      {/* Previous Assessments History - Condensed */}
       {assessmentHistory.length > 0 && (
-        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 flex-shrink-0">
-          <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="mb-4 bg-slate-800/30 rounded-lg border border-slate-700/30 p-3 flex-shrink-0">
+          <h3 className="text-sm font-semibold mb-1 text-indigo-400 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
             Previous Sentences
           </h3>
-          <div className="max-h-[150px] overflow-y-auto custom-scrollbar">
+          <div className="max-h-[120px] overflow-y-auto custom-scrollbar">
             {assessmentHistory.map((item, index) => (
               <div 
                 key={index} 
-                className={`p-3 mb-2 rounded-lg border ${index === selectedHistoryIndex ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-800/50 border-slate-700/50'} hover:bg-slate-700/50 cursor-pointer transition-colors`}
+                className={`p-2 mb-1 rounded-lg border ${index === selectedHistoryIndex ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-800/50 border-slate-700/50'} hover:bg-slate-700/50 cursor-pointer transition-colors`}
                 onClick={() => handleSelectHistoricalAssessment(index)}
               >
                 <div className="flex justify-between items-center">
@@ -378,11 +378,11 @@ export default function SentenceConstructionAssessment({
         </div>
       )}
       
-      {/* Progress Tracking - Show when we have history */}
+      {/* Progress Tracking - Show when we have history - Condensed */}
       {progress.gradeHistory.length > 0 && (
-        <div className="mb-6 bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 flex-shrink-0">
-          <h3 className="text-lg font-semibold mb-3 text-indigo-400 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="mb-4 bg-slate-800/30 rounded-lg border border-slate-700/30 p-3 flex-shrink-0">
+          <h3 className="text-sm font-semibold mb-1 text-indigo-400 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
             Your Progress
@@ -420,20 +420,39 @@ export default function SentenceConstructionAssessment({
 
       {/* Assessment Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn overflow-hidden">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Sentence Assessment</h2>
-              <Button
-                onClick={handleCloseModal}
-                variant="ghost"
-                className="rounded-full h-8 w-8 p-0 text-slate-400 hover:text-white"
-              >
-                <X size={18} />
-              </Button>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fadeIn">
+          <div className="bg-slate-900 border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20 rounded-xl max-w-3xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Header Section with Sticky Positioning */}
+            <div className="sticky top-0 bg-slate-900 pt-2 sm:pt-3 px-3 sm:px-5 pb-2 sm:pb-3 z-10 border-b border-slate-700">
+              <div className="flex justify-between items-center">
+                <h2 className="text-base sm:text-lg font-bold text-white">Sentence Assessment</h2>
+                <Button
+                  onClick={handleCloseModal}
+                  variant="ghost"
+                  className="rounded-full h-8 w-8 p-0 text-slate-400 hover:text-white"
+                >
+                  <X size={18} />
+                </Button>
+              </div>
+              
+              {!isLoading && !error && assessmentResult && (
+                <div className="w-full mt-3">
+                  <Button
+                    onClick={handleContinue}
+                    className="w-full py-1.5 sm:py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center shadow-md"
+                  >
+                    Continue Learning
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {isLoading ? (
+            {/* Scrollable Content Area */}
+            <div className="p-3 sm:p-5 pt-2 sm:pt-3 overflow-y-auto">
+              {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="text-slate-400">Analyzing your sentence...</p>
@@ -459,7 +478,7 @@ export default function SentenceConstructionAssessment({
                 </div>
 
                 {/* Scores */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
                   {[
                     { label: "Grammar", score: assessmentResult.grammatical_score },
                     { label: "Vocabulary", score: assessmentResult.vocabulary_score },
@@ -477,11 +496,11 @@ export default function SentenceConstructionAssessment({
 
                 {/* Grammar Issues */}
                 {assessmentResult.grammar_issues.length > 0 && (
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <h3 className="text-sm font-medium text-slate-400 mb-2">Grammar Issues</h3>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {assessmentResult.grammar_issues.map((issue, i) => (
-                        <div key={i} className="bg-slate-800 p-3 rounded border-l-4 border-yellow-500">
+                        <div key={i} className="bg-slate-800 p-2 rounded border-l-4 border-yellow-500 text-sm sm:text-base">
                           <div className="flex justify-between">
                             <span className="font-medium">{issue.issue_type}</span>
                             <span className={`text-sm ${
@@ -501,9 +520,9 @@ export default function SentenceConstructionAssessment({
 
                 {/* Corrected Text */}
                 {assessmentResult.corrected_text && (
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <h3 className="text-sm font-medium text-slate-400">Corrected Text</h3>
-                    <p className="text-white bg-slate-800 p-3 rounded mt-1 border-l-4 border-green-500">
+                    <p className="text-white bg-slate-800 p-2 rounded mt-1 border-l-4 border-green-500">
                       {assessmentResult.corrected_text}
                     </p>
                   </div>
@@ -511,8 +530,8 @@ export default function SentenceConstructionAssessment({
 
                 {/* Improvement Suggestions */}
                 {assessmentResult.improvement_suggestions.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium text-slate-400 mb-2">Improvement Suggestions</h3>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-medium text-slate-400 mb-1">Improvement Suggestions</h3>
                     <ul className="list-disc pl-5 space-y-1">
                       {assessmentResult.improvement_suggestions.map((suggestion, i) => (
                         <li key={i} className="text-slate-300">{suggestion}</li>
@@ -523,9 +542,9 @@ export default function SentenceConstructionAssessment({
 
                 {/* Alternative Expressions */}
                 {assessmentResult.level_appropriate_alternatives && assessmentResult.level_appropriate_alternatives.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-sm font-medium text-slate-400 mb-2">Alternative Expressions</h3>
-                    <div className="space-y-2">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-medium text-slate-400 mb-1">Alternative Expressions</h3>
+                    <div className="space-y-1">
                       {assessmentResult.level_appropriate_alternatives.map((alt, i) => (
                         <div key={i} className="bg-slate-800 p-2 rounded text-slate-300">{alt}</div>
                       ))}
@@ -533,17 +552,11 @@ export default function SentenceConstructionAssessment({
                   </div>
                 )}
 
-                {/* Continue Button */}
-                <div className="flex justify-center mt-6">
-                  <Button
-                    onClick={handleContinue}
-                    className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-full"
-                  >
-                    Continue Learning
-                  </Button>
-                </div>
+                {/* Bottom padding area to ensure content isn't cut off */}
+                <div className="h-6"></div>
               </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
