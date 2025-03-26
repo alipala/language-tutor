@@ -193,7 +193,20 @@ This application includes several optimizations for reliable production deployme
    - Sets `reactStrictMode: false` to prevent double rendering in production
    - Sets `trailingSlash: false` to prevent redirect loops
 
-2. **Navigation System:**
+2. **Smart API URL Detection:**
+   - Automatically detects whether the application is running in development or production
+   - Uses `window.location.origin` in production to ensure frontend connects to the correct backend URL
+   - Falls back to environment variables or localhost during development
+   - Eliminates the need for manual API URL configuration in different environments
+   - Implemented through a centralized `getApiUrl()` function for consistent behavior
+
+3. **Optimized Deployment Configuration:**
+   - Enhanced Dockerfile with proper working directory settings
+   - Improved railway.toml and nixpacks.toml configurations
+   - Updated Procfile to avoid using `cd` commands for better compatibility
+   - CORS configuration that allows all origins (`origins=["*"]`) in production for maximum compatibility
+
+4. **Navigation System:**
    - Uses direct `window.location.href` for reliable page transitions in production
    - Implements stuck-state detection and automatic recovery
    - Provides fallback navigation through multiple methods

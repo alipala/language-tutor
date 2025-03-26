@@ -5,6 +5,23 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2025-03-26
+
+### Added
+- Smart API URL detection that automatically adapts between development and production environments
+- Environment-aware frontend configuration that uses `window.location.origin` in production
+
+### Fixed
+- Resolved API connection errors in Railway deployment by implementing dynamic endpoint configuration
+- Fixed sentence assessment feature that was failing due to incorrect API endpoint URLs
+- Eliminated `net::ERR_CONNECTION_REFUSED` errors when accessing sentence assessment API
+- Improved deployment configuration to avoid using `cd` commands in Docker and Railway environments
+
+### Changed
+- Refactored API URL handling with a centralized `getApiUrl()` function for better maintainability
+- Enhanced deployment files (Dockerfile, railway.toml, nixpacks.toml, Procfile) for more reliable execution
+- Optimized CORS configuration to ensure proper communication between frontend and backend
+
 ## [2.8.0] - 2025-03-23
 
 ### Added
