@@ -409,7 +409,7 @@ async def generate_token(request: TutorSessionRequest):
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "gpt-4o-realtime-preview-2024-12-17",
+                    "model": "gpt-4o-mini-realtime-preview-2024-12-17",
                     "voice": request.voice,
                     "instructions": instructions,
                     "modalities": ["audio", "text"]
@@ -482,7 +482,7 @@ async def custom_topic(request: CustomTopicRequest):
             
             # Prepare the request payload
             payload = {
-                "model": "gpt-4o",
+                "model": "gpt-4o-mini",
                 "input": [
                     {
                         "role": "system",
@@ -554,7 +554,7 @@ async def custom_topic(request: CustomTopicRequest):
             
             # Call OpenAI API to generate response using the standard chat completions endpoint
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
