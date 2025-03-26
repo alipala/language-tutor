@@ -44,4 +44,4 @@ EXPOSE 3001
 
 # Command to run the application
 # Use a more direct approach to start the application
-CMD ["python3", "-c", "import os, uvicorn; uvicorn.run('backend.main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))"]
+CMD ["sh", "-c", "cd backend && python3 -c \"import os, uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))\""]

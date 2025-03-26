@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pip install -r backend/requirements.txt && npm --prefix frontend install && npm --prefix frontend run build"
 
 [deploy]
-startCommand = "python -c \"import os, uvicorn; uvicorn.run('backend.main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))\"" 
+startCommand = "cd backend && python -c \"import os, uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))\"" 
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
