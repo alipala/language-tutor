@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import PronunciationAssessment from '@/components/pronunciation-assessment';
+import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 
 interface SpeechClientProps {
   language: string;
@@ -36,6 +36,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const [isPaused, setIsPaused] = useState<boolean>(false);
   // Ref to store conversation history when pausing
   const conversationHistoryRef = useRef<string>('');
+  // State for exercise type in sentence construction assessment
+  const [exerciseType, setExerciseType] = useState<string>('free');
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -591,13 +593,15 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       </svg>
                       Real-time Transcript
                     </h3>
-                    <PronunciationAssessment
+                    <SentenceConstructionAssessment
                       transcript={currentTranscript}
                       isRecording={isRecording}
                       onStopRecording={handleEndConversation}
                       onContinueLearning={handleContinueLearning}
                       language={language}
                       level={level}
+                      exerciseType={exerciseType}
+                      onChangeExerciseType={setExerciseType}
                     />
                   </div>
                   
