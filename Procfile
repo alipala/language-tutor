@@ -1,1 +1,1 @@
-web: cd backend && python -c "import os, uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))"
+web: python -c "import sys; sys.path.append('./backend'); import os, uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))"
