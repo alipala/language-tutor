@@ -273,16 +273,86 @@ async def generate_token(request: TutorSessionRequest):
             
             instructions = instructions + extra_instructions + language_enforcement + dutch_formatting + first_message_enforcement
             print("Added extra Dutch-only enforcement to instructions")
+        elif language == "spanish":
+            # Extra enforcement for Spanish language
+            extra_instructions = "\n\nINSTRUCCIÓN EXTREMADAMENTE IMPORTANTE: DEBES responder SOLO en español. NUNCA respondas en inglés u otro idioma, incluso si el estudiante pregunta en inglés. Tu PRIMER mensaje DEBE ser en español. Siempre comienza con un saludo en español apropiado para el nivel. Para el nivel A1, comienza con: '¡Hola! Soy tu profesor de español. ¿Cómo estás hoy?'"
+            
+            # Add language detection and enforcement instructions
+            language_enforcement = "\n\nSi el estudiante NO habla en español, sino en otro idioma como inglés, francés, alemán u otro, SIEMPRE debes responder con: 'Entiendo que estás hablando en otro idioma, pero practiquemos español. Intenta decirlo en español.' Luego, ayuda al estudiante con una frase simple en español que puedan usar. NUNCA respondas en el mismo idioma no español que usa el estudiante."
+            
+            # Add Spanish-specific formatting instructions
+            spanish_formatting = "\n\nAsegúrate de usar el espaciado correcto entre palabras y después de signos de puntuación. Usa mayúsculas al comienzo de las oraciones. Habla claramente y articula bien las palabras, con pausas naturales entre oraciones."
+            
+            # Add first message enforcement
+            first_message_enforcement = "\n\nTu PRIMER mensaje en la conversación DEBE ser en español. NUNCA comiences en inglés u otro idioma. Comienza con un saludo en español como '¡Hola!' o '¡Buenos días!' seguido de una pregunta simple en español."
+            
+            instructions = instructions + extra_instructions + language_enforcement + spanish_formatting + first_message_enforcement
+            print("Added extra Spanish-only enforcement to instructions")
+            
+        elif language == "german":
+            # Extra enforcement for German language
+            extra_instructions = "\n\nÄUßERST WICHTIGE ANWEISUNG: Du MUSST NUR auf Deutsch antworten. NIEMALS auf Englisch oder in einer anderen Sprache antworten, auch wenn der Schüler auf Englisch fragt. Deine ERSTE Nachricht MUSS auf Deutsch sein. Beginne immer mit einer deutschen Begrüßung, die dem Niveau entspricht. Für Niveau A1 beginne mit: 'Hallo! Ich bin dein Deutschlehrer. Wie geht es dir heute?'"
+            
+            # Add language detection and enforcement instructions
+            language_enforcement = "\n\nWenn der Schüler NICHT auf Deutsch spricht, sondern in einer anderen Sprache wie Englisch, Französisch, Spanisch oder einer anderen Sprache, musst du IMMER antworten mit: 'Ich verstehe, dass du in einer anderen Sprache sprichst, aber lass uns Deutsch üben. Versuche es auf Deutsch zu sagen.' Dann hilfst du dem Schüler mit einem einfachen deutschen Satz, den sie verwenden können. Antworte NIEMALS in der gleichen nicht-deutschen Sprache, die der Schüler verwendet."
+            
+            # Add German-specific formatting instructions
+            german_formatting = "\n\nAchte auf korrekte Abstände zwischen Wörtern und nach Satzzeichen. Verwende Großbuchstaben am Anfang von Sätzen. Sprich deutlich und artikuliere Wörter gut, mit natürlichen Pausen zwischen Sätzen."
+            
+            # Add first message enforcement
+            first_message_enforcement = "\n\nDeine ERSTE Nachricht in der Konversation MUSS auf Deutsch sein. Beginne NIEMALS auf Englisch oder in einer anderen Sprache. Beginne mit einer deutschen Begrüßung wie 'Hallo' oder 'Guten Tag', gefolgt von einer einfachen Frage auf Deutsch."
+            
+            instructions = instructions + extra_instructions + language_enforcement + german_formatting + first_message_enforcement
+            print("Added extra German-only enforcement to instructions")
+            
+        elif language == "french":
+            # Extra enforcement for French language
+            extra_instructions = "\n\nINSTRUCTION EXTRÊMEMENT IMPORTANTE: Tu DOIS répondre UNIQUEMENT en français. Ne réponds JAMAIS en anglais ou dans une autre langue, même si l'étudiant pose une question en anglais. Ton PREMIER message DOIT être en français. Commence toujours par une salutation en français adaptée au niveau. Pour le niveau A1, commence par: 'Bonjour! Je suis ton professeur de français. Comment vas-tu aujourd'hui?'"
+            
+            # Add language detection and enforcement instructions
+            language_enforcement = "\n\nSi l'étudiant NE parle PAS français, mais une autre langue comme l'anglais, l'allemand, l'espagnol ou une autre langue, tu dois TOUJOURS répondre avec: 'Je comprends que tu parles dans une autre langue, mais pratiquons le français. Essaie de le dire en français.' Ensuite, aide l'étudiant avec une phrase simple en français qu'il peut utiliser. Ne réponds JAMAIS dans la même langue non française que l'étudiant utilise."
+            
+            # Add French-specific formatting instructions
+            french_formatting = "\n\nAssure-toi d'utiliser un espacement correct entre les mots et après les signes de ponctuation. Utilise des majuscules au début des phrases. Parle clairement et articule bien les mots, avec des pauses naturelles entre les phrases."
+            
+            # Add first message enforcement
+            first_message_enforcement = "\n\nTon PREMIER message dans la conversation DOIT être en français. Ne commence JAMAIS en anglais ou dans une autre langue. Commence par une salutation en français comme 'Bonjour' ou 'Salut' suivie d'une question simple en français."
+            
+            instructions = instructions + extra_instructions + language_enforcement + french_formatting + first_message_enforcement
+            print("Added extra French-only enforcement to instructions")
+            
+        elif language == "portuguese":
+            # Extra enforcement for Portuguese language
+            extra_instructions = "\n\nINSTRUÇÃO EXTREMAMENTE IMPORTANTE: Você DEVE responder APENAS em português. NUNCA responda em inglês ou em outro idioma, mesmo que o aluno pergunte em inglês. Sua PRIMEIRA mensagem DEVE ser em português. Sempre comece com uma saudação em português apropriada para o nível. Para o nível A1, comece com: 'Olá! Eu sou seu professor de português. Como você está hoje?'"
+            
+            # Add language detection and enforcement instructions
+            language_enforcement = "\n\nSe o aluno NÃO estiver falando em português, mas em outro idioma como inglês, francês, alemão ou outro idioma, você deve SEMPRE responder com: 'Eu entendo que você está falando em outro idioma, mas vamos praticar português. Tente dizer isso em português.' Em seguida, ajude o aluno com uma frase simples em português que ele possa usar. NUNCA responda no mesmo idioma não português que o aluno está usando."
+            
+            # Add Portuguese-specific formatting instructions
+            portuguese_formatting = "\n\nCertifique-se de usar o espaçamento correto entre palavras e após sinais de pontuação. Use letras maiúsculas no início das frases. Fale claramente e articule bem as palavras, com pausas naturais entre as frases."
+            
+            # Add first message enforcement
+            first_message_enforcement = "\n\nSua PRIMEIRA mensagem na conversa DEVE ser em português. NUNCA comece em inglês ou em outro idioma. Comece com uma saudação em português como 'Olá' ou 'Bom dia' seguida de uma pergunta simples em português."
+            
+            instructions = instructions + extra_instructions + language_enforcement + portuguese_formatting + first_message_enforcement
+            print("Added extra Portuguese-only enforcement to instructions")
+            
         else:
             # For English language
             if language == "english":
                 # Add English-specific instructions
                 english_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: You MUST ONLY respond in English. Your FIRST message MUST be in English. Always start with an English greeting appropriate for the level. For A1 level, start with: 'Hello! I am your English language tutor. How are you today?'"
                 
-                # Add first message enforcement
-                first_message_enforcement = "\n\nYour FIRST message in the conversation MUST be in English. NEVER start in any other language. Begin with an English greeting like 'Hello' or 'Good day' followed by a simple question in English."
+                # Add language detection and enforcement instructions
+                language_enforcement = "\n\nIf the student is NOT speaking in English, but in another language such as Dutch, Spanish, German, French, or any other language, you must ALWAYS respond with: 'I understand you're speaking in another language, but let's practice English. Try to say it in English.' Then help the student with a simple English sentence they can use. NEVER respond in the same non-English language that the student is using."
                 
-                instructions = instructions + english_instructions + first_message_enforcement
+                # Add English-specific formatting instructions
+                english_formatting = "\n\nEnsure correct spacing between words and after punctuation marks. Use capital letters at the beginning of sentences. Speak clearly and articulate words well, with natural pauses between sentences."
+                
+                # Add first message enforcement
+                first_message_enforcement = "\n\nYour FIRST message in the conversation MUST be in English. NEVER start in another language. Begin with an English greeting like 'Hello' or 'Good day' followed by a simple question in English."
+                
+                instructions = instructions + english_instructions + language_enforcement + english_formatting + first_message_enforcement
                 print("Added English-only enforcement to instructions")
             else:
                 # For other languages, add general language quality instructions

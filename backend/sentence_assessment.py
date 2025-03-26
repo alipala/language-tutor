@@ -60,7 +60,11 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
     # Map language codes
     language_map = {
         "english": "en",
-        "dutch": "nl"
+        "dutch": "nl",
+        "spanish": "es",
+        "german": "de",
+        "french": "fr",
+        "portuguese": "pt"
     }
     speech_language = language_map.get(language.lower(), "en")
     
@@ -150,6 +154,22 @@ async def analyze_sentence(text: str, language: str, level: str, exercise_type: 
         "dutch": {
             "common_errors": "word order, verb placement, het/de articles, separable verbs",
             "analysis_focus": "sentence structure, verb positioning, and natural expression"
+        },
+        "spanish": {
+            "common_errors": "ser/estar usage, subjunctive mood, gender agreement, por/para distinction",
+            "analysis_focus": "verb conjugation, gender/number agreement, and natural expression"
+        },
+        "german": {
+            "common_errors": "word order, case system, verb position, noun gender, separable verbs",
+            "analysis_focus": "sentence structure, case usage, and compound word formation"
+        },
+        "french": {
+            "common_errors": "gender agreement, verb conjugation, negation, preposition usage",
+            "analysis_focus": "gender/number agreement, verb tenses, and natural expression"
+        },
+        "portuguese": {
+            "common_errors": "ser/estar usage, contractions, verb conjugation, gender agreement",
+            "analysis_focus": "verb tenses, preposition usage, and natural expression"
         }
     }
     

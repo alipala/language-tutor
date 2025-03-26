@@ -28,6 +28,22 @@ export default function LanguageSelection() {
       code: 'english',
       name: 'English',
     },
+    {
+      code: 'spanish',
+      name: 'Spanish',
+    },
+    {
+      code: 'german',
+      name: 'German',
+    },
+    {
+      code: 'french',
+      name: 'French',
+    },
+    {
+      code: 'portuguese',
+      name: 'Portuguese',
+    },
   ];
 
   // Add a useEffect to handle page initialization and react to state changes
@@ -200,7 +216,7 @@ export default function LanguageSelection() {
           <div className="absolute -top-40 -right-20 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl"></div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-2xl relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl relative z-10">
             {languages.map((language) => (
               <button
                 key={language.code}
@@ -254,6 +270,18 @@ export default function LanguageSelection() {
                         {language.code === 'english' && (
                           <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">EN</span>
                         )}
+                        {language.code === 'spanish' && (
+                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">ES</span>
+                        )}
+                        {language.code === 'german' && (
+                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">DE</span>
+                        )}
+                        {language.code === 'french' && (
+                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">FR</span>
+                        )}
+                        {language.code === 'portuguese' && (
+                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">PT</span>
+                        )}
                       </div>
                     </div>
                     
@@ -264,7 +292,12 @@ export default function LanguageSelection() {
                       </h3>
                       
                       <p className="text-slate-300 text-sm group-hover:text-slate-100 transition-colors duration-300">
-                        {language.code === 'dutch' ? 'Learn Dutch vocabulary and conversation' : 'Practice English speaking and listening'}
+                        {language.code === 'dutch' && 'Learn Dutch vocabulary and conversation'}
+                        {language.code === 'english' && 'Practice English speaking and listening'}
+                        {language.code === 'spanish' && 'Master Spanish conversation skills'}
+                        {language.code === 'german' && 'Develop German language proficiency'}
+                        {language.code === 'french' && 'Enhance French speaking abilities'}
+                        {language.code === 'portuguese' && 'Learn Portuguese vocabulary and expressions'}
                       </p>
                     </div>
                     

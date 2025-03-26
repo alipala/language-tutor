@@ -193,8 +193,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   
   // Handle language alert - only show when user speaks a different language
   useEffect(() => {
-    // Only proceed if we're recording, using Dutch, detected wrong language, and not currently animating/showing alert
-    if (isRecording && language === 'dutch' && detectedWrongLanguage && !showLanguageAlert) {
+    // Only proceed if we're recording, using a non-English language, detected wrong language, and not currently animating/showing alert
+    const nonEnglishLanguages = ['dutch', 'spanish', 'german', 'french', 'portuguese'];
+    if (isRecording && nonEnglishLanguages.includes(language) && detectedWrongLanguage && !showLanguageAlert) {
       showAndHideLanguageAlert();
     }
     
