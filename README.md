@@ -18,6 +18,7 @@ A cutting-edge language learning voice conversation application with a sleek, mo
 - 🌍 Support for multiple languages (currently Dutch and English)
 - 🎓 Six proficiency levels (A1, A2, B1, B2, C1, C2) following CEFR standards
 - 🗣️ Topic selection for focused conversation practice
+- 📝 Advanced sentence assessment with grammar and vocabulary feedback
 - 🔍 Web search functionality for custom topics with real-time information
 
 ### Pronunciation & Learning
@@ -96,6 +97,29 @@ Users can review their pronunciation after speaking to get detailed feedback on 
 - **Visual Feedback**: Animated microphone states show recording status clearly
 - **Seamless Learning Flow**: Continue your conversation after reviewing pronunciation
 - **Real-time Scrolling Transcript**: Never lose track of your conversation with auto-scrolling transcript
+
+### 📝 Sentence Assessment
+The application features a powerful sentence assessment system that provides detailed feedback on your language production:
+
+#### Key Features
+- **Grammar Analysis**: Identifies grammatical errors and suggests corrections
+- **Vocabulary Evaluation**: Assesses word choice and suggests more appropriate alternatives
+- **Sentence Structure Feedback**: Analyzes sentence construction and provides improvement tips
+- **Level-Appropriate Feedback**: Tailors assessment to your selected proficiency level
+- **Context-Aware Evaluation**: Considers the conversation context when assessing your sentences
+
+#### Technical Implementation
+- **Smart API Integration**: Dynamically connects to the correct backend API regardless of environment
+- **Environment-Aware Configuration**: Automatically detects development vs. production environments
+- **Robust Error Handling**: Gracefully manages connection issues and provides helpful error messages
+- **Efficient Data Processing**: Optimized for quick assessment response times
+
+#### How It Works
+1. **Speech Recognition**: Your spoken language is transcribed to text
+2. **Assessment Request**: The transcribed text is sent to the backend API for analysis
+3. **AI Processing**: Advanced language models evaluate your sentence based on grammar, vocabulary, and context
+4. **Feedback Generation**: Detailed, actionable feedback is generated and returned to the frontend
+5. **Visual Presentation**: Results are displayed with color-coding and specific improvement suggestions
 
 ### 🔍 Web Search for Custom Topics
 
