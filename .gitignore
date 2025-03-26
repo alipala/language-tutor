@@ -41,3 +41,7 @@ out/
 *.swp
 *.swo
 .DS_Store
+
+# Temporary and utility files
+fix_openai.py
+*.temp
