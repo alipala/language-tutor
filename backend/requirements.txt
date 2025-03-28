@@ -6,7 +6,9 @@ pydantic==2.10.6
 python-multipart==0.0.9
 openai==1.12.0
 # MongoDB and authentication packages
-motor==3.4.0
+# Pin specific compatible versions to avoid import errors
+pymongo==4.6.1
+motor==3.3.2
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
 email-validator==2.1.1

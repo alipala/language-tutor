@@ -17,7 +17,10 @@ RUN apt-get update && apt-get install -y \
 # Copy the entire project
 COPY . .
 
-# Install Python backend dependencies
+# Install Python backend dependencies with exact versions
+# First install pymongo and motor with specific versions to ensure compatibility
+RUN pip install --no-cache-dir pymongo==4.6.1 motor==3.3.2
+# Then install the rest of the requirements
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Install frontend dependencies and build
