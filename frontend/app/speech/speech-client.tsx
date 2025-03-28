@@ -319,13 +319,118 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     initializeService();
   }, [initialize, language, level, topic, userPrompt]);
   
+  // Function to check if text is in the target language
+  const isInTargetLanguage = (text: string): boolean => {
+    if (!text || text.trim() === '') return false;
+    
+    const lowerText = text.toLowerCase();
+    
+    // Language detection patterns
+    const languagePatterns: Record<string, RegExp[]> = {
+      dutch: [
+        /\b(ik|je|het|de|een|en|is|zijn|hebben|mijn|jouw|hoe|wat|waar|waarom|wanneer|wie)\b/i,
+        /\b(goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig)\b/i,
+        /\b(hallo|dag|goedemorgen|goedemiddag|goedenavond|doei|tot ziens)\b/i
+      ],
+      spanish: [
+        /\b(yo|tu|el|ella|nosotros|ellos|es|son|tengo|tiene|mi|tu|como|que|donde|por que|cuando|quien)\b/i,
+        /\b(bueno|malo|bonito|feo|grande|pequeño|nuevo|viejo|mucho|poco)\b/i,
+        /\b(hola|buenos dias|buenas tardes|buenas noches|adios|hasta luego)\b/i
+      ],
+      german: [
+        /\b(ich|du|er|sie|es|wir|sie|bin|ist|sind|habe|hat|mein|dein|wie|was|wo|warum|wann|wer)\b/i,
+        /\b(gut|schlecht|schön|hässlich|groß|klein|neu|alt|viel|wenig)\b/i,
+        /\b(hallo|guten tag|guten morgen|guten abend|auf wiedersehen|tschüss)\b/i
+      ],
+      french: [
+        /\b(je|tu|il|elle|nous|ils|elles|suis|est|sont|ai|a|mon|ton|comment|quoi|où|pourquoi|quand|qui)\b/i,
+        /\b(bon|mauvais|beau|laid|grand|petit|nouveau|vieux|beaucoup|peu)\b/i,
+        /\b(bonjour|salut|bonsoir|au revoir|à bientôt)\b/i
+      ],
+      portuguese: [
+        /\b(eu|tu|ele|ela|nós|eles|elas|sou|é|são|tenho|tem|meu|teu|como|que|onde|por que|quando|quem)\b/i,
+        /\b(bom|mau|bonito|feio|grande|pequeno|novo|velho|muito|pouco)\b/i,
+        /\b(olá|bom dia|boa tarde|boa noite|adeus|até logo)\b/i
+      ],
+      english: [
+        /\b(i|you|he|she|it|we|they|am|is|are|was|were|have|has|had|my|your|how|what|where|why|when|who)\b/i,
+        /\b(good|bad|nice|ugly|big|small|new|old|many|few)\b/i,
+        /\b(hello|hi|morning|afternoon|evening|goodbye|bye|see you)\b/i
+      ]
+    };
+    
+    // Check if text contains patterns from the target language
+    const currentLanguage = language as keyof typeof languagePatterns;
+    const containsTargetLanguage = languagePatterns[currentLanguage]?.some((pattern: RegExp) => pattern.test(lowerText)) || false;
+    
+    // Check if text contains English patterns (common wrong language)
+    const containsEnglish = languagePatterns.english.some((pattern: RegExp) => pattern.test(lowerText));
+    
+    // Additional language-specific checks
+    let isLikelyWrongLanguage = false;
+    
+    if (language === 'dutch') {
+      // Dutch-specific detection
+      const hasNonDutchCharacters = /[qwxyz]/i.test(lowerText) && lowerText.length > 3; // These characters are rare in Dutch
+      const hasDutchSpecificCombinations = /\b(ij|aa|ee|oo|uu|eu|oe|ui)\b/i.test(lowerText);
+      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                           (lowerText.length > 5 && !containsTargetLanguage && !hasDutchSpecificCombinations) ||
+                           hasNonDutchCharacters;
+    } else if (language === 'spanish') {
+      // Spanish-specific detection
+      const hasNonSpanishCharacters = /[kw]/i.test(lowerText) && lowerText.length > 3; // These are uncommon in Spanish
+      const hasSpanishSpecificCharacters = /[ñáéíóúü]/i.test(lowerText);
+      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                           (lowerText.length > 5 && !containsTargetLanguage && !hasSpanishSpecificCharacters) ||
+                           hasNonSpanishCharacters;
+    } else if (language === 'german') {
+      // German-specific detection
+      const hasGermanSpecificCharacters = /[äöüß]/i.test(lowerText);
+      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                           (lowerText.length > 5 && !containsTargetLanguage && !hasGermanSpecificCharacters);
+    } else if (language === 'french') {
+      // French-specific detection
+      const hasFrenchSpecificCharacters = /[éèêëàâçîïôùûüÿ]/i.test(lowerText);
+      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                           (lowerText.length > 5 && !containsTargetLanguage && !hasFrenchSpecificCharacters);
+    } else if (language === 'portuguese') {
+      // Portuguese-specific detection
+      const hasPortugueseSpecificCharacters = /[áàâãéêíóôõúç]/i.test(lowerText);
+      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                           (lowerText.length > 5 && !containsTargetLanguage && !hasPortugueseSpecificCharacters);
+    }
+    
+    // For English mode, we need to check if the text is actually in English
+    if (language === 'english') {
+      // Check if text contains English patterns
+      const containsEnglish = languagePatterns.english.some((pattern: RegExp) => pattern.test(lowerText));
+      
+      // Check for non-English characters that are uncommon in English
+      const hasNonEnglishCharacters = /[áàâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/i.test(lowerText);
+      
+      // For English, we consider text to be in the target language if it contains English patterns
+      // and doesn't have too many non-English characters
+      return containsEnglish && !hasNonEnglishCharacters;
+    }
+    
+    // For other languages, return true if it's likely in the target language (not wrong language)
+    return !isLikelyWrongLanguage;
+  };
+
   // Handle transcript updates and language detection
   useEffect(() => {
     // Extract the latest user message for the transcript
     const userMessages = messages.filter(msg => msg.role === 'user');
     if (userMessages.length > 0) {
       const latestUserMessage = userMessages[userMessages.length - 1];
-      setCurrentTranscript(latestUserMessage.content);
+      
+      // Only set the transcript if it's in the target language or if we're in English mode
+      if (isInTargetLanguage(latestUserMessage.content)) {
+        setCurrentTranscript(latestUserMessage.content);
+      } else {
+        // Clear the transcript or set a placeholder message
+        setCurrentTranscript('');
+      }
       
       // Check if this is a recent message (within the last 5 seconds)
       const now = Date.now();
@@ -772,6 +877,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       exerciseType={exerciseType}
                       onChangeExerciseType={setExerciseType}
                     />
+                    
+                    {/* Warning message when content is not in target language */}
+                    {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
+                     !isInTargetLanguage(messages[messages.length - 1].content) && (
+                      <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center animate-fade-in">
+                        <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Conversation Transcript Section */}
