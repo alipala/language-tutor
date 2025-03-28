@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import NavBar from '@/components/nav-bar';
+import { useAuth } from '@/lib/auth';
 // Sound effects temporarily disabled
 // import { useAudio } from '@/lib/useAudio';
 
@@ -14,6 +16,7 @@ interface Language {
 
 export default function LanguageSelection() {
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   // Sound effects temporarily disabled
@@ -196,8 +199,10 @@ export default function LanguageSelection() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 app-background">
-      <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
+    <div className="min-h-screen flex flex-col app-background">
+      <NavBar />
+      <main className="flex-grow flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
         {/* Header with animated elements */}
         <div className="text-center mb-12 relative">
           {/* Animated background blob */}
@@ -342,7 +347,8 @@ export default function LanguageSelection() {
             ))}
           </div>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

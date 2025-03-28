@@ -5,3 +5,8 @@ httpx==0.28.1
 pydantic==2.10.6
 python-multipart==0.0.9
 openai==1.12.0
+# MongoDB and authentication packages
+motor==3.4.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+email-validator==2.1.1

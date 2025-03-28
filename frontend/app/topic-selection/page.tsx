@@ -2,6 +2,8 @@
 
 import { useState, useEffect, KeyboardEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import NavBar from '@/components/nav-bar';
+import { useAuth } from '@/lib/auth';
 
 interface Topic {
   id: string;
@@ -12,6 +14,7 @@ interface Topic {
 
 export default function TopicSelection() {
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -260,8 +263,10 @@ export default function TopicSelection() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col app-background text-white p-4 md:p-8">
-      <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
+    <div className="min-h-screen flex flex-col app-background text-white">
+      <NavBar />
+      <main className="flex-grow flex flex-col p-4 md:p-8">
+        <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500 mb-4 animate-fade-in">
@@ -403,7 +408,8 @@ export default function TopicSelection() {
             </div>
           </div>
         )}
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 } 

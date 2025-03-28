@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import NavBar from '@/components/nav-bar';
+import { useAuth } from '@/lib/auth';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -17,6 +19,7 @@ const SpeechClient = dynamic(() => import('./speech-client'), { ssr: false });
 
 export default function SpeechPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
@@ -240,16 +243,19 @@ export default function SpeechPage() {
   
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center app-background">
-        <div className="text-center">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="rounded-full h-16 w-16 bg-blue-500/20 mb-4 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+      <div className="min-h-screen flex flex-col app-background">
+        <NavBar />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="rounded-full h-16 w-16 bg-blue-500/20 mb-4 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <p className="text-blue-400 text-xl font-medium">Loading...</p>
+              <p className="text-slate-400 text-sm mt-2">Starting conversation</p>
             </div>
-            <p className="text-blue-400 text-xl font-medium">Loading...</p>
-            <p className="text-slate-400 text-sm mt-2">Starting conversation</p>
           </div>
         </div>
       </div>
@@ -257,7 +263,9 @@ export default function SpeechPage() {
   }
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col app-background">
+      <NavBar />
+      
       {/* Warning Modal for conversation interruption */}
       {showLeaveWarning && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -290,14 +298,16 @@ export default function SpeechPage() {
       )}
       
       {/* Main Content */}
-      {selectedLanguage && selectedLevel && (
-        <SpeechClient 
-          language={selectedLanguage} 
-          level={selectedLevel} 
-          topic={selectedTopic || undefined}
-          userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
-        />
-      )}
-    </>
+      <div className="flex-grow">
+        {selectedLanguage && selectedLevel && (
+          <SpeechClient 
+            language={selectedLanguage} 
+            level={selectedLevel} 
+            topic={selectedTopic || undefined}
+            userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
+          />
+        )}
+      </div>
+    </div>
   );
 }

@@ -3,7 +3,7 @@ import json
 import traceback
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +12,12 @@ from pydantic import BaseModel
 import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
+
+# Import MongoDB and authentication modules
+from database import init_db
+from auth import get_current_user
+from models import UserResponse
+from auth_routes import router as auth_router
 
 # Import sentence assessment functionality
 from sentence_assessment import SentenceAssessmentRequest, SentenceAssessmentResponse, GrammarIssue, \
@@ -48,18 +54,29 @@ if os.getenv("ENVIRONMENT") == "production":
         origins = ["*"]
         print("Running in Railway environment, allowing all origins")
 else:
-    # Allow all origins during development
+    # For local development, allow all origins
     origins = ["*"]
 
 print(f"Configured CORS with origins: {origins}")
 
+# CORS middleware must be added before any other middleware or route registration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,  # Set to False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Include authentication routes
+app.include_router(auth_router)
+
+# Initialize MongoDB on startup
+@app.on_event("startup")
+async def startup_db_client():
+    await init_db()
+    print("MongoDB initialized")
 
 # Global error handler for better debugging in Railway
 @app.middleware("http")
