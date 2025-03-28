@@ -28,24 +28,34 @@ export default function SignupPage() {
     try {
       const { name, email, password } = data;
       console.log('Signing up with:', { name, email });
+      
+      // Store navigation intent in sessionStorage before authentication
+      sessionStorage.setItem('pendingRedirect', 'true');
+      sessionStorage.setItem('redirectTarget', '/language-selection');
+      sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
+      
+      // Perform signup
       await signup(name, email, password);
       
-      // Use direct window.location.href for reliable navigation in Railway
-      console.log('Signup successful, redirecting to language selection');
-      const fullUrl = `${window.location.origin}/language-selection`;
-      window.location.href = fullUrl;
+      // Force hard navigation to avoid client-side routing issues in Railway
+      console.log('Signup successful, forcing navigation to language selection');
+      window.location.href = '/language-selection';
       
-      // Fallback navigation with setTimeout to ensure it happens
+      // Safety net: if we're still on this page after 1.5 seconds, force navigation again
       setTimeout(() => {
         if (window.location.pathname.includes('auth/signup')) {
-          console.log('Fallback navigation triggered');
-          window.location.href = fullUrl;
+          console.log('Safety net navigation triggered');
+          window.location.href = '/language-selection';
         }
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'Failed to create account. Please try again.');
       setIsLoading(false);
+      // Clear navigation intent on error
+      sessionStorage.removeItem('pendingRedirect');
+      sessionStorage.removeItem('redirectTarget');
+      sessionStorage.removeItem('redirectAttemptTime');
     }
   };
 
@@ -54,19 +64,36 @@ export default function SignupPage() {
     setError(null);
     
     try {
+      // Store navigation intent in sessionStorage before authentication
+      sessionStorage.setItem('pendingRedirect', 'true');
+      sessionStorage.setItem('redirectTarget', '/language-selection');
+      sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
+      
       // Note: In a real implementation, you would get the Google OAuth token
       // For now, we'll just simulate it with a mock token
       const mockGoogleToken = 'mock-google-token';
       console.log('Google signup clicked');
       await googleLogin(mockGoogleToken);
       
-      // Use direct window.location.href for reliable navigation in Railway
-      const fullUrl = `${window.location.origin}/language-selection`;
-      window.location.href = fullUrl;
+      // Force hard navigation to avoid client-side routing issues in Railway
+      console.log('Google signup successful, forcing navigation');
+      window.location.href = '/language-selection';
+      
+      // Safety net: if we're still on this page after 1.5 seconds, force navigation again
+      setTimeout(() => {
+        if (window.location.pathname.includes('auth/signup')) {
+          console.log('Safety net navigation triggered for Google signup');
+          window.location.href = '/language-selection';
+        }
+      }, 1500);
     } catch (err: any) {
       console.error('Google signup error:', err);
       setError(err.message || 'Google signup failed. Please try again.');
       setIsLoading(false);
+      // Clear navigation intent on error
+      sessionStorage.removeItem('pendingRedirect');
+      sessionStorage.removeItem('redirectTarget');
+      sessionStorage.removeItem('redirectAttemptTime');
     }
   };
 

@@ -28,6 +28,36 @@ export default function Home() {
     console.log('Current URL:', window.location.href);
     console.log('Full origin:', window.location.origin);
     
+    // Check for pending redirects from authentication process
+    const pendingRedirect = sessionStorage.getItem('pendingRedirect');
+    const redirectTarget = sessionStorage.getItem('redirectTarget');
+    const redirectAttemptTime = sessionStorage.getItem('redirectAttemptTime');
+    
+    // If we have a pending redirect and we're on the home page, handle it
+    if (pendingRedirect === 'true' && redirectTarget && window.location.pathname === '/') {
+      console.log('Detected pending redirect to:', redirectTarget);
+      
+      // Check if the redirect attempt is recent (within last 10 seconds)
+      const attemptTime = redirectAttemptTime ? parseInt(redirectAttemptTime) : 0;
+      const currentTime = Date.now();
+      const timeDiff = currentTime - attemptTime;
+      
+      if (timeDiff < 10000) { // 10 seconds
+        console.log('Recovering from failed navigation after authentication');
+        // Clear the pending redirect to prevent loops
+        sessionStorage.removeItem('pendingRedirect');
+        // Force navigation to the target
+        window.location.href = redirectTarget;
+        return;
+      } else {
+        // Clear stale redirect data
+        console.log('Clearing stale redirect data');
+        sessionStorage.removeItem('pendingRedirect');
+        sessionStorage.removeItem('redirectTarget');
+        sessionStorage.removeItem('redirectAttemptTime');
+      }
+    }
+    
     // RAILWAY SPECIFIC: Check for the unusual routing situation
     // where URL is language-selection but we're still on the home page component
     if (window.location.pathname === '/language-selection') {
@@ -36,8 +66,7 @@ export default function Home() {
       // We're in a strange state where the URL is language-selection but we're 
       // still on the home page component. Let's try to recover by forcing a reload
       // which should properly render the language selection component
-      const fullUrl = `${window.location.origin}/language-selection`;
-      window.location.replace(fullUrl);
+      window.location.href = '/language-selection';
       return;
     }
     
