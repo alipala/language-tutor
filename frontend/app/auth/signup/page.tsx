@@ -59,42 +59,11 @@ export default function SignupPage() {
     }
   };
 
+  // This function is now handled by the GoogleAuthButton component
   const handleGoogleSignup = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Store navigation intent in sessionStorage before authentication
-      sessionStorage.setItem('pendingRedirect', 'true');
-      sessionStorage.setItem('redirectTarget', '/language-selection');
-      sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
-      
-      // Note: In a real implementation, you would get the Google OAuth token
-      // For now, we'll just simulate it with a mock token
-      const mockGoogleToken = 'mock-google-token';
-      console.log('Google signup clicked');
-      await googleLogin(mockGoogleToken);
-      
-      // Force hard navigation to avoid client-side routing issues in Railway
-      console.log('Google signup successful, forcing navigation');
-      window.location.href = '/language-selection';
-      
-      // Safety net: if we're still on this page after 1.5 seconds, force navigation again
-      setTimeout(() => {
-        if (window.location.pathname.includes('auth/signup')) {
-          console.log('Safety net navigation triggered for Google signup');
-          window.location.href = '/language-selection';
-        }
-      }, 1500);
-    } catch (err: any) {
-      console.error('Google signup error:', err);
-      setError(err.message || 'Google signup failed. Please try again.');
-      setIsLoading(false);
-      // Clear navigation intent on error
-      sessionStorage.removeItem('pendingRedirect');
-      sessionStorage.removeItem('redirectTarget');
-      sessionStorage.removeItem('redirectAttemptTime');
-    }
+    // This is just a placeholder as the actual authentication is handled by the GoogleAuthButton component
+    console.log('Google signup button clicked');
+    // We keep this function to maintain compatibility with the AuthForm component
   };
 
   return (

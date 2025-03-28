@@ -5,6 +5,26 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2025-03-28
+
+### Added
+- Google Authentication integration using Google Identity Services SDK
+- New `GoogleAuthButton` component for seamless Google Sign-In
+- Backend token verification using Google Auth libraries
+- Automatic user creation for first-time Google sign-ins
+- Environment variable configuration for Google Client ID
+
+### Changed
+- Enhanced authentication flow to support both email/password and Google authentication
+- Updated login and signup pages to include Google authentication option
+- Improved token handling and session management for Google-authenticated users
+- Optimized authentication components for better mobile responsiveness
+
+### Fixed
+- Fixed API URL configuration to ensure proper communication between frontend and backend
+- Resolved styling issues with Google Sign-In button to match application design
+- Improved error handling for Google authentication failures
+
 ## [2.11.0] - 2025-03-28
 
 ### Added

@@ -166,11 +166,28 @@ The Language Tutor features a modern, secure authentication system with an enhan
 - **Responsive Design**: Optimized for both mobile and desktop devices
 - **Animated Backgrounds**: Subtle animated gradient backgrounds enhance visual appeal
 - **Secure Authentication**: JWT-based authentication with proper token handling
-- **Google Authentication**: Support for Google OAuth integration
+- **Google Authentication**: Seamless login/signup with Google accounts using OAuth 2.0
 - **Error Handling**: Clear error messages and loading states for better user feedback
 - **Form Validation**: Client-side validation for immediate user feedback
 - **Remember Me**: Option to stay logged in across sessions
-- **Password Recovery**: Forgot password and reset password functionality
+- **Password Recovery**: Password reset functionality with email verification
+
+### Google Authentication
+The application supports Google OAuth 2.0 integration, allowing users to sign in with their Google accounts:
+
+#### Features
+- **One-Click Login**: Sign in with a single click using your Google account
+- **Automatic Account Creation**: New users are automatically registered on first login
+- **Secure Token Verification**: Backend verification of Google ID tokens
+- **Seamless Integration**: Consistent user experience with standard authentication
+- **Cross-Device Support**: Works across all devices and browsers
+
+#### Technical Implementation
+- **Google Identity Services SDK**: Uses the latest Google Sign-In API
+- **JWT Token Exchange**: Converts Google tokens to application JWT tokens
+- **Environment-Aware Configuration**: Automatically adapts to development and production environments
+- **Robust Error Handling**: Graceful handling of authentication failures
+- **Session Management**: Proper session creation and token storage
 
 ### Technical Implementation
 - **JWT Authentication**: Secure token-based authentication system

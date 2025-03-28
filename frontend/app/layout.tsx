@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
 import './globals.css'
 import AuthProviderWrapper from '@/components/auth-provider-wrapper'
 
@@ -25,6 +26,10 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Voice input language learning application" />
         <meta name="theme-color" content="#f8f9fb" />
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+        />
       </head>
       <body className={`${inter.className} font-sans antialiased`}>
         <AuthProviderWrapper>

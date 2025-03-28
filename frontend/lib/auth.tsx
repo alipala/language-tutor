@@ -8,7 +8,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 const isRailway = typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
 const API_URL = isRailway 
   ? '' // Empty string means same domain, which is correct for Railway
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001');
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 
 // Types
 export interface User {

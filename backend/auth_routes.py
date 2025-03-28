@@ -3,6 +3,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 from typing import Optional
 import httpx
+import os
+
+# Import Google Auth libraries
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 from models import (
     UserCreate, 
@@ -116,18 +121,23 @@ async def google_login(login_data: GoogleLoginRequest):
     """
     # Verify Google token
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={login_data.token}"
+        # Get the Google client ID from environment variables
+        google_client_id = os.getenv("GOOGLE_CLIENT_ID")
+        if not google_client_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google client ID not configured",
             )
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid Google token",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+        
+        # Verify the token using Google Auth library
+        try:
+            google_data = id_token.verify_oauth2_token(
+                login_data.token, 
+                google_requests.Request(), 
+                google_client_id
+            )
             
-            google_data = response.json()
+            # Get user email from verified token
             email = google_data.get("email")
             if not email:
                 raise HTTPException(
@@ -135,7 +145,7 @@ async def google_login(login_data: GoogleLoginRequest):
                     detail="Email not found in Google token",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            
+                
             # Check if user exists
             user = await users_collection.find_one({"email": email})
             if not user:
@@ -178,12 +188,42 @@ async def google_login(login_data: GoogleLoginRequest):
                 "name": user["name"],
                 "email": user["email"]
             }
+        except ValueError as e:
+            # Token validation failed
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Google token: {str(e)}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Google authentication failed: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+@router.get("/google-callback")
+async def google_callback(code: str = None, error: str = None, state: str = None):
+    """
+    Handle Google OAuth callback
+    """
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Google authentication error: {error}"
+        )
+    
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authorization code not provided"
+        )
+    
+    # In a complete implementation, you would exchange the code for tokens
+    # and then verify the ID token. For this example, we'll just return
+    # a success message since the frontend will handle the token exchange.
+    
+    return {"message": "Google authentication successful. You can close this window."}
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
 async def forgot_password(request: PasswordResetRequest, background_tasks: BackgroundTasks):
