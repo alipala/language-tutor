@@ -22,8 +22,13 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Install frontend dependencies and build
 WORKDIR /app/frontend
+# Clean npm cache and ensure a fresh install
+RUN npm cache clean --force
+# Install dependencies with explicit framer-motion
 RUN npm install
-RUN npm run build
+RUN npm install framer-motion@12.6.2 --save
+# Build with increased memory allocation
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 # For standalone output mode, copy the standalone output to a location the backend can find
 RUN mkdir -p /app/frontend/public
