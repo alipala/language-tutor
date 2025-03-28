@@ -38,26 +38,24 @@ try:
     client = AsyncIOMotorClient(MONGODB_URL, serverSelectionTimeoutMS=30000)
     database = client[DATABASE_NAME]
     print("MongoDB client initialized successfully")
-except Exception as e:
-    print(f"Error initializing MongoDB client: {str(e)}")
-    # Don't crash the app immediately, let the startup event handle connection issues
-    database = None
-
-# Collections - initialize as None first to avoid errors if database connection fails
-users_collection = None
-sessions_collection = None
-password_reset_collection = None
-
-# Only set collections if database connection was successful
-if database:
+    
+    # Collections - initialize only if database connection was successful
     users_collection = database.users
     sessions_collection = database.sessions
     password_reset_collection = database.password_resets
+except Exception as e:
+    print(f"Error initializing MongoDB client: {str(e)}")
+    # Don't crash the app immediately, let the startup event handle connection issues
+    client = None
+    database = None
+    users_collection = None
+    sessions_collection = None
+    password_reset_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
     # Check if database connection is available
-    if not database:
+    if database is None or client is None:
         print("WARNING: Cannot initialize database indexes - no database connection")
         return
     
@@ -66,6 +64,13 @@ async def init_db():
         await client.admin.command('ping')
         print("MongoDB connection verified with ping")
         
+        # Check if collections are available
+        if (users_collection is None or 
+            sessions_collection is None or 
+            password_reset_collection is None):
+            print("WARNING: Cannot initialize database indexes - collections not available")
+            return
+            
         # Create TTL index for sessions if it doesn't exist
         await sessions_collection.create_index("created_at", expireAfterSeconds=7 * 24 * 60 * 60)
         
