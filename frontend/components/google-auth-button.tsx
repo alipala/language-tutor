@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 
 interface GoogleAuthButtonProps {
@@ -30,22 +30,49 @@ export default function GoogleAuthButton({
 }: GoogleAuthButtonProps) {
   const { googleLogin } = useAuth();
   const buttonRef = useRef<HTMLDivElement>(null);
+  const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
+  // Fetch Google Client ID from the API
   useEffect(() => {
-    // Get Google client ID from environment variable
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    async function fetchConfig() {
+      try {
+        setIsLoading(true);
+        // Use relative URL to work in both development and production
+        const response = await fetch('/api/config');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch config: ${response.status}`);
+        }
+        
+        const config = await response.json();
+        console.log('Fetched config from API:', config);
+        
+        if (config.googleClientId) {
+          setGoogleClientId(config.googleClientId);
+        } else {
+          setError('Google Client ID not found in API response');
+        }
+      } catch (err) {
+        console.error('Error fetching config:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setIsLoading(false);
+      }
+    }
     
-    // Log the environment variable for debugging
-    console.log('NEXT_PUBLIC_GOOGLE_CLIENT_ID:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
-    console.log('All env variables available to client:', Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_')));
-    
+    fetchConfig();
+  }, []);
+  
+  // Initialize Google Sign-In when client ID is available
+  useEffect(() => {
     if (!googleClientId) {
-      console.error('Google Client ID not found in environment variables');
       return;
     }
     
     // Initialize Google Sign-In
-    if (window.google && buttonRef.current) {
+    if (window.google && buttonRef.current && googleClientId) {
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: async (response: any) => {
@@ -119,10 +146,24 @@ export default function GoogleAuthButton({
     }
   }, []);
   
-  // If no Google client ID is available, show a fallback button
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div 
+        className="w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700"
+        style={{ height: '44px' }}
+      >
+        <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Loading Google Sign-In...</span>
+      </div>
+    );
+  }
   
-  if (!googleClientId) {
+  // If error or no Google client ID is available, show a fallback button
+  if (error || !googleClientId) {
     return (
       <div 
         className={`w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
