@@ -6,12 +6,28 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Debug Railway environment
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
+    print("Detected Railway environment")
+    # Print all environment variables with MONGO in them (masking passwords)
+    mongo_env_vars = {k: ("***" if "PASSWORD" in k or "password" in k else v) 
+                     for k, v in os.environ.items() 
+                     if "MONGO" in k.upper()}
+    print(f"Available MongoDB environment variables: {mongo_env_vars}")
+
 # Get MongoDB connection string from environment variables
 # Check for Railway-specific MongoDB environment variables first
-MONGODB_URL = os.getenv("MONGO_URL") or os.getenv("MONGODB_URL") or os.getenv("MONGOHOST")
+MONGODB_URL = None
+
+# Check for MongoDB URL in various environment variable formats
+for var_name in ["MONGODB_URL", "MONGO_URL", "MONGO_PUBLIC_URL"]:
+    if os.getenv(var_name):
+        MONGODB_URL = os.getenv(var_name)
+        print(f"Using MongoDB URL from {var_name}")
+        break
 
 # If we're in Railway but no MongoDB URL is found, try to construct it from individual variables
-if not MONGODB_URL and os.getenv("RAILWAY_ENVIRONMENT"):
+if not MONGODB_URL and (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true"):
     mongo_host = os.getenv("MONGOHOST")
     mongo_port = os.getenv("MONGOPORT")
     mongo_user = os.getenv("MONGOUSER")
