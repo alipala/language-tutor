@@ -5,6 +5,19 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2025-03-28
+
+### Fixed
+- Enhanced language enforcement to prevent non-target language sentences from appearing in the analysis section
+- Implemented robust language detection for all languages, including English mode
+- Fixed issue where Turkish and other non-target language text was incorrectly appearing in the sentence analysis area
+- Added clear user feedback when speaking in a non-target language
+
+### Changed
+- Refactored language detection logic in speech-client.tsx for more consistent enforcement
+- Improved user experience by filtering non-target language content at the source
+- Enhanced the SentenceConstructionAssessment component to properly handle language detection
+
 ## [2.9.0] - 2025-03-26
 
 ### Added
