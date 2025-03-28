@@ -739,6 +739,29 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         # Check for specific client-side routes and serve appropriate content
         client_side_routes = ["language-selection", "level-selection", "speech", "topic-selection"]
         
+        # Add auth routes to client-side routes
+        if full_path.startswith('auth/') or full_path == 'auth':
+            print(f"Detected auth route: {full_path}")
+            client_side_routes.append(full_path)
+            
+            # Extract the specific auth route (login or signup)
+            auth_parts = full_path.split('/')
+            if len(auth_parts) > 1:
+                auth_route = auth_parts[1]  # This would be 'login' or 'signup'
+                print(f"Specific auth route detected: {auth_route}")
+                
+                # Check for app/auth/login and app/auth/signup directories
+                auth_specific_paths = [
+                    frontend_path / ".next/server/app/auth" / auth_route / "index.html",
+                    frontend_path / ".next/server/pages/auth" / auth_route / "index.html",
+                    frontend_path / "out/auth" / auth_route / "index.html"
+                ]
+                
+                for path in auth_specific_paths:
+                    if path.exists():
+                        print(f"Found auth-specific file for {auth_route} at {path}")
+                        return FileResponse(str(path))
+        
         # For client-side routes, we want to serve the specific HTML file if it exists
         # Otherwise, serve a version of index.html that has the correct meta tags for the route
         if full_path in client_side_routes:
@@ -827,6 +850,23 @@ async def serve_frontend(full_path: str = "", request: Request = None):
             frontend_path / "index.html",
             frontend_path / ".next/standalone/frontend/out/index.html",
         ]
+        
+        # If this is an auth route, try to find the specific HTML file
+        if full_path.startswith('auth/'):
+            auth_parts = full_path.split('/')
+            if len(auth_parts) > 1:
+                auth_route = auth_parts[1]  # This would be 'login' or 'signup'
+                auth_specific_paths = [
+                    frontend_path / ".next/server/app/auth" / auth_route / "index.html",
+                    frontend_path / ".next/server/pages/auth" / auth_route / "index.html",
+                    frontend_path / "out/auth" / auth_route / "index.html",
+                    frontend_path / ".next/server/app/auth" / f"{auth_route}.html",
+                    frontend_path / ".next/server/pages/auth" / f"{auth_route}.html",
+                    frontend_path / "out/auth" / f"{auth_route}.html"
+                ]
+                
+                # Add these to the beginning of possible_paths to check them first
+                possible_paths = auth_specific_paths + possible_paths
         
         for path in possible_paths:
             try:
