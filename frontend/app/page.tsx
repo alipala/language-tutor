@@ -28,6 +28,36 @@ export default function Home() {
     console.log('Current URL:', window.location.href);
     console.log('Full origin:', window.location.origin);
     
+    // Check for auth navigation in progress
+    const authNavigation = sessionStorage.getItem('authNavigation');
+    const authNavigationAttemptTime = sessionStorage.getItem('authNavigationAttemptTime');
+    
+    // If we have an auth navigation in progress and we're still on the home page, retry it
+    if (authNavigation && window.location.pathname === '/') {
+      console.log('Detected pending auth navigation to:', authNavigation);
+      
+      // Check if the navigation attempt is recent (within last 5 seconds)
+      const attemptTime = authNavigationAttemptTime ? parseInt(authNavigationAttemptTime) : 0;
+      const currentTime = Date.now();
+      const timeDiff = currentTime - attemptTime;
+      
+      if (timeDiff < 5000) { // 5 seconds
+        console.log('Recovering from failed auth navigation');
+        // Force navigation to the target
+        if (authNavigation === 'login') {
+          window.location.href = `${window.location.origin}/auth/login`;
+        } else if (authNavigation === 'signup') {
+          window.location.href = `${window.location.origin}/auth/signup`;
+        }
+        return;
+      } else {
+        // Clear stale navigation data
+        console.log('Clearing stale auth navigation data');
+        sessionStorage.removeItem('authNavigation');
+        sessionStorage.removeItem('authNavigationAttemptTime');
+      }
+    }
+    
     // Check for pending redirects from authentication process
     const pendingRedirect = sessionStorage.getItem('pendingRedirect');
     const redirectTarget = sessionStorage.getItem('redirectTarget');
@@ -205,21 +235,105 @@ export default function Home() {
                 <div className="flex flex-col space-y-2 mt-4">
                   <button
                     onClick={() => {
-                      const fullUrl = `${window.location.origin}/auth/login`;
-                      window.location.href = fullUrl;
+                      try {
+                        // Show loading state
+                        setIsLoading(true);
+                        setError(null);
+                        
+                        // Log the navigation attempt
+                        console.log('Sign In button clicked at:', new Date().toISOString());
+                        console.log('Current pathname before navigation:', window.location.pathname);
+                        
+                        // Store navigation intent in session storage
+                        sessionStorage.setItem('authNavigation', 'login');
+                        sessionStorage.setItem('authNavigationAttemptTime', Date.now().toString());
+                        
+                        // Use the most direct and reliable navigation approach
+                        const fullUrl = `${window.location.origin}/auth/login`;
+                        console.log('Navigating to:', fullUrl);
+                        
+                        // IMPORTANT: For Railway, use direct window.location.href navigation
+                        window.location.href = fullUrl;
+                        
+                        // Set a fallback timer to detect navigation failures
+                        setTimeout(() => {
+                          if (window.location.pathname === '/' || window.location.pathname === '') {
+                            console.error('Navigation failed, still on homepage after timeout');
+                            setIsLoading(false);
+                            setError('Navigation to login page failed. Please try again.');
+                            // Clear navigation intent
+                            sessionStorage.removeItem('authNavigation');
+                            sessionStorage.removeItem('authNavigationAttemptTime');
+                          }
+                        }, 1500);
+                      } catch (e) {
+                        console.error('Navigation error:', e);
+                        setIsLoading(false);
+                        setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                      }
                     }}
                     className="w-full py-2 px-4 border border-indigo-500 text-indigo-600 rounded-md hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center"
+                    disabled={isLoading}
                   >
-                    Sign In
+                    {isLoading && sessionStorage.getItem('authNavigation') === 'login' ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full mr-2"></div>
+                        <span>Navigating...</span>
+                      </>
+                    ) : (
+                      'Sign In'
+                    )}
                   </button>
                   <button
                     onClick={() => {
-                      const fullUrl = `${window.location.origin}/auth/signup`;
-                      window.location.href = fullUrl;
+                      try {
+                        // Show loading state
+                        setIsLoading(true);
+                        setError(null);
+                        
+                        // Log the navigation attempt
+                        console.log('Create Account button clicked at:', new Date().toISOString());
+                        console.log('Current pathname before navigation:', window.location.pathname);
+                        
+                        // Store navigation intent in session storage
+                        sessionStorage.setItem('authNavigation', 'signup');
+                        sessionStorage.setItem('authNavigationAttemptTime', Date.now().toString());
+                        
+                        // Use the most direct and reliable navigation approach
+                        const fullUrl = `${window.location.origin}/auth/signup`;
+                        console.log('Navigating to:', fullUrl);
+                        
+                        // IMPORTANT: For Railway, use direct window.location.href navigation
+                        window.location.href = fullUrl;
+                        
+                        // Set a fallback timer to detect navigation failures
+                        setTimeout(() => {
+                          if (window.location.pathname === '/' || window.location.pathname === '') {
+                            console.error('Navigation failed, still on homepage after timeout');
+                            setIsLoading(false);
+                            setError('Navigation to signup page failed. Please try again.');
+                            // Clear navigation intent
+                            sessionStorage.removeItem('authNavigation');
+                            sessionStorage.removeItem('authNavigationAttemptTime');
+                          }
+                        }, 1500);
+                      } catch (e) {
+                        console.error('Navigation error:', e);
+                        setIsLoading(false);
+                        setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                      }
                     }}
                     className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center"
+                    disabled={isLoading}
                   >
-                    Create Account
+                    {isLoading && sessionStorage.getItem('authNavigation') === 'signup' ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-transparent rounded-full mr-2"></div>
+                        <span>Navigating...</span>
+                      </>
+                    ) : (
+                      'Create Account'
+                    )}
                   </button>
                 </div>
               )}
