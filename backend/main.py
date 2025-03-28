@@ -737,7 +737,7 @@ async def serve_frontend(full_path: str = "", request: Request = None):
         
         # SPECIAL HANDLING FOR CLIENT-SIDE ROUTES
         # Check for specific client-side routes and serve appropriate content
-        client_side_routes = ["language-selection", "level-selection", "speech", "topic-selection"]
+        client_side_routes = ["language-selection", "level-selection", "speech", "topic-selection", "profile"]
         
         # Add auth routes to client-side routes
         if full_path.startswith('auth/') or full_path == 'auth':
