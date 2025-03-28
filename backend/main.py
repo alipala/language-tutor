@@ -34,28 +34,29 @@ if not os.getenv("OPENAI_API_KEY"):
 app = FastAPI(title="Language Tutor Backend API")
 
 # CORS configuration
-origins = []
-if os.getenv("ENVIRONMENT") == "production":
-    # In Railway, we need to be more permissive with CORS
-    # Use the correct Railway URL as the default
-    frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
+# For Railway deployment, we need to ensure proper CORS settings
+origins = ["*"]  # Start with permissive setting
+
+# Check for Railway-specific environment
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
+    print("Running in Railway environment, using permissive CORS settings")
+    # The correct frontend URL based on previous memory
+    frontend_url = "https://taco.up.railway.app"
     
-    # Add the Railway URL as the origin
+    # In production Railway environment, we use wildcard origins for maximum compatibility
+    # This is based on our previous deployment experience
+    origins = ["*"]
+elif os.getenv("ENVIRONMENT") == "production":
+    # For other production environments
+    frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
     origins = [
         frontend_url,
-        "https://taco.up.railway.app",  # Correct URL
+        "https://taco.up.railway.app",
     ]
-    
-    print(f"Configured CORS with origins: {origins}")
-    
-    # If we're in Railway, also allow the request from any origin
-    # This is more permissive but ensures the app works in Railway's environment
-    if os.getenv("RAILWAY") == "true":
-        origins = ["*"]
-        print("Running in Railway environment, allowing all origins")
 else:
-    # For local development, allow all origins
+    # For local development
     origins = ["*"]
+    frontend_url = "http://localhost:3000"
 
 print(f"Configured CORS with origins: {origins}")
 
@@ -75,8 +76,24 @@ app.include_router(auth_router)
 # Initialize MongoDB on startup
 @app.on_event("startup")
 async def startup_db_client():
-    await init_db()
-    print("MongoDB initialized")
+    try:
+        # Check if we're in Railway environment
+        if os.getenv("RAILWAY_ENVIRONMENT"):
+            print(f"Starting in Railway environment")
+            # Print available environment variables for MongoDB (with sensitive info masked)
+            mongo_vars = {
+                k: ("*****" if "PASSWORD" in k else v) 
+                for k, v in os.environ.items() 
+                if "MONGO" in k
+            }
+            print(f"Available MongoDB environment variables: {mongo_vars}")
+        
+        # Initialize database
+        await init_db()
+        print("MongoDB initialized successfully")
+    except Exception as e:
+        print(f"ERROR initializing MongoDB: {str(e)}")
+        print("The application will continue, but database functionality may be limited")
 
 # Global error handler for better debugging in Railway
 @app.middleware("http")
