@@ -5,6 +5,28 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2025-03-28
+
+### Added
+- Modern authentication UI with animated components and transitions
+- New `AuthForm` component for consistent login and signup experiences
+- Animated background elements with subtle motion effects
+- Gradient text and interactive button animations
+- Framer Motion integration for smooth UI transitions
+
+### Changed
+- Completely redesigned login and signup pages with modern UI principles
+- Enhanced form validation and error handling for better user feedback
+- Improved authentication flow with clear loading states
+- Standardized authentication component design across the application
+- Updated color scheme with gradient effects for better visual appeal
+
+### Fixed
+- Resolved form submission issues in the login component
+- Fixed navigation after successful authentication
+- Corrected TypeScript type issues in authentication components
+- Improved error message display and handling
+
 ## [2.10.0] - 2025-03-28
 
 ### Fixed
