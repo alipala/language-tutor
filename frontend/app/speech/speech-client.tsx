@@ -170,10 +170,29 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const [alertAnimationState, setAlertAnimationState] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden');
   // Add ref to track if animation is in progress
   const animationInProgressRef = useRef(false);
+  // Add ref to track the last time we showed an alert to prevent rapid re-triggering
+  const lastAlertTimeRef = useRef<number>(0);
+  // Add ref to track if the tutor is currently speaking
+  const tutorIsSpeakingRef = useRef<boolean>(false);
 
   // Simplified function to show and auto-hide the language alert
   const showAndHideLanguageAlert = useCallback(() => {
+    // Don't show alert if tutor is currently speaking
+    if (tutorIsSpeakingRef.current) {
+      console.log('Not showing language alert because tutor is speaking');
+      return;
+    }
+    
+    // Implement debouncing - don't show alert if we've shown one recently (within 5 seconds)
+    const now = Date.now();
+    const timeSinceLastAlert = now - lastAlertTimeRef.current;
+    if (timeSinceLastAlert < 5000) { // 5 seconds debounce
+      console.log(`Not showing language alert - debounced (${timeSinceLastAlert}ms since last alert)`);
+      return;
+    }
+    
     console.log('Showing language alert notification');
+    lastAlertTimeRef.current = now;
     
     // Clear any existing timeouts first
     if (languageAlertTimeoutRef.current) {
@@ -196,7 +215,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       // Set to visible state
       setAlertAnimationState('visible');
       
-      // Set primary timeout to hide after exactly 2 seconds
+      // Set primary timeout to hide after exactly 3 seconds
       languageAlertTimeoutRef.current = setTimeout(() => {
         // Start exit animation
         setAlertAnimationState('exiting');
@@ -208,12 +227,12 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           setAlertAnimationState('hidden');
           setDetectedWrongLanguage(false);
         }, 350); // Slightly longer than animation duration for safety
-      }, 2000); // Show for exactly 2 seconds
+      }, 3000); // Show for exactly 3 seconds
       
       // Set a guaranteed fallback timeout that will force-hide regardless
       // This is our safety net in case animations fail
       globalSafetyTimeoutRef.current = setTimeout(() => {
-        // If we're still showing the alert after 2.5 seconds, force hide it
+        // If we're still showing the alert after 3.5 seconds, force hide it
         console.log('Global safety timeout check');
         
         // Force hide the alert regardless of state
@@ -226,7 +245,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         if (alertElement) {
           alertElement.style.display = 'none';
         }
-      }, 2500); // 2.5 seconds total (2s display + 0.5s buffer)
+      }, 3500); // 3.5 seconds total (3s display + 0.5s buffer)
     }, 10);
   }, []);
   
@@ -234,7 +253,15 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   useEffect(() => {
     // Only proceed if we're recording, using a non-English language, detected wrong language, and not currently animating/showing alert
     const nonEnglishLanguages = ['dutch', 'spanish', 'german', 'french', 'portuguese'];
-    if (isRecording && nonEnglishLanguages.includes(language) && detectedWrongLanguage && !showLanguageAlert) {
+    
+    // Additional check to ensure tutor is not currently speaking
+    if (isRecording && 
+        nonEnglishLanguages.includes(language) && 
+        detectedWrongLanguage && 
+        !showLanguageAlert && 
+        !tutorIsSpeakingRef.current) {
+      
+      console.log('Triggering language alert display');
       showAndHideLanguageAlert();
     }
     
@@ -300,59 +327,133 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       const latestUserMessage = userMessages[userMessages.length - 1];
       setCurrentTranscript(latestUserMessage.content);
       
-      // Simple language detection for Dutch vs non-Dutch
-      if (language === 'dutch') {
-        // List of common Dutch words and patterns
-        const dutchPatterns = [
-          /\b(ik|je|het|de|een|en|is|zijn|hebben|mijn|jouw|hoe|wat|waar|waarom|wanneer|wie)\b/i,
-          /\b(goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig)\b/i,
-          /\b(hallo|dag|goedemorgen|goedemiddag|goedenavond|doei|tot ziens)\b/i
-        ];
-        
-        // List of common English words that would indicate English is being spoken
-        const englishPatterns = [
-          /\b(i|you|he|she|it|we|they|am|is|are|was|were|have|has|had|my|your|how|what|where|why|when|who)\b/i,
-          /\b(good|bad|nice|ugly|big|small|new|old|many|few)\b/i,
-          /\b(hello|hi|morning|afternoon|evening|goodbye|bye|see you)\b/i
-        ];
-        
+      // Check if this is a recent message (within the last 5 seconds)
+      const now = Date.now();
+      // Safely handle timestamp which might be undefined
+      const messageTime = latestUserMessage.timestamp ? new Date(latestUserMessage.timestamp as string).getTime() : now;
+      const messageAge = now - messageTime;
+      const isRecentMessage = messageAge < 5000; // Only process messages less than 5 seconds old
+      
+      // Check if the tutor is currently speaking by looking at the most recent assistant message
+      const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+      const isTutorSpeaking = assistantMessages.length > 0 && 
+                             (assistantMessages[assistantMessages.length - 1].timestamp ? 
+                              new Date(assistantMessages[assistantMessages.length - 1].timestamp as string).getTime() > messageTime : false);
+      
+      // Update the ref for use in other functions
+      tutorIsSpeakingRef.current = isTutorSpeaking;
+      
+      // Only proceed with language detection if:
+      // 1. This is a recent message
+      // 2. The tutor is not currently speaking
+      // 3. We're in a non-English lesson
+      if (isRecentMessage && !isTutorSpeaking && language !== 'english') {
+        // Language detection for all supported languages
         const text = latestUserMessage.content.toLowerCase();
         
-        // Check if the text contains Dutch patterns
-        const containsDutch = dutchPatterns.some(pattern => pattern.test(text));
+        // Common patterns for each language
+        const languagePatterns = {
+          dutch: [
+            /\b(ik|je|het|de|een|en|is|zijn|hebben|mijn|jouw|hoe|wat|waar|waarom|wanneer|wie)\b/i,
+            /\b(goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig)\b/i,
+            /\b(hallo|dag|goedemorgen|goedemiddag|goedenavond|doei|tot ziens)\b/i
+          ],
+          spanish: [
+            /\b(yo|tu|el|ella|nosotros|ellos|es|son|tengo|tiene|mi|tu|como|que|donde|por que|cuando|quien)\b/i,
+            /\b(bueno|malo|bonito|feo|grande|pequeño|nuevo|viejo|mucho|poco)\b/i,
+            /\b(hola|buenos dias|buenas tardes|buenas noches|adios|hasta luego)\b/i
+          ],
+          german: [
+            /\b(ich|du|er|sie|es|wir|sie|bin|ist|sind|habe|hat|mein|dein|wie|was|wo|warum|wann|wer)\b/i,
+            /\b(gut|schlecht|schön|hässlich|groß|klein|neu|alt|viel|wenig)\b/i,
+            /\b(hallo|guten tag|guten morgen|guten abend|auf wiedersehen|tschüss)\b/i
+          ],
+          french: [
+            /\b(je|tu|il|elle|nous|ils|elles|suis|est|sont|ai|a|mon|ton|comment|quoi|où|pourquoi|quand|qui)\b/i,
+            /\b(bon|mauvais|beau|laid|grand|petit|nouveau|vieux|beaucoup|peu)\b/i,
+            /\b(bonjour|salut|bonsoir|au revoir|à bientôt)\b/i
+          ],
+          portuguese: [
+            /\b(eu|tu|ele|ela|nós|eles|elas|sou|é|são|tenho|tem|meu|teu|como|que|onde|por que|quando|quem)\b/i,
+            /\b(bom|mau|bonito|feio|grande|pequeno|novo|velho|muito|pouco)\b/i,
+            /\b(olá|bom dia|boa tarde|boa noite|adeus|até logo)\b/i
+          ],
+          english: [
+            /\b(i|you|he|she|it|we|they|am|is|are|was|were|have|has|had|my|your|how|what|where|why|when|who)\b/i,
+            /\b(good|bad|nice|ugly|big|small|new|old|many|few)\b/i,
+            /\b(hello|hi|morning|afternoon|evening|goodbye|bye|see you)\b/i
+          ]
+        };
         
-        // Check if the text contains English patterns
-        const containsEnglish = englishPatterns.some(pattern => pattern.test(text));
+        // Check if text contains patterns from the target language
+        const currentLanguage = language as keyof typeof languagePatterns;
+        const containsTargetLanguage = languagePatterns[currentLanguage].some((pattern: RegExp) => pattern.test(text));
         
-        // More precise language detection
-        const hasNonDutchCharacters = /[qwxyz]/i.test(text) && text.length > 3; // These characters are rare in Dutch
-        const hasDutchSpecificCombinations = /\b(ij|aa|ee|oo|uu|eu|oe|ui)\b/i.test(text);
+        // Check if text contains English patterns (common wrong language)
+        const containsEnglish = languagePatterns.english.some((pattern: RegExp) => pattern.test(text));
         
-        // If the text contains more English patterns than Dutch patterns, it's likely not Dutch
-        if ((containsEnglish && !containsDutch) || 
-            (text.length > 5 && !containsDutch && !hasDutchSpecificCombinations) ||
-            hasNonDutchCharacters) {
-          // Only set to true if we're not already showing the alert
-          if (!showLanguageAlert || alertAnimationState === 'hidden') {
-            setDetectedWrongLanguage(true);
+        // Only proceed with detection if the message has enough content to analyze
+        if (text.length > 3) {
+          // For each language, check for specific characters or combinations
+          let isLikelyWrongLanguage = false;
+          
+          if (language === 'dutch') {
+            // Dutch-specific detection
+            const hasNonDutchCharacters = /[qwxyz]/i.test(text) && text.length > 3; // These characters are rare in Dutch
+            const hasDutchSpecificCombinations = /\b(ij|aa|ee|oo|uu|eu|oe|ui)\b/i.test(text);
+            isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                                   (text.length > 5 && !containsTargetLanguage && !hasDutchSpecificCombinations) ||
+                                   hasNonDutchCharacters;
+          } else if (language === 'spanish') {
+            // Spanish-specific detection
+            const hasNonSpanishCharacters = /[kw]/i.test(text) && text.length > 3; // These are uncommon in Spanish
+            const hasSpanishSpecificCharacters = /[ñáéíóúü]/i.test(text);
+            isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                                   (text.length > 5 && !containsTargetLanguage && !hasSpanishSpecificCharacters) ||
+                                   hasNonSpanishCharacters;
+          } else if (language === 'german') {
+            // German-specific detection
+            const hasGermanSpecificCharacters = /[äöüß]/i.test(text);
+            isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                                   (text.length > 5 && !containsTargetLanguage && !hasGermanSpecificCharacters);
+          } else if (language === 'french') {
+            // French-specific detection
+            const hasFrenchSpecificCharacters = /[éèêëàâçîïôùûüÿ]/i.test(text);
+            isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                                   (text.length > 5 && !containsTargetLanguage && !hasFrenchSpecificCharacters);
+          } else if (language === 'portuguese') {
+            // Portuguese-specific detection
+            const hasPortugueseSpecificCharacters = /[áàâãéêíóôõúç]/i.test(text);
+            isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
+                                   (text.length > 5 && !containsTargetLanguage && !hasPortugueseSpecificCharacters);
           }
-        } else if (containsDutch && !containsEnglish) {
-          // If the user is now speaking Dutch, hide the alert with animation
-          if (showLanguageAlert && alertAnimationState !== 'exiting' && alertAnimationState !== 'hidden') {
-            // Start exit animation
-            setAlertAnimationState('exiting');
-            
-            // After exit animation completes, hide the alert
-            setTimeout(() => {
-              setShowLanguageAlert(false);
-              setAlertAnimationState('hidden');
-              setDetectedWrongLanguage(false);
-            }, 300); // Match this with CSS animation duration
+          
+          // If we detect the wrong language is being used
+          if (isLikelyWrongLanguage) {
+            console.log('Detected wrong language use:', text);
+            // Only set to true if we're not already showing the alert
+            if (!showLanguageAlert || alertAnimationState === 'hidden') {
+              setDetectedWrongLanguage(true);
+            }
+          } else if (containsTargetLanguage && !containsEnglish) {
+            // If the user is now speaking the target language, hide the alert with animation
+            if (showLanguageAlert && alertAnimationState !== 'exiting' && alertAnimationState !== 'hidden') {
+              console.log('User switched to correct language, hiding alert');
+              // Start exit animation
+              setAlertAnimationState('exiting');
+              
+              // After exit animation completes, hide the alert
+              setTimeout(() => {
+                setShowLanguageAlert(false);
+                setAlertAnimationState('hidden');
+                setDetectedWrongLanguage(false);
+              }, 300); // Match this with CSS animation duration
+            }
           }
         }
       }
     }
-  }, [messages, language]);
+  }, [messages, language, alertAnimationState, showLanguageAlert]);
   
   // Handle recording toggle
   const handleToggleRecording = async (e: React.MouseEvent) => {
@@ -485,7 +586,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4 overflow-x-hidden">
       <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
         {/* Language alert notification with animation states */}
-        {showLanguageAlert && language === 'dutch' && (
+        {showLanguageAlert && (
           <div 
             className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white px-6 py-3 rounded-lg border border-amber-400/20 z-50 flex items-center space-x-3 max-w-md
               ${alertAnimationState === 'entering' ? 'animate-slide-in-top' : ''}
@@ -499,8 +600,36 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div className="flex flex-col">
-              <span className="text-sm md:text-base font-medium">Dit is een Nederlandse les.</span>
-              <span className="text-xs md:text-sm text-amber-100">Probeer alsjeblieft in het Nederlands te spreken.</span>
+              {language === 'dutch' && (
+                <>
+                  <span className="text-sm md:text-base font-medium">Dit is een Nederlandse les.</span>
+                  <span className="text-xs md:text-sm text-amber-100">Probeer alsjeblieft in het Nederlands te spreken.</span>
+                </>
+              )}
+              {language === 'spanish' && (
+                <>
+                  <span className="text-sm md:text-base font-medium">Esta es una clase de español.</span>
+                  <span className="text-xs md:text-sm text-amber-100">Por favor, intenta hablar en español.</span>
+                </>
+              )}
+              {language === 'german' && (
+                <>
+                  <span className="text-sm md:text-base font-medium">Dies ist ein Deutschunterricht.</span>
+                  <span className="text-xs md:text-sm text-amber-100">Bitte versuche, auf Deutsch zu sprechen.</span>
+                </>
+              )}
+              {language === 'french' && (
+                <>
+                  <span className="text-sm md:text-base font-medium">C'est un cours de français.</span>
+                  <span className="text-xs md:text-sm text-amber-100">S'il vous plaît, essayez de parler en français.</span>
+                </>
+              )}
+              {language === 'portuguese' && (
+                <>
+                  <span className="text-sm md:text-base font-medium">Esta é uma aula de português.</span>
+                  <span className="text-xs md:text-sm text-amber-100">Por favor, tente falar em português.</span>
+                </>
+              )}
             </div>
           </div>
         )}
