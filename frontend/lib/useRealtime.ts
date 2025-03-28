@@ -186,6 +186,10 @@ export function useRealtime() {
             }];
           });
         }
+      } else if (event.item?.role === 'assistant') {
+        // When a new assistant item is created, store its ID to associate future deltas with it
+        const itemId = event.item.id;
+        console.log('New assistant item created with ID:', itemId);
       }
     } else if (event.type === 'response.audio_transcript.delta') {
       const delta = event.delta?.trim() || '';
@@ -195,36 +199,52 @@ export function useRealtime() {
       console.log('Received audio transcript delta:', delta);
       
       setMessages(prev => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage?.role === 'assistant' && lastMessage.itemId === event.item_id) {
-          // Update existing message
-          // Add a space before the new text if needed
-          const needsSpace = lastMessage.content.length > 0 && 
-                            !lastMessage.content.endsWith(' ') && 
-                            !lastMessage.content.endsWith('.') && 
-                            !lastMessage.content.endsWith(',') && 
-                            !lastMessage.content.endsWith('!') && 
-                            !lastMessage.content.endsWith('?') && 
-                            !lastMessage.content.endsWith(':') && 
-                            !lastMessage.content.endsWith(';') && 
-                            !lastMessage.content.endsWith('-') && 
-                            !delta.startsWith(' ') && 
-                            !delta.startsWith('.') && 
-                            !delta.startsWith(',') && 
-                            !delta.startsWith('!') && 
-                            !delta.startsWith('?') && 
-                            !delta.startsWith(':') && 
-                            !delta.startsWith(';') && 
-                            !delta.startsWith('-');
+        // Try to find an existing message with this item_id
+        const existingMessageIndex = prev.findIndex(msg => 
+          msg.role === 'assistant' && msg.itemId === event.item_id
+        );
+        
+        // If we found a message with this item_id, update it
+        if (existingMessageIndex >= 0) {
+          const existingMessage = prev[existingMessageIndex];
+          const needsSpace = needSpaceBetween(existingMessage.content, delta);
           
           return prev.map((msg, idx) => 
-            idx === prev.length - 1
+            idx === existingMessageIndex
               ? { ...msg, content: msg.content + (needsSpace ? ' ' : '') + delta }
               : msg
           );
         }
         
-        // Create new message
+        // If we don't have a message with this item_id yet, check if we have any incomplete assistant messages
+        // that might be part of the same conversation turn
+        const incompleteAssistantMessages = prev.filter(msg => 
+          msg.role === 'assistant' && 
+          (!msg.itemId || msg.itemId === '') && 
+          msg.content.length < 100  // Only consider short messages as potentially incomplete
+        );
+        
+        // If we have incomplete assistant messages, update the most recent one
+        if (incompleteAssistantMessages.length > 0) {
+          const lastIncompleteIndex = prev.findIndex(msg => 
+            msg === incompleteAssistantMessages[incompleteAssistantMessages.length - 1]
+          );
+          
+          const lastIncompleteMsg = prev[lastIncompleteIndex];
+          const needsSpace = needSpaceBetween(lastIncompleteMsg.content, delta);
+          
+          return prev.map((msg, idx) => 
+            idx === lastIncompleteIndex
+              ? { 
+                  ...msg, 
+                  content: msg.content + (needsSpace ? ' ' : '') + delta,
+                  itemId: event.item_id  // Associate this message with the item_id
+                }
+              : msg
+          );
+        }
+        
+        // If we don't have any existing message to update, create a new one
         return [...prev, {
           role: 'assistant',
           content: delta,
@@ -238,31 +258,70 @@ export function useRealtime() {
       const transcript = event.transcript.trim();
       
       setMessages(prev => {
+        // First, check if we already have this exact transcript
+        const exactDuplicate = prev.some(msg => 
+          msg.role === 'assistant' && 
+          msg.content === transcript
+        );
+        
+        if (exactDuplicate) {
+          console.log('Ignoring duplicate transcript:', transcript.substring(0, 30) + '...');
+          return prev;
+        }
+        
+        // Check if we have any message with this item_id
         const existingIndex = prev.findIndex(msg => 
           msg.role === 'assistant' && 
           msg.itemId === event.item_id
         );
         
         if (existingIndex >= 0) {
-          // Update existing message
+          // Update existing message with the complete transcript
           return prev.map((msg, idx) => 
             idx === existingIndex
               ? {
                   role: 'assistant',
                   content: transcript,
                   itemId: event.item_id,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
+                  isComplete: true  // Mark as complete to avoid further updates
                 }
               : msg
           );
         }
         
-        // Add new message
+        // If we don't have a message with this item_id, check for any incomplete messages
+        // that might contain partial content of this transcript
+        const similarContentIndex = prev.findIndex(msg => 
+          msg.role === 'assistant' && 
+          !msg.isComplete &&
+          (transcript.includes(msg.content) || msg.content.includes(transcript.substring(0, 20)))
+        );
+        
+        if (similarContentIndex >= 0) {
+          // Replace the similar content with the complete transcript
+          return prev.map((msg, idx) => 
+            idx === similarContentIndex
+              ? {
+                  role: 'assistant',
+                  content: transcript,
+                  itemId: event.item_id,
+                  timestamp: new Date().toISOString(),
+                  isComplete: true
+                }
+              : msg
+          );
+        }
+        
+        // If we can't find any related message, add a new one
+        // This should rarely happen if delta events are working correctly
+        console.log('Adding new message for complete transcript with no previous deltas');
         return [...prev, {
           role: 'assistant',
           content: transcript,
           itemId: event.item_id,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          isComplete: true
         }];
       });
     }

@@ -81,30 +81,69 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
 
     // Deduplicate assistant messages by filtering out those with very similar content
     const filteredMessages: typeof mappedMessages = [];
-    const seenContents: string[] = [];
+    const seenContents: {content: string, index: number}[] = [];
 
-    for (const message of mappedMessages) {
-      if (message.role === 'user') {
-        // Always keep user messages
-        filteredMessages.push(message);
-      } else {
-        // For assistant messages, check if we've seen very similar content recently
-        const contentToCheck = message.content.trim();
-        let isDuplicate = false;
+    // First pass: collect all assistant messages and their indices
+    mappedMessages.forEach((message, index) => {
+      if (message.role === 'assistant') {
+        seenContents.push({
+          content: message.content.trim(),
+          index
+        });
+      }
+    });
 
-        // Check if this content is a duplicate or subset of a message we've already seen
-        for (const seenContent of seenContents) {
-          // If the content is very similar (one contains the other), consider it a duplicate
-          if (seenContent.includes(contentToCheck) || contentToCheck.includes(seenContent)) {
-            isDuplicate = true;
-            break;
+    // Second pass: identify duplicates and keep only the most complete version
+    const duplicateIndices = new Set<number>();
+    
+    // Compare each message with others to find duplicates or subsets
+    for (let i = 0; i < seenContents.length; i++) {
+      for (let j = i + 1; j < seenContents.length; j++) {
+        const contentA = seenContents[i].content;
+        const contentB = seenContents[j].content;
+        
+        // If one message is a subset of another
+        if (contentA.includes(contentB)) {
+          // Mark the shorter one as duplicate
+          duplicateIndices.add(seenContents[j].index);
+        } else if (contentB.includes(contentA)) {
+          // Mark the shorter one as duplicate
+          duplicateIndices.add(seenContents[i].index);
+        } 
+        // If messages are very similar (more than 80% overlap)
+        else if (contentA.length > 20 && contentB.length > 20) {
+          // Check for significant overlap using a simple similarity check
+          const shorterContent = contentA.length < contentB.length ? contentA : contentB;
+          const longerContent = contentA.length >= contentB.length ? contentA : contentB;
+          
+          // If the shorter content appears mostly in the longer content
+          const words = shorterContent.split(/\s+/);
+          let matchCount = 0;
+          
+          for (const word of words) {
+            if (word.length > 3 && longerContent.includes(word)) {
+              matchCount++;
+            }
+          }
+          
+          // If more than 80% of significant words match
+          if (words.length > 0 && matchCount / words.length > 0.8) {
+            // Mark the shorter message as duplicate
+            if (contentA.length < contentB.length) {
+              duplicateIndices.add(seenContents[i].index);
+            } else {
+              duplicateIndices.add(seenContents[j].index);
+            }
           }
         }
+      }
+    }
 
-        if (!isDuplicate) {
-          seenContents.push(contentToCheck);
-          filteredMessages.push(message);
-        }
+    // Add all non-duplicate messages to the filtered list
+    for (let i = 0; i < mappedMessages.length; i++) {
+      const message = mappedMessages[i];
+      if (message.role === 'user' || !duplicateIndices.has(i)) {
+        filteredMessages.push(message);
       }
     }
 

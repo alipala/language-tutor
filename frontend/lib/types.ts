@@ -4,6 +4,7 @@ export interface RealtimeMessage {
   content: string;
   itemId?: string; // Optional ID to track which conversation item this message belongs to
   timestamp?: string; // ISO string timestamp for message ordering
+  isComplete?: boolean; // Flag to indicate if this is a complete message (not a partial update)
 }
 
 export interface RealtimeEvent {
