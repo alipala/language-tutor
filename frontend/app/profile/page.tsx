@@ -9,7 +9,11 @@ import ProtectedRoute from '@/components/protected-route';
 import NavBar from '@/components/nav-bar';
 
 // API base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+// In Railway deployment, the API is served from the same domain
+const isRailway = typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
+const API_URL = isRailway 
+  ? '' // Empty string means same domain, which is correct for Railway
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001');
 
 export default function ProfilePage() {
   const router = useRouter();
