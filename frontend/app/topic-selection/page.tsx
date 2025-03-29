@@ -430,7 +430,11 @@ export default function TopicSelection() {
         {isCustomTopicActive && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
             <div className="glass-card p-6 md:p-8 rounded-xl border border-white/20 shadow-lg w-full max-w-md mx-4">
-              <h3 className="text-xl md:text-2xl font-semibold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+              {/* Decorative elements */}
+              <div className="absolute -top-20 -right-20 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
+              
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-4 relative z-10">
                 {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
                 {selectedLanguage === 'english' && 'Create Your Custom Topic'}
                 {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
@@ -439,7 +443,7 @@ export default function TopicSelection() {
                 {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
                 {!selectedLanguage && 'Create Your Custom Topic'}
               </h3>
-              <p className="text-white/70 text-sm md:text-base mb-6">
+              <p className="text-white/80 text-sm md:text-base mb-6 relative z-10">
                 {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
                 {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
                 {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}
@@ -449,7 +453,7 @@ export default function TopicSelection() {
                 {!selectedLanguage && 'What would you like to talk about in your conversation?'}
               </p>
               
-              <div className="mb-6">
+              <div className="mb-6 relative z-10">
                 <textarea
                   ref={customInputRef}
                   value={customTopicText}
@@ -464,25 +468,25 @@ export default function TopicSelection() {
                     }
                   }}
                   placeholder="Describe your topic here..."
-                  className="w-full p-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 min-h-[100px] resize-none"
+                  className="w-full p-3 rounded-lg glass-card border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all duration-300 min-h-[100px] resize-none"
                   disabled={isExtendingKnowledge}
                 />
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-white/60 mt-2">
                   Press Enter to submit or Shift+Enter for a new line
                 </p>
               </div>
               
-              <div className="flex justify-between">
+              <div className="flex justify-between relative z-10">
                 <button
                   onClick={() => setIsCustomTopicActive(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors duration-300 text-sm md:text-base"
+                  className="px-4 py-2 rounded-lg glass-card border border-white/20 hover:bg-white/10 text-white transition-colors duration-300 text-sm md:text-base"
                   disabled={isExtendingKnowledge}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCustomTopicSubmit}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white transition-colors duration-300 text-sm md:text-base"
+                  className="px-4 py-2 rounded-lg primary-button text-white transition-colors duration-300 text-sm md:text-base"
                   disabled={!customTopicText.trim() || isExtendingKnowledge}
                 >
                   Submit
@@ -495,9 +499,9 @@ export default function TopicSelection() {
         {/* Knowledge Extension Message */}
         {isExtendingKnowledge && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 md:p-8 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/20 w-full max-w-md mx-4 text-center">
+            <div className="glass-card p-6 md:p-8 rounded-xl border border-white/20 shadow-lg w-full max-w-md mx-4 text-center">
               <div className="text-4xl mb-4 animate-pulse">🧠</div>
-              <h3 className="text-xl md:text-2xl font-semibold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-4">
                 Your taalcoach knowledge is being extended. Hold on please!
               </h3>
               <div className="flex justify-center">
