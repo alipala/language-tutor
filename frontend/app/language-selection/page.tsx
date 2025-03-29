@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import { TypeAnimation } from 'react-type-animation';
 // Sound effects temporarily disabled
 // import { useAudio } from '@/lib/useAudio';
 
@@ -212,15 +213,66 @@ export default function LanguageSelection() {
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
         {/* Header with animated elements */}
         <div className="text-center mb-12 relative">
-          {/* Animated background blob */}
+          {/* Animated background effects */}
           <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-gradient-to-r from-blue-500/0 via-violet-500/10 to-blue-500/0 blur-xl animate-pulse"></div>
           
-          <h1 className="text-5xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 relative z-10">
-            Choose Your Language
+          <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
+            <div className="relative">
+              <TypeAnimation
+                sequence={[
+                  'Choose Your Language',
+                  2000,
+                  'Kies je taal', // Dutch
+                  1500,
+                  'Elige tu idioma', // Spanish
+                  1500,
+                  'Wähle deine Sprache', // German
+                  1500,
+                  'Choisissez votre langue', // French
+                  1500,
+                  'Escolha seu idioma', // Portuguese
+                  1500,
+                  'Choose Your Language',
+                  1000,
+                ]}
+                wrapper="span"
+                speed={50}
+                style={{ display: 'inline-block' }}
+                repeat={Infinity}
+                cursor={true}
+                className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 drop-shadow-sm"
+              />
+              {/* Animated underline effect */}
+              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-gradient-to-r from-blue-400/0 via-violet-400/70 to-blue-400/0 animate-pulse"></div>
+            </div>
           </h1>
-          <p className="text-slate-300 mt-4 text-lg max-w-md mx-auto">
-            Select a language to start your learning journey
-          </p>
+          <div className="text-slate-300 mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
+            <TypeAnimation
+              sequence={[
+                'Select a language to start your learning journey',
+                2000,
+                'Selecteer een taal om je leerreis te beginnen', // Dutch
+                1500,
+                'Selecciona un idioma para comenzar tu viaje de aprendizaje', // Spanish
+                1500,
+                'Wähle eine Sprache, um deine Lernreise zu beginnen', // German
+                1500,
+                'Sélectionnez une langue pour commencer votre parcours d\'apprentissage', // French
+                1500,
+                'Selecione um idioma para iniciar sua jornada de aprendizado', // Portuguese
+                1500,
+                'Select a language to start your learning journey',
+                1000,
+              ]}
+              wrapper="p"
+              speed={70}
+              style={{ display: 'inline-block' }}
+              repeat={Infinity}
+              cursor={true}
+              className="text-slate-300 animate-fade-in"
+            />
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
