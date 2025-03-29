@@ -688,7 +688,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   };
   
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white p-4 overflow-x-hidden">
+    <main className="flex flex-col text-white p-4 overflow-x-hidden">
       <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
         {/* Language alert notification with animation states */}
         {showLanguageAlert && (
@@ -741,10 +741,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         
         {/* Header - Redesigned */}
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold tracking-tight gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">
+          <h1 className="text-4xl font-bold tracking-tight text-white">
             {language.charAt(0).toUpperCase() + language.slice(1)} Conversation
           </h1>
-          <p className="text-muted-foreground dark:text-slate-400 mt-2 text-improved">
+          <p className="text-white/80 mt-2">
             Level: {level.toUpperCase()} - Click the microphone to start talking
           </p>
           
@@ -753,21 +753,21 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             <button 
               type="button"
               onClick={handleChangeLanguage}
-              className="app-button"
+              className="primary-button px-4 py-2 rounded-lg"
             >
               Change Language
             </button>
             <button 
               type="button"
               onClick={handleChangeTopic}
-              className="app-button"
+              className="primary-button px-4 py-2 rounded-lg"
             >
               Change Topic
             </button>
             <button 
               type="button"
               onClick={handleChangeLevel}
-              className="app-button"
+              className="primary-button px-4 py-2 rounded-lg"
             >
               Change Level
             </button>
@@ -805,8 +805,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   className={`mic-btn relative z-10 rounded-full w-28 h-28 flex items-center justify-center transition-all duration-500 touch-target ${isAttemptingToRecord && !isRecording ? 'opacity-70' : 'opacity-100'}`}
                   disabled={isAttemptingToRecord && !isRecording}
                 >
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-90"></div>
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 opacity-0 hover:opacity-90 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 rounded-full bg-white/20 backdrop-blur-sm opacity-90"></div>
+                  <div className="absolute inset-0 rounded-full bg-white/30 opacity-0 hover:opacity-90 transition-opacity duration-300"></div>
                   
                   {/* Microphone icon with animation */}
                   <div className="relative z-10 flex items-center justify-center">
@@ -843,7 +843,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                 </Button>
               </div>
               
-              <p className="mt-6 text-lg text-slate-300 animate-fade-in">
+              <p className="mt-6 text-lg text-white/80 animate-fade-in">
                 {isAttemptingToRecord ? 'Initializing microphone...' : 'Click to start speaking'}
               </p>
               

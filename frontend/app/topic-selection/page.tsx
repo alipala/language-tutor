@@ -343,16 +343,16 @@ export default function TopicSelection() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col app-background text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <NavBar />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500 mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
             Choose a Topic
           </h1>
-          <p className="text-slate-300 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
             {selectedLanguage === 'english' && 'Select a topic for your English conversation (optional)'}
             {selectedLanguage === 'spanish' && 'Selecciona un tema para tu conversación en español (opcional)'}
@@ -364,7 +364,7 @@ export default function TopicSelection() {
           <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
               onClick={handleChangeLanguage}
-              className="app-button flex items-center space-x-2" 
+              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -373,7 +373,7 @@ export default function TopicSelection() {
             </button>
             <button 
               onClick={handleSkipTopic}
-              className="app-button flex items-center space-x-2" 
+              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -382,7 +382,7 @@ export default function TopicSelection() {
             </button>
             <button 
               onClick={handleStartOver}
-              className="app-button flex items-center space-x-2" 
+              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -399,25 +399,25 @@ export default function TopicSelection() {
               key={topic.id}
               onClick={() => handleTopicSelect(topic.id)}
               disabled={isLoading || isExtendingKnowledge}
-              className={`group relative overflow-hidden rounded-xl transition-all duration-300 bg-gradient-to-br from-slate-800 to-slate-700 hover:from-indigo-900 hover:to-blue-900 border border-slate-700 hover:border-indigo-500 shadow-lg hover:shadow-indigo-500/20 flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] ${
+              className={`group relative overflow-hidden rounded-xl transition-all duration-300 glass-card flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] ${
                 (isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               } ${
-                isCustomTopicActive && topic.id === 'custom' ? 'from-indigo-900 to-blue-900 border-indigo-500 shadow-indigo-500/20' : ''
+                isCustomTopicActive && topic.id === 'custom' ? 'ring-2 ring-white/50 shadow-white/20' : ''
               }`}
             >
               {/* Glow effect on hover */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               {/* Icon */}
               <div className="text-4xl mb-4">{topic.icon}</div>
               
               {/* Title */}
-              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-blue-300 transition-colors duration-300">
+              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-white transition-colors duration-300">
                 {topic.name}
               </h3>
               
               {/* Description */}
-              <p className="text-slate-300 text-sm group-hover:text-slate-200 transition-colors duration-300">
+              <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
                 {topic.description}
               </p>
               
@@ -429,7 +429,7 @@ export default function TopicSelection() {
         {/* Custom Topic Input Modal - Only show when active */}
         {isCustomTopicActive && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 md:p-8 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/20 w-full max-w-md mx-4">
+            <div className="glass-card p-6 md:p-8 rounded-xl border border-white/20 shadow-lg w-full max-w-md mx-4">
               <h3 className="text-xl md:text-2xl font-semibold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
                 {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
                 {selectedLanguage === 'english' && 'Create Your Custom Topic'}
@@ -439,7 +439,7 @@ export default function TopicSelection() {
                 {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
                 {!selectedLanguage && 'Create Your Custom Topic'}
               </h3>
-              <p className="text-slate-300 text-sm md:text-base mb-6">
+              <p className="text-white/70 text-sm md:text-base mb-6">
                 {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
                 {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
                 {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}

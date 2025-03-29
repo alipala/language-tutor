@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
-import { TypeAnimation } from 'react-type-animation';
+// Animation temporarily commented out
+// import { TypeAnimation } from 'react-type-animation';
 // Sound effects temporarily disabled
 // import { useAudio } from '@/lib/useAudio';
 
@@ -207,18 +208,20 @@ export default function LanguageSelection() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col app-background">
+    <div className="min-h-screen flex flex-col">
       <NavBar />
       <main className="flex-grow flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
         {/* Header with animated elements */}
         <div className="text-center mb-12 relative">
           {/* Animated background effects */}
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-gradient-to-r from-blue-500/0 via-violet-500/10 to-blue-500/0 blur-xl animate-pulse"></div>
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-white/10 blur-xl animate-pulse"></div>
           
           <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
             <div className="relative">
+              {/* Animation temporarily commented out */}
+              {/*
               <TypeAnimation
                 sequence={[
                   'Choose Your Language',
@@ -241,13 +244,17 @@ export default function LanguageSelection() {
                 style={{ display: 'inline-block' }}
                 repeat={Infinity}
                 cursor={true}
-                className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 drop-shadow-sm"
+                className="text-white drop-shadow-sm"
               />
+              */}
+              <span className="text-white drop-shadow-sm">Choose Your Language</span>
               {/* Animated underline effect */}
-              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-gradient-to-r from-blue-400/0 via-violet-400/70 to-blue-400/0 animate-pulse"></div>
+              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-white/50 animate-pulse"></div>
             </div>
           </h1>
-          <div className="text-slate-300 mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
+          <div className="text-white/80 mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
+            {/* Animation temporarily commented out */}
+            {/*
             <TypeAnimation
               sequence={[
                 'Select a language to begin',
@@ -270,15 +277,17 @@ export default function LanguageSelection() {
               style={{ display: 'inline-block' }}
               repeat={Infinity}
               cursor={true}
-              className="text-slate-300 animate-fade-in"
+              className="text-white/80 animate-fade-in"
             />
+            */}
+            <p className="text-white/80 animate-fade-in">Select a language to begin</p>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
           {/* Decorative elements */}
-          <div className="absolute -top-40 -right-20 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl"></div>
+          <div className="absolute -top-40 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl relative z-10">
             {languages.map((language) => (
@@ -288,13 +297,12 @@ export default function LanguageSelection() {
                 className={`
                   group relative overflow-hidden rounded-xl 
                   transition-all duration-500 ease-out 
-                  border border-slate-700/50 backdrop-blur-sm
-                  bg-slate-800/40 hover:bg-slate-700/40
-                  hover:shadow-lg hover:shadow-blue-900/20
+                  glass-card
+                  hover:shadow-lg hover:shadow-black/20
                   ${
                     selectedLanguage === language.code
-                      ? 'ring-2 ring-blue-500/50 shadow-blue-500/20 shadow-md'
-                      : 'hover:border-blue-500/30'
+                      ? 'ring-2 ring-white/50 shadow-white/20 shadow-md'
+                      : 'hover:border-white/30'
                   }
                 `}
               >
@@ -305,13 +313,13 @@ export default function LanguageSelection() {
                     <div 
                       className={`
                         flex-shrink-0 w-20 h-20 flex items-center justify-center rounded-lg 
-                        bg-gradient-to-br from-slate-700/80 to-slate-800/80 
+                        bg-black/20 backdrop-blur-sm
                         shadow-lg group-hover:shadow-xl transition-all duration-500
-                        border border-slate-600/30 group-hover:border-blue-500/30
+                        border border-white/20 group-hover:border-white/40
                         overflow-hidden relative
                         ${
                           selectedLanguage === language.code
-                            ? 'from-blue-900/30 to-indigo-900/30 border-blue-500/40'
+                            ? 'bg-white/10 border-white/30'
                             : ''
                         }
                       `}
@@ -320,9 +328,9 @@ export default function LanguageSelection() {
                       <div className="absolute inset-0 opacity-20 overflow-hidden">
                         <div className="w-full h-full relative">
                           {/* Top left gradient blob */}
-                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-blue-600/40 rounded-full blur-xl animate-pulse"></div>
+                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-white/30 rounded-full blur-xl animate-pulse"></div>
                           {/* Bottom right gradient blob */}
-                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-violet-600/40 rounded-full blur-xl animate-pulse delay-700"></div>
+                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-white/30 rounded-full blur-xl animate-pulse delay-700"></div>
                         </div>
                       </div>
                       
@@ -350,11 +358,11 @@ export default function LanguageSelection() {
                     
                     {/* Language details */}
                     <div className="flex-1 text-left pt-1">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors duration-300">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-white transition-colors duration-300">
                         {language.name}
                       </h3>
                       
-                      <p className="text-slate-300 text-sm group-hover:text-slate-100 transition-colors duration-300">
+                      <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
                         {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
                         {language.code === 'english' && 'Practice English speaking and listening'}
                         {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
@@ -367,7 +375,7 @@ export default function LanguageSelection() {
                     {/* Selection indicator */}
                     {selectedLanguage === language.code && (
                       <div className="absolute top-4 right-4 animate-fade-in">
-                        <div className="w-7 h-7 rounded-full bg-blue-500/80 flex items-center justify-center shadow-md">
+                        <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-md">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -389,7 +397,7 @@ export default function LanguageSelection() {
                 {/* Bottom flowing accent line with animation */}
                 <div 
                   className={`
-                    absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-violet-500
+                    absolute bottom-0 left-0 h-0.5 bg-white/60
                     transition-all duration-700 ease-out opacity-80
                     ${
                       selectedLanguage === language.code

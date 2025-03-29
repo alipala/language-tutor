@@ -155,69 +155,10 @@ export default function Home() {
   
   // Return loading state while redirecting or manual navigation option if we hit the redirect limit
   return (
-    <div className="min-h-screen flex flex-col app-background">
+    <div className="min-h-screen flex flex-col">
       <NavBar />
-      <div className="flex-grow flex flex-col items-center justify-center p-4 w-full">
-        {/* Simple background effect */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-7xl bg-blue-500/5 rounded-3xl blur-3xl"></div>
-        
-        <div className="w-full max-w-7xl mx-auto flex flex-col items-center justify-center space-y-8 relative z-10 px-8">
-        {/* Main title with animation */}
-        <div className="text-center mb-2 w-full">
-          <h1 className="text-6xl font-bold tracking-tight relative z-10 min-h-[5rem] inline-block">
-            <TypeAnimation
-              sequence={[
-                'Language Tutor',
-                3000
-              ]}
-              wrapper="span"
-              speed={50}
-              style={{ display: 'inline-block' }}
-              repeat={0}
-              cursor={true}
-              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400"
-            />
-          </h1>
-        </div>
-        
-        {/* Simple subtitle */}
-        <div className="text-slate-300 text-xl max-w-2xl mx-auto text-center mb-6 w-full">
-          <TypeAnimation
-            sequence={[
-              'Choose a language and level to start practicing your conversation skills with an AI tutor.',
-              3000
-            ]}
-            wrapper="p"
-            speed={50}
-            style={{ display: 'inline-block' }}
-            repeat={0}
-            cursor={false}
-            className="text-slate-300"
-          />
-        </div>
-        
-        {/* Animated language greetings */}
-        <div className="relative h-12 max-w-2xl mx-auto text-center mb-12 w-full overflow-hidden">
-          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '0s', animationDuration: '4s', animationFillMode: 'forwards' }}>
-            <p className="text-slate-300 text-lg font-medium">Welcome to your language learning journey</p>
-          </div>
-          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '4s', animationDuration: '4s', animationFillMode: 'forwards' }}>
-            <p className="text-slate-300 text-lg font-medium">Welkom bij je taalreis</p>
-          </div>
-          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '8s', animationDuration: '4s', animationFillMode: 'forwards' }}>
-            <p className="text-slate-300 text-lg font-medium">Bienvenido a tu viaje de aprendizaje de idiomas</p>
-          </div>
-          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '12s', animationDuration: '4s', animationFillMode: 'forwards' }}>
-            <p className="text-slate-300 text-lg font-medium">Willkommen auf deiner Sprachlernreise</p>
-          </div>
-          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '16s', animationDuration: '4s', animationFillMode: 'forwards' }}>
-            <p className="text-slate-300 text-lg font-medium">Bienvenue dans votre parcours d'apprentissage des langues</p>
-          </div>
-          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '20s', animationDuration: '4s', animationFillMode: 'forwards' }}>
-            <p className="text-slate-300 text-lg font-medium">Bem-vindo à sua jornada de aprendizado de idiomas</p>
-          </div>
-        </div>
-        
+      <div className="flex-grow flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center justify-center space-y-4">
         {isLoading ? (
           <>
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
@@ -225,9 +166,61 @@ export default function Home() {
           </>
         ) : (
           <div className="flex flex-col items-center space-y-6 mt-8">
-
+            {/* Header with animated elements */}
+            <div className="text-center mb-8 relative">
+              {/* Animated background effects */}
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-white/10 blur-xl animate-pulse"></div>
+              
+              <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[5rem] text-white">
+                <TypeAnimation
+                  sequence={[
+                    'Welcome to Language Tutor! 🌍',
+                    2000,
+                    'Welkom bij Language Tutor! 🇳🇱',
+                    1500,
+                    '¡Bienvenido a Language Tutor! 🇪🇸',
+                    1500,
+                    'Willkommen bei Language Tutor! 🇩🇪',
+                    1500,
+                    'Bienvenue à Language Tutor! 🇫🇷',
+                    1500,
+                    'Bem-vindo ao Language Tutor! 🇵🇹',
+                    1500,
+                  ]}
+                  wrapper="span"
+                  speed={50}
+                  style={{ display: 'inline-block' }}
+                  repeat={Infinity}
+                  cursor={true}
+                  className="text-white drop-shadow-sm"
+                />
+              </h1>
+              <div className="text-white/80 mt-6 text-lg max-w-md mx-auto" style={{ height: '3rem', minHeight: '3rem' }}>
+                <TypeAnimation
+                  sequence={[
+                    'Choose a language to start your journey 🚀',
+                    2000,
+                    'Oefen gesprekken met een AI-tutor 🤖',
+                    1500,
+                    'Practica con un tutor de IA ✨',
+                    1500,
+                    'Üben Sie mit einem KI-Tutor 🕒',
+                    1500,
+                    'Pratiquez avec un tuteur IA 🎯',
+                    1500,
+                  ]}
+                  wrapper="p"
+                  speed={55}
+                  style={{ display: 'inline-block' }}
+                  repeat={Infinity}
+                  cursor={true}
+                  className="text-white/80 animate-fade-in"
+                />
+              </div>
+            </div>
             
-            <div className="flex flex-col space-y-8 w-full max-w-xl mt-8">
+            <div className="flex flex-col space-y-4 w-[320px] mt-8 mx-auto" style={{ height: '180px' }}>
               <button 
                 onClick={() => {
                   try {
@@ -269,7 +262,7 @@ export default function Home() {
                     setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                   }
                 }}
-                className="w-full flex items-center justify-center relative overflow-hidden group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-5 px-8 rounded-lg shadow-sm transition-all duration-300 hover:shadow-md text-lg"
+                className="w-[320px] h-[52px] primary-button px-4 py-3 rounded-lg flex items-center justify-center"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -279,17 +272,16 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <span className="relative z-10">Explore Languages</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 relative z-10" viewBox="0 0 20 20" fill="currentColor">
+                    <span>Start Learning</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-violet-500/20 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                   </>
                 )}
               </button>
               
               {!user && (
-                <div className="flex flex-col space-y-2 mt-4">
+                <div className="flex flex-col space-y-2 mt-4 w-[320px]">
                   <button
                     onClick={() => {
                       try {
@@ -329,7 +321,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-5 px-8 border border-indigo-500 text-indigo-600 rounded-lg hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-indigo-500/20 font-semibold text-lg"
+                    className="w-[320px] h-[44px] py-2 px-4 glass-card border border-white/20 text-white rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'login' ? (
@@ -338,10 +330,7 @@ export default function Home() {
                         <span>Navigating...</span>
                       </>
                     ) : (
-                      <>
-                        <span className="relative z-10">Sign In</span>
-                        <div className="absolute inset-0 bg-indigo-500/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                      </>
+                      'Sign In'
                     )}
                   </button>
                   <button
@@ -383,7 +372,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-5 px-8 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-slate-500/20 font-semibold text-lg"
+                    className="w-[320px] h-[44px] py-2 px-4 secondary-button rounded-lg flex items-center justify-center"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'signup' ? (
@@ -392,24 +381,19 @@ export default function Home() {
                         <span>Navigating...</span>
                       </>
                     ) : (
-                      <>
-                        <span className="relative z-10">Create Account</span>
-                        <div className="absolute inset-0 bg-slate-500/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                      </>
+                      'Create Account'
                     )}
                   </button>
                 </div>
               )}
               
               {parseInt(sessionStorage.getItem('homePageRedirectAttempt') || '0') > 2 && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg mt-4">
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                <div className="p-4 glass-card rounded-lg mt-4 border border-white/20">
+                  <p className="text-sm text-white/80">
                     We detected navigation issues. If you're having trouble, try clearing your browser cache or using a different browser.
                   </p>
                 </div>
               )}
-              
-
             </div>
           </div>
         )}

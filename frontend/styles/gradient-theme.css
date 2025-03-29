@@ -1,0 +1,63 @@
+:root {
+  --gradient-bg: linear-gradient(to right, #9333ea, #4f46e5, #ec4899);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.7);
+  
+  --button-primary-bg: rgba(255, 255, 255, 0.25);
+  --button-primary-hover: rgba(255, 255, 255, 0.35);
+  --button-primary-text: #ffffff;
+  
+  --button-secondary-bg: rgba(11, 209, 255, 0.3);
+  --button-secondary-hover: rgba(11, 209, 255, 0.4);
+  --button-secondary-text: #ffffff;
+  
+  --card-bg: rgba(0, 0, 0, 0.2);
+  --card-hover: rgba(0, 0, 0, 0.3);
+  --card-border: rgba(255, 255, 255, 0.1);
+}
+
+.gradient-background {
+  background-image: var(--gradient-bg);
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.glass-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background-color: var(--card-hover);
+  transform: translateY(-2px);
+}
+
+.primary-button {
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.primary-button:hover {
+  background-color: var(--button-primary-hover);
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  background-color: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(11, 209, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.secondary-button:hover {
+  background-color: var(--button-secondary-hover);
+  transform: translateY(-1px);
+}

@@ -67,7 +67,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col app-background">
+    <div className="min-h-screen flex flex-col">
       {/* Header with logo */}
       <motion.header 
         className="w-full p-4 md:p-6"
@@ -77,7 +77,7 @@ export default function SignupPage() {
       >
         <div className="container mx-auto">
           <Link href="/">
-            <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-300 dark:to-purple-400">
+            <h1 className="text-2xl md:text-3xl font-bold text-white">
               Language Tutor
             </h1>
           </Link>
@@ -95,35 +95,7 @@ export default function SignupPage() {
         />
       </main>
 
-      {/* Background elements */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        <motion.div 
-          className="absolute -top-[10%] -right-[10%] w-[35%] h-[35%] rounded-full bg-gradient-to-br from-purple-300/20 to-indigo-500/20 blur-3xl"
-          animate={{
-            x: [0, 30, 0],
-            y: [0, -30, 0],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            repeatType: "reverse"
-          }}
-        />
-        <motion.div 
-          className="absolute -bottom-[10%] -left-[10%] w-[25%] h-[25%] rounded-full bg-gradient-to-tr from-indigo-300/20 to-purple-500/20 blur-3xl"
-          animate={{
-            x: [0, -20, 0],
-            y: [0, 20, 0],
-            scale: [1, 1.05, 1],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            repeatType: "reverse"
-          }}
-        />
-      </div>
+      {/* We don't need background elements as we're using the global gradient background */}
     </div>
   );
 }

@@ -373,16 +373,16 @@ export default function LevelSelection() {
   const formattedLevels = getLevels(selectedLanguage);
 
   return (
-    <div className="min-h-screen flex flex-col app-background text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <NavBar />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500 mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
             Select Your Level
           </h1>
-          <p className="text-slate-300 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
             {selectedLanguage === 'english' && 'Choose your proficiency level in English'}
             {selectedLanguage === 'spanish' && 'Elige tu nivel de competencia en español'}
@@ -394,7 +394,7 @@ export default function LevelSelection() {
           <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
               onClick={handleChangeLanguage}
-              className="app-button flex items-center space-x-2" 
+              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -403,7 +403,7 @@ export default function LevelSelection() {
             </button>
             <button 
               onClick={handleChangeTopic}
-              className="app-button flex items-center space-x-2" 
+              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -412,7 +412,7 @@ export default function LevelSelection() {
             </button>
             <button 
               onClick={handleStartOver}
-              className="app-button flex items-center space-x-2" 
+              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -428,16 +428,16 @@ export default function LevelSelection() {
               <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-indigo-200/20 animate-pulse"></div>
               <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-transparent border-t-indigo-500 animate-spin"></div>
             </div>
-            <p className="text-indigo-200 animate-pulse">Loading available levels...</p>
+            <p className="text-white/80 animate-pulse">Loading available levels...</p>
             {backendConnected === false && (
-              <div className="mt-8 p-5 bg-gradient-to-r from-amber-900/30 to-red-900/30 border border-amber-700/50 rounded-xl shadow-lg">
-                <p className="text-amber-400 text-sm font-medium">Warning: Backend connectivity issues detected.</p>
+              <div className="mt-8 p-5 glass-card border border-white/20 rounded-xl shadow-lg">
+                <p className="text-white/80 text-sm font-medium">Warning: Backend connectivity issues detected.</p>
               </div>
             )}
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center p-8 bg-gradient-to-br from-red-900/30 to-red-900/10 border border-red-700/30 rounded-xl shadow-lg backdrop-blur-sm max-w-md animate-fade-in">
+            <div className="text-center p-8 glass-card border border-white/20 rounded-xl shadow-lg backdrop-blur-sm max-w-md animate-fade-in">
               <div className="relative w-20 h-20 mx-auto mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-red-500 absolute top-0 left-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -519,8 +519,8 @@ export default function LevelSelection() {
                       backdrop-blur-sm animate-fade-in h-[220px]
                       ${
                         selectedLevel === level.code
-                          ? `bg-slate-800/80 border border-slate-700 shadow-xl shadow-${colors.bg.split(' ')[1]}/20 ring-2 ${colors.ring}/50`
-                          : 'bg-slate-800/60 border border-slate-700/50 hover:border-slate-600 shadow-lg hover:shadow-lg hover:shadow-slate-700/50'
+                          ? `glass-card border border-white/30 shadow-xl shadow-${colors.bg.split(' ')[1]}/20 ring-2 ${colors.ring}/50`
+                          : 'glass-card border border-white/20 hover:border-white/30 shadow-lg hover:shadow-lg hover:shadow-white/10'
                       }
                     `}
                     style={{animationDelay: `${300 + parseInt(level.code.charAt(1)) * 100}ms`}}
@@ -533,7 +533,7 @@ export default function LevelSelection() {
                       <span className="relative text-white font-bold text-xs">{level.code}</span>
                     </div>
                     
-                    <h2 className="text-xl font-bold mb-3 text-white bg-clip-text">
+                    <h2 className="text-xl font-bold mb-3 text-white">
                       {selectedLanguage === 'dutch' && (
                         level.code === 'A1' ? 'Absolute Beginner' : 
                         level.code === 'A2' ? 'Basis Beginner' :
@@ -584,7 +584,7 @@ export default function LevelSelection() {
                         level.code === 'C1' ? 'Advanced' : 'Proficient'
                       )}
                     </h2>
-                    <p className="text-sm text-slate-300 mb-4">
+                    <p className="text-sm text-white/80 mb-4">
                       {level.description}
                     </p>
                     

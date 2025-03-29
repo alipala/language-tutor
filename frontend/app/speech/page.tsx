@@ -243,7 +243,7 @@ export default function SpeechPage() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col app-background">
+      <div className="min-h-screen flex flex-col">
         <NavBar />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
@@ -253,8 +253,8 @@ export default function SpeechPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
-              <p className="text-blue-400 text-xl font-medium">Loading...</p>
-              <p className="text-slate-400 text-sm mt-2">Starting conversation</p>
+              <p className="text-white text-xl font-medium">Loading...</p>
+              <p className="text-white/70 text-sm mt-2">Starting conversation</p>
             </div>
           </div>
         </div>
@@ -263,31 +263,31 @@ export default function SpeechPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col app-background">
+    <div className="flex flex-col min-h-screen text-white">
       <NavBar />
       
       {/* Warning Modal for conversation interruption */}
       {showLeaveWarning && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-slate-700">
+          <div className="glass-card rounded-lg shadow-xl max-w-md w-full p-6 border border-white/20">
             <div className="flex items-center text-amber-500 mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <h3 className="text-lg font-medium">End current conversation?</h3>
             </div>
-            <p className="text-slate-300 mb-6">You're currently in a conversation. Leaving this page will end your current session.</p>
+            <p className="text-white/80 mb-6">You're currently in a conversation. Leaving this page will end your current session.</p>
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
-                className="app-button"
+                className="primary-button px-4 py-2 rounded-lg"
                 onClick={handleCancelNavigation}
               >
                 Continue Conversation
               </button>
               <button
                 type="button"
-                className="app-button"
+                className="primary-button px-4 py-2 rounded-lg"
                 onClick={handleConfirmNavigation}
               >
                 End Conversation

@@ -33,9 +33,11 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} font-sans antialiased`}>
         <AuthProviderWrapper>
-          <main id="main-content" tabIndex={-1} className="outline-none">
-            {children}
-          </main>
+          <div className="gradient-background min-h-screen w-full">
+            <main id="main-content" tabIndex={-1} className="outline-none">
+              {children}
+            </main>
+          </div>
         </AuthProviderWrapper>
       </body>
     </html>

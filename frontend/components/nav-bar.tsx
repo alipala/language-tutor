@@ -37,14 +37,14 @@ export default function NavBar() {
   };
 
   return (
-    <nav className="w-full bg-white dark:bg-slate-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <nav className="w-full bg-transparent backdrop-blur-sm border-b border-white/20">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         {/* Logo */}
         <div 
           className="flex items-center cursor-pointer"
           onClick={() => navigateTo('/')}
         >
-          <h1 className="text-xl font-bold gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">
+          <h1 className="text-xl font-bold text-white">
             Language Tutor
           </h1>
         </div>
@@ -53,7 +53,7 @@ export default function NavBar() {
         <div className="hidden md:flex items-center space-x-6">
           <button 
             onClick={() => navigateTo('/language-selection')}
-            className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
+            className="text-white/80 hover:text-white"
           >
             Practice
           </button>
@@ -63,7 +63,7 @@ export default function NavBar() {
             <div className="relative user-menu-container">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
+                className="flex items-center space-x-2 text-white/80 hover:text-white"
               >
                 <span>{user.name}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,16 +73,16 @@ export default function NavBar() {
               
               {/* Dropdown Menu */}
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700">
+                <div className="absolute right-0 mt-2 w-48 glass-card rounded-md shadow-lg py-1 z-10 border border-white/20">
                   <button
                     onClick={() => navigateTo('/profile')}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700"
+                    className="block w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10"
                   >
                     Your Profile
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-slate-700"
+                    className="block w-full text-left px-4 py-2 text-sm text-red-300 hover:bg-white/10"
                   >
                     Sign Out
                   </button>
@@ -93,13 +93,13 @@ export default function NavBar() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigateTo('/auth/login')}
-                className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                className="text-white/80 hover:text-white"
               >
                 Sign In
               </button>
               <button
                 onClick={() => navigateTo('/auth/signup')}
-                className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+                className="px-4 py-2 rounded-lg glass-card border border-white/20 text-white hover:bg-white/10"
               >
                 Sign Up
               </button>
@@ -111,7 +111,7 @@ export default function NavBar() {
         <div className="md:hidden">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white focus:outline-none"
+            className="text-white/80 hover:text-white focus:outline-none"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {isMenuOpen ? (
@@ -126,13 +126,13 @@ export default function NavBar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-slate-800 py-2 px-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="md:hidden glass-card border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden py-2 px-4">
           <button
             onClick={() => {
               navigateTo('/language-selection');
               setIsMenuOpen(false);
             }}
-            className="block w-full text-left py-2 text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
+            className="block w-full text-left py-2 text-white/80 hover:text-white"
           >
             Practice
           </button>
@@ -144,7 +144,7 @@ export default function NavBar() {
                   navigateTo('/profile');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
               >
                 Your Profile
               </button>
@@ -153,7 +153,7 @@ export default function NavBar() {
                   handleLogout();
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                className="block w-full text-left py-2 text-red-300 hover:text-red-200"
               >
                 Sign Out
               </button>
@@ -165,7 +165,7 @@ export default function NavBar() {
                   navigateTo('/auth/login');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
               >
                 Sign In
               </button>
@@ -174,7 +174,7 @@ export default function NavBar() {
                   navigateTo('/auth/signup');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
               >
                 Sign Up
               </button>

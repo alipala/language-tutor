@@ -114,14 +114,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <motion.div
-      className="w-full max-w-md bg-white dark:bg-slate-800/90 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+      className="w-full max-w-md glass-card rounded-xl shadow-xl overflow-hidden border border-white/20"
       initial="hidden"
       animate="visible"
       variants={formVariants}
     >
       <div className="p-8">
         <motion.h2 
-          className="text-2xl font-bold text-center mb-6 text-slate-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600"
+          className="text-2xl font-bold text-center mb-6 text-white"
           variants={itemVariants}
         >
           {type === 'login' ? 'Welcome Back' : 'Create Account'}
@@ -129,7 +129,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         
         {error && (
           <motion.div 
-            className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg text-sm"
+            className="mb-6 p-3 glass-card border border-white/20 text-white/80 rounded-lg text-sm"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -141,7 +141,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         <motion.form onSubmit={handleSubmit} className="space-y-5" variants={formVariants}>
           {type === 'signup' && (
             <motion.div className="space-y-2" variants={itemVariants}>
-              <label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              <label htmlFor="name" className="text-sm font-medium text-white">
                 Full Name
               </label>
               <div className="relative">
@@ -171,7 +171,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           )}
           
           <motion.div className="space-y-2" variants={itemVariants}>
-            <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            <label htmlFor="email" className="text-sm font-medium text-white">
               Email
             </label>
             <div className="relative">
@@ -200,7 +200,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </motion.div>
           
           <motion.div className="space-y-2" variants={itemVariants}>
-            <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            <label htmlFor="password" className="text-sm font-medium text-white">
               Password
             </label>
             <div className="relative">
@@ -266,7 +266,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             >
               <a 
                 href="/auth/forgot-password" 
-                className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                className="text-white/80 hover:text-white transition-colors"
               >
                 Forgot password?
               </a>
@@ -276,7 +276,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <motion.div variants={itemVariants}>
             <motion.button
               type="submit"
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-300 transform"
+              className="w-full py-2.5 px-4 primary-button rounded-lg transition-all duration-300 transform"
               variants={buttonVariants}
               whileHover="hover"
               whileTap="tap"
