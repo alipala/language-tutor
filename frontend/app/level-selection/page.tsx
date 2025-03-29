@@ -304,12 +304,73 @@ export default function LevelSelection() {
     }, 300);
   };
 
-  // Format the levels for display
-  const formattedLevels = Object.entries(levels).map(([code, description]) => ({
-    code,
-    name: code,
-    description: description as string
-  }));
+  // Define levels with multilingual descriptions
+  const getLevels = (language: string | null): Level[] => {
+    // Default to English if no language is selected
+    const lang = language || 'english';
+    
+    // Define all levels with descriptions in each language
+    const levelDescriptions = {
+      'A1': {
+        english: 'Basic vocabulary and simple phrases for everyday situations.',
+        dutch: 'Basiswoordenschat en eenvoudige zinnen voor alledaagse situaties.',
+        spanish: 'Vocabulario básico y frases simples para situaciones cotidianas.',
+        german: 'Grundwortschatz und einfache Sätze für Alltagssituationen.',
+        french: 'Vocabulaire de base et phrases simples pour les situations quotidiennes.',
+        portuguese: 'Vocabulário básico e frases simples para situações cotidianas.'
+      },
+      'A2': {
+        english: 'Communicate in simple and routine tasks on familiar topics.',
+        dutch: 'Communiceren in eenvoudige en routinematige taken over bekende onderwerpen.',
+        spanish: 'Comunicarse en tareas simples y rutinarias sobre temas familiares.',
+        german: 'Kommunikation in einfachen und routinemäßigen Aufgaben zu vertrauten Themen.',
+        french: 'Communiquer lors de tâches simples et habituelles sur des sujets familiers.',
+        portuguese: 'Comunicar em tarefas simples e rotineiras sobre tópicos familiares.'
+      },
+      'B1': {
+        english: 'Deal with most situations likely to arise while traveling.',
+        dutch: 'Omgaan met de meeste situaties die zich kunnen voordoen tijdens het reizen.',
+        spanish: 'Enfrentar la mayoría de las situaciones que pueden surgir durante un viaje.',
+        german: 'Mit den meisten Situationen umgehen, die während des Reisens auftreten können.',
+        french: 'Faire face à la plupart des situations susceptibles de se produire en voyage.',
+        portuguese: 'Lidar com a maioria das situações que podem surgir durante uma viagem.'
+      },
+      'B2': {
+        english: 'Interact with a degree of fluency that makes regular interaction possible.',
+        dutch: 'Communiceren met een mate van vloeiendheid die regelmatige interactie mogelijk maakt.',
+        spanish: 'Interactuar con un grado de fluidez que hace posible la interacción regular.',
+        german: 'Mit einem Grad an Flüssigkeit interagieren, der regelmäßige Interaktion ermöglicht.',
+        french: 'Interagir avec un degré de fluidité qui rend possible une interaction régulière.',
+        portuguese: 'Interagir com um grau de fluência que torna possível a interação regular.'
+      },
+      'C1': {
+        english: 'Express ideas fluently and spontaneously without much searching for expressions.',
+        dutch: 'Ideeën vloeiend en spontaan uitdrukken zonder veel te zoeken naar uitdrukkingen.',
+        spanish: 'Expresar ideas con fluidez y espontaneidad sin tener que buscar expresiones.',
+        german: 'Ideen fließend und spontan ausdrücken, ohne viel nach Ausdrücken suchen zu müssen.',
+        french: 'Exprimer des idées avec fluidité et spontanéité sans trop chercher ses mots.',
+        portuguese: 'Expressar ideias com fluência e espontaneidade sem precisar procurar expressões.'
+      },
+      'C2': {
+        english: 'Express yourself spontaneously, very fluently and precisely in complex situations.',
+        dutch: 'Jezelf spontaan, zeer vloeiend en nauwkeurig uitdrukken in complexe situaties.',
+        spanish: 'Expresarte de forma espontánea, muy fluida y precisa en situaciones complejas.',
+        german: 'Dich spontan, sehr fließend und präzise in komplexen Situationen ausdrücken.',
+        french: 'Vous exprimer spontanément, très couramment et avec précision dans des situations complexes.',
+        portuguese: 'Expressar-se espontaneamente, com muita fluência e precisão em situações complexas.'
+      }
+    };
+    
+    // Create formatted levels with proper descriptions in the selected language
+    return Object.entries(levelDescriptions).map(([code, descriptions]) => ({
+      code,
+      name: code,
+      description: descriptions[lang as keyof typeof descriptions] || descriptions.english
+    }));
+  };
+  
+  // Get formatted levels based on selected language
+  const formattedLevels = getLevels(selectedLanguage);
 
   return (
     <div className="min-h-screen flex flex-col app-background text-white">
@@ -322,7 +383,13 @@ export default function LevelSelection() {
             Select Your Level
           </h1>
           <p className="text-slate-300 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
-            Choose your proficiency level in {selectedLanguage && selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
+            {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
+            {selectedLanguage === 'english' && 'Choose your proficiency level in English'}
+            {selectedLanguage === 'spanish' && 'Elige tu nivel de competencia en español'}
+            {selectedLanguage === 'german' && 'Wähle dein Kenntnissniveau in Deutsch'}
+            {selectedLanguage === 'french' && 'Choisissez votre niveau de compétence en français'}
+            {selectedLanguage === 'portuguese' && 'Escolha seu nível de proficiência em português'}
+            {!selectedLanguage && 'Choose your proficiency level'}
           </p>
           <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
@@ -467,8 +534,34 @@ export default function LevelSelection() {
                     </div>
                     
                     <h2 className="text-xl font-bold mb-3 text-white bg-clip-text">
-                      {level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
-                       level.code === 'B1' || level.code === 'B2' ? 'Intermediate' : 'Advanced'}
+                      {selectedLanguage === 'dutch' && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Gemiddeld' : 'Gevorderd'
+                      )}
+                      {selectedLanguage === 'english' && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Intermediate' : 'Advanced'
+                      )}
+                      {selectedLanguage === 'spanish' && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Principiante' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Intermedio' : 'Avanzado'
+                      )}
+                      {selectedLanguage === 'german' && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Anfänger' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Mittelstufe' : 'Fortgeschritten'
+                      )}
+                      {selectedLanguage === 'french' && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Débutant' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Intermédiaire' : 'Avancé'
+                      )}
+                      {selectedLanguage === 'portuguese' && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Iniciante' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Intermediário' : 'Avançado'
+                      )}
+                      {!selectedLanguage && (
+                        level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
+                        level.code === 'B1' || level.code === 'B2' ? 'Intermediate' : 'Advanced'
+                      )}
                     </h2>
                     <p className="text-sm text-slate-300 mb-4">
                       {level.description}
@@ -477,16 +570,48 @@ export default function LevelSelection() {
                     {/* Skill indicators */}
                     <div className="flex flex-wrap gap-2 mt-auto">
                       {level.code.startsWith('A') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm">Basic Vocabulary</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm">
+                          {selectedLanguage === 'dutch' && 'Basiswoordenschat'}
+                          {selectedLanguage === 'english' && 'Basic Vocabulary'}
+                          {selectedLanguage === 'spanish' && 'Vocabulario Básico'}
+                          {selectedLanguage === 'german' && 'Grundwortschatz'}
+                          {selectedLanguage === 'french' && 'Vocabulaire de Base'}
+                          {selectedLanguage === 'portuguese' && 'Vocabulário Básico'}
+                          {!selectedLanguage && 'Basic Vocabulary'}
+                        </span>
                       )}
                       {(level.code === 'A2' || level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm">Conversation</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm">
+                          {selectedLanguage === 'dutch' && 'Conversatie'}
+                          {selectedLanguage === 'english' && 'Conversation'}
+                          {selectedLanguage === 'spanish' && 'Conversación'}
+                          {selectedLanguage === 'german' && 'Konversation'}
+                          {selectedLanguage === 'french' && 'Conversation'}
+                          {selectedLanguage === 'portuguese' && 'Conversação'}
+                          {!selectedLanguage && 'Conversation'}
+                        </span>
                       )}
                       {(level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm">Complex Topics</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm">
+                          {selectedLanguage === 'dutch' && 'Complexe Onderwerpen'}
+                          {selectedLanguage === 'english' && 'Complex Topics'}
+                          {selectedLanguage === 'spanish' && 'Temas Complejos'}
+                          {selectedLanguage === 'german' && 'Komplexe Themen'}
+                          {selectedLanguage === 'french' && 'Sujets Complexes'}
+                          {selectedLanguage === 'portuguese' && 'Tópicos Complexos'}
+                          {!selectedLanguage && 'Complex Topics'}
+                        </span>
                       )}
                       {level.code.startsWith('C') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm">Fluent Expression</span>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm">
+                          {selectedLanguage === 'dutch' && 'Vloeiende Expressie'}
+                          {selectedLanguage === 'english' && 'Fluent Expression'}
+                          {selectedLanguage === 'spanish' && 'Expresión Fluida'}
+                          {selectedLanguage === 'german' && 'Fließender Ausdruck'}
+                          {selectedLanguage === 'french' && 'Expression Fluide'}
+                          {selectedLanguage === 'portuguese' && 'Expressão Fluente'}
+                          {!selectedLanguage && 'Fluent Expression'}
+                        </span>
                       )}
                     </div>
                     

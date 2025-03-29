@@ -23,63 +23,143 @@ export default function TopicSelection() {
   const [isExtendingKnowledge, setIsExtendingKnowledge] = useState(false);
   const customInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Define topics - these can be expanded later
-  const topics: Topic[] = [
-    {
-      id: 'travel',
-      name: 'Travel',
-      description: 'Discuss travel destinations, experiences, and planning trips.',
-      icon: '✈️'
-    },
-    {
-      id: 'food',
-      name: 'Food & Cooking',
-      description: 'Talk about cuisines, recipes, restaurants, and cooking techniques.',
-      icon: '🍲'
-    },
-    {
-      id: 'hobbies',
-      name: 'Hobbies & Interests',
-      description: 'Share your favorite activities, sports, games, or pastimes.',
-      icon: '🎨'
-    },
-    {
-      id: 'culture',
-      name: 'Culture & Traditions',
-      description: 'Explore cultural aspects, traditions, festivals, and customs.',
-      icon: '🏛️'
-    },
-    {
-      id: 'movies',
-      name: 'Movies & TV Shows',
-      description: 'Discuss films, series, actors, directors, and entertainment.',
-      icon: '🎬'
-    },
-    {
-      id: 'music',
-      name: 'Music',
-      description: 'Talk about music genres, artists, concerts, and preferences.',
-      icon: '🎵'
-    },
-    {
-      id: 'technology',
-      name: 'Technology',
-      description: 'Discuss gadgets, apps, innovations, and digital trends.',
-      icon: '💻'
-    },
-    {
-      id: 'environment',
-      name: 'Environment & Nature',
-      description: 'Explore environmental issues, sustainability, and the natural world.',
-      icon: '🌳'
-    },
-    {
-      id: 'custom',
-      name: 'Custom Topic',
-      description: 'Create your own topic for a personalized conversation experience.',
-      icon: '🔍'
-    },
-  ];
+  // Define topics with multilingual descriptions
+  const getTopics = (language: string | null): Topic[] => {
+    // Default to English if no language is selected
+    const lang = language || 'english';
+    
+    // Base topics structure
+    const baseTopics = [
+      {
+        id: 'travel',
+        name: 'Travel',
+        icon: '✈️',
+        descriptions: {
+          english: 'Discuss travel destinations, experiences, and planning trips.',
+          dutch: 'Bespreek reisbestemmingen, ervaringen en het plannen van reizen.',
+          spanish: 'Habla sobre destinos de viaje, experiencias y planificación de viajes.',
+          german: 'Diskutiere über Reiseziele, Erfahrungen und Reiseplanung.',
+          french: 'Discutez des destinations de voyage, des expériences et de la planification des voyages.',
+          portuguese: 'Converse sobre destinos de viagem, experiências e planejamento de viagens.'
+        }
+      },
+      {
+        id: 'food',
+        name: 'Food & Cooking',
+        icon: '🍲',
+        descriptions: {
+          english: 'Talk about cuisines, recipes, restaurants, and cooking techniques.',
+          dutch: 'Praat over keukens, recepten, restaurants en kooktechnieken.',
+          spanish: 'Habla sobre cocinas, recetas, restaurantes y técnicas culinarias.',
+          german: 'Sprich über Küchen, Rezepte, Restaurants und Kochtechniken.',
+          french: 'Parlez des cuisines, des recettes, des restaurants et des techniques de cuisine.',
+          portuguese: 'Fale sobre culinárias, receitas, restaurantes e técnicas de cozinha.'
+        }
+      },
+      {
+        id: 'hobbies',
+        name: 'Hobbies & Interests',
+        icon: '🎨',
+        descriptions: {
+          english: 'Share your favorite activities, sports, games, or pastimes.',
+          dutch: 'Deel je favoriete activiteiten, sporten, spellen of hobbys.',
+          spanish: 'Comparte tus actividades, deportes, juegos o pasatiempos favoritos.',
+          german: 'Teile deine Lieblingsaktivitäten, Sportarten, Spiele oder Hobbys.',
+          french: 'Partagez vos activités, sports, jeux ou passe-temps préférés.',
+          portuguese: 'Compartilhe suas atividades, esportes, jogos ou passatempos favoritos.'
+        }
+      },
+      {
+        id: 'culture',
+        name: 'Culture & Traditions',
+        icon: '🏛️',
+        descriptions: {
+          english: 'Explore cultural aspects, traditions, festivals, and customs.',
+          dutch: 'Verken culturele aspecten, tradities, festivals en gebruiken.',
+          spanish: 'Explora aspectos culturales, tradiciones, festivales y costumbres.',
+          german: 'Erkunde kulturelle Aspekte, Traditionen, Feste und Bräuche.',
+          french: 'Explorez les aspects culturels, les traditions, les festivals et les coutumes.',
+          portuguese: 'Explore aspectos culturais, tradições, festivais e costumes.'
+        }
+      },
+      {
+        id: 'movies',
+        name: 'Movies & TV Shows',
+        icon: '🎬',
+        descriptions: {
+          english: 'Discuss films, series, actors, directors, and entertainment.',
+          dutch: 'Bespreek films, series, acteurs, regisseurs en entertainment.',
+          spanish: 'Habla sobre películas, series, actores, directores y entretenimiento.',
+          german: 'Diskutiere über Filme, Serien, Schauspieler, Regisseure und Unterhaltung.',
+          french: 'Discutez des films, des séries, des acteurs, des réalisateurs et du divertissement.',
+          portuguese: 'Converse sobre filmes, séries, atores, diretores e entretenimento.'
+        }
+      },
+      {
+        id: 'music',
+        name: 'Music',
+        icon: '🎵',
+        descriptions: {
+          english: 'Talk about music genres, artists, concerts, and preferences.',
+          dutch: 'Praat over muziekgenres, artiesten, concerten en voorkeuren.',
+          spanish: 'Habla sobre géneros musicales, artistas, conciertos y preferencias.',
+          german: 'Sprich über Musikgenres, Künstler, Konzerte und Vorlieben.',
+          french: 'Parlez des genres musicaux, des artistes, des concerts et des préférences.',
+          portuguese: 'Fale sobre gêneros musicais, artistas, concertos e preferências.'
+        }
+      },
+      {
+        id: 'technology',
+        name: 'Technology',
+        icon: '💻',
+        descriptions: {
+          english: 'Discuss gadgets, apps, innovations, and digital trends.',
+          dutch: 'Bespreek gadgets, apps, innovaties en digitale trends.',
+          spanish: 'Habla sobre gadgets, aplicaciones, innovaciones y tendencias digitales.',
+          german: 'Diskutiere über Gadgets, Apps, Innovationen und digitale Trends.',
+          french: 'Discutez des gadgets, des applications, des innovations et des tendances numériques.',
+          portuguese: 'Converse sobre gadgets, aplicativos, inovações e tendências digitais.'
+        }
+      },
+      {
+        id: 'environment',
+        name: 'Environment & Nature',
+        icon: '🌳',
+        descriptions: {
+          english: 'Explore environmental issues, sustainability, and the natural world.',
+          dutch: 'Verken milieukwesties, duurzaamheid en de natuurlijke wereld.',
+          spanish: 'Explora temas ambientales, sostenibilidad y el mundo natural.',
+          german: 'Erkunde Umweltthemen, Nachhaltigkeit und die natürliche Welt.',
+          french: 'Explorez les questions environnementales, la durabilité et le monde naturel.',
+          portuguese: 'Explore questões ambientais, sustentabilidade e o mundo natural.'
+        }
+      },
+      {
+        id: 'custom',
+        name: 'Custom Topic',
+        icon: '🔍',
+        descriptions: {
+          english: 'Create your own topic for a personalized conversation experience.',
+          dutch: 'Maak je eigen onderwerp voor een gepersonaliseerde gespreks-ervaring.',
+          spanish: 'Crea tu propio tema para una experiencia de conversación personalizada.',
+          german: 'Erstelle dein eigenes Thema für ein personalisiertes Gesprächserlebnis.',
+          french: 'Créez votre propre sujet pour une expérience de conversation personnalisée.',
+          portuguese: 'Crie seu próprio tópico para uma experiência de conversa personalizada.'
+        }
+      }
+    ];
+    
+    // Map to the expected Topic format with the correct language description
+    return baseTopics.map(topic => ({
+      id: topic.id,
+      name: topic.name,
+      description: topic.descriptions[lang as keyof typeof topic.descriptions] || topic.descriptions.english,
+      icon: topic.icon
+    }));
+  };
+  
+  // Get topics based on selected language
+  const topics = getTopics(selectedLanguage);
 
   // Add a useEffect to handle page initialization and react to state changes
   useEffect(() => {
@@ -273,7 +353,13 @@ export default function TopicSelection() {
             Choose a Topic
           </h1>
           <p className="text-slate-300 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
-            Select a topic for your {selectedLanguage && selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} conversation (optional)
+            {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
+            {selectedLanguage === 'english' && 'Select a topic for your English conversation (optional)'}
+            {selectedLanguage === 'spanish' && 'Selecciona un tema para tu conversación en español (opcional)'}
+            {selectedLanguage === 'german' && 'Wähle ein Thema für dein Gespräch auf Deutsch (optional)'}
+            {selectedLanguage === 'french' && 'Sélectionnez un sujet pour votre conversation en français (facultatif)'}
+            {selectedLanguage === 'portuguese' && 'Selecione um tópico para sua conversa em português (opcional)'}
+            {!selectedLanguage && 'Select a topic for your conversation (optional)'}
           </p>
           <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
@@ -345,10 +431,22 @@ export default function TopicSelection() {
           <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 md:p-8 rounded-xl border border-indigo-500 shadow-lg shadow-indigo-500/20 w-full max-w-md mx-4">
               <h3 className="text-xl md:text-2xl font-semibold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
-                Create Your Custom Topic
+                {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
+                {selectedLanguage === 'english' && 'Create Your Custom Topic'}
+                {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
+                {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema'}
+                {selectedLanguage === 'french' && 'Créez votre sujet personnalisé'}
+                {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
+                {!selectedLanguage && 'Create Your Custom Topic'}
               </h3>
               <p className="text-slate-300 text-sm md:text-base mb-6">
-                What would you like to talk about in your {selectedLanguage && selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} conversation?
+                {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
+                {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
+                {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}
+                {selectedLanguage === 'german' && 'Worüber möchtest du in deinem Gespräch auf Deutsch sprechen?'}
+                {selectedLanguage === 'french' && 'De quoi aimeriez-vous parler dans votre conversation en français?'}
+                {selectedLanguage === 'portuguese' && 'Sobre o que você gostaria de falar em sua conversa em português?'}
+                {!selectedLanguage && 'What would you like to talk about in your conversation?'}
               </p>
               
               <div className="mb-6">

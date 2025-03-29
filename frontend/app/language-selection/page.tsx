@@ -303,12 +303,12 @@ export default function LanguageSelection() {
                       </h3>
                       
                       <p className="text-slate-300 text-sm group-hover:text-slate-100 transition-colors duration-300">
-                        {language.code === 'dutch' && 'Learn Dutch vocabulary and conversation'}
+                        {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
                         {language.code === 'english' && 'Practice English speaking and listening'}
-                        {language.code === 'spanish' && 'Master Spanish conversation skills'}
-                        {language.code === 'german' && 'Develop German language proficiency'}
-                        {language.code === 'french' && 'Enhance French speaking abilities'}
-                        {language.code === 'portuguese' && 'Learn Portuguese vocabulary and expressions'}
+                        {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
+                        {language.code === 'german' && 'Entwickle deutsche Sprachkenntnisse'}
+                        {language.code === 'french' && 'Améliorez vos compétences en français'}
+                        {language.code === 'portuguese' && 'Aprenda vocabulário e expressões em português'}
                       </p>
                     </div>
                     
