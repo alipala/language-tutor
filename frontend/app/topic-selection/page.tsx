@@ -479,14 +479,14 @@ export default function TopicSelection() {
               <div className="flex justify-between relative z-10">
                 <button
                   onClick={() => setIsCustomTopicActive(false)}
-                  className="px-4 py-2 rounded-lg glass-card border border-white/20 hover:bg-white/10 text-white transition-colors duration-300 text-sm md:text-base"
+                  className="px-4 py-2 rounded-lg glass-card border border-white/20 hover:bg-white/10 text-white transition-all duration-300 text-sm md:text-base shadow-lg hover:shadow-white/10 transform hover:translate-y-[-1px]"
                   disabled={isExtendingKnowledge}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCustomTopicSubmit}
-                  className="px-4 py-2 rounded-lg primary-button text-white transition-colors duration-300 text-sm md:text-base"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition-all duration-300 text-sm md:text-base shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transform hover:translate-y-[-1px]"
                   disabled={!customTopicText.trim() || isExtendingKnowledge}
                 >
                   Submit
