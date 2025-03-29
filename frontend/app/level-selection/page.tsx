@@ -535,32 +535,53 @@ export default function LevelSelection() {
                     
                     <h2 className="text-xl font-bold mb-3 text-white bg-clip-text">
                       {selectedLanguage === 'dutch' && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Gemiddeld' : 'Gevorderd'
+                        level.code === 'A1' ? 'Absolute Beginner' : 
+                        level.code === 'A2' ? 'Basis Beginner' :
+                        level.code === 'B1' ? 'Laag Gemiddeld' :
+                        level.code === 'B2' ? 'Hoog Gemiddeld' :
+                        level.code === 'C1' ? 'Gevorderd' : 'Zeer Gevorderd'
                       )}
                       {selectedLanguage === 'english' && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Intermediate' : 'Advanced'
+                        level.code === 'A1' ? 'Beginner' : 
+                        level.code === 'A2' ? 'Elementary' :
+                        level.code === 'B1' ? 'Intermediate' :
+                        level.code === 'B2' ? 'Upper Intermediate' :
+                        level.code === 'C1' ? 'Advanced' : 'Proficient'
                       )}
                       {selectedLanguage === 'spanish' && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Principiante' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Intermedio' : 'Avanzado'
+                        level.code === 'A1' ? 'Principiante' : 
+                        level.code === 'A2' ? 'Elemental' :
+                        level.code === 'B1' ? 'Intermedio' :
+                        level.code === 'B2' ? 'Intermedio Alto' :
+                        level.code === 'C1' ? 'Avanzado' : 'Dominio'
                       )}
                       {selectedLanguage === 'german' && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Anfänger' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Mittelstufe' : 'Fortgeschritten'
+                        level.code === 'A1' ? 'Anfänger' : 
+                        level.code === 'A2' ? 'Grundstufe' :
+                        level.code === 'B1' ? 'Mittelstufe' :
+                        level.code === 'B2' ? 'Fortgeschrittene Mittelstufe' :
+                        level.code === 'C1' ? 'Fortgeschritten' : 'Kompetente Sprachverwendung'
                       )}
                       {selectedLanguage === 'french' && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Débutant' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Intermédiaire' : 'Avancé'
+                        level.code === 'A1' ? 'Débutant' : 
+                        level.code === 'A2' ? 'Élémentaire' :
+                        level.code === 'B1' ? 'Intermédiaire' :
+                        level.code === 'B2' ? 'Intermédiaire Avancé' :
+                        level.code === 'C1' ? 'Avancé' : 'Maîtrise'
                       )}
                       {selectedLanguage === 'portuguese' && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Iniciante' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Intermediário' : 'Avançado'
+                        level.code === 'A1' ? 'Iniciante' : 
+                        level.code === 'A2' ? 'Básico' :
+                        level.code === 'B1' ? 'Intermediário' :
+                        level.code === 'B2' ? 'Intermediário Superior' :
+                        level.code === 'C1' ? 'Avançado' : 'Proficiente'
                       )}
                       {!selectedLanguage && (
-                        level.code === 'A1' || level.code === 'A2' ? 'Beginner' : 
-                        level.code === 'B1' || level.code === 'B2' ? 'Intermediate' : 'Advanced'
+                        level.code === 'A1' ? 'Beginner' : 
+                        level.code === 'A2' ? 'Elementary' :
+                        level.code === 'B1' ? 'Intermediate' :
+                        level.code === 'B2' ? 'Upper Intermediate' :
+                        level.code === 'C1' ? 'Advanced' : 'Proficient'
                       )}
                     </h2>
                     <p className="text-sm text-slate-300 mb-4">
