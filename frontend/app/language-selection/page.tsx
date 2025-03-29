@@ -12,6 +12,7 @@ interface Language {
   code: string;
   name: string;
   description?: string;
+  flagSrc: string;
 }
 
 export default function LanguageSelection() {
@@ -26,26 +27,32 @@ export default function LanguageSelection() {
     {
       code: 'dutch',
       name: 'Dutch',
+      flagSrc: '/images/flags/netherlands.svg',
     },
     {
       code: 'english',
       name: 'English',
+      flagSrc: '/images/flags/uk.svg',
     },
     {
       code: 'spanish',
       name: 'Spanish',
+      flagSrc: '/images/flags/spain.svg',
     },
     {
       code: 'german',
       name: 'German',
+      flagSrc: '/images/flags/germany.svg',
     },
     {
       code: 'french',
       name: 'French',
+      flagSrc: '/images/flags/france.svg',
     },
     {
       code: 'portuguese',
       name: 'Portuguese',
+      flagSrc: '/images/flags/portugal.svg',
     },
   ];
 
@@ -267,26 +274,25 @@ export default function LanguageSelection() {
                         </div>
                       </div>
                       
-                      {/* Language identifier - animated on hover */}
-                      <div className="relative z-10 p-2 w-full h-full flex items-center justify-center">
-                        {language.code === 'dutch' && (
-                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">NL</span>
-                        )}
-                        {language.code === 'english' && (
-                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">EN</span>
-                        )}
-                        {language.code === 'spanish' && (
-                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">ES</span>
-                        )}
-                        {language.code === 'german' && (
-                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">DE</span>
-                        )}
-                        {language.code === 'french' && (
-                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">FR</span>
-                        )}
-                        {language.code === 'portuguese' && (
-                          <span className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300 tracking-wider">PT</span>
-                        )}
+                      {/* Flag only with modern design - animated on hover */}
+                      <div className="relative z-10 w-full h-full flex items-center justify-center">
+                        {/* Flag with enhanced styling */}
+                        <div className="relative w-4/5 h-4/5 overflow-hidden rounded-lg shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-105">
+                          {/* Glossy overlay effect */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent z-10 pointer-events-none"></div>
+                          
+                          {/* Flag image */}
+                          <Image 
+                            src={language.flagSrc}
+                            alt={`${language.name} flag`}
+                            fill
+                            className="object-cover transition-transform duration-500"
+                            priority
+                          />
+                          
+                          {/* Bottom shadow effect */}
+                          <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                        </div>
                       </div>
                     </div>
                     
