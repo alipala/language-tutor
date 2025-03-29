@@ -196,9 +196,26 @@ export default function Home() {
           />
         </div>
         
-        {/* Supported languages */}
-        <div className="text-slate-400 text-sm max-w-2xl mx-auto text-center mb-8 w-full">
-          <p>Supported languages: English, Dutch, Spanish, German, French, Portuguese</p>
+        {/* Animated language greetings */}
+        <div className="relative h-12 max-w-2xl mx-auto text-center mb-12 w-full overflow-hidden">
+          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '0s', animationDuration: '4s', animationFillMode: 'forwards' }}>
+            <p className="text-slate-300 text-lg font-medium">Welcome to your language learning journey</p>
+          </div>
+          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '4s', animationDuration: '4s', animationFillMode: 'forwards' }}>
+            <p className="text-slate-300 text-lg font-medium">Welkom bij je taalreis</p>
+          </div>
+          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '8s', animationDuration: '4s', animationFillMode: 'forwards' }}>
+            <p className="text-slate-300 text-lg font-medium">Bienvenido a tu viaje de aprendizaje de idiomas</p>
+          </div>
+          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '12s', animationDuration: '4s', animationFillMode: 'forwards' }}>
+            <p className="text-slate-300 text-lg font-medium">Willkommen auf deiner Sprachlernreise</p>
+          </div>
+          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '16s', animationDuration: '4s', animationFillMode: 'forwards' }}>
+            <p className="text-slate-300 text-lg font-medium">Bienvenue dans votre parcours d'apprentissage des langues</p>
+          </div>
+          <div className="absolute inset-0 flex justify-center items-center animate-fade-in opacity-0" style={{ animationDelay: '20s', animationDuration: '4s', animationFillMode: 'forwards' }}>
+            <p className="text-slate-300 text-lg font-medium">Bem-vindo à sua jornada de aprendizado de idiomas</p>
+          </div>
         </div>
         
         {isLoading ? (
@@ -210,7 +227,7 @@ export default function Home() {
           <div className="flex flex-col items-center space-y-6 mt-8">
 
             
-            <div className="flex flex-col space-y-6 w-full max-w-xl mt-8">
+            <div className="flex flex-col space-y-8 w-full max-w-xl mt-8">
               <button 
                 onClick={() => {
                   try {
@@ -252,7 +269,7 @@ export default function Home() {
                     setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                   }
                 }}
-                className="w-full flex items-center justify-center relative overflow-hidden group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition-all duration-300 hover:shadow-md"
+                className="w-full flex items-center justify-center relative overflow-hidden group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-5 px-8 rounded-lg shadow-sm transition-all duration-300 hover:shadow-md text-lg"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -262,7 +279,7 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <span className="relative z-10">Start Learning</span>
+                    <span className="relative z-10">Explore Languages</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 relative z-10" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
@@ -312,7 +329,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-4 px-6 border border-indigo-500 text-indigo-600 rounded-lg hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-indigo-500/20 font-semibold"
+                    className="w-full py-5 px-8 border border-indigo-500 text-indigo-600 rounded-lg hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-indigo-500/20 font-semibold text-lg"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'login' ? (
@@ -366,7 +383,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-4 px-6 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-slate-500/20 font-semibold"
+                    className="w-full py-5 px-8 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-slate-500/20 font-semibold text-lg"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'signup' ? (
