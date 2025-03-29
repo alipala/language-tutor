@@ -157,73 +157,48 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col app-background">
       <NavBar />
-      <div className="flex-grow flex flex-col items-center justify-center p-4">
-        {/* Animated background effects */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse opacity-70"></div>
-        <div className="absolute top-2/3 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse opacity-70"></div>
+      <div className="flex-grow flex flex-col items-center justify-center p-4 w-full">
+        {/* Simple background effect */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-7xl bg-blue-500/5 rounded-3xl blur-3xl"></div>
         
-        <div className="flex flex-col items-center justify-center space-y-6 relative z-10">
-        {/* Multilingual greeting header with animation */}
-        <div className="text-center mb-4">
-          <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
-            <div className="relative">
-              <TypeAnimation
-                sequence={[
-                  'Language Tutor',
-                  2000,
-                  'Taaltutor', // Dutch
-                  1500,
-                  'Tutor de Idiomas', // Spanish
-                  1500,
-                  'Sprachtutor', // German
-                  1500,
-                  'Tuteur de Langue', // French
-                  1500,
-                  'Tutor de Idiomas', // Portuguese
-                  1500,
-                  'Language Tutor',
-                  1000,
-                ]}
-                wrapper="span"
-                speed={50}
-                style={{ display: 'inline-block' }}
-                repeat={Infinity}
-                cursor={true}
-                className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 drop-shadow-sm"
-              />
-              {/* Animated underline effect */}
-              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-gradient-to-r from-blue-400/0 via-violet-400/70 to-blue-400/0 animate-pulse"></div>
-            </div>
+        <div className="w-full max-w-7xl mx-auto flex flex-col items-center justify-center space-y-8 relative z-10 px-8">
+        {/* Main title with animation */}
+        <div className="text-center mb-2 w-full">
+          <h1 className="text-6xl font-bold tracking-tight relative z-10 min-h-[5rem] inline-block">
+            <TypeAnimation
+              sequence={[
+                'Language Tutor',
+                3000
+              ]}
+              wrapper="span"
+              speed={50}
+              style={{ display: 'inline-block' }}
+              repeat={0}
+              cursor={true}
+              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400"
+            />
           </h1>
         </div>
         
-        {/* Multilingual welcome message */}
-        <div className="text-slate-300 text-lg max-w-md mx-auto min-h-[3rem] text-center mb-4">
+        {/* Simple subtitle */}
+        <div className="text-slate-300 text-xl max-w-2xl mx-auto text-center mb-6 w-full">
           <TypeAnimation
             sequence={[
-              'Welcome! Learn languages with AI conversation practice',
-              2000,
-              'Welkom! Leer talen met AI-conversatieoefening', // Dutch
-              1500,
-              '¡Bienvenido! Aprende idiomas con práctica de conversación con IA', // Spanish
-              1500,
-              'Willkommen! Lerne Sprachen mit KI-Konversationsübungen', // German
-              1500,
-              'Bienvenue! Apprenez des langues avec des exercices de conversation IA', // French
-              1500,
-              'Bem-vindo! Aprenda idiomas com prática de conversação com IA', // Portuguese
-              1500,
-              'Welcome! Learn languages with AI conversation practice',
-              1000,
+              'Choose a language and level to start practicing your conversation skills with an AI tutor.',
+              3000
             ]}
             wrapper="p"
-            speed={55}
+            speed={50}
             style={{ display: 'inline-block' }}
-            repeat={Infinity}
-            cursor={true}
+            repeat={0}
+            cursor={false}
             className="text-slate-300"
           />
+        </div>
+        
+        {/* Supported languages */}
+        <div className="text-slate-400 text-sm max-w-2xl mx-auto text-center mb-8 w-full">
+          <p>Supported languages: English, Dutch, Spanish, German, French, Portuguese</p>
         </div>
         
         {isLoading ? (
@@ -233,16 +208,9 @@ export default function Home() {
           </>
         ) : (
           <div className="flex flex-col items-center space-y-6 mt-8">
-            <div className="text-center text-gray-600 dark:text-gray-300 max-w-md px-6 py-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 shadow-lg">
-              <p className="mb-2">
-                <span className="font-semibold text-blue-400">Hello</span> • <span className="font-semibold text-indigo-400">Hallo</span> • <span className="font-semibold text-violet-400">Hola</span> • <span className="font-semibold text-purple-400">Bonjour</span> • <span className="font-semibold text-pink-400">Olá</span>
-              </p>
-              <p>
-                Choose a language and level to start practicing your conversation skills with an AI tutor.
-              </p>
-            </div>
+
             
-            <div className="flex flex-col space-y-4 w-full max-w-xs">
+            <div className="flex flex-col space-y-6 w-full max-w-xl mt-8">
               <button 
                 onClick={() => {
                   try {
@@ -284,7 +252,7 @@ export default function Home() {
                     setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                   }
                 }}
-                className="w-full app-button flex items-center justify-center relative overflow-hidden group"
+                className="w-full flex items-center justify-center relative overflow-hidden group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-lg shadow-sm transition-all duration-300 hover:shadow-md"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -344,7 +312,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-2 px-4 border border-indigo-500 text-indigo-600 rounded-md hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-indigo-500/20"
+                    className="w-full py-4 px-6 border border-indigo-500 text-indigo-600 rounded-lg hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-indigo-500/20 font-semibold"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'login' ? (
@@ -398,7 +366,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-slate-500/20"
+                    className="w-full py-4 px-6 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-slate-500/20 font-semibold"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'signup' ? (
@@ -424,24 +392,7 @@ export default function Home() {
                 </div>
               )}
               
-              {/* Language icons with staggered float animation */}
-              <div className="flex justify-center space-x-4 mt-6 animate-fade-in">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm animate-float stagger-1 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-blue-500/20">
-                  <span className="text-lg font-semibold">EN</span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm animate-float stagger-2 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-indigo-500/20">
-                  <span className="text-lg font-semibold">NL</span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-sm animate-float stagger-3 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-violet-500/20">
-                  <span className="text-lg font-semibold">ES</span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-sm animate-float stagger-4 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-purple-500/20">
-                  <span className="text-lg font-semibold">DE</span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 shadow-sm animate-float stagger-5 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-pink-500/20">
-                  <span className="text-lg font-semibold">FR</span>
-                </div>
-              </div>
+
             </div>
           </div>
         )}
