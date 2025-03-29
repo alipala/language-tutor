@@ -250,23 +250,23 @@ export default function LanguageSelection() {
           <div className="text-slate-300 mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
             <TypeAnimation
               sequence={[
-                'Select a language to start your learning journey',
+                'Select a language to begin',
                 2000,
-                'Selecteer een taal om je leerreis te beginnen', // Dutch
+                'Selecteer een taal om te beginnen', // Dutch
                 1500,
-                'Selecciona un idioma para comenzar tu viaje de aprendizaje', // Spanish
+                'Selecciona un idioma para empezar', // Spanish
                 1500,
-                'Wähle eine Sprache, um deine Lernreise zu beginnen', // German
+                'Wähle eine Sprache zum Starten', // German
                 1500,
-                'Sélectionnez une langue pour commencer votre parcours d\'apprentissage', // French
+                'Choisissez une langue pour commencer', // French
                 1500,
-                'Selecione um idioma para iniciar sua jornada de aprendizado', // Portuguese
+                'Selecione um idioma para começar', // Portuguese
                 1500,
-                'Select a language to start your learning journey',
+                'Select a language to begin',
                 1000,
               ]}
               wrapper="p"
-              speed={70}
+              speed={55}
               style={{ display: 'inline-block' }}
               repeat={Infinity}
               cursor={true}
