@@ -37,6 +37,34 @@
     animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
   }
   
+  /* Fade-in animation */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+  
+  /* Float animation for language icons */
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  /* Staggered animations for multiple elements */
+  .stagger-1 { animation-delay: 0.2s; }
+  .stagger-2 { animation-delay: 0.4s; }
+  .stagger-3 { animation-delay: 0.6s; }
+  .stagger-4 { animation-delay: 0.8s; }
+  .stagger-5 { animation-delay: 1.0s; }
+  
   /* Audio wave animation */
   .audio-wave {
     display: flex;

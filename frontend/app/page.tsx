@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import NavBar from '@/components/nav-bar';
+import { TypeAnimation } from 'react-type-animation';
 
 // Export the main component
 export default function Home() {
@@ -157,8 +158,73 @@ export default function Home() {
     <div className="min-h-screen flex flex-col app-background">
       <NavBar />
       <div className="flex-grow flex flex-col items-center justify-center p-4">
-        <div className="flex flex-col items-center justify-center space-y-4">
-        <h1 className="text-4xl font-bold text-center gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">Language Tutor</h1>
+        {/* Animated background effects */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse opacity-70"></div>
+        <div className="absolute top-2/3 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse opacity-70"></div>
+        
+        <div className="flex flex-col items-center justify-center space-y-6 relative z-10">
+        {/* Multilingual greeting header with animation */}
+        <div className="text-center mb-4">
+          <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
+            <div className="relative">
+              <TypeAnimation
+                sequence={[
+                  'Language Tutor',
+                  2000,
+                  'Taaltutor', // Dutch
+                  1500,
+                  'Tutor de Idiomas', // Spanish
+                  1500,
+                  'Sprachtutor', // German
+                  1500,
+                  'Tuteur de Langue', // French
+                  1500,
+                  'Tutor de Idiomas', // Portuguese
+                  1500,
+                  'Language Tutor',
+                  1000,
+                ]}
+                wrapper="span"
+                speed={50}
+                style={{ display: 'inline-block' }}
+                repeat={Infinity}
+                cursor={true}
+                className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 drop-shadow-sm"
+              />
+              {/* Animated underline effect */}
+              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-gradient-to-r from-blue-400/0 via-violet-400/70 to-blue-400/0 animate-pulse"></div>
+            </div>
+          </h1>
+        </div>
+        
+        {/* Multilingual welcome message */}
+        <div className="text-slate-300 text-lg max-w-md mx-auto min-h-[3rem] text-center mb-4">
+          <TypeAnimation
+            sequence={[
+              'Welcome! Learn languages with AI conversation practice',
+              2000,
+              'Welkom! Leer talen met AI-conversatieoefening', // Dutch
+              1500,
+              '¡Bienvenido! Aprende idiomas con práctica de conversación con IA', // Spanish
+              1500,
+              'Willkommen! Lerne Sprachen mit KI-Konversationsübungen', // German
+              1500,
+              'Bienvenue! Apprenez des langues avec des exercices de conversation IA', // French
+              1500,
+              'Bem-vindo! Aprenda idiomas com prática de conversação com IA', // Portuguese
+              1500,
+              'Welcome! Learn languages with AI conversation practice',
+              1000,
+            ]}
+            wrapper="p"
+            speed={55}
+            style={{ display: 'inline-block' }}
+            repeat={Infinity}
+            cursor={true}
+            className="text-slate-300"
+          />
+        </div>
         
         {isLoading ? (
           <>
@@ -167,9 +233,14 @@ export default function Home() {
           </>
         ) : (
           <div className="flex flex-col items-center space-y-6 mt-8">
-            <p className="text-center text-gray-600 dark:text-gray-300 max-w-md">
-              Welcome to Language Tutor! Choose a language and level to start practicing your conversation skills with an AI tutor.
-            </p>
+            <div className="text-center text-gray-600 dark:text-gray-300 max-w-md px-6 py-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 shadow-lg">
+              <p className="mb-2">
+                <span className="font-semibold text-blue-400">Hello</span> • <span className="font-semibold text-indigo-400">Hallo</span> • <span className="font-semibold text-violet-400">Hola</span> • <span className="font-semibold text-purple-400">Bonjour</span> • <span className="font-semibold text-pink-400">Olá</span>
+              </p>
+              <p>
+                Choose a language and level to start practicing your conversation skills with an AI tutor.
+              </p>
+            </div>
             
             <div className="flex flex-col space-y-4 w-full max-w-xs">
               <button 
@@ -213,7 +284,7 @@ export default function Home() {
                     setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                   }
                 }}
-                className="w-full app-button flex items-center justify-center"
+                className="w-full app-button flex items-center justify-center relative overflow-hidden group"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -223,10 +294,11 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <span>Start Learning</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                    <span className="relative z-10">Start Learning</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 relative z-10" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-violet-500/20 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                   </>
                 )}
               </button>
@@ -272,7 +344,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-2 px-4 border border-indigo-500 text-indigo-600 rounded-md hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center"
+                    className="w-full py-2 px-4 border border-indigo-500 text-indigo-600 rounded-md hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-indigo-500/20"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'login' ? (
@@ -281,7 +353,10 @@ export default function Home() {
                         <span>Navigating...</span>
                       </>
                     ) : (
-                      'Sign In'
+                      <>
+                        <span className="relative z-10">Sign In</span>
+                        <div className="absolute inset-0 bg-indigo-500/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                      </>
                     )}
                   </button>
                   <button
@@ -323,7 +398,7 @@ export default function Home() {
                         setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
                       }
                     }}
-                    className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center"
+                    className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-md hover:shadow-slate-500/20"
                     disabled={isLoading}
                   >
                     {isLoading && sessionStorage.getItem('authNavigation') === 'signup' ? (
@@ -332,7 +407,10 @@ export default function Home() {
                         <span>Navigating...</span>
                       </>
                     ) : (
-                      'Create Account'
+                      <>
+                        <span className="relative z-10">Create Account</span>
+                        <div className="absolute inset-0 bg-slate-500/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                      </>
                     )}
                   </button>
                 </div>
@@ -345,6 +423,25 @@ export default function Home() {
                   </p>
                 </div>
               )}
+              
+              {/* Language icons with staggered float animation */}
+              <div className="flex justify-center space-x-4 mt-6 animate-fade-in">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm animate-float stagger-1 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-blue-500/20">
+                  <span className="text-lg font-semibold">EN</span>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm animate-float stagger-2 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-indigo-500/20">
+                  <span className="text-lg font-semibold">NL</span>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-sm animate-float stagger-3 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-violet-500/20">
+                  <span className="text-lg font-semibold">ES</span>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-sm animate-float stagger-4 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-purple-500/20">
+                  <span className="text-lg font-semibold">DE</span>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 shadow-sm animate-float stagger-5 transition-all duration-300 hover:scale-110 hover:shadow-md hover:shadow-pink-500/20">
+                  <span className="text-lg font-semibold">FR</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
