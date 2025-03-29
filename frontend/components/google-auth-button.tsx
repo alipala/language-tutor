@@ -30,55 +30,71 @@ export default function GoogleAuthButton({
 }: GoogleAuthButtonProps) {
   const { googleLogin } = useAuth();
   const buttonRef = useRef<HTMLDivElement>(null);
-  const [googleClientId, setGoogleClientId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the hardcoded Google Client ID
+  const googleClientId = '41687548204-0go9lqlnve4llpv3vdl48jujddlt2kp5.apps.googleusercontent.com';
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [buttonRendered, setButtonRendered] = useState(false);
   
-  // Fetch Google Client ID from the API
+  // Check if the Google SDK is loaded
   useEffect(() => {
-    async function fetchConfig() {
-      try {
-        setIsLoading(true);
-        // Use relative URL to work in both development and production
-        const response = await fetch('/api/config');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch config: ${response.status}`);
-        }
-        
-        const config = await response.json();
-        console.log('Fetched config from API:', config);
-        
-        if (config.googleClientId) {
-          setGoogleClientId(config.googleClientId);
-        } else {
-          setError('Google Client ID not found in API response');
-        }
-      } catch (err) {
-        console.error('Error fetching config:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    console.log('GoogleAuthButton mounted, checking for Google SDK');
     
-    fetchConfig();
-  }, []);
-  
-  // Initialize Google Sign-In when client ID is available
-  useEffect(() => {
-    if (!googleClientId) {
+    // Function to check if Google SDK is loaded
+    const checkGoogleSDK = () => {
+      if (window.google && window.google.accounts) {
+        console.log('Google SDK loaded successfully');
+        setSdkLoaded(true);
+        return true;
+      }
+      return false;
+    };
+    
+    // Check immediately if SDK is already loaded
+    if (checkGoogleSDK()) {
       return;
     }
     
-    // Initialize Google Sign-In
-    if (window.google && buttonRef.current && googleClientId) {
-      window.google.accounts.id.initialize({
+    // If not loaded, set up an interval to check periodically
+    const intervalId = setInterval(() => {
+      if (checkGoogleSDK()) {
+        clearInterval(intervalId);
+      }
+    }, 500);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Initialize Google Sign-In when SDK is loaded
+  useEffect(() => {
+    if (!sdkLoaded || !googleClientId || !buttonRef.current) {
+      return;
+    }
+    
+    console.log('Initializing Google Sign-In with client ID:', googleClientId);
+    
+    try {
+      // Safe access to window.google which we've already checked exists via sdkLoaded
+      const googleAccounts = window.google?.accounts;
+      if (!googleAccounts || !googleAccounts.id) {
+        throw new Error('Google accounts API not available');
+      }
+      
+      googleAccounts.id.initialize({
         client_id: googleClientId,
         callback: async (response: any) => {
           try {
+            console.log('Google Sign-In callback received');
             // Get the ID token from the response
             const { credential } = response;
+            
+            if (!credential) {
+              throw new Error('No credential received from Google');
+            }
+            
+            console.log('Google credential received, calling googleLogin');
             
             // Store navigation intent in sessionStorage before authentication
             sessionStorage.setItem('pendingRedirect', 'true');
@@ -93,20 +109,13 @@ export default function GoogleAuthButton({
               onSuccess();
             }
             
-            // Force hard navigation to avoid client-side routing issues in Railway
-            console.log('Google login successful, forcing navigation');
+            // Force hard navigation to avoid client-side routing issues
+            console.log('Google login successful, navigating to language selection');
             window.location.href = '/language-selection';
-            
-            // Safety net: if we're still on this page after 1.5 seconds, force navigation again
-            setTimeout(() => {
-              if (window.location.pathname.includes('auth/login') || 
-                  window.location.pathname.includes('auth/signup')) {
-                console.log('Safety net navigation triggered for Google login');
-                window.location.href = '/language-selection';
-              }
-            }, 1500);
           } catch (error) {
             console.error('Google login error:', error);
+            setError(error instanceof Error ? error.message : 'Google login failed');
+            
             // Call onError callback if provided
             if (onError && error instanceof Error) {
               onError(error);
@@ -120,31 +129,70 @@ export default function GoogleAuthButton({
         },
         auto_select: false
       });
+      
+      // Render the button after initialization
+      renderGoogleButton();
+    } catch (err) {
+      console.error('Error initializing Google Sign-In:', err);
+      setError('Failed to initialize Google Sign-In');
     }
-  }, [googleLogin, onSuccess, onError]);
+  }, [sdkLoaded, googleLogin, onSuccess, onError]);
   
-  // Render the Google Sign-In button after component mounts
-  useEffect(() => {
-    // Check if Google SDK is loaded and button ref exists
-    if (window.google && buttonRef.current) {
-      // Small delay to ensure the parent width is calculated correctly
-      setTimeout(() => {
-        // Safe check for window.google again after timeout
-        if (window.google && buttonRef.current) {
-          const buttonWidth = buttonRef.current.clientWidth || 300;
-          window.google.accounts.id.renderButton(buttonRef.current, {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-            text: 'continue_with',
-            shape: 'rectangular',
-            logo_alignment: 'left',
-            width: buttonWidth // Match parent width
-          });
-        }
-      }, 100);
+  // Function to render the Google button
+  const renderGoogleButton = () => {
+    if (!buttonRef.current || !window.google || !window.google.accounts || !window.google.accounts.id) {
+      console.warn('Cannot render Google button: button ref or Google SDK not available');
+      return;
     }
-  }, []);
+    
+    try {
+      console.log('Rendering Google Sign-In button');
+      // Use a fixed width for better visibility
+      const buttonWidth = 300;
+      
+      // Safe access to window.google which we've already checked exists
+      const googleAccounts = window.google?.accounts;
+      if (googleAccounts && googleAccounts.id && buttonRef.current) {
+        googleAccounts.id.renderButton(buttonRef.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: buttonWidth
+        });
+        
+        setButtonRendered(true);
+        console.log('Google Sign-In button rendered successfully');
+      }
+    } catch (err) {
+      console.error('Error rendering Google button:', err);
+      setError('Failed to render Google Sign-In button');
+    }
+  };
+  
+  // Render a custom Google button if the SDK button fails to render
+  const handleCustomButtonClick = () => {
+    const googleAccounts = window.google?.accounts;
+    if (googleAccounts?.id) {
+      googleAccounts.id.prompt();
+    } else {
+      setError('Google Sign-In is not available at the moment');
+    }
+  };
+  
+  // If SDK is loaded but button hasn't rendered yet, try to render it
+  useEffect(() => {
+    if (sdkLoaded && buttonRef.current && !buttonRendered) {
+      // Small delay to ensure the DOM is ready
+      const timeoutId = setTimeout(() => {
+        renderGoogleButton();
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [sdkLoaded, buttonRendered]);
   
   // Show loading state
   if (isLoading) {
@@ -162,11 +210,13 @@ export default function GoogleAuthButton({
     );
   }
   
-  // If error or no Google client ID is available, show a fallback button
-  if (error || !googleClientId) {
+  // If there's an error or SDK failed to load, show a custom button
+  if (error || (!sdkLoaded && !buttonRendered)) {
     return (
-      <div 
-        className={`w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      <button 
+        onClick={handleCustomButtonClick}
+        disabled={disabled || !sdkLoaded}
+        className={`w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
         style={{ height: '44px' }}
       >
         <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" width="24" height="24">
@@ -177,11 +227,12 @@ export default function GoogleAuthButton({
             <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
           </g>
         </svg>
-        <span>Google Sign-In unavailable</span>
-      </div>
+        <span>Continue with Google</span>
+      </button>
     );
   }
   
+  // Return the container for the Google button
   return (
     <div 
       ref={buttonRef} 
@@ -189,8 +240,9 @@ export default function GoogleAuthButton({
       style={{ 
         display: 'flex', 
         justifyContent: 'center',
-        height: '44px', // Match the height of the sign-in button
-        borderRadius: '0.5rem' // Match the border radius of the sign-in button
+        height: '44px',
+        borderRadius: '0.5rem',
+        minWidth: '300px' // Ensure minimum width for the button
       }}
     />
   );

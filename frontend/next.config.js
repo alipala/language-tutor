@@ -18,7 +18,7 @@ const nextConfig = {
     BACKEND_URL: process.env.NODE_ENV === 'production'
       ? process.env.BACKEND_URL || ''
       : 'http://localhost:8000',
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '41687548204-0go9lqlnve4llpv3vdl48jujddlt2kp5.apps.googleusercontent.com',
   },
   // Disable image optimization since it requires a server component
   images: {
