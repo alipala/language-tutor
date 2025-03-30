@@ -23,6 +23,10 @@ from auth_routes import router as auth_router
 from sentence_assessment import SentenceAssessmentRequest, SentenceAssessmentResponse, GrammarIssue, \
     recognize_speech, analyze_sentence, generate_exercises
 
+# Import speaking assessment functionality
+from speaking_assessment import SpeakingAssessmentRequest, SpeakingAssessmentResponse, SkillScore, \
+    evaluate_language_proficiency, generate_speaking_prompts
+
 # Load environment variables
 load_dotenv()
 
@@ -95,6 +99,13 @@ async def startup_db_client():
         print(f"ERROR initializing MongoDB: {str(e)}")
         print("The application will continue, but database functionality may be limited")
 
+# Request logging middleware
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    print(f"Requested path: {request.url.path}")
+    print(f"Request headers: {request.headers}")
+    return await call_next(request)
+
 # Global error handler for better debugging in Railway
 @app.middleware("http")
 async def error_handling_middleware(request: Request, call_next):
@@ -124,6 +135,84 @@ async def error_handling_middleware(request: Request, call_next):
 async def test_endpoint():
     return {"message": "Backend API is working correctly"}
 
+# Direct endpoint for speaking prompts
+@app.get("/api/assessment/speaking/prompts")
+async def get_speaking_prompts_direct(language: str):
+    try:
+        print(f"[Direct endpoint] Generating speaking prompts for language: {language}")
+        # Default prompts for immediate response
+        default_prompts = {
+            "general": [
+                "Tell me about yourself and your language learning experience.",
+                "Describe your hometown and what you like about it.",
+                "What are your hobbies and interests?",
+                "Talk about your favorite book, movie, or TV show.",
+                "Describe your typical day."
+            ],
+            "travel": [
+                "Describe a memorable trip you've taken.",
+                "What's your favorite place to visit and why?",
+                "Talk about a place you would like to visit in the future.",
+                "Describe your ideal vacation.",
+                "What do you usually do when you travel?"
+            ],
+            "education": [
+                "Talk about your educational background.",
+                "Describe a teacher who influenced you.",
+                "What subjects did you enjoy studying?",
+                "How do you think education has changed in recent years?",
+                "Describe your learning style."
+            ]
+        }
+        print(f"[Direct endpoint] Successfully provided prompts for {language}")
+        return {"prompts": default_prompts}
+    except Exception as e:
+        print(f"[Direct endpoint] Error providing speaking prompts: {str(e)}")
+        print(f"[Direct endpoint] Error traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to provide speaking prompts: {str(e)}"
+        )
+
+# Direct alternative endpoint for speaking prompts
+@app.get("/api/speaking-prompts")
+async def get_speaking_prompts_alt_direct(language: str):
+    try:
+        print(f"[Direct alternative endpoint] Generating speaking prompts for language: {language}")
+        # Default prompts for immediate response
+        default_prompts = {
+            "general": [
+                "Tell me about yourself and your language learning experience.",
+                "Describe your hometown and what you like about it.",
+                "What are your hobbies and interests?",
+                "Talk about your favorite book, movie, or TV show.",
+                "Describe your typical day."
+            ],
+            "travel": [
+                "Describe a memorable trip you've taken.",
+                "What's your favorite place to visit and why?",
+                "Talk about a place you would like to visit in the future.",
+                "Describe your ideal vacation.",
+                "What do you usually do when you travel?"
+            ],
+            "education": [
+                "Talk about your educational background.",
+                "Describe a teacher who influenced you.",
+                "What subjects did you enjoy studying?",
+                "How do you think education has changed in recent years?",
+                "Describe your learning style."
+            ]
+        }
+        print(f"[Direct alternative endpoint] Successfully provided prompts for {language}")
+        return {"prompts": default_prompts}
+    except Exception as e:
+        print(f"[Direct alternative endpoint] Error providing speaking prompts: {str(e)}")
+        print(f"[Direct alternative endpoint] Error traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to provide speaking prompts: {str(e)}"
+        )
+
 # Enhanced health check endpoint with detailed status information
 @app.get("/api/health")
 async def health_check():
@@ -145,16 +234,18 @@ async def health_check():
     }
     
     # Return comprehensive health data
+    # Get all registered routes dynamically
+    registered_routes = [route.path for route in app.routes if isinstance(route.path, str)]
+    
+    # Filter to only include API routes
+    api_routes = [route for route in registered_routes if route.startswith('/api')]
+    
     return {
         "status": "ok",
         "version": "1.0.0",
         "uptime": time.time(),  # You could track actual uptime if needed
         "system_info": system_info,
-        "api_routes": [
-            "/api/languages",
-            "/api/realtime/token",
-            "/api/test"
-        ]
+        "api_routes": api_routes
     }
 
 # Serve static files in production
@@ -976,6 +1067,123 @@ async def generate_sentence_exercises(request: ExerciseRequest):
     except Exception as e:
         print(f"Error generating exercises: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Exercise generation failed: {str(e)}")
+
+
+# Add endpoint for speaking assessment
+@app.post("/api/assessment/speaking", response_model=SpeakingAssessmentResponse)
+async def assess_speaking_proficiency(request: SpeakingAssessmentRequest):
+    try:
+        # First, transcribe the audio if provided
+        if not request.transcript and request.audio_base64:
+            try:
+                print("Transcribing audio for speaking assessment...")
+                request.transcript = await recognize_speech(request.audio_base64, request.language)
+                print(f"Transcribed text: '{request.transcript}'")
+            except Exception as audio_err:
+                print(f"Error transcribing assessment audio: {str(audio_err)}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Failed to transcribe audio for assessment"
+                )
+        
+        if not request.transcript or request.transcript.strip() == "":
+            raise HTTPException(
+                status_code=400, 
+                detail="No speech detected or text provided for assessment"
+            )
+        
+        # Perform comprehensive language proficiency assessment
+        assessment_result = await evaluate_language_proficiency(
+            text=request.transcript,
+            language=request.language,
+            duration=request.duration
+        )
+        
+        return assessment_result
+    
+    except Exception as e:
+        print(f"Error in speaking assessment: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Speaking assessment failed: {str(e)}"
+        )
+
+
+# Create a dedicated router for speaking assessment endpoints
+from fastapi import APIRouter
+
+# Create a router for speaking assessment
+speaking_router = APIRouter(prefix="/api")
+
+# Add endpoint for getting speaking prompts using the router
+@speaking_router.get("/assessment/speaking/prompts")
+async def get_speaking_prompts(language: str):
+    try:
+        # Print debug information
+        print(f"Generating speaking prompts for language: {language}")
+        print(f"Requested path: /api/assessment/speaking/prompts with language={language}")
+        
+        # Call the function to generate prompts
+        prompts = await generate_speaking_prompts(language)
+        
+        # Log success
+        print(f"Successfully generated prompts for {language}")
+        
+        # Return the prompts in the expected format
+        return {"prompts": prompts}
+    except Exception as e:
+        # Enhanced error logging
+        print(f"Error generating speaking prompts: {str(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")
+        
+        # Return a more detailed error
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate speaking prompts: {str(e)}"
+        )
+
+# Add alternative endpoint for speaking prompts using the router
+@speaking_router.get("/speaking-prompts")
+async def get_speaking_prompts_alt(language: str):
+    try:
+        print(f"[Alternative endpoint] Generating speaking prompts for language: {language}")
+        print(f"Requested path: /api/speaking-prompts with language={language}")
+        # Use default prompts directly to avoid any potential issues with the generate function
+        default_prompts = {
+            "general": [
+                "Tell me about yourself and your language learning experience.",
+                "Describe your hometown and what you like about it.",
+                "What are your hobbies and interests?",
+                "Talk about your favorite book, movie, or TV show.",
+                "Describe your typical day."
+            ],
+            "travel": [
+                "Describe a memorable trip you've taken.",
+                "What's your favorite place to visit and why?",
+                "Talk about a place you would like to visit in the future.",
+                "Describe your ideal vacation.",
+                "What do you usually do when you travel?"
+            ],
+            "education": [
+                "Talk about your educational background.",
+                "Describe a teacher who influenced you.",
+                "What subjects did you enjoy studying?",
+                "How do you think education has changed in recent years?",
+                "Describe your learning style."
+            ]
+        }
+        print(f"[Alternative endpoint] Successfully provided default prompts for {language}")
+        return {"prompts": default_prompts}
+    except Exception as e:
+        print(f"[Alternative endpoint] Error providing speaking prompts: {str(e)}")
+        print(f"[Alternative endpoint] Error traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to provide speaking prompts: {str(e)}"
+        )
+
+# Include the speaking router in the main app
+app.include_router(speaking_router)
 
 
 if __name__ == "__main__":

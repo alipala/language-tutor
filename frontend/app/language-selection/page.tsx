@@ -114,20 +114,15 @@ export default function LanguageSelection() {
       return;
     }
     
-    // If we have just language selected, we should go to level selection,
-    // but only if we didn't explicitly navigate here to change the language
+    // If we have just language selected, we should pre-select it but not auto-redirect
+    // This allows users to see the new speaking assessment option
     const fromTopicSelection = sessionStorage.getItem('fromTopicSelection');
     const fromLevelSelection = sessionStorage.getItem('fromLevelSelection');
     const fromSpeechPage = sessionStorage.getItem('fromSpeechPage');
     
     if (storedLanguage && !storedLevel && !fromTopicSelection && !fromLevelSelection && !fromSpeechPage) {
-      console.log('Found existing language, redirecting to level selection');
-      // Use the most direct approach with a delay to avoid navigation race conditions
-      setTimeout(() => {
-        const fullUrl = `${window.location.origin}/level-selection`;
-        console.log('Navigating to level selection page:', fullUrl);
-        window.location.href = fullUrl;
-      }, 300);
+      console.log('Found existing language, pre-selecting it without redirect');
+      setSelectedLanguage(storedLanguage);
       return;
     }
     
@@ -149,56 +144,52 @@ export default function LanguageSelection() {
   // No need for handleStartOver since this is the starting screen
 
   const handleLanguageSelect = (languageCode: string) => {
-    // Set loading state while navigating
-    setIsLoading(true);
+    // Just set the selected language without redirecting
     setSelectedLanguage(languageCode);
     
     // Store the selection in session storage
     sessionStorage.setItem('selectedLanguage', languageCode);
     
+    // Log the selection
+    console.log('Language selected:', languageCode);
+    
+    // Important: No redirection here - we want to stay on this page
+    // to show the assessment options
+    
+    // Reset loading state if it was set
+    setIsLoading(false);
+  };
+
+  // Function to continue to topic selection
+  const handleContinue = () => {
+    if (!selectedLanguage) return;
+    
+    // Set loading state while navigating
+    setIsLoading(true);
+    
     // Mark that we're intentionally navigating
     sessionStorage.setItem('intentionalNavigation', 'true');
     
     // Log the navigation attempt
-    console.log('Navigating to topic selection with language:', languageCode);
+    console.log('Continuing to topic selection with language:', selectedLanguage);
     
     // RAILWAY SPECIFIC: Detect Railway environment
     const isRailway = window.location.hostname.includes('railway.app');
-    console.log('Is Railway environment:', isRailway);
     
     // For Railway, use a more direct approach with full URL
     if (isRailway) {
-      console.log('Using Railway-specific navigation approach');
-      // Use the full URL to ensure proper navigation in Railway
       const fullUrl = `${window.location.origin}/topic-selection`;
-      console.log('Navigating to full URL:', fullUrl);
-      
-      // Use direct location replacement which is most reliable
       window.location.replace(fullUrl);
-      
-      // Fallback with hard refresh if needed
-      setTimeout(() => {
-        if (window.location.pathname.includes('language-selection')) {
-          console.log('Still on language selection page, forcing hard refresh to:', fullUrl);
-          window.location.href = fullUrl + '?t=' + new Date().getTime();
-        }
-      }, 1000);
-      
       return;
     }
     
     // Standard navigation for non-Railway environments
-    // Use a direct window.location approach with a small delay
-    // This bypasses any client-side routing issues
     setTimeout(() => {
-      console.log('Executing navigation to topic selection');
       window.location.href = '/topic-selection';
       
       // Fallback navigation in case the first attempt fails
       const fallbackTimer = setTimeout(() => {
-        console.log('Checking if fallback navigation is needed');
         if (window.location.pathname.includes('language-selection')) {
-          console.log('Still on language selection page, using fallback navigation');
           window.location.replace('/topic-selection');
         }
       }, 1000);
@@ -412,6 +403,52 @@ export default function LanguageSelection() {
               </button>
             ))}
           </div>
+
+          {/* Assessment Options */}
+          {selectedLanguage && (
+            <div className="mt-8 animate-fade-in">
+              <h3 className="text-center text-white/80 mb-4">How would you like to proceed?</h3>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                {/* Speaking Assessment Option */}
+                <button
+                  onClick={() => {
+                    // Store the selection in session storage
+                    sessionStorage.setItem('selectedLanguage', selectedLanguage);
+                    // Navigate to speaking assessment
+                    window.location.href = '/assessment/speaking';
+                  }}
+                  className="px-6 py-3 rounded-xl font-medium 
+                    bg-gradient-to-r from-blue-600 to-blue-500 
+                    hover:from-blue-500 hover:to-blue-400
+                    text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    Assess My Speaking Level
+                  </div>
+                  <p className="text-xs mt-1 text-white/80">AI will evaluate your speaking proficiency</p>
+                </button>
+
+                {/* Standard Path Option */}
+                <button
+                  onClick={handleContinue}
+                  className="px-6 py-3 rounded-xl font-medium 
+                    bg-white text-black hover:bg-white/90 
+                    shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                    Continue to Topics
+                  </div>
+                  <p className="text-xs mt-1 text-black/70">Select topics and set your level manually</p>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         </div>
       </main>

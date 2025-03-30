@@ -32,7 +32,7 @@ export async function checkBackendHealth(baseUrl?: string): Promise<HealthCheckR
   // Handle localhost and 127.0.0.1 cases
   if (typeof window !== 'undefined') {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      apiUrl = 'http://localhost:8000';
+      apiUrl = 'http://localhost:8001';
     }
   }
   
