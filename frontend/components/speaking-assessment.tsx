@@ -85,7 +85,7 @@ export default function SpeakingAssessment({
           promptRef.current = promptsData.general[randomIndex];
           
           // Clear any error message
-          setError(null);
+          setError('');
         }
       } catch (err) {
         console.error('Error fetching prompts:', err);
