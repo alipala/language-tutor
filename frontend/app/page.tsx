@@ -29,6 +29,32 @@ export default function Home() {
     console.log('Current URL:', window.location.href);
     console.log('Full origin:', window.location.origin);
     
+    // IMPORTANT: Check if we're on the speaking assessment path but home page component loaded
+    if (window.location.pathname === '/assessment/speaking') {
+      console.log('On speaking assessment path but home page component loaded - force reload');
+      
+      // Force a hard reload of the current URL to try to get the correct component
+      window.location.replace(window.location.href);
+      return;
+    }
+    
+    // Check for speaking assessment navigation in progress
+    const navigatingToSpeakingAssessment = sessionStorage.getItem('navigatingToSpeakingAssessment');
+    
+    // If we have a speaking assessment navigation in progress and we're on the home page
+    if (navigatingToSpeakingAssessment === 'true' && (window.location.pathname === '/' || window.location.pathname === '')) {
+      console.log('Detected pending speaking assessment navigation');
+      
+      // Clear the flag to prevent loops
+      sessionStorage.removeItem('navigatingToSpeakingAssessment');
+      
+      // Force navigation to speaking assessment
+      const fullUrl = `${window.location.origin}/assessment/speaking`;
+      console.log('Forcing navigation to speaking assessment:', fullUrl);
+      window.location.replace(fullUrl);
+      return;
+    }
+    
     // Check for auth navigation in progress
     const authNavigation = sessionStorage.getItem('authNavigation');
     const authNavigationAttemptTime = sessionStorage.getItem('authNavigationAttemptTime');
@@ -111,8 +137,15 @@ export default function Home() {
     }
     
     // Check if we should continue to a specific page based on stored data or user preferences
+    // But only if we're not explicitly navigating to speaking assessment
     const hasLanguage = sessionStorage.getItem('selectedLanguage') || (user?.preferred_language || null);
     const hasLevel = sessionStorage.getItem('selectedLevel') || (user?.preferred_level || null);
+    
+    // If we're explicitly navigating to speaking assessment, don't redirect elsewhere
+    if (sessionStorage.getItem('navigatingToSpeakingAssessment') === 'true') {
+      console.log('Skipping automatic redirects due to pending speaking assessment navigation');
+      return;
+    }
     
     // If user is logged in, use their preferences if available
     if (user) {
@@ -234,28 +267,37 @@ export default function Home() {
                       sessionStorage.clear();
                     }
                     
+                    // Set a navigation attempt counter to track potential issues
+                    const attemptCount = parseInt(sessionStorage.getItem('homePageNavigationAttempt') || '0');
+                    sessionStorage.setItem('homePageNavigationAttempt', (attemptCount + 1).toString());
+                    
                     // Log the navigation attempt
                     console.log('Start Learning button clicked at:', new Date().toISOString());
                     console.log('Current pathname before navigation:', window.location.pathname);
                     console.log('User authenticated:', user ? 'Yes' : 'No');
+                    console.log('Navigation attempt count:', attemptCount + 1);
                     
-                    // Use the most direct and reliable navigation approach
-                    // By using the full URL with origin, we ensure proper navigation in Railway
+                    // IMPORTANT: Use absolute URL with origin for Railway
                     const fullUrl = `${window.location.origin}/language-selection`;
                     console.log('Navigating to:', fullUrl);
                     
-                    // IMPORTANT: For Railway, use direct window.location.href navigation
-                    // This bypasses Next.js client-side routing which may be causing issues
-                    window.location.href = fullUrl;
+                    // Force a hard navigation instead of client-side routing
+                    // window.location.replace() is more reliable than href for full page navigation
+                    window.location.replace(fullUrl);
                     
-                    // Set a fallback timer to detect navigation failures
+                    // Set a fallback timer with longer timeout
                     setTimeout(() => {
                       if (window.location.pathname === '/' || window.location.pathname === '') {
                         console.error('Navigation failed, still on homepage after timeout');
                         setIsLoading(false);
                         setError('Navigation to language selection failed. Please try again.');
+                        
+                        // If we've tried multiple times, suggest a hard refresh
+                        if (attemptCount >= 2) {
+                          setError('Navigation issues detected. Please try refreshing your browser or clearing cache.');
+                        }
                       }
-                    }, 3000);
+                    }, 5000); // Increased timeout for Railway environment
                   } catch (e) {
                     console.error('Navigation error:', e);
                     setIsLoading(false);

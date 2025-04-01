@@ -15,17 +15,31 @@ export default function SpeakingAssessmentPage() {
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
+    console.log('Speaking assessment page initialized at:', new Date().toISOString());
+    console.log('Current pathname:', window.location.pathname);
+    
+    // Clear the navigation flag since we've successfully reached the speaking assessment page
+    if (sessionStorage.getItem('navigatingToSpeakingAssessment')) {
+      console.log('Successfully reached speaking assessment page, clearing navigation flag');
+      sessionStorage.removeItem('navigatingToSpeakingAssessment');
+    }
+    
     // Retrieve the selected language from session storage
     const language = sessionStorage.getItem('selectedLanguage');
+    console.log('Retrieved language from session storage:', language);
+    
     if (!language) {
+      console.warn('No language found in session storage, redirecting to language selection');
       // If no language is selected, redirect to language selection
-      router.push('/language-selection');
+      // Use direct navigation for more reliability in Railway environment
+      window.location.replace(`${window.location.origin}/language-selection`);
       return;
     }
     
     setSelectedLanguage(language);
     
     // Verify backend connectivity
+    console.log('Verifying backend connectivity...');
     verifyBackendConnectivity()
       .then(connected => {
         console.log('Backend connectivity check result:', connected);
@@ -33,6 +47,7 @@ export default function SpeakingAssessmentPage() {
         
         if (!connected) {
           // If not connected, show an error
+          console.error('Backend connectivity check failed - server unreachable');
           setError('Unable to connect to the backend server. Please try again later.');
         }
         

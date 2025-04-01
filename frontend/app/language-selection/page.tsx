@@ -412,10 +412,35 @@ export default function LanguageSelection() {
                 {/* Speaking Assessment Option */}
                 <button
                   onClick={() => {
+                    // Set loading state while navigating
+                    setIsLoading(true);
+                    
                     // Store the selection in session storage
                     sessionStorage.setItem('selectedLanguage', selectedLanguage);
-                    // Navigate to speaking assessment
-                    window.location.href = '/assessment/speaking';
+                    
+                    // Set a flag to indicate we're going to speaking assessment
+                    sessionStorage.setItem('navigatingToSpeakingAssessment', 'true');
+                    
+                    // Log the navigation attempt
+                    console.log('Navigating to speaking assessment with language:', selectedLanguage);
+                    
+                    // IMPORTANT: Use absolute URL with origin for Railway
+                    const isRailway = window.location.hostname.includes('railway.app');
+                    const fullUrl = `${window.location.origin}/assessment/speaking`;
+                    console.log('Navigating to:', fullUrl);
+                    
+                    // Force a hard navigation instead of client-side routing
+                    window.location.replace(fullUrl);
+                    
+                    // Set a fallback timer to detect navigation failures
+                    setTimeout(() => {
+                      if (window.location.pathname.includes('language-selection')) {
+                        console.error('Navigation failed, still on language selection after timeout');
+                        setIsLoading(false);
+                        sessionStorage.removeItem('navigatingToSpeakingAssessment');
+                        alert('Navigation to speaking assessment failed. Please try again.');
+                      }
+                    }, 3000);
                   }}
                   className="px-6 py-3 rounded-xl font-medium 
                     bg-gradient-to-r from-blue-600 to-blue-500 
