@@ -20,6 +20,7 @@ A cutting-edge language learning voice conversation application with a sleek, mo
 - 🗣️ Topic selection for focused conversation practice
 - 📝 Advanced sentence assessment with grammar and vocabulary feedback
 - 🔍 Web search functionality for custom topics with real-time information
+- 🎯 Speaking assessment with detailed feedback and proficiency scoring
 
 ### Pronunciation & Learning
 - 🔊 Real-time pronunciation assessment with color-coded feedback
@@ -39,6 +40,7 @@ A cutting-edge language learning voice conversation application with a sleek, mo
 - 🔍 Advanced debugging with comprehensive logging system
 - 🛡️ Enhanced error handling and user feedback
 - 🌊 Optimized for reliable production deployment on Railway
+- 🧩 Custom UI components for better performance and reliability
 
 ## 🔍 About This Fork
 
@@ -271,11 +273,19 @@ This application includes several optimizations for reliable production deployme
    - Updated Procfile to avoid using `cd` commands for better compatibility
    - CORS configuration that allows all origins (`origins=["*"]`) in production for maximum compatibility
 
+4. **Custom UI Components:**
+   - Replaced external UI dependencies with custom implementations
+   - Reduced dependency on third-party libraries for better build reliability
+   - Implemented custom Progress component without external dependencies
+
 4. **Navigation System:**
-   - Uses direct `window.location.href` for reliable page transitions in production
+   - Uses direct `window.location.replace()` for reliable page transitions in production
    - Implements stuck-state detection and automatic recovery
    - Provides fallback navigation through multiple methods
    - Enhanced error handling and user feedback during transitions
+   - Session storage flags to track navigation state and prevent unwanted redirects
+   - Comprehensive logging for debugging navigation issues
+   - Fallback timers to detect and recover from navigation failures
 
 3. **Backend Routing:**
    - Smart path detection and normalization
@@ -358,6 +368,8 @@ To run the application locally:
 | `/api/test` | GET | Test connection endpoint |
 | `/api/realtime/token` | POST | Generate ephemeral key for OpenAI Realtime API |
 | `/api/mock-token` | POST | Mock token for testing |
+| `/api/assessment/speaking/prompts` | GET | Get speaking assessment prompts |
+| `/api/speaking-prompts` | GET | Alternative endpoint for speaking prompts |
 
 ## Contributing
 

@@ -5,6 +5,27 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2025-04-01
+
+### Added
+- Speaking assessment feature with detailed feedback and proficiency scoring
+- New speaking assessment page with language-specific instructions
+- Backend endpoints for speaking assessment prompts and evaluation
+- Custom Progress component implementation for better build reliability
+
+### Fixed
+- Resolved critical navigation issues in Railway deployment environment
+- Fixed routing problem where /assessment/speaking incorrectly loaded the home page component
+- Addressed infinite loading and redirect issues when navigating between pages
+- Resolved build failures related to external UI dependencies
+
+### Changed
+- Enhanced navigation system with `window.location.replace()` for more reliable page transitions
+- Implemented session storage flags to track navigation state and prevent unwanted redirects
+- Added comprehensive logging for debugging navigation issues
+- Improved backend client-side routes configuration to properly handle the speaking assessment route
+- Replaced Radix UI dependencies with custom implementations for better build reliability
+
 ## [2.12.0] - 2025-03-28
 
 ### Added
