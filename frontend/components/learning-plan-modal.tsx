@@ -152,7 +152,6 @@ export default function LearningPlanModal({
       setIsCreatingPlan(false);
     }
   };
-  };
   
   const handleGoalToggle = (goalId: string, checked: boolean) => {
     if (checked) {
