@@ -5,6 +5,24 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2025-04-03
+
+### Added
+- Custom learning plan creation with personalized goals and duration
+- Learning plan modal with multi-step wizard interface
+- Goal selection categorized by focus area
+- Custom goal input for personalized learning objectives
+- Flexible duration selection from 1-12 months
+- Plan assignment to user accounts with authentication integration
+- Option to use learning plans without signing in
+- Backend API endpoints for learning plan management
+
+### Changed
+- Enhanced user flow for plan creation and assignment
+- Improved session storage handling for learning plan IDs
+- Updated navigation logic to properly redirect after plan creation
+- Optimized TypeScript types for better type safety
+
 ## [2.13.0] - 2025-04-01
 
 ### Added

@@ -21,6 +21,7 @@ A cutting-edge language learning voice conversation application with a sleek, mo
 - 📝 Advanced sentence assessment with grammar and vocabulary feedback
 - 🔍 Web search functionality for custom topics with real-time information
 - 🎯 Speaking assessment with detailed feedback and proficiency scoring
+- 📋 Custom learning plan creation with personalized goals and duration
 
 ### Pronunciation & Learning
 - 🔊 Real-time pronunciation assessment with color-coded feedback
@@ -63,6 +64,15 @@ The application follows the Common European Framework of Reference for Languages
 | **B2** | Upper Intermediate | Can interact with a degree of fluency and spontaneity |
 | **C1** | Advanced | Can express ideas fluently and spontaneously without much searching for expressions |
 | **C2** | Proficiency | Can express with precision in complex situations |
+
+### 📋 Custom Learning Plans
+Create personalized learning plans tailored to your specific needs and goals:
+
+- **Goal Selection**: Choose from a variety of learning goals categorized by focus area
+- **Custom Goals**: Add your own custom learning goals beyond the predefined options
+- **Flexible Duration**: Set your preferred learning timeline from 1-12 months
+- **Progress Tracking**: Monitor your advancement through the learning plan
+- **Plan Assignment**: Automatically assign plans to your account or use without signing in
 
 ### 🗣️ Topic Selection
 The application offers a variety of conversation topics to focus your language practice:
