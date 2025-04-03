@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -264,6 +265,8 @@ export default function SpeechPage() {
 
   return (
     <div className="flex flex-col min-h-screen text-white">
+      {/* Handler for pending learning plans */}
+      <PendingLearningPlanHandler />
       <NavBar />
       
       {/* Warning Modal for conversation interruption */}

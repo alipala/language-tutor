@@ -31,23 +31,28 @@ export default function LoginPage() {
       const { email, password } = data;
       console.log('Logging in with:', email);
       
+      // Check if there's a pending learning plan
+      const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
+      
       // Store navigation intent in sessionStorage before authentication
       sessionStorage.setItem('pendingRedirect', 'true');
-      sessionStorage.setItem('redirectTarget', '/language-selection');
+      sessionStorage.setItem('redirectTarget', pendingLearningPlanId ? '/speech' : '/language-selection');
       sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
       
       // Perform login
       await login(email, password);
       
       // Force hard navigation to avoid client-side routing issues in Railway
-      console.log('Login successful, forcing navigation to language selection');
-      window.location.href = '/language-selection';
+      const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+      console.log(`Login successful, forcing navigation to ${redirectTarget}`);
+      window.location.href = redirectTarget;
       
       // Safety net: if we're still on this page after 1.5 seconds, force navigation again
       setTimeout(() => {
         if (window.location.pathname.includes('auth/login')) {
-          console.log('Safety net navigation triggered');
-          window.location.href = '/language-selection';
+          const safetyRedirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+          console.log('Safety net navigation triggered to', safetyRedirectTarget);
+          window.location.href = safetyRedirectTarget;
         }
       }, 1500);
     } catch (err: any) {
