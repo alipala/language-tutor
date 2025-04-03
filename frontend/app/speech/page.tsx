@@ -34,41 +34,33 @@ export default function SpeechPage() {
   // Set up session refresh prevention
   const refreshCountKey = 'speechPageRefreshCount';
   
-  // Check if user is authenticated and redirect if not
+  // Allow non-authenticated users to access the speech page
   useEffect(() => {
     // Only run this check once auth is no longer loading
-    if (!authLoading && !user && !authRedirectTriggered) {
-      console.log('[SpeechPage] User not authenticated, redirecting to login page');
-      setAuthRedirectTriggered(true);
+    if (!authLoading && !user) {
+      console.log('[SpeechPage] User not authenticated, but allowing access to speech page');
       
-      // Check for URL parameters to preserve them
+      // Check for URL parameters
       const urlParams = new URLSearchParams(window.location.search);
       const planParam = urlParams.get('plan');
       
-      // Store the current page as the redirect target with any parameters
-      const redirectPath = planParam ? `/speech?plan=${planParam}` : '/speech';
-      sessionStorage.setItem('redirectTarget', redirectPath);
-      
-      // If there's a plan parameter, store it to be assigned after login
+      // If there's a plan parameter, store it for potential future login
       if (planParam) {
-        console.log('[SpeechPage] Storing plan ID for post-login assignment:', planParam);
+        console.log('[SpeechPage] Storing plan ID for potential future assignment:', planParam);
         sessionStorage.setItem('pendingLearningPlanId', planParam);
         sessionStorage.setItem('redirectWithPlanId', planParam);
       }
-      
-      // Redirect to login page using window.location for more reliable navigation
-      window.location.href = '/auth/login';
     }
-  }, [user, authLoading, authRedirectTriggered]);
+  }, [user, authLoading]);
 
   // Initialize the speech page with parameters from URL or session storage
   useEffect(() => {
     // Prevent multiple executions of this effect
-    if (navigationHandledRef.current || !user || initializationCompleteRef.current) {
+    if (navigationHandledRef.current || initializationCompleteRef.current) {
       return;
     }
     
-    console.log('[SpeechPage] Initializing speech page for authenticated user');
+    console.log('[SpeechPage] Initializing speech page for user (authenticated: ' + (user !== null) + ')');
     navigationHandledRef.current = true;
     
     // Check for excessive page refreshes to prevent loops
@@ -299,7 +291,7 @@ export default function SpeechPage() {
     setShowLeaveWarning(false);
   };
   
-  if (isLoading || authLoading || !user) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <NavBar />
@@ -313,7 +305,7 @@ export default function SpeechPage() {
               </div>
               <p className="text-white text-xl font-medium">Loading...</p>
               <p className="text-white/70 text-sm mt-2">
-                {!user && !authLoading ? "Redirecting to login..." : "Starting conversation"}
+                Starting conversation
               </p>
             </div>
           </div>
@@ -324,8 +316,8 @@ export default function SpeechPage() {
 
   return (
     <div className="flex flex-col min-h-screen text-white">
-      {/* Handler for pending learning plans */}
-      <PendingLearningPlanHandler />
+      {/* Handler for pending learning plans - only shown for authenticated users */}
+      {user && <PendingLearningPlanHandler />}
       <NavBar />
       
       {/* Warning Modal for conversation interruption */}
