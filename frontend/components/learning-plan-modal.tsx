@@ -166,12 +166,12 @@ export default function LearningPlanModal({
     if (planId) {
       sessionStorage.setItem('pendingLearningPlanId', planId);
       console.log('Stored pendingLearningPlanId in session storage:', planId);
+      
+      // Store additional flag to indicate we should redirect to speech with this plan after login
+      sessionStorage.setItem('redirectWithPlanId', planId);
+    } else {
+      console.warn('No plan ID available when redirecting to sign in');
     }
-    
-    console.log('Stored pendingLearningPlanId in session storage:', planId);
-    
-    // Store additional flag to indicate we should redirect to speech with this plan after login
-    sessionStorage.setItem('redirectWithPlanId', planId);
     
     // Store the intent to redirect to login page
     sessionStorage.setItem('redirectTarget', '/speech');
@@ -192,6 +192,7 @@ export default function LearningPlanModal({
     }
     
     console.log('Stored pendingLearningPlanId in session storage:', planId);
+    sessionStorage.setItem('pendingLearningPlanId', planId);
     
     // Store additional flag to indicate we should redirect to speech with this plan after signup
     sessionStorage.setItem('redirectWithPlanId', planId);
