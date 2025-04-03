@@ -200,88 +200,33 @@ export default function LanguageSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-black text-white">
-      {/* This component will handle assigning any pending learning plans to the user */}
-      <PendingLearningPlanHandler />
+    <div className="min-h-screen gradient-background flex flex-col">
       <NavBar />
+      <PendingLearningPlanHandler />
       <main className="flex-grow flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
         {/* Header with animated elements */}
         <div className="text-center mb-12 relative">
           {/* Animated background effects */}
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-white/10 blur-xl animate-pulse"></div>
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-purple-500/10 blur-xl animate-pulse"></div>
           
           <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
             <div className="relative">
-              {/* Animation temporarily commented out */}
-              {/*
-              <TypeAnimation
-                sequence={[
-                  'Choose Your Language',
-                  2000,
-                  'Kies je taal', // Dutch
-                  1500,
-                  'Elige tu idioma', // Spanish
-                  1500,
-                  'Wähle deine Sprache', // German
-                  1500,
-                  'Choisissez votre langue', // French
-                  1500,
-                  'Escolha seu idioma', // Portuguese
-                  1500,
-                  'Choose Your Language',
-                  1000,
-                ]}
-                wrapper="span"
-                speed={50}
-                style={{ display: 'inline-block' }}
-                repeat={Infinity}
-                cursor={true}
-                className="text-white drop-shadow-sm"
-              />
-              */}
               <span className="text-white drop-shadow-sm">Choose Your Language</span>
               {/* Animated underline effect */}
               <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-white/50 animate-pulse"></div>
             </div>
           </h1>
           <div className="text-white/80 mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
-            {/* Animation temporarily commented out */}
-            {/*
-            <TypeAnimation
-              sequence={[
-                'Select a language to begin',
-                2000,
-                'Selecteer een taal om te beginnen', // Dutch
-                1500,
-                'Selecciona un idioma para empezar', // Spanish
-                1500,
-                'Wähle eine Sprache zum Starten', // German
-                1500,
-                'Choisissez une langue pour commencer', // French
-                1500,
-                'Selecione um idioma para começar', // Portuguese
-                1500,
-                'Select a language to begin',
-                1000,
-              ]}
-              wrapper="p"
-              speed={55}
-              style={{ display: 'inline-block' }}
-              repeat={Infinity}
-              cursor={true}
-              className="text-white/80 animate-fade-in"
-            />
-            */}
             <p className="text-white/80 animate-fade-in">Select a language to begin</p>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
           {/* Decorative elements */}
-          <div className="absolute -top-40 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -top-40 -right-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl"></div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl relative z-10">
             {languages.map((language) => (
@@ -295,7 +240,7 @@ export default function LanguageSelection() {
                   hover:shadow-lg hover:shadow-black/20
                   ${
                     selectedLanguage === language.code
-                      ? 'ring-2 ring-white/50 shadow-white/20 shadow-md'
+                      ? 'ring-2 ring-purple-300/50 shadow-purple-500/20 shadow-md'
                       : 'hover:border-white/30'
                   }
                 `}
@@ -322,9 +267,9 @@ export default function LanguageSelection() {
                       <div className="absolute inset-0 opacity-20 overflow-hidden">
                         <div className="w-full h-full relative">
                           {/* Top left gradient blob */}
-                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-white/30 rounded-full blur-xl animate-pulse"></div>
+                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-purple-500/30 rounded-full blur-xl animate-pulse"></div>
                           {/* Bottom right gradient blob */}
-                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-white/30 rounded-full blur-xl animate-pulse delay-700"></div>
+                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-indigo-500/30 rounded-full blur-xl animate-pulse delay-700"></div>
                         </div>
                       </div>
                       
@@ -373,7 +318,7 @@ export default function LanguageSelection() {
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
-                            fill="white"
+                            fill="purple"
                             className="w-4 h-4"
                           >
                             <path
@@ -402,7 +347,7 @@ export default function LanguageSelection() {
                 ></div>
                 
                 {/* Additional hover effects */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </button>
             ))}
           </div>
@@ -446,8 +391,8 @@ export default function LanguageSelection() {
                     }, 3000);
                   }}
                   className="px-6 py-3 rounded-xl font-medium 
-                    bg-gradient-to-r from-blue-600 to-blue-500 
-                    hover:from-blue-500 hover:to-blue-400
+                    bg-gradient-to-r from-purple-600 to-indigo-500 
+                    hover:from-purple-500 hover:to-indigo-400
                     text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <div className="flex items-center justify-center gap-2">
