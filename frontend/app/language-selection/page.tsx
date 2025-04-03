@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 // Animation temporarily commented out
 // import { TypeAnimation } from 'react-type-animation';
 // Sound effects temporarily disabled
@@ -199,7 +200,9 @@ export default function LanguageSelection() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-black text-white">
+      {/* This component will handle assigning any pending learning plans to the user */}
+      <PendingLearningPlanHandler />
       <NavBar />
       <main className="flex-grow flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col">

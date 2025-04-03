@@ -5,6 +5,7 @@ import { Mic, Square, Play, RotateCw, Volume2, ChevronRight } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
+import LearningPlanModal from './learning-plan-modal';
 
 interface SpeakingAssessmentProps {
   language: string;
@@ -19,6 +20,7 @@ export default function SpeakingAssessment({
 }: SpeakingAssessmentProps) {
   // State for recording and assessment
   const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'complete'>('idle');
+  const [showLearningPlanModal, setShowLearningPlanModal] = useState(false);
   const [timer, setTimer] = useState(60);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -287,9 +289,20 @@ export default function SpeakingAssessment({
   };
 
   const handleSelectLevel = () => {
-    if (assessment && onSelectLevel) {
+    setShowLearningPlanModal(true);
+  };
+
+  const handleLearningPlanModalClose = () => {
+    setShowLearningPlanModal(false);
+    
+    if (onSelectLevel && assessment) {
       onSelectLevel(assessment.recommended_level);
     }
+  };
+
+  const handlePlanCreated = (planId: string) => {
+    console.log('Learning plan created with ID:', planId);
+    sessionStorage.setItem('pendingLearningPlanId', planId);
   };
 
   // Format time from seconds to MM:SS
@@ -617,6 +630,17 @@ export default function SpeakingAssessment({
         <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded-lg">
           {error}
         </div>
+      )}
+      
+      {/* Learning Plan Modal */}
+      {assessment && (
+        <LearningPlanModal 
+          isOpen={showLearningPlanModal}
+          onClose={handleLearningPlanModalClose}
+          proficiencyLevel={assessment.recommended_level}
+          language={language}
+          onPlanCreated={handlePlanCreated}
+        />
       )}
     </div>
   );

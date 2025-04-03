@@ -58,8 +58,12 @@ elif os.getenv("ENVIRONMENT") == "production":
         "https://taco.up.railway.app",
     ]
 else:
-    # For local development
-    origins = ["*"]
+    # For local development - explicitly include localhost:3000
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "*"
+    ]
     frontend_url = "http://localhost:3000"
 
 print(f"Configured CORS with origins: {origins}")
@@ -68,14 +72,18 @@ print(f"Configured CORS with origins: {origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=False,  # Set to False when using allow_origins=["*"]
-    allow_methods=["*"],
+    allow_credentials=True,  # Set to True to allow credentials
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
 
 # Include authentication routes
 app.include_router(auth_router)
+
+# Include learning routes
+from learning_routes import router as learning_router
+app.include_router(learning_router)
 
 # Initialize MongoDB on startup
 @app.on_event("startup")
@@ -1195,5 +1203,5 @@ app.include_router(speaking_router)
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8001"))
+    port = int(os.getenv("PORT", "8000"))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
