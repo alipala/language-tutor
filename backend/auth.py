@@ -1,14 +1,18 @@
 import os
 import secrets
+import hashlib
+import base64
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import EmailStr
 from dotenv import load_dotenv
 from bson import ObjectId
+
+# We're using a simple hashlib implementation to avoid bcrypt issues
+print("Using hashlib for password hashing (bcrypt bypass)")
 
 from database import users_collection, sessions_collection, password_reset_collection
 from models import UserInDB, TokenData, UserResponse, UserCreate, PasswordReset
@@ -21,18 +25,41 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_hex(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # OAuth2 password bearer for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 # Password utilities
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    # Simple implementation using hashlib
+    # Extract salt and hash from stored password
+    try:
+        parts = hashed_password.split('$')
+        if len(parts) != 3:
+            return False
+        
+        salt = parts[1]
+        stored_hash = parts[2]
+        
+        # Hash the input password with the same salt
+        computed_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
+        
+        # Compare the computed hash with the stored hash
+        return computed_hash == stored_hash
+    except Exception as e:
+        print(f"Error in verify_password: {str(e)}")
+        return False
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    # Simple implementation using hashlib
+    # Generate a random salt
+    salt = secrets.token_hex(8)
+    
+    # Hash the password with the salt
+    password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
+    
+    # Return the salt and hash in a format similar to bcrypt
+    # Format: $salt$hash
+    return f"${salt}${password_hash}"
 
 # User utilities
 async def get_user_by_email(email: str) -> Optional[UserInDB]:
