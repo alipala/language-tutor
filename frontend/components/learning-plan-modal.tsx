@@ -97,35 +97,61 @@ export default function LearningPlanModal({
         custom_goal: customGoal || undefined
       };
       
-      // Create the learning plan
-      const plan = await createLearningPlan(planRequest);
+      // Check if user is already authenticated
+      const isUserAuthenticated = isAuthenticated();
+      console.log('User authenticated status:', isUserAuthenticated);
       
-      // Store the plan ID in session storage for later use
-      sessionStorage.setItem('pendingLearningPlanId', plan.id);
-      setPlanId(plan.id);
-      
-      // Call the onPlanCreated callback if provided
-      if (onPlanCreated) {
-        onPlanCreated(plan.id);
+      try {
+        // Create the learning plan
+        const plan = await createLearningPlan(planRequest);
+        console.log('Learning plan created with ID:', plan.id);
+        
+        // Store the plan ID in session storage for later use
+        sessionStorage.setItem('pendingLearningPlanId', plan.id);
+        setPlanId(plan.id);
+        
+        // Call the onPlanCreated callback if provided
+        if (onPlanCreated) {
+          onPlanCreated(plan.id);
+        }
+        
+        // If user is already authenticated, we can immediately redirect to speech
+        if (isUserAuthenticated) {
+          console.log('User is authenticated, preparing direct navigation to speech page');
+          // Set a short timeout to allow state updates to complete
+          setTimeout(() => {
+            // Clear any navigation flags
+            sessionStorage.removeItem('navigationInProgress');
+            sessionStorage.removeItem('redirectWithPlanId');
+            
+            // Navigate to speech page with the plan
+            window.location.href = `/speech?plan=${plan.id}`;
+          }, 100);
+          return;
+        }
+        
+        // Move to the authentication step
+        setStep(4);
+      } catch (planError: any) {
+        console.error('Error creating learning plan:', planError);
+        
+        // Check if this is an authentication error
+        if (planError.message?.includes('Not authenticated')) {
+          // If user is not authenticated, show the authentication step
+          setError('Please sign in to create a learning plan');
+          setStep(4); // Go to authentication step
+        } else {
+          // For other errors, show a generic error message
+          setError(`Failed to create learning plan: ${planError.message || 'Unknown error'}`); 
+        }
       }
-      
-      // Move to the final step
-      setStep(4);
     } catch (error: any) {
-      console.error('Error creating learning plan:', error);
-      
-      // Check if this is an authentication error
-      if (error.message?.includes('Not authenticated')) {
-        // If user is not authenticated, show the authentication step
-        setError('Please sign in to create a learning plan');
-        setStep(4); // Go to authentication step
-      } else {
-        // For other errors, show a generic error message
-        setError('Failed to create learning plan. Please try again.');
-      }
+      console.error('Unexpected error in handleCreatePlan:', error);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsCreatingPlan(false);
     }
+  };
   };
   
   const handleGoalToggle = (goalId: string, checked: boolean) => {
@@ -140,27 +166,71 @@ export default function LearningPlanModal({
     // Store the plan ID in session storage before redirecting
     if (planId) {
       sessionStorage.setItem('pendingLearningPlanId', planId);
+      console.log('Stored pendingLearningPlanId in session storage:', planId);
     }
     
+    console.log('Stored pendingLearningPlanId in session storage:', planId);
+    
+    // Store additional flag to indicate we should redirect to speech with this plan after login
+    sessionStorage.setItem('redirectWithPlanId', planId);
+    
+    // Store the intent to redirect to login page
+    sessionStorage.setItem('redirectTarget', '/speech');
+    
+    // Clear any existing navigation flags that might interfere
+    sessionStorage.removeItem('navigationInProgress');
+    
     // Redirect to login page
-    router.push('/auth/login');
+    console.log('Redirecting to login page with pending plan:', planId);
+    window.location.href = '/auth/login';
     onClose();
   };
   
   const handleSignUp = () => {
-    // Store the plan ID in session storage before redirecting
-    if (planId) {
-      sessionStorage.setItem('pendingLearningPlanId', planId);
+    if (!planId) {
+      console.error('No plan ID available for sign up redirection');
+      return;
     }
     
+    console.log('Stored pendingLearningPlanId in session storage:', planId);
+    
+    // Store additional flag to indicate we should redirect to speech with this plan after signup
+    sessionStorage.setItem('redirectWithPlanId', planId);
+    
+    // Store the intent to redirect to signup page
+    sessionStorage.setItem('redirectTarget', '/speech');
+    
+    // Clear any existing navigation flags that might interfere
+    sessionStorage.removeItem('navigationInProgress');
+    
     // Redirect to signup page
-    router.push('/auth/signup');
+    console.log('Redirecting to signup page with pending plan:', planId);
+    window.location.href = '/auth/signup';
     onClose();
   };
   
   const handleContinueWithoutSignIn = () => {
-    // Redirect to the language selection page
-    router.push('/language-selection');
+    if (!planId) {
+      console.error('No plan ID available for continue without sign in');
+      // Just redirect to speech page without a plan
+      window.location.href = '/speech';
+      return;
+    }
+    
+    // Clear any pending plan ID since we're not going to assign it
+    sessionStorage.removeItem('pendingLearningPlanId');
+    
+    // Clear any existing navigation flags that might interfere
+    sessionStorage.removeItem('navigationInProgress');
+    sessionStorage.removeItem('redirectWithPlanId');
+    
+    // Set the language and level in session storage for the speech page
+    if (language) sessionStorage.setItem('selectedLanguage', language);
+    if (proficiencyLevel) sessionStorage.setItem('selectedLevel', proficiencyLevel);
+    
+    // Redirect to speech page with the plan ID as a query parameter
+    console.log('Continuing without sign in, redirecting to speech with plan:', planId);
+    window.location.href = `/speech?plan=${planId}`;
     onClose();
   };
   

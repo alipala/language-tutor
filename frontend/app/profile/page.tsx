@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/protected-route';
 import NavBar from '@/components/nav-bar';
+import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
+import { getApiUrl } from '@/lib/api-utils';
 
 // API base URL
 // In Railway deployment, the API is served from the same domain
-const isRailway = typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
-const API_URL = isRailway 
-  ? '' // Empty string means same domain, which is correct for Railway
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001');
+// Using getApiUrl() to ensure consistent API URL configuration across the application
+const API_URL = getApiUrl(); // This will use port 8000 as defined in api-utils.ts
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -25,6 +25,9 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [learningPlans, setLearningPlans] = useState<LearningPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
 
   // Load user data when component mounts
   useEffect(() => {
@@ -33,8 +36,29 @@ export default function ProfilePage() {
       setEmail(user.email);
       setPreferredLanguage(user.preferred_language || '');
       setPreferredLevel(user.preferred_level || '');
+      
+      // Fetch user's learning plans
+      fetchUserLearningPlans();
     }
   }, [user]);
+  
+  // Fetch user's learning plans
+  const fetchUserLearningPlans = async () => {
+    if (!user) return;
+    
+    setPlansLoading(true);
+    setPlansError(null);
+    
+    try {
+      const plans = await getUserLearningPlans();
+      setLearningPlans(plans);
+    } catch (err: any) {
+      console.error('Error fetching learning plans:', err);
+      setPlansError(err.message || 'Failed to load learning plans');
+    } finally {
+      setPlansLoading(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,6 +226,72 @@ export default function ProfilePage() {
                 </div>
               </form>
               
+              {/* Learning Plans Section */}
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium mb-4 text-slate-900 dark:text-white">Your Learning Plans</h3>
+                
+                {plansLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mr-2"></div>
+                    <span className="text-slate-600 dark:text-slate-300">Loading your learning plans...</span>
+                  </div>
+                ) : plansError ? (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-red-700 dark:text-red-400 text-sm">
+                    {plansError}
+                  </div>
+                ) : learningPlans.length === 0 ? (
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md text-slate-600 dark:text-slate-400 text-sm">
+                    You don't have any learning plans yet. Create one from the language selection page.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {learningPlans.map((plan) => (
+                      <div key={plan.id} className="p-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="text-md font-medium text-slate-900 dark:text-white capitalize">{plan.language} - {plan.proficiency_level}</h4>
+                          <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 px-2 py-1 rounded">
+                            {new Date(plan.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-2 space-y-2">
+                          <div>
+                            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Learning Goals:</h5>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {plan.goals.map((goal, index) => (
+                                <span key={index} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 px-2 py-1 rounded capitalize">
+                                  {goal}
+                                </span>
+                              ))}
+                              {plan.custom_goal && (
+                                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-2 py-1 rounded">
+                                  {plan.custom_goal}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Duration:</h5>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{plan.duration_months} months</p>
+                          </div>
+                          
+                          <div className="pt-2">
+                            <Button 
+                              onClick={() => router.push(`/speech?plan=${plan.id}`)}
+                              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-1"
+                            >
+                              Continue Learning
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Account Actions Section */}
               <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-medium mb-4 text-slate-900 dark:text-white">Account Actions</h3>
                 

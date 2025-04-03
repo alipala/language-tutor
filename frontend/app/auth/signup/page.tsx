@@ -37,22 +37,23 @@ export default function SignupPage() {
       sessionStorage.setItem('redirectTarget', pendingLearningPlanId ? '/speech' : '/language-selection');
       sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
       
-      // Perform signup
+      // Perform signup - wait for it to complete
       await signup(name, email, password);
       
-      // Force hard navigation to avoid client-side routing issues in Railway
-      const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
-      console.log(`Signup successful, forcing navigation to ${redirectTarget}`);
-      window.location.href = redirectTarget;
-      
-      // Safety net: if we're still on this page after 1.5 seconds, force navigation again
+      // Add a delay to ensure authentication state is properly updated
       setTimeout(() => {
-        if (window.location.pathname.includes('auth/signup')) {
-          const safetyRedirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
-          console.log('Safety net navigation triggered to', safetyRedirectTarget);
-          window.location.href = safetyRedirectTarget;
+        // Only proceed if there's no auth error
+        if (!authError) {
+          // Navigate to the appropriate page
+          const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+          console.log(`Signup successful, navigating to ${redirectTarget}`);
+          
+          // Use router for navigation
+          router.push(redirectTarget);
+        } else {
+          throw new Error(authError || 'Signup failed. Please try again.');
         }
-      }, 1500);
+      }, 1000);
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'Failed to create account. Please try again.');

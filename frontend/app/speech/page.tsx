@@ -20,88 +20,145 @@ const SpeechClient = dynamic(() => import('./speech-client'), { ssr: false });
 
 export default function SpeechPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [customTopicPrompt, setCustomTopicPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authRedirectTriggered, setAuthRedirectTriggered] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const navigationHandledRef = useRef(false);
+  const initializationCompleteRef = useRef(false);
   
   // Set up session refresh prevention
   const refreshCountKey = 'speechPageRefreshCount';
   
+  // Check if user is authenticated and redirect if not
+  useEffect(() => {
+    // Only run this check once auth is no longer loading
+    if (!authLoading && !user && !authRedirectTriggered) {
+      console.log('[SpeechPage] User not authenticated, redirecting to login page');
+      setAuthRedirectTriggered(true);
+      
+      // Check for URL parameters to preserve them
+      const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
+      
+      // Store the current page as the redirect target with any parameters
+      const redirectPath = planParam ? `/speech?plan=${planParam}` : '/speech';
+      sessionStorage.setItem('redirectTarget', redirectPath);
+      
+      // If there's a plan parameter, store it to be assigned after login
+      if (planParam) {
+        console.log('[SpeechPage] Storing plan ID for post-login assignment:', planParam);
+        sessionStorage.setItem('pendingLearningPlanId', planParam);
+        sessionStorage.setItem('redirectWithPlanId', planParam);
+      }
+      
+      // Redirect to login page using window.location for more reliable navigation
+      window.location.href = '/auth/login';
+    }
+  }, [user, authLoading, authRedirectTriggered]);
+
+  // Initialize the speech page with parameters from URL or session storage
   useEffect(() => {
     // Prevent multiple executions of this effect
-    if (navigationHandledRef.current) {
+    if (navigationHandledRef.current || !user || initializationCompleteRef.current) {
       return;
     }
     
-    // Check for excessive page refreshes
+    console.log('[SpeechPage] Initializing speech page for authenticated user');
+    navigationHandledRef.current = true;
+    
+    // Check for excessive page refreshes to prevent loops
     const refreshCount = parseInt(sessionStorage.getItem(refreshCountKey) || '0', 10);
     sessionStorage.setItem(refreshCountKey, (refreshCount + 1).toString());
-    console.log('Speech page refresh count:', refreshCount + 1);
+    console.log('[SpeechPage] Refresh count:', refreshCount + 1);
     
     // If we've refreshed too many times, it could be a navigation loop
     if (refreshCount > 5) {
-      console.error('Too many speech page refreshes detected, possible navigation loop');
+      console.error('[SpeechPage] Too many refreshes detected, possible navigation loop');
       // Clear session to break the loop
-      sessionStorage.clear();
+      sessionStorage.removeItem('navigationInProgress');
+      sessionStorage.removeItem('pendingLearningPlanId');
+      sessionStorage.removeItem('redirectWithPlanId');
+      sessionStorage.removeItem(refreshCountKey);
       // Force reload the page to start fresh
-      window.location.href = '/';
+      window.location.href = '/language-selection';
       return;
     }
     
-    // Retrieve the selected language and level from session storage
-    const language = sessionStorage.getItem('selectedLanguage');
-    const level = sessionStorage.getItem('selectedLevel');
-    const topic = sessionStorage.getItem('selectedTopic');
-    const customPrompt = sessionStorage.getItem('customTopicText');
-    
-    console.log('Retrieved from sessionStorage - language:', language, 'level:', level, 'topic:', topic);
-    if (topic === 'custom' && customPrompt) {
-      console.log('Custom topic prompt:', customPrompt.substring(0, 50) + (customPrompt.length > 50 ? '...' : ''));
-    }
-    
-    // Mark that we've handled navigation
-    navigationHandledRef.current = true;
-    
-    if (!language || !level) {
-      // If no language or level is selected, redirect to language selection
-      console.log('Missing language or level, redirecting to language selection');
-      
-      // Use direct window.location for reliable navigation in Railway
-      // But wrap in setTimeout to ensure we don't interrupt the current render cycle
-      setTimeout(() => {
-        console.log('Executing navigation to language selection');
-        window.location.href = '/language-selection';
+    // First, check URL parameters for a plan ID
+    const initializePage = async () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const planParam = urlParams.get('plan');
         
-        // Fallback navigation in case the first attempt fails (for Railway)
-        const fallbackTimer = setTimeout(() => {
-          if (window.location.pathname.includes('speech')) {
-            console.log('Still on speech page, using fallback navigation to language selection');
-            window.location.replace('/language-selection');
+        if (planParam) {
+          console.log('[SpeechPage] Found plan ID in URL:', planParam);
+          setSelectedPlanId(planParam);
+          
+          try {
+            // Import the API function dynamically to avoid circular dependencies
+            const { getLearningPlan } = await import('@/lib/learning-api');
+            const plan = await getLearningPlan(planParam);
+            
+            console.log('[SpeechPage] Retrieved plan details:', plan);
+            
+            // Set the language and level from the plan
+            setSelectedLanguage(plan.language);
+            setSelectedLevel(plan.proficiency_level);
+            
+            // Store in session storage for persistence
+            sessionStorage.setItem('selectedLanguage', plan.language);
+            sessionStorage.setItem('selectedLevel', plan.proficiency_level);
+            
+            // We've successfully loaded the speech page with the plan parameters
+            initializationCompleteRef.current = true;
+            setIsLoading(false);
+            return;
+          } catch (error) {
+            console.error('[SpeechPage] Error retrieving plan:', error);
+            // Continue with fallback to session storage if plan retrieval fails
           }
-        }, 1000);
+        }
         
-        return () => clearTimeout(fallbackTimer);
-      }, 100);
-      return;
-    }
+        // Fallback to session storage if no plan ID or plan retrieval failed
+        const language = sessionStorage.getItem('selectedLanguage');
+        const level = sessionStorage.getItem('selectedLevel');
+        const topic = sessionStorage.getItem('selectedTopic');
+        const customPrompt = sessionStorage.getItem('customTopicText');
+        
+        console.log('[SpeechPage] Retrieved from sessionStorage - language:', language, 'level:', level);
+        
+        if (!language || !level) {
+          // If no language or level is available, redirect to language selection
+          console.log('[SpeechPage] Missing language or level, redirecting to language selection');
+          window.location.href = '/language-selection';
+          return;
+        }
+        
+        // Set the selected language and level for the speech client
+        setSelectedLanguage(language);
+        setSelectedLevel(level);
+        if (topic) setSelectedTopic(topic);
+        if (topic === 'custom' && customPrompt) setCustomTopicPrompt(customPrompt);
+        
+        // We've successfully loaded the speech page with session storage parameters
+        initializationCompleteRef.current = true;
+        setIsLoading(false);
+      } catch (error) {
+        console.error('[SpeechPage] Error during initialization:', error);
+        // If all else fails, redirect to language selection
+        window.location.href = '/language-selection';
+      }
+    };
     
-    // If we have language and level, update the state
-    setSelectedLanguage(language);
-    setSelectedLevel(level);
-    setSelectedTopic(topic);
-    setCustomTopicPrompt(customPrompt);
-    setIsLoading(false);
-    
-    // Reset refresh count when successfully loaded
-    setTimeout(() => {
-      sessionStorage.setItem(refreshCountKey, '0');
-    }, 2000);
-  }, []);
-  
+    // Execute the initialization
+    initializePage();
+  }, [user]);
+
   // State for showing the leave site warning modal
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
@@ -242,7 +299,7 @@ export default function SpeechPage() {
     setShowLeaveWarning(false);
   };
   
-  if (isLoading) {
+  if (isLoading || authLoading || !user) {
     return (
       <div className="min-h-screen flex flex-col">
         <NavBar />
@@ -255,7 +312,9 @@ export default function SpeechPage() {
                 </svg>
               </div>
               <p className="text-white text-xl font-medium">Loading...</p>
-              <p className="text-white/70 text-sm mt-2">Starting conversation</p>
+              <p className="text-white/70 text-sm mt-2">
+                {!user && !authLoading ? "Redirecting to login..." : "Starting conversation"}
+              </p>
             </div>
           </div>
         </div>
