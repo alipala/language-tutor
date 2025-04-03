@@ -45,7 +45,7 @@ export default function NavBar() {
           onClick={() => navigateTo('/')}
         >
           <h1 className="text-xl font-bold text-white">
-            Language Tutor
+            Your Smart Language Coach
           </h1>
         </div>
 

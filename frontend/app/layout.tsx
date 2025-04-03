@@ -11,7 +11,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Voice Input UI',
+  title: 'Taco - Your Smart Language Coach',
   description: 'A modern, responsive web UI for voice and text input',
 }
 
