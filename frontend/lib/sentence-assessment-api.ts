@@ -16,7 +16,7 @@ function getApiUrl(): string {
     }
   }
   // Default to environment variable or localhost
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 }
 
 // Function to encode audio data as base64
