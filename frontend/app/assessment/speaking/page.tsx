@@ -73,19 +73,42 @@ export default function SpeakingAssessmentPage() {
     // Mark that we're intentionally navigating
     sessionStorage.setItem('intentionalNavigation', 'true');
     
-    // Log the navigation attempt
-    console.log('Navigating to speech with AI-assessed level:', level);
+    // Check if there's a pending learning plan ID in session storage
+    const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
     
-    // Use direct navigation for reliability (based on your existing pattern)
+    // Import and use the isAuthenticated function from auth utils
+    const { isAuthenticated } = require('@/lib/auth-utils');
+    const userAuthenticated = isAuthenticated();
+    
+    // Log the navigation attempt with authentication status
+    console.log('User authenticated status:', userAuthenticated);
+    console.log('Pending learning plan ID:', pendingLearningPlanId);
+    
+    // Determine the redirect target based on authentication status
+    let redirectTarget = userAuthenticated ? '/speech' : '/auth/login';
+    
+    // If user is not authenticated, we need to set up redirection flags
+    if (!userAuthenticated && pendingLearningPlanId) {
+      console.log('User not authenticated, setting up redirection to login page');
+      // Store the intent to redirect to login page
+      sessionStorage.setItem('redirectTarget', '/speech');
+      // Store additional flag to indicate we should redirect to speech with this plan after login
+      sessionStorage.setItem('redirectWithPlanId', pendingLearningPlanId);
+    }
+    
+    // Log the final navigation decision
+    console.log(`Redirecting to ${redirectTarget} with level: ${level}`);
+    
+    // Use direct navigation for reliability
     setTimeout(() => {
-      console.log('Executing navigation to speech page');
-      window.location.href = '/speech';
+      console.log(`Executing navigation to ${redirectTarget}`);
+      window.location.href = redirectTarget;
       
       // Fallback navigation in case the first attempt fails
       const fallbackTimer = setTimeout(() => {
         if (window.location.pathname.includes('assessment/speaking')) {
-          console.log('Still on speaking assessment page, using fallback navigation');
-          window.location.replace('/speech');
+          console.log(`Still on speaking assessment page, using fallback navigation to ${redirectTarget}`);
+          window.location.replace(redirectTarget);
         }
       }, 1000);
       

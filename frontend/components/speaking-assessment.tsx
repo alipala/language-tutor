@@ -294,15 +294,20 @@ export default function SpeakingAssessment({
 
   const handleLearningPlanModalClose = () => {
     setShowLearningPlanModal(false);
-    
-    if (onSelectLevel && assessment) {
-      onSelectLevel(assessment.recommended_level);
-    }
+    console.log('Learning plan modal closed without creating a plan');
   };
 
   const handlePlanCreated = (planId: string) => {
     console.log('Learning plan created with ID:', planId);
     sessionStorage.setItem('pendingLearningPlanId', planId);
+    
+    // If onSelectLevel callback is provided, use it to trigger redirection
+    if (onSelectLevel) {
+      console.log('Triggering onSelectLevel callback with recommended level:', assessment?.recommended_level);
+      onSelectLevel(assessment?.recommended_level || 'A1');
+    } else {
+      console.warn('No onSelectLevel callback provided, redirection may not work as expected');
+    }
   };
 
   // Format time from seconds to MM:SS
