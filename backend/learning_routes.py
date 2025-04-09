@@ -22,6 +22,7 @@ class LearningPlanRequest(BaseModel):
     goals: List[str]
     duration_months: int
     custom_goal: Optional[str] = None
+    assessment_data: Optional[Dict[str, Any]] = None
 
 class LearningPlan(BaseModel):
     id: str
@@ -101,39 +102,112 @@ async def create_learning_plan(
             detail="OpenAI API key not configured"
         )
     
-    # For testing purposes, we'll bypass the OpenAI API call
-    print("Bypassing OpenAI API call for testing purposes")
+    # Check if assessment data is provided
+    assessment_data = plan_request.assessment_data
     
-    # Create a mock plan content for testing
-    plan_content_json = {
-        "title": "3-Month English Learning Plan for A2 Level Focusing on Travel and Reading",
-        "overview": "This plan is designed for an A2 level English learner who wants to improve their language skills for travel and reading comprehension over 3 months.",
-        "weekly_schedule": [
-            {
-                "week": 1,
-                "focus": "Basic travel vocabulary and simple reading materials",
-                "activities": [
-                    "Learn 20 common travel phrases",
-                    "Read short paragraphs about tourist destinations",
-                    "Practice asking for directions"
-                ]
+    # Log assessment data if available
+    if assessment_data:
+        print(f"Using assessment data for plan creation:\n{assessment_data}")
+    else:
+        print("No assessment data provided, using default plan template")
+    
+    # Create plan content based on assessment data if available, otherwise use mock data
+    if assessment_data:
+        # Extract key assessment information
+        recognized_text = assessment_data.get('recognized_text', '')
+        recommended_level = assessment_data.get('recommended_level', plan_request.proficiency_level)
+        overall_score = assessment_data.get('overall_score', 50)
+        strengths = assessment_data.get('strengths', [])
+        areas_for_improvement = assessment_data.get('areas_for_improvement', [])
+        next_steps = assessment_data.get('next_steps', [])
+        
+        # Extract skill scores
+        pronunciation_score = assessment_data.get('pronunciation', {}).get('score', 50)
+        pronunciation_feedback = assessment_data.get('pronunciation', {}).get('feedback', '')
+        grammar_score = assessment_data.get('grammar', {}).get('score', 50)
+        grammar_feedback = assessment_data.get('grammar', {}).get('feedback', '')
+        vocabulary_score = assessment_data.get('vocabulary', {}).get('score', 50)
+        vocabulary_feedback = assessment_data.get('vocabulary', {}).get('feedback', '')
+        fluency_score = assessment_data.get('fluency', {}).get('score', 50)
+        fluency_feedback = assessment_data.get('fluency', {}).get('feedback', '')
+        coherence_score = assessment_data.get('coherence', {}).get('score', 50)
+        coherence_feedback = assessment_data.get('coherence', {}).get('feedback', '')
+        
+        # Create a personalized plan based on assessment data
+        plan_content_json = {
+            "title": f"{plan_request.duration_months}-Month {plan_request.language.capitalize()} Learning Plan for {recommended_level} Level",
+            "overview": f"This plan is designed based on your speaking assessment results. You demonstrated a {recommended_level} level proficiency with an overall score of {overall_score}/100.",
+            "assessment_summary": {
+                "overall_score": overall_score,
+                "recommended_level": recommended_level,
+                "strengths": strengths,
+                "areas_for_improvement": areas_for_improvement,
+                "skill_scores": {
+                    "pronunciation": pronunciation_score,
+                    "grammar": grammar_score,
+                    "vocabulary": vocabulary_score,
+                    "fluency": fluency_score,
+                    "coherence": coherence_score
+                }
             },
-            {
-                "week": 2,
-                "focus": "Transportation vocabulary and reading signs",
-                "activities": [
-                    "Learn vocabulary related to different modes of transportation",
-                    "Practice reading transportation schedules and maps",
-                    "Complete exercises on prepositions of place and movement"
-                ]
-            }
-        ],
-        "resources": [
-            "English for Travelers (beginner's guide)",
-            "Graded Readers - Level 2",
-            "Duolingo Travel Module"
-        ]
-    }
+            "weekly_schedule": [
+                {
+                    "week": 1,
+                    "focus": f"Addressing key improvement areas: {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'Building foundational skills'}",
+                    "activities": next_steps[:3] if next_steps else [
+                        "Practice basic conversation skills",
+                        "Review fundamental grammar structures",
+                        "Build essential vocabulary"
+                    ]
+                },
+                {
+                    "week": 2,
+                    "focus": "Building on your strengths while addressing weaker areas",
+                    "activities": [
+                        f"Continue working on {areas_for_improvement[0] if areas_for_improvement else 'vocabulary expansion'}",
+                        f"Practice {strengths[0].lower() if strengths else 'speaking fluency'}",
+                        "Complete targeted exercises for your proficiency level"
+                    ]
+                }
+            ],
+            "resources": [
+                f"{plan_request.language.capitalize()} Grammar Guide for {recommended_level} Level",
+                f"Vocabulary Builder for {plan_request.language.capitalize()} Learners",
+                "Language Practice App with Speaking Exercises"
+            ]
+        }
+    else:
+        # Use mock plan content for testing when no assessment data is available
+        print("Using mock plan content for testing purposes")
+        plan_content_json = {
+            "title": f"{plan_request.duration_months}-Month {plan_request.language.capitalize()} Learning Plan for {plan_request.proficiency_level} Level",
+            "overview": f"This plan is designed for a {plan_request.proficiency_level} level {plan_request.language} learner who wants to improve their language skills over {plan_request.duration_months} months.",
+            "weekly_schedule": [
+                {
+                    "week": 1,
+                    "focus": "Basic vocabulary and simple reading materials",
+                    "activities": [
+                        "Learn 20 common phrases",
+                        "Read short paragraphs about everyday topics",
+                        "Practice basic conversation skills"
+                    ]
+                },
+                {
+                    "week": 2,
+                    "focus": "Building on foundational skills",
+                    "activities": [
+                        "Expand vocabulary with themed word lists",
+                        "Practice reading and comprehension exercises",
+                        "Complete exercises on common grammar structures"
+                    ]
+                }
+            ],
+            "resources": [
+                f"{plan_request.language.capitalize()} for Beginners (guide)",
+                "Graded Readers - Level 2",
+                "Language Learning App Recommendations"
+            ]
+        }
     
     # Prepare goals text
     goals_text = ", ".join(plan_request.goals)
@@ -168,8 +242,23 @@ async def create_learning_plan(
             "duration_months": plan_request.duration_months,
             "custom_goal": plan_request.custom_goal,
             "plan_content": plan_content_json,
+            "assessment_data": plan_request.assessment_data,
             "created_at": datetime.utcnow().isoformat()
         }
+        
+        # If user is authenticated and assessment data is provided, update user profile
+        if current_user and plan_request.assessment_data:
+            from database import users_collection
+            # Update the user's profile with the assessment data
+            await users_collection.update_one(
+                {"_id": current_user.id},
+                {"$set": {
+                    "last_assessment_data": plan_request.assessment_data,
+                    "preferred_language": plan_request.language,
+                    "preferred_level": plan_request.proficiency_level
+                }}
+            )
+            print(f"Updated user profile with assessment data for user {current_user.id}")
         
         # Save the plan to the database
         result = await learning_plans_collection.insert_one(new_plan)

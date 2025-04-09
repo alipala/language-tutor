@@ -19,6 +19,7 @@ interface LearningPlanModalProps {
   proficiencyLevel: string;
   language: string;
   onPlanCreated?: (planId: string) => void;
+  assessmentData?: any; // Speaking assessment data
 }
 
 export default function LearningPlanModal({
@@ -26,7 +27,8 @@ export default function LearningPlanModal({
   onClose,
   proficiencyLevel,
   language,
-  onPlanCreated
+  onPlanCreated,
+  assessmentData
 }: LearningPlanModalProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -94,8 +96,14 @@ export default function LearningPlanModal({
         proficiency_level: proficiencyLevel,
         goals: selectedGoals,
         duration_months: customDuration || duration,
-        custom_goal: customGoal || undefined
+        custom_goal: customGoal || undefined,
+        assessment_data: assessmentData || undefined
       };
+      
+      // Log assessment data if available
+      if (assessmentData) {
+        console.log('Including speaking assessment data in learning plan:', assessmentData);
+      }
       
       // Check if user is already authenticated
       const isUserAuthenticated = isAuthenticated();

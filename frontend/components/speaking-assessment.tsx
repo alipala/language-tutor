@@ -289,6 +289,16 @@ export default function SpeakingAssessment({
   };
 
   const handleSelectLevel = () => {
+    // Store the assessment data in session storage for use in the speech client
+    if (assessment) {
+      try {
+        sessionStorage.setItem('speakingAssessmentData', JSON.stringify(assessment));
+        console.log('Stored speaking assessment data in session storage');
+      } catch (e) {
+        console.error('Error storing speaking assessment data:', e);
+      }
+    }
+    
     setShowLearningPlanModal(true);
   };
 
@@ -645,6 +655,7 @@ export default function SpeakingAssessment({
           proficiencyLevel={assessment.recommended_level}
           language={language}
           onPlanCreated={handlePlanCreated}
+          assessmentData={assessment}
         />
       )}
     </div>

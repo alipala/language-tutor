@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field
 from bson import ObjectId
 
@@ -29,6 +29,7 @@ class UserBase(BaseModel):
     last_login: Optional[datetime] = None
     preferred_language: Optional[str] = None
     preferred_level: Optional[str] = None
+    last_assessment_data: Optional[Dict[str, Any]] = None
     
     class Config:
         populate_by_name = True
@@ -60,6 +61,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     preferred_language: Optional[str] = None
     preferred_level: Optional[str] = None
+    last_assessment_data: Optional[Dict[str, Any]] = None
     
     class Config:
         populate_by_name = True

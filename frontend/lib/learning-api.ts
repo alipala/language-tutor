@@ -13,6 +13,7 @@ export interface LearningPlanRequest {
   goals: string[];
   duration_months: number;
   custom_goal?: string;
+  assessment_data?: any; // Speaking assessment data
 }
 
 export interface LearningPlan {

@@ -307,8 +307,38 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           console.log('Custom topic prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
         }
         
-        // Pass the language, level, topic, and userPrompt parameters to the initialize function
-        await initialize(language, level, topic, userPrompt);
+        // Check if we have assessment data in session storage or user profile
+        let assessmentData = null;
+        
+        // First try to get from session storage (most recent assessment)
+        const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
+        if (storedAssessmentData) {
+          try {
+            assessmentData = JSON.parse(storedAssessmentData);
+            console.log('Retrieved speaking assessment data from session storage');
+          } catch (e) {
+            console.error('Error parsing speaking assessment data from session storage:', e);
+          }
+        }
+        
+        // If not found in session storage, try to get from user profile
+        if (!assessmentData) {
+          try {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+              const user = JSON.parse(userData);
+              if (user.last_assessment_data) {
+                assessmentData = user.last_assessment_data;
+                console.log('Retrieved speaking assessment data from user profile');
+              }
+            }
+          } catch (e) {
+            console.error('Error retrieving assessment data from user profile:', e);
+          }
+        }
+        
+        // Pass the language, level, topic, userPrompt, and assessment data parameters to the initialize function
+        await initialize(language, level, topic, userPrompt, assessmentData);
         console.log('Realtime service initialized successfully');
       } catch (err) {
         console.error('Failed to initialize realtime service:', err);

@@ -36,7 +36,8 @@ export class RealtimeService {
     language?: string,
     level?: string,
     topic?: string,
-    userPrompt?: string
+    userPrompt?: string,
+    assessmentData?: any
   ): Promise<boolean> {
     try {
       console.log('Initializing realtime service...');
@@ -83,7 +84,7 @@ export class RealtimeService {
       
       try {
         // Get ephemeral key from backend with language and level if provided
-        const token = await this.getEphemeralKey(language, level, topic, userPrompt);
+        const token = await this.getEphemeralKey(language, level, topic, userPrompt, assessmentData);
         if (!token) {
           console.error('Failed to get ephemeral key (empty token)');
           return false;
@@ -736,7 +737,7 @@ export class RealtimeService {
   /**
    * Get an ephemeral key from the backend
    */
-  private async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string): Promise<string> {
+  private async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any): Promise<string> {
     // Flag to track if we're using the mock token endpoint
     let usedMockToken = false;
     
@@ -762,8 +763,14 @@ export class RealtimeService {
         level: level,
         voice: 'alloy', // Default voice
         topic: topic || null, // Add topic if provided
-        user_prompt: userPrompt || null // Add user prompt for custom topics
+        user_prompt: userPrompt || null, // Add user prompt for custom topics
+        assessment_data: assessmentData || null // Add assessment data if provided
       };
+      
+      // Log if assessment data is provided
+      if (assessmentData) {
+        console.log('Including assessment data in token request');
+      }
       
       // Log if we're using a custom topic with user prompt
       if (topic === 'custom' && userPrompt) {

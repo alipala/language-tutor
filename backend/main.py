@@ -302,6 +302,7 @@ class TutorSessionRequest(BaseModel):
     voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: Optional[str] = None  # User prompt for custom topics
+    assessment_data: Optional[Dict[str, Any]] = None  # Assessment data from speaking assessment
 
 # Simple endpoint for testing connection
 @app.get("/api/test")
@@ -498,6 +499,53 @@ async def generate_token(request: TutorSessionRequest):
         
         # Add universal formatting and speech instructions
         instructions = instructions + formatting_instructions + speech_instructions
+        
+        # Add assessment data to instructions if provided
+        if hasattr(request, 'assessment_data') and request.assessment_data:
+            print(f"Including speaking assessment data in tutor instructions")
+            assessment_data = request.assessment_data
+            
+            # Create a section for assessment feedback
+            assessment_instructions = "\n\nSPEAKING ASSESSMENT FEEDBACK:\n"
+            
+            # Add overall score if available
+            if 'overall_score' in assessment_data:
+                assessment_instructions += f"Overall Score: {assessment_data['overall_score']}\n"
+            
+            # Add skill scores if available
+            if 'skill_scores' in assessment_data:
+                assessment_instructions += "Skill Scores:\n"
+                for skill, score in assessment_data['skill_scores'].items():
+                    assessment_instructions += f"- {skill}: {score}\n"
+            
+            # Add strengths if available
+            if 'strengths' in assessment_data:
+                assessment_instructions += "\nStrengths:\n"
+                for strength in assessment_data['strengths']:
+                    assessment_instructions += f"- {strength}\n"
+            
+            # Add areas for improvement if available
+            if 'areas_for_improvement' in assessment_data:
+                assessment_instructions += "\nAreas for Improvement:\n"
+                for area in assessment_data['areas_for_improvement']:
+                    assessment_instructions += f"- {area}\n"
+            
+            # Add recommendations if available
+            if 'recommendations' in assessment_data:
+                assessment_instructions += "\nRecommendations:\n"
+                for recommendation in assessment_data['recommendations']:
+                    assessment_instructions += f"- {recommendation}\n"
+            
+            # Add feedback if available
+            if 'feedback' in assessment_data:
+                assessment_instructions += f"\nDetailed Feedback: {assessment_data['feedback']}\n"
+            
+            # Add instructions for how to use this assessment data
+            assessment_instructions += "\nIMPORTANT: Use this assessment data to personalize your tutoring. Focus on helping the student improve in their areas of weakness while acknowledging their strengths. Occasionally refer to specific points from their assessment to show you are aware of their proficiency level and learning needs. Do not overwhelm them with all this information at once, but gradually incorporate it into your teaching approach.\n"
+            
+            # Add the assessment instructions to the main instructions
+            instructions = instructions + assessment_instructions
+            print("Added assessment data to tutor instructions")
         
         # Add topic-specific instructions if a topic is provided
         if topic:

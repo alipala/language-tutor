@@ -17,6 +17,7 @@ export interface User {
   email: string;
   preferred_language?: string;
   preferred_level?: string;
+  last_assessment_data?: any;
 }
 
 interface AuthContextType {
@@ -63,6 +64,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (response.ok) {
             const userData = await response.json();
             console.log('User data retrieved:', userData);
+            // Store user data in localStorage
+            localStorage.setItem('userData', JSON.stringify(userData));
             setUser(userData);
           } else {
             // Token is invalid or expired
@@ -121,12 +124,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Token saved to localStorage');
       
       // Set user data
-      setUser({
+      const userData = {
         _id: data.user_id,
         name: data.name,
         email: data.email
-      });
-      console.log('User data set in context');
+      };
+      
+      // Store user data in localStorage
+      localStorage.setItem('userData', JSON.stringify(userData));
+      setUser(userData);
+      console.log('User data set in context and stored in localStorage');
 
       // Save user preferences if available
       if (data.preferred_language) {
@@ -243,8 +250,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Logout function
   const logout = () => {
-    // Remove token from localStorage
+    // Remove token and user data from localStorage
     localStorage.removeItem('token');
+    localStorage.removeItem('userData');
     
     // Clear user data
     setUser(null);

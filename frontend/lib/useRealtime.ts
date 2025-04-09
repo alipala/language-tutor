@@ -328,7 +328,7 @@ export function useRealtime() {
   }, []);
 
   // Initialize the realtime service
-  const initialize = useCallback(async (language?: string, level?: string, topic?: string, userPrompt?: string) => {
+  const initialize = useCallback(async (language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any) => {
     if (!isBrowser) return false;
     if (!realtimeService) return false;
     
@@ -362,6 +362,11 @@ export function useRealtime() {
         console.log('Using custom topic with prompt:', userPromptToUse.substring(0, 50) + (userPromptToUse.length > 50 ? '...' : ''));
       }
       
+      // Log assessment data if provided
+      if (assessmentData) {
+        console.log('Initializing with assessment data:', JSON.stringify(assessmentData, null, 2));
+      }
+      
       const success = await realtimeService.initialize(
         handleMessage, // Use the handleMessage callback directly
         () => {
@@ -376,7 +381,8 @@ export function useRealtime() {
         langToUse,
         levelToUse,
         topicToUse,
-        userPromptToUse
+        userPromptToUse,
+        assessmentData
       );
       
       if (!success) {
