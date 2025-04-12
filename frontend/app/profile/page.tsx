@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import ProtectedRoute from '@/components/protected-route';
-import NavBar from '@/components/nav-bar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { AssessmentCard } from '@/components/assessment-card';
 import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
 import { Progress } from '@/components/ui/progress';
-import { SpeakingAssessmentResult } from '@/lib/speaking-assessment-api';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ProtectedRoute from '@/components/protected-route';
+import NavBar from '@/components/nav-bar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // API base URL
@@ -34,11 +35,55 @@ export default function ProfilePage() {
   const [plansError, setPlansError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   
-  // Get the assessment data either from the user's last_assessment_data or from the most recent learning plan
-  const latestAssessment = user?.last_assessment_data || 
-    (learningPlans.length > 0 && learningPlans[0].assessment_data 
-      ? learningPlans[0].assessment_data 
-      : null);
+  // Collect all assessments from learning plans and user data
+  const assessments = [];
+  
+  // Add user's last assessment if available
+  if (user?.last_assessment_data) {
+    assessments.push({
+      ...user.last_assessment_data,
+      date: user.created_at || new Date().toISOString(),
+      source: 'User Profile',
+      expanded: true // First assessment is expanded by default
+    });
+  }
+  
+  // Add assessments from learning plans
+  learningPlans.forEach((plan, index) => {
+    if (plan.assessment_data) {
+      assessments.push({
+        ...plan.assessment_data,
+        date: plan.created_at || new Date().toISOString(),
+        planId: plan._id,
+        language: plan.language,
+        level: plan.proficiency_level,
+        source: `${plan.language} - ${plan.proficiency_level}`,
+        expanded: assessments.length === 0 // Expand if it's the first assessment
+      });
+    }
+  });
+  
+  // Sort assessments by date (newest first)
+  assessments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  // Get the latest assessment for quick access
+  const latestAssessment = assessments.length > 0 ? assessments[0] : null;
+  
+  // State to track which assessments are expanded
+  const [expandedAssessments, setExpandedAssessments] = useState<Record<number, boolean>>(
+    assessments.reduce((acc, assessment, index) => {
+      acc[index] = assessment.expanded || false;
+      return acc;
+    }, {})
+  );
+  
+  // Toggle assessment expansion
+  const toggleAssessment = (index: number) => {
+    setExpandedAssessments(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
     
   // Helper function to get color class based on score
   const getColorClass = (score: number) => {
@@ -141,197 +186,61 @@ export default function ProfilePage() {
         {/* Main content */}
         <main className="flex-grow container mx-auto p-4 md:p-6">
           <div className="max-w-4xl mx-auto px-4 py-8 md:px-6">
-            {/* Assessment Dashboard */}
-            {latestAssessment && (
-              <div className="mb-8 bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-600 dark:to-indigo-700 p-4 text-white relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
-                  
-                  <div className="relative z-10 flex justify-between items-center">
-                    <div>
-                      <h2 className="text-xl font-bold">Your Assessment Results</h2>
-                      <p className="text-white/80 text-sm mt-1">Detailed analysis of your speaking skills</p>
-                    </div>
-                    <div className="flex items-center bg-white/20 rounded-full px-3 py-1.5">
-                      <span className="text-sm font-medium mr-1">Recommended Level:</span>
-                      <span className="text-sm font-bold bg-white/30 px-2 py-0.5 rounded-full">
-                        {latestAssessment.recommended_level || "B1"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            {/* Your Language Learning Journey Section */}
+            <div className="mb-8 bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 p-4 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
                 
-                <div className="p-5">
-                  {/* Overall Score and Confidence */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-xl">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                          Overall Score
-                        </h3>
-                        <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                          {latestAssessment.overall_score}/100
-                        </span>
-                      </div>
-                      <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                        <div 
-                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
-                          style={{ width: `${latestAssessment.overall_score}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400 italic">
-                        {latestAssessment.overall_score >= 80 ? "Excellent" : 
-                         latestAssessment.overall_score >= 70 ? "Very Good" :
-                         latestAssessment.overall_score >= 60 ? "Good" :
-                         latestAssessment.overall_score >= 50 ? "Fair" : "Needs Improvement"}
-                      </div>
-                    </div>
-                    
-                    <div className="bg-green-50/50 dark:bg-green-900/10 p-4 rounded-xl">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Confidence
-                        </h3>
-                        <span className="text-3xl font-bold text-green-600 dark:text-green-400">
-                          {latestAssessment.confidence}%
-                        </span>
-                      </div>
-                      <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                        <div 
-                          className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"
-                          style={{ width: `${latestAssessment.confidence}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400 italic">
-                        {latestAssessment.confidence >= 80 ? "Very Confident" : 
-                         latestAssessment.confidence >= 60 ? "Confident" :
-                         latestAssessment.confidence >= 40 ? "Moderately Confident" : "Needs Confidence Building"}
-                      </div>
-                    </div>
+                <div className="relative z-10 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold">Your Language Learning Journey</h2>
+                    <p className="text-white/80 text-sm mt-1">Track your progress and achievements</p>
                   </div>
-                  
-                  {/* Skill Breakdown */}
-                  <div className="mb-6">
-                    <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                      </svg>
-                      Skill Breakdown
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                      {['pronunciation', 'grammar', 'vocabulary', 'fluency', 'coherence'].map((skill) => {
-                        // Type assertion to access dynamic properties safely
-                        const skillData = latestAssessment ? 
-                          (latestAssessment as any)[skill] : { score: 0, feedback: '' };
-                        
-                        return (
-                          <div key={skill} className="bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
-                            <div className="flex justify-between items-center mb-1">
-                              <div className="text-sm font-medium capitalize text-slate-700 dark:text-slate-300">{skill}</div>
-                              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                {skillData.score}
-                              </div>
-                            </div>
-                            <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                              <div 
-                                className={`h-full ${getColorClass(skillData.score)} rounded-full`}
-                                style={{ width: `${skillData.score}%` }}
-                              ></div>
-                            </div>
-                            <div className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 h-8" title={skillData.feedback}>
-                              {skillData.feedback}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  {/* Strengths and Areas for Improvement */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-green-50/50 dark:bg-green-900/10 p-4 rounded-xl">
-                      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Strengths
-                      </h3>
-                      <ul className="space-y-2">
-                        {latestAssessment.strengths?.map((strength: string, index: number) => (
-                          <li key={index} className="flex items-start">
-                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs mr-2 mt-0.5 flex-shrink-0">
-                              {index + 1}
-                            </span>
-                            <span className="text-sm text-slate-700 dark:text-slate-300">{strength}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    <div className="bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-xl">
-                      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Areas to Improve
-                      </h3>
-                      <ul className="space-y-2">
-                        {latestAssessment.areas_for_improvement?.map((area: string, index: number) => (
-                          <li key={index} className="flex items-start">
-                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs mr-2 mt-0.5 flex-shrink-0">
-                              {index + 1}
-                            </span>
-                            <span className="text-sm text-slate-700 dark:text-slate-300">{area}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  {/* Next Steps */}
-                  <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl">
-                    <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                      </svg>
-                      Recommended Next Steps
-                    </h3>
-                    <ul className="space-y-2">
-                      {latestAssessment.next_steps?.map((step: string, index: number) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs mr-2 mt-0.5 flex-shrink-0">
-                            {index + 1}
-                          </span>
-                          <span className="text-sm text-slate-700 dark:text-slate-300">{step}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  {/* Recognized Text */}
-                  {latestAssessment.recognized_text && (
-                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                        Your Speech Sample
-                      </h3>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400 italic">
-                        "{latestAssessment.recognized_text}"
-                      </div>
-                    </div>
-                  )}
+                  <Button 
+                    onClick={() => router.push('/speech')}
+                    className="bg-white/20 hover:bg-white/30 text-white text-sm py-1.5 px-3 rounded-full transition-colors"
+                  >
+                    Create New Plan
+                  </Button>
                 </div>
               </div>
-            )}
+              
+              <div className="p-5">
+                {/* Assessment Cards - Accordion Style */}
+                {assessments.length > 0 ? (
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Your Assessment Results
+                      <span className="ml-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-full">
+                        {assessments.length}
+                      </span>
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      {assessments.map((assessment, index) => (
+                        <AssessmentCard
+                          key={index}
+                          assessment={assessment}
+                          isExpanded={expandedAssessments[index]}
+                          onToggle={() => toggleAssessment(index)}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg mb-6 text-center">
+                    <p className="text-blue-700 dark:text-blue-300 text-sm">
+                      You haven't completed any speaking assessments yet. Start a new learning plan to assess your skills.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
             
             {/* Learning Progress Summary */}
             {learningPlans.length > 0 && (
