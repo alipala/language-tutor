@@ -3,9 +3,16 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import os
 import openai
+import uuid
+import logging
+from datetime import datetime
 from auth import get_current_user
 from models import UserResponse
-from database import database
+from database import database, users_collection
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize router
 router = APIRouter(prefix="/learning", tags=["learning"])
@@ -305,36 +312,61 @@ async def assign_plan_to_user(
     """
     Assign an anonymous learning plan to the current user
     """
-    # Find the plan
-    plan = await learning_plans_collection.find_one({"id": plan_id})
+    # Convert user ID to string for consistent handling
+    user_id = str(current_user.id)
     
-    if not plan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Learning plan not found"
+    # Log the operation for debugging
+    logger.info(f"Assigning plan {plan_id} to user {user_id}")
+    
+    try:
+        # Find the plan
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        
+        if not plan:
+            logger.warning(f"Learning plan {plan_id} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning plan not found"
+            )
+        
+        # Check if the plan is not already assigned to a user
+        if plan.get("user_id"):
+            current_owner = plan.get("user_id")
+            logger.warning(f"Plan {plan_id} already assigned to user {current_owner}")
+            
+            # If it's already assigned to the current user, return it as is
+            if current_owner == user_id:
+                logger.info(f"Plan {plan_id} already assigned to current user {user_id}")
+                return plan
+                
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This learning plan is already assigned to a user"
+            )
+        
+        # Update the plan with the current user's ID
+        result = await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {"user_id": user_id}}
         )
-    
-    # Check if the plan is not already assigned to a user
-    if plan.get("user_id"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This learning plan is already assigned to a user"
-        )
-    
-    # Update the plan with the current user's ID
-    result = await learning_plans_collection.update_one(
-        {"id": plan_id},
-        {"$set": {"user_id": str(current_user.id)}}
-    )
-    
-    if result.modified_count == 0:
+        
+        if result.modified_count == 0:
+            logger.error(f"Failed to assign plan {plan_id} to user {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to assign learning plan to user"
+            )
+        
+        logger.info(f"Successfully assigned plan {plan_id} to user {user_id}")
+        
+        # Get the updated plan
+        updated_plan = await learning_plans_collection.find_one({"id": plan_id})
+    except Exception as e:
+        logger.error(f"Error assigning plan to user: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to assign learning plan to user"
+            detail=f"Error assigning plan to user: {str(e)}"
         )
-    
-    # Get the updated plan
-    updated_plan = await learning_plans_collection.find_one({"id": plan_id})
     
     return updated_plan
 
@@ -345,6 +377,126 @@ async def get_user_learning_plans(
     """
     Get all learning plans for the current user
     """
-    plans = await learning_plans_collection.find({"user_id": str(current_user.id)}).to_list(100)
+    # Convert user ID to string and handle ObjectId conversion properly
+    user_id = str(current_user.id)
+    
+    # Log the user ID being used for debugging
+    logger.info(f"Fetching learning plans for user ID: {user_id}")
+    
+    try:
+        # Try to find plans with the string user ID
+        plans = await learning_plans_collection.find({"user_id": user_id}).to_list(100)
+        
+        if not plans:
+            # If no plans found, try with ObjectId (in case it was stored that way)
+            try:
+                from bson import ObjectId
+                object_id = ObjectId(user_id)
+                plans = await learning_plans_collection.find({"user_id": object_id}).to_list(100)
+                
+                # If plans are found with ObjectId, log this for debugging
+                if plans:
+                    logger.info(f"Found {len(plans)} plans using ObjectId format")
+            except Exception as e:
+                logger.error(f"Error trying ObjectId conversion: {str(e)}")
+                # Continue with empty plans list if ObjectId conversion fails
+                pass
+        else:
+            logger.info(f"Found {len(plans)} plans using string user ID")
+    
+    except Exception as e:
+        logger.error(f"Error fetching learning plans: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching learning plans: {str(e)}")
     
     return plans
+
+
+class SpeakingAssessmentData(BaseModel):
+    """Model for speaking assessment data"""
+    assessment_data: Dict[str, Any]
+
+
+@router.post("/save-assessment", response_model=UserResponse)
+async def save_assessment_data(
+    assessment: SpeakingAssessmentData,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Save speaking assessment data to user profile and create a learning plan if requested
+    """
+    try:
+        # Import ObjectId for proper MongoDB ID handling
+        from bson import ObjectId
+        
+        # Convert user ID to the correct format for MongoDB
+        # If it's already an ObjectId, use it as is; if it's a string, convert it
+        user_id = current_user.id
+        if isinstance(user_id, str):
+            try:
+                user_id = ObjectId(user_id)
+            except Exception as e:
+                print(f"Warning: Could not convert user ID to ObjectId: {str(e)}")
+        
+        # First try to find the user to confirm they exist
+        user = await users_collection.find_one({"_id": user_id})
+        if not user:
+            # Try alternate formats as fallback
+            user = await users_collection.find_one({"_id": str(user_id)})
+            if not user:
+                raise HTTPException(status_code=404, detail=f"User not found with ID {user_id}")
+            else:
+                # If found with string ID, use that format
+                user_id = str(user_id)
+        
+        # Update the user's profile with the assessment data
+        result = await users_collection.update_one(
+            {"_id": user_id},
+            {"$set": {
+                "last_assessment_data": assessment.assessment_data,
+                "assessment_history": {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "data": assessment.assessment_data
+                }
+            }}
+        )
+        
+        # Log the update
+        print(f"Updated user profile with assessment data for user {user_id} (modified count: {result.modified_count})")
+        
+        # Get the updated user data
+        updated_user = await users_collection.find_one({"_id": user_id})
+        if not updated_user:
+            raise HTTPException(status_code=404, detail=f"User not found after update with ID {user_id}")
+        
+        # Properly handle the MongoDB _id field for UserResponse
+        # First, make a copy of the user data to avoid modifying the original
+        user_data = dict(updated_user)
+        
+        # Ensure _id is properly set for UserResponse
+        if "_id" in user_data:
+            # Convert ObjectId to string if needed
+            user_data["_id"] = str(user_data["_id"])
+        else:
+            # If _id is missing for some reason, raise a clear error
+            raise HTTPException(
+                status_code=500,
+                detail="User document is missing _id field"
+            )
+        
+        try:
+            # Create UserResponse object with the properly formatted data
+            return UserResponse(**user_data)
+        except Exception as e:
+            # Log detailed validation errors
+            print(f"Error creating UserResponse: {str(e)}")
+            print(f"User data keys: {user_data.keys()}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create user response object: {str(e)}"
+            )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save assessment data: {str(e)}"
+        )

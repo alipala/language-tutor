@@ -44,6 +44,40 @@ export interface LearningPlan {
       assessment: string;
     }[];
   };
+  assessment_data?: {
+    recognized_text: string;
+    recommended_level: string;
+    overall_score: number;
+    confidence: number;
+    pronunciation: {
+      score: number;
+      feedback: string;
+      examples: string[];
+    };
+    grammar: {
+      score: number;
+      feedback: string;
+      examples: string[];
+    };
+    vocabulary: {
+      score: number;
+      feedback: string;
+      examples: string[];
+    };
+    fluency: {
+      score: number;
+      feedback: string;
+      examples: string[];
+    };
+    coherence: {
+      score: number;
+      feedback: string;
+      examples: string[];
+    };
+    strengths: string[];
+    areas_for_improvement: string[];
+    next_steps: string[];
+  };
   created_at: string;
 }
 

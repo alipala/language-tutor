@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 # Import MongoDB and authentication modules
-from database import init_db
+from database import init_db, client, database, DATABASE_NAME
 from auth import get_current_user
 from models import UserResponse
 from auth_routes import router as auth_router
@@ -103,6 +103,20 @@ async def startup_db_client():
         # Initialize database
         await init_db()
         print("MongoDB initialized successfully")
+        
+        # Log available collections and their document counts
+        from database import database
+        if database is not None:
+            collections = await database.list_collection_names()
+            print(f"Available database collections: {collections}")
+            
+            # Log document counts for each collection
+            collection_stats = {}
+            for collection_name in collections:
+                count = await database[collection_name].count_documents({})
+                collection_stats[collection_name] = count
+            
+            print(f"Collection document counts: {collection_stats}")
     except Exception as e:
         print(f"ERROR initializing MongoDB: {str(e)}")
         print("The application will continue, but database functionality may be limited")
@@ -139,9 +153,59 @@ async def error_handling_middleware(request: Request, call_next):
         )
 
 # Simple test endpoint to verify API connectivity
-@app.get("/api/test")
+@app.get("/")
 async def test_endpoint():
-    return {"message": "Backend API is working correctly"}
+    return {"message": "Language Tutor API is running"}
+
+# API endpoints health check
+@app.get("/api/endpoints")
+async def api_endpoints():
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "methods") and hasattr(route, "path"):
+            path = route.path
+            methods = list(route.methods)
+            # Skip internal FastAPI endpoints
+            if not path.startswith("/docs") and not path.startswith("/openapi") and not path.startswith("/redoc"):
+                routes.append({
+                    "path": path,
+                    "methods": methods,
+                    "name": route.name,
+                    "tags": getattr(route, "tags", [])
+                })
+    
+    # Group by prefix for better organization
+    grouped_routes = {}
+    for route in routes:
+        parts = route["path"].split("/")
+        if len(parts) > 1:
+            prefix = parts[1] if parts[1] else "root"
+            if prefix not in grouped_routes:
+                grouped_routes[prefix] = []
+            grouped_routes[prefix].append(route)
+        else:
+            if "root" not in grouped_routes:
+                grouped_routes["root"] = []
+            grouped_routes["root"].append(route)
+    
+    # Count endpoints by type
+    endpoint_counts = {
+        "total": len(routes),
+        "by_method": {},
+        "by_prefix": {k: len(v) for k, v in grouped_routes.items()}
+    }
+    
+    for route in routes:
+        for method in route["methods"]:
+            if method not in endpoint_counts["by_method"]:
+                endpoint_counts["by_method"][method] = 0
+            endpoint_counts["by_method"][method] += 1
+    
+    return {
+        "status": "ok",
+        "endpoints": grouped_routes,
+        "stats": endpoint_counts
+    }
 
 # Direct endpoint for speaking prompts
 @app.get("/api/assessment/speaking/prompts")
@@ -182,79 +246,78 @@ async def get_speaking_prompts_direct(language: str):
             detail=f"Failed to provide speaking prompts: {str(e)}"
         )
 
-# Direct alternative endpoint for speaking prompts
-@app.get("/api/speaking-prompts")
-async def get_speaking_prompts_alt_direct(language: str):
-    try:
-        print(f"[Direct alternative endpoint] Generating speaking prompts for language: {language}")
-        # Default prompts for immediate response
-        default_prompts = {
-            "general": [
-                "Tell me about yourself and your language learning experience.",
-                "Describe your hometown and what you like about it.",
-                "What are your hobbies and interests?",
-                "Talk about your favorite book, movie, or TV show.",
-                "Describe your typical day."
-            ],
-            "travel": [
-                "Describe a memorable trip you've taken.",
-                "What's your favorite place to visit and why?",
-                "Talk about a place you would like to visit in the future.",
-                "Describe your ideal vacation.",
-                "What do you usually do when you travel?"
-            ],
-            "education": [
-                "Talk about your educational background.",
-                "Describe a teacher who influenced you.",
-                "What subjects did you enjoy studying?",
-                "How do you think education has changed in recent years?",
-                "Describe your learning style."
-            ]
-        }
-        print(f"[Direct alternative endpoint] Successfully provided prompts for {language}")
-        return {"prompts": default_prompts}
-    except Exception as e:
-        print(f"[Direct alternative endpoint] Error providing speaking prompts: {str(e)}")
-        print(f"[Direct alternative endpoint] Error traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to provide speaking prompts: {str(e)}"
-        )
-
 # Enhanced health check endpoint with detailed status information
-@app.get("/api/health")
+@app.get("/health")
+@app.get("/api/health")  # Add an additional route to match frontend expectations
 async def health_check():
     import platform
     import sys
     import time
     
+    # Current timestamp for uptime calculation
+    current_time = time.time()
+    
     # Get environment information
-    is_production = os.getenv("ENVIRONMENT") == "production"
-    environment = "production" if is_production else "development"
+    environment = os.getenv("ENVIRONMENT", "development")
+    is_railway = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true"
     
-    # Get system information
-    system_info = {
-        "python_version": sys.version,
-        "platform": platform.platform(),
-        "timestamp": time.time(),
-        "environment": environment,
-        "railway": os.getenv("RAILWAY") == "true"
-    }
-    
-    # Return comprehensive health data
     # Get all registered routes dynamically
     registered_routes = [route.path for route in app.routes if isinstance(route.path, str)]
     
     # Filter to only include API routes
     api_routes = [route for route in registered_routes if route.startswith('/api')]
     
-    return {
+    # Base health status that matches the frontend's expected format
+    health_status = {
         "status": "ok",
-        "version": "1.0.0",
-        "uptime": time.time(),  # You could track actual uptime if needed
-        "system_info": system_info,
-        "api_routes": api_routes
+        "version": os.getenv("VERSION", "development"),
+        "uptime": current_time,
+        "system_info": {
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "timestamp": current_time,
+            "environment": environment,
+            "railway": is_railway
+        },
+        "api_routes": api_routes,
+        "database": {
+            "connected": False,
+            "name": DATABASE_NAME
+        },
+        "openai": {
+            "configured": os.getenv("OPENAI_API_KEY") is not None
+        }
     }
+    
+    # Check database connection
+    try:
+        # Import the client directly from database module to avoid confusion with OpenAI client
+        from database import client as mongo_client
+        
+        if mongo_client is not None:
+            await mongo_client.admin.command('ping')
+            health_status["database"]["connected"] = True
+            
+            # Add collection stats
+            collections = await database.list_collection_names()
+            collection_stats = {}
+            for collection_name in collections:
+                count = await database[collection_name].count_documents({})
+                collection_stats[collection_name] = count
+            
+            health_status["database"]["collections"] = collection_stats
+    except Exception as e:
+        health_status["database"]["error"] = str(e)
+    
+    # Check OpenAI API key
+    if not os.getenv("OPENAI_API_KEY"):
+        health_status["openai"]["error"] = "API key not configured"
+    
+    # Set overall status based on checks
+    if not health_status["database"]["connected"] or not health_status["openai"]["configured"]:
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 # Serve static files in production
 if os.getenv("ENVIRONMENT") == "production":
@@ -1240,6 +1303,47 @@ async def get_speaking_prompts_alt(language: str):
     except Exception as e:
         print(f"[Alternative endpoint] Error providing speaking prompts: {str(e)}")
         print(f"[Alternative endpoint] Error traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to provide speaking prompts: {str(e)}"
+        )
+
+# Add direct endpoints for speaking prompts to match frontend expectations
+# The frontend is trying both with and without leading slash
+@app.get("/api/speaking-prompts")
+@app.get("api/speaking-prompts")  # Also handle path without leading slash
+async def get_speaking_prompts_direct_api(language: str):
+    try:
+        print(f"Direct API endpoint called: /api/speaking-prompts with language={language}")
+        # Use default prompts directly to avoid any potential issues with the generate function
+        default_prompts = {
+            "general": [
+                "Tell me about yourself and your language learning experience.",
+                "Describe your hometown and what you like about it.",
+                "What are your hobbies and interests?",
+                "Talk about your favorite book, movie, or TV show.",
+                "Describe your typical day."
+            ],
+            "travel": [
+                "Describe a memorable trip you've taken.",
+                "What's your favorite place to visit and why?",
+                "Talk about a place you would like to visit in the future.",
+                "Describe your ideal vacation.",
+                "What do you usually do when you travel?"
+            ],
+            "education": [
+                "Talk about your educational background.",
+                "Describe a teacher who influenced you.",
+                "What subjects did you enjoy studying?",
+                "How do you think education has changed in recent years?",
+                "Describe your learning style."
+            ]
+        }
+        print(f"Successfully provided default prompts for {language} from direct API endpoint")
+        return {"prompts": default_prompts}
+    except Exception as e:
+        print(f"Error providing speaking prompts from direct API endpoint: {str(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to provide speaking prompts: {str(e)}"

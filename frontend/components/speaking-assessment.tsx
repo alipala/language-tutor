@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Play, RotateCw, Volume2, ChevronRight } from 'lucide-react';
+import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { assessSpeaking, fetchSpeakingPrompts, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
+import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
+import { isAuthenticated } from '@/lib/auth-utils';
+import { useNotification } from '@/components/ui/notification';
 import LearningPlanModal from './learning-plan-modal';
 
 interface SpeakingAssessmentProps {
@@ -18,6 +20,9 @@ export default function SpeakingAssessment({
   onComplete, 
   onSelectLevel 
 }: SpeakingAssessmentProps) {
+  // Access notification context
+  const { showNotification } = useNotification();
+  
   // State for recording and assessment
   const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'complete'>('idle');
   const [showLearningPlanModal, setShowLearningPlanModal] = useState(false);
@@ -177,41 +182,61 @@ export default function SpeakingAssessment({
   }, [audioUrl]);
 
   const startRecording = async () => {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      showNotification(
+        'warning',
+        'Please sign in before starting the assessment. Your progress will be saved to your profile.',
+        7000
+      );
+      return;
+    }
+    
     try {
-      audioChunksRef.current = [];
-      setStatus('recording');
+      // Reset state
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setTranscription('');
+      setAssessment(null);
+      setError('');
+      
+      // Start timer
       setTimer(60);
       setIsTimerActive(true);
-      setError('');
-      setAssessment(null);
-      setTranscription('');
-
+      
+      // Get user media
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Create media recorder
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
-
+      audioChunksRef.current = [];
+      
+      // Set up event handlers
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-
+      
       mediaRecorder.onstop = () => {
+        // Create audio blob
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
         setAudioBlob(audioBlob);
+        setAudioUrl(audioUrl);
         
-        // Create audio URL for playback
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
-        
+        // Process recording
         processRecording(audioBlob);
       };
-
-      mediaRecorder.start();
-    } catch (err) {
+      
+      // Start recording
+      mediaRecorder.start(100);
+      setStatus('recording');
+    } catch (err: any) {
       console.error('Error starting recording:', err);
-      setError('Could not access microphone. Please check your browser permissions.');
-      setStatus('idle');
+      setError(`Error accessing microphone: ${err.message || 'Please check your microphone permissions.'}`);
     }
   };
 
@@ -226,26 +251,41 @@ export default function SpeakingAssessment({
   };
 
   const processRecording = async (blob: Blob) => {
-    setStatus('processing');
     try {
-      // Send to backend for assessment
+      setStatus('processing');
+      
+      // Get assessment from API
       const result = await assessSpeaking(
-        blob,
-        language,
-        60 - timer, // Actual duration recorded
+        blob, 
+        language, 
+        60 - timer,
         promptRef.current
       );
       
-      setTranscription(result.recognized_text);
+      // Set assessment result
       setAssessment(result);
       setStatus('complete');
       
+      // Save assessment data to user profile
+      try {
+        const saved = await saveSpeakingAssessment(result);
+        if (saved) {
+          console.log('Assessment data saved to user profile');
+        } else {
+          console.warn('Failed to save assessment data to user profile');
+        }
+      } catch (saveErr) {
+        console.error('Error saving assessment data:', saveErr);
+        // Don't show this error to the user as it's not critical
+      }
+      
+      // Call onComplete callback if provided
       if (onComplete) {
         onComplete(result);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error processing recording:', err);
-      setError('Failed to process your speech. Please try again.');
+      setError(`Error processing recording: ${err.message || 'Unknown error'}`);
       setStatus('idle');
     }
   };
@@ -341,6 +381,9 @@ export default function SpeakingAssessment({
     return 'bg-red-500';
   };
 
+  // Check if user is authenticated
+  const userIsAuthenticated = isAuthenticated();
+
   return (
     <div className="flex flex-col space-y-6 w-full max-w-4xl mx-auto bg-gray-800 rounded-xl p-6 shadow-lg">
       {/* Hidden audio player for playback */}
@@ -353,6 +396,31 @@ export default function SpeakingAssessment({
         />
       )}
       
+      {/* Authentication Banner - always visible if not authenticated */}
+      {!userIsAuthenticated && (
+        <div className="bg-yellow-900/80 border-l-4 border-yellow-500 p-4 mb-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-300">Authentication Required</h3>
+              <div className="mt-1 text-sm text-yellow-200">
+                <p>Your assessment results will not be saved to your profile unless you sign in.</p>
+              </div>
+              <div className="mt-3">
+                <a 
+                  href="/auth/login" 
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md bg-yellow-800 hover:bg-yellow-700 text-yellow-100"
+                >
+                  Sign In
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white mb-2">Speaking Assessment</h2>
@@ -360,25 +428,45 @@ export default function SpeakingAssessment({
           Speak for 30-60 seconds to assess your {language} proficiency level
         </p>
       </div>
-      
-      {/* Prompt Selection (only in idle state) */}
-      {status === 'idle' && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-3">Speaking Prompt</h3>
-          
-          {/* Prompt Categories */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {prompts && Object.keys(prompts).map((category) => (
+    
+    {/* Prompt Selection (only in idle state) */}
+    {status === 'idle' && (
+      <div className="bg-gray-700 rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-white mb-3">Speaking Prompt</h3>
+        
+        {/* Prompt Categories */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {prompts && Object.keys(prompts).map((category) => (
+            <button
+              key={category}
+              onClick={() => handleSelectPromptCategory(category)}
+              className={`px-3 py-1 rounded-full text-sm ${
+                selectedPromptCategory === category 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
+              }`}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </button>
+          ))}
+        </div>
+        
+        {/* Selected Prompt */}
+        <div className="bg-gray-800 p-4 rounded-lg mb-4 border border-gray-600">
+          <p className="text-white">{selectedPrompt}</p>
+        </div>
+        
+        {/* Other Prompts in Selected Category */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-300">Other prompts:</h4>
+          {prompts && prompts[selectedPromptCategory]?.map((prompt, index) => 
+            prompt !== selectedPrompt && (
               <button
-                key={category}
-                onClick={() => handleSelectPromptCategory(category)}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  selectedPromptCategory === category 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
-                }`}
+                key={index}
+                onClick={() => handleSelectPrompt(prompt)}
+                className="px-3 py-1 rounded-full text-sm bg-gray-600 text-gray-200 hover:bg-gray-500"
               >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                {prompt}
               </button>
             ))}
           </div>

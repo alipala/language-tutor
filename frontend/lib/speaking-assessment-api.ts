@@ -1,5 +1,13 @@
 import { getApiUrl } from './api-utils';
 
+// Utility function to get auth token from localStorage
+const getAuthToken = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('token');
+  }
+  return null;
+};
+
 // Types for speaking assessment
 export interface SkillScore {
   score: number;
@@ -133,6 +141,44 @@ const DEFAULT_PROMPTS: SpeakingPrompt = {
 };
 
 // Function to fetch speaking prompts from the backend
+// Function to save speaking assessment data to user profile
+export const saveSpeakingAssessment = async (
+  assessmentData: SpeakingAssessmentResult
+): Promise<boolean> => {
+  try {
+    // Get the API URL and auth token
+    const apiUrl = getApiUrl();
+    const token = getAuthToken();
+    
+    if (!token) {
+      console.error('No auth token available, cannot save assessment data');
+      return false;
+    }
+    
+    // Make the API request
+    const response = await fetch(`${apiUrl}/learning/save-assessment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ assessment_data: assessmentData })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error saving assessment data: ${response.status} ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Assessment data saved successfully:', data);
+    return true;
+  } catch (error) {
+    console.error('Error saving speaking assessment data:', error);
+    return false;
+  }
+};
+
 export const fetchSpeakingPrompts = async (
   language: string
 ): Promise<SpeakingPrompt> => {
