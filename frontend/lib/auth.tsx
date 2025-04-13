@@ -45,43 +45,103 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Check if user is logged in on mount
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
+        // Check if we're in Railway environment for additional logging
+        const isRailway = typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
+        if (isRailway) {
+          console.log('Running auth check in Railway environment');
+          console.log('API_URL:', API_URL);
+        }
+        
+        // Try to get token from localStorage
+        let token;
+        try {
+          token = localStorage.getItem('token');
+        } catch (storageErr) {
+          console.error('Error accessing localStorage:', storageErr);
+          // Continue without token
+        }
+        
         if (token) {
           console.log('Checking authentication with token');
-          const response = await fetch(`${API_URL}/auth/me`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            credentials: 'omit',  // Don't send cookies for cross-origin requests
-            mode: 'cors'  // Explicitly use CORS mode
-          });
-
-          console.log('Auth check response status:', response.status);
           
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('User data retrieved:', userData);
-            // Store user data in localStorage
-            localStorage.setItem('userData', JSON.stringify(userData));
-            setUser(userData);
-          } else {
-            // Token is invalid or expired
-            console.log('Token invalid or expired, clearing');
-            localStorage.removeItem('token');
-            setUser(null);
+          // Determine the correct URL to use
+          const authUrl = isRailway ? '/auth/me' : `${API_URL}/auth/me`;
+          console.log('Using auth URL:', authUrl);
+          
+          try {
+            const response = await fetch(authUrl, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              credentials: 'omit',  // Don't send cookies for cross-origin requests
+              mode: 'cors'  // Explicitly use CORS mode
+            });
+
+            console.log('Auth check response status:', response.status);
+            
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('User data retrieved:', userData);
+              
+              // Store user data in localStorage
+              try {
+                localStorage.setItem('userData', JSON.stringify(userData));
+              } catch (storageErr) {
+                console.error('Error storing user data in localStorage:', storageErr);
+                // Continue without storing in localStorage
+              }
+              
+              setUser(userData);
+            } else {
+              // Token is invalid or expired
+              console.log('Token invalid or expired, clearing');
+              try {
+                localStorage.removeItem('token');
+              } catch (storageErr) {
+                console.error('Error removing token from localStorage:', storageErr);
+              }
+              setUser(null);
+            }
+          } catch (fetchErr) {
+            console.error('Fetch error during auth check:', fetchErr);
+            // Try to recover with cached user data if available
+            try {
+              const cachedUserData = localStorage.getItem('userData');
+              if (cachedUserData) {
+                console.log('Recovering with cached user data');
+                const userData = JSON.parse(cachedUserData);
+                setUser(userData);
+              } else {
+                setUser(null);
+              }
+            } catch (cacheErr) {
+              console.error('Error recovering with cached data:', cacheErr);
+              setUser(null);
+            }
           }
         } else {
           console.log('No token found in localStorage');
-          setLoading(false);
+          setUser(null);
         }
       } catch (err) {
         console.error('Auth check error:', err);
-        // Clear token on error as it might be invalid
-        localStorage.removeItem('token');
-        setUser(null);
+        // Try to recover with cached user data if available
+        try {
+          const cachedUserData = localStorage.getItem('userData');
+          if (cachedUserData) {
+            console.log('Recovering with cached user data after error');
+            const userData = JSON.parse(cachedUserData);
+            setUser(userData);
+          } else {
+            setUser(null);
+          }
+        } catch (cacheErr) {
+          console.error('Error recovering with cached data:', cacheErr);
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
