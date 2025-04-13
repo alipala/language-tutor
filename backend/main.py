@@ -153,7 +153,7 @@ async def error_handling_middleware(request: Request, call_next):
         )
 
 # Simple test endpoint to verify API connectivity
-@app.get("/")
+@app.get("/api/test")
 async def test_endpoint():
     return {"message": "Language Tutor API is running"}
 
