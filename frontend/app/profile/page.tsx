@@ -180,11 +180,9 @@ export default function ProfilePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white dark:from-slate-900 dark:to-slate-800">
         <NavBar />
-        
-        {/* Main content */}
-        <main className="flex-grow container mx-auto p-4 md:p-6">
+        <main className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">    
           <div className="max-w-4xl mx-auto px-4 py-8 md:px-6">
             {/* Your Language Learning Journey Section */}
             <div className="mb-8 bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden">
