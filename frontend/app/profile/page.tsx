@@ -42,7 +42,7 @@ export default function ProfilePage() {
   if (user?.last_assessment_data) {
     assessments.push({
       ...user.last_assessment_data,
-      date: user.created_at || new Date().toISOString(),
+      date: new Date().toISOString(), // Using current date as fallback since User type doesn't have created_at
       source: 'User Profile',
       expanded: true // First assessment is expanded by default
     });
@@ -54,7 +54,7 @@ export default function ProfilePage() {
       assessments.push({
         ...plan.assessment_data,
         date: plan.created_at || new Date().toISOString(),
-        planId: plan._id,
+        planId: plan.id,
         language: plan.language,
         level: plan.proficiency_level,
         source: `${plan.language} - ${plan.proficiency_level}`,
