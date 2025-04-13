@@ -180,12 +180,12 @@ export default function ProfilePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white dark:from-slate-900 dark:to-slate-800">
+      <div className="min-h-screen gradient-background">
         <NavBar />
         <main className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">    
           <div className="max-w-4xl mx-auto px-4 py-8 md:px-6">
             {/* Your Language Learning Journey Section */}
-            <div className="mb-8 bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden">
+            <div className="mb-8 glass-card rounded-xl shadow-lg overflow-hidden">
               <div className="bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 p-4 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
@@ -240,9 +240,9 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            {/* Learning Progress Summary */}
+            {/* Learning Stats Section */}
             {learningPlans.length > 0 && (
-              <div className="mb-8 bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden">
+              <div className="mb-8 glass-card rounded-xl shadow-lg overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 p-4 text-white relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
@@ -652,7 +652,7 @@ export default function ProfilePage() {
             </div>
             
             {/* Account Actions Section */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden mb-8">
+            <div className="glass-card rounded-xl shadow-lg overflow-hidden mb-8">
               <div className="bg-gradient-to-r from-red-500 to-orange-600 dark:from-red-600 dark:to-orange-700 p-4 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
