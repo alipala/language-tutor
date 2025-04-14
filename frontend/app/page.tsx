@@ -340,17 +340,17 @@ export default function Home() {
               >
                 <TypeAnimation
                   sequence={[
-                    'Welcome to Language Tutor! 🌎',
+                    'Welcome to Language Tutor!',
                     2000,
-                    'Welkom bij Language Tutor! 🇳🇱',
+                    'Welkom bij Language Tutor!',
                     1500,
-                    '¡Bienvenido a Language Tutor! 🇪🇸',
+                    '¡Bienvenido a Language Tutor!',
                     1500,
-                    'Willkommen bei Language Tutor! 🇩🇪',
+                    'Willkommen bei Language Tutor!',
                     1500,
-                    'Bienvenue à Language Tutor! 🇫🇷',
+                    'Bienvenue à Language Tutor!',
                     1500,
-                    'Bem-vindo ao Language Tutor! 🇵🇹',
+                    'Bem-vindo ao Language Tutor!',
                     1500,
                   ]}
                   wrapper="span"

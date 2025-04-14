@@ -88,8 +88,9 @@
 .scroll-indicator {
   position: absolute;
   bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -98,7 +99,7 @@
   font-size: 0.875rem;
   opacity: 0.8;
   animation: bounce 2s infinite;
-  width: 100%;
+  width: 200px;
   text-align: center;
 }
 
