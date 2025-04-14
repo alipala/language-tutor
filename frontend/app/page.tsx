@@ -286,9 +286,40 @@ export default function Home() {
     }
   };
 
+  // State to track which section is visible
+  const [activeSection, setActiveSection] = useState('section1');
+
+  // Effect to handle scroll and update navbar color
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleScroll = () => {
+      const section1 = document.getElementById('section1');
+      const section2 = document.getElementById('section2');
+      const section3 = document.getElementById('section3');
+      
+      if (!section1 || !section2 || !section3) return;
+      
+      const scrollPosition = window.scrollY + window.innerHeight / 2;
+      
+      if (scrollPosition < section2.offsetTop) {
+        setActiveSection('section1');
+      } else if (scrollPosition < section3.offsetTop) {
+        setActiveSection('section2');
+      } else {
+        setActiveSection('section3');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
-      <NavBar />
+      <div className={`navbar-fixed navbar-${activeSection}`}>
+        <NavBar />
+      </div>
       
       {isLoading ? (
         <div className="flex-grow flex flex-col items-center justify-center p-4">
@@ -302,19 +333,24 @@ export default function Home() {
             <div className="section-background"></div>
             <div className="section-content">
               <motion.h1
+                className="text-5xl font-bold tracking-tight relative z-10 min-h-[5rem] text-white"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
               >
                 <TypeAnimation
                   sequence={[
-                    'Master Languages with AI',
+                    'Welcome to Language Tutor! 🌎',
                     2000,
-                    'Speak with Confidence',
+                    'Welkom bij Language Tutor! 🇳🇱',
                     1500,
-                    'Learn at Your Own Pace',
+                    '¡Bienvenido a Language Tutor! 🇪🇸',
                     1500,
-                    'Practice Real Conversations',
+                    'Willkommen bei Language Tutor! 🇩🇪',
+                    1500,
+                    'Bienvenue à Language Tutor! 🇫🇷',
+                    1500,
+                    'Bem-vindo ao Language Tutor! 🇵🇹',
                     1500,
                   ]}
                   wrapper="span"
