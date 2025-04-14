@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import NavBar from '@/components/nav-bar';
 import { TypeAnimation } from 'react-type-animation';
+import './landing-sections.css';
+import { motion } from 'framer-motion';
 
 // Export the main component
 export default function Home() {
@@ -187,124 +189,158 @@ export default function Home() {
   }, [user, authLoading]);
   
   // Return loading state while redirecting or manual navigation option if we hit the redirect limit
+  // Scroll to section function
+  const scrollToSection = (sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Handle start learning button click
+  const handleStartLearning = () => {
+    try {
+      // Show loading state
+      setIsLoading(true);
+      setError(null);
+      
+      // Clear any existing session data except user preferences
+      if (!user) {
+        sessionStorage.clear();
+      }
+      
+      // Set a navigation attempt counter to track potential issues
+      const attemptCount = parseInt(sessionStorage.getItem('homePageNavigationAttempt') || '0');
+      sessionStorage.setItem('homePageNavigationAttempt', (attemptCount + 1).toString());
+      
+      // Log the navigation attempt
+      console.log('Start Learning button clicked at:', new Date().toISOString());
+      console.log('Current pathname before navigation:', window.location.pathname);
+      console.log('User authenticated:', user ? 'Yes' : 'No');
+      console.log('Navigation attempt count:', attemptCount + 1);
+      
+      // IMPORTANT: Use absolute URL with origin for Railway
+      const fullUrl = `${window.location.origin}/language-selection`;
+      console.log('Navigating to:', fullUrl);
+      
+      // Force a hard navigation instead of client-side routing
+      window.location.replace(fullUrl);
+      
+      // Set a fallback timer with longer timeout
+      setTimeout(() => {
+        if (window.location.pathname === '/' || window.location.pathname === '') {
+          console.error('Navigation failed, still on homepage after timeout');
+          setIsLoading(false);
+          setError('Navigation to language selection failed. Please try again.');
+          
+          // If we've tried multiple times, suggest a hard refresh
+          if (attemptCount >= 2) {
+            setError('Navigation issues detected. Please try refreshing your browser or clearing cache.');
+          }
+        }
+      }, 5000); // Increased timeout for Railway environment
+    } catch (e) {
+      console.error('Navigation error:', e);
+      setIsLoading(false);
+      setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+  };
+
+  // Handle sign in button click
+  const handleSignIn = () => {
+    try {
+      // Show loading state
+      setIsLoading(true);
+      setError(null);
+      
+      // Log the navigation attempt
+      console.log('Sign In button clicked at:', new Date().toISOString());
+      console.log('Current pathname before navigation:', window.location.pathname);
+      
+      // Store navigation intent in session storage
+      sessionStorage.setItem('authNavigation', 'login');
+      sessionStorage.setItem('authNavigationAttemptTime', Date.now().toString());
+      
+      // Use the most direct and reliable navigation approach
+      const fullUrl = `${window.location.origin}/auth/login`;
+      console.log('Navigating to:', fullUrl);
+      
+      // IMPORTANT: For Railway, use direct window.location.href navigation
+      window.location.href = fullUrl;
+      
+      // Set a fallback timer to detect navigation failures
+      setTimeout(() => {
+        if (window.location.pathname === '/' || window.location.pathname === '') {
+          console.error('Navigation failed, still on homepage after timeout');
+          setIsLoading(false);
+          setError('Navigation to login page failed. Please try again.');
+          // Clear navigation intent
+          sessionStorage.removeItem('authNavigation');
+          sessionStorage.removeItem('authNavigationAttemptTime');
+        }
+      }, 1500);
+    } catch (e) {
+      console.error('Navigation error:', e);
+      setIsLoading(false);
+      setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <div className="flex-grow flex flex-col items-center justify-center p-4">
-        <div className="flex flex-col items-center justify-center space-y-4">
-        {isLoading ? (
-          <>
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-            <p className="text-center text-gray-500 dark:text-gray-400">Redirecting to language selection...</p>
-          </>
-        ) : (
-          <div className="flex flex-col items-center space-y-6 mt-8">
-            {/* Header with animated elements */}
-            <div className="text-center mb-8 relative">
-              {/* Animated background effects */}
-              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-white/10 blur-xl animate-pulse"></div>
-              
-              <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[5rem] text-white">
+      
+      {isLoading ? (
+        <div className="flex-grow flex flex-col items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+          <p className="text-center text-white/80">Redirecting to language selection...</p>
+        </div>
+      ) : (
+        <div id="startScreen" className="start-screen">
+          {/* First Section */}
+          <section id="section1" className="landing-section landing-first">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <motion.h1
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
                 <TypeAnimation
                   sequence={[
-                    'Welcome to Language Tutor! 🌍',
+                    'Master Languages with AI',
                     2000,
-                    'Welkom bij Language Tutor! 🇳🇱',
+                    'Speak with Confidence',
                     1500,
-                    '¡Bienvenido a Language Tutor! 🇪🇸',
+                    'Learn at Your Own Pace',
                     1500,
-                    'Willkommen bei Language Tutor! 🇩🇪',
-                    1500,
-                    'Bienvenue à Language Tutor! 🇫🇷',
-                    1500,
-                    'Bem-vindo ao Language Tutor! 🇵🇹',
+                    'Practice Real Conversations',
                     1500,
                   ]}
                   wrapper="span"
                   speed={50}
-                  style={{ display: 'inline-block' }}
                   repeat={Infinity}
                   cursor={true}
-                  className="text-white drop-shadow-sm"
                 />
-              </h1>
-              <div className="text-white/80 mt-6 text-lg max-w-md mx-auto" style={{ height: '3rem', minHeight: '3rem' }}>
-                <TypeAnimation
-                  sequence={[
-                    'Choose a language to start your journey 🚀',
-                    2000,
-                    'Oefen gesprekken met een AI-tutor 🤖',
-                    1500,
-                    'Practica con un tutor de IA ✨',
-                    1500,
-                    'Üben Sie mit einem KI-Tutor 🕒',
-                    1500,
-                    'Pratiquez avec un tuteur IA 🎯',
-                    1500,
-                  ]}
-                  wrapper="p"
-                  speed={55}
-                  style={{ display: 'inline-block' }}
-                  repeat={Infinity}
-                  cursor={true}
-                  className="text-white/80 animate-fade-in"
-                />
-              </div>
-            </div>
-            
-            <div className="flex flex-col space-y-4 w-[320px] mt-8 mx-auto" style={{ height: '180px' }}>
-              <button 
-                onClick={() => {
-                  try {
-                    // Show loading state
-                    setIsLoading(true);
-                    setError(null);
-                    
-                    // Clear any existing session data except user preferences
-                    // We don't want to clear the entire sessionStorage as it might contain user data
-                    if (!user) {
-                      sessionStorage.clear();
-                    }
-                    
-                    // Set a navigation attempt counter to track potential issues
-                    const attemptCount = parseInt(sessionStorage.getItem('homePageNavigationAttempt') || '0');
-                    sessionStorage.setItem('homePageNavigationAttempt', (attemptCount + 1).toString());
-                    
-                    // Log the navigation attempt
-                    console.log('Start Learning button clicked at:', new Date().toISOString());
-                    console.log('Current pathname before navigation:', window.location.pathname);
-                    console.log('User authenticated:', user ? 'Yes' : 'No');
-                    console.log('Navigation attempt count:', attemptCount + 1);
-                    
-                    // IMPORTANT: Use absolute URL with origin for Railway
-                    const fullUrl = `${window.location.origin}/language-selection`;
-                    console.log('Navigating to:', fullUrl);
-                    
-                    // Force a hard navigation instead of client-side routing
-                    // window.location.replace() is more reliable than href for full page navigation
-                    window.location.replace(fullUrl);
-                    
-                    // Set a fallback timer with longer timeout
-                    setTimeout(() => {
-                      if (window.location.pathname === '/' || window.location.pathname === '') {
-                        console.error('Navigation failed, still on homepage after timeout');
-                        setIsLoading(false);
-                        setError('Navigation to language selection failed. Please try again.');
-                        
-                        // If we've tried multiple times, suggest a hard refresh
-                        if (attemptCount >= 2) {
-                          setError('Navigation issues detected. Please try refreshing your browser or clearing cache.');
-                        }
-                      }
-                    }, 5000); // Increased timeout for Railway environment
-                  } catch (e) {
-                    console.error('Navigation error:', e);
-                    setIsLoading(false);
-                    setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
-                  }
-                }}
-                className="w-[320px] h-[52px] primary-button px-4 py-3 rounded-lg flex items-center justify-center"
+              </motion.h1>
+              
+              <motion.p 
+                className="section-description"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.3 }}
+              >
+                Your personal AI language tutor that adapts to your learning style and helps you become fluent through natural conversations.
+              </motion.p>
+              
+              <motion.button
+                className="start-button"
+                onClick={handleStartLearning}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -315,132 +351,184 @@ export default function Home() {
                 ) : (
                   <>
                     <span>Start Learning</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </>
                 )}
-              </button>
+              </motion.button>
               
               {!user && (
-                <div className="flex flex-col space-y-2 mt-4 w-[320px]">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.9 }}
+                  className="mt-4"
+                >
                   <button
-                    onClick={() => {
-                      try {
-                        // Show loading state
-                        setIsLoading(true);
-                        setError(null);
-                        
-                        // Log the navigation attempt
-                        console.log('Sign In button clicked at:', new Date().toISOString());
-                        console.log('Current pathname before navigation:', window.location.pathname);
-                        
-                        // Store navigation intent in session storage
-                        sessionStorage.setItem('authNavigation', 'login');
-                        sessionStorage.setItem('authNavigationAttemptTime', Date.now().toString());
-                        
-                        // Use the most direct and reliable navigation approach
-                        const fullUrl = `${window.location.origin}/auth/login`;
-                        console.log('Navigating to:', fullUrl);
-                        
-                        // IMPORTANT: For Railway, use direct window.location.href navigation
-                        window.location.href = fullUrl;
-                        
-                        // Set a fallback timer to detect navigation failures
-                        setTimeout(() => {
-                          if (window.location.pathname === '/' || window.location.pathname === '') {
-                            console.error('Navigation failed, still on homepage after timeout');
-                            setIsLoading(false);
-                            setError('Navigation to login page failed. Please try again.');
-                            // Clear navigation intent
-                            sessionStorage.removeItem('authNavigation');
-                            sessionStorage.removeItem('authNavigationAttemptTime');
-                          }
-                        }, 1500);
-                      } catch (e) {
-                        console.error('Navigation error:', e);
-                        setIsLoading(false);
-                        setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
-                      }
-                    }}
-                    className="w-[320px] h-[44px] py-2 px-4 glass-card border border-white/20 text-white rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
+                    onClick={handleSignIn}
+                    className="text-white/90 hover:text-white underline text-sm font-medium transition-colors"
                     disabled={isLoading}
                   >
-                    {isLoading && sessionStorage.getItem('authNavigation') === 'login' ? (
-                      <>
-                        <div className="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full mr-2"></div>
-                        <span>Navigating...</span>
-                      </>
-                    ) : (
-                      'Sign In'
-                    )}
+                    Already have an account? Sign in
                   </button>
-                  <button
-                    onClick={() => {
-                      try {
-                        // Show loading state
-                        setIsLoading(true);
-                        setError(null);
-                        
-                        // Log the navigation attempt
-                        console.log('Create Account button clicked at:', new Date().toISOString());
-                        console.log('Current pathname before navigation:', window.location.pathname);
-                        
-                        // Store navigation intent in session storage
-                        sessionStorage.setItem('authNavigation', 'signup');
-                        sessionStorage.setItem('authNavigationAttemptTime', Date.now().toString());
-                        
-                        // Use the most direct and reliable navigation approach
-                        const fullUrl = `${window.location.origin}/auth/signup`;
-                        console.log('Navigating to:', fullUrl);
-                        
-                        // IMPORTANT: For Railway, use direct window.location.href navigation
-                        window.location.href = fullUrl;
-                        
-                        // Set a fallback timer to detect navigation failures
-                        setTimeout(() => {
-                          if (window.location.pathname === '/' || window.location.pathname === '') {
-                            console.error('Navigation failed, still on homepage after timeout');
-                            setIsLoading(false);
-                            setError('Navigation to signup page failed. Please try again.');
-                            // Clear navigation intent
-                            sessionStorage.removeItem('authNavigation');
-                            sessionStorage.removeItem('authNavigationAttemptTime');
-                          }
-                        }, 1500);
-                      } catch (e) {
-                        console.error('Navigation error:', e);
-                        setIsLoading(false);
-                        setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
-                      }
-                    }}
-                    className="w-[320px] h-[44px] py-2 px-4 secondary-button rounded-lg flex items-center justify-center"
-                    disabled={isLoading}
-                  >
-                    {isLoading && sessionStorage.getItem('authNavigation') === 'signup' ? (
-                      <>
-                        <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-transparent rounded-full mr-2"></div>
-                        <span>Navigating...</span>
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
-                </div>
+                </motion.div>
               )}
+            </div>
+            
+            <div className="scroll-indicator" onClick={() => scrollToSection('section2')}>
+              <span>Scroll to explore</span>
+              <div className="scroll-arrow"></div>
+            </div>
+          </section>
+
+          {/* Second Section */}
+          <section id="section2" className="landing-section landing-second">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <motion.h2 
+                className="text-3xl font-bold text-white mb-8"
+                initial={{ opacity: 0, y: -20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+              >
+                Why Language Tutor is Different
+              </motion.h2>
               
-              {parseInt(sessionStorage.getItem('homePageRedirectAttempt') || '0') > 2 && (
-                <div className="p-4 glass-card rounded-lg mt-4 border border-white/20">
+              <div className="feature-cards">
+                <motion.div 
+                  className="feature-card"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="card-number">1</div>
+                  <h3>AI-Powered Conversations</h3>
+                  <p>Practice speaking with our advanced AI tutor that responds naturally, corrects your mistakes, and adapts to your learning pace. Experience real-world conversations that prepare you for actual language use.</p>
+                </motion.div>
+                
+                <motion.div 
+                  className="feature-card"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="card-number">2</div>
+                  <h3>Personalized Learning Path</h3>
+                  <p>Our system adapts to your proficiency level, learning style, and interests. Get customized lessons, vocabulary, and speaking exercises that focus on your specific needs and goals in language learning.</p>
+                </motion.div>
+                
+                <motion.div 
+                  className="feature-card"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="card-number">3</div>
+                  <h3>Instant Feedback & Progress</h3>
+                  <p>Receive immediate feedback on pronunciation, grammar, and vocabulary usage. Track your improvement over time with detailed progress reports and see how your language skills evolve with each practice session.</p>
+                </motion.div>
+              </div>
+              
+              <motion.button
+                className="start-button mt-12"
+                onClick={handleStartLearning}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                viewport={{ once: true }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    <span>Navigating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Start Your Journey</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </section>
+
+          {/* Third Section */}
+          <section id="section3" className="landing-section landing-third">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <motion.h2 
+                className="text-3xl font-bold text-white mb-8"
+                initial={{ opacity: 0, y: -20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+              >
+                Ready to Become Fluent?
+              </motion.h2>
+              
+              <motion.p 
+                className="text-white/90 text-lg max-w-2xl mx-auto mb-10"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                Join thousands of language learners who have improved their speaking skills with our AI-powered platform. Start your free trial today and experience the future of language learning.
+              </motion.p>
+              
+              <motion.button
+                className="start-button"
+                onClick={handleStartLearning}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                viewport={{ once: true }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    <span>Navigating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Get Started for Free</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </>
+                )}
+              </motion.button>
+              
+              <div className="contact-info">
+                <p className="email">Questions? Contact us at: support@languagetutor.ai</p>
+                <p className="project-info">Powered by advanced AI language models</p>
+                <p className="copyright">© 2025 Language Tutor. All rights reserved.</p>
+              </div>
+              
+              {error && (
+                <div className="p-4 glass-card rounded-lg mt-8 border border-white/20 max-w-md mx-auto">
                   <p className="text-sm text-white/80">
-                    We detected navigation issues. If you're having trouble, try clearing your browser cache or using a different browser.
+                    {error}
                   </p>
                 </div>
               )}
             </div>
-          </div>
-        )}
+          </section>
         </div>
-      </div>
+      )}
     </div>
   );
 }
