@@ -1,20 +1,47 @@
 :root {
-  --gradient-bg: linear-gradient(to right, #9333ea, #4f46e5, #ec4899);
+  /* New vibrant color palette */
+  --turquoise: #4ECFBF; /* Darker version of #6DE1D2 for better text contrast */
+  --yellow: #FFD63A;
+  --orange: #FFA955;
+  --coral: #F75A5A;
+  
+  /* Gradients using the new palette */
+  --gradient-bg: linear-gradient(to right, var(--turquoise), var(--yellow), var(--orange));
+  --gradient-accent: linear-gradient(to right, var(--orange), var(--coral));
+  
+  /* Text colors */
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.85);
   --text-muted: rgba(255, 255, 255, 0.7);
+  --text-dark: #333333;
   
-  --button-primary-bg: rgba(255, 255, 255, 0.25);
-  --button-primary-hover: rgba(255, 255, 255, 0.35);
+  /* UI Elements */
+  --card-bg: rgba(255, 255, 255, 0.1);
+  --card-border: rgba(255, 255, 255, 0.2);
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  
+  /* Buttons */
+  --button-primary-bg: var(--turquoise);
+  --button-primary-hover: #5CCFC0;
+  --button-primary-active: #4DBDAE;
   --button-primary-text: #ffffff;
   
-  --button-secondary-bg: rgba(11, 209, 255, 0.3);
-  --button-secondary-hover: rgba(11, 209, 255, 0.4);
-  --button-secondary-text: #ffffff;
+  --button-secondary-bg: var(--yellow);
+  --button-secondary-hover: #ECC235;
+  --button-secondary-active: #D9B230;
+  --button-secondary-text: #333333;
   
-  --card-bg: rgba(0, 0, 0, 0.2);
-  --card-hover: rgba(0, 0, 0, 0.3);
-  --card-border: rgba(255, 255, 255, 0.1);
+  --button-accent-bg: var(--coral);
+  --button-accent-hover: #E55252;
+  --button-accent-active: #D34A4A;
+  
+  /* Inputs */
+  --input-bg: rgba(255, 255, 255, 0.1);
+  --input-border: rgba(255, 255, 255, 0.2);
+  --input-text: #ffffff;
+  --input-placeholder: rgba(255, 255, 255, 0.5);
+  --input-focus-border: var(--turquoise);
+  --input-focus-shadow: 0 0 0 2px rgba(109, 225, 210, 0.25);
 }
 
 .gradient-background {

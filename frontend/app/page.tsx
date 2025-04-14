@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import NavBar from '@/components/nav-bar';
 import { TypeAnimation } from 'react-type-animation';
+import FAQSection from '@/components/faq-section';
 import './landing-sections.css';
 import { motion } from 'framer-motion';
 
@@ -522,6 +523,9 @@ export default function Home() {
                 Join thousands of language learners who have improved their speaking skills with our AI-powered platform. Start your free trial today and experience the future of language learning.
               </motion.p>
               
+              {/* FAQ Accordion Section */}
+              <FAQSection />
+              
               <motion.button
                 className="start-button"
                 onClick={handleStartLearning}
@@ -532,6 +536,7 @@ export default function Home() {
                 whileTap={{ scale: 0.98 }}
                 viewport={{ once: true }}
                 disabled={isLoading}
+                style={{ marginTop: '2rem' }}
               >
                 {isLoading ? (
                   <>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { AuthForm } from '@/components/auth-form';
 import { motion } from 'framer-motion';
+import '../auth-styles.css';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -75,7 +76,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="auth-page">
       {/* Header with logo */}
       <motion.header 
         className="w-full p-4 md:p-6"

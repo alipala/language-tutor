@@ -35,7 +35,7 @@
 
 /* First Section Styles */
 .landing-first {
-  background: #6366f1;
+  background: var(--turquoise);
 }
 
 .landing-first .section-background {
@@ -64,7 +64,7 @@
 }
 
 .start-button {
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  background: linear-gradient(to right, var(--turquoise), var(--yellow));
   color: white;
   font-weight: 600;
   font-size: 1.125rem;
@@ -126,11 +126,23 @@
 
 /* Second Section Styles */
 .landing-second {
-  background: #0ea5e9;
+  background: var(--yellow);
 }
 
 .landing-second .section-background {
   background-image: url("data:image/svg+xml,%3Csvg width='84' height='48' viewBox='0 0 84 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h12v6H0V0zm28 8h12v6H28V8zm14-8h12v6H42V0zm14 0h12v6H56V0zm0 8h12v6H56V8zM42 8h12v6H42V8zm0 16h12v6H42v-6zm14-8h12v6H56v-6zm14 0h12v6H70v-6zm0-16h12v6H70V0zM28 32h12v6H28v-6zM14 16h12v6H14v-6zM0 24h12v6H0v-6zm0 8h12v6H0v-6zm14 0h12v6H14v-6zm14 8h12v6H28v-6zm-14 0h12v6H14v-6zm28 0h12v6H42v-6zm14-8h12v6H56v-6zm0-8h12v6H56v-6zm14 8h12v6H70v-6zm0 8h12v6H70v-6zM14 24h12v6H14v-6zm14-8h12v6H28v-6zM14 8h12v6H14V8zM0 8h12v6H0V8z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* Custom button for second section */
+.landing-second .start-button {
+  background: var(--turquoise);
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.landing-second .section-content h2 {
+  color: var(--text-dark);
+  font-weight: 700;
 }
 
 .feature-cards {
@@ -168,7 +180,7 @@
   right: -15px;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+  background: linear-gradient(135deg, var(--orange) 0%, var(--coral) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -180,24 +192,67 @@
 }
 
 .feature-card h3 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  margin-bottom: 1rem;
-  color: white;
+  margin-bottom: 0.75rem;
+  color: var(--text-dark);
 }
 
 .feature-card p {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-dark);
+  font-size: 1rem;
   line-height: 1.6;
+  opacity: 0.85;
 }
 
 /* Third Section Styles */
 .landing-third {
-  background: #4f46e5;
+  background-color: var(--coral);
+  color: white;
+  position: relative;
+  overflow: hidden;
 }
 
 .landing-third .section-background {
   background-image: url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M81.28 88H68.413l19.298 19.298L81.28 88zm2.107 0h13.226L90 107.838 83.387 88zm15.334 0h12.866l-19.298 19.298L98.72 88zm-32.927-2.207L73.586 78h32.827l.5.5 7.294 7.293L115.414 87l-24.707 24.707-.707.707L64.586 87l1.207-1.207zm2.62.207L74 80.414 79.586 86H68.414L74 80.414zm16 0L90 80.414 95.586 86H84.414L90 80.414zm16 0L106 80.414 111.586 86h-11.172L106 80.414zM87.414 91.414L92 96.586 97.414 91.414 92 86.828 87.414 91.414z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* FAQ Section Styles */
+.landing-third .faq-section {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.landing-third .accordion {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.landing-third .accordion > div {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.landing-third .accordion > div:last-child {
+  border-bottom: none;
+}
+
+.landing-third .accordion button {
+  padding: 1rem 1.5rem;
+  color: white;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.landing-third .accordion button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.landing-third .accordion .accordion-content {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
 }
 
 .contact-info {
@@ -264,13 +319,25 @@
 }
 
 .navbar-section1 {
-  background-color: #6366f1;
+  background-color: var(--turquoise);
+}
+.navbar-section1 nav h1,
+.navbar-section1 nav a {
+  color: white;
 }
 
 .navbar-section2 {
-  background-color: #0ea5e9;
+  background-color: var(--yellow);
+}
+.navbar-section2 nav h1,
+.navbar-section2 nav a {
+  color: var(--text-dark);
 }
 
 .navbar-section3 {
-  background-color: #4f46e5;
+  background-color: var(--coral);
+}
+.navbar-section3 nav h1,
+.navbar-section3 nav a {
+  color: white;
 }

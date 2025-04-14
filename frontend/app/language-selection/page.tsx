@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import NavBar from '@/components/nav-bar';
-import { useAuth } from '@/lib/auth';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
+import { useAuth } from '@/lib/auth';
+import './language-selection.css';
 // Animation temporarily commented out
 // import { TypeAnimation } from 'react-type-animation';
 // Sound effects temporarily disabled
@@ -15,7 +15,7 @@ interface Language {
   code: string;
   name: string;
   description?: string;
-  flagSrc: string;
+  flagComponent: React.ReactNode;
 }
 
 export default function LanguageSelection() {
@@ -26,36 +26,91 @@ export default function LanguageSelection() {
   // Sound effects temporarily disabled
   // const { playSelectionSound, playSuccessSound } = useAudio();
 
-  const languages: Language[] = [
+  // Flag SVG components directly embedded to avoid loading issues
+const FlagComponents: Record<string, React.ReactNode> = {
+  dutch: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" className="w-full h-full">
+      <rect fill="#21468B" width="900" height="600"/>
+      <rect fill="#FFF" width="900" height="400"/>
+      <rect fill="#AE1C28" width="900" height="200"/>
+    </svg>
+  ),
+  english: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" className="w-full h-full">
+      <clipPath id="s">
+        <path d="M0,0 v30 h60 v-30 z"/>
+      </clipPath>
+      <clipPath id="t">
+        <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/>
+      </clipPath>
+      <g clipPath="url(#s)">
+        <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+        <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
+        <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#t)" stroke="#C8102E" strokeWidth="4"/>
+        <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
+        <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+      </g>
+    </svg>
+  ),
+  spanish: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 500" className="w-full h-full">
+      <rect width="750" height="500" fill="#c60b1e"/>
+      <rect width="750" height="250" fill="#ffc400" y="125"/>
+    </svg>
+  ),
+  german: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5 3" className="w-full h-full">
+      <rect width="5" height="3" fill="#000"/>
+      <rect width="5" height="2" fill="#D00"/>
+      <rect width="5" height="1" fill="#FFCE00"/>
+    </svg>
+  ),
+  french: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" className="w-full h-full">
+      <rect width="300" height="600" fill="#002395"/>
+      <rect width="300" height="600" fill="#FFFFFF" x="300"/>
+      <rect width="300" height="600" fill="#ED2939" x="600"/>
+    </svg>
+  ),
+  portuguese: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" className="w-full h-full">
+      <rect width="600" height="400" fill="#006600"/>
+      <rect width="240" height="400" fill="#FF0000"/>
+      <circle cx="240" cy="200" r="65" fill="#FFFF00" stroke="#000000" strokeWidth="1.5"/>
+    </svg>
+  ),
+};
+
+const languages: Language[] = [
     {
       code: 'dutch',
       name: 'Dutch',
-      flagSrc: '/images/flags/netherlands.svg',
+      flagComponent: FlagComponents.dutch,
     },
     {
       code: 'english',
       name: 'English',
-      flagSrc: '/images/flags/uk.svg',
+      flagComponent: FlagComponents.english,
     },
     {
       code: 'spanish',
       name: 'Spanish',
-      flagSrc: '/images/flags/spain.svg',
+      flagComponent: FlagComponents.spanish,
     },
     {
       code: 'german',
       name: 'German',
-      flagSrc: '/images/flags/germany.svg',
+      flagComponent: FlagComponents.german,
     },
     {
       code: 'french',
       name: 'French',
-      flagSrc: '/images/flags/france.svg',
+      flagComponent: FlagComponents.french,
     },
     {
       code: 'portuguese',
       name: 'Portuguese',
-      flagSrc: '/images/flags/portugal.svg',
+      flagComponent: FlagComponents.portuguese,
     },
   ];
 
@@ -200,16 +255,17 @@ export default function LanguageSelection() {
   };
 
   return (
-    <div className="min-h-screen gradient-background flex flex-col">
+    <div className="language-selection-page">
+      <div className="language-selection-background"></div>
       <NavBar />
       <PendingLearningPlanHandler />
-      <main className="flex-grow flex flex-col items-center justify-center p-4">
+      <main className="language-selection-content">
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
         {/* Header with animated elements */}
         <div className="text-center mb-12 relative">
           {/* Animated background effects */}
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 bg-purple-500/10 blur-xl animate-pulse"></div>
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-3xl animate-pulse" style={{ backgroundColor: "rgba(255, 214, 58, 0.2)" }}></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 blur-xl animate-pulse" style={{ backgroundColor: "rgba(255, 169, 85, 0.2)" }}></div>
           
           <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
             <div className="relative">
@@ -225,8 +281,8 @@ export default function LanguageSelection() {
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
           {/* Decorative elements */}
-          <div className="absolute -top-40 -right-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -top-40 -right-20 w-80 h-80 rounded-full blur-3xl" style={{ backgroundColor: "rgba(109, 225, 210, 0.2)" }}></div>
+          <div className="absolute -bottom-40 -left-20 w-80 h-80 rounded-full blur-3xl" style={{ backgroundColor: "rgba(247, 90, 90, 0.15)" }}></div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl relative z-10">
             {languages.map((language) => (
@@ -280,14 +336,10 @@ export default function LanguageSelection() {
                           {/* Glossy overlay effect */}
                           <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent z-10 pointer-events-none"></div>
                           
-                          {/* Flag image */}
-                          <Image 
-                            src={language.flagSrc}
-                            alt={`${language.name} flag`}
-                            fill
-                            className="object-cover transition-transform duration-500"
-                            priority
-                          />
+                          {/* Flag component */}
+                          <div className="w-full h-full">
+                            {language.flagComponent}
+                          </div>
                           
                           {/* Bottom shadow effect */}
                           <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
@@ -314,11 +366,11 @@ export default function LanguageSelection() {
                     {/* Selection indicator */}
                     {selectedLanguage === language.code && (
                       <div className="absolute top-4 right-4 animate-fade-in">
-                        <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-md">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: 'var(--yellow)' }}>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
-                            fill="purple"
+                            fill="var(--text-dark)"
                             className="w-4 h-4"
                           >
                             <path
@@ -391,9 +443,11 @@ export default function LanguageSelection() {
                     }, 3000);
                   }}
                   className="px-6 py-3 rounded-xl font-medium 
-                    bg-gradient-to-r from-purple-600 to-indigo-500 
-                    hover:from-purple-500 hover:to-indigo-400
                     text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  style={{
+                    backgroundColor: 'var(--coral)',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -408,8 +462,12 @@ export default function LanguageSelection() {
                 <button
                   onClick={handleContinue}
                   className="px-6 py-3 rounded-xl font-medium 
-                    bg-white text-black hover:bg-white/90 
                     shadow-lg hover:shadow-xl transition-all duration-300"
+                  style={{
+                    backgroundColor: 'var(--yellow)',
+                    color: 'var(--text-dark)',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
