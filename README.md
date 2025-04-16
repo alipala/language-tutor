@@ -1,8 +1,6 @@
 # 🌍 Language Tutor Application
 
-> Forked from the original [Tutor Application](https://github.com/yourusername/tutor) on March 14, 2025.
-
-A cutting-edge language learning voice conversation application with a sleek, modern UI that enables interactive voice-based learning. The application combines FastAPI's backend performance with Next.js's frontend capabilities and WebRTC for seamless real-time communication. Designed specifically for language learning with robust production deployment on Railway.
+A modern, production-ready language learning platform for interactive voice-based learning, powered by FastAPI (backend), Next.js (frontend), and OpenAI models. Built for robust deployment on Railway, with a focus on real-time speaking, assessment, and personalized learning plans.
 
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-0.104.1-009688?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
@@ -11,199 +9,153 @@ A cutting-edge language learning voice conversation application with a sleek, mo
   <img src="https://img.shields.io/badge/WebRTC-Real--time-4285F4?style=for-the-badge&logo=webrtc" alt="WebRTC"/>
 </p>
 
-## ✨ Features
+---
 
-### Core Features
-- 🎙️ Language learning voice conversation with OpenAI integration
-- 🌍 Support for multiple languages (currently Dutch and English)
-- 🎓 Six proficiency levels (A1, A2, B1, B2, C1, C2) following CEFR standards
-- 🗣️ Topic selection for focused conversation practice
-- 📝 Advanced sentence assessment with grammar and vocabulary feedback
-- 🔍 Web search functionality for custom topics with real-time information
-- 🎯 Speaking assessment with detailed feedback and proficiency scoring
-- 📋 Custom learning plan creation with personalized goals and duration
+## ✨ Core Features
+- 🎙️ Voice conversation with AI tutor (real-time, streaming)
+- 🔊 Pronunciation assessment with color-coded feedback and review
+- 📝 Sentence and speaking assessment with actionable feedback
+- 📋 Custom learning plan creation and management
+- 🗣️ Topic selection (built-in and custom, with web search)
+- 🌍 Support for multiple languages and CEFR levels
+- 🔐 Modern authentication (email/password & Google Sign-In)
+- 📱 Responsive, animated UI for mobile and desktop
+- 🚀 Optimized for Railway deployment
 
-### Pronunciation & Learning
-- 🔊 Real-time pronunciation assessment with color-coded feedback
-- 📊 Visual confidence indicators for pronunciation quality
-- 🎯 Interactive pronunciation review modal with detailed feedback
-- 📝 Scrollable real-time transcript with custom styling
-- 🔄 "Continue Learning" functionality to seamlessly resume conversations
+---
 
-### Technical Features
-- 🌐 WebRTC for real-time communication
-- 🚀 FastAPI backend for high performance
-- 🎨 Modern dark gradient UI with animations
-- 📱 Responsive design for mobile and desktop
-- 🔄 Seamless frontend-backend integration
-- 🔐 Modern authentication system with animated UI components
-- ⚡ Robust navigation with automatic recovery from stuck states
-- 🔍 Advanced debugging with comprehensive logging system
-- 🛡️ Enhanced error handling and user feedback
-- 🌊 Optimized for reliable production deployment on Railway
-- 🧩 Custom UI components for better performance and reliability
+## 🗣️ Supported Languages & Levels
+- **Dutch**: All CEFR levels (A1, A2, B1, B2, C1, C2)
+- **English**: All CEFR levels (A1, A2, B1, B2, C1, C2)
 
-## 🔍 About This Fork
+The application follows the Common European Framework of Reference for Languages (CEFR) for proficiency tracking and personalized content.
 
-This Language Tutor Application is a specialized fork of the original Tutor Application, focused on language learning capabilities. The core architecture and functionality remain the same, with enhancements specifically for language learning features and an improved user experience.
+---
 
-## 🎓 Language Learning Features
+## 🧠 Pronunciation & Learning
+- **Real-time pronunciation assessment**: Color-coded feedback (🟢 correct, 🟡 minor issue, 🔴 error)
+- **Interactive review modal**: Review your pronunciation and get actionable feedback after each speaking turn
+- **Sentence assessment**: Receive grammar, vocabulary, and structure suggestions tailored to your level
+- **Progress tracking**: Monitor your advancement through custom learning plans
 
-### 🌐 Supported Languages
-- **Dutch**: Complete support with all proficiency levels
-- **English**: Complete support with all proficiency levels
+---
 
-### 📊 Proficiency Levels
-The application follows the Common European Framework of Reference for Languages (CEFR) with six levels:
+## 📋 Custom Learning Plans
+- Create a personalized learning plan by selecting language, level, goals, and duration
+- Flexible goal selection: Choose from built-in categories or add your own custom goals
+- Set your preferred timeline (1–12 months)
+- Plans can be used without authentication or assigned to your account after login
+- Progress is tracked and plans can be resumed at any time
 
-| Level | Name | Description |
-|-------|------|-------------|
-| **A1** | Beginner | Can understand and use familiar everyday expressions and very basic phrases |
-| **A2** | Elementary | Can communicate in simple and routine tasks on familiar topics |
-| **B1** | Intermediate | Can deal with most situations likely to arise while traveling |
-| **B2** | Upper Intermediate | Can interact with a degree of fluency and spontaneity |
-| **C1** | Advanced | Can express ideas fluently and spontaneously without much searching for expressions |
-| **C2** | Proficiency | Can express with precision in complex situations |
+---
 
-### 📋 Custom Learning Plans
-Create personalized learning plans tailored to your specific needs and goals:
+## 🗂️ Topic Selection
+- Choose from a variety of built-in conversation topics (e.g., Travel, Work, Culture, Current Events)
+- Enter a custom topic for up-to-date, web-searched conversations
+- Web search integration: For custom topics, the backend fetches current information and the AI tutor incorporates it into the conversation
+- Skip topic selection for free-form practice
 
-- **Goal Selection**: Choose from a variety of learning goals categorized by focus area
-- **Custom Goals**: Add your own custom learning goals beyond the predefined options
-- **Flexible Duration**: Set your preferred learning timeline from 1-12 months
-- **Progress Tracking**: Monitor your advancement through the learning plan
-- **Plan Assignment**: Automatically assign plans to your account or use without signing in
+---
 
-### 🗣️ Topic Selection
-The application offers a variety of conversation topics to focus your language practice:
+## 📦 Technical Implementation
 
-- **Travel** ✈️: Discuss travel destinations, experiences, and planning trips
-- **Food & Cooking** 🍲: Talk about cuisines, recipes, restaurants, and cooking techniques
-- **Hobbies & Interests** 🎨: Share your favorite activities, sports, games, or pastimes
-- **Culture & Traditions** 🏛️: Explore cultural aspects, traditions, festivals, and customs
-- **Movies & TV Shows** 🎬: Discuss films, series, actors, directors, and entertainment
-- **Music** 🎵: Talk about music genres, artists, concerts, and preferences
-- **Technology** 💻: Discuss gadgets, apps, innovations, and digital trends
-- **Environment & Nature** 🌳: Explore environmental issues, sustainability, and the natural world
-- **Custom Topic** 🔍: Enter any topic of your interest and the tutor will use web search to provide up-to-date information
+- **Frontend**: Next.js 14, custom React components, modern animated UI, dark theme, responsive for mobile/desktop
+- **Backend**: FastAPI (Python), REST API endpoints for authentication, learning plans, speaking assessments, real-time conversation, and web search
+- **Real-time Voice**: WebRTC for low-latency audio streaming; OpenAI Realtime API for conversational AI
+- **Authentication**: Email/password and Google Sign-In (Google Identity Services SDK)
+- **State Management**: Context-based, with session storage for navigation and recovery
+- **Navigation**: Direct `window.location` navigation for reliability in production (esp. Railway)
+- **Error Handling**: Centralized error service, robust logging, stuck-state detection and recovery
+- **API URL Config**: Environment-aware, supports both local and Railway deployment
+- **Deployment**: Optimized for Railway (standalone output, CORS, custom domain support)
+- **Database**: MongoDB (Railway-managed), user/account/plan storage
 
-You can also choose to skip topic selection for a free-form conversation.
+---
 
-### Conversation Flow
-1. Select your target language (Dutch or English)
-2. Choose a conversation topic or enter a custom topic with the web search feature
-3. Select your proficiency level (A1-C2)
-4. Start a voice conversation with the language tutor
-5. Practice speaking and receive feedback appropriate to your level
+## 🛠️ Backend Deep Dive
 
-### 🔊 Pronunciation Assessment
-The application provides real-time pronunciation assessment with color-coded feedback:
+The backend, built with FastAPI, is responsible for:
 
-- **🟢 Green**: Correctly pronounced words
-- **🟡 Yellow**: Minor pronunciation issues
-- **🔴 Red**: Significant pronunciation errors
+- **API endpoints** for authentication, learning plan management, real-time conversation, speaking/sentence assessment, and web search.
+- **Authentication** using JWT and Google OAuth, with secure password storage and token validation.
+- **User management** and **learning plan assignment** for both guests and authenticated users.
+- **Real-time and batch assessment** of speech and sentences using OpenAI models, with detailed feedback.
+- **Database integration** with MongoDB for persistent storage of users, plans, and progress.
+- **Centralized error handling** and robust logging for reliability.
+- **Environment configuration** for secure and flexible deployment.
+- **Comprehensive testing** for API reliability.
 
-Users can review their pronunciation after speaking to get detailed feedback on their language skills.
+### Key Backend Modules
 
-#### New Pronunciation Features
-- **Interactive Review Modal**: Review your pronunciation with a dedicated modal interface
-- **Visual Feedback**: Animated microphone states show recording status clearly
-- **Seamless Learning Flow**: Continue your conversation after reviewing pronunciation
-- **Real-time Scrolling Transcript**: Never lose track of your conversation with auto-scrolling transcript
+| File/Module               | Purpose                                                                 |
+|---------------------------|-------------------------------------------------------------------------|
+| `main.py`                 | FastAPI app, router registration, middleware, error handling            |
+| `auth.py`, `auth_routes.py` | Auth logic, JWT, Google OAuth, endpoints for login/registration         |
+| `learning_routes.py`      | Learning plan CRUD, goal management, plan assignment                    |
+| `speaking_assessment.py`, `sentence_assessment.py` | AI-powered assessment endpoints and logic                  |
+| `database.py`, `models.py`, `models/` | MongoDB connection and data models                               |
+| `utils/`                  | Utilities for validation, error formatting, etc.                        |
+| `test_api.py`, `tests/`   | Unit and integration tests                                              |
 
-### 📝 Sentence Assessment
-The application features a powerful sentence assessment system that provides detailed feedback on your language production:
+---
 
-#### Key Features
-- **Grammar Analysis**: Identifies grammatical errors and suggests corrections
-- **Vocabulary Evaluation**: Assesses word choice and suggests more appropriate alternatives
-- **Sentence Structure Feedback**: Analyzes sentence construction and provides improvement tips
-- **Level-Appropriate Feedback**: Tailors assessment to your selected proficiency level
-- **Context-Aware Evaluation**: Considers the conversation context when assessing your sentences
+---
 
-#### Technical Implementation
-- **Smart API Integration**: Dynamically connects to the correct backend API regardless of environment
-- **Environment-Aware Configuration**: Automatically detects development vs. production environments
-- **Robust Error Handling**: Gracefully manages connection issues and provides helpful error messages
-- **Efficient Data Processing**: Optimized for quick assessment response times
+## 🤖 OpenAI Model Usage
 
-#### How It Works
-1. **Speech Recognition**: Your spoken language is transcribed to text
-2. **Assessment Request**: The transcribed text is sent to the backend API for analysis
-3. **AI Processing**: Advanced language models evaluate your sentence based on grammar, vocabulary, and context
-4. **Feedback Generation**: Detailed, actionable feedback is generated and returned to the frontend
-5. **Visual Presentation**: Results are displayed with color-coding and specific improvement suggestions
+| Model Name                                 | What For                              | When To Use / How To Use |
+|--------------------------------------------|---------------------------------------|-------------------------|
+| `gpt-4o-mini-realtime-preview-2024-12-17` | Real-time speaking (voice chat)       | Used for streaming, low-latency AI conversation during live speech sessions. Backend issues ephemeral tokens via `/api/realtime/token`. |
+| `gpt-4o-mini`                             | Web search with OpenAI API            | Used when user requests a conversation on a custom topic; backend performs web search and uses this model to synthesize up-to-date responses. |
+| `gpt-4o`                                  | Sentence & speaking assessment        | Used for detailed sentence analysis, grammar/vocab feedback, and scoring of user responses. Backend endpoints: `/api/assessment/speaking`. |
+| `gpt-4o-mini-transcribe`                   | Transcription (speech-to-text)        | Used to transcribe user audio for assessment and feedback. Invoked internally by backend for audio inputs. |
 
-### 🔍 Web Search for Custom Topics
+- All OpenAI API calls require a valid `OPENAI_API_KEY` set in backend environment variables.
+- Models are selected automatically by backend logic according to user action and endpoint.
 
-The Language Tutor now features an integrated web search capability that allows tutors to access real-time information about any topic you choose.
+---
 
-#### How to Use Web Search
+## 🚶 User Flows
 
-1. **Select a Custom Topic**:
-   - On the topic selection page, choose "Custom Topic" or enter your own topic in the input field
-   - Type a specific query, question, or topic you'd like to discuss (e.g., "Latest developments in quantum computing" or "Current situation in Istanbul politics")
+### 1. New User Onboarding
+- Visit home page → Click "Get Started"
+- Select language (Dutch/English)
+- Select proficiency level (A1–C2)
+- Choose a topic or enter a custom topic
+- (Optional) Sign up with email/password or Google
 
-2. **Benefit from Real-time Information**:
-   - The tutor will use web search to gather the latest information about your topic
-   - All responses will incorporate up-to-date facts and details relevant to your chosen topic
-   - The tutor will start the conversation by explicitly mentioning your chosen topic
+### 2. Authenticated User Journey
+- Log in (email/password or Google)
+- Resume existing learning plan or create new one
+- Access profile, progress, and assessment history
 
-3. **Learn with Current Context**:
-   - Practice language skills while discussing current events, recent developments, or specialized topics
-   - Receive vocabulary and expressions that are contextually relevant to your topic of interest
-   - Engage in more meaningful conversations with accurate and timely information
+### 3. Learning Plan Creation/Assignment
+- Select learning goals and duration
+- System generates a personalized plan (optionally assigned to user account)
+- Plan can be used immediately or after login (pending plan assignment logic)
 
-#### Example Use Cases
+### 4. Real-time Conversation & Assessment
+- Start a voice conversation with AI tutor (WebRTC + OpenAI Realtime)
+- Receive instant feedback, color-coded transcript, and pronunciation scores
+- Option to review pronunciation and get detailed assessment
 
-- **Current Events**: "Recent elections in France" or "Latest climate change agreements"
-- **Technology**: "New features in iOS 19" or "Advancements in electric vehicles"
-- **Culture**: "Traditional festivals in Japan this month" or "Recent art exhibitions in Paris"
-- **Sports**: "Results from yesterday's football matches" or "Upcoming Olympic events"
-- **Science**: "Recent discoveries about black holes" or "Latest COVID-19 research"
+### 5. Pronunciation Review
+- After speaking, review transcript with:
+  - 🟢 Green: Correct
+  - 🟡 Yellow: Minor issues
+  - 🔴 Red: Major errors
+- Get actionable feedback and suggestions
 
-#### Technical Details
+### 6. Web Search for Custom Topics
+- Enter a custom topic (e.g., "Current events in Istanbul")
+- Backend performs web search, synthesizes up-to-date info using OpenAI
+- Tutor incorporates real-world facts into conversation
 
-- The web search feature uses OpenAI's browsing capabilities to retrieve current information
-- Search results are processed and integrated into the tutor's knowledge base
-- The tutor is instructed to incorporate this information naturally into the conversation
-- The system can handle topics up to 100 characters in length for detailed queries
+---
 
-## 🔐 Authentication System
+## 🛠️ Local Development
 
-The Language Tutor features a modern, secure authentication system with an enhanced user experience:
-
-### Features
-- **Modern UI**: Sleek, animated forms with gradient text and interactive elements
-- **Responsive Design**: Optimized for both mobile and desktop devices
-- **Animated Backgrounds**: Subtle animated gradient backgrounds enhance visual appeal
-- **Secure Authentication**: JWT-based authentication with proper token handling
-- **Google Authentication**: Seamless login/signup with Google accounts using OAuth 2.0
-- **Error Handling**: Clear error messages and loading states for better user feedback
-- **Form Validation**: Client-side validation for immediate user feedback
-- **Remember Me**: Option to stay logged in across sessions
-- **Password Recovery**: Password reset functionality with email verification
-
-### Google Authentication
-The application supports Google OAuth 2.0 integration, allowing users to sign in with their Google accounts:
-
-#### Features
-- **One-Click Login**: Sign in with a single click using your Google account
-- **Automatic Account Creation**: New users are automatically registered on first login
-- **Secure Token Verification**: Backend verification of Google ID tokens
-- **Seamless Integration**: Consistent user experience with standard authentication
-- **Cross-Device Support**: Works across all devices and browsers
-
-#### Technical Implementation
-- **Google Identity Services SDK**: Uses the latest Google Sign-In API
-- **JWT Token Exchange**: Converts Google tokens to application JWT tokens
-- **Environment-Aware Configuration**: Automatically adapts to development and production environments
-- **Robust Error Handling**: Graceful handling of authentication failures
-- **Session Management**: Proper session creation and token storage
-
-### Technical Implementation
-- **JWT Authentication**: Secure token-based authentication system
-- **MongoDB Integration**: User data stored securely in MongoDB
+1. **Clone the repo**
 - **Framer Motion**: Smooth animations and transitions for UI elements
 - **React Context API**: Global authentication state management
 - **Next.js API Routes**: Secure backend communication
