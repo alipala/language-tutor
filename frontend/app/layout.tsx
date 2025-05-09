@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import AuthProviderWrapper from '@/components/auth-provider-wrapper'
+import { NavigationProvider } from '@/lib/navigation'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -59,13 +60,15 @@ export default function RootLayout({
         </Script>
       </head>
       <body className={`${inter.className} font-sans antialiased`}>
-        <AuthProviderWrapper>
-          <div className="gradient-background min-h-screen w-full">
-            <main id="main-content" tabIndex={-1} className="outline-none">
-              {children}
-            </main>
-          </div>
-        </AuthProviderWrapper>
+        <NavigationProvider>
+          <AuthProviderWrapper>
+            <div className="gradient-background min-h-screen w-full">
+              <main id="main-content" tabIndex={-1} className="outline-none">
+                {children}
+              </main>
+            </div>
+          </AuthProviderWrapper>
+        </NavigationProvider>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useNavigation } from '@/lib/navigation';
 import { assignPlanToUser } from '@/lib/learning-api';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +12,7 @@ import { useRouter } from 'next/navigation';
  */
 export default function PendingLearningPlanHandler() {
   const { user, loading } = useAuth();
+  const navigation = useNavigation();
   const router = useRouter();
   const [processed, setProcessed] = useState(false);
   const processingRef = useRef(false);
@@ -26,8 +28,8 @@ export default function PendingLearningPlanHandler() {
   
   const handlePendingLearningPlan = async () => {
     try {
-      // Check if there's a pending learning plan ID in session storage
-      const pendingPlanId = sessionStorage.getItem('pendingLearningPlanId');
+      // Check if there's a pending learning plan ID using the navigation service
+      const pendingPlanId = navigation.getPendingLearningPlanId();
       
       if (pendingPlanId) {
         console.log('[PendingLearningPlanHandler] Found pending learning plan ID:', pendingPlanId);
@@ -45,18 +47,18 @@ export default function PendingLearningPlanHandler() {
             localStorage.setItem('assignedLearningPlans', JSON.stringify(assignedPlans));
           }
           
-          // Clear the pending plan ID from session storage
-          sessionStorage.removeItem('pendingLearningPlanId');
+          // Clear the pending plan ID using the navigation service
+          navigation.clearPendingLearningPlanId();
           
           // Check if we need to redirect to the speech page with this plan
-          const redirectWithPlan = sessionStorage.getItem('redirectWithPlanId') === pendingPlanId;
-          if (redirectWithPlan) {
+          const redirectAfterAuth = navigation.getRedirectAfterAuth();
+          if (redirectAfterAuth === '/speech') {
             console.log('[PendingLearningPlanHandler] Redirecting to speech page with plan:', pendingPlanId);
-            sessionStorage.removeItem('redirectWithPlanId');
+            navigation.clearRedirectAfterAuth();
             
             // Use a timeout to ensure state updates complete before navigation
             setTimeout(() => {
-              window.location.href = `/speech?plan=${pendingPlanId}`;
+              navigation.navigateToSpeech(pendingPlanId);
             }, 100);
             return;
           }
@@ -66,7 +68,7 @@ export default function PendingLearningPlanHandler() {
           // to prevent endless retries
           if (!(assignError instanceof Error && assignError.message.includes('Authentication required'))) {
             console.log('[PendingLearningPlanHandler] Clearing invalid pending plan ID');
-            sessionStorage.removeItem('pendingLearningPlanId');
+            navigation.clearPendingLearningPlanId();
           }
         }
       } else {

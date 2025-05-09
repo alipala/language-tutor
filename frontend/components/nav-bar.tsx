@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useNavigation } from '@/lib/navigation';
 
 export default function NavBar() {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Close menu when clicking outside
@@ -25,15 +27,32 @@ export default function NavBar() {
 
   const handleLogout = () => {
     logout();
-    // Use direct window.location.href for reliable navigation in Railway
-    const fullUrl = `${window.location.origin}/`;
-    window.location.href = fullUrl;
+    // Use navigation service for consistent navigation
+    navigation.navigateToHome();
   };
 
   const navigateTo = (path: string) => {
-    // Use direct window.location.href for reliable navigation in Railway
-    const fullUrl = `${window.location.origin}${path}`;
-    window.location.href = fullUrl;
+    // Use navigation service for consistent navigation
+    switch(path) {
+      case '/':
+        navigation.navigateToHome();
+        break;
+      case '/language-selection':
+        navigation.navigateToLanguageSelection();
+        break;
+      case '/profile':
+        navigation.navigateToProfile();
+        break;
+      case '/auth/login':
+        navigation.navigateToLogin();
+        break;
+      case '/auth/signup':
+        navigation.navigateToSignup();
+        break;
+      default:
+        // For any other paths, use the navigate method
+        navigation.navigate(path);
+    }
   };
 
   return (
@@ -42,7 +61,16 @@ export default function NavBar() {
         {/* Logo */}
         <div 
           className="flex items-center cursor-pointer"
-          onClick={() => navigateTo('/')}
+          onClick={() => {
+            // Clear navigation state before navigating to home
+            // This prevents automatic redirection to level-selection
+            navigation.clearNavigationState();
+            // Clear specific keys that might cause redirects
+            sessionStorage.removeItem('selectedLanguage');
+            sessionStorage.removeItem('selectedLevel');
+            // Navigate to home page
+            navigation.navigateToHome();
+          }}
         >
           <h1 className="text-xl font-bold text-white">
             Your Smart Language Coach
