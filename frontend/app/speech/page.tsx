@@ -72,15 +72,20 @@ export default function SpeechPage() {
           if (plan) {
             console.log('[SpeechPage] Retrieved plan details:', plan);
             setSelectedLanguage(plan.language);
-            setSelectedLevel(plan.level);
-            setSelectedTopic(plan.topic || null);
-            setCustomTopicPrompt(plan.custom_prompt || null);
+            setSelectedLevel(plan.proficiency_level);
+            // These properties might be stored elsewhere or need to be handled differently
+            // since they don't exist directly on the LearningPlan interface
+            const topic = sessionStorage.getItem('selectedTopic');
+            const customPrompt = sessionStorage.getItem('customTopicPrompt');
+            
+            if (topic) setSelectedTopic(topic);
+            if (customPrompt) setCustomTopicPrompt(customPrompt);
             
             // Store these in session storage for persistence
             sessionStorage.setItem('selectedLanguage', plan.language);
-            sessionStorage.setItem('selectedLevel', plan.level);
-            if (plan.topic) sessionStorage.setItem('selectedTopic', plan.topic);
-            if (plan.custom_prompt) sessionStorage.setItem('customTopicPrompt', plan.custom_prompt);
+            sessionStorage.setItem('selectedLevel', plan.proficiency_level);
+            // We no longer reference plan.topic and plan.custom_prompt as they don't exist in the interface
+            // Keep any existing topic and custom prompt values from session storage
             
             initializationCompleteRef.current = true;
             setIsLoading(false);
