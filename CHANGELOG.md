@@ -5,6 +5,20 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.15.0] - 2025-05-09
+
+### Fixed
+- Resolved critical back button navigation issues between pages
+- Fixed redirect loops when navigating from topic selection to language selection
+- Corrected type error in speech page by updating property names to match LearningPlan interface
+- Improved session storage management to prevent unwanted automatic redirects
+
+### Changed
+- Implemented a more radical approach to navigation by clearing session storage during back navigation
+- Disabled automatic redirects in the language selection page to allow natural back button functionality
+- Enhanced detection of back button navigation using session storage flags
+- Improved handling of navigation state to maintain only essential data during page transitions
+
 ## [2.14.0] - 2025-04-03
 
 ### Added
