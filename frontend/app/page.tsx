@@ -16,6 +16,87 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // For automatic navigation if needed
+  const [shouldAutoNavigate, setShouldAutoNavigate] = useState(false);
+  const [maxRedirectAttempts] = useState(3);
+  const redirectAttemptsRef = useRef(0);
+  
+  // Scroll to section function
+  const scrollToSection = (sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+  
+  // Handle automatic navigation based on conditions
+  const handleAutomaticNavigation = () => {
+    redirectAttemptsRef.current += 1;
+    
+    if (redirectAttemptsRef.current > maxRedirectAttempts) {
+      console.log('Hit max redirect attempts, showing manual navigation options');
+      setShouldAutoNavigate(false);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Check for active practice session
+    const hasPendingPractice = localStorage.getItem('pendingPractice') === 'true';
+    if (hasPendingPractice && user) {
+      console.log('User has pending practice, redirecting to profile');
+      // Use an available navigation method
+      navigation.navigateToProfile();
+      return;
+    }
+    
+    // More navigation logic can be added here
+    
+    // If no automatic navigation is needed
+    setShouldAutoNavigate(false);
+    setIsLoading(false);
+  };
+  
+  // Handle start learning button click
+  const handleStartLearning = () => {
+    setIsLoading(true);
+    
+    // Clear any previous selections
+    sessionStorage.removeItem('selectedLanguage');
+    sessionStorage.removeItem('selectedLevel');
+    sessionStorage.removeItem('selectedTopic');
+    sessionStorage.removeItem('customTopicPrompt');
+    
+    // Set a flag to prevent automatic redirects
+    sessionStorage.setItem('manualNavigation', 'true');
+    
+    // Navigate to language selection
+    try {
+      navigation.navigateToLanguageSelection();
+    } catch (err) {
+      console.error('Navigation failed:', err);
+      setError('Navigation failed. Please try again or refresh the page.');
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle sign in button click
+  const handleSignIn = () => {
+    setIsLoading(true);
+    
+    // Set a flag to prevent automatic redirects
+    sessionStorage.setItem('manualNavigation', 'true');
+    
+    // Navigate to login page
+    try {
+      navigation.navigateToLogin();
+    } catch (err) {
+      console.error('Navigation failed:', err);
+      setError('Navigation failed. Please try again or refresh the page.');
+      setIsLoading(false);
+    }
+  };
+  
+  // Initial useEffect for auth checking and redirects
   useEffect(() => {
     // Only run in browser
     if (typeof window === 'undefined') return;
@@ -29,271 +110,89 @@ export default function Home() {
     console.log('Auth status:', user ? 'Logged in' : 'Not logged in');
     console.log('Current pathname:', window.location.pathname);
     
-    // IMPORTANT: Check if we're on the speaking assessment path but home page component loaded
-    if (window.location.pathname === '/assessment/speaking') {
-      console.log('On speaking assessment path but home page component loaded - force reload');
-      // Use navigation service to redirect to the correct page
-      navigation.navigateToSpeakingAssessment();
-      return;
-    }
-    
-    // Check for redirect after auth
-    const redirectAfterAuth = navigation.getRedirectAfterAuth();
-    if (redirectAfterAuth && user) {
-      console.log('Detected pending redirect after auth to:', redirectAfterAuth);
-      navigation.handlePostAuthNavigation();
-      return;
-    }
-    
-    // Check for legacy redirects from session storage
-    const pendingRedirect = sessionStorage.getItem('pendingRedirect');
-    const redirectTarget = sessionStorage.getItem('redirectTarget');
-    const redirectAttemptTime = sessionStorage.getItem('redirectAttemptTime');
-    
-    // If we have a pending redirect and we're on the home page, handle it
-    if (pendingRedirect === 'true' && redirectTarget && window.location.pathname === '/') {
-      console.log('Detected pending redirect to:', redirectTarget);
-      
-      // Check if the redirect attempt is recent (within last 10 seconds)
-      const attemptTime = redirectAttemptTime ? parseInt(redirectAttemptTime) : 0;
-      const currentTime = Date.now();
-      const timeDiff = currentTime - attemptTime;
-      
-      if (timeDiff < 10000) { // 10 seconds
-        console.log('Recovering from failed navigation after authentication');
-        // Clear the pending redirect to prevent loops
-        sessionStorage.removeItem('pendingRedirect');
-        // Force navigation to the target
-        window.location.href = redirectTarget;
-        return;
-      } else {
-        // Clear stale redirect data
-        console.log('Clearing stale redirect data');
-        sessionStorage.removeItem('pendingRedirect');
-        sessionStorage.removeItem('redirectTarget');
-        sessionStorage.removeItem('redirectAttemptTime');
-      }
-    }
-    
-    // RAILWAY SPECIFIC: Check for the unusual routing situation
-    // where URL is language-selection but we're still on the home page component
-    if (window.location.pathname === '/language-selection') {
-      console.log('URL is /language-selection but still on home page component - force reload');
-      
-      // We're in a strange state where the URL is language-selection but we're 
-      // still on the home page component. Let's try to recover by forcing a reload
-      // which should properly render the language selection component
-      window.location.href = '/language-selection';
-      return;
-    }
-    
-    // Check for reset parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const shouldReset = urlParams.get('reset') === 'true';
-    
-    if (shouldReset) {
-      console.log('Reset parameter detected, clearing session storage');
-      sessionStorage.clear();
-    }
-    
-    // Check if we should continue to a specific page based on stored data or user preferences
-    // But only if we're not explicitly navigating to speaking assessment
-    const hasLanguage = sessionStorage.getItem('selectedLanguage') || (user?.preferred_language || null);
-    const hasLevel = sessionStorage.getItem('selectedLevel') || (user?.preferred_level || null);
-    
-    // If we're explicitly navigating to speaking assessment, don't redirect elsewhere
-    if (sessionStorage.getItem('navigatingToSpeakingAssessment') === 'true') {
-      console.log('Skipping automatic redirects due to pending speaking assessment navigation');
-      return;
-    }
-    
-    // If user is logged in, use their preferences if available
-    if (user) {
-      console.log('User is logged in:', user.email);
-      
-      // Store user preferences in session if not already there
-      if (user.preferred_language && !sessionStorage.getItem('selectedLanguage')) {
-        console.log('Using user preferred language:', user.preferred_language);
-        sessionStorage.setItem('selectedLanguage', user.preferred_language);
-      }
-      
-      if (user.preferred_level && !sessionStorage.getItem('selectedLevel')) {
-        console.log('Using user preferred level:', user.preferred_level);
-        sessionStorage.setItem('selectedLevel', user.preferred_level);
-      }
-    }
-    
-    if (hasLanguage && hasLevel) {
-      console.log('Found existing language and level, redirecting to speech page');
-      window.location.href = '/speech';
-      return;
-    } else if (hasLanguage) {
-      console.log('Found existing language, redirecting to level selection');
-      window.location.href = '/level-selection';
-      return;
-    }
-    
-    // Check if we're on the root path and should show the welcome page
-    if (window.location.pathname === '/' || window.location.pathname === '') {
-      // On root path, show the UI instead of auto-redirecting
-      console.log('On root path, showing welcome page');
+    // Check if we should continue with normal page loading
+    if (shouldAutoNavigate) {
+      handleAutomaticNavigation();
+    } else {
+      // Clear loading state if we're not redirecting
       setIsLoading(false);
-      return;
     }
-    
-    // If we're not on a recognized path, normalize to home page
-    console.log('Unrecognized path, normalizing to home');
-    window.location.replace('/');
-  }, [user, authLoading]);
+  }, [authLoading, user, shouldAutoNavigate]);
   
-  // Return loading state while redirecting or manual navigation option if we hit the redirect limit
-  // Scroll to section function
-  const scrollToSection = (sectionId: string) => {
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  // Handle start learning button click
-  const handleStartLearning = () => {
-    try {
-      // Show loading state
-      setIsLoading(true);
-      setError(null);
-      
-      // Clear any existing session data except user preferences
-      if (!user) {
-        // Use the navigation service to clear state
-        navigation.clearNavigationState();
-      }
-      
-      console.log('Start Learning button clicked at:', new Date().toISOString());
-      
-      // Use the navigation service for consistent navigation
-      navigation.navigateToLanguageSelection();
-      
-      // Set a fallback timer with timeout
-      setTimeout(() => {
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          console.error('Navigation failed, still on homepage after timeout');
-          setIsLoading(false);
-          setError('Navigation to language selection failed. Please try again.');
-        }
-      }, 3000);
-    } catch (e) {
-      console.error('Navigation error:', e);
-      setIsLoading(false);
-      setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
-    }
-  };
-
-  // Handle sign in button click
-  const handleSignIn = () => {
-    try {
-      // Show loading state
-      setIsLoading(true);
-      setError(null);
-      
-      console.log('Sign In button clicked at:', new Date().toISOString());
-      
-      // Use the navigation service for consistent navigation
-      navigation.navigateToLogin();
-      
-      // Set a fallback timer to detect navigation failures
-      setTimeout(() => {
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          console.error('Navigation failed, still on homepage after timeout');
-          setIsLoading(false);
-          setError('Navigation to login page failed. Please try again.');
-        }
-      }, 1500);
-    } catch (e) {
-      console.error('Navigation error:', e);
-      setIsLoading(false);
-      setError(`Navigation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
-    }
-  };
-
-  // State to track which section is visible
-  const [activeSection, setActiveSection] = useState('section1');
-
-  // Effect to handle scroll and update navbar color
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleScroll = () => {
-      const section1 = document.getElementById('section1');
-      const section2 = document.getElementById('section2');
-      const section3 = document.getElementById('section3');
-      
-      if (!section1 || !section2 || !section3) return;
-      
-      const scrollPosition = window.scrollY + window.innerHeight / 2;
-      
-      if (scrollPosition < section2.offsetTop) {
-        setActiveSection('section1');
-      } else if (scrollPosition < section3.offsetTop) {
-        setActiveSection('section2');
-      } else {
-        setActiveSection('section3');
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className={`navbar-fixed navbar-${activeSection}`}>
-        <NavBar />
-      </div>
+    <div className="min-h-screen overflow-x-hidden w-full">
+      <NavBar />
       
       {isLoading ? (
-        <div className="flex-grow flex flex-col items-center justify-center p-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-          <p className="text-center text-white/80">Redirecting to language selection...</p>
+        <div className="min-h-screen flex items-center justify-center bg-[var(--turquoise)]">
+          <div className="text-center">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="rounded-full h-16 w-16 bg-white/20 mb-4 flex items-center justify-center">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-8 w-8 text-white animate-pulse" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" x2="12" y1="19" y2="22"></line>
+                </svg>
+              </div>
+              <p className="text-white text-xl font-medium">Loading...</p>
+              <p className="text-white/70 text-sm mt-2">
+                Preparing your language learning experience
+              </p>
+            </div>
+          </div>
         </div>
       ) : (
-        <div id="startScreen" className="start-screen">
+        <main className="start-screen">
           {/* First Section */}
-          <section id="section1" className="landing-section landing-first">
+          <section id="section1" className="landing-section landing-first pt-16">
             <div className="section-background"></div>
             <div className="section-content">
-              <motion.h1
-                className="text-5xl font-bold tracking-tight relative z-10 min-h-[5rem] text-white"
+              <motion.h1 
+                className="text-4xl md:text-5xl lg:text-6xl font-bold"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
+                transition={{ duration: 0.6 }}
+              >
+                <span className="block mb-2">Welcome to</span>
+                <span className="text-white">Language Tutor</span>
+              </motion.h1>
+              
+              <motion.div 
+                className="mt-4 mb-8 text-white/90 text-xl md:text-2xl"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
               >
                 <TypeAnimation
                   sequence={[
-                    'Welcome to Language Tutor! 🌍',
+                    'Practice speaking a new language',
                     2000,
-                    'Welkom bij Language Tutor! 🇳🇱',
-                    1500,
-                    '¡Bienvenido a Language Tutor! 🇪🇸',
-                    1500,
-                    'Willkommen bei Language Tutor! 🇩🇪',
-                    1500,
-                    'Bienvenue à Language Tutor! 🇫🇷',
-                    1500,
-                    'Bem-vindo ao Language Tutor! 🇵🇹',
-                    1500,
+                    'Get real-time pronunciation feedback',
+                    2000,
+                    'Learn through natural conversations',
+                    2000,
                   ]}
                   wrapper="span"
                   speed={50}
                   repeat={Infinity}
-                  cursor={true}
+                  className="block"
                 />
-              </motion.h1>
+              </motion.div>
               
               <motion.p 
-                className="section-description"
+                className="text-white/90 text-lg max-w-2xl mx-auto mb-8"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
               >
                 Your personal AI language tutor that adapts to your learning style and helps you become fluent through natural conversations.
               </motion.p>
@@ -303,111 +202,9 @@ export default function Home() {
                 onClick={handleStartLearning}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    <span>Navigating...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Start Learning</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </>
-                )}
-              </motion.button>
-              
-              {!user && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.6, delay: 0.9 }}
-                  className="mt-4"
-                >
-                  <button
-                    onClick={handleSignIn}
-                    className="text-white/90 hover:text-white underline text-sm font-medium transition-colors"
-                    disabled={isLoading}
-                  >
-                    Already have an account? Sign in
-                  </button>
-                </motion.div>
-              )}
-            </div>
-            
-            <div className="scroll-indicator" onClick={() => scrollToSection('section2')}>
-              <span>Scroll to explore</span>
-              <div className="scroll-arrow"></div>
-            </div>
-          </section>
-
-          {/* Second Section */}
-          <section id="section2" className="landing-section landing-second">
-            <div className="section-background"></div>
-            <div className="section-content">
-              <motion.h2 
-                className="text-3xl font-bold text-white mb-8"
-                initial={{ opacity: 0, y: -20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-              >
-                Why Language Tutor is Different
-              </motion.h2>
-              
-              <div className="feature-cards">
-                <motion.div 
-                  className="feature-card"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="card-number">1</div>
-                  <h3>AI-Powered Conversations</h3>
-                  <p>Practice speaking with our advanced AI tutor that responds naturally, corrects your mistakes, and adapts to your learning pace. Experience real-world conversations that prepare you for actual language use.</p>
-                </motion.div>
-                
-                <motion.div 
-                  className="feature-card"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="card-number">2</div>
-                  <h3>Personalized Learning Path</h3>
-                  <p>Our system adapts to your proficiency level, learning style, and interests. Get customized lessons, vocabulary, and speaking exercises that focus on your specific needs and goals in language learning.</p>
-                </motion.div>
-                
-                <motion.div 
-                  className="feature-card"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.5 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="card-number">3</div>
-                  <h3>Instant Feedback & Progress</h3>
-                  <p>Receive immediate feedback on pronunciation, grammar, and vocabulary usage. Track your improvement over time with detailed progress reports and see how your language skills evolve with each practice session.</p>
-                </motion.div>
-              </div>
-              
-              <motion.button
-                className="start-button mt-12"
-                onClick={handleStartLearning}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.7 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                viewport={{ once: true }}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -424,6 +221,65 @@ export default function Home() {
                   </>
                 )}
               </motion.button>
+              
+              <div className="scroll-indicator" onClick={() => scrollToSection('section2')}>
+                <span>Scroll to learn more</span>
+                <div className="scroll-arrow"></div>
+              </div>
+            </div>
+          </section>
+
+          {/* Second Section */}
+          <section id="section2" className="landing-section landing-second">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <motion.h2 
+                className="text-3xl font-bold text-gray-800 mb-8"
+                initial={{ opacity: 0, y: -20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+              >
+                How It Works
+              </motion.h2>
+              
+              <div className="feature-cards">
+                <motion.div 
+                  className="feature-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="card-number">1</div>
+                  <h3>Choose Your Language</h3>
+                  <p>Select from multiple languages including Spanish, French, German, Dutch, and more.</p>
+                </motion.div>
+                
+                <motion.div 
+                  className="feature-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="card-number">2</div>
+                  <h3>Select Your Level</h3>
+                  <p>From beginner to advanced, our system adapts to your proficiency level.</p>
+                </motion.div>
+                
+                <motion.div 
+                  className="feature-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="card-number">3</div>
+                  <h3>Practice Conversations</h3>
+                  <p>Engage in natural conversations with our AI tutor on various topics, with real-time feedback.</p>
+                </motion.div>
+              </div>
             </div>
           </section>
 
@@ -464,7 +320,7 @@ export default function Home() {
                 whileTap={{ scale: 0.98 }}
                 viewport={{ once: true }}
                 disabled={isLoading}
-                style={{ marginTop: '2rem' }}
+                style={{ marginTop: '2rem', backgroundColor: 'var(--turquoise)' }}
               >
                 {isLoading ? (
                   <>
@@ -496,7 +352,7 @@ export default function Home() {
               )}
             </div>
           </section>
-        </div>
+        </main>
       )}
     </div>
   );

@@ -5,6 +5,20 @@ All notable changes to the Language Tutor Application will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.0] - 2025-05-09
+
+### Added
+- Sign out confirmation dialog to prevent accidental logouts
+- Improved profile dropdown menu with better visibility
+
+### Changed
+- Updated app UI with consistent turquoise color scheme throughout all screens
+- Changed loading animation to microphone icon to better reflect the app's focus on language learning through speech
+- Enhanced profile page styling with consistent background and card headers
+- Updated login and signup buttons to use solid colors instead of gradients
+- Fixed navigation bar to remain at the top with consistent styling
+- Improved sign out functionality to properly redirect to the landing page
+
 ## [2.15.0] - 2025-05-09
 
 ### Fixed

@@ -6,6 +6,8 @@
 
 /* Import gradient theme */
 @import '../styles/gradient-theme.css';
+/* Import solid theme override */
+@import '../styles/solid-theme.css';
 
 /* Custom scrollbar styles */
 @layer utilities {

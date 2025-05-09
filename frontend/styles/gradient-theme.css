@@ -5,8 +5,8 @@
   --orange: #FFA955;
   --coral: #F75A5A;
   
-  /* Gradients using the new palette */
-  --gradient-bg: linear-gradient(to right, var(--turquoise), var(--yellow), var(--orange));
+  /* Solid background instead of gradient */
+  --gradient-bg: var(--turquoise);
   --gradient-accent: linear-gradient(to right, var(--orange), var(--coral));
   
   /* Text colors */

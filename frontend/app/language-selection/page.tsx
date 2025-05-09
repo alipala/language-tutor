@@ -230,16 +230,13 @@ const languages: Language[] = [
 
   return (
     <div className="language-selection-page">
-      <div className="language-selection-background"></div>
-      <NavBar />
+      <NavBar activeSection="section1" />
       <PendingLearningPlanHandler />
       <main className="language-selection-content">
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col">
         {/* Header with animated elements */}
         <div className="text-center mb-12 relative">
-          {/* Animated background effects */}
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-3xl animate-pulse" style={{ backgroundColor: "rgba(255, 214, 58, 0.2)" }}></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-20 blur-xl animate-pulse" style={{ backgroundColor: "rgba(255, 169, 85, 0.2)" }}></div>
+          {/* Clean header without background effects */}
           
           <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
             <div className="relative">
@@ -254,9 +251,7 @@ const languages: Language[] = [
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
-          {/* Decorative elements */}
-          <div className="absolute -top-40 -right-20 w-80 h-80 rounded-full blur-3xl" style={{ backgroundColor: "rgba(109, 225, 210, 0.2)" }}></div>
-          <div className="absolute -bottom-40 -left-20 w-80 h-80 rounded-full blur-3xl" style={{ backgroundColor: "rgba(247, 90, 90, 0.15)" }}></div>
+          {/* Clean content area without decorative elements */}
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl relative z-10">
             {languages.map((language) => (

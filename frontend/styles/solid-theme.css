@@ -1,0 +1,53 @@
+/* Solid color theme override */
+
+/* Override gradient backgrounds with solid colors */
+.landing-first {
+  background: var(--turquoise) !important;
+  background-image: none !important;
+}
+
+.landing-second {
+  background: var(--yellow) !important;
+  background-image: none !important;
+}
+
+.landing-third {
+  background: var(--coral) !important;
+  background-image: none !important;
+}
+
+/* Override gradient buttons with solid colors */
+.start-button {
+  background: var(--turquoise) !important;
+  background-image: none !important;
+}
+
+/* Solid background for all selection pages */
+.language-selection-page,
+.topic-selection-container,
+.level-selection-container,
+.speech-page {
+  background-color: var(--turquoise) !important;
+  background-image: none !important;
+}
+
+/* Make the language selection background solid */
+.language-selection-background {
+  background-image: none !important;
+}
+
+/* Login button styling */
+.login-button {
+  background-color: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.login-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}

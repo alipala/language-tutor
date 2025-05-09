@@ -160,7 +160,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </label>
           <div 
             ref={sliderTabRef} 
-            className="slider-tab absolute h-full w-1/2 left-0 z-0 rounded-md bg-gradient-to-r from-purple-600 to-pink-500"
+            className="slider-tab absolute h-full w-1/2 left-0 z-0 rounded-md bg-[#3a9e92]"
             style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}
           ></div>
         </div>
@@ -250,7 +250,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               <a
                 href="#"
                 onClick={handleSignupLinkClick}
-                className="ml-1 text-pink-400 hover:text-pink-300 transition-colors font-medium"
+                className="ml-1 text-white hover:text-white/80 transition-colors font-medium underline"
               >
                 Signup now
               </a>

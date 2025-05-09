@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
 
-export default function NavBar() {
+export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -27,8 +28,12 @@ export default function NavBar() {
 
   const handleLogout = () => {
     logout();
-    // Use navigation service for consistent navigation
-    navigation.navigateToHome();
+    // Close the confirmation dialog
+    setShowLogoutConfirm(false);
+    // Close the menu
+    setIsMenuOpen(false);
+    // Navigate to home page after logout
+    window.location.href = '/';
   };
 
   const navigateTo = (path: string) => {
@@ -55,8 +60,11 @@ export default function NavBar() {
     }
   };
 
+  // Keep the navbar fixed with the first section color (turquoise)
+  let navbarClass = "w-full backdrop-blur-sm border-b border-white/20 transition-all duration-500 fixed top-0 left-0 right-0 z-50 navbar-section1";
+  
   return (
-    <nav className="w-full bg-transparent backdrop-blur-sm border-b border-white/20">
+    <nav className={navbarClass}>
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         {/* Logo */}
         <div 
@@ -79,13 +87,6 @@ export default function NavBar() {
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
-          <button 
-            onClick={() => navigateTo('/language-selection')}
-            className="text-white/80 hover:text-white"
-          >
-            Practice
-          </button>
-          
           {/* User Menu (when logged in) */}
           {user ? (
             <div className="relative user-menu-container">
@@ -101,16 +102,19 @@ export default function NavBar() {
               
               {/* Dropdown Menu */}
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 glass-card rounded-md shadow-lg py-1 z-10 border border-white/20">
+                <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-md rounded-md shadow-lg py-1 z-10 border border-white/30">
                   <button
-                    onClick={() => navigateTo('/profile')}
-                    className="block w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+                    onClick={() => {
+                      navigateTo('/profile');
+                      setIsMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
                   >
                     Your Profile
                   </button>
                   <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-300 hover:bg-white/10"
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="block w-full text-left px-4 py-3 text-sm text-[#e74c3c] font-medium hover:bg-[#e74c3c]/10"
                   >
                     Sign Out
                   </button>
@@ -118,18 +122,12 @@ export default function NavBar() {
               )}
             </div>
           ) : (
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center">
               <button
                 onClick={() => navigateTo('/auth/login')}
-                className="text-white/80 hover:text-white"
+                className="login-button px-4 py-2 rounded-lg transition-all duration-300"
               >
-                Sign In
-              </button>
-              <button
-                onClick={() => navigateTo('/auth/signup')}
-                className="px-4 py-2 rounded-lg glass-card border border-white/20 text-white hover:bg-white/10"
-              >
-                Sign Up
+                Login
               </button>
             </div>
           )}
@@ -155,15 +153,7 @@ export default function NavBar() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden glass-card border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden py-2 px-4">
-          <button
-            onClick={() => {
-              navigateTo('/language-selection');
-              setIsMenuOpen(false);
-            }}
-            className="block w-full text-left py-2 text-white/80 hover:text-white"
-          >
-            Practice
-          </button>
+
           
           {user ? (
             <>
@@ -177,10 +167,7 @@ export default function NavBar() {
                 Your Profile
               </button>
               <button
-                onClick={() => {
-                  handleLogout();
-                  setIsMenuOpen(false);
-                }}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="block w-full text-left py-2 text-red-300 hover:text-red-200"
               >
                 Sign Out
@@ -195,19 +182,35 @@ export default function NavBar() {
                 }}
                 className="block w-full text-left py-2 text-white/80 hover:text-white"
               >
-                Sign In
-              </button>
-              <button
-                onClick={() => {
-                  navigateTo('/auth/signup');
-                  setIsMenuOpen(false);
-                }}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
-              >
-                Sign Up
+                Login
               </button>
             </>
           )}
+        </div>
+      )}
+      
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
+            <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
+            
+            <div className="flex space-x-2 justify-end">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </nav>

@@ -2,7 +2,7 @@
 
 .auth-page {
   min-height: 100vh;
-  background-color: var(--coral);
+  background-color: var(--turquoise);
   display: flex;
   flex-direction: column;
 }
@@ -128,7 +128,7 @@
   height: 100%;
   width: 100%;
   background-color: white;
-  color: var(--coral);
+  color: var(--turquoise);
   border: none;
   border-radius: 0.375rem;
   font-size: 1.125rem;
@@ -184,7 +184,7 @@
 
 .auth-divider-text span {
   padding: 0 0.5rem;
-  background-color: var(--coral);
+  background-color: var(--turquoise);
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.875rem;
 }

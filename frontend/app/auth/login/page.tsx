@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { AuthForm } from '@/components/auth-form';
 import { motion } from 'framer-motion';
 import '../auth-styles.css';
+import './login-theme.css'; // Turquoise theme overrides
 
 export default function LoginPage() {
   const router = useRouter();
