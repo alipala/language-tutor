@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useNavigation } from '@/lib/navigation';
 import NavBar from '@/components/nav-bar';
 import { TypeAnimation } from 'react-type-animation';
 import FAQSection from '@/components/faq-section';
@@ -11,6 +12,7 @@ import { motion } from 'framer-motion';
 // Export the main component
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
+  const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -24,71 +26,26 @@ export default function Home() {
     // Log environment information for debugging
     console.log('Home page loaded at:', new Date().toISOString());
     console.log('Environment:', process.env.NODE_ENV);
-    console.log('Base path:', process.env.NEXT_PUBLIC_BASE_PATH || '/');
     console.log('Auth status:', user ? 'Logged in' : 'Not logged in');
-    
-    // Get current location info for debugging
     console.log('Current pathname:', window.location.pathname);
-    console.log('Current URL:', window.location.href);
-    console.log('Full origin:', window.location.origin);
     
     // IMPORTANT: Check if we're on the speaking assessment path but home page component loaded
     if (window.location.pathname === '/assessment/speaking') {
       console.log('On speaking assessment path but home page component loaded - force reload');
-      
-      // Force a hard reload of the current URL to try to get the correct component
-      window.location.replace(window.location.href);
+      // Use navigation service to redirect to the correct page
+      navigation.navigateToSpeakingAssessment();
       return;
     }
     
-    // Check for speaking assessment navigation in progress
-    const navigatingToSpeakingAssessment = sessionStorage.getItem('navigatingToSpeakingAssessment');
-    
-    // If we have a speaking assessment navigation in progress and we're on the home page
-    if (navigatingToSpeakingAssessment === 'true' && (window.location.pathname === '/' || window.location.pathname === '')) {
-      console.log('Detected pending speaking assessment navigation');
-      
-      // Clear the flag to prevent loops
-      sessionStorage.removeItem('navigatingToSpeakingAssessment');
-      
-      // Force navigation to speaking assessment
-      const fullUrl = `${window.location.origin}/assessment/speaking`;
-      console.log('Forcing navigation to speaking assessment:', fullUrl);
-      window.location.replace(fullUrl);
+    // Check for redirect after auth
+    const redirectAfterAuth = navigation.getRedirectAfterAuth();
+    if (redirectAfterAuth && user) {
+      console.log('Detected pending redirect after auth to:', redirectAfterAuth);
+      navigation.handlePostAuthNavigation();
       return;
     }
     
-    // Check for auth navigation in progress
-    const authNavigation = sessionStorage.getItem('authNavigation');
-    const authNavigationAttemptTime = sessionStorage.getItem('authNavigationAttemptTime');
-    
-    // If we have an auth navigation in progress and we're still on the home page, retry it
-    if (authNavigation && window.location.pathname === '/') {
-      console.log('Detected pending auth navigation to:', authNavigation);
-      
-      // Check if the navigation attempt is recent (within last 5 seconds)
-      const attemptTime = authNavigationAttemptTime ? parseInt(authNavigationAttemptTime) : 0;
-      const currentTime = Date.now();
-      const timeDiff = currentTime - attemptTime;
-      
-      if (timeDiff < 5000) { // 5 seconds
-        console.log('Recovering from failed auth navigation');
-        // Force navigation to the target
-        if (authNavigation === 'login') {
-          window.location.href = `${window.location.origin}/auth/login`;
-        } else if (authNavigation === 'signup') {
-          window.location.href = `${window.location.origin}/auth/signup`;
-        }
-        return;
-      } else {
-        // Clear stale navigation data
-        console.log('Clearing stale auth navigation data');
-        sessionStorage.removeItem('authNavigation');
-        sessionStorage.removeItem('authNavigationAttemptTime');
-      }
-    }
-    
-    // Check for pending redirects from authentication process
+    // Check for legacy redirects from session storage
     const pendingRedirect = sessionStorage.getItem('pendingRedirect');
     const redirectTarget = sessionStorage.getItem('redirectTarget');
     const redirectAttemptTime = sessionStorage.getItem('redirectAttemptTime');
@@ -207,39 +164,23 @@ export default function Home() {
       
       // Clear any existing session data except user preferences
       if (!user) {
-        sessionStorage.clear();
+        // Use the navigation service to clear state
+        navigation.clearNavigationState();
       }
       
-      // Set a navigation attempt counter to track potential issues
-      const attemptCount = parseInt(sessionStorage.getItem('homePageNavigationAttempt') || '0');
-      sessionStorage.setItem('homePageNavigationAttempt', (attemptCount + 1).toString());
-      
-      // Log the navigation attempt
       console.log('Start Learning button clicked at:', new Date().toISOString());
-      console.log('Current pathname before navigation:', window.location.pathname);
-      console.log('User authenticated:', user ? 'Yes' : 'No');
-      console.log('Navigation attempt count:', attemptCount + 1);
       
-      // IMPORTANT: Use absolute URL with origin for Railway
-      const fullUrl = `${window.location.origin}/language-selection`;
-      console.log('Navigating to:', fullUrl);
+      // Use the navigation service for consistent navigation
+      navigation.navigateToLanguageSelection();
       
-      // Force a hard navigation instead of client-side routing
-      window.location.replace(fullUrl);
-      
-      // Set a fallback timer with longer timeout
+      // Set a fallback timer with timeout
       setTimeout(() => {
         if (window.location.pathname === '/' || window.location.pathname === '') {
           console.error('Navigation failed, still on homepage after timeout');
           setIsLoading(false);
           setError('Navigation to language selection failed. Please try again.');
-          
-          // If we've tried multiple times, suggest a hard refresh
-          if (attemptCount >= 2) {
-            setError('Navigation issues detected. Please try refreshing your browser or clearing cache.');
-          }
         }
-      }, 5000); // Increased timeout for Railway environment
+      }, 3000);
     } catch (e) {
       console.error('Navigation error:', e);
       setIsLoading(false);
@@ -254,20 +195,10 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       
-      // Log the navigation attempt
       console.log('Sign In button clicked at:', new Date().toISOString());
-      console.log('Current pathname before navigation:', window.location.pathname);
       
-      // Store navigation intent in session storage
-      sessionStorage.setItem('authNavigation', 'login');
-      sessionStorage.setItem('authNavigationAttemptTime', Date.now().toString());
-      
-      // Use the most direct and reliable navigation approach
-      const fullUrl = `${window.location.origin}/auth/login`;
-      console.log('Navigating to:', fullUrl);
-      
-      // IMPORTANT: For Railway, use direct window.location.href navigation
-      window.location.href = fullUrl;
+      // Use the navigation service for consistent navigation
+      navigation.navigateToLogin();
       
       // Set a fallback timer to detect navigation failures
       setTimeout(() => {
@@ -275,9 +206,6 @@ export default function Home() {
           console.error('Navigation failed, still on homepage after timeout');
           setIsLoading(false);
           setError('Navigation to login page failed. Please try again.');
-          // Clear navigation intent
-          sessionStorage.removeItem('authNavigation');
-          sessionStorage.removeItem('authNavigationAttemptTime');
         }
       }, 1500);
     } catch (e) {

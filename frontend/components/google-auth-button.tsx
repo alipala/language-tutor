@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useNavigation } from '@/lib/navigation';
 
 interface GoogleAuthButtonProps {
   onSuccess?: () => void;
@@ -29,6 +30,7 @@ export default function GoogleAuthButton({
   disabled = false 
 }: GoogleAuthButtonProps) {
   const { googleLogin } = useAuth();
+  const navigation = useNavigation();
   const buttonRef = useRef<HTMLDivElement>(null);
   // Use the hardcoded Google Client ID
   const googleClientId = '41687548204-0go9lqlnve4llpv3vdl48jujddlt2kp5.apps.googleusercontent.com';
@@ -82,8 +84,13 @@ export default function GoogleAuthButton({
         throw new Error('Google accounts API not available');
       }
       
+      // Get the current origin for proper redirect URI handling
+      const origin = window.location.origin;
+      console.log('Current origin for Google Sign-In:', origin);
+      
       googleAccounts.id.initialize({
         client_id: googleClientId,
+        ux_mode: 'popup', // Use popup mode instead of redirect to avoid redirect_uri issues
         callback: async (response: any) => {
           try {
             console.log('Google Sign-In callback received');
@@ -109,9 +116,9 @@ export default function GoogleAuthButton({
               onSuccess();
             }
             
-            // Force hard navigation to avoid client-side routing issues
+            // Use the navigation service for consistent navigation
             console.log('Google login successful, navigating to language selection');
-            window.location.href = '/language-selection';
+            navigation.navigateToLanguageSelection();
           } catch (error) {
             console.error('Google login error:', error);
             setError(error instanceof Error ? error.message : 'Google login failed');

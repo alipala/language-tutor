@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useNavigation } from '@/lib/navigation';
 import NavBar from '@/components/nav-bar';
 import SpeakingAssessment from '@/components/speaking-assessment';
 import { SpeakingAssessmentResult } from '@/lib/speaking-assessment-api';
@@ -9,6 +10,7 @@ import { verifyBackendConnectivity } from '@/lib/healthCheck';
 
 export default function SpeakingAssessmentPage() {
   const router = useRouter();
+  const navigation = useNavigation();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,21 +20,14 @@ export default function SpeakingAssessmentPage() {
     console.log('Speaking assessment page initialized at:', new Date().toISOString());
     console.log('Current pathname:', window.location.pathname);
     
-    // Clear the navigation flag since we've successfully reached the speaking assessment page
-    if (sessionStorage.getItem('navigatingToSpeakingAssessment')) {
-      console.log('Successfully reached speaking assessment page, clearing navigation flag');
-      sessionStorage.removeItem('navigatingToSpeakingAssessment');
-    }
-    
-    // Retrieve the selected language from session storage
-    const language = sessionStorage.getItem('selectedLanguage');
-    console.log('Retrieved language from session storage:', language);
+    // Retrieve the selected language using the navigation service
+    const language = navigation.getSelectedLanguage();
+    console.log('Retrieved language:', language);
     
     if (!language) {
-      console.warn('No language found in session storage, redirecting to language selection');
+      console.warn('No language found, redirecting to language selection');
       // If no language is selected, redirect to language selection
-      // Use direct navigation for more reliability in Railway environment
-      window.location.replace(`${window.location.origin}/language-selection`);
+      navigation.navigateToLanguageSelection();
       return;
     }
     
@@ -67,14 +62,11 @@ export default function SpeakingAssessmentPage() {
   };
 
   const handleSelectLevel = (level: string) => {
-    // Store the selected level in session storage
-    sessionStorage.setItem('selectedLevel', level);
+    // Store the selected level using the navigation service
+    navigation.setSelectedLevel(level);
     
-    // Mark that we're intentionally navigating
-    sessionStorage.setItem('intentionalNavigation', 'true');
-    
-    // Check if there's a pending learning plan ID in session storage
-    const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
+    // Check if there's a pending learning plan ID
+    const pendingLearningPlanId = navigation.getPendingLearningPlanId();
     
     // Import and use the isAuthenticated function from auth utils
     const { isAuthenticated } = require('@/lib/auth-utils');
@@ -84,66 +76,35 @@ export default function SpeakingAssessmentPage() {
     console.log('User authenticated status:', userAuthenticated);
     console.log('Pending learning plan ID:', pendingLearningPlanId);
     
-    // Determine the redirect target based on authentication status
-    let redirectTarget = userAuthenticated ? '/speech' : '/auth/login';
-    
     // If user is not authenticated, we need to set up redirection flags
-    if (!userAuthenticated && pendingLearningPlanId) {
-      console.log('User not authenticated, setting up redirection to login page');
-      // Store the intent to redirect to login page
-      sessionStorage.setItem('redirectTarget', '/speech');
-      // Store additional flag to indicate we should redirect to speech with this plan after login
-      sessionStorage.setItem('redirectWithPlanId', pendingLearningPlanId);
+    if (!userAuthenticated) {
+      console.log('User not authenticated, navigating to login page with redirect');
+      // Navigate to login with redirect back to speech page after authentication
+      navigation.navigateToLogin('/speech');
+      return;
     }
     
-    // Log the final navigation decision
-    console.log(`Redirecting to ${redirectTarget} with level: ${level}`);
-    
-    // Use direct navigation for reliability
-    setTimeout(() => {
-      console.log(`Executing navigation to ${redirectTarget}`);
-      window.location.href = redirectTarget;
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('assessment/speaking')) {
-          console.log(`Still on speaking assessment page, using fallback navigation to ${redirectTarget}`);
-          window.location.replace(redirectTarget);
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 300);
+    // User is authenticated, navigate directly to speech page
+    console.log(`Navigating to speech page with level: ${level}`);
+    navigation.navigateToSpeech(pendingLearningPlanId || undefined);
   };
 
   const handleStartOver = () => {
-    // Clear all session storage
-    sessionStorage.clear();
-    // Navigate to home page
-    console.log('Starting over - cleared session storage');
-    window.location.href = '/';
+    // Clear navigation state and navigate to home page
+    try {
+      navigation.clearNavigationState();
+    } catch (e) {
+      console.error('Error clearing navigation state:', e);
+    }
     
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('assessment/speaking')) {
-        console.log('Still on speaking assessment page, using fallback navigation for start over');
-        window.location.replace('/');
-      }
-    }, 1000);
+    console.log('Starting over - cleared navigation state');
+    navigation.navigateToHome();
   };
 
   const handleManualSelection = () => {
-    // Navigate to level selection page
+    // Navigate to level selection page using the navigation service
     console.log('Navigating to manual level selection');
-    window.location.href = '/level-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('assessment/speaking')) {
-        console.log('Still on speaking assessment page, using fallback navigation to level selection');
-        window.location.replace('/level-selection');
-      }
-    }, 1000);
+    navigation.navigateToLevelSelection();
   };
 
   return (

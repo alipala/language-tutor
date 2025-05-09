@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useNavigation } from '@/lib/navigation';
 import NavBar from '@/components/nav-bar';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 import { useAuth } from '@/lib/auth';
@@ -20,6 +21,7 @@ interface Language {
 
 export default function LanguageSelection() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -146,53 +148,48 @@ const languages: Language[] = [
       }
     }
     
-    // Check if we should redirect based on existing state
+    // IMPORTANT: COMPLETELY DISABLE ALL REDIRECTS
+    // This is a drastic approach to fix back button navigation
+    console.log('Language selection page: Disabling all automatic redirects');
+    
+    // Check if we're coming from back button navigation
+    const isBackButtonNavigation = sessionStorage.getItem('backButtonNavigation') === 'true';
+    
+    // If we're coming from back button navigation, clear session storage to prevent redirects
+    if (isBackButtonNavigation) {
+      console.log('Coming from back button navigation, clearing session storage');
+      // Keep only essential data
+      const storedLanguage = sessionStorage.getItem('selectedLanguage');
+      // Clear all session storage
+      sessionStorage.clear();
+      // Restore only the language
+      if (storedLanguage) {
+        sessionStorage.setItem('selectedLanguage', storedLanguage);
+        setSelectedLanguage(storedLanguage);
+      }
+      return;
+    }
+    
+    // For normal navigation, just pre-select the language if it exists
     const storedLanguage = sessionStorage.getItem('selectedLanguage');
-    const storedLevel = sessionStorage.getItem('selectedLevel');
-    
-    // Handle case where this is an initial direct load of the language selection page
-    // This is the expected behavior: user coming from home page
-    if (!storedLanguage && !storedLevel) {
-      console.log('Fresh visit to language selection page, allowing normal flow');
-      // Let the normal component render proceed
-      return;
+    if (storedLanguage) {
+      setSelectedLanguage(storedLanguage);
     }
     
-    // If we have both language and level, we should go to speech page
-    if (storedLanguage && storedLevel) {
-      console.log('Found existing language and level, redirecting to speech page');
-      // Use the most direct approach with a delay to avoid navigation race conditions
-      setTimeout(() => {
-        const fullUrl = `${window.location.origin}/speech`;
-        console.log('Navigating to speech page:', fullUrl);
-        window.location.href = fullUrl;
-      }, 300);
-      return;
-    }
-    
-    // If we have just language selected, we should pre-select it but not auto-redirect
-    // This allows users to see the new speaking assessment option
+    // Clear any remaining navigation flags
     const fromTopicSelection = sessionStorage.getItem('fromTopicSelection');
     const fromLevelSelection = sessionStorage.getItem('fromLevelSelection');
     const fromSpeechPage = sessionStorage.getItem('fromSpeechPage');
     
-    if (storedLanguage && !storedLevel && !fromTopicSelection && !fromLevelSelection && !fromSpeechPage) {
-      console.log('Found existing language, pre-selecting it without redirect');
-      setSelectedLanguage(storedLanguage);
-      return;
-    }
-    
-    // Clear the navigation flags if they exist
     if (fromTopicSelection) {
-      console.log('Clearing fromTopicSelection flag');
       sessionStorage.removeItem('fromTopicSelection');
     }
+    
     if (fromLevelSelection) {
-      console.log('Clearing fromLevelSelection flag');
       sessionStorage.removeItem('fromLevelSelection');
     }
+    
     if (fromSpeechPage) {
-      console.log('Clearing fromSpeechPage flag');
       sessionStorage.removeItem('fromSpeechPage');
     }
   }, []);
@@ -203,8 +200,8 @@ const languages: Language[] = [
     // Just set the selected language without redirecting
     setSelectedLanguage(languageCode);
     
-    // Store the selection in session storage
-    sessionStorage.setItem('selectedLanguage', languageCode);
+    // Store the selection using the navigation service
+    navigation.setSelectedLanguage(languageCode);
     
     // Log the selection
     console.log('Language selected:', languageCode);
@@ -223,35 +220,12 @@ const languages: Language[] = [
     // Set loading state while navigating
     setIsLoading(true);
     
-    // Mark that we're intentionally navigating
-    sessionStorage.setItem('intentionalNavigation', 'true');
-    
     // Log the navigation attempt
     console.log('Continuing to topic selection with language:', selectedLanguage);
     
-    // RAILWAY SPECIFIC: Detect Railway environment
-    const isRailway = window.location.hostname.includes('railway.app');
-    
-    // For Railway, use a more direct approach with full URL
-    if (isRailway) {
-      const fullUrl = `${window.location.origin}/topic-selection`;
-      window.location.replace(fullUrl);
-      return;
-    }
-    
-    // Standard navigation for non-Railway environments
-    setTimeout(() => {
-      window.location.href = '/topic-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('language-selection')) {
-          window.location.replace('/topic-selection');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 300);
+    // Use direct navigation for reliability in this critical path
+    // This ensures we actually navigate to the next page
+    window.location.href = '/topic-selection';
   };
 
   return (
@@ -415,32 +389,16 @@ const languages: Language[] = [
                     // Set loading state while navigating
                     setIsLoading(true);
                     
-                    // Store the selection in session storage
-                    sessionStorage.setItem('selectedLanguage', selectedLanguage);
-                    
-                    // Set a flag to indicate we're going to speaking assessment
-                    sessionStorage.setItem('navigatingToSpeakingAssessment', 'true');
+                    // Ensure the language is stored
+                    if (selectedLanguage) {
+                      navigation.setSelectedLanguage(selectedLanguage);
+                    }
                     
                     // Log the navigation attempt
                     console.log('Navigating to speaking assessment with language:', selectedLanguage);
                     
-                    // IMPORTANT: Use absolute URL with origin for Railway
-                    const isRailway = window.location.hostname.includes('railway.app');
-                    const fullUrl = `${window.location.origin}/assessment/speaking`;
-                    console.log('Navigating to:', fullUrl);
-                    
-                    // Force a hard navigation instead of client-side routing
-                    window.location.replace(fullUrl);
-                    
-                    // Set a fallback timer to detect navigation failures
-                    setTimeout(() => {
-                      if (window.location.pathname.includes('language-selection')) {
-                        console.error('Navigation failed, still on language selection after timeout');
-                        setIsLoading(false);
-                        sessionStorage.removeItem('navigatingToSpeakingAssessment');
-                        alert('Navigation to speaking assessment failed. Please try again.');
-                      }
-                    }, 3000);
+                    // Use direct navigation for reliability in this critical path
+                    window.location.href = '/assessment/speaking';
                   }}
                   className="px-6 py-3 rounded-xl font-medium 
                     text-white shadow-lg hover:shadow-xl transition-all duration-300"

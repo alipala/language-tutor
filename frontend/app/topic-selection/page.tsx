@@ -4,6 +4,7 @@ import { useState, useEffect, KeyboardEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import { useNavigation } from '@/lib/navigation';
 
 interface Topic {
   id: string;
@@ -15,6 +16,7 @@ interface Topic {
 export default function TopicSelection() {
   const router = useRouter();
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -170,51 +172,51 @@ export default function TopicSelection() {
     console.log('Current URL:', window.location.href);
     console.log('Current pathname:', window.location.pathname);
     
+    // IMPORTANT: Disable all automatic redirects to fix back button navigation
+    // We'll only redirect if there's no language selected
+    
+    // Set up a listener for the popstate event (browser back button)
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('Detected browser back button navigation to language selection');
+      // Set a flag to indicate we're navigating with back button
+      sessionStorage.setItem('backButtonNavigation', 'true');
+    };
+    
+    // Add the event listener
+    window.addEventListener('popstate', handlePopState);
+    
     // Retrieve the selected language from session storage
     const language = sessionStorage.getItem('selectedLanguage');
+    
+    // If no language is selected, redirect to language selection
     if (!language) {
-      // If no language is selected, redirect to language selection
       console.log('No language selected, redirecting to language selection');
       window.location.href = '/language-selection';
       return;
     }
     
+    // Set the selected language in state
     setSelectedLanguage(language);
+    setIsLoading(false);
     
-    // Check if we came from level selection page intentionally
-    const fromLevelSelection = sessionStorage.getItem('fromLevelSelection');
-    if (fromLevelSelection) {
-      // Clear the flag as we've now handled it
-      sessionStorage.removeItem('fromLevelSelection');
-      console.log('Detected navigation from level selection, staying on topic selection page');
-      // We intentionally came here to change the topic, so don't redirect
-      return;
-    }
+    // Clear any navigation flags that might cause issues
+    sessionStorage.removeItem('intentionalNavigation');
+    sessionStorage.removeItem('backButtonNavigation');
+    sessionStorage.removeItem('popStateToTopicSelection');
+    sessionStorage.removeItem('intentionalTopicChange');
     
-    // If we already have a topic selected and language, go to level selection
-    // but only if we didn't explicitly navigate here to change the topic
-    const existingTopic = sessionStorage.getItem('selectedTopic');
-    if (existingTopic) {
-      console.log('Topic already selected, redirecting to level selection');
-      // Use direct navigation for reliability
-      window.location.href = '/level-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      setTimeout(() => {
-        if (window.location.pathname.includes('topic-selection')) {
-          console.log('Still on topic selection page, using fallback navigation');
-          window.location.replace('/level-selection');
-        }
-      }, 1000);
-    }
-  }, [router]);
+    // Clean up the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   const handleStartOver = () => {
     // Clear all session storage
     sessionStorage.clear();
     // Navigate to home page
     console.log('Starting over - cleared session storage');
-    window.location.href = '/';
+    navigation.navigateToHome();
   };
 
   const handleChangeLanguage = () => {
@@ -227,22 +229,14 @@ export default function TopicSelection() {
     
     // Navigate to language selection
     console.log('Navigating to language selection from topic selection');
-    window.location.href = '/language-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('topic-selection')) {
-        console.log('Still on topic selection page, using fallback navigation to language selection');
-        window.location.replace('/language-selection');
-      }
-    }, 1000);
+    navigation.navigateToLanguageSelection();
   };
 
   const handleSkipTopic = () => {
     // Skip topic selection (no topic)
     sessionStorage.removeItem('selectedTopic');
     // Navigate to level selection
-    window.location.href = '/level-selection';
+    navigation.navigateToLevelSelection();
   };
 
   const handleTopicSelect = (topicId: string) => {
@@ -279,21 +273,9 @@ export default function TopicSelection() {
     // Navigate to level selection
     console.log('Navigating to level selection with topic:', topicId);
     
-    // Use direct navigation for reliability
-    setTimeout(() => {
-      console.log('Executing navigation to level selection');
-      window.location.href = '/level-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('topic-selection')) {
-          console.log('Still on topic selection page, using fallback navigation');
-          window.location.replace('/level-selection');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 300);
+    // Use direct navigation for reliability in this critical path
+    // This ensures we actually navigate to the next page
+    window.location.href = '/level-selection';
   };
 
   const handleCustomTopicSubmit = () => {
@@ -319,17 +301,8 @@ export default function TopicSelection() {
     // Navigate to level selection after a short delay to show the message
     setTimeout(() => {
       console.log('Executing navigation to level selection with custom topic');
+      // Use direct navigation for reliability in this critical path
       window.location.href = '/level-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('topic-selection')) {
-          console.log('Still on topic selection page, using fallback navigation');
-          window.location.replace('/level-selection');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
     }, 2000); // Longer delay to show the message
   };
   
