@@ -33,6 +33,7 @@ export default function SpeechPage() {
   
   // Set up session refresh prevention
   const refreshCountKey = 'speechPageRefreshCount';
+  const [allowBackNavigation, setAllowBackNavigation] = useState(false);
   
   // Allow non-authenticated users to access the speech page
   useEffect(() => {
@@ -53,6 +54,74 @@ export default function SpeechPage() {
     }
   }, [user, authLoading]);
 
+  // Function to initialize the page parameters
+  const initializePage = async () => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
+      
+      if (planParam) {
+        console.log('[SpeechPage] Found plan ID in URL:', planParam);
+        setSelectedPlanId(planParam);
+        
+        try {
+          // Import the API function dynamically to avoid circular dependencies
+          const { getLearningPlan } = await import('@/lib/learning-api');
+          const plan = await getLearningPlan(planParam);
+          
+          if (plan) {
+            console.log('[SpeechPage] Retrieved plan details:', plan);
+            setSelectedLanguage(plan.language);
+            setSelectedLevel(plan.level);
+            setSelectedTopic(plan.topic || null);
+            setCustomTopicPrompt(plan.custom_prompt || null);
+            
+            // Store these in session storage for persistence
+            sessionStorage.setItem('selectedLanguage', plan.language);
+            sessionStorage.setItem('selectedLevel', plan.level);
+            if (plan.topic) sessionStorage.setItem('selectedTopic', plan.topic);
+            if (plan.custom_prompt) sessionStorage.setItem('customTopicPrompt', plan.custom_prompt);
+            
+            initializationCompleteRef.current = true;
+            setIsLoading(false);
+            return;
+          }
+        } catch (planError) {
+          console.error('[SpeechPage] Error retrieving plan:', planError);
+          // Continue to try session storage if plan retrieval fails
+        }
+      }
+      
+      // If no plan ID or plan retrieval failed, try session storage
+      const language = sessionStorage.getItem('selectedLanguage');
+      const level = sessionStorage.getItem('selectedLevel');
+      const topic = sessionStorage.getItem('selectedTopic');
+      const customPrompt = sessionStorage.getItem('customTopicPrompt');
+      
+      console.log(`[SpeechPage] Retrieved from sessionStorage - language: ${language} level: ${level}`);
+      
+      if (!language || !level) {
+        console.log('[SpeechPage] Missing required parameters, redirecting to language selection');
+        window.location.href = '/language-selection';
+        return;
+      }
+      
+      // Set the parameters from session storage
+      setSelectedLanguage(language);
+      setSelectedLevel(level);
+      if (topic) setSelectedTopic(topic);
+      if (topic === 'custom' && customPrompt) setCustomTopicPrompt(customPrompt);
+      
+      // We've successfully loaded the speech page with session storage parameters
+      initializationCompleteRef.current = true;
+      setIsLoading(false);
+    } catch (error) {
+      console.error('[SpeechPage] Error during initialization:', error);
+      // If all else fails, redirect to language selection
+      window.location.href = '/language-selection';
+    }
+  };
+
   // Initialize the speech page with parameters from URL or session storage
   useEffect(() => {
     // Prevent multiple executions of this effect
@@ -63,92 +132,34 @@ export default function SpeechPage() {
     console.log('[SpeechPage] Initializing speech page for user (authenticated: ' + (user !== null) + ')');
     navigationHandledRef.current = true;
     
-    // Check for excessive page refreshes to prevent loops
-    const refreshCount = parseInt(sessionStorage.getItem(refreshCountKey) || '0', 10);
-    sessionStorage.setItem(refreshCountKey, (refreshCount + 1).toString());
-    console.log('[SpeechPage] Refresh count:', refreshCount + 1);
+    // IMPORTANT: Completely disable automatic redirects to fix back button navigation
+    // We'll only handle the initialization of speech parameters
     
-    // If we've refreshed too many times, it could be a navigation loop
-    if (refreshCount > 5) {
-      console.error('[SpeechPage] Too many refreshes detected, possible navigation loop');
-      // Clear session to break the loop
-      sessionStorage.removeItem('navigationInProgress');
-      sessionStorage.removeItem('pendingLearningPlanId');
-      sessionStorage.removeItem('redirectWithPlanId');
-      sessionStorage.removeItem(refreshCountKey);
-      // Force reload the page to start fresh
-      window.location.href = '/language-selection';
-      return;
-    }
+    // Clear any navigation flags that might cause issues
+    sessionStorage.removeItem('intentionalNavigation');
+    sessionStorage.removeItem('backButtonNavigation');
+    sessionStorage.removeItem('popStateToTopicSelection');
+    sessionStorage.removeItem('navigationInProgress');
     
-    // First, check URL parameters for a plan ID
-    const initializePage = async () => {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const planParam = urlParams.get('plan');
-        
-        if (planParam) {
-          console.log('[SpeechPage] Found plan ID in URL:', planParam);
-          setSelectedPlanId(planParam);
-          
-          try {
-            // Import the API function dynamically to avoid circular dependencies
-            const { getLearningPlan } = await import('@/lib/learning-api');
-            const plan = await getLearningPlan(planParam);
-            
-            console.log('[SpeechPage] Retrieved plan details:', plan);
-            
-            // Set the language and level from the plan
-            setSelectedLanguage(plan.language);
-            setSelectedLevel(plan.proficiency_level);
-            
-            // Store in session storage for persistence
-            sessionStorage.setItem('selectedLanguage', plan.language);
-            sessionStorage.setItem('selectedLevel', plan.proficiency_level);
-            
-            // We've successfully loaded the speech page with the plan parameters
-            initializationCompleteRef.current = true;
-            setIsLoading(false);
-            return;
-          } catch (error) {
-            console.error('[SpeechPage] Error retrieving plan:', error);
-            // Continue with fallback to session storage if plan retrieval fails
-          }
-        }
-        
-        // Fallback to session storage if no plan ID or plan retrieval failed
-        const language = sessionStorage.getItem('selectedLanguage');
-        const level = sessionStorage.getItem('selectedLevel');
-        const topic = sessionStorage.getItem('selectedTopic');
-        const customPrompt = sessionStorage.getItem('customTopicText');
-        
-        console.log('[SpeechPage] Retrieved from sessionStorage - language:', language, 'level:', level);
-        
-        if (!language || !level) {
-          // If no language or level is available, redirect to language selection
-          console.log('[SpeechPage] Missing language or level, redirecting to language selection');
-          window.location.href = '/language-selection';
-          return;
-        }
-        
-        // Set the selected language and level for the speech client
-        setSelectedLanguage(language);
-        setSelectedLevel(level);
-        if (topic) setSelectedTopic(topic);
-        if (topic === 'custom' && customPrompt) setCustomTopicPrompt(customPrompt);
-        
-        // We've successfully loaded the speech page with session storage parameters
-        initializationCompleteRef.current = true;
-        setIsLoading(false);
-      } catch (error) {
-        console.error('[SpeechPage] Error during initialization:', error);
-        // If all else fails, redirect to language selection
-        window.location.href = '/language-selection';
-      }
+    // Reset the refresh count to prevent false loop detection
+    sessionStorage.setItem(refreshCountKey, '0');
+    
+    // Set up a simple listener for back button that doesn't interfere with navigation
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('[SpeechPage] Detected browser back button navigation');
+      // Don't prevent default navigation
     };
     
-    // Execute the initialization
+    // Add the event listener for back button
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initialize the page with parameters
     initializePage();
+    
+    // Clean up the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [user]);
 
   // State for showing the leave site warning modal

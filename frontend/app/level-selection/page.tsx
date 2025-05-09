@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { verifyBackendConnectivity } from '../../lib/healthCheck';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import { useNavigation } from '@/lib/navigation';
 // Sound effects temporarily disabled
 // import { useAudio } from '@/lib/useAudio';
 
@@ -17,6 +18,7 @@ interface Level {
 export default function LevelSelection() {
   const router = useRouter();
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [levels, setLevels] = useState<Record<string, string>>({});
@@ -27,13 +29,39 @@ export default function LevelSelection() {
   // const { playSelectionSound, playSuccessSound } = useAudio();
 
   useEffect(() => {
+    console.log('Level selection page loaded at:', new Date().toISOString());
+    console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    
+    // Set up a listener for the popstate event (browser back button)
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('Detected browser back button navigation');
+      // Set a flag to indicate we're navigating back to topic selection
+      sessionStorage.setItem('popStateToTopicSelection', 'true');
+    };
+    
+    // Add the event listener
+    window.addEventListener('popstate', handlePopState);
+    
     // Retrieve the selected language from session storage
     const language = sessionStorage.getItem('selectedLanguage');
     if (!language) {
       // If no language is selected, redirect to language selection
-      router.push('/language-selection');
+      console.log('No language selected, redirecting to language selection');
+      window.location.href = '/language-selection';
       return;
     }
+    
+    // Set the selected language in state
+    setSelectedLanguage(language);
+    
+    // Set loading to false to show the UI
+    setIsLoading(false);
+    
+    // Clean up the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
     
     setSelectedLanguage(language);
     
@@ -60,7 +88,12 @@ export default function LevelSelection() {
       });
   }, [router]);
 
-  const fetchLanguagesAndLevels = async (language: string) => {
+  const fetchLanguagesAndLevels = async (language: string | null) => {
+    if (!language) {
+      setError('No language selected');
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
@@ -139,76 +172,29 @@ export default function LevelSelection() {
     console.log('Current pathname:', window.location.pathname);
     console.log('Document referrer:', document.referrer);
     
-    // Check for redirect loop
-    const redirectAttemptKey = 'levelSelectionRedirectAttempt';
-    const redirectAttempts = parseInt(sessionStorage.getItem(redirectAttemptKey) || '0');
-    console.log('Level selection page loaded, redirect attempts:', redirectAttempts);
+    // IMPORTANT: Disable all automatic redirects to fix back button navigation
+    // We'll only redirect if there's no language selected
     
-    // If we've tried to redirect too many times, reset the counter and stay on this page
-    if (redirectAttempts > 3) {
-      console.log('Too many redirect attempts detected, resetting counter');
-      sessionStorage.setItem(redirectAttemptKey, '0');
-      // Clear any potentially problematic navigation flags
-      sessionStorage.removeItem('intentionalNavigation');
-      return;
-    }
+    // Retrieve the selected language from session storage
+    const language = sessionStorage.getItem('selectedLanguage');
     
-    // Check if we have both language and level in session storage but we're still on this page
-    const storedLanguage = sessionStorage.getItem('selectedLanguage');
-    const storedLevel = sessionStorage.getItem('selectedLevel');
-    const intentionalNavigation = sessionStorage.getItem('intentionalNavigation');
-    
-    // Only increment the redirect attempt counter if we're trying to redirect
-    if ((!storedLanguage) || (storedLanguage && storedLevel)) {
-      sessionStorage.setItem(redirectAttemptKey, (redirectAttempts + 1).toString());
-    }
-    
-    // If we don't have a language, we should be on language selection
-    if (!storedLanguage && window.location.pathname.includes('level-selection')) {
+    // If no language is selected, redirect to language selection
+    if (!language) {
       console.log('No language selected, redirecting to language selection');
-      // Add a small delay before redirecting
-      setTimeout(() => {
-        console.log('Navigating to language selection page');
-        window.location.href = '/language-selection';
-        
-        // Fallback navigation in case the first attempt fails (for Railway)
-        const fallbackTimer = setTimeout(() => {
-          if (window.location.pathname.includes('level-selection')) {
-            console.log('Still on level selection page, using fallback navigation to language selection');
-            window.location.replace('/language-selection');
-          }
-        }, 1000);
-        
-        return () => clearTimeout(fallbackTimer);
-      }, 300);
+      window.location.href = '/language-selection';
       return;
     }
     
-    // If we have both language and level, we should be on speech page
-    if (storedLanguage && storedLevel && window.location.pathname.includes('level-selection')) {
-      console.log('Detected stuck on level selection page with stored selections');
-      // Force navigation to speech page with a small delay
-      setTimeout(() => {
-        console.log('Navigating to speech page');
-        window.location.href = '/speech';
-        
-        // Fallback navigation in case the first attempt fails (for Railway)
-        const fallbackTimer = setTimeout(() => {
-          if (window.location.pathname.includes('level-selection')) {
-            console.log('Still on level selection page, using fallback navigation to speech');
-            window.location.replace('/speech');
-          }
-        }, 1000);
-        
-        return () => clearTimeout(fallbackTimer);
-      }, 300);
-    }
+    // Set the selected language in state
+    setSelectedLanguage(language);
     
-    // Clear the intentional navigation flag if it exists
-    if (intentionalNavigation) {
-      console.log('Clearing intentional navigation flag');
-      sessionStorage.removeItem('intentionalNavigation');
-    }
+    // Set loading to false to show the UI
+    setIsLoading(false);
+    
+    // Clear any navigation flags that might cause issues
+    sessionStorage.removeItem('intentionalNavigation');
+    sessionStorage.removeItem('backButtonNavigation');
+    sessionStorage.removeItem('popStateToTopicSelection');
   }, []);
   
   const handleStartOver = () => {
@@ -216,15 +202,7 @@ export default function LevelSelection() {
     sessionStorage.clear();
     // Navigate to home page
     console.log('Starting over - cleared session storage');
-    window.location.href = '/';
-    
-    // Fallback navigation in case the first attempt fails (for Railway)
-    setTimeout(() => {
-      if (window.location.pathname.includes('level-selection')) {
-        console.log('Still on level selection page, using fallback navigation for start over');
-        window.location.replace('/');
-      }
-    }, 1000);
+    navigation.navigateToHome();
   };
   
   const handleChangeLanguage = () => {
@@ -242,15 +220,7 @@ export default function LevelSelection() {
     
     // Navigate to language selection
     console.log('Navigating to language selection from level selection, cleared selections');
-    window.location.href = '/language-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('level-selection')) {
-        console.log('Still on level selection page, using fallback navigation to language selection');
-        window.location.replace('/language-selection');
-      }
-    }, 1000);
+    navigation.navigateToLanguageSelection();
   };
   
   const handleChangeTopic = () => {
@@ -261,16 +231,8 @@ export default function LevelSelection() {
     // Navigate to topic selection
     console.log('Navigating to topic selection with fromLevelSelection flag');
     
-    // Use direct navigation for reliability
+    // Use direct navigation for reliability in this critical path
     window.location.href = '/topic-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('level-selection')) {
-        console.log('Still on level selection page, using fallback navigation to topic selection');
-        window.location.replace('/topic-selection');
-      }
-    }, 1000);
   };
 
   const handleLevelSelect = (level: string) => {
@@ -287,21 +249,8 @@ export default function LevelSelection() {
     // Log the navigation attempt
     console.log('Navigating to speech with level:', level);
     
-    // Use direct navigation for reliability
-    setTimeout(() => {
-      console.log('Executing navigation to speech page');
-      window.location.href = '/speech';
-      
-      // Fallback navigation in case the first attempt fails
-      const fallbackTimer = setTimeout(() => {
-        if (window.location.pathname.includes('level-selection')) {
-          console.log('Still on level selection page, using fallback navigation');
-          window.location.replace('/speech');
-        }
-      }, 1000);
-      
-      return () => clearTimeout(fallbackTimer);
-    }, 300);
+    // Use direct navigation for reliability in this critical path
+    window.location.href = '/speech';
   };
 
   // Define levels with multilingual descriptions
