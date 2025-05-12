@@ -19,6 +19,7 @@ module.exports = {
       animation: {
         "fade-in": "fadeIn 0.5s ease-out forwards",
         "pulse": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "slideDown": "slideDown 0.3s ease-out forwards",
         "slide-in-top": "slideInTop 0.3s ease-out forwards",
         "slide-out-top": "slideOutTop 0.3s ease-out forwards",
       },

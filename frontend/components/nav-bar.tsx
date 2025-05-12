@@ -1,16 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
+  // Determine if we're on the landing page
+  const [isLandingPage, setIsLandingPage] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Check if we're on the landing page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsLandingPage(window.location.pathname === '/');
+      
+      // Add scroll listener for the landing page
+      const handleScroll = () => {
+        setIsScrolled(window.scrollY > 50);
+      };
+      
+      if (window.location.pathname === '/') {
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+      }
+    }
+  }, []);
+  
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -60,12 +80,24 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   };
 
-  // Keep the navbar fixed with the first section color (turquoise)
-  let navbarClass = "w-full backdrop-blur-sm border-b border-white/20 transition-all duration-500 fixed top-0 left-0 right-0 z-50 navbar-section1";
+  // Scroll to section on landing page
+  const scrollToSection = useCallback((sectionId: string) => {
+    if (typeof window !== 'undefined') {
+      const section = document.getElementById(sectionId);
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+        setIsMenuOpen(false);
+      }
+    }
+  }, []);
+
+  // Keep the navbar fixed with appropriate styling
+  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#3a9e92]/90 shadow-lg' : 'bg-transparent'} ${activeSection ? 'navbar-section1' : ''}`;
+  navbarClass += isScrolled ? ' py-2' : ' py-4';
   
   return (
     <nav className={navbarClass}>
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
         <div 
           className="flex items-center cursor-pointer"
@@ -87,6 +119,36 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
+          {/* Landing page navigation items */}
+          {isLandingPage && (
+            <div className="flex items-center space-x-6 mr-4">
+              <button 
+                onClick={() => scrollToSection('features')}
+                className="text-white/90 hover:text-white transition-colors font-medium"
+              >
+                Features
+              </button>
+              <button 
+                onClick={() => scrollToSection('how-it-works')}
+                className="text-white/90 hover:text-white transition-colors font-medium"
+              >
+                How It Works
+              </button>
+              <button 
+                onClick={() => scrollToSection('pricing')}
+                className="text-white/90 hover:text-white transition-colors font-medium"
+              >
+                Pricing
+              </button>
+              <button 
+                onClick={() => scrollToSection('faq')}
+                className="text-white/90 hover:text-white transition-colors font-medium"
+              >
+                FAQ
+              </button>
+            </div>
+          )}
+          
           {/* User Menu (when logged in) */}
           {user ? (
             <div className="relative user-menu-container">
@@ -153,7 +215,36 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden glass-card border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden py-2 px-4">
-
+          {/* Landing page menu items on mobile */}
+          {isLandingPage && (
+            <>
+              <button
+                onClick={() => scrollToSection('features')}
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => scrollToSection('how-it-works')}
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
+              >
+                How It Works
+              </button>
+              <button
+                onClick={() => scrollToSection('pricing')}
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
+              >
+                Pricing
+              </button>
+              <button
+                onClick={() => scrollToSection('faq')}
+                className="block w-full text-left py-2 text-white/80 hover:text-white"
+              >
+                FAQ
+              </button>
+              <div className="my-2 border-t border-white/10"></div>
+            </>
+          )}
           
           {user ? (
             <>
@@ -191,27 +282,38 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       
       {/* Logout Confirmation Dialog */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
-            <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
-            
-            <div className="flex space-x-2 justify-end">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors"
-              >
-                Sign Out
-              </button>
+        <>
+          {/* Backdrop for clicking outside to close */}
+          <div 
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" 
+            onClick={() => setShowLogoutConfirm(false)}
+          />
+          {/* Position dialog at the specific location marked in the screenshot */}
+          <div 
+            className="fixed top-[200px] left-1/2 -translate-x-1/2 z-50 animate-slideDown w-[90%] max-w-sm mx-auto"
+            onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
+          >
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow-2xl border border-gray-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
+                <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
+                
+                <div className="flex space-x-2 justify-end">
+                  <button
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors text-sm"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+        </>
       )}
     </nav>
   );
