@@ -288,31 +288,31 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" 
             onClick={() => setShowLogoutConfirm(false)}
           />
-          {/* Position dialog below the navbar, centered horizontally */}
+          {/* Position dialog at the specific location marked in the screenshot */}
           <div 
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-slideDown w-80"
+            className="fixed top-[200px] left-1/2 -translate-x-1/2 z-50 animate-slideDown w-[90%] max-w-sm mx-auto"
             onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
           >
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow-2xl border border-gray-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
-              <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
-              
-              <div className="flex space-x-2 justify-end">
-                <button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-3 py-1.5 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors text-sm"
-                >
-                  Sign Out
-                </button>
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow-2xl border border-gray-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
+                <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
+                
+                <div className="flex space-x-2 justify-end">
+                  <button
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors text-sm"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
         </>
       )}
     </nav>
