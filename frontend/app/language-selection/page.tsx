@@ -6,6 +6,7 @@ import { useNavigation } from '@/lib/navigation';
 import NavBar from '@/components/nav-bar';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 import { useAuth } from '@/lib/auth';
+import LanguageOptionsModal from '@/components/language-options-modal';
 import './language-selection.css';
 // Animation temporarily commented out
 // import { TypeAnimation } from 'react-type-animation';
@@ -25,6 +26,7 @@ export default function LanguageSelection() {
   const { user } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   // Sound effects temporarily disabled
   // const { playSelectionSound, playSuccessSound } = useAudio();
 
@@ -197,35 +199,60 @@ const languages: Language[] = [
   // No need for handleStartOver since this is the starting screen
 
   const handleLanguageSelect = (languageCode: string) => {
-    // Just set the selected language without redirecting
+    // Sound effects temporarily disabled
+    // playSelectionSound();
+    
+    // Store the selected language
     setSelectedLanguage(languageCode);
     
-    // Store the selection using the navigation service
+    // Save to session storage and navigation context
     navigation.setSelectedLanguage(languageCode);
     
-    // Log the selection
-    console.log('Language selected:', languageCode);
-    
-    // Important: No redirection here - we want to stay on this page
-    // to show the assessment options
-    
-    // Reset loading state if it was set
-    setIsLoading(false);
+    // Open the modal instead of scrolling
+    setIsModalOpen(true);
   };
 
   // Function to continue to topic selection
   const handleContinue = () => {
-    if (!selectedLanguage) return;
+    // Sound effects temporarily disabled
+    // playSuccessSound();
+    // setTimeout(() => {
+    //   router.push('/topic-selection');
+    // }, 500);
     
     // Set loading state while navigating
     setIsLoading(true);
     
-    // Log the navigation attempt
-    console.log('Continuing to topic selection with language:', selectedLanguage);
-    
     // Use direct navigation for reliability in this critical path
-    // This ensures we actually navigate to the next page
     window.location.href = '/topic-selection';
+    
+    // Fallback in case the above doesn't trigger
+    setTimeout(() => {
+      if (window.location.pathname !== '/topic-selection') {
+        router.push('/topic-selection');
+      }
+    }, 1000);
+  };
+  
+  // Handle modal option selection
+  const handleModalOptionSelect = (option: string) => {
+    if (option === 'assessment') {
+      // Set loading state while navigating
+      setIsLoading(true);
+      
+      // Ensure the language is stored
+      if (selectedLanguage) {
+        navigation.setSelectedLanguage(selectedLanguage);
+      }
+      
+      // Log the navigation attempt
+      console.log('Navigating to speaking assessment with language:', selectedLanguage);
+      
+      // Use direct navigation for reliability in this critical path
+      window.location.href = '/assessment/speaking';
+    } else if (option === 'practice') {
+      handleContinue();
+    }
   };
 
   return (
@@ -373,66 +400,13 @@ const languages: Language[] = [
             ))}
           </div>
 
-          {/* Assessment Options */}
-          {selectedLanguage && (
-            <div className="mt-8 animate-fade-in">
-              <h3 className="text-center text-white/80 mb-4">How would you like to proceed?</h3>
-              <div className="flex flex-col sm:flex-row justify-center gap-4">
-                {/* Speaking Assessment Option */}
-                <button
-                  onClick={() => {
-                    // Set loading state while navigating
-                    setIsLoading(true);
-                    
-                    // Ensure the language is stored
-                    if (selectedLanguage) {
-                      navigation.setSelectedLanguage(selectedLanguage);
-                    }
-                    
-                    // Log the navigation attempt
-                    console.log('Navigating to speaking assessment with language:', selectedLanguage);
-                    
-                    // Use direct navigation for reliability in this critical path
-                    window.location.href = '/assessment/speaking';
-                  }}
-                  className="px-6 py-3 rounded-xl font-medium 
-                    text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                  style={{
-                    backgroundColor: 'var(--coral)',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
-                    Assess My Speaking Level
-                  </div>
-                  <p className="text-xs mt-1 text-white/80">AI will evaluate your speaking proficiency</p>
-                </button>
-
-                {/* Standard Path Option */}
-                <button
-                  onClick={handleContinue}
-                  className="px-6 py-3 rounded-xl font-medium 
-                    shadow-lg hover:shadow-xl transition-all duration-300"
-                  style={{
-                    backgroundColor: 'var(--yellow)',
-                    color: 'var(--text-dark)',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                    </svg>
-                    Continue to Topics
-                  </div>
-                  <p className="text-xs mt-1 text-black/70">Select topics and set your level manually</p>
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Language Options Modal */}
+          <LanguageOptionsModal 
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            selectedLanguage={selectedLanguage || ''}
+            onContinue={handleModalOptionSelect}
+          />
         </div>
         </div>
       </main>
