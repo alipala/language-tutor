@@ -103,11 +103,11 @@ const FAQSection: React.FC = () => {
         <Accordion>
           <AccordionItem 
             key="how-it-works" 
-            aria-label="How does Language Tutor work?" 
+            aria-label="How does Your Smart Language Coach work?" 
             indicator={<QuestionIcon />} 
-            title="How does Language Tutor work?"
+            title="How does Your Smart Language Coach work?"
           >
-            Language Tutor uses advanced AI to create personalized language learning experiences. 
+            Your Smart Language Coach uses advanced AI to create personalized language learning experiences. 
             Our system adapts to your learning style, proficiency level, and interests to provide 
             customized lessons and conversation practice. The AI tutor provides real-time feedback 
             on pronunciation, grammar, and vocabulary, helping you improve faster than traditional 
@@ -133,7 +133,7 @@ const FAQSection: React.FC = () => {
             indicator={<PricingIcon />} 
             title="What are the pricing options?"
           >
-            Language Tutor offers a free tier that gives you access to basic features and limited 
+            Your Smart Language Coach offers a free tier that gives you access to basic features and limited 
             lessons. Our premium subscription unlocks unlimited lessons, advanced speaking practice, 
             personalized learning paths, and detailed progress tracking. We also offer special rates 
             for students and educational institutions. Check our pricing page for the most current 

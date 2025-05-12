@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
         <div className="container mx-auto">
           <Link href="/">
             <h1 className="text-2xl md:text-3xl font-bold gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-200 dark:to-purple-300">
-              Language Tutor
+              Your Smart Language Coach
             </h1>
           </Link>
         </div>

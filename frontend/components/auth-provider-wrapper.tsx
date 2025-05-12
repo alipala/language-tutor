@@ -31,7 +31,7 @@ export default function AuthProviderWrapper({ children }: { children: ReactNode 
         errorDiv.style.color = '#721c24';
         errorDiv.style.borderRadius = '4px';
         errorDiv.innerHTML = `
-          <h2>Language Tutor - Error Recovery</h2>
+          <h2>Your Smart Language Coach - Error Recovery</h2>
           <p>We encountered an error while loading the application.</p>
           <p>Error: ${event.message || 'Unknown error'}</p>
           <button onclick="window.location.href='/'">Try Again</button>
@@ -59,7 +59,7 @@ export default function AuthProviderWrapper({ children }: { children: ReactNode 
         color: '#721c24',
         borderRadius: '4px'
       }}>
-        <h2>Language Tutor - Error Recovery</h2>
+        <h2>Your Smart Language Coach - Error Recovery</h2>
         <p>We encountered an error while loading the application.</p>
         <p>Error: {error}</p>
         <button onClick={() => window.location.href = '/'}>Try Again</button>

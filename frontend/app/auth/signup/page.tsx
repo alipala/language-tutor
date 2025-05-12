@@ -85,7 +85,7 @@ export default function SignupPage() {
         <div className="container mx-auto">
           <Link href="/">
             <h1 className="text-2xl md:text-3xl font-bold text-white">
-              Language Tutor
+              Your Smart Language Coach
             </h1>
           </Link>
         </div>

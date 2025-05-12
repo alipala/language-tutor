@@ -1,7 +1,7 @@
 /**
  * Navigation Types
  * 
- * Type definitions for the navigation system in the Language Tutor application.
+ * Type definitions for the navigation system in the Your Smart Language Coach application.
  */
 
 /**

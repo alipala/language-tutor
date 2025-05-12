@@ -163,7 +163,7 @@ export default function Home() {
                 transition={{ duration: 0.6 }}
               >
                 <span className="block mb-2">Welcome to</span>
-                <span className="text-white">Language Tutor</span>
+                <span className="text-white">Your Smart Language Coach</span>
               </motion.h1>
               
               <motion.div 
@@ -340,7 +340,7 @@ export default function Home() {
               <div className="contact-info">
                 <p className="email">Questions? Contact us at: support@languagetutor.ai</p>
                 <p className="project-info">Powered by advanced AI language models</p>
-                <p className="copyright">© 2025 Language Tutor. All rights reserved.</p>
+                <p className="copyright">© 2025 Your Smart Language Coach. All rights reserved.</p>
               </div>
               
               {error && (

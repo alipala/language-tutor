@@ -1,7 +1,7 @@
 /**
  * Navigation Service
  * 
- * A centralized service for handling all navigation in the Language Tutor application.
+ * A centralized service for handling all navigation in the Your Smart Language Coach application.
  * This service ensures consistent navigation behavior across development and production environments.
  */
 
