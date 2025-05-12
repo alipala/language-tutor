@@ -111,7 +111,7 @@ export default function SpeakingAssessmentPage() {
     <div className="min-h-screen flex flex-col text-white bg-[var(--turquoise)]">
       <NavBar />
       <main className="flex-grow flex flex-col p-4 md:p-8">
-        <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
+        <div className="flex flex-col flex-1 items-stretch space-y-8 w-full max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center">
             <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">

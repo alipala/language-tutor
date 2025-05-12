@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle, ThumbsUp, Check, Target, ArrowUpRight, Footprints } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
@@ -33,9 +33,6 @@ export default function SpeakingAssessment({
   const [transcription, setTranscription] = useState('');
   const [assessment, setAssessment] = useState<SpeakingAssessmentResult | null>(null);
   const [error, setError] = useState('');
-  const [prompts, setPrompts] = useState<SpeakingPrompt | null>(null);
-  const [selectedPromptCategory, setSelectedPromptCategory] = useState('general');
-  const [selectedPrompt, setSelectedPrompt] = useState('');
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   
   // Refs
@@ -44,65 +41,10 @@ export default function SpeakingAssessment({
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const promptRef = useRef('');
 
-  // Define fallback prompts directly in the component
-  const fallbackPrompts = {
-    general: [
-      'Tell me about yourself and your language learning experience.',
-      'Describe your hometown and what you like about it.',
-      'What are your hobbies and interests?',
-      'Talk about your favorite book, movie, or TV show.',
-      'Describe your typical day.'
-    ],
-    travel: [
-      'Describe a memorable trip you\'ve taken.',
-      'What\'s your favorite place to visit and why?',
-      'Talk about a place you would like to visit in the future.',
-      'Describe your ideal vacation.',
-      'What do you usually do when you travel?'
-    ],
-    education: [
-      'Talk about your educational background.',
-      'Describe a teacher who influenced you.',
-      'What subjects did you enjoy studying?',
-      'How do you think education has changed in recent years?',
-      'Describe your learning style.'
-    ]
-  };
-
-  // Initialize with fallback prompts immediately to ensure UI is never empty
+  // Initialize the component
   useEffect(() => {
-    // Set fallback prompts right away
-    setPrompts(fallbackPrompts);
-    const randomIndex = Math.floor(Math.random() * fallbackPrompts.general.length);
-    setSelectedPrompt(fallbackPrompts.general[randomIndex]);
-    promptRef.current = fallbackPrompts.general[randomIndex];
-    
-    // Then try to fetch from API
-    const getPrompts = async () => {
-      try {
-        const promptsData = await fetchSpeakingPrompts(language);
-        
-        // Only update if we got valid data
-        if (promptsData && promptsData.general && promptsData.general.length > 0) {
-          setPrompts(promptsData);
-          
-          // Set a random prompt from the general category
-          const randomIndex = Math.floor(Math.random() * promptsData.general.length);
-          setSelectedPrompt(promptsData.general[randomIndex]);
-          promptRef.current = promptsData.general[randomIndex];
-          
-          // Clear any error message
-          setError('');
-        }
-      } catch (err) {
-        console.error('Error fetching prompts:', err);
-        // We already have fallback prompts set, so just show an error message
-        setError('Using default prompts due to connection issue.');
-      }
-    };
-    
-    // Try to get prompts from API, but we already have fallbacks if it fails
-    getPrompts();
+    // Clear any error message
+    setError('');
   }, [language]);
 
   // Timer effect
@@ -290,19 +232,7 @@ export default function SpeakingAssessment({
     }
   };
 
-  const handleSelectPrompt = (prompt: string) => {
-    setSelectedPrompt(prompt);
-    promptRef.current = prompt;
-  };
-
-  const handleSelectPromptCategory = (category: string) => {
-    setSelectedPromptCategory(category);
-    if (prompts && prompts[category] && prompts[category].length > 0) {
-      const randomIndex = Math.floor(Math.random() * prompts[category].length);
-      setSelectedPrompt(prompts[category][randomIndex]);
-      promptRef.current = prompts[category][randomIndex];
-    }
-  };
+  // No longer need prompt selection handlers
 
   const handlePlayAudio = () => {
     if (audioPlayerRef.current) {
@@ -385,8 +315,8 @@ export default function SpeakingAssessment({
   const userIsAuthenticated = isAuthenticated();
 
   return (
-    <div className="flex flex-col space-y-6 w-full max-w-4xl mx-auto bg-gray-800 rounded-xl p-6 shadow-lg">
-      {/* Hidden audio player for playback */}
+    <div className="bg-white text-[#333333] rounded-lg p-8 w-full mx-auto space-y-8 border border-[#4ECFBF]/30 shadow-md">
+      {/* Hidden audio player */}
       {audioUrl && (
         <audio 
           ref={audioPlayerRef} 
@@ -396,22 +326,22 @@ export default function SpeakingAssessment({
         />
       )}
       
-      {/* Authentication Banner - always visible if not authenticated */}
-      {!userIsAuthenticated && (
-        <div className="bg-yellow-900/80 border-l-4 border-yellow-500 p-4 mb-4">
+      {/* Authentication Warning */}
+      {!isAuthenticated() && (
+        <div className="bg-[#FFD63A]/20 border-l-4 border-[#FFD63A] p-4 mb-4 rounded-r-lg">
           <div className="flex items-start">
             <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-yellow-400" />
+              <AlertCircle className="h-5 w-5 text-[#FFD63A]" />
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-300">Authentication Required</h3>
-              <div className="mt-1 text-sm text-yellow-200">
+              <h3 className="text-sm font-medium text-white">Authentication Required</h3>
+              <div className="mt-1 text-sm text-gray-200">
                 <p>Your assessment results will not be saved to your profile unless you sign in.</p>
               </div>
               <div className="mt-3">
                 <a 
                   href="/auth/login" 
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md bg-yellow-800 hover:bg-yellow-700 text-yellow-100"
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md bg-[#F75A5A] hover:bg-[#E55252] text-white shadow-sm"
                 >
                   Sign In
                 </a>
@@ -422,107 +352,90 @@ export default function SpeakingAssessment({
       )}
       
       {/* Header */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">Speaking Assessment</h2>
-        <p className="text-gray-300">
+      <div className="text-center bg-[#4ECFBF] p-6 rounded-lg shadow-lg mb-6">
+        <h2 className="text-3xl font-bold text-white mb-3">Speaking Assessment</h2>
+        <p className="text-white text-lg">
           Speak for 30-60 seconds to assess your {language} proficiency level
         </p>
       </div>
-    
-    {/* Prompt Selection (only in idle state) */}
-    {status === 'idle' && (
-      <div className="bg-gray-700 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-white mb-3">Speaking Prompt</h3>
-        
-        {/* Prompt Categories */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {prompts && Object.keys(prompts).map((category) => (
-            <button
-              key={category}
-              onClick={() => handleSelectPromptCategory(category)}
-              className={`px-3 py-1 rounded-full text-sm ${
-                selectedPromptCategory === category 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
-              }`}
-            >
-              {category.charAt(0).toUpperCase() + category.slice(1)}
-            </button>
-          ))}
-        </div>
-        
-        {/* Selected Prompt */}
-        <div className="bg-gray-800 p-4 rounded-lg mb-4 border border-gray-600">
-          <p className="text-white">{selectedPrompt}</p>
-        </div>
-        
-        {/* Other Prompts in Selected Category */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-300">Other prompts:</h4>
-          {prompts && prompts[selectedPromptCategory]?.map((prompt, index) => 
-            prompt !== selectedPrompt && (
-              <button
-                key={index}
-                onClick={() => handleSelectPrompt(prompt)}
-                className="px-3 py-1 rounded-full text-sm bg-gray-600 text-gray-200 hover:bg-gray-500"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
+
+      {/* Speaking Instructions (only in idle state) */}
+      {status === 'idle' && (
+        <div className="bg-[#F8F9FA] border border-[#FFD63A] rounded-lg p-6 mb-6 shadow-md">
+          <h3 className="text-lg font-semibold text-[#333333] mb-3 border-b-2 border-[#FFD63A] pb-2">How to Get the Best Assessment</h3>
           
-          {/* Selected Prompt */}
-          <div className="bg-gray-800 p-4 rounded-lg mb-4 border border-gray-600">
-            <p className="text-white">{selectedPrompt}</p>
-          </div>
-          
-          {/* Other Prompts in Selected Category */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-300">Other prompts:</h4>
-            {prompts && prompts[selectedPromptCategory]?.map((prompt, index) => (
-              prompt !== selectedPrompt && (
-                <button
-                  key={index}
-                  onClick={() => handleSelectPrompt(prompt)}
-                  className="block w-full text-left p-2 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm"
-                >
-                  {prompt}
-                </button>
-              )
-            ))}
+          <div className="space-y-4 text-[#333333]">
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">1</span>
+              </div>
+              <p>Find a <strong>quiet environment</strong> with minimal background noise for clear audio.</p>
+            </div>
+            
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">2</span>
+              </div>
+              <p>Speak <strong>naturally</strong> about any topic you're comfortable with - your hobbies, work, travels, or interests.</p>
+            </div>
+            
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">3</span>
+              </div>
+              <p>Try to speak for the <strong>full 30-60 seconds</strong> to provide enough speech for accurate assessment.</p>
+            </div>
+            
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">4</span>
+              </div>
+              <p>Use <strong>varied vocabulary</strong> and sentence structures to demonstrate your language skills.</p>
+            </div>
+            
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">5</span>
+              </div>
+              <p><strong>Relax and be yourself</strong> - this helps us provide the most accurate assessment of your current level.</p>
+            </div>
           </div>
         </div>
       )}
       
       {/* Recording Controls */}
       {status === 'idle' && (
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-6">
           <Button 
             onClick={startRecording}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full flex items-center space-x-2"
+            className="bg-[#F75A5A] hover:bg-[#E55252] text-white px-8 py-4 rounded-lg flex items-center space-x-3 shadow-lg transition-all duration-300 transform hover:scale-105"
           >
-            <Mic className="h-5 w-5" />
-            <span>Start Recording</span>
+            <Mic className="h-6 w-6" />
+            <span className="text-lg font-medium">Start Recording</span>
           </Button>
         </div>
       )}
       
       {/* Recording State */}
       {status === 'recording' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-center space-x-4">
-            <div className="w-16 h-16 flex items-center justify-center bg-red-600 rounded-full animate-pulse">
-              <Mic className="h-8 w-8 text-white" />
+        <div className="space-y-6 bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+          <div className="flex items-center justify-center space-x-6">
+            <div className="w-20 h-20 flex items-center justify-center bg-[#F75A5A] rounded-full animate-pulse shadow-lg">
+              <Mic className="h-10 w-10 text-white" />
             </div>
-            <div className="text-2xl font-bold text-white">{formatTime(timer)}</div>
+            <div className="text-3xl font-bold text-[#333333] bg-white px-4 py-2 rounded-lg shadow-md border border-[#F75A5A]/30">{formatTime(timer)}</div>
           </div>
           
-          <Progress value={(60 - timer) / 60 * 100} className="h-2 bg-gray-700" />
+          <Progress 
+            value={(60 - timer) / 60 * 100} 
+            className="h-3 bg-white" 
+            indicatorClassName="bg-[#F75A5A]" 
+          />
           
           <div className="flex justify-center mt-4">
             <Button 
               onClick={stopRecording}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-full flex items-center space-x-2"
+              className="bg-white hover:bg-gray-100 text-[#F75A5A] font-medium px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition-all duration-300 border border-[#F75A5A]/30"
             >
               <Square className="h-5 w-5" />
               <span>Stop Recording</span>
@@ -533,207 +446,269 @@ export default function SpeakingAssessment({
       
       {/* Processing State */}
       {status === 'processing' && (
-        <div className="flex flex-col items-center justify-center py-8 space-y-4">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-white text-lg">Analyzing your speaking skills...</p>
+        <div className="flex flex-col items-center justify-center py-12 space-y-6 bg-[#FFF2C7] rounded-lg border border-[#FFD63A] p-8 shadow-md">
+          <div className="w-20 h-20 border-4 border-[#FFD63A] border-t-transparent rounded-full animate-spin shadow-lg"></div>
+          <p className="text-[#333333] text-xl font-medium bg-white px-6 py-2 rounded-lg shadow-md border border-[#FFD63A]/30">Analyzing your speaking skills...</p>
+          <p className="text-[#555555] text-center max-w-md bg-white p-4 rounded-lg border border-[#FFD63A]/30">Our AI is carefully evaluating your pronunciation, fluency, vocabulary, and grammar to provide an accurate assessment.</p>
         </div>
       )}
       
       {/* Assessment Results */}
       {status === 'complete' && assessment && (
-        <div className="space-y-6">
-          {/* Playback Controls */}
-          {audioUrl && (
-            <div className="flex items-center justify-center space-x-4 bg-gray-700 p-3 rounded-lg">
-              <Button 
-                onClick={handlePlayAudio}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center"
-              >
-                {isAudioPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <div className="text-white">Listen to your recording</div>
-            </div>
-          )}
-          
-          {/* Recommended Level */}
-          <div className="bg-gray-700 p-4 rounded-lg text-center">
-            <h3 className="text-lg text-gray-300 mb-2">Recommended Level</h3>
-            <div className="text-4xl font-bold text-white mb-2">{assessment.recommended_level}</div>
-            <div className="text-sm text-gray-400">
-              Confidence: {assessment.confidence.toFixed(1)}%
-            </div>
-          </div>
-          
-          {/* Overall Score */}
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h3 className="text-lg text-gray-300 mb-2">Overall Score</h3>
-            <div className="flex items-center space-x-4">
-              <div className={`text-3xl font-bold ${getScoreColor(assessment.overall_score)}`}>
-                {assessment.overall_score.toFixed(1)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Left Column: General Information */}
+          <div className="space-y-6">
+            {/* Playback Controls */}
+            {audioUrl && (
+              <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
+                <Button 
+                  onClick={handlePlayAudio}
+                  className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
+                >
+                  {isAudioPlaying ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                </Button>
+                <div className="text-[#333333] text-lg">Listen to your recording</div>
               </div>
-              <Progress 
-                value={assessment.overall_score} 
-                className={`h-3 bg-gray-600 flex-1`}
-                indicatorClassName={getProgressColor(assessment.overall_score)}
-              />
+            )}
+            
+            {/* Recommended Level */}
+            <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
+              <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
+              <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
+              <div className="inline-block bg-[#4ECFBF] px-4 py-2 rounded-full text-white text-sm font-medium shadow-md">
+                Confidence: {assessment.confidence.toFixed(1)}%
+              </div>
+            </div>
+            
+            {/* Overall Score */}
+            <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
+              <h3 className="text-xl text-[#333333] mb-3 font-medium">Overall Score</h3>
+              <div className="flex items-center space-x-4">
+                <div className="text-4xl font-bold text-[#333333] bg-[#FFD63A] rounded-lg px-4 py-2 shadow-md">
+                  {assessment.overall_score.toFixed(1)}
+                </div>
+                <Progress 
+                  value={assessment.overall_score} 
+                  className="h-4 bg-white flex-1 rounded-full border border-[#FFD63A]/30"
+                  indicatorClassName={`${assessment.overall_score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.overall_score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.overall_score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                />
+              </div>
+            </div>
+            
+            {/* Transcription */}
+            <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+              <h3 className="text-xl text-[#333333] mb-3 font-medium">Your Speech</h3>
+              <p className="text-[#333333] bg-white p-4 rounded-lg border border-[#F75A5A]/30 shadow-inner">
+                {assessment.recognized_text || "No speech detected"}
+              </p>
             </div>
           </div>
           
-          {/* Transcription */}
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h3 className="text-lg text-gray-300 mb-2">Your Speech</h3>
-            <p className="text-white bg-gray-800 p-3 rounded">
-              {assessment.recognized_text || "No speech detected"}
-            </p>
-          </div>
-          
-          {/* Skill Scores */}
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h3 className="text-lg text-gray-300 mb-3">Skill Breakdown</h3>
-            
-            <div className="space-y-4">
+          {/* Right Column: Detailed Assessment */}
+          <div className="space-y-6">
+            {/* Skill Scores */}
+            <div className="bg-[#F8F9FA] p-6 rounded-lg border border-gray-200 shadow-md overflow-auto">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium">Skill Breakdown</h3>
+              
+              <div className="space-y-4 max-h-[600px] overflow-auto pr-2">
               {/* Pronunciation */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Pronunciation</span>
-                  <span className={getScoreColor(assessment.pronunciation.score)}>
+              <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[#333333] font-medium">Pronunciation</span>
+                  <span className={`text-white px-3 py-1 rounded-md font-medium shadow-sm ${assessment.pronunciation.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.pronunciation.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.pronunciation.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}>
                     {assessment.pronunciation.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.pronunciation.score} 
-                  className="h-2 bg-gray-600"
-                  indicatorClassName={getProgressColor(assessment.pronunciation.score)}
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.pronunciation.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.pronunciation.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.pronunciation.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-sm text-gray-400 mt-1">{assessment.pronunciation.feedback}</p>
-              </div>
-              
-              {/* Grammar */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Grammar</span>
-                  <span className={getScoreColor(assessment.grammar.score)}>
-                    {assessment.grammar.score.toFixed(1)}
-                  </span>
-                </div>
-                <Progress 
-                  value={assessment.grammar.score} 
-                  className="h-2 bg-gray-600"
-                  indicatorClassName={getProgressColor(assessment.grammar.score)}
-                />
-                <p className="text-sm text-gray-400 mt-1">{assessment.grammar.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.pronunciation.feedback}</p>
               </div>
               
               {/* Vocabulary */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Vocabulary</span>
-                  <span className={getScoreColor(assessment.vocabulary.score)}>
+              <div className="bg-white p-3 rounded-lg border border-[#FFD63A] shadow-sm">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[#333333] font-medium">Vocabulary</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.vocabulary.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.vocabulary.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.vocabulary.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.vocabulary.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.vocabulary.score} 
-                  className="h-2 bg-gray-600"
-                  indicatorClassName={getProgressColor(assessment.vocabulary.score)}
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.vocabulary.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.vocabulary.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.vocabulary.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-sm text-gray-400 mt-1">{assessment.vocabulary.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.vocabulary.feedback}</p>
+              </div>
+              
+              {/* Grammar */}
+              <div className="bg-white p-3 rounded-lg border border-[#F75A5A] shadow-sm">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[#333333] font-medium">Grammar</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.grammar.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.grammar.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.grammar.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
+                    {assessment.grammar.score.toFixed(1)}
+                  </span>
+                </div>
+                <Progress 
+                  value={assessment.grammar.score} 
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.grammar.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.grammar.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.grammar.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                />
+                <p className="text-[#555555] mt-1 text-sm bg-[#FFF8F8] p-2 rounded-md border border-[#F75A5A]/20">{assessment.grammar.feedback}</p>
               </div>
               
               {/* Fluency */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Fluency</span>
-                  <span className={getScoreColor(assessment.fluency.score)}>
+              <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[#333333] font-medium">Fluency</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.fluency.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.fluency.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.fluency.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.fluency.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.fluency.score} 
-                  className="h-2 bg-gray-600"
-                  indicatorClassName={getProgressColor(assessment.fluency.score)}
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.fluency.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.fluency.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.fluency.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-sm text-gray-400 mt-1">{assessment.fluency.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.fluency.feedback}</p>
               </div>
               
               {/* Coherence */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Coherence</span>
-                  <span className={getScoreColor(assessment.coherence.score)}>
+              <div className="bg-white p-3 rounded-lg border border-[#FFD63A] shadow-sm">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[#333333] font-medium">Coherence</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.coherence.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.coherence.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.coherence.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.coherence.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.coherence.score} 
-                  className="h-2 bg-gray-600"
-                  indicatorClassName={getProgressColor(assessment.coherence.score)}
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.coherence.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.coherence.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.coherence.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-sm text-gray-400 mt-1">{assessment.coherence.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.coherence.feedback}</p>
               </div>
             </div>
           </div>
           
-          {/* Strengths and Areas for Improvement */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Feedback and Next Steps */}
             {/* Strengths */}
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h3 className="text-lg text-gray-300 mb-2">Strengths</h3>
-              <ul className="list-disc pl-5 text-green-400 space-y-1">
+            <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
+              </h3>
+              <ul className="space-y-3">
                 {assessment.strengths.map((strength, index) => (
-                  <li key={index}>{strength}</li>
+                  <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#4ECFBF]/30 shadow-sm">
+                    <div className="bg-[#4ECFBF] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-[#333333]">{strength}</p>
+                  </li>
                 ))}
               </ul>
             </div>
             
             {/* Areas for Improvement */}
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h3 className="text-lg text-gray-300 mb-2">Areas for Improvement</h3>
-              <ul className="list-disc pl-5 text-yellow-400 space-y-1">
+            <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                <Target className="h-5 w-5 mr-2 text-[#F75A5A]" /> Areas for Improvement
+              </h3>
+              <ul className="space-y-3">
                 {assessment.areas_for_improvement.map((area, index) => (
-                  <li key={index}>{area}</li>
+                  <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#F75A5A]/30 shadow-sm">
+                    <div className="bg-[#F75A5A] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <ArrowUpRight className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-[#333333]">{area}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            {/* Next Steps */}
+            <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                <Footprints className="h-5 w-5 mr-2 text-[#FFD63A]" /> Next Steps
+              </h3>
+              <ul className="space-y-3">
+                {assessment.next_steps.map((step, index) => (
+                  <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+                    <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <span className="block w-4 h-4 text-[#333333] text-center font-bold text-xs">{index + 1}</span>
+                    </div>
+                    <p className="text-[#333333]">{step}</p>
+                  </li>
                 ))}
               </ul>
             </div>
           </div>
           
-          {/* Next Steps */}
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <h3 className="text-lg text-gray-300 mb-2">Recommended Next Steps</h3>
-            <ul className="list-disc pl-5 text-blue-400 space-y-1">
-              {assessment.next_steps.map((step, index) => (
-                <li key={index}>{step}</li>
-              ))}
-            </ul>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
-            <Button 
-              onClick={handleTryAgain}
-              className="bg-gray-600 hover:bg-gray-500 text-white px-6 py-3 rounded-lg flex items-center justify-center space-x-2"
-            >
-              <RotateCw className="h-5 w-5" />
-              <span>Try Again</span>
-            </Button>
-            
-            <Button 
-              onClick={handleSelectLevel}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center space-x-2"
-            >
-              <ChevronRight className="h-5 w-5" />
-              <span>Use This Level</span>
-            </Button>
+          {/* Action Buttons - Centered at the bottom */}
+          <div className="col-span-1 lg:col-span-2">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+              <Button 
+                onClick={handleTryAgain}
+                className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
+              >
+                <RotateCw className="h-5 w-5" />
+                <span>New Assessment</span>
+              </Button>
+              
+              <Button 
+                onClick={handleSelectLevel}
+                className="bg-[#FFD63A] hover:bg-[#ECC235] text-[#333333] font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
+              >
+                <Volume2 className="h-5 w-5" />
+                <span>Save & Practice</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
       
       {/* Error Message */}
       {error && (
-        <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded-lg">
-          {error}
+        <div className="bg-[#FFF8F8] border border-[#F75A5A] rounded-lg p-6 mb-6 shadow-md">
+          <div className="flex items-center space-x-3 text-[#F75A5A]">
+            <AlertCircle className="h-6 w-6" />
+            <h3 className="text-lg font-semibold">Error</h3>
+          </div>
+          <p className="mt-2 text-[#333333]">{error}</p>
+          <Button 
+            onClick={() => setError('')}
+            className="mt-4 bg-white hover:bg-gray-100 text-[#F75A5A] px-4 py-2 rounded-md text-sm font-medium shadow-md transition-all duration-300 border border-[#F75A5A]/30"
+          >
+            Dismiss
+          </Button>
         </div>
       )}
+      
+      {/* Manual Level Selection button removed */}
       
       {/* Learning Plan Modal */}
       {assessment && (
