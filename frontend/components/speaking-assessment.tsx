@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle, ThumbsUp, Check, Target, ArrowUpRight, Footprints } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
@@ -315,7 +315,7 @@ export default function SpeakingAssessment({
   const userIsAuthenticated = isAuthenticated();
 
   return (
-    <div className="bg-[#2A3546] text-white rounded-lg p-6 max-w-4xl mx-auto space-y-6 border border-[#4ECFBF]/30">
+    <div className="bg-white text-[#333333] rounded-lg p-8 w-full mx-auto space-y-8 border border-[#4ECFBF]/30 shadow-md">
       {/* Hidden audio player */}
       {audioUrl && (
         <audio 
@@ -361,39 +361,39 @@ export default function SpeakingAssessment({
 
       {/* Speaking Instructions (only in idle state) */}
       {status === 'idle' && (
-        <div className="bg-[#3A4559] border border-[#FFD63A]/50 rounded-lg p-6 mb-6 shadow-md">
-          <h3 className="text-lg font-semibold text-white mb-3 bg-[#FFD63A]/10 p-2 rounded-md inline-block">How to Get the Best Assessment</h3>
+        <div className="bg-[#F8F9FA] border border-[#FFD63A] rounded-lg p-6 mb-6 shadow-md">
+          <h3 className="text-lg font-semibold text-[#333333] mb-3 border-b-2 border-[#FFD63A] pb-2">How to Get the Best Assessment</h3>
           
-          <div className="space-y-4 text-white">
-            <div className="flex items-start space-x-3 bg-[#2A3546] p-3 rounded-lg border border-[#FFD63A]/20">
+          <div className="space-y-4 text-[#333333]">
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
                 <span className="block w-5 h-5 text-[#333333] text-center font-bold">1</span>
               </div>
               <p>Find a <strong>quiet environment</strong> with minimal background noise for clear audio.</p>
             </div>
             
-            <div className="flex items-start space-x-3 bg-[#2A3546] p-3 rounded-lg border border-[#FFD63A]/20">
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
                 <span className="block w-5 h-5 text-[#333333] text-center font-bold">2</span>
               </div>
               <p>Speak <strong>naturally</strong> about any topic you're comfortable with - your hobbies, work, travels, or interests.</p>
             </div>
             
-            <div className="flex items-start space-x-3 bg-[#2A3546] p-3 rounded-lg border border-[#FFD63A]/20">
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
                 <span className="block w-5 h-5 text-[#333333] text-center font-bold">3</span>
               </div>
               <p>Try to speak for the <strong>full 30-60 seconds</strong> to provide enough speech for accurate assessment.</p>
             </div>
             
-            <div className="flex items-start space-x-3 bg-[#2A3546] p-3 rounded-lg border border-[#FFD63A]/20">
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
                 <span className="block w-5 h-5 text-[#333333] text-center font-bold">4</span>
               </div>
               <p>Use <strong>varied vocabulary</strong> and sentence structures to demonstrate your language skills.</p>
             </div>
             
-            <div className="flex items-start space-x-3 bg-[#2A3546] p-3 rounded-lg border border-[#FFD63A]/20">
+            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
                 <span className="block w-5 h-5 text-[#333333] text-center font-bold">5</span>
               </div>
@@ -418,24 +418,24 @@ export default function SpeakingAssessment({
       
       {/* Recording State */}
       {status === 'recording' && (
-        <div className="space-y-6 bg-[#3A4559] p-6 rounded-lg border border-[#F75A5A]/50 shadow-md">
+        <div className="space-y-6 bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
           <div className="flex items-center justify-center space-x-6">
             <div className="w-20 h-20 flex items-center justify-center bg-[#F75A5A] rounded-full animate-pulse shadow-lg">
               <Mic className="h-10 w-10 text-white" />
             </div>
-            <div className="text-3xl font-bold text-white bg-[#2A3546] px-4 py-2 rounded-lg shadow-md">{formatTime(timer)}</div>
+            <div className="text-3xl font-bold text-[#333333] bg-white px-4 py-2 rounded-lg shadow-md border border-[#F75A5A]/30">{formatTime(timer)}</div>
           </div>
           
           <Progress 
             value={(60 - timer) / 60 * 100} 
-            className="h-3 bg-[#2A3546]" 
+            className="h-3 bg-white" 
             indicatorClassName="bg-[#F75A5A]" 
           />
           
           <div className="flex justify-center mt-4">
             <Button 
               onClick={stopRecording}
-              className="bg-white hover:bg-gray-100 text-[#F75A5A] font-medium px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition-all duration-300"
+              className="bg-white hover:bg-gray-100 text-[#F75A5A] font-medium px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition-all duration-300 border border-[#F75A5A]/30"
             >
               <Square className="h-5 w-5" />
               <span>Stop Recording</span>
@@ -446,211 +446,269 @@ export default function SpeakingAssessment({
       
       {/* Processing State */}
       {status === 'processing' && (
-        <div className="flex flex-col items-center justify-center py-12 space-y-6 bg-[#3A4559] rounded-lg border border-[#FFD63A]/50 p-8 shadow-md">
+        <div className="flex flex-col items-center justify-center py-12 space-y-6 bg-[#FFF2C7] rounded-lg border border-[#FFD63A] p-8 shadow-md">
           <div className="w-20 h-20 border-4 border-[#FFD63A] border-t-transparent rounded-full animate-spin shadow-lg"></div>
-          <p className="text-white text-xl font-medium bg-[#2A3546] px-6 py-2 rounded-lg shadow-md">Analyzing your speaking skills...</p>
-          <p className="text-gray-200 text-center max-w-md bg-[#2A3546] p-4 rounded-lg">Our AI is carefully evaluating your pronunciation, fluency, vocabulary, and grammar to provide an accurate assessment.</p>
+          <p className="text-[#333333] text-xl font-medium bg-white px-6 py-2 rounded-lg shadow-md border border-[#FFD63A]/30">Analyzing your speaking skills...</p>
+          <p className="text-[#555555] text-center max-w-md bg-white p-4 rounded-lg border border-[#FFD63A]/30">Our AI is carefully evaluating your pronunciation, fluency, vocabulary, and grammar to provide an accurate assessment.</p>
         </div>
       )}
       
       {/* Assessment Results */}
       {status === 'complete' && assessment && (
-        <div className="space-y-6">
-          {/* Playback Controls */}
-          {audioUrl && (
-            <div className="flex items-center justify-center space-x-4 bg-[#3A4559] p-4 rounded-lg border border-[#4ECFBF]/50 shadow-md">
-              <Button 
-                onClick={handlePlayAudio}
-                className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
-              >
-                {isAudioPlaying ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-              </Button>
-              <div className="text-white text-lg">Listen to your recording</div>
-            </div>
-          )}
-          
-          {/* Recommended Level */}
-          <div className="bg-[#3A4559] p-6 rounded-lg text-center border border-[#4ECFBF]/50 shadow-md">
-            <h3 className="text-xl text-white mb-3 font-medium">Recommended Level</h3>
-            <div className="text-5xl font-bold text-white mb-3">{assessment.recommended_level}</div>
-            <div className="inline-block bg-[#4ECFBF] px-4 py-2 rounded-full text-white text-sm font-medium shadow-md">
-              Confidence: {assessment.confidence.toFixed(1)}%
-            </div>
-          </div>
-          
-          {/* Overall Score */}
-          <div className="bg-[#3A4559] p-6 rounded-lg border border-[#FFD63A]/50 shadow-md">
-            <h3 className="text-xl text-white mb-3 font-medium">Overall Score</h3>
-            <div className="flex items-center space-x-4">
-              <div className="text-4xl font-bold text-[#333333] bg-[#FFD63A] rounded-lg px-4 py-2 shadow-md">
-                {assessment.overall_score.toFixed(1)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Left Column: General Information */}
+          <div className="space-y-6">
+            {/* Playback Controls */}
+            {audioUrl && (
+              <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
+                <Button 
+                  onClick={handlePlayAudio}
+                  className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
+                >
+                  {isAudioPlaying ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                </Button>
+                <div className="text-[#333333] text-lg">Listen to your recording</div>
               </div>
-              <Progress 
-                value={assessment.overall_score} 
-                className="h-4 bg-[#2A3546] flex-1 rounded-full"
-                indicatorClassName="bg-[#FFD63A]"
-              />
+            )}
+            
+            {/* Recommended Level */}
+            <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
+              <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
+              <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
+              <div className="inline-block bg-[#4ECFBF] px-4 py-2 rounded-full text-white text-sm font-medium shadow-md">
+                Confidence: {assessment.confidence.toFixed(1)}%
+              </div>
+            </div>
+            
+            {/* Overall Score */}
+            <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
+              <h3 className="text-xl text-[#333333] mb-3 font-medium">Overall Score</h3>
+              <div className="flex items-center space-x-4">
+                <div className="text-4xl font-bold text-[#333333] bg-[#FFD63A] rounded-lg px-4 py-2 shadow-md">
+                  {assessment.overall_score.toFixed(1)}
+                </div>
+                <Progress 
+                  value={assessment.overall_score} 
+                  className="h-4 bg-white flex-1 rounded-full border border-[#FFD63A]/30"
+                  indicatorClassName={`${assessment.overall_score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.overall_score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.overall_score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                />
+              </div>
+            </div>
+            
+            {/* Transcription */}
+            <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+              <h3 className="text-xl text-[#333333] mb-3 font-medium">Your Speech</h3>
+              <p className="text-[#333333] bg-white p-4 rounded-lg border border-[#F75A5A]/30 shadow-inner">
+                {assessment.recognized_text || "No speech detected"}
+              </p>
             </div>
           </div>
           
-          {/* Transcription */}
-          <div className="bg-[#3A4559] p-6 rounded-lg border border-[#F75A5A]/50 shadow-md">
-            <h3 className="text-xl text-white mb-3 font-medium">Your Speech</h3>
-            <p className="text-white bg-[#2A3546] p-4 rounded-lg border border-[#F75A5A]/20 shadow-inner">
-              {assessment.recognized_text || "No speech detected"}
-            </p>
-          </div>
-          
-          {/* Skill Scores */}
-          <div className="bg-[#3A4559] p-6 rounded-lg border border-[#4ECFBF]/30 shadow-md">
-            <h3 className="text-xl text-white mb-4 font-medium">Skill Breakdown</h3>
-            
-            <div className="space-y-6">
+          {/* Right Column: Detailed Assessment */}
+          <div className="space-y-6">
+            {/* Skill Scores */}
+            <div className="bg-[#F8F9FA] p-6 rounded-lg border border-gray-200 shadow-md overflow-auto">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium">Skill Breakdown</h3>
+              
+              <div className="space-y-4 max-h-[600px] overflow-auto pr-2">
               {/* Pronunciation */}
-              <div className="bg-[#2A3546] p-4 rounded-lg border border-[#4ECFBF]/30">
+              <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
                 <div className="flex justify-between mb-2">
-                  <span className="text-white font-medium">Pronunciation</span>
-                  <span className="text-white bg-[#4ECFBF] px-3 py-1 rounded-md font-medium shadow-sm">
+                  <span className="text-[#333333] font-medium">Pronunciation</span>
+                  <span className={`text-white px-3 py-1 rounded-md font-medium shadow-sm ${assessment.pronunciation.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.pronunciation.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.pronunciation.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}>
                     {assessment.pronunciation.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.pronunciation.score} 
-                  className="h-3 bg-[#1F2937] rounded-full"
-                  indicatorClassName="bg-[#4ECFBF]"
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.pronunciation.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.pronunciation.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.pronunciation.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-white mt-2 bg-[#1F2937] p-2 rounded-md">{assessment.pronunciation.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.pronunciation.feedback}</p>
               </div>
               
               {/* Vocabulary */}
-              <div className="bg-[#2A3546] p-4 rounded-lg border border-[#FFD63A]/30">
+              <div className="bg-white p-3 rounded-lg border border-[#FFD63A] shadow-sm">
                 <div className="flex justify-between mb-2">
-                  <span className="text-white font-medium">Vocabulary</span>
-                  <span className="text-[#333333] bg-[#FFD63A] px-3 py-1 rounded-md font-medium shadow-sm">
+                  <span className="text-[#333333] font-medium">Vocabulary</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.vocabulary.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.vocabulary.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.vocabulary.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.vocabulary.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.vocabulary.score} 
-                  className="h-3 bg-[#1F2937] rounded-full"
-                  indicatorClassName="bg-[#FFD63A]"
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.vocabulary.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.vocabulary.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.vocabulary.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-white mt-2 bg-[#1F2937] p-2 rounded-md">{assessment.vocabulary.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.vocabulary.feedback}</p>
               </div>
               
               {/* Grammar */}
-              <div className="bg-[#2A3546] p-4 rounded-lg border border-[#F75A5A]/30">
+              <div className="bg-white p-3 rounded-lg border border-[#F75A5A] shadow-sm">
                 <div className="flex justify-between mb-2">
-                  <span className="text-white font-medium">Grammar</span>
-                  <span className="text-white bg-[#F75A5A] px-3 py-1 rounded-md font-medium shadow-sm">
+                  <span className="text-[#333333] font-medium">Grammar</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.grammar.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.grammar.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.grammar.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.grammar.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.grammar.score} 
-                  className="h-3 bg-[#1F2937] rounded-full"
-                  indicatorClassName="bg-[#F75A5A]"
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.grammar.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.grammar.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.grammar.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-white mt-2 bg-[#1F2937] p-2 rounded-md">{assessment.grammar.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#FFF8F8] p-2 rounded-md border border-[#F75A5A]/20">{assessment.grammar.feedback}</p>
               </div>
               
               {/* Fluency */}
-              <div className="bg-[#2A3546] p-4 rounded-lg border border-[#4ECFBF]/30">
+              <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
                 <div className="flex justify-between mb-2">
-                  <span className="text-white font-medium">Fluency</span>
-                  <span className="text-white bg-[#4ECFBF] px-3 py-1 rounded-md font-medium shadow-sm">
+                  <span className="text-[#333333] font-medium">Fluency</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.fluency.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.fluency.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.fluency.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.fluency.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.fluency.score} 
-                  className="h-3 bg-[#1F2937] rounded-full"
-                  indicatorClassName="bg-[#4ECFBF]"
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.fluency.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.fluency.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.fluency.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-white mt-2 bg-[#1F2937] p-2 rounded-md">{assessment.fluency.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.fluency.feedback}</p>
               </div>
               
               {/* Coherence */}
-              <div className="bg-[#2A3546] p-4 rounded-lg border border-[#FFD63A]/30">
+              <div className="bg-white p-3 rounded-lg border border-[#FFD63A] shadow-sm">
                 <div className="flex justify-between mb-2">
-                  <span className="text-white font-medium">Coherence</span>
-                  <span className="text-[#333333] bg-[#FFD63A] px-3 py-1 rounded-md font-medium shadow-sm">
+                  <span className="text-[#333333] font-medium">Coherence</span>
+                  <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.coherence.score < 25 ? 'bg-[#F75A5A] text-white' : 
+                    assessment.coherence.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
+                    assessment.coherence.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
                     {assessment.coherence.score.toFixed(1)}
                   </span>
                 </div>
                 <Progress 
                   value={assessment.coherence.score} 
-                  className="h-3 bg-[#1F2937] rounded-full"
-                  indicatorClassName="bg-[#FFD63A]"
+                  className="h-3 bg-gray-100 rounded-full"
+                  indicatorClassName={`${assessment.coherence.score < 25 ? 'bg-[#F75A5A]' : 
+                    assessment.coherence.score < 50 ? 'bg-[#FFD63A]' : 
+                    assessment.coherence.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
                 />
-                <p className="text-white mt-2 bg-[#1F2937] p-2 rounded-md">{assessment.coherence.feedback}</p>
+                <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.coherence.feedback}</p>
               </div>
             </div>
           </div>
           
-          {/* Strengths and Areas for Improvement */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Feedback and Next Steps */}
             {/* Strengths */}
-            <div className="bg-[#3A4559] p-6 rounded-lg border border-[#4ECFBF]/50 shadow-md">
-              <h3 className="text-xl text-white mb-3 font-medium">Strengths</h3>
-              <ul className="list-disc pl-5 text-white space-y-2">
+            <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
+              </h3>
+              <ul className="space-y-3">
                 {assessment.strengths.map((strength, index) => (
-                  <li key={index} className="bg-[#2A3546] p-3 rounded-lg border border-[#4ECFBF]/30 shadow-sm">{strength}</li>
+                  <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#4ECFBF]/30 shadow-sm">
+                    <div className="bg-[#4ECFBF] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-[#333333]">{strength}</p>
+                  </li>
                 ))}
               </ul>
             </div>
             
             {/* Areas for Improvement */}
-            <div className="bg-[#3A4559] p-6 rounded-lg border border-[#F75A5A]/50 shadow-md">
-              <h3 className="text-xl text-white mb-3 font-medium">Areas for Improvement</h3>
-              <ul className="list-disc pl-5 text-white space-y-2">
+            <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                <Target className="h-5 w-5 mr-2 text-[#F75A5A]" /> Areas for Improvement
+              </h3>
+              <ul className="space-y-3">
                 {assessment.areas_for_improvement.map((area, index) => (
-                  <li key={index} className="bg-[#2A3546] p-3 rounded-lg border border-[#F75A5A]/30 shadow-sm">{area}</li>
+                  <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#F75A5A]/30 shadow-sm">
+                    <div className="bg-[#F75A5A] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <ArrowUpRight className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-[#333333]">{area}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            {/* Next Steps */}
+            <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
+              <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                <Footprints className="h-5 w-5 mr-2 text-[#FFD63A]" /> Next Steps
+              </h3>
+              <ul className="space-y-3">
+                {assessment.next_steps.map((step, index) => (
+                  <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+                    <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <span className="block w-4 h-4 text-[#333333] text-center font-bold text-xs">{index + 1}</span>
+                    </div>
+                    <p className="text-[#333333]">{step}</p>
+                  </li>
                 ))}
               </ul>
             </div>
           </div>
           
-          {/* Next Steps */}
-          <div className="bg-[#3A4559] p-6 rounded-lg border border-[#FFD63A]/50 shadow-md">
-            <h3 className="text-xl text-white mb-3 font-medium">Recommended Next Steps</h3>
-            <ul className="list-disc pl-5 text-white space-y-2">
-              {assessment.next_steps.map((step, index) => (
-                <li key={index} className="bg-[#2A3546] p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">{step}</li>
-              ))}
-            </ul>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-6">
-            <Button 
-              onClick={handleTryAgain}
-              className="bg-white hover:bg-gray-100 text-[#F75A5A] font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 border border-[#F75A5A]/20"
-            >
-              <RotateCw className="h-5 w-5" />
-              <span>Try Again</span>
-            </Button>
-            
-            <Button 
-              onClick={handleSelectLevel}
-              className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white px-8 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-lg transition-all duration-300"
-            >
-              <ChevronRight className="h-5 w-5" />
-              <span>Use This Level</span>
-            </Button>
+          {/* Action Buttons - Centered at the bottom */}
+          <div className="col-span-1 lg:col-span-2">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+              <Button 
+                onClick={handleTryAgain}
+                className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
+              >
+                <RotateCw className="h-5 w-5" />
+                <span>New Assessment</span>
+              </Button>
+              
+              <Button 
+                onClick={handleSelectLevel}
+                className="bg-[#FFD63A] hover:bg-[#ECC235] text-[#333333] font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
+              >
+                <Volume2 className="h-5 w-5" />
+                <span>Save & Practice</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
       
       {/* Error Message */}
       {error && (
-        <div className="bg-[#3A4559] border border-[#F75A5A]/50 text-white p-4 rounded-lg shadow-md">
-          <div className="flex items-start space-x-3">
-            <AlertCircle className="h-5 w-5 text-[#F75A5A] mt-0.5" />
-            <span>{error}</span>
+        <div className="bg-[#FFF8F8] border border-[#F75A5A] rounded-lg p-6 mb-6 shadow-md">
+          <div className="flex items-center space-x-3 text-[#F75A5A]">
+            <AlertCircle className="h-6 w-6" />
+            <h3 className="text-lg font-semibold">Error</h3>
           </div>
+          <p className="mt-2 text-[#333333]">{error}</p>
+          <Button 
+            onClick={() => setError('')}
+            className="mt-4 bg-white hover:bg-gray-100 text-[#F75A5A] px-4 py-2 rounded-md text-sm font-medium shadow-md transition-all duration-300 border border-[#F75A5A]/30"
+          >
+            Dismiss
+          </Button>
         </div>
       )}
+      
+      {/* Manual Level Selection button removed */}
       
       {/* Learning Plan Modal */}
       {assessment && (
