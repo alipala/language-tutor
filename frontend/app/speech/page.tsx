@@ -314,9 +314,20 @@ export default function SpeechPage() {
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
             <div className="animate-pulse flex flex-col items-center">
-              <div className="rounded-full h-16 w-16 bg-blue-500/20 mb-4 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <div className="rounded-full h-16 w-16 bg-white/20 mb-4 flex items-center justify-center">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-8 w-8 text-white animate-pulse" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" x2="12" y1="19" y2="22"></line>
                 </svg>
               </div>
               <p className="text-white text-xl font-medium">Loading...</p>
@@ -331,10 +342,10 @@ export default function SpeechPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen text-white">
+    <div className="flex flex-col min-h-screen text-white speech-page">
       {/* Handler for pending learning plans - only shown for authenticated users */}
       {user && <PendingLearningPlanHandler />}
-      <NavBar />
+      <NavBar activeSection="section1" />
       
       {/* Warning Modal for conversation interruption */}
       {showLeaveWarning && (

@@ -322,8 +322,8 @@ export default function LevelSelection() {
   const formattedLevels = getLevels(selectedLanguage);
 
   return (
-    <div className="min-h-screen flex flex-col text-white">
-      <NavBar />
+    <div className="min-h-screen text-white level-selection-container">
+      <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}

@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Collect all assessments from learning plans and user data
   const assessments = [];
@@ -173,14 +174,19 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = async () => {
     await logout();
-    router.push('/login');
+    // Redirect to the home page after logout
+    window.location.href = '/';
   };
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen gradient-background">
+      <div className="min-h-screen bg-[var(--turquoise)]">
         <NavBar />
         <main className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">    
           <div className="max-w-4xl mx-auto px-4 py-8 md:px-6">
@@ -197,7 +203,7 @@ export default function ProfilePage() {
                   </div>
                   <Button 
                     onClick={() => router.push('/speech')}
-                    className="bg-white/20 hover:bg-white/30 text-white text-sm py-1.5 px-3 rounded-full transition-colors"
+                    className="bg-white/20 hover:bg-white/30 text-white text-sm py-1.5 px-3 rounded-full font-medium transition-colors"
                   >
                     Create New Plan
                   </Button>
@@ -242,8 +248,8 @@ export default function ProfilePage() {
             
             {/* Learning Stats Section */}
             {learningPlans.length > 0 && (
-              <div className="mb-8 glass-card rounded-xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 p-4 text-white relative overflow-hidden">
+              <div className="glass-card rounded-xl shadow-lg overflow-hidden mb-8">
+                <div className="bg-[#3a9e92] p-4 text-white relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
                   
@@ -320,7 +326,7 @@ export default function ProfilePage() {
             
             {/* User Profile Section */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden mb-8">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 p-4 text-white relative overflow-hidden">
+              <div className="bg-[#3a9e92] p-4 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
                 
@@ -402,7 +408,7 @@ export default function ProfilePage() {
                   <div className="pt-2">
                     <Button 
                       type="submit" 
-                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-2 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center"
+                      className="bg-[#3a9e92] hover:bg-[#2d8077] text-white py-2 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center"
                       disabled={isLoading}
                     >
                       {isLoading ? (
@@ -635,7 +641,7 @@ export default function ProfilePage() {
                           {/* Continue Learning Button */}
                           <Button 
                             onClick={() => router.push(`/speech?plan=${plan.id}`)}
-                            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-[#3a9e92] hover:bg-[#2d8077] text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -653,7 +659,7 @@ export default function ProfilePage() {
             
             {/* Account Actions Section */}
             <div className="glass-card rounded-xl shadow-lg overflow-hidden mb-8">
-              <div className="bg-gradient-to-r from-red-500 to-orange-600 dark:from-red-600 dark:to-orange-700 p-4 text-white relative overflow-hidden">
+              <div className="bg-[#3a9e92] p-4 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
                 
@@ -665,8 +671,8 @@ export default function ProfilePage() {
               
               <div className="p-6">
                 <button
-                  onClick={handleLogout}
-                  className="w-full py-3 px-4 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 font-medium transition-all flex items-center justify-center gap-2"
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="w-full py-3 px-4 border border-white/30 text-white bg-[#e74c3c]/80 rounded-lg hover:bg-[#e74c3c] font-medium transition-all flex items-center justify-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -678,6 +684,30 @@ export default function ProfilePage() {
           </div>
         </main>
       </div>
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
+            <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
+            
+            <div className="flex space-x-2 justify-end">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                className="px-4 py-2 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

@@ -10,7 +10,7 @@ export default function GradientBackground({ children, className = '' }: Gradien
     <div 
       className={`min-h-screen w-full ${className}`}
       style={{
-        backgroundImage: 'linear-gradient(32deg, #0bd1ff 0%, #ffa3ff 50%, #ffd34e 100%)',
+        backgroundColor: 'var(--turquoise)',
         backgroundSize: 'cover',
         backgroundAttachment: 'fixed'
       }}

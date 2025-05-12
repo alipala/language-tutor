@@ -59,10 +59,10 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} font-sans antialiased`}>
+      <body className={`${inter.className} font-sans antialiased overflow-x-hidden`}>
         <NavigationProvider>
           <AuthProviderWrapper>
-            <div className="gradient-background min-h-screen w-full">
+            <div className="app-background min-h-screen w-full bg-[var(--turquoise)]">
               <main id="main-content" tabIndex={-1} className="outline-none">
                 {children}
               </main>
