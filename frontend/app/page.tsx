@@ -179,14 +179,14 @@ export default function Home() {
                   </motion.div>
                   
                   <motion.div
-                    className="flex flex-col sm:flex-row justify-start gap-4 mb-8"
+                    className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.6 }}
                   >
                     <button
                       onClick={handleStartLearning}
-                      className="start-button"
+                      className="start-button self-start"
                       disabled={isLoading}
                     >
                       {isLoading ? (
@@ -243,35 +243,35 @@ export default function Home() {
                 
                 {/* Right Column - Conversation Demo */}
                 <motion.div
-                  className="hidden md:block rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 p-4 shadow-xl"
+                  className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-shadow duration-300"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                 >
-                  <div className="bg-white/5 rounded-t-lg p-2 border-b border-white/10 flex items-center justify-between">
+                  <div className="bg-gray-100 rounded-t-lg p-2 border-b border-gray-200 flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-[#FF5F57] mr-2"></div>
                       <div className="w-3 h-3 rounded-full bg-[#FFBD2E] mr-2"></div>
                       <div className="w-3 h-3 rounded-full bg-[#28CA41]"></div>
                     </div>
-                    <div className="text-center text-sm text-white/80">AI Language Coach</div>
+                    <div className="text-center text-sm text-gray-700 font-medium">AI Language Coach</div>
                     <div className="w-12"></div>
                   </div>
                   
                   <div className="max-h-80 overflow-y-auto p-4 space-y-4">
                     {/* Coach Message */}
                     <div className="flex items-start">
-                      <div className="w-8 h-8 rounded-full bg-[#4ECFBF] flex items-center justify-center text-white shrink-0 mr-3">
+                      <div className="w-8 h-8 rounded-full bg-[#3a9e92] flex items-center justify-center text-white shrink-0 mr-3">
                         AI
                       </div>
-                      <div className="bg-white/10 rounded-lg p-3 text-white max-w-[80%]">
+                      <div className="bg-[#e6f7f5] rounded-lg p-3 text-gray-700 max-w-[80%] border border-[#3a9e92]/20">
                         <p>Hi there! I'd love to help you practice your English today. Let's talk about your hobbies. What do you enjoy doing in your free time?</p>
                       </div>
                     </div>
                     
                     {/* User Message */}
                     <div className="flex items-start justify-end">
-                      <div className="bg-white/20 rounded-lg p-3 text-white max-w-[80%] mr-3">
+                      <div className="bg-[#edf2fd] rounded-lg p-3 text-gray-700 max-w-[80%] mr-3 border border-blue-500/20">
                         <p>I enjoy playing tennis and reading books about history.</p>
                       </div>
                       <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
@@ -280,43 +280,43 @@ export default function Home() {
                     </div>
                     
                     {/* Feedback */}
-                    <div className="bg-white/5 rounded-lg p-2 border border-white/10">
-                      <div className="text-xs text-white/60 mb-1">Feedback:</div>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="text-xs text-gray-600 font-medium mb-1">Feedback:</div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div>
-                          <span className="text-green-400">Pronunciation: </span>
-                          <span className="text-white">90%</span>
+                          <span className="text-green-600 font-medium">Pronunciation: </span>
+                          <span className="text-gray-700">90%</span>
                         </div>
                         <div>
-                          <span className="text-yellow-400">Grammar: </span>
-                          <span className="text-white">85%</span>
+                          <span className="text-amber-600 font-medium">Grammar: </span>
+                          <span className="text-gray-700">85%</span>
                         </div>
                         <div>
-                          <span className="text-blue-400">Vocabulary: </span>
-                          <span className="text-white">80%</span>
+                          <span className="text-blue-600 font-medium">Vocabulary: </span>
+                          <span className="text-gray-700">80%</span>
                         </div>
                       </div>
                     </div>
                     
                     {/* Coach Reply */}
                     <div className="flex items-start">
-                      <div className="w-8 h-8 rounded-full bg-[#4ECFBF] flex items-center justify-center text-white shrink-0 mr-3">
+                      <div className="w-8 h-8 rounded-full bg-[#3a9e92] flex items-center justify-center text-white shrink-0 mr-3">
                         AI
                       </div>
-                      <div className="bg-white/10 rounded-lg p-3 text-white max-w-[80%]">
+                      <div className="bg-[#e6f7f5] rounded-lg p-3 text-gray-700 max-w-[80%] border border-[#3a9e92]/20">
                         <p>That's great! Tennis is excellent for fitness. What period of history interests you the most?</p>
                       </div>
                     </div>
                     
                     {/* Input Area */}
-                    <div className="mt-auto border-t border-white/10 pt-3">
-                      <div className="bg-white/10 rounded-full flex items-center p-1 pr-3">
-                        <button className="w-8 h-8 rounded-full bg-[#4ECFBF] flex items-center justify-center text-white mr-2">
+                    <div className="mt-auto border-t border-gray-200 pt-3">
+                      <div className="bg-gray-100 rounded-full flex items-center p-1 pr-3">
+                        <button className="w-8 h-8 rounded-full bg-[#3a9e92] flex items-center justify-center text-white mr-2">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                           </svg>
                         </button>
-                        <div className="text-white/50 text-sm">Press to speak...</div>
+                        <div className="text-gray-500 text-sm">Press to speak...</div>
                       </div>
                     </div>
                   </div>
@@ -335,17 +335,18 @@ export default function Home() {
             <div className="section-background"></div>
             <div className="section-content">
               <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-gray-800 mb-6"
+                className="text-3xl md:text-4xl font-bold text-white mb-6 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]"
                 initial={{ opacity: 0, y: -20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
+                style={{ color: '#ffffff' }}
               >
                 How Our Platform Works
               </motion.h2>
               
               <motion.p 
-                className="text-gray-700 text-lg max-w-2xl mx-auto mb-12"
+                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -367,8 +368,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">1. Choose Your Language</h3>
-                  <p className="text-gray-700">Select from multiple languages including Spanish, French, German, Dutch, and Portuguese. Each language offers comprehensive learning material tailored to your needs.</p>
+                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">1. Choose Your Language</h3>
+                  <p className="text-white/90">Select from multiple languages including Spanish, French, German, Dutch, and Portuguese. Each language offers comprehensive learning material tailored to your needs.</p>
                 </motion.div>
                 
                 <motion.div 
@@ -383,8 +384,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">2. Assess Your Level</h3>
-                  <p className="text-gray-700">Our AI assessment tool determines your current proficiency and suggests the perfect starting point. From beginner (A1) to advanced (C2), we adapt to your skills.</p>
+                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">2. Assess Your Level</h3>
+                  <p className="text-white/90">Our AI assessment tool determines your current proficiency and suggests the perfect starting point. From beginner (A1) to advanced (C2), we adapt to your skills.</p>
                 </motion.div>
                 
                 <motion.div 
@@ -399,8 +400,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">3. Practice Through Conversation</h3>
-                  <p className="text-gray-700">Engage in natural, meaningful conversations with our AI tutor on various topics. Receive real-time feedback on pronunciation, grammar, and vocabulary usage.</p>
+                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">3. Practice Through Conversation</h3>
+                  <p className="text-white/90">Engage in natural, meaningful conversations with our AI tutor on various topics. Receive real-time feedback on pronunciation, grammar, and vocabulary usage.</p>
                 </motion.div>
               </div>
               
@@ -411,37 +412,37 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.4 }}
                 viewport={{ once: true }}
               >
-                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">The AI-Powered Learning Process</h3>
+                <h3 className="text-xl font-bold text-white mb-4 text-center drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">The AI-Powered Learning Process</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">1</div>
-                    <p className="text-gray-800 font-medium">Speak & Practice</p>
-                    <p className="text-sm text-gray-600">Practice speaking in real conversations</p>
+                    <p className="text-white font-medium">Speak & Practice</p>
+                    <p className="text-sm text-white/80">Practice speaking in real conversations</p>
                   </div>
                   
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">2</div>
-                    <p className="text-gray-800 font-medium">Get Feedback</p>
-                    <p className="text-sm text-gray-600">Receive instant corrections and tips</p>
+                    <p className="text-white font-medium">Get Feedback</p>
+                    <p className="text-sm text-white/80">Receive instant corrections and tips</p>
                   </div>
                   
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">3</div>
-                    <p className="text-gray-800 font-medium">Track Progress</p>
-                    <p className="text-sm text-gray-600">Monitor your improvement over time</p>
+                    <p className="text-white font-medium">Track Progress</p>
+                    <p className="text-sm text-white/80">Monitor your improvement over time</p>
                   </div>
                   
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">4</div>
-                    <p className="text-gray-800 font-medium">Master Language</p>
-                    <p className="text-sm text-gray-600">Achieve fluency through regular practice</p>
+                    <p className="text-white font-medium">Master Language</p>
+                    <p className="text-sm text-white/80">Achieve fluency through regular practice</p>
                   </div>
                 </div>
               </motion.div>
               
               <motion.button
-                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md flex items-center mx-auto"
+                className="px-6 py-3 bg-[#FFD63A] text-white font-medium rounded-lg hover:bg-[#ECC235] transition-colors shadow-md flex items-center mx-auto border-2 border-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]"
                 onClick={handleStartLearning}
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
@@ -449,6 +450,7 @@ export default function Home() {
                 viewport={{ once: true }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
+                style={{ color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
               >
                 Start Your Learning Journey
                 <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -841,7 +843,7 @@ export default function Home() {
               </section>
               
               <motion.button
-                className="start-button"
+                className="px-6 py-3 bg-[#F75A5A] text-white rounded-lg hover:bg-[#E55252] transition-colors shadow-md flex items-center mx-auto border-2 border-white"
                 onClick={handleStartLearning}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -850,7 +852,7 @@ export default function Home() {
                 whileTap={{ scale: 0.98 }}
                 viewport={{ once: true }}
                 disabled={isLoading}
-                style={{ marginTop: '2rem', backgroundColor: 'var(--turquoise)' }}
+                style={{ marginTop: '2rem' }}
               >
                 {isLoading ? (
                   <>
