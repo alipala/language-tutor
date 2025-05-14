@@ -20,7 +20,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   
   const router = useRouter();
   const [localError, setLocalError] = useState<string | null>(null);
-  const [showMessages, setShowMessages] = useState(false);
+  const [showMessages, setShowMessages] = useState(true); // Always show conversation interface
   const [isAttemptingToRecord, setIsAttemptingToRecord] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const micPermissionDeniedRef = useRef(false);
@@ -157,12 +157,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
   }, [messages]);
   
-  // Show messages container when conversation starts
+  // This effect is no longer needed since we always show messages container
+  // But we'll keep a modified version to handle any edge cases
   useEffect(() => {
-    if (messages.length > 0 && !showMessages) {
+    // Ensure messages are always shown
+    if (!showMessages) {
       setShowMessages(true);
     }
-  }, [messages, showMessages]);
+  }, [showMessages]);
   
   // Track detected language for language alert
   const [detectedWrongLanguage, setDetectedWrongLanguage] = useState(false);
@@ -775,7 +777,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             {language.charAt(0).toUpperCase() + language.slice(1)} Conversation
           </h1>
           <p className="text-white/80 mt-2">
-            Level: {level.toUpperCase()} - Click the microphone to start talking
+            Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
           
           {/* Redesigned Navigation Controls */}
@@ -807,85 +809,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         <div className="flex-1 flex flex-col items-center justify-center">
           {/* Main Content Area - Redesigned for better responsiveness and alignment */}
           <div className="w-full max-w-6xl mx-auto relative">
-            {/* Microphone Section - Centered when no conversation, animates out when recording starts */}
-            <div className={`flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${isRecording || showMessages ? 'opacity-0 scale-90 pointer-events-none absolute top-0 left-1/2 transform -translate-x-1/2' : 'opacity-100 mb-12'}`}>
-              {/* Microphone UI with improved animations */}
-              <div className="relative flex items-center justify-center transform transition-all duration-500">
-                {/* Decorative rings with improved animations */}
-                <div className="absolute w-40 h-40 rounded-full mic-btn-ring"></div>
-                <div className="absolute w-36 h-36 rounded-full mic-btn-ring" style={{ animationDelay: '0.5s' }}></div>
-                <div className="absolute w-32 h-32 rounded-full mic-btn-ring" style={{ animationDelay: '1s' }}></div>
-                
-                {/* Enhanced overlay for initializing state */}
-                {isAttemptingToRecord && !isRecording && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-full z-20 flex items-center justify-center">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-xs text-white/80 animate-pulse">Initializing...</span>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Microphone Button with gradient */}
-                <Button
-                  type="button"
-                  onClick={(e) => handleToggleRecording(e)}
-                  onTouchStart={(e) => e.preventDefault()}
-                  aria-label="Start recording"
-                  className={`mic-btn relative z-10 rounded-full w-28 h-28 flex items-center justify-center transition-all duration-500 touch-target ${isAttemptingToRecord && !isRecording ? 'opacity-70' : 'opacity-100'}`}
-                  disabled={isAttemptingToRecord && !isRecording}
-                >
-                  <div className="absolute inset-0 rounded-full bg-white/20 backdrop-blur-sm opacity-90"></div>
-                  <div className="absolute inset-0 rounded-full bg-white/30 opacity-0 hover:opacity-90 transition-opacity duration-300"></div>
-                  
-                  {/* Microphone icon with animation */}
-                  <div className="relative z-10 flex items-center justify-center">
-                    <div className="relative">
-                      {/* Animated rings when recording */}
-                      {isRecording && (
-                        <>
-                          <div className="absolute w-full h-full rounded-full bg-purple-500/5 animate-ping-slow"></div>
-                          <div className="absolute w-[110%] h-[110%] rounded-full bg-blue-500/5 animate-ping-slower"></div>
-                        </>
-                      )}
-                      
-                      {/* Audio wave animation when recording */}
-                      {isRecording ? (
-                        <div className="flex items-center justify-center h-10 w-10">
-                          <div className="relative h-10 w-10">
-                            <div className="audio-wave">
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <MicrophoneIcon isRecording={isRecording} size={32} />
-                      )}
-                    </div>
-                  </div>
-                </Button>
-              </div>
-              
-              <p className="mt-6 text-lg text-white/80 animate-fade-in">
-                {isAttemptingToRecord ? 'Initializing microphone...' : 'Click to start speaking'}
-              </p>
-              
-              {/* Error message */}
-              {localError && (
-                <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center animate-fade-in">
-                  <p>{localError}</p>
-                </div>
-              )}
-            </div>
+            {/* Removed the initial microphone section that was previously shown before conversation */}
             
-            {/* Transcript Sections - Animate in when conversation starts */}
+            {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
@@ -907,6 +833,53 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       exerciseType={exerciseType}
                       onChangeExerciseType={setExerciseType}
                     />
+                    
+                    {/* Rectangular Microphone Button - Better integrated with interface */}
+                    <div className="mt-6">
+                      <Button
+                        type="button"
+                        onClick={(e) => handleToggleRecording(e)}
+                        onTouchStart={(e) => e.preventDefault()}
+                        aria-label={isRecording ? "Stop recording" : "Start recording"}
+                        className={`w-full py-3 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg ${isRecording 
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700' 
+                          : 'bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700'} 
+                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
+                        disabled={isAttemptingToRecord}
+                      >
+                        {isAttemptingToRecord ? (
+                          <>
+                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-medium text-white">Initializing microphone...</span>
+                          </>
+                        ) : isRecording ? (
+                          <>
+                            <div className="relative h-6 w-6 flex items-center justify-center">
+                              <div className="audio-wave">
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                              </div>
+                            </div>
+                            <span className="font-medium text-white">Recording... Click to stop</span>
+                          </>
+                        ) : (
+                          <>
+                            <MicrophoneIcon isRecording={false} size={20} />
+                            <span className="font-medium text-white">Click to start speaking</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Error message */}
+                    {localError && (
+                      <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto animate-fade-in">
+                        <p>{localError}</p>
+                      </div>
+                    )}
                     
                     {/* Warning message when content is not in target language */}
                     {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
