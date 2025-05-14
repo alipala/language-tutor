@@ -35,6 +35,9 @@ export interface SentenceConstructionProps {
   exerciseType: string;
   onContinueLearning?: () => void;
   onChangeExerciseType?: (type: string) => void;
+  onAnalyzeRef?: React.MutableRefObject<(() => void) | null>;
+  onMessageAnalyzed?: (messageId: string) => void;
+  currentMessageId?: string;
 }
 
 export default function SentenceConstructionAssessment({
@@ -45,7 +48,10 @@ export default function SentenceConstructionAssessment({
   level,
   exerciseType,
   onContinueLearning,
-  onChangeExerciseType
+  onChangeExerciseType,
+  onAnalyzeRef,
+  onMessageAnalyzed,
+  currentMessageId
 }: SentenceConstructionProps) {
   const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
   const [isAssessing, setIsAssessing] = useState(false);
@@ -117,6 +123,27 @@ export default function SentenceConstructionAssessment({
     
     fetchExercises();
   }, [exerciseType]);
+
+  // Store the analyze function in the ref if provided
+  useEffect(() => {
+    if (onAnalyzeRef) {
+      onAnalyzeRef.current = () => {
+        if (transcript.length > 0 && !isAssessing && isInTargetLanguage(transcript)) {
+          // If recording, stop it first
+          if (isRecording) {
+            onStopRecording();
+          }
+          // Then analyze the sentence
+          handleAnalyzeSentence();
+          
+          // Mark this message as analyzed if we have the callback and message ID
+          if (onMessageAnalyzed && currentMessageId) {
+            onMessageAnalyzed(currentMessageId);
+          }
+        }
+      };
+    }
+  }, [transcript, isAssessing, isRecording, currentMessageId]);
 
   // Function to detect if text is in the target language
   const isInTargetLanguage = (text: string): boolean => {
@@ -374,68 +401,9 @@ export default function SentenceConstructionAssessment({
 
   return (
     <div className="w-full flex flex-col">
-      {/* Exercise Type Selector - Compact */}
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold mb-1 text-indigo-400 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          Exercise Type
-        </h3>
-        <div className="flex flex-wrap gap-1 justify-start">
-          {[
-            { id: 'free', label: 'Free' },
-            { id: 'guided', label: 'Guided' },
-            { id: 'transformation', label: 'Transform' },
-            { id: 'correction', label: 'Correction' },
-            { id: 'translation', label: 'Translation' },
-          ].map(type => (
-            <Button
-              key={type.id}
-              onClick={() => onChangeExerciseType && onChangeExerciseType(type.id)}
-              className={`text-xs px-2 py-1 transition-all duration-300 ${
-                exerciseType === type.id 
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-sm' 
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-              }`}
-            >
-              {type.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-      
-      {/* Current Exercise Display - Condensed */}
-      {currentExercises.length > 0 && (
-        <div className="mb-4 bg-slate-800/50 rounded-lg border border-slate-700/50 p-3">
-          <h3 className="text-sm font-semibold mb-1 text-indigo-400">Current Exercise</h3>
-          <div className="space-y-2">
-            {currentExercises.slice(0, 1).map((exercise, idx) => (
-              <div key={idx} className="space-y-1">
-                <p className="text-white text-sm">{exercise.prompt}</p>
-                {exercise.example && (
-                  <p className="text-slate-400 text-xs italic">Example: {exercise.example}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Exercise Type and Current Exercise sections removed */}
 
-      {/* Analysis Button - Only show when recording, have content, and content is in target language */}
-      {isRecording && transcript.length > 0 && !isAssessing && isInTargetLanguage(transcript) && (
-        <div className="flex justify-center mb-6">
-          <Button
-            onClick={handleAnalyzeSentence}
-            className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-purple-500/20 transition-all duration-300 flex items-center space-x-2 transform hover:translate-y-[-2px]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <span>Analyze Sentence</span>
-          </Button>
-        </div>
-      )}
+      {/* Analysis Button removed from here and moved to speech bubble */}
       
       {/* Warning message when content is not in target language */}
       {isRecording && transcript.length > 0 && !isAssessing && !isInTargetLanguage(transcript) && (
@@ -449,7 +417,7 @@ export default function SentenceConstructionAssessment({
       {/* Previous Assessments History - Condensed */}
       {assessmentHistory.length > 0 && (
         <div className="mb-4 bg-slate-800/30 rounded-lg border border-slate-700/30 p-3 flex-shrink-0">
-          <h3 className="text-sm font-semibold mb-1 text-indigo-400 flex items-center">
+          <h3 className="text-sm font-semibold mb-1 text-[#FFA955] flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
@@ -482,7 +450,7 @@ export default function SentenceConstructionAssessment({
       {/* Progress Tracking - Show when we have history - Condensed */}
       {progress.gradeHistory.length > 0 && (
         <div className="mb-4 bg-slate-800/30 rounded-lg border border-slate-700/30 p-3 flex-shrink-0">
-          <h3 className="text-sm font-semibold mb-1 text-indigo-400 flex items-center">
+          <h3 className="text-sm font-semibold mb-1 text-[#F75A5A] flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
