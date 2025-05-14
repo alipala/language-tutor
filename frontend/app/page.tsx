@@ -203,15 +203,6 @@ export default function Home() {
                         </>
                       )}
                     </button>
-                    
-                    {!user && (
-                      <button
-                        onClick={handleSignIn}
-                        className="px-6 py-3 rounded-xl border-2 border-white/30 text-white hover:bg-white/10 transition-all duration-300 flex items-center"
-                      >
-                        <span>I Already Have An Account</span>
-                      </button>
-                    )}
                   </motion.div>
                   
                   <motion.div
