@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 
 interface SpeechClientProps {
@@ -19,6 +20,13 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const initialRenderRef = useRef(true);
   
   const router = useRouter();
+  const { user } = useAuth();
+  
+  // Extract the user's first name from their full name
+  const firstName = useMemo(() => {
+    if (!user?.name) return 'You';
+    return user.name.split(' ')[0]; // Get the first part of the name
+  }, [user?.name]);
   const [localError, setLocalError] = useState<string | null>(null);
   const [showMessages, setShowMessages] = useState(true); // Always show conversation interface
   const [isAttemptingToRecord, setIsAttemptingToRecord] = useState(false);
@@ -788,45 +796,45 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             <button 
               type="button"
               onClick={handleChangeLanguage}
-              className="primary-button px-4 py-2 rounded-lg"
+              className="px-4 py-2 rounded-lg bg-[#F75A5A] text-white font-medium hover:bg-[#F75A5A]/90 transition-colors shadow-md"
             >
               Change Language
             </button>
             <button 
               type="button"
               onClick={handleChangeTopic}
-              className="primary-button px-4 py-2 rounded-lg"
+              className="px-4 py-2 rounded-lg bg-[#FFD63A] text-slate-800 font-medium hover:bg-[#FFD63A]/90 transition-colors shadow-md"
             >
               Change Topic
             </button>
             <button 
               type="button"
               onClick={handleChangeLevel}
-              className="primary-button px-4 py-2 rounded-lg"
+              className="px-4 py-2 rounded-lg bg-[#FFA955] text-white font-medium hover:bg-[#FFA955]/90 transition-colors shadow-md"
             >
               Change Level
             </button>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Redesigned for better responsiveness and alignment */}
-          <div className="w-full mx-auto relative px-4">
+          <div className="w-full px-1">
             {/* Removed the initial microphone section that was previously shown before conversation */}
             
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 w-full mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full">
                   {/* Real-time Transcript Component */}
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 lg:p-5 shadow-lg animate-fade-in relative flex flex-col min-h-[500px]" style={{animationDelay: '200ms'}}>
-                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#FFD63A] flex items-center">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '200ms'}}>
+                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                       Real-time Transcript
                     </h3>
-                    <div className="flex-grow overflow-y-auto pb-16">
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-4 flex-grow overflow-y-auto pb-16">
                       <SentenceConstructionAssessment
                         transcript={currentTranscript}
                         isRecording={isRecording}
@@ -899,14 +907,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 lg:p-5 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '300ms'}}>
-                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#FFD63A] flex items-center">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '300ms'}}>
+                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                       Conversation Transcript
                     </h3>
-                    <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg border border-slate-700/50 p-4 flex-1 min-h-[300px] md:min-h-[350px] max-h-[65vh] overflow-y-auto custom-scrollbar flex flex-col">
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 flex-1 min-h-[300px] md:min-h-[350px] max-h-[65vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (
                           // Sort messages by timestamp if available, otherwise use the array order
@@ -934,16 +942,20 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                   key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
                                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
                                 >
-                                  {message.role !== 'user' && (
-                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#4ECFBF] flex items-center justify-center mr-2 shadow-md">
-                                      <span className="text-xs font-bold text-white">T</span>
+                                  {message.role !== 'user' ? (
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md">
+                                      <span className="text-xs font-bold text-slate-800">T</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#D6E6FF] flex items-center justify-center ml-2 order-last shadow-md">
+                                      <span className="text-xs font-bold text-slate-800">{firstName.charAt(0)}</span>
                                     </div>
                                   )}
                                   <div 
                                     className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
                                       message.role === 'user' 
-                                        ? 'bg-[#FFD63A] text-slate-800 ml-2 rounded-tr-none' 
-                                        : 'bg-[#4ECFBF] text-white mr-2 rounded-tl-none'
+                                        ? 'bg-[#D6E6FF] text-slate-800 ml-2 rounded-tr-none' 
+                                        : 'bg-[#AFF4EB] text-slate-800 mr-2 rounded-tl-none'
                                     }`}
                                     style={{
                                       wordBreak: 'break-word',
@@ -951,22 +963,22 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                       whiteSpace: 'pre-wrap'
                                     }}
                                   >
-                                    <div className={`flex items-center justify-between mb-1 ${message.role === 'user' ? 'text-slate-800' : 'text-white/90'}`}>
+                                    <div className="flex items-center justify-between mb-1 text-slate-800">
                                       <span className="text-xs font-semibold">
-                                        {message.role === 'user' ? 'You' : 'Tutor'}
+                                        {message.role === 'user' ? firstName : 'Tutor'}
                                       </span>
                                       <span className="text-xs opacity-75 ml-2">
                                         {timeDisplay}
                                       </span>
                                     </div>
-                                    <p className={`text-sm leading-relaxed mt-1 ${message.role === 'user' ? 'text-slate-800' : 'text-white/95'}`}>{message.content}</p>
+                                    <p className="text-sm leading-relaxed mt-1 text-slate-800">{message.content}</p>
                                     
                                     {/* Analyze button in user message bubble - only show for messages that haven't been analyzed yet */}
                                     {message.role === 'user' && 
                                      message.content.trim().length > 0 && 
                                      analyzeButtonRef.current && 
                                      !analyzedMessageIds.includes(`${message.role}-${index}`) && (
-                                      <div className="mt-3 flex justify-center">
+                                      <div className="mt-2 flex justify-end">
                                         <button
                                           onClick={() => {
                                             // Mark this specific message as analyzed
@@ -974,9 +986,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                             // Call the analyze function
                                             if (analyzeButtonRef.current) analyzeButtonRef.current();
                                           }}
-                                          className="px-4 py-1.5 bg-[#FFA955] hover:bg-[#F75A5A] text-white text-sm rounded-lg shadow-sm transition-all duration-300 flex items-center space-x-1.5"
+                                          className="px-2 py-1 bg-[#FFD63A] hover:bg-[#FFA955] text-slate-800 text-xs rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1"
                                         >
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                           </svg>
                                           <span>Analyze Sentence</span>
@@ -984,11 +996,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                       </div>
                                     )}
                                   </div>
-                                  {message.role === 'user' && (
-                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#FFA955] flex items-center justify-center ml-2 shadow-md">
-                                      <span className="text-xs font-bold text-white">U</span>
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })

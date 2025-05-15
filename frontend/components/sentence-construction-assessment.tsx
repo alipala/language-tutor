@@ -416,7 +416,7 @@ export default function SentenceConstructionAssessment({
 
       {/* Previous Assessments History - Condensed */}
       {assessmentHistory.length > 0 && (
-        <div className="mb-4 bg-slate-800/30 rounded-lg border border-slate-700/30 p-3 flex-shrink-0">
+        <div className="mb-4 bg-[#FFECB3] rounded-lg border border-[#FFD63A]/50 p-3 flex-shrink-0">
           <h3 className="text-sm font-semibold mb-1 text-[#FFA955] flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -427,16 +427,16 @@ export default function SentenceConstructionAssessment({
             {assessmentHistory.map((item, index) => (
               <div 
                 key={index} 
-                className={`p-2 mb-1 rounded-lg border ${index === selectedHistoryIndex ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-800/50 border-slate-700/50'} hover:bg-slate-700/50 cursor-pointer transition-colors`}
+                className={`p-2 mb-1 rounded-lg border ${index === selectedHistoryIndex ? 'bg-[#FFD63A]/20 border-[#FFD63A]/50' : 'bg-[#FFF8E1]/80 border-[#FFD63A]/20'} hover:bg-[#FFD63A]/30 cursor-pointer transition-colors`}
                 onClick={() => handleSelectHistoricalAssessment(index)}
               >
                 <div className="flex justify-between items-center">
-                  <p className="text-white truncate">{item.transcript}</p>
+                  <p className="text-slate-800 truncate">{item.transcript}</p>
                   <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
-                    <span className="text-xs px-2 py-1 rounded-full bg-indigo-900/70 text-indigo-200">
+                    <span className="text-xs px-2 py-1 rounded-full bg-[#FFD63A] text-slate-800">
                       Score: {item.result.overall_score.toFixed(1)}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-600">
                       {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </span>
                   </div>
@@ -449,7 +449,7 @@ export default function SentenceConstructionAssessment({
       
       {/* Progress Tracking - Show when we have history - Condensed */}
       {progress.gradeHistory.length > 0 && (
-        <div className="mb-4 bg-slate-800/30 rounded-lg border border-slate-700/30 p-3 flex-shrink-0">
+        <div className="mb-4 bg-[#FFCDD2] rounded-lg border border-[#F75A5A]/50 p-3 flex-shrink-0">
           <h3 className="text-sm font-semibold mb-1 text-[#F75A5A] flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -459,7 +459,7 @@ export default function SentenceConstructionAssessment({
           
           {/* Score History */}
           <div className="mb-3">
-            <p className="text-sm text-slate-400 mb-2">Score History:</p>
+            <p className="text-sm text-slate-600 mb-2">Score History:</p>
             <div className="flex items-center space-x-1">
               {progress.gradeHistory.map((score, idx) => (
                 <div 
@@ -475,13 +475,13 @@ export default function SentenceConstructionAssessment({
           
           {/* Improvement Metrics */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-800/50 p-2 rounded">
-              <p className="text-xs text-slate-400">Error Reduction</p>
-              <p className="text-lg font-semibold text-green-400">{progress.errorReduction > 0 ? `+${progress.errorReduction}` : "0"}</p>
+            <div className="bg-[#F0FAFA] p-2 rounded border border-[#4ECFBF]/30">
+              <p className="text-xs text-slate-600">Error Reduction</p>
+              <p className="text-lg font-semibold text-[#4ECFBF]">{progress.errorReduction > 0 ? `+${progress.errorReduction}` : "0"}</p>
             </div>
-            <div className="bg-slate-800/50 p-2 rounded">
-              <p className="text-xs text-slate-400">Complexity Growth</p>
-              <p className="text-lg font-semibold text-blue-400">{progress.complexityGrowth.toFixed(1)}</p>
+            <div className="bg-[#FFF0F0] p-2 rounded border border-[#F75A5A]/30">
+              <p className="text-xs text-slate-600">Complexity Growth</p>
+              <p className="text-lg font-semibold text-[#F75A5A]">{progress.complexityGrowth.toFixed(1)}</p>
             </div>
           </div>
         </div>
@@ -490,9 +490,9 @@ export default function SentenceConstructionAssessment({
       {/* Assessment Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fadeIn">
-          <div className="bg-slate-900 border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20 rounded-xl max-w-3xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-[#1A2E35] border-2 border-[#4ECFBF]/50 shadow-lg shadow-[#4ECFBF]/20 rounded-xl max-w-3xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
             {/* Header Section with Sticky Positioning */}
-            <div className="sticky top-0 bg-slate-900 pt-2 sm:pt-3 px-3 sm:px-5 pb-2 sm:pb-3 z-10 border-b border-slate-700">
+            <div className="sticky top-0 bg-[#1A2E35] pt-2 sm:pt-3 px-3 sm:px-5 pb-2 sm:pb-3 z-10 border-b border-[#4ECFBF]/30">
               <div className="flex justify-between items-center">
                 <h2 className="text-base sm:text-lg font-bold text-white">Sentence Assessment</h2>
                 <Button
@@ -508,7 +508,7 @@ export default function SentenceConstructionAssessment({
                 <div className="w-full mt-3">
                   <Button
                     onClick={handleContinue}
-                    className="w-full py-1.5 sm:py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center shadow-md"
+                    className="w-full py-1.5 sm:py-2 bg-[#F75A5A] hover:bg-[#F75A5A]/90 text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center shadow-md"
                   >
                     Continue Learning
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -523,8 +523,8 @@ export default function SentenceConstructionAssessment({
             <div className="p-3 sm:p-5 pt-2 sm:pt-3 overflow-y-auto">
               {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-slate-400">Analyzing your sentence...</p>
+                <div className="h-12 w-12 border-4 border-[#4ECFBF] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-[#4ECFBF]/80">Analyzing your sentence...</p>
               </div>
             ) : error ? (
               <div className="text-center py-8">
@@ -631,9 +631,9 @@ export default function SentenceConstructionAssessment({
       )}
 
       {/* Transcript Display */}
-      <div ref={transcriptContainerRef} className="w-full p-4 bg-slate-800/40 rounded-lg border border-slate-700 min-h-[100px] max-h-[300px] overflow-y-auto">
+      <div ref={transcriptContainerRef} className="w-full p-4 bg-[#FFF8E1] rounded-lg border border-[#FFD63A]/50 min-h-[100px] max-h-[300px] overflow-y-auto">
         {transcript ? (
-          <p className="text-white">{transcript}</p>
+          <p className="text-slate-800">{transcript}</p>
         ) : (
           <p className="text-slate-500 italic">Your spoken text will appear here...</p>
         )}
