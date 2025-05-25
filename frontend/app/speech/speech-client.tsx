@@ -7,6 +7,7 @@ import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
+import { isGuestTimeExpired, setGuestTimeExpired, getRemainingCooldownMinutes } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 
 interface SpeechClientProps {
@@ -37,8 +38,16 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // Check if guest time has expired previously in this session
   useEffect(() => {
     // Check if we're in guest mode and if time has expired before
-    if (!isAuthenticated() && sessionStorage.getItem('guestTimeExpired') === 'true') {
+    // But don't mark as expired if we just completed an assessment (has assessment data)
+    const hasAssessmentData = sessionStorage.getItem('speakingAssessmentData') !== null;
+    
+    if (!isAuthenticated() && isGuestTimeExpired() && !hasAssessmentData) {
+      console.log('Guest time has expired, disabling microphone');
       setConversationTimeUp(true);
+    } else if (!isAuthenticated() && hasAssessmentData) {
+      console.log('Guest user has assessment data, allowing 1-minute conversation');
+      // Reset any previous expiration to allow the 1-minute conversation
+      setConversationTimeUp(false);
     }
   }, []);
   
@@ -660,9 +669,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             setIsConversationTimerActive(false);
             handleEndConversation();
             
-            // Store in session storage that guest time has expired
-            // This makes the limitation persist even if they try to click the button again
-            sessionStorage.setItem('guestTimeExpired', 'true');
+            // Store in session storage that guest time has expired with timestamp
+            // This makes the limitation persist for 30 minutes
+            setGuestTimeExpired();
             
             // Show time's up notification
             const notification = document.createElement('div');
@@ -1026,7 +1035,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       {!isAuthenticated() && conversationTimeUp && (
                         <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
                           <h4 className="text-red-800 font-medium mb-1">Guest time limit reached</h4>
-                          <p className="text-red-700 text-sm mb-3">You've used your 1-minute guest conversation limit.</p>
+                          <p className="text-red-700 text-sm mb-3">
+                            You've used your 1-minute guest conversation limit.
+                            {getRemainingCooldownMinutes() > 0 && (
+                              <span className="block mt-1 font-medium">
+                                Try again in {getRemainingCooldownMinutes()} minute{getRemainingCooldownMinutes() !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </p>
                           <a 
                             href="/auth/login"
                             className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
 import { isAuthenticated } from '@/lib/auth-utils';
+import { isGuestTimeExpired, setGuestTimeExpired, getRemainingCooldownMinutes } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
 import LearningPlanModal from './learning-plan-modal';
 
@@ -29,6 +30,7 @@ export default function SpeakingAssessment({
   const [timer, setTimer] = useState(60);
   const [initialDuration, setInitialDuration] = useState(60); // Track initial duration for progress calculation
   const [isTimerActive, setIsTimerActive] = useState(false);
+  const [guestTimeExpired, setGuestTimeExpiredState] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcription, setTranscription] = useState('');
@@ -47,6 +49,13 @@ export default function SpeakingAssessment({
     // Clear any error message
     setError('');
   }, [language]);
+  
+  // Check if guest time has expired on component mount
+  useEffect(() => {
+    if (!isAuthenticated() && isGuestTimeExpired()) {
+      setGuestTimeExpiredState(true);
+    }
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -174,6 +183,17 @@ export default function SpeakingAssessment({
     const isUserAuthenticated = isAuthenticated();
     const assessmentDuration = isUserAuthenticated ? 60 : 15; // 60s for authenticated, 15s for guest
     
+    // Check if guest time has expired
+    if (!isUserAuthenticated && isGuestTimeExpired()) {
+      const remainingMinutes = getRemainingCooldownMinutes();
+      showNotification(
+        'warning',
+        `You've reached your guest assessment limit. ${remainingMinutes > 0 ? `Try again in ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''} or` : ''} sign in for unlimited access.`,
+        7000
+      );
+      return;
+    }
+    
     try {
       // Reset state
       setAudioBlob(null);
@@ -249,17 +269,24 @@ export default function SpeakingAssessment({
       setAssessment(result);
       setStatus('complete');
       
-      // Save assessment data to user profile
-      try {
-        const saved = await saveSpeakingAssessment(result);
-        if (saved) {
-          console.log('Assessment data saved to user profile');
-        } else {
-          console.warn('Failed to save assessment data to user profile');
+      // Save assessment data to user profile if authenticated, otherwise set guest time as expired
+      if (isAuthenticated()) {
+        try {
+          const saved = await saveSpeakingAssessment(result);
+          if (saved) {
+            console.log('Assessment data saved to user profile');
+          } else {
+            console.warn('Failed to save assessment data to user profile');
+          }
+        } catch (saveErr) {
+          console.error('Error saving assessment data:', saveErr);
+          // Don't show this error to the user as it's not critical
         }
-      } catch (saveErr) {
-        console.error('Error saving assessment data:', saveErr);
-        // Don't show this error to the user as it's not critical
+      } else {
+        // Set guest time as expired for non-authenticated users
+        // This will start the 30-minute cooldown period
+        setGuestTimeExpired();
+        setGuestTimeExpiredState(true); // Update local state
       }
       
       // Call onComplete callback if provided

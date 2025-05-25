@@ -116,12 +116,19 @@ export const createLearningPlan = async (planRequest: LearningPlanRequest): Prom
   
   try {
     // Wrap the request data in a plan_request field as expected by the backend
-    const response = await fetch(`${apiUrl}/learning/plan`, {
+    // Only include credentials if we have a token (authenticated user)
+    const options: RequestInit = {
       method: 'POST',
       headers,
       body: JSON.stringify({ plan_request: planRequest }),
-      credentials: 'include', // Include cookies for authentication if available
-    });
+    };
+    
+    // Only include credentials for authenticated users
+    if (token) {
+      options.credentials = 'include';
+    }
+    
+    const response = await fetch(`${apiUrl}/learning/plan`, options);
 
     if (!response.ok) {
       // Handle different error status codes
@@ -146,12 +153,39 @@ export const createLearningPlan = async (planRequest: LearningPlanRequest): Prom
 export const getLearningPlan = async (planId: string): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
   
-  // This endpoint requires authentication
+  // Check if user is authenticated
   const token = localStorage.getItem('token');
+  
+  // For guest users, try to get the plan from session storage first
   if (!token) {
+    // Try to get language and level from session storage
+    const language = sessionStorage.getItem('selectedLanguage');
+    const level = sessionStorage.getItem('selectedLevel');
+    
+    // If we have the basic info in session storage, create a minimal plan object
+    if (language && level) {
+      console.log('Creating minimal plan for guest user from session storage');
+      return {
+        id: planId,
+        language,
+        proficiency_level: level,
+        goals: [],
+        duration_months: 3,
+        plan_content: {
+          overview: '',
+          weekly_schedule: [],
+          resources: { apps: [], books: [], websites: [], other: [] },
+          milestones: []
+        },
+        created_at: new Date().toISOString()
+      };
+    }
+    
+    // If we don't have the info in session storage, throw an error
     throw new Error('Authentication required to access learning plan');
   }
   
+  // For authenticated users, fetch the plan from the API
   const response = await fetch(`${apiUrl}/learning/plan/${planId}`, {
     method: 'GET',
     headers: {
