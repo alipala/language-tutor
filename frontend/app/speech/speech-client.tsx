@@ -6,6 +6,8 @@ import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth-utils';
+import { isGuestTimeExpired, setGuestTimeExpired, getRemainingCooldownMinutes } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 
 interface SpeechClientProps {
@@ -27,6 +29,28 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     if (!user?.name) return 'You';
     return user.name.split(' ')[0]; // Get the first part of the name
   }, [user?.name]);
+  
+  // Guest user conversation timer state
+  const [conversationTimer, setConversationTimer] = useState<number | null>(null);
+  const [isConversationTimerActive, setIsConversationTimerActive] = useState(false);
+  const [conversationTimeUp, setConversationTimeUp] = useState(false);
+  
+  // Check if guest time has expired previously in this session
+  useEffect(() => {
+    // Check if we're in guest mode and if time has expired before
+    // But don't mark as expired if we just completed an assessment (has assessment data)
+    const hasAssessmentData = sessionStorage.getItem('speakingAssessmentData') !== null;
+    
+    if (!isAuthenticated() && isGuestTimeExpired() && !hasAssessmentData) {
+      console.log('Guest time has expired, disabling microphone');
+      setConversationTimeUp(true);
+    } else if (!isAuthenticated() && hasAssessmentData) {
+      console.log('Guest user has assessment data, allowing 1-minute conversation');
+      // Reset any previous expiration to allow the 1-minute conversation
+      setConversationTimeUp(false);
+    }
+  }, []);
+  
   const [localError, setLocalError] = useState<string | null>(null);
   const [showMessages, setShowMessages] = useState(true); // Always show conversation interface
   const [isAttemptingToRecord, setIsAttemptingToRecord] = useState(false);
@@ -603,13 +627,152 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
   }, [messages, language, alertAnimationState, showLanguageAlert]);
   
+  // Conversation timer effect for guest users
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isConversationTimerActive && conversationTimer !== null && conversationTimer > 0) {
+      interval = setInterval(() => {
+        setConversationTimer((prevTimer) => {
+          if (prevTimer === null) return null;
+          const newTimer = prevTimer - 1;
+          
+          // Show warning at 30 seconds remaining
+          if (newTimer === 30) {
+            // Show notification that time is running out
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-orange-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p class="font-medium">30 seconds remaining</p>
+                  <p class="text-sm opacity-90">Your conversation will end soon</p>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+              }
+            }, 5000);
+          }
+          
+          // End conversation when timer reaches 0
+          if (newTimer <= 0) {
+            // Set state to indicate time is up
+            setConversationTimeUp(true);
+            setIsConversationTimerActive(false);
+            handleEndConversation();
+            
+            // Store in session storage that guest time has expired with timestamp
+            // This makes the limitation persist for 30 minutes
+            setGuestTimeExpired();
+            
+            // Show time's up notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p class="font-medium">Time's up!</p>
+                  <p class="text-sm opacity-90">Your conversation session has ended. Sign in for unlimited time.</p>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+              }
+            }, 8000);
+            
+            return 0;
+          }
+          
+          return newTimer;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isConversationTimerActive, conversationTimer]);
+  
   // Handle recording toggle
   const handleToggleRecording = async (e: React.MouseEvent) => {
     e.preventDefault();
     
+    // If guest user time is up, don't allow further recording
+    if (!isAuthenticated() && conversationTimeUp) {
+      // Show sign-in prompt
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+      notification.innerHTML = `
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <div>
+            <p class="font-medium">Guest time limit reached</p>
+            <p class="text-sm opacity-90">Please sign in for unlimited conversation time</p>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 5000);
+      
+      return;
+    }
+    
     if (isRecording) {
       handleEndConversation();
       return;
+    }
+    
+    // Check if guest user and start timer
+    if (!isAuthenticated() && !isConversationTimerActive && conversationTimer === null) {
+      setConversationTimer(60); // 1 minute for guest users
+      setIsConversationTimerActive(true);
+      setConversationTimeUp(false);
+      
+      // Show initial notification for guest users
+      setTimeout(() => {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+        notification.innerHTML = `
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <div>
+              <p class="font-medium">Guest Mode: 1 minute conversation</p>
+              <p class="text-sm opacity-90">Sign in for unlimited conversation time</p>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 6000);
+      }, 1000);
     }
     
     // If starting a brand new conversation, reset the paused state
@@ -791,6 +954,23 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
           
+          {/* Guest User Information Banner */}
+          {!isAuthenticated() && (
+            <div className="mt-4 mb-2 mx-auto max-w-md">
+              <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-2 text-orange-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">Guest Mode</span>
+                </div>
+                <p className="text-xs text-orange-700 mt-1">
+                  Conversation limited to 1 minute. Sign in for unlimited time.
+                </p>
+              </div>
+            </div>
+          )}
+          
           {/* Redesigned Navigation Controls */}
           <div className="flex flex-wrap justify-center gap-3 mt-5 mb-6 animate-fade-in" style={{animationDelay: '200ms'}}>
             <button 
@@ -850,8 +1030,30 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       />
                     </div>
                     
-                    {/* Rectangular Microphone Button - Fixed at bottom of container */}
                     <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
+                      {/* Sign in prompt for guest users when time is up */}
+                      {!isAuthenticated() && conversationTimeUp && (
+                        <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+                          <h4 className="text-red-800 font-medium mb-1">Guest time limit reached</h4>
+                          <p className="text-red-700 text-sm mb-3">
+                            You've used your 1-minute guest conversation limit.
+                            {getRemainingCooldownMinutes() > 0 && (
+                              <span className="block mt-1 font-medium">
+                                Try again in {getRemainingCooldownMinutes()} minute{getRemainingCooldownMinutes() !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </p>
+                          <a 
+                            href="/auth/login"
+                            className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            Sign in for unlimited time
+                          </a>
+                        </div>
+                      )}
                       <Button
                         type="button"
                         onClick={(e) => handleToggleRecording(e)}
@@ -859,9 +1061,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         aria-label={isRecording ? "Stop recording" : "Start recording"}
                         className={`w-full py-4 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg ${isRecording 
                           ? 'bg-[#F75A5A] hover:bg-[#E55252]' 
-                          : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
+                          : (!isAuthenticated() && conversationTimeUp) 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
                           ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord}
+                        disabled={isAttemptingToRecord || (!isAuthenticated() && conversationTimeUp)}
                       >
                         {isAttemptingToRecord ? (
                           <>
@@ -910,7 +1114,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '300ms'}}>
                     <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                       Conversation Transcript
                     </h3>

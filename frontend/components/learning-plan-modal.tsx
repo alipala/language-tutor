@@ -170,50 +170,50 @@ export default function LearningPlanModal({
   };
   
   const handleSignIn = () => {
-    // Store the plan ID in session storage before redirecting
-    if (planId) {
-      sessionStorage.setItem('pendingLearningPlanId', planId);
-      console.log('Stored pendingLearningPlanId in session storage:', planId);
-      
-      // Store additional flag to indicate we should redirect to speech with this plan after login
-      sessionStorage.setItem('redirectWithPlanId', planId);
-    } else {
-      console.warn('No plan ID available when redirecting to sign in');
+    if (!planId) {
+      console.error('No plan ID available for sign in');
+      // Just redirect to login page
+      router.push('/auth/login');
+      onClose();
+      return;
     }
     
-    // Store the intent to redirect to login page
-    sessionStorage.setItem('redirectTarget', '/speech');
+    // Store the plan ID in session storage for after login
+    sessionStorage.setItem('pendingLearningPlanId', planId);
     
-    // Clear any existing navigation flags that might interfere
-    sessionStorage.removeItem('navigationInProgress');
+    // Set a flag to indicate we're in the middle of navigation
+    sessionStorage.setItem('navigationInProgress', 'true');
+    
+    // Set a flag to redirect with plan ID after login
+    sessionStorage.setItem('redirectWithPlanId', 'true');
     
     // Redirect to login page
-    console.log('Redirecting to login page with pending plan:', planId);
-    window.location.href = '/auth/login';
+    console.log('Redirecting to login with pending plan:', planId);
+    router.push('/auth/login');
     onClose();
   };
   
   const handleSignUp = () => {
     if (!planId) {
-      console.error('No plan ID available for sign up redirection');
+      console.error('No plan ID available for sign up');
+      // Just redirect to signup page
+      router.push('/auth/signup');
+      onClose();
       return;
     }
     
-    console.log('Stored pendingLearningPlanId in session storage:', planId);
+    // Store the plan ID in session storage for after signup
     sessionStorage.setItem('pendingLearningPlanId', planId);
     
-    // Store additional flag to indicate we should redirect to speech with this plan after signup
-    sessionStorage.setItem('redirectWithPlanId', planId);
+    // Set a flag to indicate we're in the middle of navigation
+    sessionStorage.setItem('navigationInProgress', 'true');
     
-    // Store the intent to redirect to signup page
-    sessionStorage.setItem('redirectTarget', '/speech');
-    
-    // Clear any existing navigation flags that might interfere
-    sessionStorage.removeItem('navigationInProgress');
+    // Set a flag to redirect with plan ID after signup
+    sessionStorage.setItem('redirectWithPlanId', 'true');
     
     // Redirect to signup page
     console.log('Redirecting to signup page with pending plan:', planId);
-    window.location.href = '/auth/signup';
+    router.push('/auth/signup');
     onClose();
   };
   
@@ -221,7 +221,8 @@ export default function LearningPlanModal({
     if (!planId) {
       console.error('No plan ID available for continue without sign in');
       // Just redirect to speech page without a plan
-      window.location.href = '/speech';
+      router.push('/speech');
+      onClose();
       return;
     }
     
@@ -238,7 +239,11 @@ export default function LearningPlanModal({
     
     // Redirect to speech page with the plan ID as a query parameter
     console.log('Continuing without sign in, redirecting to speech with plan:', planId);
-    window.location.href = `/speech?plan=${planId}`;
+    
+    // Use router.push instead of window.location for proper Next.js navigation
+    router.push(`/speech?plan=${planId}`);
+    
+    // Close the modal after initiating navigation
     onClose();
   };
   
