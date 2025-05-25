@@ -27,6 +27,7 @@ export default function SpeakingAssessment({
   const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'complete'>('idle');
   const [showLearningPlanModal, setShowLearningPlanModal] = useState(false);
   const [timer, setTimer] = useState(60);
+  const [initialDuration, setInitialDuration] = useState(60); // Track initial duration for progress calculation
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -55,8 +56,53 @@ export default function SpeakingAssessment({
         setTimer((prevTimer) => {
           const newTimer = prevTimer - 1;
           
-          // Show notification when 30 seconds have passed (30 seconds remaining)
-          if (newTimer === 30) {
+          // Show notification when 30 seconds have passed (30 seconds remaining) for 60s assessment
+          // Show notification when 10 seconds have passed (5 seconds remaining) for 15s assessment
+          if (initialDuration === 60 && newTimer === initialDuration / 2) {
+            // Create and show a toast notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+            notification.style.animation = 'fadeIn 0.5s';
+            notification.innerHTML = `
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p class="font-medium">Recording sufficient for analysis</p>
+                  <p class="text-sm opacity-90">You can stop now or continue for more accurate results</p>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // Add fade-out animation
+            const style = document.createElement('style');
+            style.innerHTML = `
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(10px); }
+              }
+            `;
+            document.head.appendChild(style);
+            
+            // Remove the notification after 5 seconds
+            setTimeout(() => {
+              notification.style.animation = 'fadeOut 0.5s';
+              setTimeout(() => {
+                if (document.body.contains(notification)) {
+                  document.body.removeChild(notification);
+                }
+                if (document.head.contains(style)) {
+                  document.head.removeChild(style);
+                }
+              }, 500);
+            }, 5000);
+          } else if (initialDuration === 15 && newTimer === 5) {
             // Create and show a toast notification
             const notification = document.createElement('div');
             notification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
@@ -112,7 +158,7 @@ export default function SpeakingAssessment({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isTimerActive, timer]);
+  }, [isTimerActive, timer, initialDuration]);
 
   // Clean up audio URL when component unmounts
   useEffect(() => {
@@ -124,15 +170,9 @@ export default function SpeakingAssessment({
   }, [audioUrl]);
 
   const startRecording = async () => {
-    // Check if user is authenticated
-    if (!isAuthenticated()) {
-      showNotification(
-        'warning',
-        'Please sign in before starting the assessment. Your progress will be saved to your profile.',
-        7000
-      );
-      return;
-    }
+    // Check user status and set appropriate limitations
+    const isUserAuthenticated = isAuthenticated();
+    const assessmentDuration = isUserAuthenticated ? 60 : 15; // 60s for authenticated, 15s for guest
     
     try {
       // Reset state
@@ -142,8 +182,9 @@ export default function SpeakingAssessment({
       setAssessment(null);
       setError('');
       
-      // Start timer
-      setTimer(60);
+      // Start timer with appropriate duration
+      setTimer(assessmentDuration);
+      setInitialDuration(assessmentDuration); // Update initial duration
       setIsTimerActive(true);
       
       // Get user media
@@ -200,7 +241,7 @@ export default function SpeakingAssessment({
       const result = await assessSpeaking(
         blob, 
         language, 
-        60 - timer,
+        initialDuration - timer,
         promptRef.current
       );
       
@@ -248,6 +289,7 @@ export default function SpeakingAssessment({
   const handleTryAgain = () => {
     setStatus('idle');
     setTimer(60);
+    setInitialDuration(60); // Reset initial duration
     setAudioBlob(null);
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
@@ -326,7 +368,7 @@ export default function SpeakingAssessment({
         />
       )}
       
-      {/* Authentication Warning */}
+      {/* Guest User Warning */}
       {!isAuthenticated() && (
         <div className="bg-[#FFD63A]/20 border-l-4 border-[#FFD63A] p-4 mb-4 rounded-r-lg">
           <div className="flex items-start">
@@ -334,9 +376,10 @@ export default function SpeakingAssessment({
               <AlertCircle className="h-5 w-5 text-[#FFD63A]" />
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-white">Authentication Required</h3>
-              <div className="mt-1 text-sm text-gray-200">
-                <p>Your assessment results will not be saved to your profile unless you sign in.</p>
+              <h3 className="text-sm font-medium text-[#333333]">Guest Mode</h3>
+              <div className="mt-1 text-sm text-[#555555]">
+                <p><strong>You will have a limited time of 15 seconds assessment only.</strong></p>
+                <p className="mt-1">Your assessment results will not be saved to your profile unless you sign in.</p>
               </div>
               <div className="mt-3">
                 <a 
@@ -427,7 +470,7 @@ export default function SpeakingAssessment({
           </div>
           
           <Progress 
-            value={(60 - timer) / 60 * 100} 
+            value={(initialDuration - timer) / initialDuration * 100} 
             className="h-3 bg-white" 
             indicatorClassName="bg-[#F75A5A]" 
           />

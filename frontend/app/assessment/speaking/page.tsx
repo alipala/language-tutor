@@ -76,15 +76,8 @@ export default function SpeakingAssessmentPage() {
     console.log('User authenticated status:', userAuthenticated);
     console.log('Pending learning plan ID:', pendingLearningPlanId);
     
-    // If user is not authenticated, we need to set up redirection flags
-    if (!userAuthenticated) {
-      console.log('User not authenticated, navigating to login page with redirect');
-      // Navigate to login with redirect back to speech page after authentication
-      navigation.navigateToLogin('/speech');
-      return;
-    }
-    
-    // User is authenticated, navigate directly to speech page
+    // Allow guest users to proceed to the speech page directly
+    // This is the new guest user flow that doesn't require authentication
     console.log(`Navigating to speech page with level: ${level}`);
     navigation.navigateToSpeech(pendingLearningPlanId || undefined);
   };
