@@ -1021,40 +1021,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       />
                     </div>
                     
-                    {/* Guest user timer display */}
-                    {!isAuthenticated() && (
-                      <div className="mb-3 text-center">
-                        {conversationTimeUp ? (
-                          <div className="inline-flex items-center gap-2 bg-red-100 text-red-800 px-3 py-2 rounded-lg border border-red-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-sm font-medium">
-                              Time's up! Sign in for unlimited time.
-                            </span>
-                          </div>
-                        ) : conversationTimer !== null ? (
-                          <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-800 px-3 py-2 rounded-lg border border-orange-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-sm font-medium">
-                              Time remaining: {Math.floor(conversationTimer / 60)}:{(conversationTimer % 60).toString().padStart(2, '0')}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-lg border border-blue-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-sm font-medium">
-                              Guest mode: 1 minute limit
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
                     <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
                       {/* Sign in prompt for guest users when time is up */}
                       {!isAuthenticated() && conversationTimeUp && (
