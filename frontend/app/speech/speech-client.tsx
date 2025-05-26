@@ -739,28 +739,47 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       return;
     }
     
-    // Check if guest user and start timer with appropriate duration
-    if (!isAuthenticated() && !isConversationTimerActive) {
-      const duration = getConversationDuration(false); // Get duration for guest user
+    // Start timer with appropriate duration for both guest and registered users
+    if (!isConversationTimerActive) {
+      const isUserAuthenticated = isAuthenticated();
+      const duration = getConversationDuration(isUserAuthenticated); // Get appropriate duration based on auth status
       setConversationTimer(duration);
       setIsConversationTimerActive(true);
       setConversationTimeUp(false);
       
-      // Show initial notification for guest users
+      // Show initial notification about time limit
       setTimeout(() => {
         const notification = document.createElement('div');
         notification.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
-        notification.innerHTML = `
-          <div class="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <div>
-              <p class="font-medium">Guest Mode: ${formatTime(getConversationDuration(false))} conversation</p>
-              <p class="text-sm opacity-90">Sign in for ${formatTime(getConversationDuration(true))} conversation time</p>
+        
+        if (!isUserAuthenticated) {
+          // Guest user notification
+          notification.innerHTML = `
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <div>
+                <p class="font-medium">Guest Mode: ${formatTime(getConversationDuration(false))} conversation</p>
+                <p class="text-sm opacity-90">Sign in for ${formatTime(getConversationDuration(true))} conversation time</p>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        } else {
+          // Registered user notification
+          notification.innerHTML = `
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <div>
+                <p class="font-medium">Conversation time: ${formatTime(getConversationDuration(true))}</p>
+                <p class="text-sm opacity-90">Your conversation will end after this time</p>
+              </div>
+            </div>
+          `;
+        }
+        
         document.body.appendChild(notification);
         
         setTimeout(() => {
@@ -804,6 +823,38 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   
   // Handle continue learning
   const handleContinueLearning = () => {
+    // Check if the conversation time is up
+    if (conversationTimeUp) {
+      // Different messages for guest and registered users
+      const message = isAuthenticated() 
+        ? "Your 5-minute conversation time has ended. Please start a new conversation." 
+        : "Your conversation time has ended. Sign up for unlimited time.";
+      
+      // Show notification that time is up and they can't continue
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+      notification.innerHTML = `
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p class="font-medium">Time's up!</p>
+            <p class="text-sm opacity-90">${message}</p>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 5000);
+      
+      return; // Prevent continuing the conversation
+    }
+    
     // Slight delay to allow the UI to update
     setTimeout(async () => {
       console.log('Continuing conversation from where we left off');
@@ -815,6 +866,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         setShowMessages(true);
         await startConversation(conversationHistoryRef.current);
         setIsPaused(false);
+        
+        // For guest users, make sure the timer continues if it was active
+        if (!isAuthenticated() && !conversationTimeUp && conversationTimer && conversationTimer > 0) {
+          setIsConversationTimerActive(true);
+        }
       } else {
         // Only if not paused (fully ended), start a new conversation
         toggleConversation();
