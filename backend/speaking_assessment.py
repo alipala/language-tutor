@@ -11,7 +11,7 @@ from sentence_assessment import create_openai_client, recognize_speech
 class SkillScore(BaseModel):
     score: float  # 0-100
     feedback: str
-    examples: List[str]
+    examples: List[str] = []  # Default to empty list
 
 class SpeakingAssessmentRequest(BaseModel):
     audio_base64: Optional[str] = None
@@ -178,6 +178,17 @@ async def evaluate_language_proficiency(text: str, language: str, duration: int 
         # Parse response
         result = json.loads(response.choices[0].message.content)
         print(f"Successfully analyzed speaking proficiency")
+        
+        # Process the response to ensure examples are lists
+        for skill in ['pronunciation', 'grammar', 'vocabulary', 'fluency', 'coherence']:
+            if skill in result and 'examples' in result[skill]:
+                # If examples is a string, convert it to a list with one item
+                if isinstance(result[skill]['examples'], str):
+                    result[skill]['examples'] = [result[skill]['examples']]
+                # If examples is missing or None, set to empty list
+                elif result[skill]['examples'] is None:
+                    result[skill]['examples'] = []
+        
         return result
     except Exception as e:
         print(f"Error in OpenAI speaking assessment: {str(e)}")
