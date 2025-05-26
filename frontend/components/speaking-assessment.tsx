@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
 import { isAuthenticated } from '@/lib/auth-utils';
-import { isGuestTimeExpired, setGuestTimeExpired, getRemainingCooldownMinutes } from '@/lib/guest-utils';
+import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
 import LearningPlanModal from './learning-plan-modal';
 
@@ -30,7 +30,7 @@ export default function SpeakingAssessment({
   const [timer, setTimer] = useState(60);
   const [initialDuration, setInitialDuration] = useState(60); // Track initial duration for progress calculation
   const [isTimerActive, setIsTimerActive] = useState(false);
-  const [guestTimeExpired, setGuestTimeExpiredState] = useState(false);
+  // No longer tracking guest time expiration
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcription, setTranscription] = useState('');
@@ -50,12 +50,7 @@ export default function SpeakingAssessment({
     setError('');
   }, [language]);
   
-  // Check if guest time has expired on component mount
-  useEffect(() => {
-    if (!isAuthenticated() && isGuestTimeExpired()) {
-      setGuestTimeExpiredState(true);
-    }
-  }, []);
+  // No longer checking for guest time expiration
 
   // Timer effect
   useEffect(() => {
@@ -181,18 +176,9 @@ export default function SpeakingAssessment({
   const startRecording = async () => {
     // Check user status and set appropriate limitations
     const isUserAuthenticated = isAuthenticated();
-    const assessmentDuration = isUserAuthenticated ? 60 : 15; // 60s for authenticated, 15s for guest
+    const assessmentDuration = getAssessmentDuration(isUserAuthenticated); // Get duration from utility function
     
-    // Check if guest time has expired
-    if (!isUserAuthenticated && isGuestTimeExpired()) {
-      const remainingMinutes = getRemainingCooldownMinutes();
-      showNotification(
-        'warning',
-        `You've reached your guest assessment limit. ${remainingMinutes > 0 ? `Try again in ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''} or` : ''} sign in for unlimited access.`,
-        7000
-      );
-      return;
-    }
+    // No longer blocking guest users from taking assessments
     
     try {
       // Reset state
@@ -269,7 +255,12 @@ export default function SpeakingAssessment({
       setAssessment(result);
       setStatus('complete');
       
-      // Save assessment data to user profile if authenticated, otherwise set guest time as expired
+      // Call onComplete callback if provided
+      if (onComplete) {
+        onComplete(result);
+      }
+      
+      // Save assessment data to user profile if authenticated
       if (isAuthenticated()) {
         try {
           const saved = await saveSpeakingAssessment(result);
@@ -282,16 +273,6 @@ export default function SpeakingAssessment({
           console.error('Error saving assessment data:', saveErr);
           // Don't show this error to the user as it's not critical
         }
-      } else {
-        // Set guest time as expired for non-authenticated users
-        // This will start the 30-minute cooldown period
-        setGuestTimeExpired();
-        setGuestTimeExpiredState(true); // Update local state
-      }
-      
-      // Call onComplete callback if provided
-      if (onComplete) {
-        onComplete(result);
       }
     } catch (err: any) {
       console.error('Error processing recording:', err);
@@ -405,7 +386,7 @@ export default function SpeakingAssessment({
             <div className="ml-3">
               <h3 className="text-sm font-medium text-[#333333]">Guest Mode</h3>
               <div className="mt-1 text-sm text-[#555555]">
-                <p><strong>You will have a limited time of 15 seconds assessment only.</strong></p>
+                <p>{getGuestLimitationsDescription()}</p>
                 <p className="mt-1">Your assessment results will not be saved to your profile unless you sign in.</p>
               </div>
               <div className="mt-3">
@@ -475,14 +456,24 @@ export default function SpeakingAssessment({
       
       {/* Recording Controls */}
       {status === 'idle' && (
-        <div className="flex justify-center mt-6">
-          <Button 
+        <div className="flex flex-col items-center justify-center space-y-6 p-6 bg-white rounded-lg shadow-md border border-gray-100">
+          <h2 className="text-xl font-semibold text-[#333333]">
+            Speak for a quick assessment
+          </h2>
+          <p className="text-center text-[#555555] max-w-md">
+            Press the button and speak in {language} for {formatTime(getAssessmentDuration(isAuthenticated()))} to get an evaluation of your speaking skills.
+          </p>
+          
+          <Button
             onClick={startRecording}
-            className="bg-[#F75A5A] hover:bg-[#E55252] text-white px-8 py-4 rounded-lg flex items-center space-x-3 shadow-lg transition-all duration-300 transform hover:scale-105"
+            className="w-32 h-32 rounded-full flex items-center justify-center bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-lg transition-all duration-300"
           >
-            <Mic className="h-6 w-6" />
-            <span className="text-lg font-medium">Start Recording</span>
+            <Mic className="h-10 w-10" />
           </Button>
+          
+          <p className="text-sm text-[#777777]">
+            Speak for up to {formatTime(getAssessmentDuration(isAuthenticated()))}
+          </p>
         </div>
       )}
       

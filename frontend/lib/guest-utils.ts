@@ -1,74 +1,51 @@
-// Constants
-const GUEST_EXPIRATION_KEY = 'guestTimeExpired';
-const GUEST_EXPIRATION_TIMESTAMP_KEY = 'guestTimeExpiredAt';
-const GUEST_COOLDOWN_MINUTES = 30; // 30 minutes cooldown period
+// Constants for guest user limitations
+const ASSESSMENT_DURATION_GUEST = 15; // 15 seconds for guest assessment
+const ASSESSMENT_DURATION_REGISTERED = 60; // 60 seconds for registered user assessment
+const CONVERSATION_DURATION_GUEST = 60; // 1 minute for guest conversation
+const CONVERSATION_DURATION_REGISTERED = 300; // 5 minutes for registered user conversation
 
 /**
- * Checks if the guest user's time limit has expired
- * @returns {boolean} True if the guest user's time limit has expired and is still within the cooldown period
+ * Gets the assessment duration based on user authentication status
+ * @param {boolean} isAuthenticated - Whether the user is authenticated
+ * @returns {number} The assessment duration in seconds
  */
-export const isGuestTimeExpired = (): boolean => {
-  const expired = sessionStorage.getItem(GUEST_EXPIRATION_KEY) === 'true';
-  
-  if (!expired) {
-    return false;
-  }
-  
-  // Check if the cooldown period has passed
-  const expiredAtStr = sessionStorage.getItem(GUEST_EXPIRATION_TIMESTAMP_KEY);
-  if (!expiredAtStr) {
-    return false; // No timestamp, treat as not expired
-  }
-  
-  const expiredAt = parseInt(expiredAtStr, 10);
-  const now = Date.now();
-  const elapsedMinutes = (now - expiredAt) / (1000 * 60);
-  
-  // If more than GUEST_COOLDOWN_MINUTES have passed, reset the expiration
-  if (elapsedMinutes >= GUEST_COOLDOWN_MINUTES) {
-    resetGuestTimeExpiration();
-    return false;
-  }
-  
-  return true;
+export const getAssessmentDuration = (isAuthenticated: boolean): number => {
+  return isAuthenticated ? ASSESSMENT_DURATION_REGISTERED : ASSESSMENT_DURATION_GUEST;
 };
 
 /**
- * Sets the guest user's time limit as expired
+ * Gets the conversation duration based on user authentication status
+ * @param {boolean} isAuthenticated - Whether the user is authenticated
+ * @returns {number} The conversation duration in seconds
  */
-export const setGuestTimeExpired = (): void => {
-  sessionStorage.setItem(GUEST_EXPIRATION_KEY, 'true');
-  sessionStorage.setItem(GUEST_EXPIRATION_TIMESTAMP_KEY, Date.now().toString());
+export const getConversationDuration = (isAuthenticated: boolean): number => {
+  return isAuthenticated ? CONVERSATION_DURATION_REGISTERED : CONVERSATION_DURATION_GUEST;
 };
 
 /**
- * Resets the guest user's time limit expiration
+ * Gets the maximum number of assessment details to show based on user authentication status
+ * @param {boolean} isAuthenticated - Whether the user is authenticated
+ * @returns {number} The maximum number of details to show
  */
-export const resetGuestTimeExpiration = (): void => {
-  sessionStorage.removeItem(GUEST_EXPIRATION_KEY);
-  sessionStorage.removeItem(GUEST_EXPIRATION_TIMESTAMP_KEY);
+export const getMaxAssessmentDetails = (isAuthenticated: boolean): number => {
+  return isAuthenticated ? 5 : 3; // Show fewer details for guest users
 };
 
 /**
- * Gets the remaining cooldown time in minutes for a guest user
- * @returns {number} The number of minutes remaining in the cooldown period, or 0 if not expired
+ * Formats a time duration from seconds to MM:SS format
+ * @param {number} seconds - The time in seconds
+ * @returns {string} Formatted time string in MM:SS format
  */
-export const getRemainingCooldownMinutes = (): number => {
-  const expired = sessionStorage.getItem(GUEST_EXPIRATION_KEY) === 'true';
-  
-  if (!expired) {
-    return 0;
-  }
-  
-  const expiredAtStr = sessionStorage.getItem(GUEST_EXPIRATION_TIMESTAMP_KEY);
-  if (!expiredAtStr) {
-    return 0;
-  }
-  
-  const expiredAt = parseInt(expiredAtStr, 10);
-  const now = Date.now();
-  const elapsedMinutes = (now - expiredAt) / (1000 * 60);
-  const remainingMinutes = GUEST_COOLDOWN_MINUTES - elapsedMinutes;
-  
-  return Math.max(0, Math.ceil(remainingMinutes));
+export const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;  
+};
+
+/**
+ * Gets a description of the limitations for guest users
+ * @returns {string} A description of the guest user limitations
+ */
+export const getGuestLimitationsDescription = (): string => {
+  return `As a guest, you have access to a ${ASSESSMENT_DURATION_GUEST}-second speaking assessment and a ${CONVERSATION_DURATION_GUEST}-second conversation practice. Sign in for a full ${ASSESSMENT_DURATION_REGISTERED}-second assessment and ${CONVERSATION_DURATION_REGISTERED}-second conversations.`;
 };

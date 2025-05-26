@@ -7,7 +7,7 @@ import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
-import { isGuestTimeExpired, setGuestTimeExpired, getRemainingCooldownMinutes } from '@/lib/guest-utils';
+import { getConversationDuration, formatTime, getGuestLimitationsDescription } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 
 interface SpeechClientProps {
@@ -35,18 +35,13 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const [isConversationTimerActive, setIsConversationTimerActive] = useState(false);
   const [conversationTimeUp, setConversationTimeUp] = useState(false);
   
-  // Check if guest time has expired previously in this session
+  // Initialize conversation timer for guest users if they have assessment data
   useEffect(() => {
-    // Check if we're in guest mode and if time has expired before
-    // But don't mark as expired if we just completed an assessment (has assessment data)
     const hasAssessmentData = sessionStorage.getItem('speakingAssessmentData') !== null;
     
-    if (!isAuthenticated() && isGuestTimeExpired() && !hasAssessmentData) {
-      console.log('Guest time has expired, disabling microphone');
-      setConversationTimeUp(true);
-    } else if (!isAuthenticated() && hasAssessmentData) {
-      console.log('Guest user has assessment data, allowing 1-minute conversation');
-      // Reset any previous expiration to allow the 1-minute conversation
+    if (!isAuthenticated() && hasAssessmentData) {
+      console.log('Guest user has assessment data, allowing limited conversation');
+      // Always allow the conversation for guest users who completed an assessment
       setConversationTimeUp(false);
     }
   }, []);
@@ -669,9 +664,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             setIsConversationTimerActive(false);
             handleEndConversation();
             
-            // Store in session storage that guest time has expired with timestamp
-            // This makes the limitation persist for 30 minutes
-            setGuestTimeExpired();
+            // No longer storing expiration in session storage
+            // We allow unlimited attempts with time limitations per attempt
             
             // Show time's up notification
             const notification = document.createElement('div');
@@ -712,19 +706,22 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const handleToggleRecording = async (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // If guest user time is up, don't allow further recording
+    // If current conversation time is up, show message but allow starting a new one
     if (!isAuthenticated() && conversationTimeUp) {
-      // Show sign-in prompt
+      // Reset the conversation timer to allow a new attempt
+      setConversationTimeUp(false);
+      
+      // Show notification about starting a new limited conversation
       const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+      notification.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
       notification.innerHTML = `
         <div class="flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           <div>
-            <p class="font-medium">Guest time limit reached</p>
-            <p class="text-sm opacity-90">Please sign in for unlimited conversation time</p>
+            <p class="font-medium">Starting new conversation</p>
+            <p class="text-sm opacity-90">As a guest, you have a 1-minute time limit</p>
           </div>
         </div>
       `;
@@ -735,8 +732,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           document.body.removeChild(notification);
         }
       }, 5000);
-      
-      return;
     }
     
     if (isRecording) {
@@ -744,9 +739,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       return;
     }
     
-    // Check if guest user and start timer
-    if (!isAuthenticated() && !isConversationTimerActive && conversationTimer === null) {
-      setConversationTimer(60); // 1 minute for guest users
+    // Check if guest user and start timer with appropriate duration
+    if (!isAuthenticated() && !isConversationTimerActive) {
+      const duration = getConversationDuration(false); // Get duration for guest user
+      setConversationTimer(duration);
       setIsConversationTimerActive(true);
       setConversationTimeUp(false);
       
@@ -760,8 +756,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
             <div>
-              <p class="font-medium">Guest Mode: 1 minute conversation</p>
-              <p class="text-sm opacity-90">Sign in for unlimited conversation time</p>
+              <p class="font-medium">Guest Mode: ${formatTime(getConversationDuration(false))} conversation</p>
+              <p class="text-sm opacity-90">Sign in for ${formatTime(getConversationDuration(true))} conversation time</p>
             </div>
           </div>
         `;
@@ -964,8 +960,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </svg>
                   <span className="text-sm font-medium">Guest Mode</span>
                 </div>
-                <p className="text-xs text-orange-700 mt-1">
-                  Conversation limited to 1 minute. Sign in for unlimited time.
+                <p className="mt-1 text-xs text-gray-600">
+                  {getGuestLimitationsDescription()}
                 </p>
               </div>
             </div>
@@ -1036,12 +1032,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
                           <h4 className="text-red-800 font-medium mb-1">Guest time limit reached</h4>
                           <p className="text-red-700 text-sm mb-3">
-                            You've used your 1-minute guest conversation limit.
-                            {getRemainingCooldownMinutes() > 0 && (
-                              <span className="block mt-1 font-medium">
-                                Try again in {getRemainingCooldownMinutes()} minute{getRemainingCooldownMinutes() !== 1 ? 's' : ''}
-                              </span>
-                            )}
+                            Your guest conversation time has ended.
+                            <span className="block mt-1 font-medium">
+                              Try a new assessment or sign in for longer conversations
+                            </span>
                           </p>
                           <a 
                             href="/auth/login"
