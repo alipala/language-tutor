@@ -73,6 +73,15 @@ export default function SpeechPage() {
       
       if (planParam) {
         console.log('[SpeechPage] Found plan ID in URL:', planParam);
+        
+        // Check if this plan has been marked as expired (from back button navigation)
+        const isPlanExpired = sessionStorage.getItem(`plan_${planParam}_expired`) === 'true';
+        if (isPlanExpired) {
+          console.log('[SpeechPage] Plan was previously expired, redirecting to home');
+          window.location.href = '/';
+          return;
+        }
+        
         setSelectedPlanId(planParam);
         
         try {
@@ -98,6 +107,8 @@ export default function SpeechPage() {
                 console.log('[SpeechPage] Plan has expired, showing time up modal');
                 // Show the time's up modal instead of redirecting
                 setShowTimeUpModal(true);
+                // Mark the plan as expired
+                sessionStorage.setItem(`plan_${planParam}_expired`, 'true');
                 return;
               }
             }
@@ -225,6 +236,9 @@ export default function SpeechPage() {
           console.log('[SpeechPage] Plan has expired during session, showing time up modal');
           // Show the time's up modal instead of redirecting
           setShowTimeUpModal(true);
+          
+          // Set a flag in session storage to indicate this plan has expired
+          sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
         }
       };
       
@@ -360,17 +374,35 @@ export default function SpeechPage() {
       {/* Time's Up Modal */}
       <TimeUpModal 
         isOpen={showTimeUpModal}
-        onClose={() => setShowTimeUpModal(false)}
+        onClose={() => {
+          // Mark the plan as expired even when closing the modal
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+          }
+          setShowTimeUpModal(false);
+        }}
         onSignIn={() => {
-          sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          // Mark the plan as expired to prevent back button navigation
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          }
           router.push('/login');
         }}
         onSignUp={() => {
-          sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          // Mark the plan as expired to prevent back button navigation
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          }
           router.push('/signup');
         }}
         onNewAssessment={() => {
-          sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          // Mark the plan as expired to prevent back button navigation
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          }
           router.push('/');
         }}
       />
