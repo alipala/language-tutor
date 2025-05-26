@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
 import { isPlanValid } from '@/lib/guest-utils';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
+import TimeUpModal from '@/components/time-up-modal';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -33,6 +34,13 @@ export default function SpeechPage() {
   const [planCreationTime, setPlanCreationTime] = useState<string | null>(null);
   const navigationHandledRef = useRef(false);
   const initializationCompleteRef = useRef(false);
+  
+  // State for showing the leave site warning modal
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+  
+  // State for showing the time's up modal
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   
   // Set up session refresh prevention
   const refreshCountKey = 'speechPageRefreshCount';
@@ -87,9 +95,9 @@ export default function SpeechPage() {
               // Check if the plan is still valid based on time limits
               const userAuthenticated = isAuthenticated();
               if (!isPlanValid(userAuthenticated, storedCreationTime)) {
-                console.log('[SpeechPage] Plan has expired, redirecting to home page');
-                sessionStorage.removeItem(`plan_${planParam}_creationTime`);
-                router.push('/');
+                console.log('[SpeechPage] Plan has expired, showing time up modal');
+                // Show the time's up modal instead of redirecting
+                setShowTimeUpModal(true);
                 return;
               }
             }
@@ -194,6 +202,9 @@ export default function SpeechPage() {
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
   
+  // State for showing the time's up modal
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
+  
   // Show warning before leaving the conversation
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -218,9 +229,9 @@ export default function SpeechPage() {
       const checkPlanValidity = () => {
         const userAuthenticated = isAuthenticated();
         if (!isPlanValid(userAuthenticated, planCreationTime)) {
-          console.log('[SpeechPage] Plan has expired during session, redirecting to home page');
-          sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
-          router.push('/');
+          console.log('[SpeechPage] Plan has expired during session, showing time up modal');
+          // Show the time's up modal instead of redirecting
+          setShowTimeUpModal(true);
         }
       };
       
@@ -231,7 +242,7 @@ export default function SpeechPage() {
         clearInterval(intervalId);
       };
     }
-  }, [selectedPlanId, planCreationTime, router]);
+  }, [selectedPlanId, planCreationTime]);
   
   // Handle change language action - show a warning if needed
   const handleChangeLanguage = () => {
@@ -409,29 +420,69 @@ export default function SpeechPage() {
               >
                 Continue Conversation
               </button>
-              <button
-                type="button"
-                className="primary-button px-4 py-2 rounded-lg"
-                onClick={handleConfirmNavigation}
-              >
-                End Conversation
-              </button>
-            </div>
+    
+    {/* Loading State */}
+    {isLoading || authLoading ? (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[#4ECFBF]"></div>
+      </div>
+    ) : (
+      <SpeechClient 
+        language={selectedLanguage || 'english'} 
+        level={selectedLevel || 'A1'} 
+        topic={selectedTopic || undefined}
+        userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
+      />
+    )}
+    
+    {/* Warning Modal for conversation interruption */}
+    {showLeaveWarning && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="glass-card rounded-lg shadow-xl max-w-md w-full p-6 border border-white/20">
+          <div className="flex items-center text-amber-500 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 className="text-lg font-medium">End current conversation?</h3>
+          </div>
+          <p className="text-white/80 mb-6">You're currently in a conversation. Leaving this page will end your current session.</p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+            <button
+              type="button"
+              className="primary-button px-4 py-2 rounded-lg"
+              onClick={handleCancelNavigation}
+            >
+              Continue Conversation
+            </button>
+            <button
+              type="button"
+              className="primary-button px-4 py-2 rounded-lg"
+              onClick={handleConfirmNavigation}
+            >
+              End Conversation
+            </button>
           </div>
         </div>
-      )}
-      
-      {/* Main Content */}
-      <div className="flex-grow">
-        {selectedLanguage && selectedLevel && (
-          <SpeechClient 
-            language={selectedLanguage} 
-            level={selectedLevel} 
-            topic={selectedTopic || undefined}
-            userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
-          />
-        )}
       </div>
-    </div>
+    )}
+    
+    {/* Time's Up Modal */}
+    <TimeUpModal 
+      isOpen={showTimeUpModal}
+      onClose={() => setShowTimeUpModal(false)}
+      onSignIn={() => {
+        sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+        router.push('/login');
+      }}
+      onSignUp={() => {
+        sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+        router.push('/signup');
+      }}
+      onNewAssessment={() => {
+        sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+        router.push('/assessment');
+      }}
+    />
+  </div>
   );
 }
