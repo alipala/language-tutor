@@ -48,6 +48,13 @@ export default function SpeakingAssessment({
   useEffect(() => {
     // Clear any error message
     setError('');
+    
+    // Check if assessment was already completed
+    const assessmentCompleted = sessionStorage.getItem('assessmentCompleted');
+    if (assessmentCompleted === 'true') {
+      // Redirect to home page
+      window.location.href = '/';
+    }
   }, [language]);
   
   // No longer checking for guest time expiration
@@ -255,6 +262,9 @@ export default function SpeakingAssessment({
       setAssessment(result);
       setStatus('complete');
       
+      // Mark assessment as completed in session storage
+      sessionStorage.setItem('assessmentCompleted', 'true');
+      
       // Call onComplete callback if provided
       if (onComplete) {
         onComplete(result);
@@ -295,6 +305,9 @@ export default function SpeakingAssessment({
   };
 
   const handleTryAgain = () => {
+    // Remove the completed flag to allow a new assessment
+    sessionStorage.removeItem('assessmentCompleted');
+    
     setStatus('idle');
     setTimer(60);
     setInitialDuration(60); // Reset initial duration
@@ -325,11 +338,15 @@ export default function SpeakingAssessment({
   const handleLearningPlanModalClose = () => {
     setShowLearningPlanModal(false);
     console.log('Learning plan modal closed without creating a plan');
+    // Keep the assessmentCompleted flag to prevent restarting after refresh
   };
 
   const handlePlanCreated = (planId: string) => {
     console.log('Learning plan created with ID:', planId);
     sessionStorage.setItem('pendingLearningPlanId', planId);
+    
+    // Ensure the assessment is marked as completed
+    sessionStorage.setItem('assessmentCompleted', 'true');
     
     // If onSelectLevel callback is provided, use it to trigger redirection
     if (onSelectLevel) {
