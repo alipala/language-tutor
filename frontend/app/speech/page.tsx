@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth-utils';
+import { isPlanValid } from '@/lib/guest-utils';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
+import TimeUpModal from '@/components/time-up-modal';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -28,8 +31,16 @@ export default function SpeechPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [authRedirectTriggered, setAuthRedirectTriggered] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [planCreationTime, setPlanCreationTime] = useState<string | null>(null);
   const navigationHandledRef = useRef(false);
   const initializationCompleteRef = useRef(false);
+  
+  // State for showing the leave site warning modal
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+  
+  // State for showing the time's up modal
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   
   // Set up session refresh prevention
   const refreshCountKey = 'speechPageRefreshCount';
@@ -62,6 +73,15 @@ export default function SpeechPage() {
       
       if (planParam) {
         console.log('[SpeechPage] Found plan ID in URL:', planParam);
+        
+        // Check if this plan has been marked as expired (from back button navigation)
+        const isPlanExpired = sessionStorage.getItem(`plan_${planParam}_expired`) === 'true';
+        if (isPlanExpired) {
+          console.log('[SpeechPage] Plan was previously expired, redirecting to home');
+          window.location.href = '/';
+          return;
+        }
+        
         setSelectedPlanId(planParam);
         
         try {
@@ -71,6 +91,28 @@ export default function SpeechPage() {
           
           if (plan) {
             console.log('[SpeechPage] Retrieved plan details:', plan);
+            
+            // Store plan creation time if not already stored
+            const storedCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
+            if (!storedCreationTime) {
+              const creationTime = new Date().toISOString();
+              sessionStorage.setItem(`plan_${planParam}_creationTime`, creationTime);
+              setPlanCreationTime(creationTime);
+            } else {
+              setPlanCreationTime(storedCreationTime);
+              
+              // Check if the plan is still valid based on time limits
+              const userAuthenticated = isAuthenticated();
+              if (!isPlanValid(userAuthenticated, storedCreationTime)) {
+                console.log('[SpeechPage] Plan has expired, showing time up modal');
+                // Show the time's up modal instead of redirecting
+                setShowTimeUpModal(true);
+                // Mark the plan as expired
+                sessionStorage.setItem(`plan_${planParam}_expired`, 'true');
+                return;
+              }
+            }
+            
             setSelectedLanguage(plan.language);
             setSelectedLevel(plan.proficiency_level);
             // These properties might be stored elsewhere or need to be handled differently
@@ -166,136 +208,75 @@ export default function SpeechPage() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [user]);
-
-  // State for showing the leave site warning modal
-  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
-  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
   
   // Show warning before leaving the conversation
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show warning if conversation is active
-      if (sessionStorage.getItem('isInConversation') === 'true') {
-        const message = 'You are in the middle of a conversation. Are you sure you want to leave?';
+      if (!allowBackNavigation) {
+        // Standard way to show a confirmation dialog
         e.preventDefault();
-        e.returnValue = message;
-        return message;
+        // Chrome requires returnValue to be set
+        e.returnValue = '';
+        return '';
       }
-      return undefined;
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [allowBackNavigation]);
+  
+  // Effect to periodically check plan validity
+  useEffect(() => {
+    if (selectedPlanId && planCreationTime) {
+      const checkPlanValidity = () => {
+        const userAuthenticated = isAuthenticated();
+        if (!isPlanValid(userAuthenticated, planCreationTime)) {
+          console.log('[SpeechPage] Plan has expired during session, showing time up modal');
+          // Show the time's up modal instead of redirecting
+          setShowTimeUpModal(true);
+          
+          // Set a flag in session storage to indicate this plan has expired
+          sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+        }
+      };
+      
+      // Check plan validity every 10 seconds
+      const intervalId = setInterval(checkPlanValidity, 10000);
+      
+      return () => {
+        clearInterval(intervalId);
+      };
+    }
+  }, [selectedPlanId, planCreationTime]);
   
   // Handle change language action - show a warning if needed
   const handleChangeLanguage = () => {
+    // Check if we're in the middle of a conversation
     if (sessionStorage.getItem('isInConversation') === 'true') {
+      // Show warning modal
       setShowLeaveWarning(true);
       setPendingNavigationUrl('/language-selection');
     } else {
-      // Clear all selections except language which will be reselected
-      sessionStorage.removeItem('selectedLevel');
-      sessionStorage.removeItem('selectedTopic');
-      sessionStorage.removeItem('customTopicText');
-      // Clear any navigation flags
-      sessionStorage.removeItem('fromLevelSelection');
-      sessionStorage.removeItem('intentionalNavigation');
-      
-      console.log('Navigating to language selection from speech page');
-      window.location.href = '/language-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      setTimeout(() => {
-        if (window.location.pathname.includes('speech')) {
-          console.log('Still on speech page, using fallback navigation to language selection');
-          window.location.replace('/language-selection');
-        }
-      }, 1000);
-    }
-  };
-  
-  // Handle change level action - show a warning if needed
-  const handleChangeLevel = () => {
-    if (sessionStorage.getItem('isInConversation') === 'true') {
-      setShowLeaveWarning(true);
-      setPendingNavigationUrl('/level-selection');
-    } else {
-      // Clear level selection but keep language and topic
-      sessionStorage.removeItem('selectedLevel');
-      // Clear any navigation flags
-      sessionStorage.removeItem('intentionalNavigation');
-      
-      console.log('Navigating to level selection from speech page');
-      window.location.href = '/level-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      setTimeout(() => {
-        if (window.location.pathname.includes('speech')) {
-          console.log('Still on speech page, using fallback navigation to level selection');
-          window.location.replace('/level-selection');
-        }
-      }, 1000);
-    }
-  };
-  
-  // Handle change topic action - show a warning if needed
-  const handleChangeTopic = () => {
-    if (sessionStorage.getItem('isInConversation') === 'true') {
-      setShowLeaveWarning(true);
-      setPendingNavigationUrl('/topic-selection');
-    } else {
-      // Clear topic selection but keep language
-      sessionStorage.removeItem('selectedTopic');
-      sessionStorage.removeItem('customTopicText');
-      sessionStorage.removeItem('selectedLevel');
-      // Set a flag to indicate we're intentionally going to topic selection
-      sessionStorage.setItem('fromLevelSelection', 'true');
-      // Clear any navigation flags
-      sessionStorage.removeItem('intentionalNavigation');
-      
-      console.log('Navigating to topic selection from speech page');
-      window.location.href = '/topic-selection';
-      
-      // Fallback navigation in case the first attempt fails
-      setTimeout(() => {
-        if (window.location.pathname.includes('speech')) {
-          console.log('Still on speech page, using fallback navigation to topic selection');
-          window.location.replace('/topic-selection');
-        }
-      }, 1000);
+      // No active conversation, navigate directly
+      router.push('/language-selection');
     }
   };
   
   // Confirm navigation after warning
   const handleConfirmNavigation = () => {
-    sessionStorage.removeItem('isInConversation');
-    
     if (pendingNavigationUrl) {
-      // If navigating to language selection, clear relevant storage items
-      if (pendingNavigationUrl === '/language-selection') {
-        // Clear all selections except language which will be reselected
-        sessionStorage.removeItem('selectedLevel');
-        sessionStorage.removeItem('selectedTopic');
-        sessionStorage.removeItem('customTopicText');
-        // Clear any navigation flags
-        sessionStorage.removeItem('fromLevelSelection');
-        sessionStorage.removeItem('intentionalNavigation');
-      }
+      // Set a flag to indicate intentional navigation
+      sessionStorage.setItem('intentionalNavigation', 'true');
       
-      console.log(`Confirming navigation to ${pendingNavigationUrl}`);
-      window.location.href = pendingNavigationUrl;
+      // Clear conversation flag
+      sessionStorage.removeItem('isInConversation');
       
-      // Fallback navigation in case the first attempt fails
-      const currentPath = window.location.pathname;
+      // Navigate after a short delay to ensure flag is set
       setTimeout(() => {
-        if (window.location.pathname === currentPath) {
-          console.log(`Still on ${currentPath}, using fallback navigation to ${pendingNavigationUrl}`);
-          window.location.replace(pendingNavigationUrl);
-        }
-      }, 1000);
+        router.push(pendingNavigationUrl);
+      }, 100);
     }
     
     setShowLeaveWarning(false);
@@ -389,6 +370,42 @@ export default function SpeechPage() {
           />
         )}
       </div>
+      
+      {/* Time's Up Modal */}
+      <TimeUpModal 
+        isOpen={showTimeUpModal}
+        onClose={() => {
+          // Mark the plan as expired even when closing the modal
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+          }
+          setShowTimeUpModal(false);
+        }}
+        onSignIn={() => {
+          // Mark the plan as expired to prevent back button navigation
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          }
+          router.push('/login');
+        }}
+        onSignUp={() => {
+          // Mark the plan as expired to prevent back button navigation
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          }
+          router.push('/signup');
+        }}
+        onNewAssessment={() => {
+          // Mark the plan as expired to prevent back button navigation
+          if (selectedPlanId) {
+            sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
+            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          }
+          router.push('/');
+        }}
+      />
     </div>
   );
 }

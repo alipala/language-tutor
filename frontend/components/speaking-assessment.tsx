@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
 import { isAuthenticated } from '@/lib/auth-utils';
-import { isGuestTimeExpired, setGuestTimeExpired, getRemainingCooldownMinutes } from '@/lib/guest-utils';
+import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
 import LearningPlanModal from './learning-plan-modal';
 
@@ -30,7 +30,7 @@ export default function SpeakingAssessment({
   const [timer, setTimer] = useState(60);
   const [initialDuration, setInitialDuration] = useState(60); // Track initial duration for progress calculation
   const [isTimerActive, setIsTimerActive] = useState(false);
-  const [guestTimeExpired, setGuestTimeExpiredState] = useState(false);
+  // No longer tracking guest time expiration
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcription, setTranscription] = useState('');
@@ -48,14 +48,16 @@ export default function SpeakingAssessment({
   useEffect(() => {
     // Clear any error message
     setError('');
+    
+    // Check if assessment was already completed
+    const assessmentCompleted = sessionStorage.getItem('assessmentCompleted');
+    if (assessmentCompleted === 'true') {
+      // Redirect to home page
+      window.location.href = '/';
+    }
   }, [language]);
   
-  // Check if guest time has expired on component mount
-  useEffect(() => {
-    if (!isAuthenticated() && isGuestTimeExpired()) {
-      setGuestTimeExpiredState(true);
-    }
-  }, []);
+  // No longer checking for guest time expiration
 
   // Timer effect
   useEffect(() => {
@@ -181,18 +183,9 @@ export default function SpeakingAssessment({
   const startRecording = async () => {
     // Check user status and set appropriate limitations
     const isUserAuthenticated = isAuthenticated();
-    const assessmentDuration = isUserAuthenticated ? 60 : 15; // 60s for authenticated, 15s for guest
+    const assessmentDuration = getAssessmentDuration(isUserAuthenticated); // Get duration from utility function
     
-    // Check if guest time has expired
-    if (!isUserAuthenticated && isGuestTimeExpired()) {
-      const remainingMinutes = getRemainingCooldownMinutes();
-      showNotification(
-        'warning',
-        `You've reached your guest assessment limit. ${remainingMinutes > 0 ? `Try again in ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''} or` : ''} sign in for unlimited access.`,
-        7000
-      );
-      return;
-    }
+    // No longer blocking guest users from taking assessments
     
     try {
       // Reset state
@@ -269,7 +262,15 @@ export default function SpeakingAssessment({
       setAssessment(result);
       setStatus('complete');
       
-      // Save assessment data to user profile if authenticated, otherwise set guest time as expired
+      // Mark assessment as completed in session storage
+      sessionStorage.setItem('assessmentCompleted', 'true');
+      
+      // Call onComplete callback if provided
+      if (onComplete) {
+        onComplete(result);
+      }
+      
+      // Save assessment data to user profile if authenticated
       if (isAuthenticated()) {
         try {
           const saved = await saveSpeakingAssessment(result);
@@ -282,16 +283,6 @@ export default function SpeakingAssessment({
           console.error('Error saving assessment data:', saveErr);
           // Don't show this error to the user as it's not critical
         }
-      } else {
-        // Set guest time as expired for non-authenticated users
-        // This will start the 30-minute cooldown period
-        setGuestTimeExpired();
-        setGuestTimeExpiredState(true); // Update local state
-      }
-      
-      // Call onComplete callback if provided
-      if (onComplete) {
-        onComplete(result);
       }
     } catch (err: any) {
       console.error('Error processing recording:', err);
@@ -314,6 +305,9 @@ export default function SpeakingAssessment({
   };
 
   const handleTryAgain = () => {
+    // Remove the completed flag to allow a new assessment
+    sessionStorage.removeItem('assessmentCompleted');
+    
     setStatus('idle');
     setTimer(60);
     setInitialDuration(60); // Reset initial duration
@@ -344,11 +338,15 @@ export default function SpeakingAssessment({
   const handleLearningPlanModalClose = () => {
     setShowLearningPlanModal(false);
     console.log('Learning plan modal closed without creating a plan');
+    // Keep the assessmentCompleted flag to prevent restarting after refresh
   };
 
   const handlePlanCreated = (planId: string) => {
     console.log('Learning plan created with ID:', planId);
     sessionStorage.setItem('pendingLearningPlanId', planId);
+    
+    // Ensure the assessment is marked as completed
+    sessionStorage.setItem('assessmentCompleted', 'true');
     
     // If onSelectLevel callback is provided, use it to trigger redirection
     if (onSelectLevel) {
@@ -405,7 +403,7 @@ export default function SpeakingAssessment({
             <div className="ml-3">
               <h3 className="text-sm font-medium text-[#333333]">Guest Mode</h3>
               <div className="mt-1 text-sm text-[#555555]">
-                <p><strong>You will have a limited time of 15 seconds assessment only.</strong></p>
+                <p>{getGuestLimitationsDescription()}</p>
                 <p className="mt-1">Your assessment results will not be saved to your profile unless you sign in.</p>
               </div>
               <div className="mt-3">
@@ -475,14 +473,24 @@ export default function SpeakingAssessment({
       
       {/* Recording Controls */}
       {status === 'idle' && (
-        <div className="flex justify-center mt-6">
-          <Button 
+        <div className="flex flex-col items-center justify-center space-y-6 p-6 bg-white rounded-lg shadow-md border border-gray-100">
+          <h2 className="text-xl font-semibold text-[#333333]">
+            Speak for a quick assessment
+          </h2>
+          <p className="text-center text-[#555555] max-w-md">
+            Press the button and speak in {language} for {formatTime(getAssessmentDuration(isAuthenticated()))} to get an evaluation of your speaking skills.
+          </p>
+          
+          <Button
             onClick={startRecording}
-            className="bg-[#F75A5A] hover:bg-[#E55252] text-white px-8 py-4 rounded-lg flex items-center space-x-3 shadow-lg transition-all duration-300 transform hover:scale-105"
+            className="w-32 h-32 rounded-full flex items-center justify-center bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-lg transition-all duration-300"
           >
-            <Mic className="h-6 w-6" />
-            <span className="text-lg font-medium">Start Recording</span>
+            <Mic className="h-10 w-10" />
           </Button>
+          
+          <p className="text-sm text-[#777777]">
+            Speak for up to {formatTime(getAssessmentDuration(isAuthenticated()))}
+          </p>
         </div>
       )}
       
@@ -526,8 +534,10 @@ export default function SpeakingAssessment({
       {/* Assessment Results */}
       {status === 'complete' && assessment && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* Left Column: General Information */}
-          <div className="space-y-6">
+          {isAuthenticated() ? (
+            <>
+              {/* Left Column: General Information - Authenticated User */}
+              <div className="space-y-6">
             {/* Playback Controls */}
             {audioUrl && (
               <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
@@ -574,10 +584,10 @@ export default function SpeakingAssessment({
                 {assessment.recognized_text || "No speech detected"}
               </p>
             </div>
-          </div>
-          
-          {/* Right Column: Detailed Assessment */}
-          <div className="space-y-6">
+              </div>
+              
+              {/* Right Column: Detailed Assessment - Authenticated User */}
+              <div className="space-y-6">
             {/* Skill Scores */}
             <div className="bg-[#F8F9FA] p-6 rounded-lg border border-gray-200 shadow-md overflow-auto">
               <h3 className="text-lg text-[#333333] mb-3 font-medium">Skill Breakdown</h3>
@@ -736,7 +746,108 @@ export default function SpeakingAssessment({
                 ))}
               </ul>
             </div>
-          </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Left Column: Limited Information - Guest User */}
+              <div className="space-y-6">
+                {/* Playback Controls */}
+                {audioUrl && (
+                  <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
+                    <Button 
+                      onClick={handlePlayAudio}
+                      className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
+                    >
+                      {isAudioPlaying ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    </Button>
+                    <div className="text-[#333333] text-lg">Listen to your recording</div>
+                  </div>
+                )}
+                
+                {/* Recommended Level */}
+                <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
+                  <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
+                  <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
+                </div>
+                
+                {/* Transcription */}
+                <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+                  <h3 className="text-xl text-[#333333] mb-3 font-medium">Your Speech</h3>
+                  <p className="text-[#333333] bg-white p-4 rounded-lg border border-[#F75A5A]/30 shadow-inner">
+                    {assessment.recognized_text || "No speech detected"}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Right Column: Feedback and Next Steps - Guest User */}
+              <div className="space-y-6">
+                {/* Strengths */}
+                <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+                  <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                    <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
+                  </h3>
+                  <ul className="space-y-3">
+                    {assessment.strengths.map((strength, index) => (
+                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#4ECFBF]/30 shadow-sm">
+                        <div className="bg-[#4ECFBF] rounded-full p-1 mt-0.5 flex-shrink-0">
+                          <Check className="h-4 w-4 text-white" />
+                        </div>
+                        <p className="text-[#333333]">{strength}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {/* Areas for Improvement */}
+                <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
+                  <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                    <Target className="h-5 w-5 mr-2 text-[#F75A5A]" /> Areas for Improvement
+                  </h3>
+                  <ul className="space-y-3">
+                    {assessment.areas_for_improvement.map((area, index) => (
+                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#F75A5A]/30 shadow-sm">
+                        <div className="bg-[#F75A5A] rounded-full p-1 mt-0.5 flex-shrink-0">
+                          <ArrowUpRight className="h-4 w-4 text-white" />
+                        </div>
+                        <p className="text-[#333333]">{area}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {/* Next Steps */}
+                <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
+                  <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
+                    <Footprints className="h-5 w-5 mr-2 text-[#FFD63A]" /> Next Steps
+                  </h3>
+                  <ul className="space-y-3">
+                    {assessment.next_steps.map((step, index) => (
+                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
+                        <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 flex-shrink-0">
+                          <span className="block w-4 h-4 text-[#333333] text-center font-bold text-xs">{index + 1}</span>
+                        </div>
+                        <p className="text-[#333333]">{step}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {/* Upgrade Message for Guest Users */}
+                <div className="bg-white p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+                  <h3 className="text-lg text-[#333333] mb-2 font-medium">Want More Details?</h3>
+                  <p className="text-[#555555] mb-4">{getGuestLimitationsDescription()}</p>
+                  <Button
+                    onClick={() => window.location.href = '/signup'}
+                    className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300"
+                  >
+                    <span>Sign Up for Full Access</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
           
           {/* Action Buttons - Centered at the bottom */}
           <div className="col-span-1 lg:col-span-2">
