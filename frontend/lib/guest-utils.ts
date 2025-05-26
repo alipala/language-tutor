@@ -49,3 +49,28 @@ export const formatTime = (seconds: number): string => {
 export const getGuestLimitationsDescription = (): string => {
   return `As a guest, you have access to a ${ASSESSMENT_DURATION_GUEST}-second speaking assessment and a ${CONVERSATION_DURATION_GUEST}-second conversation practice. Sign in for a full ${ASSESSMENT_DURATION_REGISTERED}-second assessment and ${CONVERSATION_DURATION_REGISTERED}-second conversations.`;
 };
+
+/**
+ * Checks if a speech plan is still valid based on its creation time and user authentication status
+ * @param {boolean} isAuthenticated - Whether the user is authenticated
+ * @param {string | null} planCreationTime - ISO string of when the plan was created
+ * @returns {boolean} Whether the plan is still valid
+ */
+export const isPlanValid = (isAuthenticated: boolean, planCreationTime: string | null): boolean => {
+  if (!planCreationTime) return false;
+  
+  try {
+    const creationTime = new Date(planCreationTime).getTime();
+    const currentTime = new Date().getTime();
+    const elapsedSeconds = Math.floor((currentTime - creationTime) / 1000);
+    
+    // Get the appropriate duration based on authentication status
+    const maxDuration = getConversationDuration(isAuthenticated);
+    
+    // Plan is valid if elapsed time is less than the maximum duration
+    return elapsedSeconds < maxDuration;
+  } catch (error) {
+    console.error('Error checking plan validity:', error);
+    return false; // If there's an error, consider the plan invalid
+  }
+};

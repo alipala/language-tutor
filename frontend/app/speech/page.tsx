@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth-utils';
+import { isPlanValid } from '@/lib/guest-utils';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 
 // Define the props interface to match the SpeechClient component
@@ -28,6 +30,7 @@ export default function SpeechPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [authRedirectTriggered, setAuthRedirectTriggered] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [planCreationTime, setPlanCreationTime] = useState<string | null>(null);
   const navigationHandledRef = useRef(false);
   const initializationCompleteRef = useRef(false);
   
@@ -71,6 +74,26 @@ export default function SpeechPage() {
           
           if (plan) {
             console.log('[SpeechPage] Retrieved plan details:', plan);
+            
+            // Store plan creation time if not already stored
+            const storedCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
+            if (!storedCreationTime) {
+              const creationTime = new Date().toISOString();
+              sessionStorage.setItem(`plan_${planParam}_creationTime`, creationTime);
+              setPlanCreationTime(creationTime);
+            } else {
+              setPlanCreationTime(storedCreationTime);
+              
+              // Check if the plan is still valid based on time limits
+              const userAuthenticated = isAuthenticated();
+              if (!isPlanValid(userAuthenticated, storedCreationTime)) {
+                console.log('[SpeechPage] Plan has expired, redirecting to home page');
+                sessionStorage.removeItem(`plan_${planParam}_creationTime`);
+                router.push('/');
+                return;
+              }
+            }
+            
             setSelectedLanguage(plan.language);
             setSelectedLevel(plan.proficiency_level);
             // These properties might be stored elsewhere or need to be handled differently
@@ -174,21 +197,41 @@ export default function SpeechPage() {
   // Show warning before leaving the conversation
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show warning if conversation is active
-      if (sessionStorage.getItem('isInConversation') === 'true') {
-        const message = 'You are in the middle of a conversation. Are you sure you want to leave?';
+      if (!allowBackNavigation) {
+        // Standard way to show a confirmation dialog
         e.preventDefault();
-        e.returnValue = message;
-        return message;
+        // Chrome requires returnValue to be set
+        e.returnValue = '';
+        return '';
       }
-      return undefined;
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [allowBackNavigation]);
+  
+  // Effect to periodically check plan validity
+  useEffect(() => {
+    if (selectedPlanId && planCreationTime) {
+      const checkPlanValidity = () => {
+        const userAuthenticated = isAuthenticated();
+        if (!isPlanValid(userAuthenticated, planCreationTime)) {
+          console.log('[SpeechPage] Plan has expired during session, redirecting to home page');
+          sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+          router.push('/');
+        }
+      };
+      
+      // Check plan validity every 10 seconds
+      const intervalId = setInterval(checkPlanValidity, 10000);
+      
+      return () => {
+        clearInterval(intervalId);
+      };
+    }
+  }, [selectedPlanId, planCreationTime, router]);
   
   // Handle change language action - show a warning if needed
   const handleChangeLanguage = () => {
