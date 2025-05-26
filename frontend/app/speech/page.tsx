@@ -371,7 +371,7 @@ export default function SpeechPage() {
         }}
         onNewAssessment={() => {
           sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
-          router.push('/assessment');
+          router.push('/');
         }}
       />
     </div>

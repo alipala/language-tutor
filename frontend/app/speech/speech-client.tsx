@@ -667,27 +667,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             // No longer storing expiration in session storage
             // We allow unlimited attempts with time limitations per attempt
             
-            // Show time's up notification
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
-            notification.innerHTML = `
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p class="font-medium">Time's up!</p>
-                  <p class="text-sm opacity-90">Your conversation session has ended. Sign in for unlimited time.</p>
-                </div>
-              </div>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-              if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-              }
-            }, 8000);
+            // Time's up notification is now handled by the TimeUpModal component in the parent
             
             return 0;
           }
@@ -830,27 +810,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         ? "Your 5-minute conversation time has ended. Please start a new conversation." 
         : "Your conversation time has ended. Sign up for unlimited time.";
       
-      // Show notification that time is up and they can't continue
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
-      notification.innerHTML = `
-        <div class="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <p class="font-medium">Time's up!</p>
-            <p class="text-sm opacity-90">${message}</p>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 5000);
+      // Time's up notification is now handled by the TimeUpModal component in the parent
+      console.log('Conversation time is up:', message);
       
       return; // Prevent continuing the conversation
     }

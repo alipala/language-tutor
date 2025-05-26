@@ -94,13 +94,6 @@ export default function TimeUpModal({
             >
               Start New Assessment
             </Button>
-            
-            <Button 
-              className="w-full bg-transparent hover:bg-gray-100 text-gray-700 font-medium py-3 rounded-lg transition-all border border-gray-300 hover:shadow-sm"
-              onClick={() => router.push('/')}
-            >
-              Return to Home
-            </Button>
           </div>
         </div>
       </div>
