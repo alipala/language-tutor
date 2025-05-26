@@ -258,17 +258,17 @@ export default function LearningPlanModal({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-0 rounded-xl shadow-xl bg-gradient-to-b from-purple-900 to-indigo-950 text-white border border-purple-400/20 overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] p-0 rounded-xl shadow-lg bg-white border border-[#4ECFBF]/20 overflow-hidden">
         {/* Step indicator */}
         {step < 4 && (
-          <div className="w-full bg-black/20 px-6 pt-5 pb-3">
+          <div className="w-full bg-white px-6 pt-5 pb-3 border-b border-[#4ECFBF]/30">
             <div className="flex justify-between items-center relative">
               {/* Progress bar background */}
-              <div className="absolute h-1 bg-gray-700/50 top-4 left-4 right-4 z-0 rounded-full"></div>
+              <div className="absolute h-1 bg-gray-200 top-4 left-4 right-4 z-0 rounded-full"></div>
               
               {/* Animated progress bar */}
               <div 
-                className={`absolute h-1 bg-gradient-to-r from-purple-400 via-indigo-400 to-blue-400 top-4 left-4 z-10 rounded-full transition-all duration-500 ease-in-out`}
+                className={`absolute h-1 bg-[#4ECFBF] top-4 left-4 z-10 rounded-full transition-all duration-500 ease-in-out`}
                 style={{ width: `${Math.min((step - 1) * 45, 90)}%` }}
               ></div>
               
@@ -278,12 +278,12 @@ export default function LearningPlanModal({
                   <div 
                     className={`w-9 h-9 rounded-full flex items-center justify-center mb-2 transition-all duration-300 transform
                     ${step >= stepNumber 
-                      ? 'bg-gradient-to-r from-purple-400 to-indigo-500 text-white font-bold scale-110 shadow-lg shadow-purple-500/30' 
-                      : 'bg-gray-800 text-gray-400 border border-gray-700'}`}
+                      ? 'bg-[#4ECFBF] text-white font-bold scale-110 shadow-sm' 
+                      : 'bg-gray-200 text-gray-500'}`}
                   >
                     {stepNumber}
                   </div>
-                  <div className="text-xs text-gray-400 font-medium">
+                  <div className="text-xs text-gray-600 font-medium">
                     {stepNumber === 1 ? 'Goals' : stepNumber === 2 ? 'Duration' : 'Review'}
                   </div>
                 </div>
@@ -292,15 +292,15 @@ export default function LearningPlanModal({
           </div>
         )}
         
-        <div className="px-6 pt-5 pb-6">
+        <div className="px-6 pt-5 pb-6 text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
+            <DialogTitle className="text-2xl font-bold text-center text-gray-900 mb-2">
               {step === 1 && 'Select Your Learning Goals'}
               {step === 2 && 'Choose Learning Duration'}
               {step === 3 && 'Review and Create Your Plan'}
               {step === 4 && 'Learning Plan Created!'}
             </DialogTitle>
-            <DialogDescription className="text-blue-100 text-center text-base mb-6">
+            <DialogDescription className="text-gray-600 text-center text-base mb-6">
               {step === 1 && 'Choose the goals you want to achieve with your language learning.'}
               {step === 2 && 'How long do you plan to study this language?'}
               {step === 3 && 'Review your selections before creating your plan.'}
@@ -314,15 +314,15 @@ export default function LearningPlanModal({
             <ScrollArea className="h-[300px] pr-4">
               {/* Categorized Goals */}
               {Object.entries(goalsByCategory).map(([category, categoryGoals]) => (
-                <div key={category} className="mb-6 bg-white/10 backdrop-blur-sm p-5 rounded-lg shadow-md border border-purple-300/20">
-                  <h3 className="text-lg font-semibold mb-3 capitalize text-purple-200">{category}</h3>
+                <div key={category} className="mb-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+                  <h3 className="text-lg font-semibold mb-3 capitalize text-gray-900">{category}</h3>
                   <div className="space-y-3">
                     {categoryGoals.map((goal) => (
-                      <div key={goal.id} className="flex items-center space-x-3 hover:bg-purple-500/10 p-2 rounded-md transition-colors">
+                      <div key={goal.id} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/10 p-2 rounded-md transition-colors">
                         <Checkbox
                           id={goal.id}
                           checked={selectedGoals.includes(goal.id)}
-                          className="border-purple-300 data-[state=checked]:bg-purple-400 data-[state=checked]:text-purple-900"
+                          className="border-[#4ECFBF]/50 data-[state=checked]:bg-[#4ECFBF] data-[state=checked]:text-white"
                           onCheckedChange={(checked: boolean) => {
                             if (checked) {
                               setSelectedGoals([...selectedGoals, goal.id]);
@@ -333,15 +333,15 @@ export default function LearningPlanModal({
                             }
                           }}
                         />
-                        <Label htmlFor={goal.id} className="text-sm font-medium cursor-pointer text-white">{goal.text}</Label>
+                        <Label htmlFor={goal.id} className="text-sm font-medium cursor-pointer text-gray-800">{goal.text}</Label>
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
               {/* Custom Goal Input */}
-              <div className="mt-6 bg-white/10 backdrop-blur-sm p-5 rounded-lg shadow-md border border-purple-300/20">
-                <h3 className="text-lg font-semibold mb-3 text-purple-200">Custom Goal (Optional)</h3>
+              <div className="mt-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+                <h3 className="text-lg font-semibold mb-3 text-gray-900">Custom Goal (Optional)</h3>
                 <Input
                   placeholder="Enter your specific learning goal..."
                   value={customGoal}
@@ -356,7 +356,7 @@ export default function LearningPlanModal({
         {/* Step 2: Duration Selection */}
         {step === 2 && (
           <div className="py-4 space-y-6">
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg shadow-md border border-purple-300/20">
+            <div className="bg-[#EAFAF7] p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
               <RadioGroup value={duration.toString()} onValueChange={(value: string) => {
                 if (value === 'custom') {
                   setDuration(0);
@@ -366,33 +366,33 @@ export default function LearningPlanModal({
                 }
               }} className="space-y-4 mt-2">
                 {[1, 2, 3, 6, 12].map((months) => (
-                  <div key={months} className="flex items-center space-x-3 hover:bg-blue-500/10 p-3 rounded-md transition-colors">
+                  <div key={months} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-3 rounded-md transition-colors">
                     <RadioGroupItem 
                       value={months.toString()} 
                       id={`duration-${months}`} 
-                      className="border-purple-300 text-purple-400"
+                      className="border-[#4ECFBF]/50 text-[#4ECFBF]"
                     />
                     <Label 
                       htmlFor={`duration-${months}`} 
-                      className="font-medium cursor-pointer text-white"
+                      className="font-medium cursor-pointer text-gray-800"
                     >
                       {months} month{months !== 1 ? 's' : ''}
                     </Label>
                   </div>
                 ))}
-                <div className="flex items-center space-x-3 hover:bg-purple-500/10 p-3 rounded-md transition-colors">
+                <div className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-3 rounded-md transition-colors">
                   <RadioGroupItem 
                     value="custom" 
                     id="duration-custom" 
-                    className="border-blue-300 text-blue-400"
+                    className="border-[#4ECFBF]/50 text-[#4ECFBF]"
                   />
-                  <Label htmlFor="duration-custom" className="font-medium cursor-pointer text-white">Custom duration</Label>
+                  <Label htmlFor="duration-custom" className="font-medium cursor-pointer text-gray-800">Custom duration</Label>
                 </div>
               </RadioGroup>
               
               {duration === 0 && (
-                <div className="mt-6 bg-purple-500/10 p-4 rounded-lg border border-purple-300/30">
-                  <Label htmlFor="custom-duration" className="block mb-2 font-medium text-purple-200">Enter number of months:</Label>
+                <div className="mt-6 bg-[#FFFBEB] p-4 rounded-lg border border-[#FFD63A]/30">
+                  <Label htmlFor="custom-duration" className="block mb-2 font-medium text-gray-800">Enter number of months:</Label>
                   <Input
                     id="custom-duration"
                     type="number"
@@ -400,7 +400,7 @@ export default function LearningPlanModal({
                     max="36"
                     value={customDuration || ''}
                     onChange={(e) => setCustomDuration(parseInt(e.target.value) || null)}
-                    className="w-full bg-white/20 border-purple-300/30 text-white placeholder:text-purple-200/60 focus:ring-purple-400 focus:border-purple-400"
+                    className="w-full bg-white border-[#FFD63A]/30 text-gray-800 placeholder:text-gray-500/60 focus:ring-[#FFD63A] focus:border-[#FFD63A]"
                   />
                 </div>
               )}
@@ -411,20 +411,20 @@ export default function LearningPlanModal({
         {/* Step 3: Review and Create */}
         {step === 3 && (
           <div className="py-4">
-            <div className="space-y-4 mb-6 bg-white/10 backdrop-blur-sm p-6 rounded-lg shadow-md border border-purple-300/20">
-              <div className="bg-purple-500/10 p-4 rounded-md border border-purple-300/20">
-                <h3 className="font-semibold text-purple-200">Language</h3>
-                <p className="text-white mt-1 capitalize">{language}</p>
+            <div className="space-y-4 mb-6 bg-white p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+                <h3 className="font-semibold text-gray-900">Language</h3>
+                <p className="text-gray-700 mt-1 capitalize">{language}</p>
               </div>
               
-              <div className="bg-purple-500/10 p-4 rounded-md border border-purple-300/20">
-                <h3 className="font-semibold text-purple-200">Proficiency Level</h3>
-                <p className="text-white mt-1 capitalize">{proficiencyLevel}</p>
+              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+                <h3 className="font-semibold text-gray-900">Proficiency Level</h3>
+                <p className="text-gray-700 mt-1 capitalize">{proficiencyLevel}</p>
               </div>
               
-              <div className="bg-purple-500/10 p-4 rounded-md border border-purple-300/20">
-                <h3 className="font-semibold text-purple-200">Selected Goals</h3>
-                <ul className="text-white list-disc list-inside mt-2 space-y-2">
+              <div className="bg-[#FFFBEB] p-4 rounded-md border-l-4 border-l-[#FFD63A] border border-[#FFD63A]/20">
+                <h3 className="font-semibold text-gray-900">Selected Goals</h3>
+                <ul className="text-gray-700 list-disc list-inside mt-2 space-y-2">
                   {selectedGoals.map((goalId) => {
                     const goal = goals.find(g => g.id === goalId);
                     return goal ? <li key={goalId}>{goal.text}</li> : null;
@@ -433,9 +433,9 @@ export default function LearningPlanModal({
                 </ul>
               </div>
               
-              <div className="bg-purple-500/10 p-4 rounded-md border border-purple-300/20">
-                <h3 className="font-semibold text-purple-200">Duration</h3>
-                <p className="text-white mt-1">
+              <div className="bg-[#FFF8F1] p-4 rounded-md border-l-4 border-l-[#FFA955] border border-[#FFA955]/20">
+                <h3 className="font-semibold text-gray-900">Duration</h3>
+                <p className="text-gray-700 mt-1">
                   {customDuration || duration} month{(customDuration || duration) !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -443,8 +443,8 @@ export default function LearningPlanModal({
             
             {isCreatingPlan && (
               <div className="mt-6 flex flex-col items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-purple-400 mb-3"></div>
-                <p className="text-purple-300 text-sm font-medium">Creating your personalized learning plan...</p>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[#4ECFBF] mb-3"></div>
+                <p className="text-gray-600 text-sm font-medium">Creating your personalized learning plan...</p>
               </div>
             )}
           </div>
@@ -454,20 +454,20 @@ export default function LearningPlanModal({
         {step === 4 && (
           <div className="py-6">
             <div className="text-center mb-8">
-              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-purple-400/30 to-indigo-600/30 rounded-full flex items-center justify-center mb-5 shadow-lg border border-purple-400/50 animate-[pulse_3s_ease-in-out_infinite]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto w-24 h-24 bg-[#4ECFBF]/10 rounded-full flex items-center justify-center mb-5 shadow-sm border border-[#4ECFBF]/30 animate-[pulse_3s_ease-in-out_infinite]">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-purple-300">Your Learning Plan is Ready!</h3>
-              <p className="text-base text-blue-100 mt-3 max-w-md mx-auto">
+              <h3 className="text-2xl font-bold text-gray-900">Your Learning Plan is Ready!</h3>
+              <p className="text-base text-gray-600 mt-3 max-w-md mx-auto">
                 Sign in or create an account to save your custom learning plan and start your language journey.
               </p>
             </div>
             
             <div className="space-y-4">
               <Button 
-                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-medium py-4 rounded-lg shadow-md transition-all hover:shadow-xl transform hover:-translate-y-1"
+                className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-4 rounded-lg shadow-sm transition-all hover:shadow-md transform hover:-translate-y-1"
                 onClick={handleSignIn}
               >
                 <span className="flex items-center justify-center">
@@ -479,7 +479,7 @@ export default function LearningPlanModal({
               </Button>
               
               <Button 
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium py-4 rounded-lg shadow-md transition-all hover:shadow-xl transform hover:-translate-y-1"
+                className="w-full bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800 font-medium py-4 rounded-lg shadow-sm transition-all hover:shadow-md transform hover:-translate-y-1"
                 onClick={handleSignUp}
               >
                 <span className="flex items-center justify-center">
@@ -491,7 +491,7 @@ export default function LearningPlanModal({
               </Button>
               
               <Button 
-                className="w-full bg-white/10 hover:bg-white/20 text-white font-medium py-4 rounded-lg transition-all border border-white/20 backdrop-blur-sm hover:shadow-lg"
+                className="w-full bg-transparent hover:bg-gray-100 text-gray-700 font-medium py-4 rounded-lg transition-all border border-gray-300 hover:shadow-sm"
                 onClick={handleContinueWithoutSignIn}
               >
                 Continue Without Signing In
@@ -501,8 +501,8 @@ export default function LearningPlanModal({
         )}
         
         {error && (
-          <div className="bg-red-500/20 border border-red-500/30 text-white px-4 py-3 rounded-md my-4 flex items-start">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-[#FEF2F2] border border-[#F75A5A]/30 text-gray-800 px-4 py-3 rounded-md my-4 flex items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0 text-[#F75A5A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>{error}</span>
@@ -515,7 +515,7 @@ export default function LearningPlanModal({
               variant="outline" 
               onClick={handlePrevStep}
               disabled={isCreatingPlan}
-              className="border-purple-300/30 bg-purple-600/20 hover:bg-purple-600/30 text-white transition-all hover:shadow-md px-4 py-2"
+              className="border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all hover:shadow-sm px-4 py-2"
             >
               <span className="flex items-center">
                 {step > 1 && (
@@ -530,7 +530,7 @@ export default function LearningPlanModal({
             <Button 
               onClick={handleNextStep}
               disabled={isCreatingPlan}
-              className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 px-5 py-2"
+              className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 px-5 py-2"
             >
               <span className="flex items-center">
                 {step === 3 ? 'Create Plan' : 'Next'}
