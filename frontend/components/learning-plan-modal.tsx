@@ -312,17 +312,17 @@ export default function LearningPlanModal({
         {step === 1 && (
           <div className="py-4 space-y-6">
             <ScrollArea className="h-[300px] pr-4">
-              {/* Categorized Goals */}
+              {/* Goals List - Mobile Friendly */}
               {Object.entries(goalsByCategory).map(([category, categoryGoals]) => (
                 <div key={category} className="mb-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-[#4ECFBF]/20">
-                  <h3 className="text-lg font-semibold mb-3 capitalize text-gray-900">{category}</h3>
+                  {/* Removed category title as requested */}
                   <div className="space-y-3">
                     {categoryGoals.map((goal) => (
-                      <div key={goal.id} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/10 p-2 rounded-md transition-colors">
+                      <div key={goal.id} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/10 p-3 rounded-md transition-colors">
                         <Checkbox
                           id={goal.id}
                           checked={selectedGoals.includes(goal.id)}
-                          className="border-[#4ECFBF]/50 data-[state=checked]:bg-[#4ECFBF] data-[state=checked]:text-white"
+                          className="border-[#4ECFBF]/50 data-[state=checked]:bg-[#4ECFBF] data-[state=checked]:text-white h-5 w-5 flex-shrink-0"
                           onCheckedChange={(checked: boolean) => {
                             if (checked) {
                               setSelectedGoals([...selectedGoals, goal.id]);
@@ -333,7 +333,7 @@ export default function LearningPlanModal({
                             }
                           }}
                         />
-                        <Label htmlFor={goal.id} className="text-sm font-medium cursor-pointer text-gray-800">{goal.text}</Label>
+                        <Label htmlFor={goal.id} className="text-sm font-medium cursor-pointer text-gray-800 leading-tight">{goal.text}</Label>
                       </div>
                     ))}
                   </div>
@@ -366,27 +366,27 @@ export default function LearningPlanModal({
                 }
               }} className="space-y-4 mt-2">
                 {[1, 2, 3, 6, 12].map((months) => (
-                  <div key={months} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-3 rounded-md transition-colors">
+                  <div key={months} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-4 rounded-md transition-colors touch-manipulation">
                     <RadioGroupItem 
                       value={months.toString()} 
                       id={`duration-${months}`} 
-                      className="border-[#4ECFBF]/50 text-[#4ECFBF]"
+                      className="border-[#4ECFBF]/50 text-[#4ECFBF] h-5 w-5"
                     />
                     <Label 
                       htmlFor={`duration-${months}`} 
-                      className="font-medium cursor-pointer text-gray-800"
+                      className="font-medium cursor-pointer text-gray-800 w-full py-2"
                     >
                       {months} month{months !== 1 ? 's' : ''}
                     </Label>
                   </div>
                 ))}
-                <div className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-3 rounded-md transition-colors">
+                <div className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-4 rounded-md transition-colors touch-manipulation">
                   <RadioGroupItem 
                     value="custom" 
                     id="duration-custom" 
-                    className="border-[#4ECFBF]/50 text-[#4ECFBF]"
+                    className="border-[#4ECFBF]/50 text-[#4ECFBF] h-5 w-5"
                   />
-                  <Label htmlFor="duration-custom" className="font-medium cursor-pointer text-gray-800">Custom duration</Label>
+                  <Label htmlFor="duration-custom" className="font-medium cursor-pointer text-gray-800 w-full py-2">Custom duration</Label>
                 </div>
               </RadioGroup>
               
@@ -533,7 +533,7 @@ export default function LearningPlanModal({
               className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 px-5 py-2"
             >
               <span className="flex items-center">
-                {step === 3 ? 'Create Plan' : 'Next'}
+                {step === 3 ? (isAuthenticated() ? 'Create Plan' : 'Start Conversation') : 'Next'}
                 {step < 3 && (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
