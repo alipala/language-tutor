@@ -52,13 +52,7 @@ PREDEFINED_GOALS = [
     {"id": "business", "text": "Business and professional communication", "category": "general"},
     {"id": "academic", "text": "Academic study", "category": "general"},
     {"id": "culture", "text": "Cultural understanding", "category": "general"},
-    {"id": "daily", "text": "Daily conversation", "category": "general"},
-    {"id": "reading", "text": "Reading comprehension", "category": "skills"},
-    {"id": "writing", "text": "Writing skills", "category": "skills"},
-    {"id": "speaking", "text": "Speaking fluency", "category": "skills"},
-    {"id": "listening", "text": "Listening comprehension", "category": "skills"},
-    {"id": "grammar", "text": "Grammar mastery", "category": "skills"},
-    {"id": "vocabulary", "text": "Vocabulary expansion", "category": "skills"}
+    {"id": "daily", "text": "Daily conversation", "category": "general"}
 ]
 
 @router.get("/goals", response_model=List[LearningGoal])
@@ -67,28 +61,15 @@ async def get_learning_goals():
     Get a list of predefined learning goals
     """
     try:
-        # First, check if the collection exists and has valid data
-        existing_goals = await learning_goals_collection.find().to_list(100)
-        
-        # Check if the existing goals have the correct schema
-        valid_goals = []
-        for goal in existing_goals:
-            if all(key in goal for key in ["id", "text", "category"]):
-                valid_goals.append(goal)
-        
-        # If we have valid goals, return them
-        if valid_goals:
-            return valid_goals
-        
-        # Otherwise, clear the collection and insert predefined goals
-        print("No valid learning goals found in database. Reinitializing with predefined goals.")
+        # Force refresh of learning goals from the predefined list
+        # This ensures we always have the latest goals definition
         await learning_goals_collection.delete_many({})
         await learning_goals_collection.insert_many(PREDEFINED_GOALS)
         return PREDEFINED_GOALS
     
     except Exception as e:
         # If any error occurs, log it and return the predefined goals
-        print(f"Error retrieving learning goals: {str(e)}")
+        print(f"Error refreshing learning goals: {str(e)}")
         print("Returning predefined goals instead")
         return PREDEFINED_GOALS
 
