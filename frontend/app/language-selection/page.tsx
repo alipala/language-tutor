@@ -33,54 +33,129 @@ export default function LanguageSelection() {
   // Flag SVG components directly embedded to avoid loading issues
 const FlagComponents: Record<string, React.ReactNode> = {
   dutch: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" className="w-full h-full">
-      <rect fill="#21468B" width="900" height="600"/>
-      <rect fill="#FFF" width="900" height="400"/>
-      <rect fill="#AE1C28" width="900" height="200"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="dutch-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#21468B" stopOpacity="1" />
+          <stop offset="100%" stopColor="#1a3a70" stopOpacity="1" />
+        </linearGradient>
+        <filter id="dutch-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+      <rect fill="url(#dutch-grad)" width="3" height="2" filter="url(#dutch-shadow)" />
+      <rect fill="#FFF" width="3" height="1.33" />
+      <rect fill="#AE1C28" width="3" height="0.67" />
     </svg>
   ),
   english: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" className="w-full h-full">
-      <clipPath id="s">
-        <path d="M0,0 v30 h60 v-30 z"/>
-      </clipPath>
-      <clipPath id="t">
-        <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/>
-      </clipPath>
-      <g clipPath="url(#s)">
-        <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
-        <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-        <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#t)" stroke="#C8102E" strokeWidth="4"/>
-        <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-        <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="uk-blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#012169" stopOpacity="1" />
+          <stop offset="100%" stopColor="#001a4d" stopOpacity="1" />
+        </linearGradient>
+        <filter id="uk-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+      <g filter="url(#uk-shadow)">
+        <rect width="3" height="2" fill="url(#uk-blue-grad)" />
+        <path d="M0,0 L3,2 M3,0 L0,2" stroke="#fff" strokeWidth="0.3" />
+        <path d="M1.5,0 v2 M0,1 h3" stroke="#fff" strokeWidth="0.5" />
+        <path d="M1.5,0 v2 M0,1 h3" stroke="#C8102E" strokeWidth="0.3" />
+        <path d="M0,0 L3,2 M3,0 L0,2" stroke="#C8102E" strokeWidth="0.2" clipPath="url(#t)" />
       </g>
     </svg>
   ),
   spanish: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 500" className="w-full h-full">
-      <rect width="750" height="500" fill="#c60b1e"/>
-      <rect width="750" height="250" fill="#ffc400" y="125"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="spanish-red-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#c60b1e" stopOpacity="1" />
+          <stop offset="100%" stopColor="#a00918" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="spanish-yellow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffc400" stopOpacity="1" />
+          <stop offset="100%" stopColor="#e6b000" stopOpacity="1" />
+        </linearGradient>
+        <filter id="spanish-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+      <rect width="3" height="2" fill="url(#spanish-red-grad)" filter="url(#spanish-shadow)" />
+      <rect width="3" height="1" fill="url(#spanish-yellow-grad)" y="0.5" />
     </svg>
   ),
   german: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5 3" className="w-full h-full">
-      <rect width="5" height="3" fill="#000"/>
-      <rect width="5" height="2" fill="#D00"/>
-      <rect width="5" height="1" fill="#FFCE00"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="german-black-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#000" stopOpacity="1" />
+          <stop offset="100%" stopColor="#111" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="german-red-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#D00" stopOpacity="1" />
+          <stop offset="100%" stopColor="#b00" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="german-yellow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFCE00" stopOpacity="1" />
+          <stop offset="100%" stopColor="#e6b800" stopOpacity="1" />
+        </linearGradient>
+        <filter id="german-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="0.1" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+      <rect width="3" height="2" fill="url(#german-black-grad)" filter="url(#german-shadow)" />
+      <rect width="3" height="1.33" fill="url(#german-red-grad)" />
+      <rect width="3" height="0.67" fill="url(#german-yellow-grad)" />
     </svg>
   ),
   french: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" className="w-full h-full">
-      <rect width="300" height="600" fill="#002395"/>
-      <rect width="300" height="600" fill="#FFFFFF" x="300"/>
-      <rect width="300" height="600" fill="#ED2939" x="600"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="french-blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#002395" stopOpacity="1" />
+          <stop offset="100%" stopColor="#001c75" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="french-red-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ED2939" stopOpacity="1" />
+          <stop offset="100%" stopColor="#c61a29" stopOpacity="1" />
+        </linearGradient>
+        <filter id="french-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+      <rect width="1" height="2" fill="url(#french-blue-grad)" filter="url(#french-shadow)" />
+      <rect width="1" height="2" fill="#FFFFFF" x="1" />
+      <rect width="1" height="2" fill="url(#french-red-grad)" x="2" />
     </svg>
   ),
   portuguese: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" className="w-full h-full">
-      <rect width="600" height="400" fill="#006600"/>
-      <rect width="240" height="400" fill="#FF0000"/>
-      <circle cx="240" cy="200" r="65" fill="#FFFF00" stroke="#000000" strokeWidth="1.5"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="portuguese-green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#006600" stopOpacity="1" />
+          <stop offset="100%" stopColor="#004d00" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="portuguese-red-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF0000" stopOpacity="1" />
+          <stop offset="100%" stopColor="#cc0000" stopOpacity="1" />
+        </linearGradient>
+        <radialGradient id="portuguese-yellow-grad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" stopColor="#FFFF00" stopOpacity="1" />
+          <stop offset="100%" stopColor="#e6e600" stopOpacity="1" />
+        </radialGradient>
+        <filter id="portuguese-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+        <filter id="portuguese-emblem-shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.5" />
+        </filter>
+      </defs>
+      <rect width="3" height="2" fill="url(#portuguese-green-grad)" filter="url(#portuguese-shadow)" />
+      <rect width="1.2" height="2" fill="url(#portuguese-red-grad)" />
+      <circle cx="1.2" cy="1" r="0.3" fill="url(#portuguese-yellow-grad)" stroke="#000000" strokeWidth="0.03" filter="url(#portuguese-emblem-shadow)" />
     </svg>
   ),
 };
@@ -299,18 +374,18 @@ const languages: Language[] = [
               >
                 {/* Interactive card content with animations */}
                 <div className="relative z-10 p-6">
-                  <div className="flex items-start gap-5">
+                  <div className="flex items-start gap-4">
                     {/* Modern animated language symbol */}
                     <div 
                       className={`
-                        flex-shrink-0 w-20 h-20 flex items-center justify-center rounded-lg 
-                        bg-black/20 backdrop-blur-sm
-                        shadow-lg group-hover:shadow-xl transition-all duration-500
-                        border border-white/20 group-hover:border-white/40
+                        flex-shrink-0 w-28 h-20 flex items-center justify-center rounded-lg 
+                        bg-gradient-to-br from-black/5 to-black/20 backdrop-blur-sm
+                        shadow-[0_8px_16px_rgba(0,0,0,0.2)] group-hover:shadow-[0_12px_24px_rgba(0,0,0,0.25)] transition-all duration-500
+                        border border-white/30 group-hover:border-white/50
                         overflow-hidden relative
                         ${
                           selectedLanguage === language.code
-                            ? 'bg-white/10 border-white/30'
+                            ? 'from-white/10 to-white/5 border-white/50 shadow-[0_0_15px_rgba(255,255,255,0.2)]'
                             : ''
                         }
                       `}
@@ -328,17 +403,20 @@ const languages: Language[] = [
                       {/* Flag only with modern design - animated on hover */}
                       <div className="relative z-10 w-full h-full flex items-center justify-center">
                         {/* Flag with enhanced styling */}
-                        <div className="relative w-4/5 h-4/5 overflow-hidden rounded-lg shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-105">
-                          {/* Glossy overlay effect */}
-                          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent z-10 pointer-events-none"></div>
-                          
-                          {/* Flag component */}
-                          <div className="w-full h-full">
-                            {language.flagComponent}
+                        <div className="relative w-5/6 h-4/5 overflow-hidden rounded-lg transition-all duration-300 transform group-hover:scale-105">
+                          {/* Improved flag container with 3D effect */}
+                          <div className="w-full h-full relative flag-container">
+                            {/* Flag component with enhanced styling */}
+                            <div className="w-full h-full relative z-10">
+                              {language.flagComponent}
+                            </div>
+                            
+                            {/* Modern glossy overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-black/10 z-20 pointer-events-none"></div>
+                            
+                            {/* Subtle inner border */}
+                            <div className="absolute inset-0 rounded-lg border border-white/30 z-30 pointer-events-none"></div>
                           </div>
-                          
-                          {/* Bottom shadow effect */}
-                          <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
                         </div>
                       </div>
                     </div>
