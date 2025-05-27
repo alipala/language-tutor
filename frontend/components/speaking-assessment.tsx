@@ -507,10 +507,48 @@ export default function SpeakingAssessment({
       
       {/* Processing State */}
       {status === 'processing' && (
-        <div className="flex flex-col items-center justify-center py-12 space-y-6 bg-[#FFF2C7] rounded-lg border border-[#FFD63A] p-8 shadow-md">
-          <div className="w-20 h-20 border-4 border-[#FFD63A] border-t-transparent rounded-full animate-spin shadow-lg"></div>
-          <p className="text-[#333333] text-xl font-medium bg-white px-6 py-2 rounded-lg shadow-md border border-[#FFD63A]/30">Analyzing your speaking skills...</p>
-          <p className="text-[#555555] text-center max-w-md bg-white p-4 rounded-lg border border-[#FFD63A]/30">Our AI is carefully evaluating your pronunciation, fluency, vocabulary, and grammar to provide an accurate assessment.</p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#FFF8E1] to-[#FFEDB3] p-8 rounded-xl shadow-lg">
+          <div className="absolute inset-0 opacity-10">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <circle cx="10" cy="10" r="1.5" fill="#FFD63A" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#dots)" />
+            </svg>
+          </div>
+          
+          <div className="flex flex-col items-center justify-center py-8 relative z-10">
+            <div className="relative mb-8">
+              <div className="absolute -inset-3 bg-[#FFD63A]/30 rounded-full blur-lg"></div>
+              <div className="relative">
+                <div className="w-24 h-24 border-4 border-[#FFD63A] border-t-[#FFD63A]/20 rounded-full animate-spin shadow-lg"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-16 h-16 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <Target className="h-8 w-8 text-[#FFD63A]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <h3 className="text-2xl font-bold text-[#333333] mb-4 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-xl shadow-md border border-[#FFD63A]/30">
+              Analyzing your speaking skills...
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full mb-6">
+              {['Pronunciation', 'Fluency', 'Vocabulary', 'Grammar'].map((skill, index) => (
+                <div key={skill} className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-[#FFD63A]/30 shadow-sm flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-[#FFD63A] mr-3 animate-pulse" style={{ animationDelay: `${index * 0.2}s` }}></div>
+                  <span className="font-medium text-[#333333]">{skill}</span>
+                </div>
+              ))}
+            </div>
+            
+            <p className="text-[#555555] text-center max-w-md bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-[#FFD63A]/30 shadow-md">
+              Our AI is carefully evaluating your {language} speaking skills to provide an accurate assessment of your current proficiency level.
+            </p>
+          </div>
         </div>
       )}
       
