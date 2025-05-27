@@ -324,24 +324,15 @@ export default function SpeakingAssessment({
               <div className="mt-3 text-white/90 text-sm max-w-xl leading-relaxed">
                 <p>You're using the free guest mode with limited features:</p>
                 <ul className="mt-2 space-y-1 list-disc list-inside pl-1">
-                  <li><span className="font-semibold">{ASSESSMENT_DURATION_GUEST}-second</span> speaking assessment (vs {ASSESSMENT_DURATION_REGISTERED}s)</li>
-                  <li><span className="font-semibold">{CONVERSATION_DURATION_GUEST}-second</span> conversation practice (vs {CONVERSATION_DURATION_REGISTERED}s)</li>
                   <li>Results not saved to your profile</li>
                 </ul>
                 <div className="mt-4 flex space-x-3">
                   <a 
-                    href="/signup" 
+                    href="/auth/login" 
                     className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
                   >
-                    Sign Up for Full Access
+                    Signin for Full Access
                     <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </a>
-                  <a 
-                    href="/auth/login" 
-                    className="inline-flex items-center px-4 py-2 bg-transparent border border-white text-white font-medium rounded-lg hover:bg-white/10 transition-all duration-200 group"
-                  >
-                    Sign In
-                    <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </a>
                 </div>
               </div>
@@ -387,12 +378,7 @@ export default function SpeakingAssessment({
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
             Speaking Assessment
           </h2>
-          <p className="text-white/90 text-lg max-w-2xl mx-auto">
-            {isAuthenticated() 
-              ? `Speak for up to ${formatTime(ASSESSMENT_DURATION_REGISTERED)} to assess your ${language} proficiency level` 
-              : `Speak for ${formatTime(ASSESSMENT_DURATION_GUEST)} to assess your ${language} proficiency level`
-            }
-          </p>
+
         </div>
       </div>
 
@@ -416,23 +402,18 @@ export default function SpeakingAssessment({
               <p>Speak <strong>naturally</strong> about any topic you're comfortable with - your hobbies, work, travels, or interests.</p>
             </div>
             
-            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
-              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">3</span>
-              </div>
-              <p>Try to speak for the <strong>full 30-60 seconds</strong> to provide enough speech for accurate assessment.</p>
-            </div>
+
             
             <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">4</span>
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">3</span>
               </div>
               <p>Use <strong>varied vocabulary</strong> and sentence structures to demonstrate your language skills.</p>
             </div>
             
             <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
               <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">5</span>
+                <span className="block w-5 h-5 text-[#333333] text-center font-bold">4</span>
               </div>
               <p><strong>Relax and be yourself</strong> - this helps us provide the most accurate assessment of your current level.</p>
             </div>
