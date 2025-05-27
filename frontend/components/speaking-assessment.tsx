@@ -291,8 +291,8 @@ export default function SpeakingAssessment({
 
   return (
     <div className="bg-white text-[#333333] rounded-lg p-8 w-full mx-auto space-y-8 border border-[#4ECFBF]/30 shadow-md">
-      {/* Hidden audio player */}
-      {audioUrl && (
+      {/* Hidden audio player*/}
+      {/* audioUrl && (
         <audio 
           ref={audioPlayerRef} 
           src={audioUrl} 
@@ -301,7 +301,7 @@ export default function SpeakingAssessment({
         />
       )}
       
-      {/* Guest User Mode Banner */}
+      {/* Guest User Mode Banner*/}
       {!isAuthenticated() && (
         <div className="relative overflow-hidden bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] p-6 mb-6 rounded-xl shadow-lg">
           <div className="absolute top-0 right-0 w-32 h-32 -mt-8 -mr-8 opacity-20">
@@ -328,10 +328,26 @@ export default function SpeakingAssessment({
                   <li><span className="font-semibold">{CONVERSATION_DURATION_GUEST}-second</span> conversation practice (vs {CONVERSATION_DURATION_REGISTERED}s)</li>
                   <li>Results not saved to your profile</li>
                 </ul>
+                <div className="mt-4 flex space-x-3">
+                  <a 
+                    href="/signup" 
+                    className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
+                  >
+                    Sign Up for Full Access
+                    <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </a>
+                  <a 
+                    href="/auth/login" 
+                    className="inline-flex items-center px-4 py-2 bg-transparent border border-white text-white font-medium rounded-lg hover:bg-white/10 transition-all duration-200 group"
+                  >
+                    Sign In
+                    <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </a>
+                </div>
               </div>
             </div>
             
-            <div className="hidden md:block">
+            <div className="hidden">
               <a 
                 href="/auth/login" 
                 className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
@@ -354,7 +370,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Header */}
+      {/* Header*/}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#4ECFBF] to-[#3AA8B1] p-8 rounded-xl shadow-lg mb-6 text-center">
         <div className="absolute inset-0 opacity-10">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -380,7 +396,7 @@ export default function SpeakingAssessment({
         </div>
       </div>
 
-      {/* Speaking Instructions (only in idle state) */}
+      {/* Speaking Instructions (only in idle state)*/}
       {status === 'idle' && (
         <div className="bg-[#F8F9FA] border border-[#FFD63A] rounded-lg p-6 mb-6 shadow-md">
           <h3 className="text-lg font-semibold text-[#333333] mb-3 border-b-2 border-[#FFD63A] pb-2">How to Get the Best Assessment</h3>
@@ -424,7 +440,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Recording Controls */}
+      {/* Recording Controls*/}
       {status === 'idle' && (
         <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="text-center mb-6">
@@ -453,7 +469,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Recording State */}
+      {/* Recording State*/}
       {status === 'recording' && (
         <div className="bg-gradient-to-br from-[#FFF8F8] to-[#FFF0F0] p-8 rounded-xl shadow-lg">
           <div className="flex flex-col md:flex-row items-center justify-between mb-8">
@@ -505,7 +521,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Processing State */}
+      {/* Processing State*/}
       {status === 'processing' && (
         <div className="relative overflow-hidden bg-gradient-to-br from-[#FFF8E1] to-[#FFEDB3] p-8 rounded-xl shadow-lg">
           <div className="absolute inset-0 opacity-10">
@@ -552,15 +568,15 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Assessment Results */}
+      {/* Assessment Results*/}
       {status === 'complete' && assessment && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {isAuthenticated() ? (
             <>
-              {/* Left Column: General Information - Authenticated User */}
+              {/* Left Column: General Information - Authenticated User*/}
               <div className="space-y-6">
-                {/* Playback Controls */}
-                {audioUrl && (
+                {/* Playback Controls - Commented out as requested*/}
+                {/* audioUrl && (
                   <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
                     <Button 
                       onClick={handlePlayAudio}
@@ -572,7 +588,7 @@ export default function SpeakingAssessment({
                   </div>
                 )}
                 
-                {/* Recommended Level */}
+                {/* Recommended Level*/}
                 <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
                   <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
@@ -581,7 +597,7 @@ export default function SpeakingAssessment({
                   </div>
                 </div>
                 
-                {/* Overall Score */}
+                {/* Overall Score*/}
                 <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Overall Score</h3>
                   <div className="flex items-center space-x-4">
@@ -598,7 +614,7 @@ export default function SpeakingAssessment({
                   </div>
                 </div>
                 
-                {/* Strengths */}
+                {/* Strengths*/}
                 <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
                     <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
@@ -615,7 +631,7 @@ export default function SpeakingAssessment({
                   </ul>
                 </div>
                 
-                {/* Transcription */}
+                {/* Transcription*/}
                 <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Your Speech</h3>
                   <p className="text-[#333333] bg-white p-4 rounded-lg border border-[#F75A5A]/30 shadow-inner">
@@ -624,14 +640,14 @@ export default function SpeakingAssessment({
                 </div>
               </div>
               
-              {/* Right Column: Detailed Assessment - Authenticated User */}
+              {/* Right Column: Detailed Assessment - Authenticated User*/}
               <div className="space-y-6">
-                {/* Skill Scores */}
+                {/* Skill Scores*/}
                 <div className="bg-[#F8F9FA] p-6 rounded-lg border border-gray-200 shadow-md overflow-auto">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium">Skill Breakdown</h3>
                   
                   <div className="space-y-4 max-h-[600px] overflow-auto pr-2">
-                    {/* Pronunciation */}
+                    {/* Pronunciation*/}
                     <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Pronunciation</span>
@@ -651,7 +667,7 @@ export default function SpeakingAssessment({
                       <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.pronunciation.feedback}</p>
                     </div>
                     
-                    {/* Vocabulary */}
+                    {/* Vocabulary*/}
                     <div className="bg-white p-3 rounded-lg border border-[#FFD63A] shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Vocabulary</span>
@@ -671,7 +687,7 @@ export default function SpeakingAssessment({
                       <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.vocabulary.feedback}</p>
                     </div>
                     
-                    {/* Grammar */}
+                    {/* Grammar*/}
                     <div className="bg-white p-3 rounded-lg border border-[#F75A5A] shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Grammar</span>
@@ -691,7 +707,7 @@ export default function SpeakingAssessment({
                       <p className="text-[#555555] mt-1 text-sm bg-[#FFF8F8] p-2 rounded-md border border-[#F75A5A]/20">{assessment.grammar.feedback}</p>
                     </div>
                     
-                    {/* Fluency */}
+                    {/* Fluency*/}
                     <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Fluency</span>
@@ -711,7 +727,7 @@ export default function SpeakingAssessment({
                       <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.fluency.feedback}</p>
                     </div>
                     
-                    {/* Coherence */}
+                    {/* Coherence*/}
                     <div className="bg-white p-3 rounded-lg border border-[#FFD63A] shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Coherence</span>
@@ -733,8 +749,8 @@ export default function SpeakingAssessment({
                   </div>
           </div>
           
-            {/* Feedback and Next Steps */}
-            {/* Next Steps */}
+            {/* Feedback and Next Steps*/}
+            {/* Next Steps*/}
             <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
               <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
                 <Footprints className="h-5 w-5 mr-2 text-[#FFD63A]" /> Next Steps
@@ -754,10 +770,10 @@ export default function SpeakingAssessment({
             </>
           ) : (
             <>
-              {/* Left Column: Limited Information - Guest User */}
+              {/* Left Column: Limited Information - Guest User*/}
               <div className="space-y-6">
-                {/* Playback Controls */}
-                {audioUrl && (
+                {/* Playback Controls - Commented out as requested*/}
+                {/* audioUrl && (
                   <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
                     <Button 
                       onClick={handlePlayAudio}
@@ -769,13 +785,13 @@ export default function SpeakingAssessment({
                   </div>
                 )}
                 
-                {/* Recommended Level */}
+                {/* Recommended Level*/}
                 <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
                   <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
                 </div>
                 
-                {/* Strengths */}
+                {/* Strengths*/}
                 <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
                     <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
@@ -792,7 +808,7 @@ export default function SpeakingAssessment({
                   </ul>
                 </div>
 
-                {/* Transcription */}
+                {/* Transcription*/}
                 <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Your Speech</h3>
                   <p className="text-[#333333] bg-white p-4 rounded-lg border border-[#F75A5A]/30 shadow-inner">
@@ -800,26 +816,12 @@ export default function SpeakingAssessment({
                   </p>
                 </div>
 
-                {/* Upgrade Message (Moved from right column) */}
-                <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#4ECFBF]/20 p-5 rounded-lg border border-[#4ECFBF] shadow-md">
-                  <div className="flex items-center mb-2">
-                    <ArrowUpRight className="h-5 w-5 mr-2 text-[#4ECFBF]" />
-                    <h3 className="text-lg font-medium text-[#333333]">Unlock Full Potential</h3>
-                  </div>
-                  <p className="text-[#555555] mb-4">{getGuestLimitationsDescription()}</p>
-                  <Button
-                    onClick={() => window.location.href = '/signup'}
-                    className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300"
-                  >
-                    <span>Sign Up for Full Access</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+
               </div>
               
-              {/* Right Column: Feedback and Next Steps - Guest User */}
+              {/* Right Column: Feedback and Next Steps - Guest User*/}
               <div className="space-y-6">
-                {/* Areas for Improvement */}
+                {/* Areas for Improvement*/}
                 <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
                     <Target className="h-5 w-5 mr-2 text-[#F75A5A]" /> Areas for Improvement
@@ -836,7 +838,7 @@ export default function SpeakingAssessment({
                   </ul>
                 </div>
                 
-                {/* Next Steps */}
+                {/* Next Steps*/}
                 <div className="bg-[#FFFBEB] p-6 rounded-lg border border-[#FFD63A] shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
                     <Footprints className="h-5 w-5 mr-2 text-[#FFD63A]" /> Next Steps
@@ -856,7 +858,7 @@ export default function SpeakingAssessment({
             </>
           )}
           
-          {/* Action Buttons - Centered at the bottom */}
+          {/* Action Buttons - Centered at the bottom*/}
           <div className="col-span-1 lg:col-span-2">
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
               <Button 
@@ -879,7 +881,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Error Message */}
+      {/* Error Message*/}
       {error && (
         <div className="bg-[#FFF8F8] border border-[#F75A5A] rounded-lg p-6 mb-6 shadow-md">
           <div className="flex items-center space-x-3 text-[#F75A5A]">
@@ -896,9 +898,9 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Manual Level Selection button removed */}
+      {/* Manual Level Selection button removed*/}
       
-      {/* Learning Plan Modal */}
+      {/* Learning Plan Modal*/}
       {assessment && (
         <LearningPlanModal 
           isOpen={showLearningPlanModal}
