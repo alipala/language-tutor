@@ -356,7 +356,7 @@ export default function LearningPlanModal({
         {/* Step 2: Duration Selection */}
         {step === 2 && (
           <div className="py-4 space-y-6">
-            <div className="bg-[#EAFAF7] p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+            <div className="bg-[#EAFAF7] p-4 sm:p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
               <RadioGroup value={duration.toString()} onValueChange={(value: string) => {
                 if (value === 'custom') {
                   setDuration(0);
@@ -364,30 +364,44 @@ export default function LearningPlanModal({
                   setDuration(parseInt(value));
                   setCustomDuration(null);
                 }
-              }} className="space-y-4 mt-2">
+              }} className="space-y-3 mt-2">
                 {[1, 2, 3, 6, 12].map((months) => (
-                  <div key={months} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-4 rounded-md transition-colors touch-manipulation">
-                    <RadioGroupItem 
-                      value={months.toString()} 
-                      id={`duration-${months}`} 
-                      className="border-[#4ECFBF]/50 text-[#4ECFBF] h-5 w-5"
-                    />
-                    <Label 
-                      htmlFor={`duration-${months}`} 
-                      className="font-medium cursor-pointer text-gray-800 w-full py-2"
-                    >
-                      {months} month{months !== 1 ? 's' : ''}
-                    </Label>
-                  </div>
+                  <label 
+                    key={months}
+                    htmlFor={`duration-${months}`}
+                    className={`block w-full rounded-lg border-2 ${duration === months ? 'border-[#4ECFBF] bg-[#4ECFBF]/10' : 'border-transparent'} hover:border-[#4ECFBF]/50 transition-all cursor-pointer`}
+                  >
+                    <div className="flex items-center py-4 px-3 sm:px-4">
+                      <div className="relative flex items-center justify-center">
+                        <RadioGroupItem 
+                          value={months.toString()} 
+                          id={`duration-${months}`} 
+                          className="border-[#4ECFBF]/50 text-[#4ECFBF] h-6 w-6 sm:h-5 sm:w-5"
+                        />
+                      </div>
+                      <span className="ml-3 font-medium text-gray-800 text-base sm:text-sm">
+                        {months} month{months !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </label>
                 ))}
-                <div className="flex items-center space-x-3 hover:bg-[#4ECFBF]/20 p-4 rounded-md transition-colors touch-manipulation">
-                  <RadioGroupItem 
-                    value="custom" 
-                    id="duration-custom" 
-                    className="border-[#4ECFBF]/50 text-[#4ECFBF] h-5 w-5"
-                  />
-                  <Label htmlFor="duration-custom" className="font-medium cursor-pointer text-gray-800 w-full py-2">Custom duration</Label>
-                </div>
+                <label 
+                  htmlFor="duration-custom"
+                  className={`block w-full rounded-lg border-2 ${duration === 0 ? 'border-[#4ECFBF] bg-[#4ECFBF]/10' : 'border-transparent'} hover:border-[#4ECFBF]/50 transition-all cursor-pointer`}
+                >
+                  <div className="flex items-center py-4 px-3 sm:px-4">
+                    <div className="relative flex items-center justify-center">
+                      <RadioGroupItem 
+                        value="custom" 
+                        id="duration-custom" 
+                        className="border-[#4ECFBF]/50 text-[#4ECFBF] h-6 w-6 sm:h-5 sm:w-5"
+                      />
+                    </div>
+                    <span className="ml-3 font-medium text-gray-800 text-base sm:text-sm">
+                      Custom duration
+                    </span>
+                  </div>
+                </label>
               </RadioGroup>
               
               {duration === 0 && (
