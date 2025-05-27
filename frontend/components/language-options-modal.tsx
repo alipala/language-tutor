@@ -116,9 +116,27 @@ const LanguageOptionsModal = ({
               <div className="text-3xl mr-3">{languageInfo.flag}</div>
               <div>
                 <h2 className="text-xl font-bold text-white">
-                  {selectedLanguage ? `${selectedLanguage} Selected` : 'Select Your Path'}
+                  {selectedLanguage ? (
+                    <>
+                      {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}{' '}
+                      {selectedLanguage === 'english' && 'Selected'}
+                      {selectedLanguage === 'spanish' && 'Seleccionado'}
+                      {selectedLanguage === 'french' && 'Sélectionné'}
+                      {selectedLanguage === 'german' && 'Ausgewählt'}
+                      {selectedLanguage === 'dutch' && 'Geselecteerd'}
+                      {selectedLanguage === 'portuguese' && 'Selecionado'}
+                    </>
+                  ) : 'Select Your Path'}
                 </h2>
-                <p className="text-sm text-white opacity-80">Choose how you want to start your language journey</p>
+                <p className="text-sm text-white opacity-80">
+                  {selectedLanguage === 'english' && 'Choose how you want to start your language journey'}
+                  {selectedLanguage === 'spanish' && 'Elige cómo quieres comenzar tu viaje de idioma'}
+                  {selectedLanguage === 'french' && 'Choisissez comment vous voulez commencer votre parcours linguistique'}
+                  {selectedLanguage === 'german' && 'Wählen Sie, wie Sie Ihre Sprachreise beginnen möchten'}
+                  {selectedLanguage === 'dutch' && 'Kies hoe je aan je taalreis wilt beginnen'}
+                  {selectedLanguage === 'portuguese' && 'Escolha como você quer começar sua jornada de idioma'}
+                  {!selectedLanguage && 'Choose how you want to start your language journey'}
+                </p>
               </div>
             </div>
             
@@ -155,7 +173,15 @@ const LanguageOptionsModal = ({
         
         {/* Options */}
         <div className="p-6">
-          <div className="text-sm font-medium text-gray-500 mb-3">What would you like to do?</div>
+          <div className="text-sm font-medium text-gray-500 mb-3">
+            {selectedLanguage === 'english' && 'What would you like to do?'}
+            {selectedLanguage === 'spanish' && '¿Qué te gustaría hacer?'}
+            {selectedLanguage === 'french' && 'Que souhaitez-vous faire?'}
+            {selectedLanguage === 'german' && 'Was möchten Sie tun?'}
+            {selectedLanguage === 'dutch' && 'Wat zou je willen doen?'}
+            {selectedLanguage === 'portuguese' && 'O que você gostaria de fazer?'}
+            {!selectedLanguage && 'What would you like to do?'}
+          </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {/* Assessment Option */}
@@ -178,8 +204,24 @@ const LanguageOptionsModal = ({
                   <Award size={24} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-800 mb-2">Assess my speaking level</h3>
-                  <p className="text-gray-600 text-sm">Take a quick assessment to determine your current language proficiency level.</p>
+                  <h3 className="font-bold text-gray-800 mb-2">
+                    {selectedLanguage === 'english' && 'Assess my speaking level'}
+                    {selectedLanguage === 'spanish' && 'Evaluar mi nivel de habla'}
+                    {selectedLanguage === 'french' && 'Évaluer mon niveau d\'expression'}
+                    {selectedLanguage === 'german' && 'Mein Sprachniveau bewerten'}
+                    {selectedLanguage === 'dutch' && 'Beoordeel mijn spreekvaardigheidsniveau'}
+                    {selectedLanguage === 'portuguese' && 'Avaliar meu nível de fala'}
+                    {!selectedLanguage && 'Assess my speaking level'}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {selectedLanguage === 'english' && 'Take a quick assessment to determine your current language proficiency level.'}
+                    {selectedLanguage === 'spanish' && 'Realiza una evaluación rápida para determinar tu nivel actual de dominio del idioma.'}
+                    {selectedLanguage === 'french' && 'Faites une évaluation rapide pour déterminer votre niveau actuel de compétence linguistique.'}
+                    {selectedLanguage === 'german' && 'Machen Sie eine schnelle Bewertung, um Ihr aktuelles Sprachkenntnisse zu bestimmen.'}
+                    {selectedLanguage === 'dutch' && 'Doe een snelle beoordeling om je huidige taalvaardigheidsniveau te bepalen.'}
+                    {selectedLanguage === 'portuguese' && 'Faça uma avaliação rápida para determinar seu nível atual de proficiência no idioma.'}
+                    {!selectedLanguage && 'Take a quick assessment to determine your current language proficiency level.'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -204,8 +246,24 @@ const LanguageOptionsModal = ({
                   <MessageSquare size={24} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-800 mb-2">Do a Practice</h3>
-                  <p className="text-gray-600 text-sm">Start a conversation practice session on topics of your choice.</p>
+                  <h3 className="font-bold text-gray-800 mb-2">
+                    {selectedLanguage === 'english' && 'Do a Practice'}
+                    {selectedLanguage === 'spanish' && 'Hacer una práctica'}
+                    {selectedLanguage === 'french' && 'Faire un exercice'}
+                    {selectedLanguage === 'german' && 'Eine Übung machen'}
+                    {selectedLanguage === 'dutch' && 'Doe een oefening'}
+                    {selectedLanguage === 'portuguese' && 'Fazer uma prática'}
+                    {!selectedLanguage && 'Do a Practice'}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {selectedLanguage === 'english' && 'Start a conversation practice session on topics of your choice.'}
+                    {selectedLanguage === 'spanish' && 'Inicia una sesión de práctica de conversación sobre temas de tu elección.'}
+                    {selectedLanguage === 'french' && 'Commencez une session de pratique de conversation sur des sujets de votre choix.'}
+                    {selectedLanguage === 'german' && 'Starten Sie eine Konversationsübung zu Themen Ihrer Wahl.'}
+                    {selectedLanguage === 'dutch' && 'Start een conversatieoefening over onderwerpen naar keuze.'}
+                    {selectedLanguage === 'portuguese' && 'Inicie uma sessão de prática de conversação sobre tópicos de sua escolha.'}
+                    {!selectedLanguage && 'Start a conversation practice session on topics of your choice.'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -217,7 +275,13 @@ const LanguageOptionsModal = ({
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors mr-3"
               onClick={onClose}
             >
-              Cancel
+              {selectedLanguage === 'english' && 'Cancel'}
+              {selectedLanguage === 'spanish' && 'Cancelar'}
+              {selectedLanguage === 'french' && 'Annuler'}
+              {selectedLanguage === 'german' && 'Abbrechen'}
+              {selectedLanguage === 'dutch' && 'Annuleren'}
+              {selectedLanguage === 'portuguese' && 'Cancelar'}
+              {!selectedLanguage && 'Cancel'}
             </button>
             <button 
               className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
@@ -228,7 +292,13 @@ const LanguageOptionsModal = ({
               onClick={handleContinue}
               disabled={!selectedOption}
             >
-              Continue
+              {selectedLanguage === 'english' && 'Continue'}
+              {selectedLanguage === 'spanish' && 'Continuar'}
+              {selectedLanguage === 'french' && 'Continuer'}
+              {selectedLanguage === 'german' && 'Fortfahren'}
+              {selectedLanguage === 'dutch' && 'Doorgaan'}
+              {selectedLanguage === 'portuguese' && 'Continuar'}
+              {!selectedLanguage && 'Continue'}
               {selectedOption && <ChevronRight size={18} className="ml-1" />}
             </button>
           </div>
