@@ -361,26 +361,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Header*/}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#4ECFBF] to-[#3AA8B1] p-8 rounded-xl shadow-lg mb-6 text-center">
-        <div className="absolute inset-0 opacity-10">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="1"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            Speaking Assessment
-          </h2>
 
-        </div>
-      </div>
 
       {/* Speaking Instructions (only in idle state)*/}
       {status === 'idle' && (
