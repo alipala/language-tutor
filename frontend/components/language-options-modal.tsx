@@ -76,7 +76,7 @@ const LanguageOptionsModal = ({
       },
       'german': { 
         flag: '🇩🇪', 
-        description: 'The most widely spoken language in the European Union',
+        description: 'Entwickle deutsche Sprachkenntnisse und Konversationsfähigkeiten',
         learners: '5M+'
       },
       'dutch': { 
