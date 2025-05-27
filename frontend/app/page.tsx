@@ -153,7 +153,7 @@ export default function Home() {
       ) : (
         <main className="start-screen">
           {/* First Section */}
-          <section id="features" className="landing-section landing-first pt-16">
+          <section id="features" className="landing-section landing-first pt-2">
             <div className="section-background"></div>
             <div className="section-content">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
