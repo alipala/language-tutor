@@ -52,13 +52,7 @@ PREDEFINED_GOALS = [
     {"id": "business", "text": "Business and professional communication", "category": "general"},
     {"id": "academic", "text": "Academic study", "category": "general"},
     {"id": "culture", "text": "Cultural understanding", "category": "general"},
-    {"id": "daily", "text": "Daily conversation", "category": "general"},
-    {"id": "reading", "text": "Reading comprehension", "category": "skills"},
-    {"id": "writing", "text": "Writing skills", "category": "skills"},
-    {"id": "speaking", "text": "Speaking fluency", "category": "skills"},
-    {"id": "listening", "text": "Listening comprehension", "category": "skills"},
-    {"id": "grammar", "text": "Grammar mastery", "category": "skills"},
-    {"id": "vocabulary", "text": "Vocabulary expansion", "category": "skills"}
+    {"id": "daily", "text": "Daily conversation", "category": "general"}
 ]
 
 @router.get("/goals", response_model=List[LearningGoal])
