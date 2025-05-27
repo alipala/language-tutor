@@ -1,8 +1,8 @@
 // Constants for guest user limitations
-const ASSESSMENT_DURATION_GUEST = 15; // 15 seconds for guest assessment
-const ASSESSMENT_DURATION_REGISTERED = 60; // 60 seconds for registered user assessment
-const CONVERSATION_DURATION_GUEST = 60; // 1 minute for guest conversation
-const CONVERSATION_DURATION_REGISTERED = 300; // 5 minutes for registered user conversation
+export const ASSESSMENT_DURATION_GUEST = 15; // 15 seconds for guest assessment
+export const ASSESSMENT_DURATION_REGISTERED = 60; // 60 seconds for registered user assessment
+export const CONVERSATION_DURATION_GUEST = 60; // 1 minute for guest conversation
+export const CONVERSATION_DURATION_REGISTERED = 300; // 5 minutes for registered user conversation
 
 /**
  * Gets the assessment duration based on user authentication status

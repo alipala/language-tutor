@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
 import { isAuthenticated } from '@/lib/auth-utils';
-import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription } from '@/lib/guest-utils';
+import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription, ASSESSMENT_DURATION_GUEST, ASSESSMENT_DURATION_REGISTERED, CONVERSATION_DURATION_GUEST, CONVERSATION_DURATION_REGISTERED } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
 import LearningPlanModal from './learning-plan-modal';
 
@@ -301,38 +301,83 @@ export default function SpeakingAssessment({
         />
       )}
       
-      {/* Guest User Warning */}
+      {/* Guest User Mode Banner */}
       {!isAuthenticated() && (
-        <div className="bg-[#FFD63A]/20 border-l-4 border-[#FFD63A] p-4 mb-4 rounded-r-lg">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-[#FFD63A]" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-[#333333]">Guest Mode</h3>
-              <div className="mt-1 text-sm text-[#555555]">
-                <p>{getGuestLimitationsDescription()}</p>
-                <p className="mt-1">Your assessment results will not be saved to your profile unless you sign in.</p>
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] p-6 mb-6 rounded-xl shadow-lg">
+          <div className="absolute top-0 right-0 w-32 h-32 -mt-8 -mr-8 opacity-20">
+            <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="40" fill="white" />
+              <path d="M50 10 A40 40 0 0 1 90 50" stroke="white" strokeWidth="4" fill="none" />
+              <path d="M50 90 A40 40 0 0 1 10 50" stroke="white" strokeWidth="4" fill="none" />
+            </svg>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center">
+                <div className="bg-white/20 p-2 rounded-full mr-3">
+                  <Mic className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Guest Experience</h3>
               </div>
-              <div className="mt-3">
-                <a 
-                  href="/auth/login" 
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md bg-[#F75A5A] hover:bg-[#E55252] text-white shadow-sm"
-                >
-                  Sign In
-                </a>
+              
+              <div className="mt-3 text-white/90 text-sm max-w-xl leading-relaxed">
+                <p>You're using the free guest mode with limited features:</p>
+                <ul className="mt-2 space-y-1 list-disc list-inside pl-1">
+                  <li><span className="font-semibold">{ASSESSMENT_DURATION_GUEST}-second</span> speaking assessment (vs {ASSESSMENT_DURATION_REGISTERED}s)</li>
+                  <li><span className="font-semibold">{CONVERSATION_DURATION_GUEST}-second</span> conversation practice (vs {CONVERSATION_DURATION_REGISTERED}s)</li>
+                  <li>Results not saved to your profile</li>
+                </ul>
               </div>
             </div>
+            
+            <div className="hidden md:block">
+              <a 
+                href="/auth/login" 
+                className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
+              >
+                Sign In
+                <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </a>
+            </div>
+          </div>
+          
+          <div className="mt-4 md:hidden">
+            <a 
+              href="/auth/login" 
+              className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 w-full justify-center"
+            >
+              Sign In
+              <ArrowUpRight className="ml-2 h-4 w-4" />
+            </a>
           </div>
         </div>
       )}
       
       {/* Header */}
-      <div className="text-center bg-[#4ECFBF] p-6 rounded-lg shadow-lg mb-6">
-        <h2 className="text-3xl font-bold text-white mb-3">Speaking Assessment</h2>
-        <p className="text-white text-lg">
-          Speak for 30-60 seconds to assess your {language} proficiency level
-        </p>
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#4ECFBF] to-[#3AA8B1] p-8 rounded-xl shadow-lg mb-6 text-center">
+        <div className="absolute inset-0 opacity-10">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="1"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+        
+        <div className="relative z-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            Speaking Assessment
+          </h2>
+          <p className="text-white/90 text-lg max-w-2xl mx-auto">
+            {isAuthenticated() 
+              ? `Speak for up to ${formatTime(ASSESSMENT_DURATION_REGISTERED)} to assess your ${language} proficiency level` 
+              : `Speak for ${formatTime(ASSESSMENT_DURATION_GUEST)} to assess your ${language} proficiency level`
+            }
+          </p>
+        </div>
       </div>
 
       {/* Speaking Instructions (only in idle state) */}
@@ -381,42 +426,72 @@ export default function SpeakingAssessment({
       
       {/* Recording Controls */}
       {status === 'idle' && (
-        <div className="flex flex-col items-center justify-center space-y-6 p-6 bg-white rounded-lg shadow-md border border-gray-100">
-          <h2 className="text-xl font-semibold text-[#333333]">
-            Speak for a quick assessment
-          </h2>
-          <p className="text-center text-[#555555] max-w-md">
-            Press the button and speak in {language} for {formatTime(getAssessmentDuration(isAuthenticated()))} to get an evaluation of your speaking skills.
-          </p>
+        <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg border border-gray-100">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-[#333333] mb-3">
+              Ready to assess your {language} skills?
+            </h2>
+            <p className="text-[#555555] max-w-md mx-auto">
+              Press the microphone button and speak naturally in {language} for {isAuthenticated() ? 'up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}.
+            </p>
+          </div>
           
-          <Button
-            onClick={startRecording}
-            className="w-32 h-32 rounded-full flex items-center justify-center bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-lg transition-all duration-300"
-          >
-            <Mic className="h-10 w-10" />
-          </Button>
+          <div className="relative mb-6 group">
+            <div className="absolute -inset-4 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <Button
+              onClick={startRecording}
+              className="relative w-36 h-36 rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            >
+              <Mic className="h-12 w-12" />
+            </Button>
+          </div>
           
-          <p className="text-sm text-[#777777]">
-            Speak for up to {formatTime(getAssessmentDuration(isAuthenticated()))}
-          </p>
+          <div className="flex items-center justify-center space-x-2 text-sm text-[#777777] bg-gray-50 px-4 py-2 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-[#4ECFBF] animate-pulse"></div>
+            <p>Microphone ready • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}</p>
+          </div>
         </div>
       )}
       
       {/* Recording State */}
       {status === 'recording' && (
-        <div className="space-y-6 bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
-          <div className="flex items-center justify-center space-x-6">
-            <div className="w-20 h-20 flex items-center justify-center bg-[#F75A5A] rounded-full animate-pulse shadow-lg">
-              <Mic className="h-10 w-10 text-white" />
+        <div className="bg-gradient-to-br from-[#FFF8F8] to-[#FFF0F0] p-8 rounded-xl shadow-lg">
+          <div className="flex flex-col md:flex-row items-center justify-between mb-8">
+            <div className="flex items-center mb-6 md:mb-0">
+              <div className="relative">
+                <div className="absolute inset-0 bg-[#F75A5A]/30 rounded-full blur-lg animate-pulse"></div>
+                <div className="relative w-24 h-24 flex items-center justify-center bg-[#F75A5A] rounded-full shadow-lg">
+                  <Mic className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md">
+                  <div className="w-3 h-3 rounded-full bg-[#F75A5A] animate-pulse"></div>
+                </div>
+              </div>
+              <div className="ml-6">
+                <h3 className="text-xl font-bold text-[#333333]">Recording...</h3>
+                <p className="text-[#555555]">{isAuthenticated() ? 'Speak naturally' : 'Make every second count!'}</p>
+              </div>
             </div>
-            <div className="text-3xl font-bold text-[#333333] bg-white px-4 py-2 rounded-lg shadow-md border border-[#F75A5A]/30">{formatTime(timer)}</div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#F75A5A]/10 rounded-xl blur-md"></div>
+              <div className="relative text-4xl font-bold text-[#F75A5A] bg-white px-6 py-3 rounded-xl shadow-md border border-[#F75A5A]/20">
+                {formatTime(timer)}
+              </div>
+            </div>
           </div>
           
-          <Progress 
-            value={(initialDuration - timer) / initialDuration * 100} 
-            className="h-3 bg-white" 
-            indicatorClassName="bg-[#F75A5A]" 
-          />
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-[#555555] mb-2">
+              <span>0:00</span>
+              <span>{formatTime(initialDuration)}</span>
+            </div>
+            <Progress 
+              value={(initialDuration - timer) / initialDuration * 100} 
+              className="h-4 bg-white rounded-full" 
+              indicatorClassName="bg-gradient-to-r from-[#F75A5A] to-[#FF8A8A] rounded-full" 
+            />
+          </div>
           
           <div className="flex justify-center mt-4">
             <Button 
