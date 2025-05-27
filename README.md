@@ -7,74 +7,34 @@ A modern, production-ready language learning platform for interactive voice-base
   <img src="https://img.shields.io/badge/Next.js-14.0.4-000000?style=for-the-badge&logo=next.js" alt="Next.js"/>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python" alt="Python"/>
   <img src="https://img.shields.io/badge/WebRTC-Real--time-4285F4?style=for-the-badge&logo=webrtc" alt="WebRTC"/>
+  <img src="https://img.shields.io/badge/MongoDB-4.4-47A248?style=for-the-badge&logo=mongodb" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai" alt="OpenAI"/>
 </p>
 
----
+## 📚 Documentation
+
+This repository contains comprehensive documentation to help you understand, use, and contribute to the Language Tutor application:
+
+- [Frontend Architecture](./docs/FRONTEND.md) - Next.js application structure, components, and state management
+- [Backend Architecture](./docs/BACKEND.md) - FastAPI server, endpoints, and database integration
+- [Speech Recognition System](./docs/SPEECH_RECOGNITION.md) - WebRTC and OpenAI Realtime API integration
+- [Authentication System](./docs/AUTHENTICATION.md) - User management, JWT tokens, and Google OAuth
+- [Database Structure](./docs/DATABASE.md) - MongoDB collections and data models
+- [Guest User Experience](./docs/GUEST_EXPERIENCE.md) - Limited functionality for non-authenticated users
+- [Deployment Guide](./docs/DEPLOYMENT.md) - Railway deployment and environment configuration
+- [Local Development](./docs/LOCAL_DEVELOPMENT.md) - Setting up your development environment
 
 ## ✨ Core Features
-- 🎙️ Voice conversation with AI tutor (real-time, streaming)
-- 🔊 Pronunciation assessment with color-coded feedback and review
-- 📝 Sentence and speaking assessment with actionable feedback
-- 📋 Custom learning plan creation and management
-- 🗣️ Topic selection (built-in and custom, with web search)
-- 🌍 Support for multiple languages and CEFR levels
-- 🔐 Modern authentication (email/password & Google Sign-In)
-- 📱 Responsive, animated UI for mobile and desktop
-- 🚀 Optimized for Railway deployment
 
----
-
-## 🗣️ Supported Languages & Levels
-- **Dutch**: All CEFR levels (A1, A2, B1, B2, C1, C2)
-- **English**: All CEFR levels (A1, A2, B1, B2, C1, C2)
-
-The application follows the Common European Framework of Reference for Languages (CEFR) for proficiency tracking and personalized content.
-
----
-
-## 🧠 Pronunciation & Learning
-- **Real-time pronunciation assessment**: Color-coded feedback (🟢 correct, 🟡 minor issue, 🔴 error)
-- **Interactive review modal**: Review your pronunciation and get actionable feedback after each speaking turn
-- **Sentence assessment**: Receive grammar, vocabulary, and structure suggestions tailored to your level
-- **Progress tracking**: Monitor your advancement through custom learning plans
-
----
-
-## 📋 Custom Learning Plans
-- Create a personalized learning plan by selecting language, level, goals, and duration
-- Flexible goal selection: Choose from built-in categories or add your own custom goals
-- Set your preferred timeline (1–12 months)
-- Plans can be used without authentication or assigned to your account after login
-- Progress is tracked and plans can be resumed at any time
-
----
-
-## 🗂️ Topic Selection
-- Choose from a variety of built-in conversation topics (e.g., Travel, Work, Culture, Current Events)
-- Enter a custom topic for up-to-date, web-searched conversations
-- Web search integration: For custom topics, the backend fetches current information and the AI tutor incorporates it into the conversation
-- Skip topic selection for free-form practice
-
----
-
-## 📦 Technical Implementation
-
-- **Frontend**: Next.js 14, custom React components, modern animated UI, dark theme, responsive for mobile/desktop
-- **Backend**: FastAPI (Python), REST API endpoints for authentication, learning plans, speaking assessments, real-time conversation, and web search
-- **Real-time Voice**: WebRTC for low-latency audio streaming; OpenAI Realtime API for conversational AI
-- **Authentication**: Email/password and Google Sign-In (Google Identity Services SDK)
-- **State Management**: Context-based, with session storage for navigation and recovery
-- **Navigation**: Direct `window.location` navigation for reliability in production (esp. Railway)
-- **Error Handling**: Centralized error service, robust logging, stuck-state detection and recovery
-- **API URL Config**: Environment-aware, supports both local and Railway deployment
-- **Deployment**: Optimized for Railway (standalone output, CORS, custom domain support)
-- **Database**: MongoDB (Railway-managed), user/account/plan storage
-
----
-
-## 🛠️ Backend Deep Dive
-
-The backend, built with FastAPI, is responsible for:
+- 🎙️ **Real-time Conversation**: Voice-based interaction with AI tutor using WebRTC and OpenAI's Realtime API
+- 🔊 **Pronunciation Assessment**: Detailed feedback with color-coded highlighting and improvement suggestions
+- 📝 **Language Proficiency Analysis**: CEFR level determination and personalized recommendations
+- 📋 **Custom Learning Plans**: AI-generated study plans based on assessment results and goals
+- 🗣️ **Topic-based Practice**: Predefined topics or custom conversations with web search integration
+- 🌍 **Multi-language Support**: Currently Dutch and English with all CEFR levels (A1-C2)
+- 🔐 **Flexible Authentication**: Email/password, Google Sign-In, and guest user functionality
+- 📱 **Responsive Design**: Modern UI optimized for both desktop and mobile devices
+- 🚀 **Production-Ready**: Optimized for Railway deployment with robust error handling
 
 - **API endpoints** for authentication, learning plan management, real-time conversation, speaking/sentence assessment, and web search.
 - **Authentication** using JWT and Google OAuth, with secure password storage and token validation.
