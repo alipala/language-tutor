@@ -33,7 +33,7 @@ export default function LanguageSelection() {
   // Flag SVG components directly embedded to avoid loading issues
 const FlagComponents: Record<string, React.ReactNode> = {
   dutch: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="dutch-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#21468B" stopOpacity="1" />
@@ -43,13 +43,13 @@ const FlagComponents: Record<string, React.ReactNode> = {
           <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
         </filter>
       </defs>
-      <rect fill="url(#dutch-grad)" width="900" height="600" filter="url(#dutch-shadow)" />
-      <rect fill="#FFF" width="900" height="400" />
-      <rect fill="#AE1C28" width="900" height="200" />
+      <rect fill="url(#dutch-grad)" width="3" height="2" filter="url(#dutch-shadow)" />
+      <rect fill="#FFF" width="3" height="1.33" />
+      <rect fill="#AE1C28" width="3" height="0.67" />
     </svg>
   ),
   english: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="uk-blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#012169" stopOpacity="1" />
@@ -59,23 +59,17 @@ const FlagComponents: Record<string, React.ReactNode> = {
           <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.3" />
         </filter>
       </defs>
-      <clipPath id="s">
-        <path d="M0,0 v30 h60 v-30 z"/>
-      </clipPath>
-      <clipPath id="t">
-        <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/>
-      </clipPath>
-      <g clipPath="url(#s)" filter="url(#uk-shadow)">
-        <path d="M0,0 v30 h60 v-30 z" fill="url(#uk-blue-grad)"/>
-        <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-        <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#t)" stroke="#C8102E" strokeWidth="4"/>
-        <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-        <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+      <g filter="url(#uk-shadow)">
+        <rect width="3" height="2" fill="url(#uk-blue-grad)" />
+        <path d="M0,0 L3,2 M3,0 L0,2" stroke="#fff" strokeWidth="0.3" />
+        <path d="M1.5,0 v2 M0,1 h3" stroke="#fff" strokeWidth="0.5" />
+        <path d="M1.5,0 v2 M0,1 h3" stroke="#C8102E" strokeWidth="0.3" />
+        <path d="M0,0 L3,2 M3,0 L0,2" stroke="#C8102E" strokeWidth="0.2" clipPath="url(#t)" />
       </g>
     </svg>
   ),
   spanish: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 500" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="spanish-red-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#c60b1e" stopOpacity="1" />
@@ -89,12 +83,12 @@ const FlagComponents: Record<string, React.ReactNode> = {
           <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
         </filter>
       </defs>
-      <rect width="750" height="500" fill="url(#spanish-red-grad)" filter="url(#spanish-shadow)" />
-      <rect width="750" height="250" fill="url(#spanish-yellow-grad)" y="125" />
+      <rect width="3" height="2" fill="url(#spanish-red-grad)" filter="url(#spanish-shadow)" />
+      <rect width="3" height="1" fill="url(#spanish-yellow-grad)" y="0.5" />
     </svg>
   ),
   german: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5 3" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="german-black-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#000" stopOpacity="1" />
@@ -112,13 +106,13 @@ const FlagComponents: Record<string, React.ReactNode> = {
           <feDropShadow dx="0" dy="1" stdDeviation="0.1" floodColor="#000" floodOpacity="0.3" />
         </filter>
       </defs>
-      <rect width="5" height="3" fill="url(#german-black-grad)" filter="url(#german-shadow)" />
-      <rect width="5" height="2" fill="url(#german-red-grad)" />
-      <rect width="5" height="1" fill="url(#german-yellow-grad)" />
+      <rect width="3" height="2" fill="url(#german-black-grad)" filter="url(#german-shadow)" />
+      <rect width="3" height="1.33" fill="url(#german-red-grad)" />
+      <rect width="3" height="0.67" fill="url(#german-yellow-grad)" />
     </svg>
   ),
   french: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="french-blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#002395" stopOpacity="1" />
@@ -132,13 +126,13 @@ const FlagComponents: Record<string, React.ReactNode> = {
           <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
         </filter>
       </defs>
-      <rect width="300" height="600" fill="url(#french-blue-grad)" filter="url(#french-shadow)" />
-      <rect width="300" height="600" fill="#FFFFFF" x="300" />
-      <rect width="300" height="600" fill="url(#french-red-grad)" x="600" />
+      <rect width="1" height="2" fill="url(#french-blue-grad)" filter="url(#french-shadow)" />
+      <rect width="1" height="2" fill="#FFFFFF" x="1" />
+      <rect width="1" height="2" fill="url(#french-red-grad)" x="2" />
     </svg>
   ),
   portuguese: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="portuguese-green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#006600" stopOpacity="1" />
@@ -159,9 +153,9 @@ const FlagComponents: Record<string, React.ReactNode> = {
           <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.5" />
         </filter>
       </defs>
-      <rect width="600" height="400" fill="url(#portuguese-green-grad)" filter="url(#portuguese-shadow)" />
-      <rect width="240" height="400" fill="url(#portuguese-red-grad)" />
-      <circle cx="240" cy="200" r="65" fill="url(#portuguese-yellow-grad)" stroke="#000000" strokeWidth="1.5" filter="url(#portuguese-emblem-shadow)" />
+      <rect width="3" height="2" fill="url(#portuguese-green-grad)" filter="url(#portuguese-shadow)" />
+      <rect width="1.2" height="2" fill="url(#portuguese-red-grad)" />
+      <circle cx="1.2" cy="1" r="0.3" fill="url(#portuguese-yellow-grad)" stroke="#000000" strokeWidth="0.03" filter="url(#portuguese-emblem-shadow)" />
     </svg>
   ),
 };
@@ -428,19 +422,21 @@ const languages: Language[] = [
                     </div>
                     
                     {/* Language details */}
-                    <div className="flex-1 text-left pt-1">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-white transition-colors duration-300">
+                    <div className="flex-1 text-left pt-1 flex flex-col justify-center">
+                      <h3 className="text-xl font-bold text-white mb-1.5 group-hover:text-white transition-colors duration-300">
                         {language.name}
                       </h3>
                       
-                      <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
-                        {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
-                        {language.code === 'english' && 'Practice English speaking and listening'}
-                        {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
-                        {language.code === 'german' && 'Entwickle deutsche Sprachkenntnisse'}
-                        {language.code === 'french' && 'Améliorez vos compétences en français'}
-                        {language.code === 'portuguese' && 'Aprenda vocabulário e expressões em português'}
-                      </p>
+                      <div className="bg-black/10 backdrop-blur-sm p-2 rounded-md border border-white/10 group-hover:border-white/20 transition-all duration-300">
+                        <p className="text-white/80 text-sm leading-tight group-hover:text-white transition-colors duration-300">
+                          {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
+                          {language.code === 'english' && 'Practice English speaking and listening'}
+                          {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
+                          {language.code === 'german' && 'Entwickle deutsche Sprachkenntnisse'}
+                          {language.code === 'french' && 'Améliorez vos compétences en français'}
+                          {language.code === 'portuguese' && 'Aprenda vocabulário e expressões em português'}
+                        </p>
+                      </div>
                     </div>
                     
                     {/* Selection indicator */}
