@@ -422,21 +422,19 @@ const languages: Language[] = [
                     </div>
                     
                     {/* Language details */}
-                    <div className="flex-1 text-left pt-1 flex flex-col justify-center">
-                      <h3 className="text-xl font-bold text-white mb-1.5 group-hover:text-white transition-colors duration-300">
+                    <div className="flex-1 text-left pt-1">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-white transition-colors duration-300">
                         {language.name}
                       </h3>
                       
-                      <div className="bg-black/10 backdrop-blur-sm p-2 rounded-md border border-white/10 group-hover:border-white/20 transition-all duration-300">
-                        <p className="text-white/80 text-sm leading-tight group-hover:text-white transition-colors duration-300">
-                          {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
-                          {language.code === 'english' && 'Practice English speaking and listening'}
-                          {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
-                          {language.code === 'german' && 'Entwickle deutsche Sprachkenntnisse'}
-                          {language.code === 'french' && 'Améliorez vos compétences en français'}
-                          {language.code === 'portuguese' && 'Aprenda vocabulário e expressões em português'}
-                        </p>
-                      </div>
+                      <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
+                        {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
+                        {language.code === 'english' && 'Practice English speaking and listening'}
+                        {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
+                        {language.code === 'german' && 'Entwickle deutsche Sprachkenntnisse'}
+                        {language.code === 'french' && 'Améliorez vos compétences en français'}
+                        {language.code === 'portuguese' && 'Aprenda vocabulário e expressões em português'}
+                      </p>
                     </div>
                     
                     {/* Selection indicator */}
