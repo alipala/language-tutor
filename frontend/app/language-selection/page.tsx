@@ -380,11 +380,11 @@ const languages: Language[] = [
               >
                 {/* Interactive card content with animations */}
                 <div className="relative z-10 p-6">
-                  <div className="flex items-start gap-5">
+                  <div className="flex items-start gap-4">
                     {/* Modern animated language symbol */}
                     <div 
                       className={`
-                        flex-shrink-0 w-20 h-20 flex items-center justify-center rounded-lg 
+                        flex-shrink-0 w-28 h-20 flex items-center justify-center rounded-lg 
                         bg-gradient-to-br from-black/5 to-black/20 backdrop-blur-sm
                         shadow-[0_8px_16px_rgba(0,0,0,0.2)] group-hover:shadow-[0_12px_24px_rgba(0,0,0,0.25)] transition-all duration-500
                         border border-white/30 group-hover:border-white/50
@@ -409,7 +409,7 @@ const languages: Language[] = [
                       {/* Flag only with modern design - animated on hover */}
                       <div className="relative z-10 w-full h-full flex items-center justify-center">
                         {/* Flag with enhanced styling */}
-                        <div className="relative w-4/5 h-4/5 overflow-hidden rounded-lg transition-all duration-300 transform group-hover:scale-105">
+                        <div className="relative w-5/6 h-4/5 overflow-hidden rounded-lg transition-all duration-300 transform group-hover:scale-105">
                           {/* Improved flag container with 3D effect */}
                           <div className="w-full h-full relative flag-container">
                             {/* Flag component with enhanced styling */}
