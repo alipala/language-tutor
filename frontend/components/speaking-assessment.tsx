@@ -791,7 +791,7 @@ export default function SpeakingAssessment({
                     ))}
                   </ul>
                 </div>
-                
+
                 {/* Transcription */}
                 <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Your Speech</h3>
@@ -799,12 +799,26 @@ export default function SpeakingAssessment({
                     {assessment.recognized_text || "No speech detected"}
                   </p>
                 </div>
+
+                {/* Upgrade Message (Moved from right column) */}
+                <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#4ECFBF]/20 p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+                  <div className="flex items-center mb-2">
+                    <ArrowUpRight className="h-5 w-5 mr-2 text-[#4ECFBF]" />
+                    <h3 className="text-lg font-medium text-[#333333]">Unlock Full Potential</h3>
+                  </div>
+                  <p className="text-[#555555] mb-4">{getGuestLimitationsDescription()}</p>
+                  <Button
+                    onClick={() => window.location.href = '/signup'}
+                    className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300"
+                  >
+                    <span>Sign Up for Full Access</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               
               {/* Right Column: Feedback and Next Steps - Guest User */}
               <div className="space-y-6">
-
-                
                 {/* Areas for Improvement */}
                 <div className="bg-[#FFF8F8] p-6 rounded-lg border border-[#F75A5A] shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
@@ -837,19 +851,6 @@ export default function SpeakingAssessment({
                       </li>
                     ))}
                   </ul>
-                </div>
-                
-                {/* Upgrade Message for Guest Users */}
-                <div className="bg-white p-5 rounded-lg border border-[#4ECFBF] shadow-md">
-                  <h3 className="text-lg text-[#333333] mb-2 font-medium">Want More Details?</h3>
-                  <p className="text-[#555555] mb-4">{getGuestLimitationsDescription()}</p>
-                  <Button
-                    onClick={() => window.location.href = '/signup'}
-                    className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300"
-                  >
-                    <span>Sign Up for Full Access</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
             </>
