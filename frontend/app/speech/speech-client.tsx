@@ -907,8 +907,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   };
   
   return (
-    <main className="flex flex-col text-white p-4 overflow-x-hidden">
-      <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
+    <main className="flex flex-col text-white p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden min-h-screen">
+      <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
         {/* Language alert notification with animation states */}
         {showLanguageAlert && (
           <div 
@@ -967,67 +967,29 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
           
-          {/* Guest User Information Banner */}
-          {!isAuthenticated() && (
-            <div className="mt-4 mb-2 mx-auto max-w-md">
-              <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-2 text-orange-800">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-medium">Guest Mode</span>
-                </div>
-                <p className="mt-1 text-xs text-gray-600">
-                  {getGuestLimitationsDescription()}
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Guest User Information Banner removed as requested */}
           
-          {/* Redesigned Navigation Controls */}
-          <div className="flex flex-wrap justify-center gap-3 mt-5 mb-6 animate-fade-in" style={{animationDelay: '200ms'}}>
-            <button 
-              type="button"
-              onClick={handleChangeLanguage}
-              className="px-4 py-2 rounded-lg bg-[#F75A5A] text-white font-medium hover:bg-[#F75A5A]/90 transition-colors shadow-md"
-            >
-              Change Language
-            </button>
-            <button 
-              type="button"
-              onClick={handleChangeTopic}
-              className="px-4 py-2 rounded-lg bg-[#FFD63A] text-slate-800 font-medium hover:bg-[#FFD63A]/90 transition-colors shadow-md"
-            >
-              Change Topic
-            </button>
-            <button 
-              type="button"
-              onClick={handleChangeLevel}
-              className="px-4 py-2 rounded-lg bg-[#FFA955] text-white font-medium hover:bg-[#FFA955]/90 transition-colors shadow-md"
-            >
-              Change Level
-            </button>
-          </div>
+          {/* Navigation Controls removed as requested */}
         </div>
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Redesigned for better responsiveness and alignment */}
-          <div className="w-full px-1">
+          <div className="w-full">
             {/* Removed the initial microphone section that was previously shown before conversation */}
             
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
                   {/* Real-time Transcript Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '200ms'}}>
-                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]" style={{animationDelay: '200ms'}}>
+                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                       Real-time Transcript
                     </h3>
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-4 flex-grow overflow-y-auto pb-16">
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-y-auto pb-16">
                       <SentenceConstructionAssessment
                         transcript={currentTranscript}
                         isRecording={isRecording}
@@ -1070,7 +1032,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         onClick={(e) => handleToggleRecording(e)}
                         onTouchStart={(e) => e.preventDefault()}
                         aria-label={isRecording ? "Stop recording" : "Start recording"}
-                        className={`w-full py-4 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg ${isRecording 
+                        className={`w-full py-3 sm:py-4 relative flex items-center justify-center gap-2 sm:gap-3 transition-all duration-300 rounded-lg ${isRecording 
                           ? 'bg-[#F75A5A] hover:bg-[#E55252]' 
                           : (!isAuthenticated() && conversationTimeUp) 
                             ? 'bg-gray-400 cursor-not-allowed' 
@@ -1122,14 +1084,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '300ms'}}>
-                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]" style={{animationDelay: '300ms'}}>
+                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                       Conversation Transcript
                     </h3>
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 flex-1 min-h-[300px] md:min-h-[350px] max-h-[65vh] overflow-y-auto custom-scrollbar flex flex-col">
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-1 min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (
                           // Sort messages by timestamp if available, otherwise use the array order
@@ -1167,7 +1129,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                     </div>
                                   )}
                                   <div 
-                                    className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
+                                    className={`max-w-[85%] sm:max-w-[80%] break-words p-3 sm:p-4 lg:p-5 rounded-2xl shadow-md ${
                                       message.role === 'user' 
                                         ? 'bg-[#D6E6FF] text-slate-800 ml-2 rounded-tr-none' 
                                         : 'bg-[#AFF4EB] text-slate-800 mr-2 rounded-tl-none'
@@ -1186,7 +1148,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                         {timeDisplay}
                                       </span>
                                     </div>
-                                    <p className="text-sm leading-relaxed mt-1 text-slate-800">{message.content}</p>
+                                    <p className="text-xs sm:text-sm leading-relaxed mt-1 text-slate-800">{message.content}</p>
                                     
                                     {/* Analyze button in user message bubble - only show for messages that haven't been analyzed yet */}
                                     {message.role === 'user' && 
@@ -1194,19 +1156,19 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                      analyzeButtonRef.current && 
                                      !analyzedMessageIds.includes(`${message.role}-${index}`) && (
                                       <div className="mt-2 flex justify-end">
-                                        <button
-                                          onClick={() => {
-                                            // Mark this specific message as analyzed
-                                            setAnalyzedMessageIds(prev => [...prev, `${message.role}-${index}`]);
-                                            // Call the analyze function
-                                            if (analyzeButtonRef.current) analyzeButtonRef.current();
-                                          }}
-                                          className="px-2 py-1 bg-[#FFD63A] hover:bg-[#FFA955] text-slate-800 text-xs rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1"
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                          </svg>
-                                          <span>Analyze Sentence</span>
+                                          <button
+                                            onClick={() => {
+                                              // Mark this specific message as analyzed
+                                              setAnalyzedMessageIds(prev => [...prev, `${message.role}-${index}`]);
+                                              // Call the analyze function
+                                              if (analyzeButtonRef.current) analyzeButtonRef.current();
+                                            }}
+                                            className="px-2 py-1.5 sm:py-1 bg-[#FFD63A] hover:bg-[#FFA955] text-slate-800 text-xs rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            <span>Analyze Sentence</span>
                                         </button>
                                       </div>
                                     )}
