@@ -907,8 +907,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   };
   
   return (
-    <main className="flex flex-col text-white p-4 overflow-x-hidden">
-      <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
+    <main className="flex flex-col text-white p-4 md:p-6 lg:p-8 overflow-x-hidden min-h-screen">
+      <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
         {/* Language alert notification with animation states */}
         {showLanguageAlert && (
           <div 
@@ -993,22 +993,22 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Redesigned for better responsiveness and alignment */}
-          <div className="w-full px-1">
+          <div className="w-full">
             {/* Removed the initial microphone section that was previously shown before conversation */}
             
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6 w-full">
                   {/* Real-time Transcript Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '200ms'}}>
-                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col min-h-[550px] md:min-h-[600px] lg:min-h-[650px]" style={{animationDelay: '200ms'}}>
+                    <h3 className="text-lg lg:text-xl font-semibold mb-4 text-[#F75A5A] flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                       Real-time Transcript
                     </h3>
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-4 flex-grow overflow-y-auto pb-16">
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-4 lg:p-6 flex-grow overflow-y-auto pb-16">
                       <SentenceConstructionAssessment
                         transcript={currentTranscript}
                         isRecording={isRecording}
@@ -1103,14 +1103,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 lg:p-4 shadow-lg animate-fade-in flex flex-col min-h-[500px]" style={{animationDelay: '300ms'}}>
-                    <h3 className="text-base lg:text-lg font-semibold mb-3 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col min-h-[550px] md:min-h-[600px] lg:min-h-[650px]" style={{animationDelay: '300ms'}}>
+                    <h3 className="text-lg lg:text-xl font-semibold mb-4 text-[#F75A5A] flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                       Conversation Transcript
                     </h3>
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 flex-1 min-h-[300px] md:min-h-[350px] max-h-[65vh] overflow-y-auto custom-scrollbar flex flex-col">
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-4 lg:p-6 flex-1 min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (
                           // Sort messages by timestamp if available, otherwise use the array order
@@ -1148,7 +1148,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                     </div>
                                   )}
                                   <div 
-                                    className={`max-w-[75%] break-words p-4 rounded-2xl shadow-md ${
+                                    className={`max-w-[85%] break-words p-4 lg:p-5 rounded-2xl shadow-md ${
                                       message.role === 'user' 
                                         ? 'bg-[#D6E6FF] text-slate-800 ml-2 rounded-tr-none' 
                                         : 'bg-[#AFF4EB] text-slate-800 mr-2 rounded-tl-none'
