@@ -967,26 +967,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
           
-          {/* Guest User Information Banner - Repositioned to be less intrusive */}
-          {!isAuthenticated() && (
-            <div className="absolute top-0 right-0 mt-2 mr-2 sm:mt-3 sm:mr-3 md:mt-4 md:mr-4 z-10 max-w-[200px] sm:max-w-[250px] md:max-w-[300px] text-left">
-              <div className="bg-[#F75A5A] rounded-lg p-2 sm:p-3 text-white shadow-lg border border-[#F75A5A]/20">
-                <div className="flex items-center gap-2">
-                  <div className="bg-white/20 p-1.5 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-xs sm:text-sm">Guest Mode</h3>
-                    <p className="text-xs text-white/90">
-                      {getGuestLimitationsDescription()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Guest User Information Banner removed as requested */}
           
           {/* Navigation Controls removed as requested */}
         </div>
