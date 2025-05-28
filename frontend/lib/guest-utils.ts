@@ -47,7 +47,7 @@ export const formatTime = (seconds: number): string => {
  * @returns {string} A description of the guest user limitations
  */
 export const getGuestLimitationsDescription = (): string => {
-  return `As a guest, you have access to a ${ASSESSMENT_DURATION_GUEST}-second speaking assessment and a ${CONVERSATION_DURATION_GUEST}-second conversation practice. Sign in for a full ${ASSESSMENT_DURATION_REGISTERED}-second assessment and ${CONVERSATION_DURATION_REGISTERED}-second conversations.`;
+  return `As a guest, you have access to a ${ASSESSMENT_DURATION_GUEST}-second speaking assessment and a ${CONVERSATION_DURATION_GUEST}-second conversation practice. Sign in for full access.`;
 };
 
 /**

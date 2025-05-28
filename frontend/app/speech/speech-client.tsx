@@ -967,47 +967,28 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
           
-          {/* Guest User Information Banner */}
+          {/* Guest User Information Banner - Modern Design */}
           {!isAuthenticated() && (
-            <div className="mt-4 mb-2 mx-auto max-w-md">
-              <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-2 text-orange-800">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-medium">Guest Mode</span>
+            <div className="mt-4 mb-2 mx-auto max-w-md text-left">
+              <div className="bg-[#F75A5A] rounded-lg p-4 text-white shadow-lg border border-[#F75A5A]/20">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">Guest Mode</h3>
+                    <p className="text-sm text-white/90">
+                      {getGuestLimitationsDescription()}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-gray-600">
-                  {getGuestLimitationsDescription()}
-                </p>
               </div>
             </div>
           )}
           
-          {/* Redesigned Navigation Controls */}
-          <div className="flex flex-wrap justify-center gap-3 mt-5 mb-6 animate-fade-in" style={{animationDelay: '200ms'}}>
-            <button 
-              type="button"
-              onClick={handleChangeLanguage}
-              className="px-4 py-2 rounded-lg bg-[#F75A5A] text-white font-medium hover:bg-[#F75A5A]/90 transition-colors shadow-md"
-            >
-              Change Language
-            </button>
-            <button 
-              type="button"
-              onClick={handleChangeTopic}
-              className="px-4 py-2 rounded-lg bg-[#FFD63A] text-slate-800 font-medium hover:bg-[#FFD63A]/90 transition-colors shadow-md"
-            >
-              Change Topic
-            </button>
-            <button 
-              type="button"
-              onClick={handleChangeLevel}
-              className="px-4 py-2 rounded-lg bg-[#FFA955] text-white font-medium hover:bg-[#FFA955]/90 transition-colors shadow-md"
-            >
-              Change Level
-            </button>
-          </div>
+          {/* Navigation Controls removed as requested */}
         </div>
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
