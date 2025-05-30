@@ -2,6 +2,20 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import realtimeService from './realtimeService';
 import { RealtimeMessage, RealtimeEvent, RealtimeTextDeltaEvent, RealtimeAudioTranscriptionEvent } from './types';
 
+// Helper function to clean transcript text by removing duplicates
+function cleanTranscript(transcript: string): string {
+  if (!transcript) return '';
+  
+  // Split by newlines and remove duplicates
+  const lines = transcript.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // Remove duplicate lines using Array.from instead of spread operator
+  const uniqueLines = Array.from(new Set(lines));
+  
+  // Join back with a single space if there are multiple unique lines
+  return uniqueLines.join(' ');
+}
+
 export function useRealtime() {
   // Check if running in browser environment
   const isBrowser = typeof window !== 'undefined';
@@ -120,7 +134,9 @@ export function useRealtime() {
     } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
       if (!event.transcript?.trim()) return;
       
-      const transcriptionText = event.transcript.trim();
+      // Clean the transcript by removing duplicates and normalizing
+      const rawTranscript = event.transcript.trim();
+      const transcriptionText = cleanTranscript(rawTranscript);
       
       setMessages(prev => {
         // Check if this transcription already exists by item_id OR by content
