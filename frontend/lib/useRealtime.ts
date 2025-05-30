@@ -123,10 +123,10 @@ export function useRealtime() {
       const transcriptionText = event.transcript.trim();
       
       setMessages(prev => {
-        // Check if this transcription already exists
+        // Check if this transcription already exists by item_id OR by content
         const existingIndex = prev.findIndex(msg => 
           msg.role === 'user' && 
-          msg.itemId === event.item_id
+          (msg.itemId === event.item_id || msg.content === transcriptionText)
         );
         
         if (existingIndex >= 0) {
@@ -143,7 +143,7 @@ export function useRealtime() {
           );
         }
         
-        // Add new message
+        // Add new message only if it doesn't already exist
         return [...prev, {
           role: 'user',
           content: transcriptionText,
@@ -169,14 +169,16 @@ export function useRealtime() {
         
         if (userText) {
           setMessages(prev => {
-            // Check for duplicate messages
+            // Check for duplicate messages by content OR item_id
             const isDuplicate = prev.some(msg => 
               msg.role === 'user' && 
-              msg.content === userText &&
-              msg.itemId === event.item.id
+              (msg.content === userText || msg.itemId === event.item.id)
             );
             
-            if (isDuplicate) return prev;
+            if (isDuplicate) {
+              console.log('Skipping duplicate user message:', userText);
+              return prev;
+            }
             
             return [...prev, {
               role: 'user',
