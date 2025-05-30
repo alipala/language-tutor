@@ -100,7 +100,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // Initialize the realtime service and handle messages
   const { isRecording, messages, error, toggleConversation, stopConversation, startConversation, initialize, getFormattedConversationHistory } = useRealtime();
   
-  // Process messages for display and deduplicate assistant messages
+  // Process messages for display and deduplicate both user and assistant messages
   const processedMessages = useMemo(() => {
     // First, map the messages to add consistent IDs
     const mappedMessages = messages.map((message, index) => ({
@@ -109,18 +109,17 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       role: message.role === 'assistant' ? 'assistant' : 'user'
     }));
 
-    // Deduplicate assistant messages by filtering out those with very similar content
+    // Deduplicate messages by filtering out those with very similar content
     const filteredMessages: typeof mappedMessages = [];
-    const seenContents: {content: string, index: number}[] = [];
+    const seenContents: {content: string, index: number, role: string}[] = [];
 
-    // First pass: collect all assistant messages and their indices
+    // First pass: collect all messages and their indices
     mappedMessages.forEach((message, index) => {
-      if (message.role === 'assistant') {
-        seenContents.push({
-          content: message.content.trim(),
-          index
-        });
-      }
+      seenContents.push({
+        content: message.content.trim(),
+        index,
+        role: message.role
+      });
     });
 
     // Second pass: identify duplicates and keep only the most complete version
@@ -129,19 +128,32 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     // Compare each message with others to find duplicates or subsets
     for (let i = 0; i < seenContents.length; i++) {
       for (let j = i + 1; j < seenContents.length; j++) {
-        const contentA = seenContents[i].content;
-        const contentB = seenContents[j].content;
+        const messageA = seenContents[i];
+        const messageB = seenContents[j];
+        
+        // Only compare messages from the same role
+        if (messageA.role !== messageB.role) continue;
+        
+        const contentA = messageA.content;
+        const contentB = messageB.content;
+        
+        // Check for exact duplicates first
+        if (contentA === contentB) {
+          // Mark the later one as duplicate
+          duplicateIndices.add(messageB.index);
+          continue;
+        }
         
         // If one message is a subset of another
         if (contentA.includes(contentB)) {
           // Mark the shorter one as duplicate
-          duplicateIndices.add(seenContents[j].index);
+          duplicateIndices.add(messageB.index);
         } else if (contentB.includes(contentA)) {
           // Mark the shorter one as duplicate
-          duplicateIndices.add(seenContents[i].index);
+          duplicateIndices.add(messageA.index);
         } 
-        // If messages are very similar (more than 80% overlap)
-        else if (contentA.length > 20 && contentB.length > 20) {
+        // If messages are very similar (more than 90% overlap for user messages, 80% for assistant)
+        else if (contentA.length > 10 && contentB.length > 10) {
           // Check for significant overlap using a simple similarity check
           const shorterContent = contentA.length < contentB.length ? contentA : contentB;
           const longerContent = contentA.length >= contentB.length ? contentA : contentB;
@@ -151,18 +163,21 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           let matchCount = 0;
           
           for (const word of words) {
-            if (word.length > 3 && longerContent.includes(word)) {
+            if (word.length > 2 && longerContent.includes(word)) {
               matchCount++;
             }
           }
           
-          // If more than 80% of significant words match
-          if (words.length > 0 && matchCount / words.length > 0.8) {
+          // Use higher threshold for user messages (90%) since they're usually shorter and more precise
+          const threshold = messageA.role === 'user' ? 0.9 : 0.8;
+          
+          // If more than threshold of words match
+          if (words.length > 0 && matchCount / words.length > threshold) {
             // Mark the shorter message as duplicate
             if (contentA.length < contentB.length) {
-              duplicateIndices.add(seenContents[i].index);
+              duplicateIndices.add(messageA.index);
             } else {
-              duplicateIndices.add(seenContents[j].index);
+              duplicateIndices.add(messageB.index);
             }
           }
         }
@@ -172,7 +187,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     // Add all non-duplicate messages to the filtered list
     for (let i = 0; i < mappedMessages.length; i++) {
       const message = mappedMessages[i];
-      if (message.role === 'user' || !duplicateIndices.has(i)) {
+      if (!duplicateIndices.has(i)) {
         filteredMessages.push(message);
       }
     }
@@ -339,21 +354,47 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           console.log('Custom topic prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
         }
         
-        // Check if we have assessment data in session storage or user profile
+        // Check if we have assessment data - prioritize learning plan data over user profile data
         let assessmentData = null;
         
-        // First try to get from session storage (most recent assessment)
-        const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
-        if (storedAssessmentData) {
+        // First, check if we're accessing a specific learning plan
+        const urlParams = new URLSearchParams(window.location.search);
+        const planParam = urlParams.get('plan');
+        
+        if (planParam) {
+          console.log('Found plan ID in URL, attempting to retrieve plan-specific assessment data:', planParam);
           try {
-            assessmentData = JSON.parse(storedAssessmentData);
-            console.log('Retrieved speaking assessment data from session storage');
-          } catch (e) {
-            console.error('Error parsing speaking assessment data from session storage:', e);
+            // Import the API function dynamically to avoid circular dependencies
+            const { getLearningPlan } = await import('@/lib/learning-api');
+            const plan = await getLearningPlan(planParam);
+            
+            if (plan && plan.assessment_data) {
+              assessmentData = plan.assessment_data;
+              console.log('Retrieved assessment data from learning plan:', planParam);
+              console.log('Plan assessment data:', JSON.stringify(assessmentData, null, 2));
+            } else {
+              console.log('Learning plan found but no assessment data available in plan');
+            }
+          } catch (planError) {
+            console.error('Error retrieving learning plan assessment data:', planError);
+            // Continue to fallback methods if plan retrieval fails
           }
         }
         
-        // If not found in session storage, try to get from user profile
+        // If no plan-specific assessment data, try session storage (most recent assessment)
+        if (!assessmentData) {
+          const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
+          if (storedAssessmentData) {
+            try {
+              assessmentData = JSON.parse(storedAssessmentData);
+              console.log('Retrieved speaking assessment data from session storage');
+            } catch (e) {
+              console.error('Error parsing speaking assessment data from session storage:', e);
+            }
+          }
+        }
+        
+        // If still no assessment data, try to get from user profile as last resort
         if (!assessmentData) {
           try {
             const userData = localStorage.getItem('userData');

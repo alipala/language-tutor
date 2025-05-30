@@ -30,19 +30,33 @@ export interface LearningPlan {
       week: number;
       focus: string;
       activities: string[];
-      resources: string[];
+      resources?: string[];
     }[];
-    resources: {
+    resources?: {
       apps: string[];
       books: string[];
       websites: string[];
       other: string[];
-    };
-    milestones: {
+    } | string[];
+    milestones?: {
       milestone: string;
       timeline: string;
       assessment: string;
     }[];
+    title?: string;
+    assessment_summary?: {
+      overall_score: number;
+      recommended_level: string;
+      strengths: string[];
+      areas_for_improvement: string[];
+      skill_scores: {
+        pronunciation: number;
+        grammar: number;
+        vocabulary: number;
+        fluency: number;
+        coherence: number;
+      };
+    };
   };
   assessment_data?: {
     recognized_text: string;
