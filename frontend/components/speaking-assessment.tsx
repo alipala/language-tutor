@@ -363,70 +363,117 @@ export default function SpeakingAssessment({
       
 
 
-      {/* Speaking Instructions (only in idle state)*/}
+      {/* Main Assessment Interface - Redesigned Layout */}
       {status === 'idle' && (
-        <div className="bg-[#F8F9FA] border border-[#FFD63A] rounded-lg p-6 mb-6 shadow-md">
-          <h3 className="text-lg font-semibold text-[#333333] mb-3 border-b-2 border-[#FFD63A] pb-2">How to Get the Best Assessment</h3>
-          
-          <div className="space-y-4 text-[#333333]">
-            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
-              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">1</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Primary Recording Section - Takes center stage */}
+          <div className="lg:col-span-2 order-1 lg:order-1">
+            <div className="flex flex-col items-center justify-center p-12 bg-gradient-to-br from-white via-[#F8FDFC] to-[#F0FDFB] rounded-2xl shadow-xl border border-[#4ECFBF]/20 relative overflow-hidden">
+              {/* Background decoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#4ECFBF]/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#FFD63A]/10 to-transparent rounded-full -ml-12 -mb-12"></div>
+              
+              <div className="text-center mb-8 relative z-10">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] rounded-full mb-4 shadow-lg">
+                  <Mic className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-[#333333] mb-4">
+                  Ready to assess your {language} skills?
+                </h2>
+                <p className="text-[#555555] text-lg max-w-lg mx-auto leading-relaxed">
+                  Press the microphone button below and speak naturally in {language} for {isAuthenticated() ? 'up to ' : ''}
+                  <span className="font-semibold text-[#4ECFBF]">{formatTime(getAssessmentDuration(isAuthenticated()))}</span>.
+                </p>
               </div>
-              <p>Find a <strong>quiet environment</strong> with minimal background noise for clear audio.</p>
-            </div>
-            
-            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
-              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">2</span>
+              
+              {/* Enhanced Microphone Button */}
+              <div className="relative mb-8 group">
+                <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
+                <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                <Button
+                  onClick={startRecording}
+                  className="relative w-40 h-40 rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1]"
+                >
+                  <Mic className="h-14 w-14 group-hover:scale-110 transition-transform duration-300" />
+                </Button>
+                
+                {/* Pulse rings */}
+                <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping"></div>
+                <div className="absolute inset-2 rounded-full border-2 border-[#4ECFBF]/20 animate-ping" style={{animationDelay: '0.5s'}}></div>
               </div>
-              <p>Speak <strong>naturally</strong> about any topic you're comfortable with - your hobbies, work, travels, or interests.</p>
-            </div>
-            
-
-            
-            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
-              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">3</span>
+              
+              {/* Status Indicator */}
+              <div className="flex items-center justify-center space-x-3 text-sm text-[#555555] bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-md border border-[#4ECFBF]/20">
+                <div className="w-3 h-3 rounded-full bg-[#4ECFBF] animate-pulse shadow-sm"></div>
+                <p className="font-medium">Microphone ready • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}</p>
               </div>
-              <p>Use <strong>varied vocabulary</strong> and sentence structures to demonstrate your language skills.</p>
-            </div>
-            
-            <div className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#FFD63A]/30 shadow-sm">
-              <div className="bg-[#FFD63A] rounded-full p-1 mt-0.5 shadow-sm">
-                <span className="block w-5 h-5 text-[#333333] text-center font-bold">4</span>
+              
+              {/* Quick tip */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-[#777777] italic">💡 Speak about any topic you're comfortable with</p>
               </div>
-              <p><strong>Relax and be yourself</strong> - this helps us provide the most accurate assessment of your current level.</p>
             </div>
           </div>
-        </div>
-      )}
-      
-      {/* Recording Controls*/}
-      {status === 'idle' && (
-        <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-[#333333] mb-3">
-              Ready to assess your {language} skills?
-            </h2>
-            <p className="text-[#555555] max-w-md mx-auto">
-              Press the microphone button and speak naturally in {language} for {isAuthenticated() ? 'up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}.
-            </p>
-          </div>
           
-          <div className="relative mb-6 group">
-            <div className="absolute -inset-4 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <Button
-              onClick={startRecording}
-              className="relative w-36 h-36 rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-            >
-              <Mic className="h-12 w-12" />
-            </Button>
-          </div>
-          
-          <div className="flex items-center justify-center space-x-2 text-sm text-[#777777] bg-gray-50 px-4 py-2 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-[#4ECFBF] animate-pulse"></div>
-            <p>Microphone ready • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}</p>
+          {/* Tips Sidebar - Repositioned and redesigned */}
+          <div className="lg:col-span-1 order-2 lg:order-2">
+            <div className="bg-gradient-to-br from-[#FFFBEB] via-[#FFF8E1] to-[#FFFBEB] rounded-2xl p-6 shadow-lg border border-[#FFD63A]/30 h-full">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-[#FFD63A] rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                  <Target className="h-5 w-5 text-[#333333]" />
+                </div>
+                <h3 className="text-lg font-bold text-[#333333]">Assessment Tips</h3>
+              </div>
+              
+              <div className="space-y-3 text-[#333333]">
+                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                      <span className="text-xs font-bold text-[#333333]">1</span>
+                    </div>
+                    <p className="text-sm leading-relaxed">Find a <strong>quiet space</strong> with minimal background noise</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                      <span className="text-xs font-bold text-[#333333]">2</span>
+                    </div>
+                    <p className="text-sm leading-relaxed">Speak <strong>naturally</strong> about topics you enjoy</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                      <span className="text-xs font-bold text-[#333333]">3</span>
+                    </div>
+                    <p className="text-sm leading-relaxed">Use <strong>varied vocabulary</strong> and sentence structures</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                      <span className="text-xs font-bold text-[#333333]">4</span>
+                    </div>
+                    <p className="text-sm leading-relaxed"><strong>Relax and be yourself</strong> for accurate results</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Encouragement section */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-[#4ECFBF]/10 to-[#FFD63A]/10 rounded-xl border border-[#4ECFBF]/20">
+                <div className="flex items-center mb-2">
+                  <ThumbsUp className="h-4 w-4 text-[#4ECFBF] mr-2" />
+                  <span className="text-sm font-semibold text-[#333333]">You've got this!</span>
+                </div>
+                <p className="text-xs text-[#555555] leading-relaxed">
+                  Our AI will analyze your pronunciation, fluency, vocabulary, and grammar to provide personalized feedback.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
