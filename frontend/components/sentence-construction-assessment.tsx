@@ -375,6 +375,7 @@ export default function SentenceConstructionAssessment({
   const handleCloseModal = () => {
     setShowModal(false);
     setIsAssessing(false);
+    setSelectedHistoryIndex(null); // Reset selected history index when closing modal
   };
   
   // Handle selecting a historical assessment
@@ -504,7 +505,7 @@ export default function SentenceConstructionAssessment({
                 </Button>
               </div>
               
-              {!isLoading && !error && assessmentResult && (
+              {!isLoading && !error && assessmentResult && selectedHistoryIndex === null && (
                 <div className="w-full mt-3">
                   <Button
                     onClick={handleContinue}
