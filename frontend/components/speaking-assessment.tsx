@@ -374,9 +374,6 @@ export default function SpeakingAssessment({
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#FFD63A]/10 to-transparent rounded-full -ml-12 -mb-12"></div>
               
               <div className="text-center mb-8 relative z-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] rounded-full mb-4 shadow-lg">
-                  <Mic className="h-8 w-8 text-white" />
-                </div>
                 <h2 className="text-3xl font-bold text-[#333333] mb-4">
                   Ready to assess your {language} skills?
                 </h2>
@@ -390,16 +387,17 @@ export default function SpeakingAssessment({
               <div className="relative mb-8 group">
                 <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
                 <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
-                <Button
+                <button
                   onClick={startRecording}
-                  className="relative w-40 h-40 rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1]"
+                  className="relative w-40 h-40 rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer"
+                  type="button"
                 >
                   <Mic className="h-14 w-14 group-hover:scale-110 transition-transform duration-300" />
-                </Button>
+                </button>
                 
                 {/* Pulse rings */}
-                <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping"></div>
-                <div className="absolute inset-2 rounded-full border-2 border-[#4ECFBF]/20 animate-ping" style={{animationDelay: '0.5s'}}></div>
+                <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping pointer-events-none"></div>
+                <div className="absolute inset-2 rounded-full border-2 border-[#4ECFBF]/20 animate-ping pointer-events-none" style={{animationDelay: '0.5s'}}></div>
               </div>
               
               {/* Status Indicator */}
