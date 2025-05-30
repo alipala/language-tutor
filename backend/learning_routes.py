@@ -40,6 +40,7 @@ class LearningPlan(BaseModel):
     duration_months: int
     custom_goal: Optional[str] = None
     plan_content: Dict[str, Any]
+    assessment_data: Optional[Dict[str, Any]] = None
     created_at: str
 
 # Initialize learning goals collection
