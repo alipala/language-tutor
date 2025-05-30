@@ -339,21 +339,47 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           console.log('Custom topic prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
         }
         
-        // Check if we have assessment data in session storage or user profile
+        // Check if we have assessment data - prioritize learning plan data over user profile data
         let assessmentData = null;
         
-        // First try to get from session storage (most recent assessment)
-        const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
-        if (storedAssessmentData) {
+        // First, check if we're accessing a specific learning plan
+        const urlParams = new URLSearchParams(window.location.search);
+        const planParam = urlParams.get('plan');
+        
+        if (planParam) {
+          console.log('Found plan ID in URL, attempting to retrieve plan-specific assessment data:', planParam);
           try {
-            assessmentData = JSON.parse(storedAssessmentData);
-            console.log('Retrieved speaking assessment data from session storage');
-          } catch (e) {
-            console.error('Error parsing speaking assessment data from session storage:', e);
+            // Import the API function dynamically to avoid circular dependencies
+            const { getLearningPlan } = await import('@/lib/learning-api');
+            const plan = await getLearningPlan(planParam);
+            
+            if (plan && plan.assessment_data) {
+              assessmentData = plan.assessment_data;
+              console.log('Retrieved assessment data from learning plan:', planParam);
+              console.log('Plan assessment data:', JSON.stringify(assessmentData, null, 2));
+            } else {
+              console.log('Learning plan found but no assessment data available in plan');
+            }
+          } catch (planError) {
+            console.error('Error retrieving learning plan assessment data:', planError);
+            // Continue to fallback methods if plan retrieval fails
           }
         }
         
-        // If not found in session storage, try to get from user profile
+        // If no plan-specific assessment data, try session storage (most recent assessment)
+        if (!assessmentData) {
+          const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
+          if (storedAssessmentData) {
+            try {
+              assessmentData = JSON.parse(storedAssessmentData);
+              console.log('Retrieved speaking assessment data from session storage');
+            } catch (e) {
+              console.error('Error parsing speaking assessment data from session storage:', e);
+            }
+          }
+        }
+        
+        // If still no assessment data, try to get from user profile as last resort
         if (!assessmentData) {
           try {
             const userData = localStorage.getItem('userData');
