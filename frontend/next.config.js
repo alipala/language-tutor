@@ -2,8 +2,8 @@
 const nextConfig = {
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
-  output: 'standalone', // Required for proper server-side rendering on Railway
-  distDir: '.next',
+  output: 'export', // Use static export for Railway deployment
+  distDir: 'out', // Output to 'out' directory for static files
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',
@@ -23,10 +23,6 @@ const nextConfig = {
   // Disable image optimization since it requires a server component
   images: {
     unoptimized: true,
-  },
-  // Explicitly set the output file tracing to include the entire frontend directory
-  experimental: {
-    outputFileTracingRoot: require('path').join(__dirname, '../'),
   },
   // Improve static generation for Railway
   poweredByHeader: false,

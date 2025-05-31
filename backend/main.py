@@ -566,6 +566,135 @@ async def assess_speaking_proficiency(request: SpeakingAssessmentRequest):
             detail=f"Speaking assessment failed: {str(e)}"
         )
 
+# Setup static file serving for the frontend
+# Check if we're in Railway environment and frontend build exists
+frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+frontend_next_static_path = frontend_build_path / "_next" / "static"
+
+print(f"Checking for frontend build at: {frontend_build_path}")
+print(f"Frontend build exists: {frontend_build_path.exists()}")
+print(f"Frontend Next.js static exists: {frontend_next_static_path.exists()}")
+
+# Mount Next.js static files if they exist
+if frontend_next_static_path.exists():
+    print("Mounting Next.js static files")
+    app.mount("/_next/static", StaticFiles(directory=str(frontend_next_static_path)), name="nextstatic")
+
+# Mount other static assets from the out directory
+if frontend_build_path.exists():
+    # Mount images and other assets
+    frontend_images_path = frontend_build_path / "images"
+    frontend_sounds_path = frontend_build_path / "sounds"
+    
+    if frontend_images_path.exists():
+        print("Mounting frontend images")
+        app.mount("/images", StaticFiles(directory=str(frontend_images_path)), name="images")
+    
+    if frontend_sounds_path.exists():
+        print("Mounting frontend sounds")
+        app.mount("/sounds", StaticFiles(directory=str(frontend_sounds_path)), name="sounds")
+
+# Catch-all route to serve the frontend application
+@app.get("/{full_path:path}")
+async def serve_frontend(request: Request, full_path: str):
+    """
+    Catch-all route to serve the Next.js frontend application.
+    This should be the last route defined.
+    """
+    # Don't serve frontend for API routes
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # Try to serve static files from the Next.js out directory
+    if frontend_build_path.exists():
+        try:
+            # Handle root path - serve index.html
+            if full_path == "" or full_path == "/":
+                index_path = frontend_build_path / "index.html"
+                if index_path.exists():
+                    print(f"Serving index.html from: {index_path}")
+                    return FileResponse(str(index_path), media_type="text/html")
+            
+            # Handle other paths - try to serve the corresponding HTML file
+            else:
+                # Clean the path
+                clean_path = full_path.strip("/")
+                
+                # Try to serve the exact file if it exists
+                file_path = frontend_build_path / clean_path
+                if file_path.exists() and file_path.is_file():
+                    print(f"Serving file: {file_path}")
+                    return FileResponse(str(file_path))
+                
+                # Try to serve as HTML file
+                html_path = frontend_build_path / f"{clean_path}.html"
+                if html_path.exists():
+                    print(f"Serving HTML file: {html_path}")
+                    return FileResponse(str(html_path), media_type="text/html")
+                
+                # Try to serve index.html from subdirectory
+                dir_index_path = frontend_build_path / clean_path / "index.html"
+                if dir_index_path.exists():
+                    print(f"Serving directory index: {dir_index_path}")
+                    return FileResponse(str(dir_index_path), media_type="text/html")
+                
+                # If nothing found, serve the main index.html (SPA fallback)
+                index_path = frontend_build_path / "index.html"
+                if index_path.exists():
+                    print(f"Serving SPA fallback index.html for path: {full_path}")
+                    return FileResponse(str(index_path), media_type="text/html")
+                    
+        except Exception as e:
+            print(f"Error serving static frontend file: {str(e)}")
+    
+    # Fallback: serve a basic HTML page that explains the issue
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Language Tutor - Setup Required</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                .container { max-width: 600px; margin: 0 auto; }
+                .error { background: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; border-radius: 5px; }
+                .api-link { background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 20px 0; }
+                code { background: #f1f3f4; padding: 2px 4px; border-radius: 3px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Language Tutor Backend</h1>
+                <div class="error">
+                    <h2>Frontend Not Found</h2>
+                    <p>The frontend application build was not found. This usually means:</p>
+                    <ul>
+                        <li>The frontend hasn't been built yet</li>
+                        <li>The build process failed during deployment</li>
+                        <li>The frontend files are in a different location</li>
+                    </ul>
+                </div>
+                
+                <div class="api-link">
+                    <h3>API Status</h3>
+                    <p>The backend API is running. You can check the health status:</p>
+                    <p><a href="/api/health">API Health Check</a></p>
+                    <p><a href="/api/test">API Test Endpoint</a></p>
+                </div>
+                
+                <h3>Deployment Information</h3>
+                <p><strong>Environment:</strong> Railway</p>
+                <p><strong>Frontend Build Path:</strong> <code>frontend/.next</code></p>
+                <p><strong>Expected Files:</strong> Next.js standalone build</p>
+            </div>
+        </body>
+        </html>
+        """,
+        status_code=200
+    )
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "8000"))
