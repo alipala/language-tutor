@@ -57,8 +57,8 @@ export default function ForgotPasswordPage() {
 
       {/* Main content */}
       <main className="flex-grow flex items-center justify-center p-4">
-        <div className="max-w-md mx-auto bg-white/10 backdrop-blur-md p-8 rounded-md shadow-xl overflow-hidden border border-white/20">
-          <h2 className="text-2xl font-bold text-center mb-6 text-white">
+        <div className="max-w-md mx-auto bg-white p-8 rounded-md shadow-xl overflow-hidden border-2 border-[#4ECFBF]">
+          <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
             {isSubmitted ? 'Check Your Email' : 'Forgot Password'}
           </h2>
           
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (
             <>
-              <p className="mb-6 text-white/80">
+              <p className="mb-6 text-gray-600">
                 Enter your email address and we'll send you a link to reset your password.
               </p>
               
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                    className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
                     style={{transition: 'all 0.3s ease'}}
                   />
                 </div>
@@ -128,11 +128,11 @@ export default function ForgotPasswordPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="h-full w-full z-[1] relative bg-transparent border-none text-white px-0 rounded-md text-lg font-medium cursor-pointer"
+                    className="h-full w-full z-[1] relative bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-300"
                   >
                     {isLoading ? (
                       <div className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-[#4ECFBF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -146,10 +146,10 @@ export default function ForgotPasswordPage() {
               </form>
               
               <div className="signup-link text-center mt-7">
-                <span className="text-white/80 text-sm">Remember your password?</span>
+                <span className="text-gray-600 text-sm">Remember your password?</span>
                 <Link
                   href="/auth/login"
-                  className="ml-1 text-pink-400 hover:text-pink-300 transition-colors font-medium"
+                  className="ml-1 text-[#4ECFBF] hover:text-[#3db3a7] transition-colors font-medium underline"
                 >
                   Sign in
                 </Link>
