@@ -75,8 +75,8 @@ export default function ForgotPasswordPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-white/80 mb-6">
-                We've sent a password reset link to <strong className="text-white">{email}</strong>. Please check your email and follow the instructions to reset your password.
+              <p className="text-gray-600 mb-6">
+                We've sent a password reset link to <strong className="text-gray-800">{email}</strong>. Please check your email and follow the instructions to reset your password.
               </p>
               <div className="flex flex-col space-y-3">
                 <div className="field btn h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
                   <Link href="/auth/login" className="block">
                     <button
                       type="button"
-                      className="h-full w-full z-[1] relative bg-transparent border-none text-white px-0 rounded-md text-lg font-medium cursor-pointer"
+                      className="h-full w-full z-[1] relative bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-300"
                     >
                       Return to Sign In
                     </button>
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <button 
                   onClick={() => setIsSubmitted(false)}
-                  className="text-sm text-pink-400 hover:text-pink-300 transition-colors font-medium"
+                  className="text-sm text-[#4ECFBF] hover:text-[#3db3a7] transition-colors font-medium underline"
                 >
                   Try another email
                 </button>
@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
       <footer className="w-full p-4 text-center text-xs text-white/60">
         <p>
           Need help?{' '}
-          <a href="#" className="text-pink-400 hover:text-pink-300 transition-colors font-medium">
+          <a href="#" className="text-white hover:text-white/80 transition-colors font-medium">
             Contact support
           </a>
         </p>
