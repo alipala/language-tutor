@@ -156,7 +156,7 @@ export default function Home() {
           <section id="features" className="landing-section landing-first pt-2">
             <div className="section-background"></div>
             <div className="section-content">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(255,255,255,0.15)] transition-shadow duration-300 w-full max-w-none">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-12 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(255,255,255,0.15)] transition-shadow duration-300 w-[130%] max-w-none -mx-[15%] py-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                   {/* Left Column - Content */}
                   <div className="text-left">
