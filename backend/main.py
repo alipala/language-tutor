@@ -568,7 +568,14 @@ async def assess_speaking_proficiency(request: SpeakingAssessmentRequest):
 
 # Setup static file serving for the frontend
 # Check if we're in Railway environment and frontend build exists
-frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+# Handle different working directory scenarios (local vs Railway)
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
+    # In Railway, the working directory is 'backend' but we need to access the parent directory
+    frontend_build_path = Path("/app/frontend/out")
+else:
+    # Local development - relative path from backend directory
+    frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+
 frontend_next_static_path = frontend_build_path / "_next" / "static"
 
 print(f"Checking for frontend build at: {frontend_build_path}")
