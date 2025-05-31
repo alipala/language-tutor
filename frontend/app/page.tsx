@@ -158,7 +158,7 @@ export default function Home() {
             <div className="section-content">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 {/* Left Column - Content */}
-                <div className="text-left">
+                <div className="text-left bg-white/10 backdrop-blur-sm rounded-xl p-8 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(255,255,255,0.15)] transition-shadow duration-300">
                   <motion.h1 
                     className="text-4xl md:text-5xl lg:text-6xl font-bold text-left"
                     initial={{ opacity: 0, x: -20 }}
