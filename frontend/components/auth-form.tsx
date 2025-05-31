@@ -111,7 +111,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   };
 
   return (
-    <div className="wrapper max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-2xl shadow-2xl overflow-hidden border border-white/30">
+    <div className="wrapper max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg overflow-hidden">
       {/* Title text - exactly like the original example */}
       <div className="title-text flex w-[200%]">
         <div ref={titleLoginRef} className="title w-1/2 text-2xl font-bold text-center transition-all duration-600 text-gray-800" style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}>
@@ -125,7 +125,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       {/* Form container - following the original HTML structure */}
       <div className="form-container w-full overflow-hidden">
         {/* Slide controls */}
-        <div className="slide-controls relative flex h-[50px] w-full overflow-hidden my-7 justify-between border border-white/30 rounded-md">
+        <div className="slide-controls relative flex h-[50px] w-full overflow-hidden my-7 justify-between border border-gray-200 rounded-md bg-gray-50">
           <input 
             type="radio" 
             name="slide" 
@@ -144,7 +144,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           />
           <label 
             htmlFor="login" 
-            className={`slide login h-full w-full text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 ${activeTab === 'login' ? 'text-white' : 'text-white/70'}`}
+            className={`slide login h-full w-full text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 ${activeTab === 'login' ? 'text-white' : 'text-gray-600'}`}
             onClick={() => switchTab('login')}
             style={{transition: 'all 0.6s ease'}}
           >
@@ -152,7 +152,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </label>
           <label 
             htmlFor="signup" 
-            className={`slide signup h-full w-full text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 ${activeTab === 'signup' ? 'text-white' : 'text-white/70'}`}
+            className={`slide signup h-full w-full text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 ${activeTab === 'signup' ? 'text-white' : 'text-gray-600'}`}
             onClick={() => switchTab('signup')}
             style={{transition: 'all 0.6s ease'}}
           >
@@ -192,7 +192,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF]/40 border-b-[2px] border-b-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF]/20 focus:bg-white"
+                className="h-full w-full outline-none pl-4 rounded-md border-none bg-gray-100 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:bg-gray-50"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.email && (
@@ -207,7 +207,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF]/40 border-b-[2px] border-b-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF]/20 focus:bg-white"
+                className="h-full w-full outline-none pl-4 rounded-md border-none bg-gray-100 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:bg-gray-50"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.password && (
@@ -302,7 +302,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF]/40 border-b-[2px] border-b-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF]/20 focus:bg-white"
+                className="h-full w-full outline-none pl-4 rounded-md border-none bg-gray-100 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:bg-gray-50"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.name && (
@@ -317,7 +317,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF]/40 border-b-[2px] border-b-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF]/20 focus:bg-white"
+                className="h-full w-full outline-none pl-4 rounded-md border-none bg-gray-100 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:bg-gray-50"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.email && (
@@ -332,7 +332,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF]/40 border-b-[2px] border-b-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF]/20 focus:bg-white"
+                className="h-full w-full outline-none pl-4 rounded-md border-none bg-gray-100 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:bg-gray-50"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.password && (
@@ -347,7 +347,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF]/40 border-b-[2px] border-b-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF]/20 focus:bg-white"
+                className="h-full w-full outline-none pl-4 rounded-md border-none bg-gray-100 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:bg-gray-50"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.confirmPassword && (
