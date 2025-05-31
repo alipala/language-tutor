@@ -79,16 +79,14 @@ export default function ForgotPasswordPage() {
                 We've sent a password reset link to <strong className="text-gray-800">{email}</strong>. Please check your email and follow the instructions to reset your password.
               </p>
               <div className="flex flex-col space-y-3">
-                <div className="field btn h-[50px] w-full mt-5 rounded-md">
-                  <Link href="/auth/login" className="block">
-                    <button
-                      type="button"
-                      className="h-full w-full bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-300"
-                    >
-                      Return to Sign In
-                    </button>
-                  </Link>
-                </div>
+                <Link href="/auth/login" className="block mt-5">
+                  <button
+                    type="button"
+                    className="h-[50px] w-full bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-300"
+                  >
+                    Return to Sign In
+                  </button>
+                </Link>
                 <button 
                   onClick={() => setIsSubmitted(false)}
                   className="text-sm text-[#4ECFBF] hover:text-[#3db3a7] transition-colors font-medium underline"
