@@ -111,13 +111,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   };
 
   return (
-    <div className="wrapper max-w-md mx-auto bg-white/10 backdrop-blur-md p-8 rounded-md shadow-xl overflow-hidden border border-white/20">
+    <div className="wrapper max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-2xl shadow-2xl overflow-hidden border border-white/30">
       {/* Title text - exactly like the original example */}
       <div className="title-text flex w-[200%]">
-        <div ref={titleLoginRef} className="title w-1/2 text-2xl font-bold text-center transition-all duration-600" style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}>
+        <div ref={titleLoginRef} className="title w-1/2 text-2xl font-bold text-center transition-all duration-600 text-gray-800" style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}>
           Login Form
         </div>
-        <div className="title w-1/2 text-2xl font-bold text-center">
+        <div className="title w-1/2 text-2xl font-bold text-center text-gray-800">
           Signup Form
         </div>
       </div>
@@ -192,7 +192,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                className="h-full w-full outline-none pl-4 rounded-md border border-gray-300 border-b-[2px] bg-gray-50 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-teal-500 focus:bg-white"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.email && (
@@ -207,7 +207,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                className="h-full w-full outline-none pl-4 rounded-md border border-gray-300 border-b-[2px] bg-gray-50 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-teal-500 focus:bg-white"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.password && (
@@ -216,7 +216,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </div>
             
             <div className="pass-link mt-1 text-right">
-              <a href="/auth/forgot-password" className="text-pink-400 hover:text-pink-300 text-sm transition-colors font-medium">
+              <a href="/auth/forgot-password" className="text-teal-600 hover:text-teal-700 text-sm transition-colors font-medium">
                 Forgot password?
               </a>
             </div>
@@ -229,7 +229,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="h-full w-full z-[1] relative bg-transparent border-none text-white px-0 rounded-md text-lg font-medium cursor-pointer"
+                className="h-full w-full z-[1] relative bg-teal-600 hover:bg-teal-700 border-none text-white px-0 rounded-md text-lg font-medium cursor-pointer transition-colors duration-300"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -246,11 +246,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </div>
             
             <div className="signup-link text-center mt-7">
-              <span className="text-white/80 text-sm">Not a member?</span>
+              <span className="text-gray-600 text-sm">Not a member?</span>
               <a
                 href="#"
                 onClick={handleSignupLinkClick}
-                className="ml-1 text-white hover:text-white/80 transition-colors font-medium underline"
+                className="ml-1 text-teal-600 hover:text-teal-700 transition-colors font-medium underline"
               >
                 Signup now
               </a>
@@ -259,10 +259,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/20"></div>
+                  <div className="w-full border-t border-gray-300"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-transparent text-white/60">
+                  <span className="px-2 bg-white text-gray-500">
                     Or continue with
                   </span>
                 </div>
@@ -302,7 +302,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                className="h-full w-full outline-none pl-4 rounded-md border border-gray-300 border-b-[2px] bg-gray-50 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-teal-500 focus:bg-white"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.name && (
@@ -317,7 +317,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                className="h-full w-full outline-none pl-4 rounded-md border border-gray-300 border-b-[2px] bg-gray-50 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-teal-500 focus:bg-white"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.email && (
@@ -332,7 +332,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                className="h-full w-full outline-none pl-4 rounded-md border border-gray-300 border-b-[2px] bg-gray-50 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-teal-500 focus:bg-white"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.password && (
@@ -347,7 +347,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-white/30 border-b-[2px] bg-white/10 backdrop-blur text-white placeholder-white/60 text-base transition-all duration-300 focus:border-pink-400"
+                className="h-full w-full outline-none pl-4 rounded-md border border-gray-300 border-b-[2px] bg-gray-50 text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-teal-500 focus:bg-white"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.confirmPassword && (
@@ -363,7 +363,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="h-full w-full z-[1] relative bg-transparent border-none text-white px-0 rounded-md text-lg font-medium cursor-pointer"
+                className="h-full w-full z-[1] relative bg-teal-600 hover:bg-teal-700 border-none text-white px-0 rounded-md text-lg font-medium cursor-pointer transition-colors duration-300"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -382,10 +382,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/20"></div>
+                  <div className="w-full border-t border-gray-300"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-transparent text-white/60">
+                  <span className="px-2 bg-white text-gray-500">
                     Or continue with
                   </span>
                 </div>
