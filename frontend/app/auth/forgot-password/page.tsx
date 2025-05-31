@@ -79,15 +79,11 @@ export default function ForgotPasswordPage() {
                 We've sent a password reset link to <strong className="text-gray-800">{email}</strong>. Please check your email and follow the instructions to reset your password.
               </p>
               <div className="flex flex-col space-y-3">
-                <div className="field btn h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
-                  <div 
-                    className="btn-layer h-full w-[300%] absolute left-[-100%] bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-md"
-                    style={{transition: 'all 0.4s ease'}}
-                  ></div>
+                <div className="field btn h-[50px] w-full mt-5 rounded-md">
                   <Link href="/auth/login" className="block">
                     <button
                       type="button"
-                      className="h-full w-full z-[1] relative bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-300"
+                      className="h-full w-full bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-300"
                     >
                       Return to Sign In
                     </button>
