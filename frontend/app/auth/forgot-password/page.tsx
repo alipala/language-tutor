@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col app-background">
+    <div className="min-h-screen flex flex-col" style={{backgroundColor: '#4ECFBF'}}>
       {/* Header with logo */}
       <header className="w-full p-4 md:p-6">
         <div className="container mx-auto">
