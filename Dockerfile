@@ -33,12 +33,9 @@ RUN npm install framer-motion@12.6.2 --save
 # Build with increased memory allocation
 RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
-# For standalone output mode, copy the standalone output to a location the backend can find
-RUN mkdir -p /app/frontend/public
-RUN cp -r /app/frontend/.next/standalone/frontend/* /app/frontend/
-RUN cp -r /app/frontend/.next/static /app/frontend/public/
-# Create a symlink to help the backend find the build
-RUN ln -sf /app/frontend/.next/standalone /app/frontend/out
+# For static export mode, the build output is already in the 'out' directory
+# No need to copy files - the backend will serve directly from frontend/out
+# The static export creates all necessary files in frontend/out
 
 # Back to app directory
 WORKDIR /app
