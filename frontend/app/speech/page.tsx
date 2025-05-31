@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
-import { isPlanValid } from '@/lib/guest-utils';
+import { isPlanValid, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 import TimeUpModal from '@/components/time-up-modal';
 
@@ -101,14 +101,16 @@ export default function SpeechPage() {
             } else {
               setPlanCreationTime(storedCreationTime);
               
-              // Check if the plan is still valid based on time limits
+              // Immediately check if the plan is still valid based on time limits
               const userAuthenticated = isAuthenticated();
-              if (!isPlanValid(userAuthenticated, storedCreationTime)) {
-                console.log('[SpeechPage] Plan has expired, showing time up modal');
+              
+              // Use the enhanced validation function that also marks as expired
+              const isExpired = checkAndMarkSessionExpired(planParam, userAuthenticated);
+              
+              if (isExpired) {
+                console.log('[SpeechPage] Plan has expired on page load, showing time up modal');
                 // Show the time's up modal instead of redirecting
                 setShowTimeUpModal(true);
-                // Mark the plan as expired
-                sessionStorage.setItem(`plan_${planParam}_expired`, 'true');
                 return;
               }
             }

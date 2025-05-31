@@ -74,3 +74,59 @@ export const isPlanValid = (isAuthenticated: boolean, planCreationTime: string |
     return false; // If there's an error, consider the plan invalid
   }
 };
+
+/**
+ * Calculates the remaining time for a conversation based on creation time and user authentication status
+ * @param {boolean} isAuthenticated - Whether the user is authenticated
+ * @param {string | null} planCreationTime - ISO string of when the plan was created
+ * @returns {number} Remaining time in seconds, or 0 if expired
+ */
+export const getRemainingTime = (isAuthenticated: boolean, planCreationTime: string | null): number => {
+  if (!planCreationTime) return 0;
+  
+  try {
+    const creationTime = new Date(planCreationTime).getTime();
+    const currentTime = new Date().getTime();
+    const elapsedSeconds = Math.floor((currentTime - creationTime) / 1000);
+    
+    // Get the appropriate duration based on authentication status
+    const maxDuration = getConversationDuration(isAuthenticated);
+    
+    // Calculate remaining time
+    const remainingTime = maxDuration - elapsedSeconds;
+    
+    // Return 0 if time has expired, otherwise return remaining time
+    return Math.max(0, remainingTime);
+  } catch (error) {
+    console.error('Error calculating remaining time:', error);
+    return 0; // If there's an error, consider time expired
+  }
+};
+
+/**
+ * Checks if a conversation session has expired and marks it as expired in sessionStorage
+ * @param {string} planId - The plan ID to check
+ * @param {boolean} isAuthenticated - Whether the user is authenticated
+ * @returns {boolean} Whether the session is expired
+ */
+export const checkAndMarkSessionExpired = (planId: string, isAuthenticated: boolean): boolean => {
+  // Check if already marked as expired
+  const isAlreadyExpired = sessionStorage.getItem(`plan_${planId}_expired`) === 'true';
+  if (isAlreadyExpired) {
+    return true;
+  }
+  
+  // Get the creation time
+  const planCreationTime = sessionStorage.getItem(`plan_${planId}_creationTime`);
+  
+  // Check if the plan is still valid
+  const isValid = isPlanValid(isAuthenticated, planCreationTime);
+  
+  // If not valid, mark as expired
+  if (!isValid) {
+    sessionStorage.setItem(`plan_${planId}_expired`, 'true');
+    return true;
+  }
+  
+  return false;
+};

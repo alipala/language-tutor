@@ -7,7 +7,7 @@ import { RealtimeMessage } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
-import { getConversationDuration, formatTime, getGuestLimitationsDescription } from '@/lib/guest-utils';
+import { getConversationDuration, formatTime, getGuestLimitationsDescription, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 import ModernTimer from '@/components/modern-timer';
 
@@ -36,11 +36,40 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const [isConversationTimerActive, setIsConversationTimerActive] = useState(false);
   const [conversationTimeUp, setConversationTimeUp] = useState(false);
   
-  // Initialize conversation timer for guest users if they have assessment data
+  // Initialize conversation timer and check for expired sessions
   useEffect(() => {
     const hasAssessmentData = sessionStorage.getItem('speakingAssessmentData') !== null;
     
-    if (!isAuthenticated() && hasAssessmentData) {
+    // Check for existing plan and validate timer immediately on component mount
+    const urlParams = new URLSearchParams(window.location.search);
+    const planParam = urlParams.get('plan');
+    
+    if (planParam) {
+      console.log('Checking plan timer validity on speech client mount:', planParam);
+      
+      // Use the enhanced validation function to check if session is expired
+      const isExpired = checkAndMarkSessionExpired(planParam, isAuthenticated());
+      
+      if (isExpired) {
+        console.log('Plan session has expired, preventing conversation');
+        setConversationTimeUp(true);
+        return;
+      }
+      
+      // If not expired, calculate remaining time and set timer
+      const planCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
+      if (planCreationTime) {
+        const remainingTime = getRemainingTime(isAuthenticated(), planCreationTime);
+        if (remainingTime > 0) {
+          console.log('Setting conversation timer to remaining time:', remainingTime);
+          setConversationTimer(remainingTime);
+          setConversationTimeUp(false);
+        } else {
+          console.log('No remaining time, marking conversation as expired');
+          setConversationTimeUp(true);
+        }
+      }
+    } else if (!isAuthenticated() && hasAssessmentData) {
       console.log('Guest user has assessment data, allowing limited conversation');
       // Always allow the conversation for guest users who completed an assessment
       setConversationTimeUp(false);
