@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
 import { getConversationDuration, formatTime, getGuestLimitationsDescription } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
+import ModernTimer from '@/components/modern-timer';
 
 interface SpeechClientProps {
   language: string;
@@ -673,30 +674,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           if (prevTimer === null) return null;
           const newTimer = prevTimer - 1;
           
-          // Show warning at 30 seconds remaining
-          if (newTimer === 30) {
-            // Show notification that time is running out
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-orange-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
-            notification.innerHTML = `
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div>
-                  <p class="font-medium">30 seconds remaining</p>
-                  <p class="text-sm opacity-90">Your conversation will end soon</p>
-                </div>
-              </div>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-              if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-              }
-            }, 5000);
-          }
+          // Timer warning is now handled by the ModernTimer component visual indicators
+          // No popup notifications needed
           
           // End conversation when timer reaches 0
           if (newTimer <= 0) {
@@ -768,47 +747,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       setIsConversationTimerActive(true);
       setConversationTimeUp(false);
       
-      // Show initial notification about time limit
-      setTimeout(() => {
-        const notification = document.createElement('div');
-        notification.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50';
-        
-        if (!isUserAuthenticated) {
-          // Guest user notification
-          notification.innerHTML = `
-            <div class="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <div>
-                <p class="font-medium">Guest Mode: ${formatTime(getConversationDuration(false))} conversation</p>
-                <p class="text-sm opacity-90">Sign in for ${formatTime(getConversationDuration(true))} conversation time</p>
-              </div>
-            </div>
-          `;
-        } else {
-          // Registered user notification
-          notification.innerHTML = `
-            <div class="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <div>
-                <p class="font-medium">Conversation time: ${formatTime(getConversationDuration(true))}</p>
-                <p class="text-sm opacity-90">Your conversation will end after this time</p>
-              </div>
-            </div>
-          `;
-        }
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-          if (document.body.contains(notification)) {
-            document.body.removeChild(notification);
-          }
-        }, 6000);
-      }, 1000);
+      // Timer information is now displayed visually in the modern timer component
+      // No need for popup notifications
     }
     
     // If starting a brand new conversation, reset the paused state
@@ -999,6 +939,24 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           </div>
         )}
         
+        {/* Timer positioned aligned with Conversation Transcript container top line */}
+        {conversationTimer !== null && (
+          <div className="fixed top-32 sm:top-36 md:top-40 lg:top-44 right-2 sm:right-4 z-40">
+            <div className="scale-75 sm:scale-90 md:scale-100">
+              <ModernTimer
+                initialTime={getConversationDuration(isAuthenticated())}
+                isActive={isConversationTimerActive}
+                onTimeUp={() => {
+                  setConversationTimeUp(true);
+                  setIsConversationTimerActive(false);
+                  handleEndConversation();
+                }}
+                className=""
+              />
+            </div>
+          </div>
+        )}
+
         {/* Header - Redesigned */}
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold tracking-tight text-white">
@@ -1125,7 +1083,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]" style={{animationDelay: '300ms'}}>
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col h-[450px] sm:h-[500px] md:h-[550px] lg:h-[650px]" style={{animationDelay: '300ms'}}>
                     <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
