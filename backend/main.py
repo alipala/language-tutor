@@ -325,17 +325,63 @@ async def generate_token(request: TutorSessionRequest):
                 # Use OpenAI's web search API to get current information about the topic
                 search_prompt = f"Provide comprehensive, current information about: {request.user_prompt}. Include recent developments, key facts, context, and relevant details that would be educational for language learners."
                 
-                # Use the correct web search API format with gpt-4o-search-preview
-                search_response = client.chat.completions.create(
-                    model="gpt-4o-search-preview",  # Use the web search preview model
-                    web_search_options={},  # Enable web search
-                    messages=[
-                        {"role": "system", "content": "You are a research assistant. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
-                        {"role": "user", "content": search_prompt}
-                    ],
-                    temperature=0.3,
-                    max_tokens=1500
-                )
+                # Try multiple web search approaches based on latest OpenAI API
+                search_response = None
+                
+                # Method 1: Try the latest web search format
+                try:
+                    print(f"[REALTIME_TOKEN] Trying method 1: gpt-4o with web search tools")
+                    search_response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "You are a research assistant with access to current information. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
+                            {"role": "user", "content": search_prompt}
+                        ],
+                        tools=[
+                            {
+                                "type": "web_search"
+                            }
+                        ],
+                        temperature=0.3,
+                        max_tokens=1500
+                    )
+                    print(f"[REALTIME_TOKEN] Method 1 successful")
+                except Exception as e1:
+                    print(f"[REALTIME_TOKEN] Method 1 failed: {str(e1)}")
+                    
+                    # Method 2: Try gpt-4o-search-preview model
+                    try:
+                        print(f"[REALTIME_TOKEN] Trying method 2: gpt-4o-search-preview")
+                        search_response = client.chat.completions.create(
+                            model="gpt-4o-search-preview",
+                            messages=[
+                                {"role": "system", "content": "You are a research assistant. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
+                                {"role": "user", "content": search_prompt}
+                            ],
+                            temperature=0.3,
+                            max_tokens=1500
+                        )
+                        print(f"[REALTIME_TOKEN] Method 2 successful")
+                    except Exception as e2:
+                        print(f"[REALTIME_TOKEN] Method 2 failed: {str(e2)}")
+                        
+                        # Method 3: Fallback to regular gpt-4o with enhanced prompting
+                        try:
+                            print(f"[REALTIME_TOKEN] Trying method 3: enhanced gpt-4o prompting")
+                            enhanced_prompt = f"Based on your knowledge, provide comprehensive information about: {request.user_prompt}. Focus on recent developments, key facts, and context that would be educational for language learners. If this is a recent event, provide what you know and indicate the timeframe of your knowledge."
+                            search_response = client.chat.completions.create(
+                                model="gpt-4o",
+                                messages=[
+                                    {"role": "system", "content": "You are a knowledgeable research assistant. Provide comprehensive, factual information about the requested topic. Include context and details that would be educational for language learners. Be thorough and informative."},
+                                    {"role": "user", "content": enhanced_prompt}
+                                ],
+                                temperature=0.3,
+                                max_tokens=1500
+                            )
+                            print(f"[REALTIME_TOKEN] Method 3 successful (fallback)")
+                        except Exception as e3:
+                            print(f"[REALTIME_TOKEN] Method 3 failed: {str(e3)}")
+                            raise Exception(f"All web search methods failed: {str(e1)}, {str(e2)}, {str(e3)}")
                 
                 if search_response and search_response.choices:
                     web_search_results = search_response.choices[0].message.content
