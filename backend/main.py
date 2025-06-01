@@ -294,6 +294,12 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         instructions = language_data["levels"][level].get("instructions", "")
         
+        # Add custom topic instructions if provided
+        if request.topic == "custom" and request.user_prompt:
+            print(f"[REALTIME_TOKEN] Adding custom topic instructions for: {request.user_prompt}")
+            custom_topic_instructions = f"\n\nCUSTOM TOPIC FOCUS: The user has chosen to discuss the topic: '{request.user_prompt}'. IMPORTANT: You must start the conversation by immediately introducing and discussing this specific topic. Do NOT ask the user what topic they want to discuss - they have already chosen '{request.user_prompt}'. Begin your first message by talking about this topic in an engaging way appropriate for {level} level {language} learners. Provide interesting information, context, and educational content about '{request.user_prompt}'. Ask relevant questions related to this topic to help the user practice {language} while exploring this subject. Keep the entire conversation focused on this chosen topic."
+            instructions = instructions + custom_topic_instructions
+        
         # Add enhanced language detection and enforcement instructions
         language_detection_instructions = f"\n\nCRITICAL LANGUAGE DETECTION ENHANCEMENT: You have advanced language detection capabilities. Before responding to any user input, carefully analyze the language being spoken. Listen for pronunciation patterns, vocabulary, grammar structures, and accent characteristics. If the user is speaking in the target language ({language}), respond normally. If they are speaking in a different language, use the standard language reminder response. Pay special attention to pronunciation, accent, and context clues to accurately identify the language being spoken. Do not assume a language based on a single unclear word - analyze the overall speech pattern."
         
