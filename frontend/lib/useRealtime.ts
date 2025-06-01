@@ -346,7 +346,7 @@ export function useRealtime() {
   }, []);
 
   // Initialize the realtime service
-  const initialize = useCallback(async (language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any) => {
+  const initialize = useCallback(async (language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any, researchData?: string) => {
     if (!isBrowser) return false;
     if (!realtimeService) return false;
     

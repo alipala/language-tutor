@@ -238,6 +238,7 @@ class TutorSessionRequest(BaseModel):
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: Optional[str] = None  # User prompt for custom topics
     assessment_data: Optional[Dict[str, Any]] = None  # Assessment data from speaking assessment
+    research_data: Optional[str] = None  # Pre-researched data for custom topics
 
 # Define a new model for custom topic prompts
 class CustomTopicRequest(BaseModel):
@@ -313,23 +314,23 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         instructions = language_data["levels"][level].get("instructions", "")
         
-        # Add custom topic instructions with web search if provided
+        # Add custom topic instructions with research data if provided
         if request.topic == "custom" and request.user_prompt:
-            print(f"[REALTIME_TOKEN] Processing custom topic with web search: {request.user_prompt}")
+            print(f"[REALTIME_TOKEN] Processing custom topic: {request.user_prompt}")
             
-            # Perform web search to get current information about the topic
+            # Check if we have pre-researched data (from the new research endpoint)
             web_search_results = ""
-            try:
-                print(f"[REALTIME_TOKEN] Attempting web search for topic: {request.user_prompt}")
-                
-                # Use OpenAI's web search API to get current information about the topic
-                search_prompt = f"Provide comprehensive, current information about: {request.user_prompt}. Include recent developments, key facts, context, and relevant details that would be educational for language learners."
-                
-                # Try multiple web search approaches based on latest OpenAI API
-                search_response = None
-                
-                # Use a working approach: Enhanced GPT-4o with current knowledge prompting
+            research_source = "none"
+            
+            # First, check if research data was provided in the request
+            if request.research_data:
+                web_search_results = request.research_data
+                research_source = "request_data"
+                print(f"[REALTIME_TOKEN] ✅ Using research data from request: {len(web_search_results)} characters")
+            else:
+                # Fallback: perform research here (for backward compatibility)
                 try:
+                    print(f"[REALTIME_TOKEN] No pre-researched data found, performing research now")
                     print(f"[REALTIME_TOKEN] Using enhanced GPT-4o for topic research")
                     enhanced_prompt = f"""Provide comprehensive, educational information about: {request.user_prompt}
                     
@@ -351,38 +352,33 @@ Make this informative and suitable for {level} level {language} language learner
                         temperature=0.3,
                         max_tokens=1500
                     )
-                    print(f"[REALTIME_TOKEN] ✅ Topic research successful")
-                except Exception as search_error:
-                    print(f"[REALTIME_TOKEN] ❌ Topic research failed: {str(search_error)}")
-                    raise search_error
-                
-                if search_response and search_response.choices:
-                    web_search_results = search_response.choices[0].message.content
-                    print(f"[REALTIME_TOKEN] ✅ Web search successful - got {len(web_search_results)} characters of information")
-                    print(f"[REALTIME_TOKEN] 📄 Web search results preview: {web_search_results[:300]}...")
-                    print(f"[REALTIME_TOKEN] 📊 Full web search results:\n{web_search_results}")
-                else:
-                    print(f"[REALTIME_TOKEN] ❌ Web search returned no results")
                     
-            except Exception as search_error:
-                print(f"[REALTIME_TOKEN] ❌ Web search failed: {str(search_error)}")
-                print(f"[REALTIME_TOKEN] Continuing without web search results")
-                web_search_results = ""
+                    if search_response and search_response.choices:
+                        web_search_results = search_response.choices[0].message.content
+                        research_source = "realtime_fallback"
+                        print(f"[REALTIME_TOKEN] ✅ Fallback research successful - got {len(web_search_results)} characters")
+                    else:
+                        print(f"[REALTIME_TOKEN] ❌ Fallback research returned no results")
+                        
+                except Exception as search_error:
+                    print(f"[REALTIME_TOKEN] ❌ Fallback research failed: {str(search_error)}")
+                    web_search_results = ""
+                    research_source = "failed"
             
-            # Create enhanced custom topic instructions with web search results
+            # Create enhanced custom topic instructions with research results
             custom_topic_instructions = f"\n\n🎯 CRITICAL CUSTOM TOPIC INSTRUCTION - HIGHEST PRIORITY:\n\nThe user has specifically chosen to discuss: '{request.user_prompt}'\n\n"
             
             if web_search_results:
                 custom_topic_instructions += f"📚 CURRENT INFORMATION ABOUT THE TOPIC:\n{web_search_results}\n\n"
-                print(f"[REALTIME_TOKEN] ✅ Added {len(web_search_results)} characters of web search results to AI instructions")
+                print(f"[REALTIME_TOKEN] ✅ Added {len(web_search_results)} characters of research results to AI instructions (source: {research_source})")
             else:
-                print(f"[REALTIME_TOKEN] ⚠️ No web search results available, using base knowledge only")
+                print(f"[REALTIME_TOKEN] ⚠️ No research results available, using base knowledge only")
             
             custom_topic_instructions += f"YOU MUST START YOUR VERY FIRST MESSAGE by discussing this exact topic using the current information provided above. Do NOT greet with generic phrases like 'Hello! How can I help you today?' Instead, immediately begin with content about '{request.user_prompt}' in a way that's appropriate for {level} level {language} learners.\n\nExample first message structure:\n'Let's talk about {request.user_prompt}. [Use the current information provided to give interesting facts]. What do you think about [specific current aspect of the topic]?'\n\nIMPORTANT RULES:\n- Your FIRST message must be about '{request.user_prompt}' - no generic greetings\n- Use the current information provided above to give accurate, up-to-date content\n- Provide educational content about this specific topic\n- Ask engaging questions related to '{request.user_prompt}' and current developments\n- Keep the entire conversation focused on this chosen topic\n- Adapt the complexity to {level} level\n- Help the user practice {language} while exploring '{request.user_prompt}' with current context"
             
             instructions = custom_topic_instructions + "\n\n" + instructions
             print(f"[REALTIME_TOKEN] 📝 Final instructions length: {len(instructions)} characters")
-            print(f"[REALTIME_TOKEN] 🎯 Custom topic setup complete with {'web-enhanced' if web_search_results else 'basic'} knowledge")
+            print(f"[REALTIME_TOKEN] 🎯 Custom topic setup complete with {'research-enhanced' if web_search_results else 'basic'} knowledge (source: {research_source})")
         
         # Add enhanced language detection and enforcement instructions
         language_detection_instructions = f"\n\nCRITICAL LANGUAGE DETECTION ENHANCEMENT: You have advanced language detection capabilities. Before responding to any user input, carefully analyze the language being spoken. Listen for pronunciation patterns, vocabulary, grammar structures, and accent characteristics. If the user is speaking in the target language ({language}), respond normally. If they are speaking in a different language, use the standard language reminder response. Pay special attention to pronunciation, accent, and context clues to accurately identify the language being spoken. Do not assume a language based on a single unclear word - analyze the overall speech pattern."

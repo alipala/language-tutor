@@ -439,7 +439,30 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         // We only want fresh assessment data for the current session
         console.log('Skipping user profile assessment data to avoid old cached data');
         
-        // Pass the language, level, topic, userPrompt, and assessment data parameters to the initialize function
+        // Retrieve custom topic research data if available
+        let researchData = null;
+        if (topic === 'custom') {
+          const storedResearchData = sessionStorage.getItem('customTopicResearch');
+          if (storedResearchData) {
+            try {
+              const parsedResearch = JSON.parse(storedResearchData);
+              if (parsedResearch.success && parsedResearch.research) {
+                researchData = parsedResearch.research;
+                console.log('🔍 Retrieved custom topic research data:', researchData.length, 'characters');
+                console.log('📄 Research preview:', researchData.substring(0, 200) + '...');
+              } else {
+                console.log('⚠️ Research data found but not successful or empty');
+              }
+            } catch (error) {
+              console.error('❌ Error parsing stored research data:', error);
+            }
+          } else {
+            console.log('ℹ️ No research data found in session storage for custom topic');
+          }
+        }
+        
+        // Pass the language, level, topic, userPrompt, and assessment data to the initialize function
+        // Note: Research data is handled separately in the realtime service
         await initialize(language, level, topic, userPrompt, assessmentData);
         console.log('Realtime service initialized successfully');
       } catch (err) {

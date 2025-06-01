@@ -763,6 +763,23 @@ export class RealtimeService {
       let endpoint = `${this.backendUrl}/api/realtime/token`;
       console.log('Fetching ephemeral key from:', endpoint);
       
+      // Get research data from session storage if it's a custom topic
+      let researchData = null;
+      if (topic === 'custom') {
+        const storedResearchData = sessionStorage.getItem('customTopicResearch');
+        if (storedResearchData) {
+          try {
+            const parsedResearch = JSON.parse(storedResearchData);
+            if (parsedResearch.success && parsedResearch.research) {
+              researchData = parsedResearch.research;
+              console.log('🔍 [REALTIME_SERVICE] Retrieved research data for token request:', researchData.length, 'characters');
+            }
+          } catch (error) {
+            console.error('❌ [REALTIME_SERVICE] Error parsing research data:', error);
+          }
+        }
+      }
+      
       // Prepare request body with language and level
       const requestBody = {
         language: language,
@@ -770,7 +787,8 @@ export class RealtimeService {
         voice: 'alloy', // Default voice
         topic: topic || null, // Add topic if provided
         user_prompt: userPrompt || null, // Add user prompt for custom topics
-        assessment_data: assessmentData || null // Add assessment data if provided
+        assessment_data: assessmentData || null, // Add assessment data if provided
+        research_data: researchData || null // Add research data if available
       };
       
       // Log if assessment data is provided
