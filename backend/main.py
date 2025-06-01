@@ -421,107 +421,39 @@ async def custom_topic(request: CustomTopicRequest):
         
         # Prepare system prompt based on language learning context
         system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
-        system_prompt += "Provide information that helps the user learn the language while answering their question. "
+        system_prompt += "When answering questions, search for current information to provide accurate, up-to-date responses. "
         system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
-        system_prompt += "Use web search to get the latest information when needed."
+        system_prompt += "Adapt your language complexity to the {level} proficiency level and make the response educational for language learning."
         
-        try:
-            # First try to use the OpenAI API with web search capabilities
-            import httpx
-            import json
-            
-            # Prepare the request payload
-            payload = {
-                "model": "gpt-4o-mini",
-                "input": [
-                    {
-                        "role": "system",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": system_prompt
-                            }
-                        ]
-                    },
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": user_prompt
-                            }
-                        ]
-                    }
-                ],
-                "tools": [
-                    {
-                        "type": "web_search_preview",
-                        "search_context_size": "medium"
-                    }
-                ],
-                "temperature": 1,
-                "max_output_tokens": 2048,
-                "top_p": 1,
-                "store": True
-            }
-            
-            # Make the API request
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            
-            async with httpx.AsyncClient() as async_client:
-                response = await async_client.post(
-                    "https://api.openai.com/v1/responses",
-                    headers=headers,
-                    json=payload,
-                    timeout=60.0
-                )
-                
-                # Process the response
-                if response.status_code == 200:
-                    response_data = response.json()
-                    print("Web search response received successfully")
-                    
-                    # Extract the response content
-                    for output_item in response_data.get("output", []):
-                        if output_item.get("type") == "message":
-                            for content_item in output_item.get("content", []):
-                                if content_item.get("type") == "output_text":
-                                    return {"response": content_item.get("text", "")}
-                    
-                    # If we couldn't find the expected structure, return the raw response
-                    return {"response": str(response_data)}
-                else:
-                    print(f"Web search API request failed with status code: {response.status_code}")
-                    print(f"Response: {response.text}")
-                    raise Exception(f"API request failed with status code: {response.status_code}")
-                    
-        except Exception as web_search_error:
-            # If web search fails, fall back to standard chat completions
-            print(f"Web search failed, falling back to standard chat: {str(web_search_error)}")
-            
-            # Call OpenAI API to generate response using the standard chat completions endpoint
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=1,
-                max_tokens=2048,
-                top_p=1
-            )
-            
-            # Extract the response content
-            if response and hasattr(response, 'choices') and response.choices:
-                # Get the first choice's message content
-                content = response.choices[0].message.content
-                return {"response": content}
-            
-            # Fallback if response structure is unexpected
-            return {"response": "I couldn't process your request at this time. Please try again later."}
+        # Note: OpenAI's web search is not yet available for gpt-4o-mini in the standard API
+        # Using enhanced prompting to provide the best possible response with available knowledge
+        print("Using enhanced language tutor response (web search not available for gpt-4o-mini)")
+        
+        # Enhanced fallback with better prompting
+        enhanced_system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
+        enhanced_system_prompt += "While you don't have access to real-time information, provide the most comprehensive and educational response possible based on your training data. "
+        enhanced_system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
+        enhanced_system_prompt += f"Adapt your language complexity to the {level} proficiency level. "
+        enhanced_system_prompt += "If the topic might have recent developments, acknowledge this and suggest where users might find more current information."
+        
+        # Call OpenAI API to generate response using the standard chat completions endpoint
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": enhanced_system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=2048
+        )
+        
+        # Extract the response content
+        if response and hasattr(response, 'choices') and response.choices:
+            content = response.choices[0].message.content
+            return {"response": content}
+        
+        # Final fallback if response structure is unexpected
+        return {"response": "I apologize, but I'm having trouble processing your request right now. Please try again later."}
     
     except Exception as e:
         print(f"Error processing custom topic request: {str(e)}")
