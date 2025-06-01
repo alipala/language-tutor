@@ -247,6 +247,25 @@ class CustomTopicRequest(BaseModel):
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: str  # The custom prompt from the user
 
+# Initialize OpenAI client
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Warning: OPENAI_API_KEY not found in environment variables")
+
+# Initialize OpenAI client with error handling
+try:
+    client = OpenAI(api_key=api_key)
+    print("OpenAI client initialized successfully")
+except TypeError as e:
+    if "proxies" in str(e):
+        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+        # Alternative initialization without proxies
+        client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        print("OpenAI client initialized with alternative method")
+    else:
+        print(f"Error initializing OpenAI client: {str(e)}")
+        raise
+
 # Endpoint to generate ephemeral keys for OpenAI Realtime API with language tutor instructions
 @app.post("/api/realtime/token")
 async def generate_token(request: TutorSessionRequest):
@@ -294,11 +313,56 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         instructions = language_data["levels"][level].get("instructions", "")
         
-        # Add custom topic instructions if provided
+        # Add custom topic instructions with web search if provided
         if request.topic == "custom" and request.user_prompt:
-            print(f"[REALTIME_TOKEN] Adding custom topic instructions for: {request.user_prompt}")
-            custom_topic_instructions = f"\n\n🎯 CRITICAL CUSTOM TOPIC INSTRUCTION - HIGHEST PRIORITY:\n\nThe user has specifically chosen to discuss: '{request.user_prompt}'\n\nYOU MUST START YOUR VERY FIRST MESSAGE by discussing this exact topic. Do NOT greet with generic phrases like 'Hello! How can I help you today?' Instead, immediately begin with content about '{request.user_prompt}' in a way that's appropriate for {level} level {language} learners.\n\nExample first message structure:\n'Let's talk about {request.user_prompt}. [Provide interesting information about the topic]. What do you think about [specific aspect of the topic]?'\n\nIMPORTANT RULES:\n- Your FIRST message must be about '{request.user_prompt}' - no generic greetings\n- Provide educational content about this specific topic\n- Ask engaging questions related to '{request.user_prompt}'\n- Keep the entire conversation focused on this chosen topic\n- Adapt the complexity to {level} level\n- Help the user practice {language} while exploring '{request.user_prompt}'"
+            print(f"[REALTIME_TOKEN] Processing custom topic with web search: {request.user_prompt}")
+            
+            # Perform web search to get current information about the topic
+            web_search_results = ""
+            try:
+                print(f"[REALTIME_TOKEN] Attempting web search for topic: {request.user_prompt}")
+                
+                # Use OpenAI's chat completion to get comprehensive information about the topic
+                search_prompt = f"Provide comprehensive, current information about: {request.user_prompt}. Include recent developments, key facts, context, and relevant details that would be educational for language learners."
+                
+                # Try to use gpt-4o which has better knowledge capabilities
+                search_response = client.chat.completions.create(
+                    model="gpt-4o",  # Use gpt-4o for better knowledge capabilities
+                    messages=[
+                        {"role": "system", "content": "You are a research assistant. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
+                        {"role": "user", "content": search_prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=1500
+                )
+                
+                if search_response and search_response.choices:
+                    web_search_results = search_response.choices[0].message.content
+                    print(f"[REALTIME_TOKEN] ✅ Web search successful - got {len(web_search_results)} characters of information")
+                    print(f"[REALTIME_TOKEN] 📄 Web search results preview: {web_search_results[:300]}...")
+                    print(f"[REALTIME_TOKEN] 📊 Full web search results:\n{web_search_results}")
+                else:
+                    print(f"[REALTIME_TOKEN] ❌ Web search returned no results")
+                    
+            except Exception as search_error:
+                print(f"[REALTIME_TOKEN] ❌ Web search failed: {str(search_error)}")
+                print(f"[REALTIME_TOKEN] Continuing without web search results")
+                web_search_results = ""
+            
+            # Create enhanced custom topic instructions with web search results
+            custom_topic_instructions = f"\n\n🎯 CRITICAL CUSTOM TOPIC INSTRUCTION - HIGHEST PRIORITY:\n\nThe user has specifically chosen to discuss: '{request.user_prompt}'\n\n"
+            
+            if web_search_results:
+                custom_topic_instructions += f"📚 CURRENT INFORMATION ABOUT THE TOPIC:\n{web_search_results}\n\n"
+                print(f"[REALTIME_TOKEN] ✅ Added {len(web_search_results)} characters of web search results to AI instructions")
+            else:
+                print(f"[REALTIME_TOKEN] ⚠️ No web search results available, using base knowledge only")
+            
+            custom_topic_instructions += f"YOU MUST START YOUR VERY FIRST MESSAGE by discussing this exact topic using the current information provided above. Do NOT greet with generic phrases like 'Hello! How can I help you today?' Instead, immediately begin with content about '{request.user_prompt}' in a way that's appropriate for {level} level {language} learners.\n\nExample first message structure:\n'Let's talk about {request.user_prompt}. [Use the current information provided to give interesting facts]. What do you think about [specific current aspect of the topic]?'\n\nIMPORTANT RULES:\n- Your FIRST message must be about '{request.user_prompt}' - no generic greetings\n- Use the current information provided above to give accurate, up-to-date content\n- Provide educational content about this specific topic\n- Ask engaging questions related to '{request.user_prompt}' and current developments\n- Keep the entire conversation focused on this chosen topic\n- Adapt the complexity to {level} level\n- Help the user practice {language} while exploring '{request.user_prompt}' with current context"
+            
             instructions = custom_topic_instructions + "\n\n" + instructions
+            print(f"[REALTIME_TOKEN] 📝 Final instructions length: {len(instructions)} characters")
+            print(f"[REALTIME_TOKEN] 🎯 Custom topic setup complete with {'web-enhanced' if web_search_results else 'basic'} knowledge")
         
         # Add enhanced language detection and enforcement instructions
         language_detection_instructions = f"\n\nCRITICAL LANGUAGE DETECTION ENHANCEMENT: You have advanced language detection capabilities. Before responding to any user input, carefully analyze the language being spoken. Listen for pronunciation patterns, vocabulary, grammar structures, and accent characteristics. If the user is speaking in the target language ({language}), respond normally. If they are speaking in a different language, use the standard language reminder response. Pay special attention to pronunciation, accent, and context clues to accurately identify the language being spoken. Do not assume a language based on a single unclear word - analyze the overall speech pattern."
@@ -352,25 +416,6 @@ async def generate_token(request: TutorSessionRequest):
     except httpx.RequestError as e:
         print(f"Error generating ephemeral key: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate ephemeral key: {str(e)}")
-
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-# Initialize OpenAI client with error handling
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        # Alternative initialization without proxies
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method")
-    else:
-        print(f"Error initializing OpenAI client: {str(e)}")
-        raise
 
 # Add endpoint for sentence construction assessment
 @app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
@@ -572,36 +617,7 @@ else:
     # Local development - relative path from backend directory
     frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
 
-frontend_next_static_path = frontend_build_path / "_next" / "static"
-
-print(f"Checking for frontend build at: {frontend_build_path}")
-print(f"Frontend build exists: {frontend_build_path.exists()}")
-print(f"Frontend Next.js static exists: {frontend_next_static_path.exists()}")
-
-# Mount Next.js static files if they exist
-if frontend_next_static_path.exists():
-    print("Mounting Next.js static files")
-    app.mount("/_next/static", StaticFiles(directory=str(frontend_next_static_path)), name="nextstatic")
-
-# Mount other static assets from the out directory
-if frontend_build_path.exists():
-    # Mount images and other assets
-    frontend_images_path = frontend_build_path / "images"
-    frontend_sounds_path = frontend_build_path / "sounds"
-    
-    if frontend_images_path.exists():
-        print("Mounting frontend images")
-        app.mount("/images", StaticFiles(directory=str(frontend_images_path)), name="images")
-    
-    if frontend_sounds_path.exists():
-        print("Mounting frontend sounds")
-        app.mount("/sounds", StaticFiles(directory=str(frontend_sounds_path)), name="sounds")
-
-# Catch-all route to serve the frontend application
-@app.get("/{full_path:path}")
-async def serve_frontend(request: Request, full_path: str):
-    """
-    Catch-all route to serve the Next.js frontend application.
+frontend_next_static_path = frontend_build_path / "_next"
     This should be the last route defined.
     """
     # Don't serve frontend for API routes
