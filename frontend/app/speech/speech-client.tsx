@@ -399,9 +399,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             const plan = await getLearningPlan(planParam);
             
             if (plan && plan.assessment_data) {
-              assessmentData = plan.assessment_data;
-              console.log('Retrieved assessment data from learning plan:', planParam);
-              console.log('Plan assessment data:', JSON.stringify(assessmentData, null, 2));
+              // Check if the assessment data is recent and relevant
+              const assessmentAge = plan.assessment_data.recognized_text;
+              if (assessmentAge && assessmentAge !== 'Me too. Me too.' && assessmentAge.trim().length > 5) {
+                assessmentData = plan.assessment_data;
+                console.log('Retrieved valid assessment data from learning plan:', planParam);
+              } else {
+                console.log('Skipping old/invalid assessment data from learning plan');
+              }
             } else {
               console.log('Learning plan found but no assessment data available in plan');
             }
@@ -416,31 +421,48 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
           if (storedAssessmentData) {
             try {
-              assessmentData = JSON.parse(storedAssessmentData);
-              console.log('Retrieved speaking assessment data from session storage');
+              const parsedData = JSON.parse(storedAssessmentData);
+              // Check if the assessment data is recent and relevant
+              if (parsedData.recognized_text && parsedData.recognized_text !== 'Me too. Me too.' && parsedData.recognized_text.trim().length > 5) {
+                assessmentData = parsedData;
+                console.log('Retrieved valid speaking assessment data from session storage');
+              } else {
+                console.log('Skipping old/invalid assessment data from session storage');
+              }
             } catch (e) {
               console.error('Error parsing speaking assessment data from session storage:', e);
             }
           }
         }
         
-        // If still no assessment data, try to get from user profile as last resort
-        if (!assessmentData) {
-          try {
-            const userData = localStorage.getItem('userData');
-            if (userData) {
-              const user = JSON.parse(userData);
-              if (user.last_assessment_data) {
-                assessmentData = user.last_assessment_data;
-                console.log('Retrieved speaking assessment data from user profile');
+        // Skip user profile assessment data as it's likely to be old
+        // We only want fresh assessment data for the current session
+        console.log('Skipping user profile assessment data to avoid old cached data');
+        
+        // Retrieve custom topic research data if available
+        let researchData = null;
+        if (topic === 'custom') {
+          const storedResearchData = sessionStorage.getItem('customTopicResearch');
+          if (storedResearchData) {
+            try {
+              const parsedResearch = JSON.parse(storedResearchData);
+              if (parsedResearch.success && parsedResearch.research) {
+                researchData = parsedResearch.research;
+                console.log('🔍 Retrieved custom topic research data:', researchData.length, 'characters');
+                console.log('📄 Research preview:', researchData.substring(0, 200) + '...');
+              } else {
+                console.log('⚠️ Research data found but not successful or empty');
               }
+            } catch (error) {
+              console.error('❌ Error parsing stored research data:', error);
             }
-          } catch (e) {
-            console.error('Error retrieving assessment data from user profile:', e);
+          } else {
+            console.log('ℹ️ No research data found in session storage for custom topic');
           }
         }
         
-        // Pass the language, level, topic, userPrompt, and assessment data parameters to the initialize function
+        // Pass the language, level, topic, userPrompt, and assessment data to the initialize function
+        // Note: Research data is handled separately in the realtime service
         await initialize(language, level, topic, userPrompt, assessmentData);
         console.log('Realtime service initialized successfully');
       } catch (err) {

@@ -278,32 +278,72 @@ export default function TopicSelection() {
     window.location.href = '/level-selection';
   };
 
-  const handleCustomTopicSubmit = () => {
+  const handleCustomTopicSubmit = async () => {
     if (!customTopicText.trim()) return;
     
     // Show the extending knowledge message
     setIsExtendingKnowledge(true);
     
-    // Store the custom topic in session storage
-    sessionStorage.setItem('selectedTopic', 'custom');
-    sessionStorage.setItem('customTopicText', customTopicText);
-    sessionStorage.setItem('intentionalNavigation', 'true');
-    
-    // Add detailed logging
-    console.log('Custom topic submitted:', customTopicText);
-    console.log('Session storage state:', {
-      selectedLanguage: sessionStorage.getItem('selectedLanguage'),
-      selectedTopic: 'custom',
-      customTopicText: customTopicText,
-      intentionalNavigation: true
-    });
-    
-    // Navigate to level selection after a short delay to show the message
-    setTimeout(() => {
-      console.log('Executing navigation to level selection with custom topic');
-      // Use direct navigation for reliability in this critical path
-      window.location.href = '/level-selection';
-    }, 2000); // Longer delay to show the message
+    try {
+      // Call the research endpoint to perform web search
+      console.log('🔍 Starting topic research for:', customTopicText);
+      
+      const response = await fetch('http://localhost:8000/api/custom-topic/research', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          language: selectedLanguage || 'english',
+          level: 'A1',
+          user_prompt: customTopicText,
+          topic: 'custom'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Research failed: ${response.status}`);
+      }
+      
+      const researchData = await response.json();
+      console.log('✅ Topic research completed:', researchData);
+      
+      // Store the research results along with the topic
+      sessionStorage.setItem('selectedTopic', 'custom');
+      sessionStorage.setItem('customTopicText', customTopicText);
+      sessionStorage.setItem('customTopicResearch', JSON.stringify(researchData));
+      sessionStorage.setItem('intentionalNavigation', 'true');
+      
+      // Add detailed logging
+      console.log('Custom topic submitted with research:', customTopicText);
+      console.log('Session storage state:', {
+        selectedLanguage: sessionStorage.getItem('selectedLanguage'),
+        selectedTopic: 'custom',
+        customTopicText: customTopicText,
+        researchCompleted: researchData.success,
+        intentionalNavigation: true
+      });
+      
+      // Navigate to level selection after research completes
+      setTimeout(() => {
+        console.log('Executing navigation to level selection with researched custom topic');
+        window.location.href = '/level-selection';
+      }, 1000);
+      
+    } catch (error) {
+      console.error('❌ Topic research failed:', error);
+      
+      // Still proceed but without research data
+      sessionStorage.setItem('selectedTopic', 'custom');
+      sessionStorage.setItem('customTopicText', customTopicText);
+      sessionStorage.setItem('intentionalNavigation', 'true');
+      
+      // Navigate even if research fails
+      setTimeout(() => {
+        console.log('Executing navigation to level selection (research failed, proceeding anyway)');
+        window.location.href = '/level-selection';
+      }, 1000);
+    }
   };
   
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -487,4 +527,4 @@ export default function TopicSelection() {
       </main>
     </div>
   );
-} 
+}

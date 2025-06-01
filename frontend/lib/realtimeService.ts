@@ -742,10 +742,16 @@ export class RealtimeService {
     let usedMockToken = false;
     
     try {
-      console.log('Getting ephemeral key from backend...');
-      console.log('Language:', language);
-      console.log('Level:', level);
-      console.log('Topic:', topic);
+      console.log('================================================================================');
+      console.log('[FRONTEND] Getting ephemeral key from backend...');
+      console.log('[FRONTEND] Timestamp:', new Date().toISOString());
+      console.log('[FRONTEND] Language:', language);
+      console.log('[FRONTEND] Level:', level);
+      console.log('[FRONTEND] Topic:', topic);
+      console.log('[FRONTEND] User prompt length:', userPrompt ? userPrompt.length : 0);
+      console.log('[FRONTEND] User prompt preview:', userPrompt ? userPrompt.substring(0, 100) + '...' : 'None');
+      console.log('[FRONTEND] Assessment data provided:', !!assessmentData);
+      console.log('================================================================================');
       
       // Ensure we have both language and level
       if (!language || !level) {
@@ -757,6 +763,23 @@ export class RealtimeService {
       let endpoint = `${this.backendUrl}/api/realtime/token`;
       console.log('Fetching ephemeral key from:', endpoint);
       
+      // Get research data from session storage if it's a custom topic
+      let researchData = null;
+      if (topic === 'custom') {
+        const storedResearchData = sessionStorage.getItem('customTopicResearch');
+        if (storedResearchData) {
+          try {
+            const parsedResearch = JSON.parse(storedResearchData);
+            if (parsedResearch.success && parsedResearch.research) {
+              researchData = parsedResearch.research;
+              console.log('🔍 [REALTIME_SERVICE] Retrieved research data for token request:', researchData.length, 'characters');
+            }
+          } catch (error) {
+            console.error('❌ [REALTIME_SERVICE] Error parsing research data:', error);
+          }
+        }
+      }
+      
       // Prepare request body with language and level
       const requestBody = {
         language: language,
@@ -764,7 +787,8 @@ export class RealtimeService {
         voice: 'alloy', // Default voice
         topic: topic || null, // Add topic if provided
         user_prompt: userPrompt || null, // Add user prompt for custom topics
-        assessment_data: assessmentData || null // Add assessment data if provided
+        assessment_data: assessmentData || null, // Add assessment data if provided
+        research_data: researchData || null // Add research data if available
       };
       
       // Log if assessment data is provided

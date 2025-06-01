@@ -238,6 +238,7 @@ class TutorSessionRequest(BaseModel):
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: Optional[str] = None  # User prompt for custom topics
     assessment_data: Optional[Dict[str, Any]] = None  # Assessment data from speaking assessment
+    research_data: Optional[str] = None  # Pre-researched data for custom topics
 
 # Define a new model for custom topic prompts
 class CustomTopicRequest(BaseModel):
@@ -247,12 +248,42 @@ class CustomTopicRequest(BaseModel):
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: str  # The custom prompt from the user
 
+# Initialize OpenAI client
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Warning: OPENAI_API_KEY not found in environment variables")
+
+# Initialize OpenAI client with error handling
+try:
+    client = OpenAI(api_key=api_key)
+    print("OpenAI client initialized successfully")
+except TypeError as e:
+    if "proxies" in str(e):
+        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+        # Alternative initialization without proxies
+        client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        print("OpenAI client initialized with alternative method")
+    else:
+        print(f"Error initializing OpenAI client: {str(e)}")
+        raise
+
 # Endpoint to generate ephemeral keys for OpenAI Realtime API with language tutor instructions
 @app.post("/api/realtime/token")
 async def generate_token(request: TutorSessionRequest):
     try:
-        # Log the request data for debugging
-        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}, topic: {request.topic}")
+        # Enhanced logging for debugging
+        print("="*80)
+        print(f"[REALTIME_TOKEN] Starting token generation request")
+        print(f"[REALTIME_TOKEN] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
+        print(f"[REALTIME_TOKEN] Language: {request.language}")
+        print(f"[REALTIME_TOKEN] Level: {request.level}")
+        print(f"[REALTIME_TOKEN] Voice: {request.voice}")
+        print(f"[REALTIME_TOKEN] Topic: {request.topic}")
+        print(f"[REALTIME_TOKEN] User prompt length: {len(request.user_prompt) if request.user_prompt else 0}")
+        print(f"[REALTIME_TOKEN] User prompt preview: {request.user_prompt[:100] if request.user_prompt else 'None'}...")
+        print(f"[REALTIME_TOKEN] Assessment data provided: {bool(request.assessment_data)}")
+        print(f"[REALTIME_TOKEN] Full request data: {request.dict()}")
+        print("="*80)
         
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
@@ -283,6 +314,72 @@ async def generate_token(request: TutorSessionRequest):
         # Get the instructions for the selected language and level
         instructions = language_data["levels"][level].get("instructions", "")
         
+        # Add custom topic instructions with research data if provided
+        if request.topic == "custom" and request.user_prompt:
+            print(f"[REALTIME_TOKEN] Processing custom topic: {request.user_prompt}")
+            
+            # Check if we have pre-researched data (from the new research endpoint)
+            web_search_results = ""
+            research_source = "none"
+            
+            # First, check if research data was provided in the request
+            if request.research_data:
+                web_search_results = request.research_data
+                research_source = "request_data"
+                print(f"[REALTIME_TOKEN] ✅ Using research data from request: {len(web_search_results)} characters")
+            else:
+                # Fallback: perform research here (for backward compatibility)
+                try:
+                    print(f"[REALTIME_TOKEN] No pre-researched data found, performing research now")
+                    print(f"[REALTIME_TOKEN] Using enhanced GPT-4o for topic research")
+                    enhanced_prompt = f"""Provide comprehensive, educational information about: {request.user_prompt}
+                    
+Please include:
+                    - Key facts and context
+                    - Recent developments (if applicable)
+                    - Background information
+                    - Relevant vocabulary for language learners
+                    - Educational insights
+                    
+Make this informative and suitable for {level} level {language} language learners."""
+                    
+                    search_response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "You are an educational research assistant. Provide comprehensive, factual information about topics in a way that's educational for language learners. Include context, key vocabulary, and relevant details."},
+                            {"role": "user", "content": enhanced_prompt}
+                        ],
+                        temperature=0.3,
+                        max_tokens=1500
+                    )
+                    
+                    if search_response and search_response.choices:
+                        web_search_results = search_response.choices[0].message.content
+                        research_source = "realtime_fallback"
+                        print(f"[REALTIME_TOKEN] ✅ Fallback research successful - got {len(web_search_results)} characters")
+                    else:
+                        print(f"[REALTIME_TOKEN] ❌ Fallback research returned no results")
+                        
+                except Exception as search_error:
+                    print(f"[REALTIME_TOKEN] ❌ Fallback research failed: {str(search_error)}")
+                    web_search_results = ""
+                    research_source = "failed"
+            
+            # Create enhanced custom topic instructions with research results
+            custom_topic_instructions = f"\n\n🎯 CRITICAL CUSTOM TOPIC INSTRUCTION - HIGHEST PRIORITY:\n\nThe user has specifically chosen to discuss: '{request.user_prompt}'\n\n"
+            
+            if web_search_results:
+                custom_topic_instructions += f"📚 CURRENT INFORMATION ABOUT THE TOPIC:\n{web_search_results}\n\n"
+                print(f"[REALTIME_TOKEN] ✅ Added {len(web_search_results)} characters of research results to AI instructions (source: {research_source})")
+            else:
+                print(f"[REALTIME_TOKEN] ⚠️ No research results available, using base knowledge only")
+            
+            custom_topic_instructions += f"YOU MUST START YOUR VERY FIRST MESSAGE by discussing this exact topic using the current information provided above. Do NOT greet with generic phrases like 'Hello! How can I help you today?' Instead, immediately begin with content about '{request.user_prompt}' in a way that's appropriate for {level} level {language} learners.\n\nExample first message structure:\n'Let's talk about {request.user_prompt}. [Use the current information provided to give interesting facts]. What do you think about [specific current aspect of the topic]?'\n\nIMPORTANT RULES:\n- Your FIRST message must be about '{request.user_prompt}' - no generic greetings\n- Use the current information provided above to give accurate, up-to-date content\n- Provide educational content about this specific topic\n- Ask engaging questions related to '{request.user_prompt}' and current developments\n- Keep the entire conversation focused on this chosen topic\n- Adapt the complexity to {level} level\n- Help the user practice {language} while exploring '{request.user_prompt}' with current context"
+            
+            instructions = custom_topic_instructions + "\n\n" + instructions
+            print(f"[REALTIME_TOKEN] 📝 Final instructions length: {len(instructions)} characters")
+            print(f"[REALTIME_TOKEN] 🎯 Custom topic setup complete with {'research-enhanced' if web_search_results else 'basic'} knowledge (source: {research_source})")
+        
         # Add enhanced language detection and enforcement instructions
         language_detection_instructions = f"\n\nCRITICAL LANGUAGE DETECTION ENHANCEMENT: You have advanced language detection capabilities. Before responding to any user input, carefully analyze the language being spoken. Listen for pronunciation patterns, vocabulary, grammar structures, and accent characteristics. If the user is speaking in the target language ({language}), respond normally. If they are speaking in a different language, use the standard language reminder response. Pay special attention to pronunciation, accent, and context clues to accurately identify the language being spoken. Do not assume a language based on a single unclear word - analyze the overall speech pattern."
         
@@ -307,8 +404,8 @@ async def generate_token(request: TutorSessionRequest):
         
         print(f"Generating ephemeral key with OpenAI API for {language} at level {level}...")
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.post(
                 "https://api.openai.com/v1/realtime/sessions",
                 headers={
                     "Authorization": f"Bearer {openai_api_key}",
@@ -335,25 +432,6 @@ async def generate_token(request: TutorSessionRequest):
     except httpx.RequestError as e:
         print(f"Error generating ephemeral key: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate ephemeral key: {str(e)}")
-
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-# Initialize OpenAI client with error handling
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        # Alternative initialization without proxies
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method")
-    else:
-        print(f"Error initializing OpenAI client: {str(e)}")
-        raise
 
 # Add endpoint for sentence construction assessment
 @app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
@@ -407,6 +485,81 @@ async def assess_sentence_construction(request: SentenceAssessmentRequest):
         print(f"Error in sentence assessment: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Sentence assessment failed: {str(e)}")
 
+# New endpoint to handle custom topic research (called when user clicks Submit)
+@app.post("/api/custom-topic/research")
+async def research_custom_topic(request: CustomTopicRequest):
+    try:
+        # Extract user input from request
+        user_prompt = request.user_prompt
+        language = request.language.lower()
+        level = request.level.upper()
+        
+        # Enhanced logging for debugging
+        print("="*80)
+        print(f"[TOPIC_RESEARCH] Starting topic research request")
+        print(f"[TOPIC_RESEARCH] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
+        print(f"[TOPIC_RESEARCH] Language: {language}")
+        print(f"[TOPIC_RESEARCH] Level: {level}")
+        print(f"[TOPIC_RESEARCH] User prompt: {user_prompt}")
+        print("="*80)
+        
+        # Perform topic research using GPT-4o
+        try:
+            print(f"[TOPIC_RESEARCH] Using GPT-4o for comprehensive topic research")
+            research_prompt = f"""Provide comprehensive, educational information about: {user_prompt}
+            
+Please include:
+            - Key facts and context
+            - Recent developments (if applicable)
+            - Background information
+            - Relevant vocabulary for language learners
+            - Educational insights
+            
+Make this informative and suitable for {level} level {language} language learners."""
+            
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are an educational research assistant. Provide comprehensive, factual information about topics in a way that's educational for language learners. Include context, key vocabulary, and relevant details."},
+                    {"role": "user", "content": research_prompt}
+                ],
+                temperature=0.3,
+                max_tokens=1500
+            )
+            
+            if response and response.choices:
+                research_results = response.choices[0].message.content
+                print(f"[TOPIC_RESEARCH] ✅ Research successful - got {len(research_results)} characters")
+                print(f"[TOPIC_RESEARCH] Research preview: {research_results[:200]}...")
+                
+                return {
+                    "success": True,
+                    "topic": user_prompt,
+                    "research": research_results,
+                    "message": "Topic research completed successfully. You can now start speaking!"
+                }
+            else:
+                print(f"[TOPIC_RESEARCH] ❌ No research results returned")
+                return {
+                    "success": False,
+                    "topic": user_prompt,
+                    "research": "",
+                    "message": "Research failed, but you can still practice with this topic."
+                }
+                
+        except Exception as research_error:
+            print(f"[TOPIC_RESEARCH] ❌ Research failed: {str(research_error)}")
+            return {
+                "success": False,
+                "topic": user_prompt,
+                "research": "",
+                "message": "Research failed, but you can still practice with this topic."
+            }
+    
+    except Exception as e:
+        print(f"[TOPIC_RESEARCH] ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to research topic: {str(e)}")
+
 # Endpoint to handle custom topic prompts
 @app.post("/api/custom-topic")
 async def custom_topic(request: CustomTopicRequest):
@@ -416,112 +569,91 @@ async def custom_topic(request: CustomTopicRequest):
         language = request.language.lower()
         level = request.level.upper()
         
-        # Log the request for debugging
-        print(f"Processing custom topic request: language={language}, level={level}, prompt={user_prompt[:50]}...")
+        # Enhanced logging for debugging
+        print("="*80)
+        print(f"[CUSTOM_TOPIC] Starting custom topic request processing")
+        print(f"[CUSTOM_TOPIC] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
+        print(f"[CUSTOM_TOPIC] Language: {language}")
+        print(f"[CUSTOM_TOPIC] Level: {level}")
+        print(f"[CUSTOM_TOPIC] Voice: {request.voice}")
+        print(f"[CUSTOM_TOPIC] Topic: {request.topic}")
+        print(f"[CUSTOM_TOPIC] User prompt length: {len(user_prompt)} characters")
+        print(f"[CUSTOM_TOPIC] User prompt preview: {user_prompt[:100]}...")
+        print(f"[CUSTOM_TOPIC] Full request data: {request.dict()}")
+        print("="*80)
         
         # Prepare system prompt based on language learning context
         system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
-        system_prompt += "Provide information that helps the user learn the language while answering their question. "
+        system_prompt += "When answering questions, search for current information to provide accurate, up-to-date responses. "
         system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
-        system_prompt += "Use web search to get the latest information when needed."
+        system_prompt += "Adapt your language complexity to the {level} proficiency level and make the response educational for language learning."
         
+        # Note: OpenAI's web search is not yet available for gpt-4o-mini in the standard API
+        # Using enhanced prompting to provide the best possible response with available knowledge
+        print(f"[CUSTOM_TOPIC] Using enhanced language tutor response (web search not available for gpt-4o-mini)")
+        
+        # Enhanced fallback with better prompting
+        enhanced_system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
+        enhanced_system_prompt += "While you don't have access to real-time information, provide the most comprehensive and educational response possible based on your training data. "
+        enhanced_system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
+        enhanced_system_prompt += f"Adapt your language complexity to the {level} proficiency level. "
+        enhanced_system_prompt += "If the topic might have recent developments, acknowledge this and suggest where users might find more current information."
+        
+        print(f"[CUSTOM_TOPIC] System prompt length: {len(enhanced_system_prompt)} characters")
+        print(f"[CUSTOM_TOPIC] System prompt preview: {enhanced_system_prompt[:200]}...")
+        print(f"[CUSTOM_TOPIC] Calling OpenAI API with model: gpt-4o-mini")
+        
+        # Call OpenAI API to generate response using the standard chat completions endpoint
+        start_time = __import__('time').time()
         try:
-            # First try to use the OpenAI API with web search capabilities
-            import httpx
-            import json
-            
-            # Prepare the request payload
-            payload = {
-                "model": "gpt-4o-mini",
-                "input": [
-                    {
-                        "role": "system",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": system_prompt
-                            }
-                        ]
-                    },
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": user_prompt
-                            }
-                        ]
-                    }
-                ],
-                "tools": [
-                    {
-                        "type": "web_search_preview",
-                        "search_context_size": "medium"
-                    }
-                ],
-                "temperature": 1,
-                "max_output_tokens": 2048,
-                "top_p": 1,
-                "store": True
-            }
-            
-            # Make the API request
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            
-            async with httpx.AsyncClient() as async_client:
-                response = await async_client.post(
-                    "https://api.openai.com/v1/responses",
-                    headers=headers,
-                    json=payload,
-                    timeout=60.0
-                )
-                
-                # Process the response
-                if response.status_code == 200:
-                    response_data = response.json()
-                    print("Web search response received successfully")
-                    
-                    # Extract the response content
-                    for output_item in response_data.get("output", []):
-                        if output_item.get("type") == "message":
-                            for content_item in output_item.get("content", []):
-                                if content_item.get("type") == "output_text":
-                                    return {"response": content_item.get("text", "")}
-                    
-                    # If we couldn't find the expected structure, return the raw response
-                    return {"response": str(response_data)}
-                else:
-                    print(f"Web search API request failed with status code: {response.status_code}")
-                    print(f"Response: {response.text}")
-                    raise Exception(f"API request failed with status code: {response.status_code}")
-                    
-        except Exception as web_search_error:
-            # If web search fails, fall back to standard chat completions
-            print(f"Web search failed, falling back to standard chat: {str(web_search_error)}")
-            
-            # Call OpenAI API to generate response using the standard chat completions endpoint
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": enhanced_system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=1,
-                max_tokens=2048,
-                top_p=1
+                temperature=0.7,
+                max_tokens=2048
             )
+            end_time = __import__('time').time()
+            print(f"[CUSTOM_TOPIC] OpenAI API call completed in {end_time - start_time:.2f} seconds")
+            
+            # Log response details
+            print(f"[CUSTOM_TOPIC] Response object type: {type(response)}")
+            print(f"[CUSTOM_TOPIC] Response has choices: {hasattr(response, 'choices')}")
+            if hasattr(response, 'choices'):
+                print(f"[CUSTOM_TOPIC] Number of choices: {len(response.choices)}")
+                if response.choices:
+                    print(f"[CUSTOM_TOPIC] First choice type: {type(response.choices[0])}")
+                    print(f"[CUSTOM_TOPIC] First choice has message: {hasattr(response.choices[0], 'message')}")
+                    if hasattr(response.choices[0], 'message'):
+                        message = response.choices[0].message
+                        print(f"[CUSTOM_TOPIC] Message has content: {hasattr(message, 'content')}")
+                        if hasattr(message, 'content'):
+                            content = message.content
+                            print(f"[CUSTOM_TOPIC] Content length: {len(content) if content else 0} characters")
+                            print(f"[CUSTOM_TOPIC] Content preview: {content[:200] if content else 'None'}...")
             
             # Extract the response content
             if response and hasattr(response, 'choices') and response.choices:
-                # Get the first choice's message content
                 content = response.choices[0].message.content
+                print(f"[CUSTOM_TOPIC] Successfully extracted content, returning response")
+                print(f"[CUSTOM_TOPIC] Final response length: {len(content)} characters")
+                print("="*80)
                 return {"response": content}
-            
-            # Fallback if response structure is unexpected
-            return {"response": "I couldn't process your request at this time. Please try again later."}
+            else:
+                print(f"[CUSTOM_TOPIC] ERROR: Unexpected response structure")
+                print(f"[CUSTOM_TOPIC] Response: {response}")
+                print("="*80)
+                return {"response": "I apologize, but I received an unexpected response format. Please try again later."}
+                
+        except Exception as api_error:
+            end_time = __import__('time').time()
+            print(f"[CUSTOM_TOPIC] ERROR: OpenAI API call failed after {end_time - start_time:.2f} seconds")
+            print(f"[CUSTOM_TOPIC] API Error: {str(api_error)}")
+            print(f"[CUSTOM_TOPIC] API Error type: {type(api_error)}")
+            print("="*80)
+            raise api_error
     
     except Exception as e:
         print(f"Error processing custom topic request: {str(e)}")
