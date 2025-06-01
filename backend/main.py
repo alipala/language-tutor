@@ -617,7 +617,36 @@ else:
     # Local development - relative path from backend directory
     frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
 
-frontend_next_static_path = frontend_build_path / "_next"
+frontend_next_static_path = frontend_build_path / "_next" / "static"
+
+print(f"Checking for frontend build at: {frontend_build_path}")
+print(f"Frontend build exists: {frontend_build_path.exists()}")
+print(f"Frontend Next.js static exists: {frontend_next_static_path.exists()}")
+
+# Mount Next.js static files if they exist
+if frontend_next_static_path.exists():
+    print("Mounting Next.js static files")
+    app.mount("/_next/static", StaticFiles(directory=str(frontend_next_static_path)), name="nextstatic")
+
+# Mount other static assets from the out directory
+if frontend_build_path.exists():
+    # Mount images and other assets
+    frontend_images_path = frontend_build_path / "images"
+    frontend_sounds_path = frontend_build_path / "sounds"
+    
+    if frontend_images_path.exists():
+        print("Mounting frontend images")
+        app.mount("/images", StaticFiles(directory=str(frontend_images_path)), name="images")
+    
+    if frontend_sounds_path.exists():
+        print("Mounting frontend sounds")
+        app.mount("/sounds", StaticFiles(directory=str(frontend_sounds_path)), name="sounds")
+
+# Catch-all route to serve the frontend application
+@app.get("/{full_path:path}")
+async def serve_frontend(request: Request, full_path: str):
+    """
+    Catch-all route to serve the Next.js frontend application.
     This should be the last route defined.
     """
     # Don't serve frontend for API routes
