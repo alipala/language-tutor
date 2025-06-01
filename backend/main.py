@@ -251,8 +251,19 @@ class CustomTopicRequest(BaseModel):
 @app.post("/api/realtime/token")
 async def generate_token(request: TutorSessionRequest):
     try:
-        # Log the request data for debugging
-        print(f"Received token request with language: {request.language}, level: {request.level}, voice: {request.voice}, topic: {request.topic}")
+        # Enhanced logging for debugging
+        print("="*80)
+        print(f"[REALTIME_TOKEN] Starting token generation request")
+        print(f"[REALTIME_TOKEN] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
+        print(f"[REALTIME_TOKEN] Language: {request.language}")
+        print(f"[REALTIME_TOKEN] Level: {request.level}")
+        print(f"[REALTIME_TOKEN] Voice: {request.voice}")
+        print(f"[REALTIME_TOKEN] Topic: {request.topic}")
+        print(f"[REALTIME_TOKEN] User prompt length: {len(request.user_prompt) if request.user_prompt else 0}")
+        print(f"[REALTIME_TOKEN] User prompt preview: {request.user_prompt[:100] if request.user_prompt else 'None'}...")
+        print(f"[REALTIME_TOKEN] Assessment data provided: {bool(request.assessment_data)}")
+        print(f"[REALTIME_TOKEN] Full request data: {request.dict()}")
+        print("="*80)
         
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
@@ -416,8 +427,18 @@ async def custom_topic(request: CustomTopicRequest):
         language = request.language.lower()
         level = request.level.upper()
         
-        # Log the request for debugging
-        print(f"Processing custom topic request: language={language}, level={level}, prompt={user_prompt[:50]}...")
+        # Enhanced logging for debugging
+        print("="*80)
+        print(f"[CUSTOM_TOPIC] Starting custom topic request processing")
+        print(f"[CUSTOM_TOPIC] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
+        print(f"[CUSTOM_TOPIC] Language: {language}")
+        print(f"[CUSTOM_TOPIC] Level: {level}")
+        print(f"[CUSTOM_TOPIC] Voice: {request.voice}")
+        print(f"[CUSTOM_TOPIC] Topic: {request.topic}")
+        print(f"[CUSTOM_TOPIC] User prompt length: {len(user_prompt)} characters")
+        print(f"[CUSTOM_TOPIC] User prompt preview: {user_prompt[:100]}...")
+        print(f"[CUSTOM_TOPIC] Full request data: {request.dict()}")
+        print("="*80)
         
         # Prepare system prompt based on language learning context
         system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
@@ -427,7 +448,7 @@ async def custom_topic(request: CustomTopicRequest):
         
         # Note: OpenAI's web search is not yet available for gpt-4o-mini in the standard API
         # Using enhanced prompting to provide the best possible response with available knowledge
-        print("Using enhanced language tutor response (web search not available for gpt-4o-mini)")
+        print(f"[CUSTOM_TOPIC] Using enhanced language tutor response (web search not available for gpt-4o-mini)")
         
         # Enhanced fallback with better prompting
         enhanced_system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
@@ -436,24 +457,61 @@ async def custom_topic(request: CustomTopicRequest):
         enhanced_system_prompt += f"Adapt your language complexity to the {level} proficiency level. "
         enhanced_system_prompt += "If the topic might have recent developments, acknowledge this and suggest where users might find more current information."
         
+        print(f"[CUSTOM_TOPIC] System prompt length: {len(enhanced_system_prompt)} characters")
+        print(f"[CUSTOM_TOPIC] System prompt preview: {enhanced_system_prompt[:200]}...")
+        print(f"[CUSTOM_TOPIC] Calling OpenAI API with model: gpt-4o-mini")
+        
         # Call OpenAI API to generate response using the standard chat completions endpoint
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": enhanced_system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=2048
-        )
-        
-        # Extract the response content
-        if response and hasattr(response, 'choices') and response.choices:
-            content = response.choices[0].message.content
-            return {"response": content}
-        
-        # Final fallback if response structure is unexpected
-        return {"response": "I apologize, but I'm having trouble processing your request right now. Please try again later."}
+        start_time = __import__('time').time()
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": enhanced_system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=2048
+            )
+            end_time = __import__('time').time()
+            print(f"[CUSTOM_TOPIC] OpenAI API call completed in {end_time - start_time:.2f} seconds")
+            
+            # Log response details
+            print(f"[CUSTOM_TOPIC] Response object type: {type(response)}")
+            print(f"[CUSTOM_TOPIC] Response has choices: {hasattr(response, 'choices')}")
+            if hasattr(response, 'choices'):
+                print(f"[CUSTOM_TOPIC] Number of choices: {len(response.choices)}")
+                if response.choices:
+                    print(f"[CUSTOM_TOPIC] First choice type: {type(response.choices[0])}")
+                    print(f"[CUSTOM_TOPIC] First choice has message: {hasattr(response.choices[0], 'message')}")
+                    if hasattr(response.choices[0], 'message'):
+                        message = response.choices[0].message
+                        print(f"[CUSTOM_TOPIC] Message has content: {hasattr(message, 'content')}")
+                        if hasattr(message, 'content'):
+                            content = message.content
+                            print(f"[CUSTOM_TOPIC] Content length: {len(content) if content else 0} characters")
+                            print(f"[CUSTOM_TOPIC] Content preview: {content[:200] if content else 'None'}...")
+            
+            # Extract the response content
+            if response and hasattr(response, 'choices') and response.choices:
+                content = response.choices[0].message.content
+                print(f"[CUSTOM_TOPIC] Successfully extracted content, returning response")
+                print(f"[CUSTOM_TOPIC] Final response length: {len(content)} characters")
+                print("="*80)
+                return {"response": content}
+            else:
+                print(f"[CUSTOM_TOPIC] ERROR: Unexpected response structure")
+                print(f"[CUSTOM_TOPIC] Response: {response}")
+                print("="*80)
+                return {"response": "I apologize, but I received an unexpected response format. Please try again later."}
+                
+        except Exception as api_error:
+            end_time = __import__('time').time()
+            print(f"[CUSTOM_TOPIC] ERROR: OpenAI API call failed after {end_time - start_time:.2f} seconds")
+            print(f"[CUSTOM_TOPIC] API Error: {str(api_error)}")
+            print(f"[CUSTOM_TOPIC] API Error type: {type(api_error)}")
+            print("="*80)
+            raise api_error
     
     except Exception as e:
         print(f"Error processing custom topic request: {str(e)}")

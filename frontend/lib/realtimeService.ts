@@ -742,10 +742,16 @@ export class RealtimeService {
     let usedMockToken = false;
     
     try {
-      console.log('Getting ephemeral key from backend...');
-      console.log('Language:', language);
-      console.log('Level:', level);
-      console.log('Topic:', topic);
+      console.log('================================================================================');
+      console.log('[FRONTEND] Getting ephemeral key from backend...');
+      console.log('[FRONTEND] Timestamp:', new Date().toISOString());
+      console.log('[FRONTEND] Language:', language);
+      console.log('[FRONTEND] Level:', level);
+      console.log('[FRONTEND] Topic:', topic);
+      console.log('[FRONTEND] User prompt length:', userPrompt ? userPrompt.length : 0);
+      console.log('[FRONTEND] User prompt preview:', userPrompt ? userPrompt.substring(0, 100) + '...' : 'None');
+      console.log('[FRONTEND] Assessment data provided:', !!assessmentData);
+      console.log('================================================================================');
       
       // Ensure we have both language and level
       if (!language || !level) {
