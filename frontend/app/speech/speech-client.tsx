@@ -399,9 +399,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             const plan = await getLearningPlan(planParam);
             
             if (plan && plan.assessment_data) {
-              assessmentData = plan.assessment_data;
-              console.log('Retrieved assessment data from learning plan:', planParam);
-              console.log('Plan assessment data:', JSON.stringify(assessmentData, null, 2));
+              // Check if the assessment data is recent and relevant
+              const assessmentAge = plan.assessment_data.recognized_text;
+              if (assessmentAge && assessmentAge !== 'Me too. Me too.' && assessmentAge.trim().length > 5) {
+                assessmentData = plan.assessment_data;
+                console.log('Retrieved valid assessment data from learning plan:', planParam);
+              } else {
+                console.log('Skipping old/invalid assessment data from learning plan');
+              }
             } else {
               console.log('Learning plan found but no assessment data available in plan');
             }
@@ -416,29 +421,23 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
           if (storedAssessmentData) {
             try {
-              assessmentData = JSON.parse(storedAssessmentData);
-              console.log('Retrieved speaking assessment data from session storage');
+              const parsedData = JSON.parse(storedAssessmentData);
+              // Check if the assessment data is recent and relevant
+              if (parsedData.recognized_text && parsedData.recognized_text !== 'Me too. Me too.' && parsedData.recognized_text.trim().length > 5) {
+                assessmentData = parsedData;
+                console.log('Retrieved valid speaking assessment data from session storage');
+              } else {
+                console.log('Skipping old/invalid assessment data from session storage');
+              }
             } catch (e) {
               console.error('Error parsing speaking assessment data from session storage:', e);
             }
           }
         }
         
-        // If still no assessment data, try to get from user profile as last resort
-        if (!assessmentData) {
-          try {
-            const userData = localStorage.getItem('userData');
-            if (userData) {
-              const user = JSON.parse(userData);
-              if (user.last_assessment_data) {
-                assessmentData = user.last_assessment_data;
-                console.log('Retrieved speaking assessment data from user profile');
-              }
-            }
-          } catch (e) {
-            console.error('Error retrieving assessment data from user profile:', e);
-          }
-        }
+        // Skip user profile assessment data as it's likely to be old
+        // We only want fresh assessment data for the current session
+        console.log('Skipping user profile assessment data to avoid old cached data');
         
         // Pass the language, level, topic, userPrompt, and assessment data parameters to the initialize function
         await initialize(language, level, topic, userPrompt, assessmentData);
