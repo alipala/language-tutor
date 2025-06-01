@@ -322,12 +322,13 @@ async def generate_token(request: TutorSessionRequest):
             try:
                 print(f"[REALTIME_TOKEN] Attempting web search for topic: {request.user_prompt}")
                 
-                # Use OpenAI's chat completion to get comprehensive information about the topic
+                # Use OpenAI's web search API to get current information about the topic
                 search_prompt = f"Provide comprehensive, current information about: {request.user_prompt}. Include recent developments, key facts, context, and relevant details that would be educational for language learners."
                 
-                # Try to use gpt-4o which has better knowledge capabilities
+                # Use the correct web search API format with gpt-4o-search-preview
                 search_response = client.chat.completions.create(
-                    model="gpt-4o",  # Use gpt-4o for better knowledge capabilities
+                    model="gpt-4o-search-preview",  # Use the web search preview model
+                    web_search_options={},  # Enable web search
                     messages=[
                         {"role": "system", "content": "You are a research assistant. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
                         {"role": "user", "content": search_prompt}
@@ -388,8 +389,8 @@ async def generate_token(request: TutorSessionRequest):
         
         print(f"Generating ephemeral key with OpenAI API for {language} at level {level}...")
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.post(
                 "https://api.openai.com/v1/realtime/sessions",
                 headers={
                     "Authorization": f"Bearer {openai_api_key}",
