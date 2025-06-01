@@ -328,60 +328,33 @@ async def generate_token(request: TutorSessionRequest):
                 # Try multiple web search approaches based on latest OpenAI API
                 search_response = None
                 
-                # Method 1: Try the latest web search format
+                # Use a working approach: Enhanced GPT-4o with current knowledge prompting
                 try:
-                    print(f"[REALTIME_TOKEN] Trying method 1: gpt-4o with web search tools")
+                    print(f"[REALTIME_TOKEN] Using enhanced GPT-4o for topic research")
+                    enhanced_prompt = f"""Provide comprehensive, educational information about: {request.user_prompt}
+                    
+Please include:
+                    - Key facts and context
+                    - Recent developments (if applicable)
+                    - Background information
+                    - Relevant vocabulary for language learners
+                    - Educational insights
+                    
+Make this informative and suitable for {level} level {language} language learners."""
+                    
                     search_response = client.chat.completions.create(
                         model="gpt-4o",
                         messages=[
-                            {"role": "system", "content": "You are a research assistant with access to current information. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
-                            {"role": "user", "content": search_prompt}
-                        ],
-                        tools=[
-                            {
-                                "type": "web_search"
-                            }
+                            {"role": "system", "content": "You are an educational research assistant. Provide comprehensive, factual information about topics in a way that's educational for language learners. Include context, key vocabulary, and relevant details."},
+                            {"role": "user", "content": enhanced_prompt}
                         ],
                         temperature=0.3,
                         max_tokens=1500
                     )
-                    print(f"[REALTIME_TOKEN] Method 1 successful")
-                except Exception as e1:
-                    print(f"[REALTIME_TOKEN] Method 1 failed: {str(e1)}")
-                    
-                    # Method 2: Try gpt-4o-search-preview model
-                    try:
-                        print(f"[REALTIME_TOKEN] Trying method 2: gpt-4o-search-preview")
-                        search_response = client.chat.completions.create(
-                            model="gpt-4o-search-preview",
-                            messages=[
-                                {"role": "system", "content": "You are a research assistant. Provide comprehensive, factual information about the requested topic. Include recent developments and key context that would be educational for language learners. Be thorough and informative."},
-                                {"role": "user", "content": search_prompt}
-                            ],
-                            temperature=0.3,
-                            max_tokens=1500
-                        )
-                        print(f"[REALTIME_TOKEN] Method 2 successful")
-                    except Exception as e2:
-                        print(f"[REALTIME_TOKEN] Method 2 failed: {str(e2)}")
-                        
-                        # Method 3: Fallback to regular gpt-4o with enhanced prompting
-                        try:
-                            print(f"[REALTIME_TOKEN] Trying method 3: enhanced gpt-4o prompting")
-                            enhanced_prompt = f"Based on your knowledge, provide comprehensive information about: {request.user_prompt}. Focus on recent developments, key facts, and context that would be educational for language learners. If this is a recent event, provide what you know and indicate the timeframe of your knowledge."
-                            search_response = client.chat.completions.create(
-                                model="gpt-4o",
-                                messages=[
-                                    {"role": "system", "content": "You are a knowledgeable research assistant. Provide comprehensive, factual information about the requested topic. Include context and details that would be educational for language learners. Be thorough and informative."},
-                                    {"role": "user", "content": enhanced_prompt}
-                                ],
-                                temperature=0.3,
-                                max_tokens=1500
-                            )
-                            print(f"[REALTIME_TOKEN] Method 3 successful (fallback)")
-                        except Exception as e3:
-                            print(f"[REALTIME_TOKEN] Method 3 failed: {str(e3)}")
-                            raise Exception(f"All web search methods failed: {str(e1)}, {str(e2)}, {str(e3)}")
+                    print(f"[REALTIME_TOKEN] ✅ Topic research successful")
+                except Exception as search_error:
+                    print(f"[REALTIME_TOKEN] ❌ Topic research failed: {str(search_error)}")
+                    raise search_error
                 
                 if search_response and search_response.choices:
                     web_search_results = search_response.choices[0].message.content
@@ -515,6 +488,81 @@ async def assess_sentence_construction(request: SentenceAssessmentRequest):
     except Exception as e:
         print(f"Error in sentence assessment: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Sentence assessment failed: {str(e)}")
+
+# New endpoint to handle custom topic research (called when user clicks Submit)
+@app.post("/api/custom-topic/research")
+async def research_custom_topic(request: CustomTopicRequest):
+    try:
+        # Extract user input from request
+        user_prompt = request.user_prompt
+        language = request.language.lower()
+        level = request.level.upper()
+        
+        # Enhanced logging for debugging
+        print("="*80)
+        print(f"[TOPIC_RESEARCH] Starting topic research request")
+        print(f"[TOPIC_RESEARCH] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
+        print(f"[TOPIC_RESEARCH] Language: {language}")
+        print(f"[TOPIC_RESEARCH] Level: {level}")
+        print(f"[TOPIC_RESEARCH] User prompt: {user_prompt}")
+        print("="*80)
+        
+        # Perform topic research using GPT-4o
+        try:
+            print(f"[TOPIC_RESEARCH] Using GPT-4o for comprehensive topic research")
+            research_prompt = f"""Provide comprehensive, educational information about: {user_prompt}
+            
+Please include:
+            - Key facts and context
+            - Recent developments (if applicable)
+            - Background information
+            - Relevant vocabulary for language learners
+            - Educational insights
+            
+Make this informative and suitable for {level} level {language} language learners."""
+            
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are an educational research assistant. Provide comprehensive, factual information about topics in a way that's educational for language learners. Include context, key vocabulary, and relevant details."},
+                    {"role": "user", "content": research_prompt}
+                ],
+                temperature=0.3,
+                max_tokens=1500
+            )
+            
+            if response and response.choices:
+                research_results = response.choices[0].message.content
+                print(f"[TOPIC_RESEARCH] ✅ Research successful - got {len(research_results)} characters")
+                print(f"[TOPIC_RESEARCH] Research preview: {research_results[:200]}...")
+                
+                return {
+                    "success": True,
+                    "topic": user_prompt,
+                    "research": research_results,
+                    "message": "Topic research completed successfully. You can now start speaking!"
+                }
+            else:
+                print(f"[TOPIC_RESEARCH] ❌ No research results returned")
+                return {
+                    "success": False,
+                    "topic": user_prompt,
+                    "research": "",
+                    "message": "Research failed, but you can still practice with this topic."
+                }
+                
+        except Exception as research_error:
+            print(f"[TOPIC_RESEARCH] ❌ Research failed: {str(research_error)}")
+            return {
+                "success": False,
+                "topic": user_prompt,
+                "research": "",
+                "message": "Research failed, but you can still practice with this topic."
+            }
+    
+    except Exception as e:
+        print(f"[TOPIC_RESEARCH] ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to research topic: {str(e)}")
 
 # Endpoint to handle custom topic prompts
 @app.post("/api/custom-topic")
