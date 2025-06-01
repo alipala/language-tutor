@@ -120,7 +120,7 @@ export default function SpeechPage() {
             // These properties might be stored elsewhere or need to be handled differently
             // since they don't exist directly on the LearningPlan interface
             const topic = sessionStorage.getItem('selectedTopic');
-            const customPrompt = sessionStorage.getItem('customTopicPrompt');
+            const customPrompt = sessionStorage.getItem('customTopicText');
             
             if (topic) setSelectedTopic(topic);
             if (customPrompt) setCustomTopicPrompt(customPrompt);
@@ -145,7 +145,7 @@ export default function SpeechPage() {
       const language = sessionStorage.getItem('selectedLanguage');
       const level = sessionStorage.getItem('selectedLevel');
       const topic = sessionStorage.getItem('selectedTopic');
-      const customPrompt = sessionStorage.getItem('customTopicPrompt');
+      const customPrompt = sessionStorage.getItem('customTopicText');
       
       console.log(`[SpeechPage] Retrieved from sessionStorage - language: ${language} level: ${level}`);
       
@@ -159,7 +159,10 @@ export default function SpeechPage() {
       setSelectedLanguage(language);
       setSelectedLevel(level);
       if (topic) setSelectedTopic(topic);
-      if (topic === 'custom' && customPrompt) setCustomTopicPrompt(customPrompt);
+      if (topic === 'custom' && customPrompt) {
+        console.log('[SpeechPage] Found custom topic prompt:', customPrompt);
+        setCustomTopicPrompt(customPrompt);
+      }
       
       // We've successfully loaded the speech page with session storage parameters
       initializationCompleteRef.current = true;
