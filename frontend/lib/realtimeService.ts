@@ -590,35 +590,56 @@ export class RealtimeService {
   }
   
   /**
-   * Update the session configuration with transcription settings
+   * Update the session configuration following official OpenAI client pattern
    */
   private updateSession(): boolean {
     console.log('Updating session with transcription language:', this.currentLanguage || 'auto-detect', 'ISO code:', this.currentLanguageIsoCode || 'auto-detect');
     
-    // Create session update event with minimal transcription configuration
-    // Let OpenAI auto-detect audio format from WebRTC stream
-    const sessionUpdateEvent = {
+    // First session update: Match official OpenAI client defaults exactly
+    const initialSessionUpdate = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
-        input_audio_transcription: {
-          model: 'whisper-1'
-        },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500
-        },
-        voice: 'alloy'
+        instructions: 'You are a helpful language tutor. Have a conversation with the user to help them practice their language skills.',
+        voice: 'alloy',
+        input_audio_format: 'pcm16',
+        output_audio_format: 'pcm16',
+        input_audio_transcription: null, // Start with transcription disabled
+        turn_detection: null, // Start with turn detection disabled
+        tools: [],
+        tool_choice: 'auto',
+        temperature: 0.8,
+        max_response_output_tokens: 4096
       }
     };
     
-    // Send the session update event
-    const sent = this.sendMessage(sessionUpdateEvent);
-    console.log('Session update event sent:', sent);
+    // Send the initial session update
+    const initialSent = this.sendMessage(initialSessionUpdate);
+    console.log('Initial session update sent:', initialSent);
     
-    return sent;
+    // Wait a moment, then enable transcription
+    setTimeout(() => {
+      console.log('Enabling transcription...');
+      const transcriptionUpdate = {
+        type: 'session.update',
+        session: {
+          input_audio_transcription: {
+            model: 'whisper-1'
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 200 // Use official client's shorter duration
+          }
+        }
+      };
+      
+      const transcriptionSent = this.sendMessage(transcriptionUpdate);
+      console.log('Transcription update sent:', transcriptionSent);
+    }, 1000);
+    
+    return initialSent;
   }
   
   /**
