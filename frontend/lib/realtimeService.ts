@@ -402,7 +402,7 @@ export class RealtimeService {
       // Send offer to OpenAI
       console.log('Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-10-01';
+      const model = 'gpt-4o-realtime-preview';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: completeOffer.sdp,
