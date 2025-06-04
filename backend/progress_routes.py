@@ -206,9 +206,37 @@ async def get_conversation_history(
             # Convert messages
             messages = []
             for msg_data in session_data.get('messages', []):
+                # Handle timestamp conversion for ConversationMessage
+                if 'timestamp' in msg_data and isinstance(msg_data['timestamp'], str):
+                    try:
+                        msg_data['timestamp'] = datetime.fromisoformat(msg_data['timestamp'].replace('Z', '+00:00'))
+                    except ValueError:
+                        msg_data['timestamp'] = datetime.utcnow()
+                elif 'timestamp' not in msg_data:
+                    msg_data['timestamp'] = datetime.utcnow()
+                
                 messages.append(ConversationMessage(**msg_data))
             
+            # Handle session timestamps
+            if 'created_at' in session_data and isinstance(session_data['created_at'], str):
+                try:
+                    session_data['created_at'] = datetime.fromisoformat(session_data['created_at'].replace('Z', '+00:00'))
+                except ValueError:
+                    session_data['created_at'] = datetime.utcnow()
+            
+            if 'updated_at' in session_data and isinstance(session_data['updated_at'], str):
+                try:
+                    session_data['updated_at'] = datetime.fromisoformat(session_data['updated_at'].replace('Z', '+00:00'))
+                except ValueError:
+                    session_data['updated_at'] = datetime.utcnow()
+            
+            # Set the converted messages
             session_data['messages'] = messages
+            
+            # Convert ObjectId to string for the session
+            if '_id' in session_data:
+                session_data['id'] = str(session_data['_id'])
+            
             sessions.append(ConversationSession(**session_data))
         
         # Get stats

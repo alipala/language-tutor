@@ -101,6 +101,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // State for exercise type in sentence construction assessment
   const [exerciseType, setExerciseType] = useState<string>('free');
   
+  // Leave conversation modal state
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [conversationStartTime, setConversationStartTime] = useState<number | null>(null);
+  
   // Only log on initial render, not on every re-render
   useEffect(() => {
     if (initialRenderRef.current) {
@@ -940,6 +944,66 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }, 1000);
   };
   
+  // Browser navigation protection
+  useEffect(() => {
+    // Set conversation start time when recording begins
+    if (isRecording && !conversationStartTime) {
+      setConversationStartTime(Date.now());
+    }
+  }, [isRecording, conversationStartTime]);
+  
+  // Browser navigation protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only show warning if there are messages and user is authenticated
+      if (user && processedMessages.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      // Only intercept if there are messages and user is authenticated
+      if (user && processedMessages.length > 0) {
+        e.preventDefault();
+        // Push the current state back to prevent navigation
+        window.history.pushState(null, '', window.location.href);
+        // Show our custom modal instead
+        setShowLeaveModal(true);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Push a state to handle back button
+    if (user && processedMessages.length > 0) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [user, processedMessages.length]);
+  
+  // Handle leave conversation
+  const handleLeaveConversation = () => {
+    // Navigate away from the conversation
+    router.push('/');
+  };
+  
+  // Calculate practice time for modal
+  const getPracticeTime = () => {
+    if (!conversationStartTime) return '0:00';
+    const elapsed = Math.floor((Date.now() - conversationStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
   return (
     <main className="flex flex-col text-white p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden min-h-screen">
       <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
@@ -1260,6 +1324,19 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           </div>
         </div>
       </div>
+      
+      {/* Leave Conversation Modal */}
+      <LeaveConversationModal
+        isOpen={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        onLeave={handleLeaveConversation}
+        messages={processedMessages}
+        language={language}
+        level={level}
+        topic={topic}
+        conversationStartTime={conversationStartTime || undefined}
+        practiceTime={getPracticeTime()}
+      />
     </main>
   );
 }
