@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from openai import OpenAI
+import httpx
 
 from auth import get_current_user
 from models import (
@@ -12,8 +13,24 @@ from models import (
 )
 from database import conversation_sessions_collection, users_collection
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize OpenAI client with error handling
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Warning: OPENAI_API_KEY not found in environment variables")
+
+# Initialize OpenAI client with error handling for Railway deployment
+try:
+    client = OpenAI(api_key=api_key)
+    print("OpenAI client initialized successfully in progress_routes")
+except TypeError as e:
+    if "proxies" in str(e):
+        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+        # Alternative initialization without proxies
+        client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        print("OpenAI client initialized with alternative method in progress_routes")
+    else:
+        print(f"Error initializing OpenAI client in progress_routes: {str(e)}")
+        raise
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
