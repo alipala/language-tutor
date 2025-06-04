@@ -187,11 +187,13 @@ async def get_conversation_history(
 ):
     """Get user's conversation history"""
     try:
+        print(f"[PROGRESS] ===== CONVERSATION HISTORY DEBUG START =====")
         print(f"[PROGRESS] Getting conversation history for user {current_user.id}")
         print(f"[PROGRESS] Limit: {limit}, Offset: {offset}")
         
         # Get total count
         total_count = await conversation_sessions_collection.count_documents({"user_id": current_user.id})
+        print(f"[PROGRESS] Total count: {total_count}")
         
         # Get sessions with pagination, sorted by creation date (newest first)
         sessions_cursor = conversation_sessions_collection.find(
@@ -199,80 +201,104 @@ async def get_conversation_history(
         ).sort("created_at", -1).skip(offset).limit(limit)
         
         sessions_data = await sessions_cursor.to_list(length=limit)
+        print(f"[PROGRESS] Raw sessions data count: {len(sessions_data)}")
         
-        # Convert to ConversationSession objects
+        # Debug: Print first session structure
+        if sessions_data:
+            print(f"[PROGRESS] First session structure: {list(sessions_data[0].keys())}")
+            print(f"[PROGRESS] First session messages type: {type(sessions_data[0].get('messages', []))}")
+            if sessions_data[0].get('messages'):
+                print(f"[PROGRESS] First message structure: {list(sessions_data[0]['messages'][0].keys()) if sessions_data[0]['messages'] else 'No messages'}")
+        
+        # Convert to simple dictionaries - NO PYDANTIC MODELS AT ALL
         sessions = []
-        for session_data in sessions_data:
-            # Convert messages
-            messages = []
-            for msg_data in session_data.get('messages', []):
-                # Handle timestamp conversion for ConversationMessage
-                if 'timestamp' in msg_data and isinstance(msg_data['timestamp'], str):
-                    try:
-                        msg_data['timestamp'] = datetime.fromisoformat(msg_data['timestamp'].replace('Z', '+00:00'))
-                    except ValueError:
-                        msg_data['timestamp'] = datetime.utcnow()
-                elif 'timestamp' not in msg_data:
-                    msg_data['timestamp'] = datetime.utcnow()
+        for i, session_data in enumerate(sessions_data):
+            print(f"[PROGRESS] Processing session {i+1}/{len(sessions_data)}")
+            
+            try:
+                # Convert messages to simple dictionaries
+                messages = []
+                for j, msg_data in enumerate(session_data.get('messages', [])):
+                    print(f"[PROGRESS] Processing message {j+1} in session {i+1}")
+                    
+                    # Handle timestamp - keep it simple
+                    timestamp = msg_data.get('timestamp', datetime.utcnow())
+                    if isinstance(timestamp, str):
+                        try:
+                            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        except ValueError:
+                            timestamp = datetime.utcnow()
+                    
+                    # Create simple message dict
+                    message_dict = {
+                        'role': msg_data.get('role', 'user'),
+                        'content': msg_data.get('content', ''),
+                        'timestamp': timestamp.isoformat() if isinstance(timestamp, datetime) else str(timestamp)
+                    }
+                    messages.append(message_dict)
+                    print(f"[PROGRESS] Message {j+1} processed successfully")
                 
-                # Convert to simple dict instead of Pydantic model
-                messages.append({
-                    'role': msg_data.get('role', 'user'),
-                    'content': msg_data.get('content', ''),
-                    'timestamp': msg_data['timestamp']
-                })
-            
-            # Handle session timestamps
-            if 'created_at' in session_data and isinstance(session_data['created_at'], str):
-                try:
-                    session_data['created_at'] = datetime.fromisoformat(session_data['created_at'].replace('Z', '+00:00'))
-                except ValueError:
-                    session_data['created_at'] = datetime.utcnow()
-            
-            if 'updated_at' in session_data and isinstance(session_data['updated_at'], str):
-                try:
-                    session_data['updated_at'] = datetime.fromisoformat(session_data['updated_at'].replace('Z', '+00:00'))
-                except ValueError:
-                    session_data['updated_at'] = datetime.utcnow()
-            
-            # Set the converted messages
-            session_data['messages'] = messages
-            
-            # Convert ObjectId to string for the session
-            if '_id' in session_data:
-                session_data['id'] = str(session_data['_id'])
-            
-            # Create ConversationSession with proper field mapping
-            session = ConversationSession(
-                id=session_data.get('id'),
-                user_id=session_data['user_id'],
-                language=session_data['language'],
-                level=session_data['level'],
-                topic=session_data.get('topic'),
-                messages=messages,
-                duration_minutes=session_data.get('duration_minutes', 0.0),
-                message_count=session_data.get('message_count', 0),
-                summary=session_data.get('summary'),
-                is_streak_eligible=session_data.get('is_streak_eligible', False),
-                created_at=session_data.get('created_at', datetime.utcnow()),
-                updated_at=session_data.get('updated_at', datetime.utcnow())
-            )
-            sessions.append(session)
+                # Handle session timestamps
+                created_at = session_data.get('created_at', datetime.utcnow())
+                updated_at = session_data.get('updated_at', datetime.utcnow())
+                
+                if isinstance(created_at, str):
+                    try:
+                        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    except ValueError:
+                        created_at = datetime.utcnow()
+                
+                if isinstance(updated_at, str):
+                    try:
+                        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                    except ValueError:
+                        updated_at = datetime.utcnow()
+                
+                # Create simple session dictionary - NO PYDANTIC
+                session_dict = {
+                    'id': str(session_data.get('_id', '')),
+                    'user_id': session_data.get('user_id', ''),
+                    'language': session_data.get('language', ''),
+                    'level': session_data.get('level', ''),
+                    'topic': session_data.get('topic'),
+                    'messages': messages,
+                    'duration_minutes': float(session_data.get('duration_minutes', 0.0)),
+                    'message_count': int(session_data.get('message_count', 0)),
+                    'summary': session_data.get('summary'),
+                    'is_streak_eligible': bool(session_data.get('is_streak_eligible', False)),
+                    'created_at': created_at.isoformat() if isinstance(created_at, datetime) else str(created_at),
+                    'updated_at': updated_at.isoformat() if isinstance(updated_at, datetime) else str(updated_at)
+                }
+                sessions.append(session_dict)
+                print(f"[PROGRESS] Session {i+1} processed successfully")
+                
+            except Exception as session_error:
+                print(f"[PROGRESS] ❌ Error processing session {i+1}: {str(session_error)}")
+                print(f"[PROGRESS] Session data keys: {list(session_data.keys())}")
+                # Skip this session and continue
+                continue
         
         # Get stats
+        print(f"[PROGRESS] Getting stats...")
         stats = await get_progress_stats(current_user)
+        print(f"[PROGRESS] Stats retrieved successfully")
         
-        response = ConversationHistoryResponse(
-            sessions=sessions,
-            total_count=total_count,
-            stats=stats
-        )
+        # Return simple dictionary - NO PYDANTIC
+        response = {
+            'sessions': sessions,
+            'total_count': total_count,
+            'stats': stats.dict()
+        }
         
-        print(f"[PROGRESS] ✅ Retrieved {len(sessions)} conversations")
+        print(f"[PROGRESS] ✅ Retrieved {len(sessions)} conversations successfully")
+        print(f"[PROGRESS] ===== CONVERSATION HISTORY DEBUG END =====")
         return response
         
     except Exception as e:
-        print(f"[PROGRESS] ❌ Error getting conversation history: {str(e)}")
+        print(f"[PROGRESS] ❌ CRITICAL ERROR in conversation history: {str(e)}")
+        print(f"[PROGRESS] Error type: {type(e)}")
+        import traceback
+        print(f"[PROGRESS] Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to get conversation history: {str(e)}")
 
 @router.get("/achievements")
