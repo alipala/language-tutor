@@ -237,7 +237,22 @@ async def get_conversation_history(
             if '_id' in session_data:
                 session_data['id'] = str(session_data['_id'])
             
-            sessions.append(ConversationSession(**session_data))
+            # Create ConversationSession with proper field mapping
+            session = ConversationSession(
+                id=session_data.get('id'),
+                user_id=session_data['user_id'],
+                language=session_data['language'],
+                level=session_data['level'],
+                topic=session_data.get('topic'),
+                messages=messages,
+                duration_minutes=session_data.get('duration_minutes', 0.0),
+                message_count=session_data.get('message_count', 0),
+                summary=session_data.get('summary'),
+                is_streak_eligible=session_data.get('is_streak_eligible', False),
+                created_at=session_data.get('created_at', datetime.utcnow()),
+                updated_at=session_data.get('updated_at', datetime.utcnow())
+            )
+            sessions.append(session)
         
         # Get stats
         stats = await get_progress_stats(current_user)

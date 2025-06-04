@@ -54,10 +54,10 @@ export default function SaveProgressButton({
   }
 
   const handleSaveProgress = async () => {
-    // Prevent spam clicking with 10-second cooldown
+    // Prevent spam clicking with 1-minute cooldown for meaningful summaries
     const now = Date.now();
-    if (lastSaveTime && (now - lastSaveTime) < 10000) {
-      const remainingCooldown = Math.ceil((10000 - (now - lastSaveTime)) / 1000);
+    if (lastSaveTime && (now - lastSaveTime) < 60000) {
+      const remainingCooldown = Math.ceil((60000 - (now - lastSaveTime)) / 1000);
       setCooldownTime(remainingCooldown);
       return;
     }
@@ -111,7 +111,7 @@ export default function SaveProgressButton({
 
       setSaveState('saved');
       setLastSaveTime(now);
-      setCooldownTime(10); // 10-second cooldown
+      setCooldownTime(60); // 1-minute cooldown
 
       // Show success state for 3 seconds, then return to idle
       setTimeout(() => {
