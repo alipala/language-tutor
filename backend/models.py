@@ -134,6 +134,7 @@ class ConversationSession(BaseModel):
     duration_minutes: float = 0.0
     message_count: int = 0
     summary: Optional[str] = None
+    enhanced_analysis: Optional[Dict[str, Any]] = None  # New enhanced analysis data
     is_streak_eligible: bool = False  # True if session >= 5 minutes
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

@@ -19,8 +19,9 @@ import {
   Download, Trash2, Settings, Edit3, Crown,
   TrendingUp, Award, BookOpen, Clock, Zap,
   ChevronRight, ChevronDown, Share2, Lock,
-  Gem, Heart, Volume2, Mic, CheckCircle
+  Gem, Heart, Volume2, Mic, CheckCircle, Brain
 } from 'lucide-react';
+import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -127,6 +128,12 @@ export default function ProfilePage() {
   const [achievements, setAchievements] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+
+  // Enhanced analysis modal state
+  const [showEnhancedAnalysis, setShowEnhancedAnalysis] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
+  const [selectedSessionInfo, setSelectedSessionInfo] = useState<any>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   // Mock user stats for display (will be replaced with real data)
   const userStats = {
@@ -295,6 +302,44 @@ export default function ProfilePage() {
   const handleLogoutConfirm = async () => {
     await logout();
     window.location.href = '/';
+  };
+
+  // Function to fetch and show enhanced analysis
+  const handleShowEnhancedAnalysis = async (sessionId: string, sessionInfo: any) => {
+    if (!user) return;
+    
+    setAnalysisLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_URL}/api/progress/conversation/${sessionId}/analysis`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const analysisData = await response.json();
+        // Include conversation messages in the analysis data
+        const enhancedAnalysisWithMessages = {
+          ...analysisData.enhanced_analysis,
+          conversation_messages: analysisData.conversation_messages || []
+        };
+        setSelectedAnalysis(enhancedAnalysisWithMessages);
+        setSelectedSessionInfo(analysisData.session_info);
+        setShowEnhancedAnalysis(true);
+      } else {
+        console.error('Failed to fetch enhanced analysis');
+      }
+    } catch (error) {
+      console.error('Error fetching enhanced analysis:', error);
+    } finally {
+      setAnalysisLoading(false);
+    }
   };
 
   return (
@@ -518,10 +563,51 @@ export default function ProfilePage() {
                         </div>
                         
                         {session.summary && (
-                          <div className="bg-white rounded-lg p-3 text-sm text-gray-700">
+                          <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
                             <strong>Summary:</strong> {session.summary}
                           </div>
                         )}
+                        
+                        {/* Enhanced Analysis Button */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            {session.enhanced_analysis && (
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                                <Brain className="h-3 w-3 mr-1" />
+                                Enhanced Analysis Available
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {session.enhanced_analysis && (
+                            <Button
+                              onClick={() => handleShowEnhancedAnalysis(session.id, {
+                                language: session.language,
+                                level: session.level,
+                                topic: session.topic,
+                                duration_minutes: session.duration_minutes,
+                                message_count: session.message_count,
+                                created_at: session.created_at
+                              })}
+                              variant="outline"
+                              size="sm"
+                              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                              disabled={analysisLoading}
+                            >
+                              {analysisLoading ? (
+                                <>
+                                  <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
+                                  Loading...
+                                </>
+                              ) : (
+                                <>
+                                  <Brain className="h-3 w-3 mr-1" />
+                                  View Analysis
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     
@@ -945,6 +1031,16 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Enhanced Analysis Modal */}
+      {showEnhancedAnalysis && selectedAnalysis && selectedSessionInfo && (
+        <EnhancedAnalysisModal
+          isOpen={showEnhancedAnalysis}
+          onClose={() => setShowEnhancedAnalysis(false)}
+          analysis={selectedAnalysis}
+          sessionInfo={selectedSessionInfo}
+        />
+      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (

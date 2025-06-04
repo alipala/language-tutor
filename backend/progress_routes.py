@@ -12,6 +12,7 @@ from models import (
     SaveConversationRequest, ConversationStats, ConversationHistoryResponse
 )
 from database import conversation_sessions_collection, users_collection
+from enhanced_analysis import generate_enhanced_analysis
 
 # Initialize OpenAI client with error handling
 api_key = os.getenv("OPENAI_API_KEY")
@@ -73,6 +74,25 @@ async def save_conversation(
         # Generate conversation summary using OpenAI
         summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
         
+        # Determine analysis level based on session quality
+        analysis_level = determine_analysis_level(request.duration_minutes, len(conversation_messages))
+        print(f"[PROGRESS] Analysis level determined: {analysis_level} (duration: {request.duration_minutes}min, messages: {len(conversation_messages)})")
+        
+        # Generate enhanced analysis only for qualifying sessions
+        enhanced_analysis = None
+        if analysis_level == "enhanced":
+            print(f"[PROGRESS] Generating enhanced analysis for qualifying session")
+            enhanced_analysis = await generate_enhanced_analysis(
+                conversation_messages,
+                current_user.id,
+                request.language,
+                request.level,
+                request.topic or "general",
+                request.duration_minutes
+            )
+        else:
+            print(f"[PROGRESS] Skipping enhanced analysis - session doesn't meet criteria")
+        
         # Determine if session is streak eligible (5+ minutes)
         is_streak_eligible = request.duration_minutes >= 5.0
         
@@ -101,6 +121,7 @@ async def save_conversation(
                 "duration_minutes": request.duration_minutes,
                 "message_count": len(conversation_messages),
                 "summary": summary,
+                "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "updated_at": datetime.utcnow()
             }
@@ -133,6 +154,7 @@ async def save_conversation(
                 "duration_minutes": request.duration_minutes,
                 "message_count": len(conversation_messages),
                 "summary": summary,
+                "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
@@ -230,14 +252,10 @@ async def get_conversation_history(
         # Convert to simple dictionaries - NO PYDANTIC MODELS AT ALL
         sessions = []
         for i, session_data in enumerate(sessions_data):
-            print(f"[PROGRESS] Processing session {i+1}/{len(sessions_data)}")
-            
             try:
                 # Convert messages to simple dictionaries
                 messages = []
                 for j, msg_data in enumerate(session_data.get('messages', [])):
-                    print(f"[PROGRESS] Processing message {j+1} in session {i+1}")
-                    
                     # Handle timestamp - keep it simple
                     timestamp = msg_data.get('timestamp', datetime.utcnow())
                     if isinstance(timestamp, str):
@@ -253,7 +271,6 @@ async def get_conversation_history(
                         'timestamp': timestamp.isoformat() if isinstance(timestamp, datetime) else str(timestamp)
                     }
                     messages.append(message_dict)
-                    print(f"[PROGRESS] Message {j+1} processed successfully")
                 
                 # Handle session timestamps
                 created_at = session_data.get('created_at', datetime.utcnow())
@@ -282,6 +299,7 @@ async def get_conversation_history(
                     'duration_minutes': float(session_data.get('duration_minutes', 0.0)),
                     'message_count': int(session_data.get('message_count', 0)),
                     'summary': session_data.get('summary'),
+                    'enhanced_analysis': session_data.get('enhanced_analysis'),
                     'is_streak_eligible': bool(session_data.get('is_streak_eligible', False)),
                     'created_at': created_at.isoformat() if isinstance(created_at, datetime) else str(created_at),
                     'updated_at': updated_at.isoformat() if isinstance(updated_at, datetime) else str(updated_at)
@@ -317,6 +335,89 @@ async def get_conversation_history(
         import traceback
         print(f"[PROGRESS] Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to get conversation history: {str(e)}")
+
+@router.get("/conversation/{session_id}/analysis")
+async def get_conversation_analysis(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get enhanced analysis for a specific conversation session"""
+    try:
+        print(f"[PROGRESS] Getting enhanced analysis for session {session_id}")
+        
+        # Validate ObjectId format
+        from bson import ObjectId
+        try:
+            session_object_id = ObjectId(session_id)
+        except:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid session ID format"
+            )
+        
+        # Find the session
+        session = await conversation_sessions_collection.find_one({
+            "_id": session_object_id,
+            "user_id": current_user.id
+        })
+        
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation session not found"
+            )
+        
+        # Get enhanced analysis
+        enhanced_analysis = session.get('enhanced_analysis')
+        
+        if not enhanced_analysis:
+            # If no enhanced analysis exists, generate it
+            print(f"[PROGRESS] No enhanced analysis found, generating...")
+            
+            # Convert messages to ConversationMessage objects
+            conversation_messages = []
+            for msg in session.get('messages', []):
+                conversation_messages.append(ConversationMessage(
+                    role=msg.get('role', 'user'),
+                    content=msg.get('content', ''),
+                    timestamp=msg.get('timestamp', datetime.utcnow())
+                ))
+            
+            # Generate enhanced analysis
+            enhanced_analysis = await generate_enhanced_analysis(
+                conversation_messages,
+                current_user.id,
+                session.get('language', 'english'),
+                session.get('level', 'B1'),
+                session.get('topic', 'general'),
+                session.get('duration_minutes', 0)
+            )
+            
+            # Save the generated analysis
+            await conversation_sessions_collection.update_one(
+                {"_id": session_object_id},
+                {"$set": {"enhanced_analysis": enhanced_analysis}}
+            )
+        
+        return {
+            "session_id": session_id,
+            "enhanced_analysis": enhanced_analysis,
+            "session_info": {
+                "language": session.get('language'),
+                "level": session.get('level'),
+                "topic": session.get('topic'),
+                "duration_minutes": session.get('duration_minutes'),
+                "message_count": session.get('message_count'),
+                "created_at": session.get('created_at')
+            },
+            "conversation_messages": session.get('messages', [])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[PROGRESS] ❌ Error getting conversation analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation analysis: {str(e)}")
 
 @router.get("/achievements")
 async def get_user_achievements(current_user: UserResponse = Depends(get_current_user)):
@@ -454,6 +555,25 @@ Summary:"""
     except Exception as e:
         print(f"[PROGRESS] ❌ Error generating summary: {str(e)}")
         return f"Conversation in {language} ({level} level) - {len(messages)} messages"
+
+def determine_analysis_level(duration_minutes: float, message_count: int) -> str:
+    """
+    Determine the level of analysis to perform based on session quality
+    
+    Returns:
+    - "enhanced": Full enhanced analysis for quality sessions
+    - "basic": Basic summary only for short/low-quality sessions
+    """
+    # Enhanced analysis criteria:
+    # - Duration >= 5 minutes AND message_count >= 10
+    # - OR Duration >= 3 minutes AND message_count >= 15 (very active short session)
+    
+    if duration_minutes >= 5.0 and message_count >= 10:
+        return "enhanced"
+    elif duration_minutes >= 3.0 and message_count >= 15:
+        return "enhanced"
+    else:
+        return "basic"
 
 async def calculate_streaks(user_id: str) -> tuple[int, int]:
     """Calculate current and longest streak for a user"""
