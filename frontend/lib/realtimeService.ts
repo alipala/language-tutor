@@ -595,18 +595,23 @@ export class RealtimeService {
   private updateSession(): boolean {
     console.log('Updating session with transcription language:', this.currentLanguage || 'auto-detect', 'ISO code:', this.currentLanguageIsoCode || 'auto-detect');
     
-    // Create session update event with language parameter
+    // Create session update event with proper transcription configuration
     const sessionUpdateEvent = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
         input_audio_transcription: {
-          model: 'gpt-4o-mini-transcribe', // Using the newer model for better transcription accuracy
-          language: this.currentLanguageIsoCode || undefined // Pass language in ISO-639-1 format if available
+          model: 'whisper-1' // Use the correct Whisper model name
         },
         turn_detection: {
-          type: 'semantic_vad' // Using improved voice activity detection
-        }
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500
+        },
+        input_audio_format: 'pcm16',
+        output_audio_format: 'pcm16',
+        voice: 'alloy'
       }
     };
     
