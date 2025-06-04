@@ -35,7 +35,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (isMenuOpen && !target.closest('.user-menu-container')) {
+      if (isMenuOpen && !target.closest('.user-menu-container') && !target.closest('.mobile-menu-container')) {
         setIsMenuOpen(false);
       }
     };
@@ -216,7 +216,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
       {/* Mobile Menu - Enhanced for better mobile UX */}
       {isMenuOpen && (
-        <div className="block md:hidden bg-white/10 backdrop-blur-md border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden">
+        <div className="block md:hidden bg-white/10 backdrop-blur-md border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden mobile-menu-container">
           {/* Landing page menu items on mobile */}
           {isLandingPage && (
             <>
