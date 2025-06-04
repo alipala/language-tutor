@@ -215,7 +215,12 @@ async def get_conversation_history(
                 elif 'timestamp' not in msg_data:
                     msg_data['timestamp'] = datetime.utcnow()
                 
-                messages.append(ConversationMessage(**msg_data))
+                # Convert to simple dict instead of Pydantic model
+                messages.append({
+                    'role': msg_data.get('role', 'user'),
+                    'content': msg_data.get('content', ''),
+                    'timestamp': msg_data['timestamp']
+                })
             
             # Handle session timestamps
             if 'created_at' in session_data and isinstance(session_data['created_at'], str):
