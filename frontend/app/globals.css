@@ -494,6 +494,35 @@
 .touch-target {
   min-height: 48px;
   min-width: 48px;
+  position: relative;
+}
+
+/* Enhanced mobile touch targets */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 52px;
+    min-width: 52px;
+  }
+  
+  /* Ensure buttons have adequate spacing */
+  button, .button, input[type="button"], input[type="submit"] {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+  
+  /* Improve form input touch targets */
+  input[type="text"], input[type="email"], input[type="password"], 
+  input[type="tel"], input[type="url"], textarea, select {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Better spacing for mobile navigation */
+  nav button, nav a {
+    padding: 12px 16px;
+    margin: 4px 0;
+  }
 }
 
 /* Modern button styles */

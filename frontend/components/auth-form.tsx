@@ -111,7 +111,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   };
 
   return (
-    <div className="wrapper max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg overflow-hidden border-2 border-[#4ECFBF]">
+    <div className="wrapper max-w-md mx-auto bg-white p-4 sm:p-8 rounded-lg shadow-lg overflow-hidden border-2 border-[#4ECFBF]">
       {/* Title text - exactly like the original example */}
       <div className="title-text flex w-[200%]">
         <div ref={titleLoginRef} className="title w-1/2 text-2xl font-bold text-center transition-all duration-600 text-gray-800" style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}>
@@ -124,8 +124,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       
       {/* Form container - following the original HTML structure */}
       <div className="form-container w-full overflow-hidden">
-        {/* Slide controls */}
-        <div className="slide-controls relative flex h-[50px] w-full overflow-hidden my-7 justify-between border border-gray-200 rounded-md bg-gray-50">
+        {/* Slide controls - Enhanced for mobile touch */}
+        <div className="slide-controls relative flex h-[50px] sm:h-[50px] w-full overflow-hidden my-7 justify-between border border-gray-200 rounded-md bg-gray-50">
           <input 
             type="radio" 
             name="slide" 
@@ -144,7 +144,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           />
           <label 
             htmlFor="login" 
-            className={`slide login h-full w-full text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 ${activeTab === 'login' ? 'text-white' : 'text-gray-600'}`}
+            className={`slide login h-full w-full text-base sm:text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 touch-target ${activeTab === 'login' ? 'text-white' : 'text-gray-600'}`}
             onClick={() => switchTab('login')}
             style={{transition: 'all 0.6s ease'}}
           >
@@ -152,7 +152,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </label>
           <label 
             htmlFor="signup" 
-            className={`slide signup h-full w-full text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 ${activeTab === 'signup' ? 'text-white' : 'text-gray-600'}`}
+            className={`slide signup h-full w-full text-base sm:text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 touch-target ${activeTab === 'signup' ? 'text-white' : 'text-gray-600'}`}
             onClick={() => switchTab('signup')}
             style={{transition: 'all 0.6s ease'}}
           >
@@ -185,14 +185,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               </motion.div>
             )}
             
-            <div className="field h-[50px] w-full mt-5">
+            <div className="field h-[50px] sm:h-[50px] w-full mt-5">
               <input 
                 type="email" 
                 placeholder="Email Address" 
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
+                className="h-full w-full outline-none pl-4 pr-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7] focus:ring-2 focus:ring-[#4ECFBF]/20 touch-target"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.email && (
@@ -200,14 +200,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               )}
             </div>
             
-            <div className="field h-[50px] w-full mt-5">
+            <div className="field h-[50px] sm:h-[50px] w-full mt-5">
               <input 
                 type="password" 
                 placeholder="Password" 
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
+                className="h-full w-full outline-none pl-4 pr-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7] focus:ring-2 focus:ring-[#4ECFBF]/20 touch-target"
                 style={{transition: 'all 0.3s ease'}}
               />
               {validationErrors.password && (
@@ -221,7 +221,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               </a>
             </div>
             
-            <div className="field btn h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
+            <div className="field btn h-[50px] sm:h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
               <div 
                 className="btn-layer h-full w-[300%] absolute left-[-100%] bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-md"
                 style={{transition: 'all 0.4s ease'}}
@@ -229,7 +229,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="h-full w-full z-[1] relative bg-white hover:bg-gray-50 border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer transition-colors duration-300"
+                className="h-full w-full z-[1] relative bg-white hover:bg-gray-50 active:bg-gray-100 border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer transition-colors duration-300 touch-target disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
