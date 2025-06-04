@@ -10,6 +10,8 @@ import { isAuthenticated } from '@/lib/auth-utils';
 import { getConversationDuration, formatTime, getGuestLimitationsDescription, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 import ModernTimer from '@/components/modern-timer';
+import SaveProgressButton from '@/components/save-progress-button';
+import LeaveConversationModal from '@/components/leave-conversation-modal';
 
 interface SpeechClientProps {
   language: string;
@@ -1135,12 +1137,22 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   
                   {/* Conversation Transcript Section */}
                   <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col h-[450px] sm:h-[500px] md:h-[550px] lg:h-[650px]" style={{animationDelay: '300ms'}}>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Conversation Transcript
-                    </h3>
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#F75A5A] flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Conversation Transcript
+                      </h3>
+                      <SaveProgressButton
+                        messages={processedMessages}
+                        language={language}
+                        level={level}
+                        topic={topic}
+                        conversationStartTime={isConversationTimerActive ? Date.now() - ((getConversationDuration(isAuthenticated()) - (conversationTimer || 0)) * 1000) : undefined}
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
+                      />
+                    </div>
                     <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-1 min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (

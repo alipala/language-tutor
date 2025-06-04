@@ -117,3 +117,48 @@ class PasswordReset(BaseModel):
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+
+# Conversation session models
+class ConversationMessage(BaseModel):
+    role: str  # 'user' or 'assistant'
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class ConversationSession(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: str
+    language: str
+    level: str
+    topic: Optional[str] = None
+    messages: List[ConversationMessage] = []
+    duration_minutes: float = 0.0
+    message_count: int = 0
+    summary: Optional[str] = None
+    is_streak_eligible: bool = False  # True if session >= 5 minutes
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class SaveConversationRequest(BaseModel):
+    language: str
+    level: str
+    topic: Optional[str] = None
+    messages: List[Dict[str, Any]]
+    duration_minutes: float
+
+class ConversationStats(BaseModel):
+    total_sessions: int
+    total_minutes: float
+    current_streak: int
+    longest_streak: int
+    sessions_this_week: int
+    sessions_this_month: int
+
+class ConversationHistoryResponse(BaseModel):
+    sessions: List[ConversationSession]
+    total_count: int
+    stats: ConversationStats
