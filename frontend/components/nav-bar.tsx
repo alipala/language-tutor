@@ -35,7 +35,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (isMenuOpen && !target.closest('.user-menu-container')) {
+      if (isMenuOpen && !target.closest('.user-menu-container') && !target.closest('.mobile-menu-container')) {
         setIsMenuOpen(false);
       }
     };
@@ -195,11 +195,13 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden">
+        {/* Mobile Menu Button - Enhanced for better touch targets */}
+        <div className="block md:hidden">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="text-white/80 hover:text-white focus:outline-none"
+            className="text-white/80 hover:text-white focus:outline-none p-2 -mr-2 touch-target"
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isMenuOpen}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {isMenuOpen ? (
@@ -212,37 +214,37 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Enhanced for better mobile UX */}
       {isMenuOpen && (
-        <div className="md:hidden glass-card border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden py-2 px-4">
+        <div className="block md:hidden bg-white/10 backdrop-blur-md border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden mobile-menu-container">
           {/* Landing page menu items on mobile */}
           {isLandingPage && (
             <>
               <button
                 onClick={() => scrollToSection('features')}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
+                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('how-it-works')}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
+                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
               >
                 How It Works
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
+                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
               >
                 Pricing
               </button>
               <button
                 onClick={() => scrollToSection('faq')}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
+                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
               >
                 FAQ
               </button>
-              <div className="my-2 border-t border-white/10"></div>
+              <div className="border-t border-white/10"></div>
             </>
           )}
           
@@ -253,13 +255,13 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   navigateTo('/profile');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
+                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
               >
                 Your Profile
               </button>
               <button
                 onClick={() => setShowLogoutConfirm(true)}
-                className="block w-full text-left py-2 text-red-300 hover:text-red-200"
+                className="block w-full text-left py-4 px-4 text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors touch-target"
               >
                 Sign Out
               </button>
@@ -271,7 +273,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   navigateTo('/auth/login');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 text-white/80 hover:text-white"
+                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
               >
                 Login
               </button>
@@ -288,25 +290,25 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" 
             onClick={() => setShowLogoutConfirm(false)}
           />
-          {/* Position dialog at the specific location marked in the screenshot */}
+          {/* Position dialog at the specific location marked in the screenshot - Mobile optimized */}
           <div 
             className="fixed top-[200px] left-1/2 -translate-x-1/2 z-50 animate-slideDown w-[90%] max-w-sm mx-auto"
             onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
           >
-              <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow-2xl border border-gray-200 dark:border-slate-700">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Sign Out</h3>
-                <p className="text-slate-700 dark:text-slate-300 mb-4">Are you sure you want to sign out?</p>
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-2xl border border-gray-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Sign Out</h3>
+                <p className="text-slate-700 dark:text-slate-300 mb-6">Are you sure you want to sign out?</p>
                 
-                <div className="flex space-x-2 justify-end">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:justify-end">
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors text-sm"
+                    className="px-4 py-3 sm:py-2 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors text-sm font-medium touch-target"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="px-3 py-1.5 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors text-sm"
+                    className="px-4 py-3 sm:py-2 rounded bg-[#e74c3c] hover:bg-[#c0392b] text-white transition-colors text-sm font-medium touch-target"
                   >
                     Sign Out
                   </button>
