@@ -402,7 +402,7 @@ export class RealtimeService {
       // Send offer to OpenAI
       console.log('Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-12-17';
+      const model = 'gpt-4o-realtime-preview-2024-10-01';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: completeOffer.sdp,
@@ -595,13 +595,14 @@ export class RealtimeService {
   private updateSession(): boolean {
     console.log('Updating session with transcription language:', this.currentLanguage || 'auto-detect', 'ISO code:', this.currentLanguageIsoCode || 'auto-detect');
     
-    // Create session update event with proper transcription configuration
+    // Create session update event with minimal transcription configuration
+    // Let OpenAI auto-detect audio format from WebRTC stream
     const sessionUpdateEvent = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
         input_audio_transcription: {
-          model: 'whisper-1' // Use the correct Whisper model name
+          model: 'whisper-1'
         },
         turn_detection: {
           type: 'server_vad',
@@ -609,8 +610,6 @@ export class RealtimeService {
           prefix_padding_ms: 300,
           silence_duration_ms: 500
         },
-        input_audio_format: 'pcm16',
-        output_audio_format: 'pcm16',
         voice: 'alloy'
       }
     };
