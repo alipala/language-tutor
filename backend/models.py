@@ -125,7 +125,7 @@ class ConversationMessage(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class ConversationSession(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     user_id: str
     language: str
     level: str

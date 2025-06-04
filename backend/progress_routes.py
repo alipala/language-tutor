@@ -59,36 +59,80 @@ async def save_conversation(
         # Determine if session is streak eligible (5+ minutes)
         is_streak_eligible = request.duration_minutes >= 5.0
         
-        # Create conversation session
-        session = ConversationSession(
-            user_id=current_user.id,
-            language=request.language,
-            level=request.level,
-            topic=request.topic,
-            messages=conversation_messages,
-            duration_minutes=request.duration_minutes,
-            message_count=len(conversation_messages),
-            summary=summary,
-            is_streak_eligible=is_streak_eligible,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
+        # Check if there's an existing session for this user today with the same language/level/topic
+        today = datetime.utcnow().date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
         
-        # Save to database
-        session_dict = session.dict(by_alias=True)
-        session_dict['messages'] = [msg.dict() for msg in session.messages]
+        existing_session = await conversation_sessions_collection.find_one({
+            "user_id": current_user.id,
+            "language": request.language,
+            "level": request.level,
+            "topic": request.topic,
+            "created_at": {
+                "$gte": today_start,
+                "$lte": today_end
+            }
+        })
         
-        result = await conversation_sessions_collection.insert_one(session_dict)
-        
-        print(f"[PROGRESS] ✅ Conversation saved with ID: {result.inserted_id}")
-        
-        return {
-            "success": True,
-            "session_id": str(result.inserted_id),
-            "message": "Conversation saved successfully",
-            "is_streak_eligible": is_streak_eligible,
-            "summary": summary
-        }
+        if existing_session:
+            # Update existing session
+            print(f"[PROGRESS] Updating existing session: {existing_session['_id']}")
+            
+            update_data = {
+                "messages": [msg.dict() for msg in conversation_messages],
+                "duration_minutes": request.duration_minutes,
+                "message_count": len(conversation_messages),
+                "summary": summary,
+                "is_streak_eligible": is_streak_eligible,
+                "updated_at": datetime.utcnow()
+            }
+            
+            result = await conversation_sessions_collection.update_one(
+                {"_id": existing_session["_id"]},
+                {"$set": update_data}
+            )
+            
+            print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
+            
+            return {
+                "success": True,
+                "session_id": str(existing_session["_id"]),
+                "message": "Conversation updated successfully",
+                "is_streak_eligible": is_streak_eligible,
+                "summary": summary,
+                "action": "updated"
+            }
+        else:
+            # Create new session
+            print(f"[PROGRESS] Creating new conversation session")
+            
+            session_dict = {
+                "user_id": current_user.id,
+                "language": request.language,
+                "level": request.level,
+                "topic": request.topic,
+                "messages": [msg.dict() for msg in conversation_messages],
+                "duration_minutes": request.duration_minutes,
+                "message_count": len(conversation_messages),
+                "summary": summary,
+                "is_streak_eligible": is_streak_eligible,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            result = await conversation_sessions_collection.insert_one(session_dict)
+            
+            print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
+            
+            return {
+                "success": True,
+                "session_id": str(result.inserted_id),
+                "message": "Conversation saved successfully",
+                "is_streak_eligible": is_streak_eligible,
+                "summary": summary,
+                "action": "created"
+            }
         
     except Exception as e:
         print(f"[PROGRESS] ❌ Error saving conversation: {str(e)}")
