@@ -59,6 +59,7 @@ try:
     users_collection = database.users
     sessions_collection = database.sessions
     password_reset_collection = database.password_resets
+    conversation_sessions_collection = database.conversation_sessions
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -67,6 +68,7 @@ except Exception as e:
     users_collection = None
     sessions_collection = None
     password_reset_collection = None
+    conversation_sessions_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():

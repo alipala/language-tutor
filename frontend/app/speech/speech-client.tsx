@@ -10,6 +10,8 @@ import { isAuthenticated } from '@/lib/auth-utils';
 import { getConversationDuration, formatTime, getGuestLimitationsDescription, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
 import ModernTimer from '@/components/modern-timer';
+import SaveProgressButton from '@/components/save-progress-button';
+import LeaveConversationModal from '@/components/leave-conversation-modal';
 
 interface SpeechClientProps {
   language: string;
@@ -98,6 +100,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const conversationHistoryRef = useRef<string>('');
   // State for exercise type in sentence construction assessment
   const [exerciseType, setExerciseType] = useState<string>('free');
+  
+  // Leave conversation modal state
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [conversationStartTime, setConversationStartTime] = useState<number | null>(null);
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -938,6 +944,66 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }, 1000);
   };
   
+  // Browser navigation protection
+  useEffect(() => {
+    // Set conversation start time when recording begins
+    if (isRecording && !conversationStartTime) {
+      setConversationStartTime(Date.now());
+    }
+  }, [isRecording, conversationStartTime]);
+  
+  // Browser navigation protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only show warning if there are messages and user is authenticated
+      if (user && processedMessages.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      // Only intercept if there are messages and user is authenticated
+      if (user && processedMessages.length > 0) {
+        e.preventDefault();
+        // Push the current state back to prevent navigation
+        window.history.pushState(null, '', window.location.href);
+        // Show our custom modal instead
+        setShowLeaveModal(true);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Push a state to handle back button
+    if (user && processedMessages.length > 0) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [user, processedMessages.length]);
+  
+  // Handle leave conversation
+  const handleLeaveConversation = () => {
+    // Navigate away from the conversation
+    router.push('/');
+  };
+  
+  // Calculate practice time for modal
+  const getPracticeTime = () => {
+    if (!conversationStartTime) return '0:00';
+    const elapsed = Math.floor((Date.now() - conversationStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
   return (
     <main className="flex flex-col text-white p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden min-h-screen">
       <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
@@ -1135,12 +1201,22 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   
                   {/* Conversation Transcript Section */}
                   <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col h-[450px] sm:h-[500px] md:h-[550px] lg:h-[650px]" style={{animationDelay: '300ms'}}>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Conversation Transcript
-                    </h3>
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#F75A5A] flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Conversation Transcript
+                      </h3>
+                      <SaveProgressButton
+                        messages={processedMessages}
+                        language={language}
+                        level={level}
+                        topic={topic}
+                        conversationStartTime={isConversationTimerActive ? Date.now() - ((getConversationDuration(isAuthenticated()) - (conversationTimer || 0)) * 1000) : undefined}
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
+                      />
+                    </div>
                     <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-1 min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
                         {processedMessages.length > 0 ? (
@@ -1248,6 +1324,19 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           </div>
         </div>
       </div>
+      
+      {/* Leave Conversation Modal */}
+      <LeaveConversationModal
+        isOpen={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        onLeave={handleLeaveConversation}
+        messages={processedMessages}
+        language={language}
+        level={level}
+        topic={topic}
+        conversationStartTime={conversationStartTime || undefined}
+        practiceTime={getPracticeTime()}
+      />
     </main>
   );
 }

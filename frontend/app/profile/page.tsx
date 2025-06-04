@@ -121,24 +121,21 @@ export default function ProfilePage() {
     return '#F75A5A';
   };
 
-  // Mock user stats for display
-  const userStats = {
-    totalXP: 15750,
-    currentLevel: 42,
-    globalRank: 1247,
-    currentStreak: 6,
-    longestStreak: 45
-  };
+  // Progress stats state
+  const [progressStats, setProgressStats] = useState<any>(null);
+  const [conversationHistory, setConversationHistory] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
-  // Mock achievements
-  const achievements = [
-    { name: 'Week Warrior', icon: '🔥', description: '7-day streak', earned: true, date: 'May 20, 2024' },
-    { name: 'Monthly Master', icon: '👑', description: '30-day streak', earned: true, date: 'Apr 15, 2024' },
-    { name: 'Perfect Practice', icon: '⭐', description: '100% lesson accuracy', earned: true, date: 'May 18, 2024' },
-    { name: 'Speed Demon', icon: '⚡', description: 'Complete 10 lessons in one day', earned: true, date: 'May 10, 2024' },
-    { name: 'Night Owl', icon: '🦉', description: 'Practice after 10 PM', earned: true, date: 'May 05, 2024' },
-    { name: 'Century Club', icon: '💯', description: '100-day streak', earned: false }
-  ];
+  // Mock user stats for display (will be replaced with real data)
+  const userStats = {
+    totalXP: progressStats?.total_sessions ? progressStats.total_sessions * 250 : 1500,
+    currentLevel: Math.floor((progressStats?.total_minutes || 10) / 10) + 1,
+    globalRank: 1247,
+    currentStreak: progressStats?.current_streak || 0,
+    longestStreak: progressStats?.longest_streak || 0
+  };
 
   // Load user data when component mounts
   useEffect(() => {
@@ -148,10 +145,81 @@ export default function ProfilePage() {
       setPreferredLanguage(user.preferred_language || '');
       setPreferredLevel(user.preferred_level || '');
       
-      // Fetch user's learning plans
+      // Fetch user's learning plans and progress data
       fetchUserLearningPlans();
+      fetchProgressData();
     }
   }, [user]);
+
+  // Fetch progress data from API
+  const fetchProgressData = async () => {
+    if (!user) return;
+    
+    setStatsLoading(true);
+    setStatsError(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Fetch progress stats
+      const statsResponse = await fetch(`${API_URL}/api/progress/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (statsResponse.ok) {
+        const stats = await statsResponse.json();
+        setProgressStats(stats);
+        console.log('[PROFILE] Progress stats loaded:', stats);
+      } else {
+        console.error('[PROFILE] Failed to fetch progress stats');
+      }
+
+      // Fetch conversation history
+      const historyResponse = await fetch(`${API_URL}/api/progress/conversations?limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        setConversationHistory(historyData.sessions || []);
+        console.log('[PROFILE] Conversation history loaded:', historyData.sessions?.length || 0, 'sessions');
+      } else {
+        console.error('[PROFILE] Failed to fetch conversation history');
+      }
+
+      // Fetch achievements
+      const achievementsResponse = await fetch(`${API_URL}/api/progress/achievements`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (achievementsResponse.ok) {
+        const achievementsData = await achievementsResponse.json();
+        setAchievements(achievementsData.achievements || []);
+        console.log('[PROFILE] Achievements loaded:', achievementsData.achievements?.length || 0, 'achievements');
+      } else {
+        console.error('[PROFILE] Failed to fetch achievements');
+        // Set empty achievements array as fallback
+        setAchievements([]);
+      }
+
+    } catch (err: any) {
+      console.error('[PROFILE] Error fetching progress data:', err);
+      setStatsError(err.message || 'Failed to load progress data');
+      // Set fallback empty data
+      setAchievements([]);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
   
   // Fetch user's learning plans
   const fetchUserLearningPlans = async () => {
@@ -376,6 +444,99 @@ export default function ProfilePage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Conversation History */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                    <Mic className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+                    Conversation History
+                    <span className="ml-2 bg-teal-100 text-teal-700 text-xs px-2 py-0.5 rounded-full">
+                      {progressStats?.total_sessions || 0} sessions
+                    </span>
+                  </h3>
+                  <div className="text-sm text-gray-500">
+                    {progressStats?.total_minutes ? `${Math.round(progressStats.total_minutes)} minutes practiced` : ''}
+                  </div>
+                </div>
+                
+                {statsLoading ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin h-6 w-6 border-2 border-teal-500 border-t-transparent rounded-full"></div>
+                  </div>
+                ) : conversationHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Mic className="h-8 w-8 text-teal-500" />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-2">No Conversations Yet</h4>
+                    <p className="text-gray-600 mb-4">Start practicing to see your conversation history here.</p>
+                    <Button 
+                      onClick={() => router.push('/speech')}
+                      className="text-white py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition-all"
+                      style={{ backgroundColor: '#4ECFBF' }}
+                    >
+                      Start Practicing
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {conversationHistory.slice(0, 5).map((session, index) => (
+                      <div key={session.id || index} className="border rounded-xl p-4" style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
+                              {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-800 capitalize">
+                                {session.language} - {session.level}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {session.topic && `Topic: ${session.topic} • `}
+                                {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-gray-500">
+                              {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) : 'Recent'}
+                            </div>
+                            {session.is_streak_eligible && (
+                              <div className="flex items-center text-xs text-green-600 mt-1">
+                                <Flame className="h-3 w-3 mr-1" />
+                                Streak eligible
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {session.summary && (
+                          <div className="bg-white rounded-lg p-3 text-sm text-gray-700">
+                            <strong>Summary:</strong> {session.summary}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {conversationHistory.length > 5 && (
+                      <div className="text-center pt-4">
+                        <button 
+                          className="text-sm font-medium hover:opacity-80 transition-opacity"
+                          style={{ color: '#4ECFBF' }}
+                        >
+                          View all {conversationHistory.length} conversations
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Assessment Results */}
