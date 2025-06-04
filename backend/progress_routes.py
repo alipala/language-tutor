@@ -32,10 +32,25 @@ async def save_conversation(
         # Convert messages to ConversationMessage objects
         conversation_messages = []
         for msg in request.messages:
+            # Handle timestamp parsing - convert 'Z' suffix to proper timezone format
+            timestamp_str = msg.get('timestamp', datetime.utcnow().isoformat())
+            if timestamp_str.endswith('Z'):
+                # Replace 'Z' with '+00:00' for proper ISO format parsing
+                timestamp_str = timestamp_str[:-1] + '+00:00'
+            
+            try:
+                timestamp = datetime.fromisoformat(timestamp_str)
+                # Convert to UTC if timezone-aware
+                if timestamp.tzinfo is not None:
+                    timestamp = timestamp.replace(tzinfo=None)
+            except ValueError:
+                # Fallback to current time if parsing fails
+                timestamp = datetime.utcnow()
+            
             conversation_messages.append(ConversationMessage(
                 role=msg.get('role', 'user'),
                 content=msg.get('content', ''),
-                timestamp=datetime.fromisoformat(msg.get('timestamp', datetime.utcnow().isoformat()))
+                timestamp=timestamp
             ))
         
         # Generate conversation summary using OpenAI
