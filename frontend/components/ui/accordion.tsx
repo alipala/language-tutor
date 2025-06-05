@@ -28,7 +28,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   };
 
   return (
-    <div className="border-b border-gray-200 last:border-b-0">
+    <div className="border-b border-gray-200 last:border-b-0 h-48 flex flex-col">
       <button
         className="flex justify-between items-center w-full py-4 px-2 text-left focus:outline-none"
         onClick={toggleAccordion}
@@ -65,9 +65,9 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="overflow-hidden accordion-content"
+            className="overflow-hidden accordion-content flex-1"
           >
-            <div className="p-4 text-gray-600">
+            <div className="p-4 text-gray-600 h-full overflow-y-auto">
               {children}
             </div>
           </motion.div>
