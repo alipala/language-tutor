@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { AuthForm } from '@/components/auth-form';
+import { AuthSuccessTransition } from '@/components/auth-success-transition';
 import { motion } from 'framer-motion';
 import '../auth-styles.css';
 import './login-theme.css'; // Turquoise theme overrides
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccessTransition, setShowSuccessTransition] = useState(false);
 
   // Sync auth state with local state
   useEffect(() => {
@@ -44,12 +46,9 @@ export default function LoginPage() {
       // Perform login - wait for it to complete
       await login(email, password);
       
-      // Navigate to the appropriate page
-      const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
-      console.log(`Login successful, navigating to ${redirectTarget}`);
-      
-      // Use router for navigation
-      router.push(redirectTarget);
+      // Show success transition
+      setIsLoading(false);
+      setShowSuccessTransition(true);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Invalid email or password. Please try again.');
@@ -66,6 +65,14 @@ export default function LoginPage() {
     // This is just a placeholder as the actual authentication is handled by the GoogleAuthButton component
     console.log('Google login button clicked');
     // We keep this function to maintain compatibility with the AuthForm component
+  };
+
+  const handleTransitionComplete = () => {
+    // Navigate to the appropriate page after transition completes
+    const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
+    const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+    console.log(`Transition complete, navigating to ${redirectTarget}`);
+    router.push(redirectTarget);
   };
 
   return (
@@ -96,6 +103,13 @@ export default function LoginPage() {
           error={error}
         />
       </main>
+
+      {/* Success Transition */}
+      <AuthSuccessTransition
+        isVisible={showSuccessTransition}
+        type="login"
+        onComplete={handleTransitionComplete}
+      />
 
       {/* We don't need background elements as we're using the global gradient background */}
     </div>
