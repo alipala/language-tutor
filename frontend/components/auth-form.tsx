@@ -90,7 +90,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <button
             type="button"
             onClick={switchToLogin}
-            className={`flex-1 py-4 px-6 text-center font-medium transition-all duration-200 ${
+            className={`flex-1 py-3 px-4 text-center font-medium transition-all duration-200 ${
               type === 'login'
                 ? 'bg-white text-[#4ECFBF] border-b-2 border-[#4ECFBF] shadow-sm'
                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
@@ -101,7 +101,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <button
             type="button"
             onClick={switchToSignup}
-            className={`flex-1 py-4 px-6 text-center font-medium transition-all duration-200 ${
+            className={`flex-1 py-3 px-4 text-center font-medium transition-all duration-200 ${
               type === 'signup'
                 ? 'bg-white text-[#4ECFBF] border-b-2 border-[#4ECFBF] shadow-sm'
                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
@@ -112,13 +112,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </div>
 
         {/* Form Content */}
-        <div className="p-6 sm:p-8">
+        <div className="p-4 sm:p-6">
           {/* Header */}
-          <div className="text-center mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
+          <div className="text-center mb-4">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-1">
               {type === 'login' ? 'Welcome Back' : 'Create Your Account'}
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 text-xs sm:text-sm">
               {type === 'login' 
                 ? 'Sign in to continue your language learning journey' 
                 : 'Join us and start learning languages today'
@@ -128,18 +128,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-red-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <p className="text-red-700 text-sm font-medium">{error}</p>
+              <p className="text-red-700 text-xs sm:text-sm font-medium">{error}</p>
             </div>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name field for signup */}
           {type === 'signup' && (
             <div>
@@ -253,12 +253,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </form>
 
         {/* Divider */}
-        <div className="my-6">
+        <div className="my-4">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
+            <div className="relative flex justify-center text-xs sm:text-sm">
               <span className="px-2 bg-white text-gray-500">
                 Or continue with
               </span>
