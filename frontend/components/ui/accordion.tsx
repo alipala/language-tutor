@@ -28,7 +28,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   };
 
   return (
-    <div className="border-b border-gray-200 last:border-b-0 h-48 flex flex-col">
+    <div className="border-b border-gray-200 last:border-b-0 h-48 flex flex-col w-full">
       <button
         className="flex justify-between items-center w-full py-4 px-2 text-left focus:outline-none"
         onClick={toggleAccordion}
@@ -79,7 +79,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
 
 export const Accordion: React.FC<AccordionProps> = ({ children, className = '' }) => {
   return (
-    <div className={`rounded-lg bg-white/90 backdrop-blur-sm overflow-hidden accordion border border-gray-200 ${className}`}>
+    <div className={`rounded-lg bg-white/90 backdrop-blur-sm overflow-hidden accordion border border-gray-200 w-full ${className}`}>
       {children}
     </div>
   );
