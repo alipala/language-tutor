@@ -28,39 +28,98 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
-  // Form validation
+  // Form validation with user-friendly messages
   const validateForm = () => {
     const errors: Record<string, string> = {};
     
-    if (!email) {
-      errors.email = 'Email is required';
+    if (!email.trim()) {
+      errors.email = 'Please enter your email address';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = 'Email is invalid';
+      errors.email = 'Please enter a valid email address (e.g., john@example.com)';
     }
     
     if (!password) {
-      errors.password = 'Password is required';
+      errors.password = 'Please enter your password';
     } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+      errors.password = 'Password must be at least 6 characters long';
     }
     
     if (type === 'signup') {
-      if (!name) {
-        errors.name = 'Name is required';
+      if (!name.trim()) {
+        errors.name = 'Please enter your full name';
+      } else if (name.trim().length < 2) {
+        errors.name = 'Please enter your full name (at least 2 characters)';
       }
       
-      if (password !== confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match';
+      if (!confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password';
+      } else if (password !== confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match. Please try again';
       }
     }
     
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
+
+  // Real-time validation for better UX
+  const validateField = (fieldName: string, value: string) => {
+    const errors = { ...validationErrors };
+    
+    switch (fieldName) {
+      case 'name':
+        if (value.trim().length === 0) {
+          errors.name = 'Please enter your full name';
+        } else if (value.trim().length < 2) {
+          errors.name = 'Please enter your full name (at least 2 characters)';
+        } else {
+          delete errors.name;
+        }
+        break;
+      case 'email':
+        if (value.trim().length === 0) {
+          errors.email = 'Please enter your email address';
+        } else if (!/\S+@\S+\.\S+/.test(value)) {
+          errors.email = 'Please enter a valid email address';
+        } else {
+          delete errors.email;
+        }
+        break;
+      case 'password':
+        if (value.length === 0) {
+          errors.password = 'Please enter your password';
+        } else if (value.length < 6) {
+          errors.password = 'Password must be at least 6 characters long';
+        } else {
+          delete errors.password;
+        }
+        // Also validate confirm password if it exists
+        if (type === 'signup' && confirmPassword && value !== confirmPassword) {
+          errors.confirmPassword = 'Passwords do not match. Please try again';
+        } else if (type === 'signup' && confirmPassword && value === confirmPassword) {
+          delete errors.confirmPassword;
+        }
+        break;
+      case 'confirmPassword':
+        if (value.length === 0) {
+          errors.confirmPassword = 'Please confirm your password';
+        } else if (password !== value) {
+          errors.confirmPassword = 'Passwords do not match. Please try again';
+        } else {
+          delete errors.confirmPassword;
+        }
+        break;
+    }
+    
+    setValidationErrors(errors);
+  };
   
   // Form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear any existing validation errors
+    setValidationErrors({});
     
     if (!validateForm()) {
       return;
@@ -151,7 +210,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 type="text"
                 placeholder="Enter your full name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  validateField('name', e.target.value);
+                }}
+                onBlur={(e) => validateField('name', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
                 required
               />
@@ -171,7 +234,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               type="email"
               placeholder="Enter your email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                validateField('email', e.target.value);
+              }}
+              onBlur={(e) => validateField('email', e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
               required
             />
@@ -190,7 +257,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               type="password"
               placeholder="Enter your password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                validateField('password', e.target.value);
+              }}
+              onBlur={(e) => validateField('password', e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
               required
             />
@@ -210,7 +281,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 type="password"
                 placeholder="Confirm your password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  validateField('confirmPassword', e.target.value);
+                }}
+                onBlur={(e) => validateField('confirmPassword', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
                 required
               />
