@@ -479,7 +479,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
                 {/* Basic Plan */}
                 <motion.div
-                  className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-[#4ECFBF]/20 transition-transform duration-300 hover:shadow-xl"
+                  className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
@@ -489,31 +489,31 @@ export default function Home() {
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Basic</h3>
                     <div className="flex items-end mb-4">
-                      <span className="text-4xl font-bold text-white">$9</span>
-                      <span className="text-white/70 ml-1">/month</span>
+                      <span className="text-4xl font-bold text-gray-800">$9</span>
+                      <span className="text-gray-600 ml-1">/month</span>
                     </div>
-                    <p className="text-white/80 mb-6">Perfect for casual learners</p>
+                    <p className="text-gray-600 mb-6">Perfect for casual learners</p>
                     
                     <ul className="space-y-3 mb-6">
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>2 language options</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>2 practice sessions daily</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Basic progress tracking</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -524,7 +524,7 @@ export default function Home() {
                   
                   <div className="px-6 pb-6">
                     <button 
-                      className="w-full py-3 bg-[#4ECFBF]/10 text-[#4ECFBF] font-medium rounded-lg hover:bg-[#4ECFBF]/20 transition-colors"
+                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md"
                       onClick={handleStartLearning}
                     >
                       Get Started
@@ -599,7 +599,7 @@ export default function Home() {
                 
                 {/* Business Plan */}
                 <motion.div
-                  className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-[#4ECFBF]/20 transition-transform duration-300 hover:shadow-xl"
+                  className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
@@ -609,37 +609,37 @@ export default function Home() {
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Business</h3>
                     <div className="flex items-end mb-4">
-                      <span className="text-4xl font-bold text-white">$49</span>
-                      <span className="text-white/70 ml-1">/month</span>
+                      <span className="text-4xl font-bold text-gray-800">$49</span>
+                      <span className="text-gray-600 ml-1">/month</span>
                     </div>
-                    <p className="text-white/80 mb-6">For teams and organizations</p>
+                    <p className="text-gray-600 mb-6">For teams and organizations</p>
                     
                     <ul className="space-y-3 mb-6">
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>All Premium features</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Up to 5 team members</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Team progress dashboard</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Dedicated account manager</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -650,7 +650,7 @@ export default function Home() {
                   
                   <div className="px-6 pb-6">
                     <button 
-                      className="w-full py-3 bg-[#4ECFBF]/10 text-[#4ECFBF] font-medium rounded-lg hover:bg-[#4ECFBF]/20 transition-colors"
+                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md"
                       onClick={handleStartLearning}
                     >
                       Contact Sales
@@ -660,16 +660,16 @@ export default function Home() {
               </div>
               
               <motion.div
-                className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl p-6 border border-[#4ECFBF]/30 max-w-4xl mx-auto text-center"
+                className="bg-white rounded-xl p-6 border-2 border-[#4ECFBF] max-w-4xl mx-auto text-center shadow-lg"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
                 viewport={{ once: true }}
               >
                 <h3 className="text-xl font-bold text-[#4ECFBF] mb-3">Need a custom solution?</h3>
-                <p className="text-white/80 mb-4">Contact us for enterprise pricing and customized language training programs for larger organizations.</p>
+                <p className="text-gray-600 mb-4">Contact us for enterprise pricing and customized language training programs for larger organizations.</p>
                 <button 
-                  className="px-6 py-2 border border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors inline-flex items-center"
+                  className="px-6 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors inline-flex items-center shadow-md"
                   onClick={() => window.location.href = "mailto:contact@yoursmartlanguagecoach.com"}
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
