@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import GoogleAuthButton from './google-auth-button';
 
 interface AuthFormProps {
@@ -13,51 +14,20 @@ interface AuthFormProps {
 }
 
 export const AuthForm: React.FC<AuthFormProps> = ({
-  type: initialType,
+  type,
   onSubmit,
   onGoogleAuth,
   isLoading,
   error
 }) => {
+  const router = useRouter();
+  
   // Form state
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>(initialType);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
-  // Refs for DOM manipulation (just like in the original HTML/CSS example)
-  const titleLoginRef = useRef<HTMLDivElement>(null);
-  const loginFormRef = useRef<HTMLFormElement>(null);
-  const sliderTabRef = useRef<HTMLDivElement>(null);
-  
-  // Update active tab when type prop changes
-  useEffect(() => {
-    setActiveTab(initialType);
-    updateFormPosition(initialType);
-  }, [initialType]);
-  
-  // Function to update form position based on active tab (mimics the original JS)
-  const updateFormPosition = (tab: 'login' | 'signup') => {
-    if (loginFormRef.current && titleLoginRef.current && sliderTabRef.current) {
-      if (tab === 'signup') {
-        loginFormRef.current.style.marginLeft = '-50%';
-        titleLoginRef.current.style.marginLeft = '-50%';
-        sliderTabRef.current.style.left = '50%';
-      } else {
-        loginFormRef.current.style.marginLeft = '0%';
-        titleLoginRef.current.style.marginLeft = '0%';
-        sliderTabRef.current.style.left = '0%';
-      }
-    }
-  };
-  
-  // Switch between login and signup tabs
-  const switchTab = (tab: 'login' | 'signup') => {
-    setActiveTab(tab);
-    updateFormPosition(tab);
-  };
   
   // Form validation
   const validateForm = () => {
@@ -75,7 +45,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       errors.password = 'Password must be at least 6 characters';
     }
     
-    if (activeTab === 'signup') {
+    if (type === 'signup') {
       if (!name) {
         errors.name = 'Name is required';
       }
@@ -97,311 +67,214 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       return;
     }
     
-    const data = activeTab === 'login' 
+    const data = type === 'login' 
       ? { email, password } 
       : { name, email, password };
       
     await onSubmit(data);
   };
   
-  // Handle signup link click
-  const handleSignupLinkClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    switchTab('signup');
+  // Handle form type switching with proper URL navigation
+  const switchToSignup = () => {
+    router.push('/auth/signup');
+  };
+  
+  const switchToLogin = () => {
+    router.push('/auth/login');
   };
 
   return (
-    <div className="wrapper max-w-md mx-auto bg-white p-4 sm:p-8 rounded-lg shadow-lg overflow-hidden border-2 border-[#4ECFBF]">
-      {/* Title text - exactly like the original example */}
-      <div className="title-text flex w-[200%]">
-        <div ref={titleLoginRef} className="title w-1/2 text-2xl font-bold text-center transition-all duration-600 text-gray-800" style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}>
-          Login Form
+    <div className="w-full max-w-md mx-auto">
+      <motion.div 
+        className="bg-white/95 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/20"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
+            {type === 'login' ? 'Welcome Back' : 'Create Account'}
+          </h2>
+          <p className="text-gray-600 text-sm sm:text-base">
+            {type === 'login' 
+              ? 'Sign in to continue your language learning journey' 
+              : 'Join us and start learning languages today'
+            }
+          </p>
         </div>
-        <div className="title w-1/2 text-2xl font-bold text-center text-gray-800">
-          Signup Form
-        </div>
-      </div>
-      
-      {/* Form container - following the original HTML structure */}
-      <div className="form-container w-full overflow-hidden">
-        {/* Slide controls - Enhanced for mobile touch */}
-        <div className="slide-controls relative flex h-[50px] sm:h-[50px] w-full overflow-hidden my-7 justify-between border border-gray-200 rounded-md bg-gray-50">
-          <input 
-            type="radio" 
-            name="slide" 
-            id="login" 
-            checked={activeTab === 'login'} 
-            onChange={() => switchTab('login')}
-            className="hidden"
-          />
-          <input 
-            type="radio" 
-            name="slide" 
-            id="signup" 
-            checked={activeTab === 'signup'} 
-            onChange={() => switchTab('signup')}
-            className="hidden"
-          />
-          <label 
-            htmlFor="login" 
-            className={`slide login h-full w-full text-base sm:text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 touch-target ${activeTab === 'login' ? 'text-white' : 'text-gray-600'}`}
-            onClick={() => switchTab('login')}
-            style={{transition: 'all 0.6s ease'}}
-          >
-            Login
-          </label>
-          <label 
-            htmlFor="signup" 
-            className={`slide signup h-full w-full text-base sm:text-lg font-medium text-center leading-[48px] cursor-pointer z-[1] transition-all duration-600 touch-target ${activeTab === 'signup' ? 'text-white' : 'text-gray-600'}`}
-            onClick={() => switchTab('signup')}
-            style={{transition: 'all 0.6s ease'}}
-          >
-            Signup
-          </label>
-          <div 
-            ref={sliderTabRef} 
-            className="slider-tab absolute h-full w-1/2 left-0 z-0 rounded-md bg-[#4ECFBF]"
-            style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}
-          ></div>
-        </div>
-        
-        {/* Form inner - exactly like the original example */}
-        <div className="form-inner flex w-[200%]">
-          {/* Login form */}
-          <form 
-            ref={loginFormRef} 
-            onSubmit={handleSubmit} 
-            className="login w-1/2"
-            style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}
-          >
-            {error && (
-              <motion.div 
-                className="mb-4 p-3 glass-card border border-red-400/30 text-red-100 rounded-md text-sm bg-red-500/10"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {error}
-              </motion.div>
+
+        {/* Error Message */}
+        <AnimatePresence>
+          {error && (
+            <motion.div 
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <p className="text-red-700 text-sm font-medium">{error}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Name field for signup */}
+          {type === 'signup' && (
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+                required
+              />
+              {validationErrors.name && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+              )}
+            </div>
+          )}
+
+          {/* Email field */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+              required
+            />
+            {validationErrors.email && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
             )}
-            
-            <div className="field h-[50px] sm:h-[50px] w-full mt-5">
-              <input 
-                type="email" 
-                placeholder="Email Address" 
+          </div>
+
+          {/* Password field */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+              required
+            />
+            {validationErrors.password && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+            )}
+          </div>
+
+          {/* Confirm Password field for signup */}
+          {type === 'signup' && (
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 pr-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7] focus:ring-2 focus:ring-[#4ECFBF]/20 touch-target"
-                style={{transition: 'all 0.3s ease'}}
               />
-              {validationErrors.email && (
-                <p className="mt-1 text-xs text-red-400">{validationErrors.email}</p>
+              {validationErrors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
               )}
             </div>
-            
-            <div className="field h-[50px] sm:h-[50px] w-full mt-5">
-              <input 
-                type="password" 
-                placeholder="Password" 
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 pr-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7] focus:ring-2 focus:ring-[#4ECFBF]/20 touch-target"
-                style={{transition: 'all 0.3s ease'}}
-              />
-              {validationErrors.password && (
-                <p className="mt-1 text-xs text-red-400">{validationErrors.password}</p>
-              )}
-            </div>
-            
-            <div className="pass-link mt-1 text-right">
-              <a href="/auth/forgot-password" className="text-[#4ECFBF] hover:text-[#3db3a7] text-sm transition-colors font-medium">
+          )}
+
+          {/* Forgot Password Link for login */}
+          {type === 'login' && (
+            <div className="text-right">
+              <a 
+                href="/auth/forgot-password" 
+                className="text-sm text-[#4ECFBF] hover:text-[#3db3a7] font-medium transition-colors duration-200"
+              >
                 Forgot password?
               </a>
             </div>
-            
-            <div className="field btn h-[50px] sm:h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
-              <div 
-                className="btn-layer h-full w-[300%] absolute left-[-100%] bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-md"
-                style={{transition: 'all 0.4s ease'}}
-              ></div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="h-full w-full z-[1] relative bg-white hover:bg-gray-50 active:bg-gray-100 border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer transition-colors duration-300 touch-target disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-[#4ECFBF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Signing in...</span>
-                  </div>
-                ) : (
-                  'Login'
-                )}
-              </button>
-            </div>
-            
-            <div className="signup-link text-center mt-7">
-              <span className="text-gray-600 text-sm">Not a member?</span>
-              <a
-                href="#"
-                onClick={handleSignupLinkClick}
-                className="ml-1 text-[#4ECFBF] hover:text-[#3db3a7] transition-colors font-medium underline"
-              >
-                Signup now
-              </a>
-            </div>
-            
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <GoogleAuthButton 
-                  onSuccess={onGoogleAuth} 
-                  onError={(err) => console.error('Google auth error:', err)}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-          </form>
-          
-          {/* Signup form */}
-          <form 
-            onSubmit={handleSubmit} 
-            className="signup w-1/2"
-            style={{transition: 'all 0.6s cubic-bezier(0.68,-0.55,0.265,1.55)'}}
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-[#4ECFBF] hover:bg-[#3db3a7] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
           >
-            {error && (
-              <motion.div 
-                className="mb-4 p-3 glass-card border border-red-400/30 text-red-100 rounded-md text-sm bg-red-500/10"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {error}
-              </motion.div>
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {type === 'login' ? 'Signing in...' : 'Creating account...'}
+              </>
+            ) : (
+              type === 'login' ? 'Sign In' : 'Create Account'
             )}
-            
-            <div className="field h-[50px] w-full mt-5">
-              <input 
-                type="text" 
-                placeholder="Full Name" 
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
-                style={{transition: 'all 0.3s ease'}}
-              />
-              {validationErrors.name && (
-                <p className="mt-1 text-xs text-red-400">{validationErrors.name}</p>
-              )}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="my-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
             </div>
-            
-            <div className="field h-[50px] w-full mt-5">
-              <input 
-                type="email" 
-                placeholder="Email Address" 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
-                style={{transition: 'all 0.3s ease'}}
-              />
-              {validationErrors.email && (
-                <p className="mt-1 text-xs text-red-400">{validationErrors.email}</p>
-              )}
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">
+                Or continue with
+              </span>
             </div>
-            
-            <div className="field h-[50px] w-full mt-5">
-              <input 
-                type="password" 
-                placeholder="Password" 
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
-                style={{transition: 'all 0.3s ease'}}
-              />
-              {validationErrors.password && (
-                <p className="mt-1 text-xs text-red-400">{validationErrors.password}</p>
-              )}
-            </div>
-            
-            <div className="field h-[50px] w-full mt-5">
-              <input 
-                type="password" 
-                placeholder="Confirm password" 
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
-                style={{transition: 'all 0.3s ease'}}
-              />
-              {validationErrors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-400">{validationErrors.confirmPassword}</p>
-              )}
-            </div>
-            
-            <div className="field btn h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
-              <div 
-                className="btn-layer h-full w-[300%] absolute left-[-100%] bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-md"
-                style={{transition: 'all 0.4s ease'}}
-              ></div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="h-full w-full z-[1] relative bg-white hover:bg-gray-50 border-2 border-[#4ECFBF] text-[#4ECFBF] px-0 rounded-md text-lg font-medium cursor-pointer transition-colors duration-300"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-[#4ECFBF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Creating account...</span>
-                  </div>
-                ) : (
-                  'Signup'
-                )}
-              </button>
-            </div>
-            
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <GoogleAuthButton 
-                  onSuccess={onGoogleAuth} 
-                  onError={(err) => console.error('Google auth error:', err)}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-          </form>
+          </div>
         </div>
-      </div>
+
+        {/* Google Auth Button */}
+        <div className="mb-6">
+          <GoogleAuthButton 
+            onSuccess={onGoogleAuth} 
+            onError={(err) => console.error('Google auth error:', err)}
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Switch Form Type */}
+        <div className="text-center">
+          <p className="text-gray-600 text-sm">
+            {type === 'login' ? "Don't have an account?" : "Already have an account?"}
+            <button
+              type="button"
+              onClick={type === 'login' ? switchToSignup : switchToLogin}
+              className="ml-1 text-[#4ECFBF] hover:text-[#3db3a7] font-medium transition-colors duration-200"
+            >
+              {type === 'login' ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 };
