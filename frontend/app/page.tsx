@@ -360,8 +360,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">1. Choose Your Language</h3>
-                  <p className="text-white/90">Select from multiple languages including Spanish, French, German, Dutch, and Portuguese. Each language offers comprehensive learning material tailored to your needs.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">1. Choose Your Language</h3>
+                  <p className="text-gray-600">Select from multiple languages including Spanish, French, German, Dutch, and Portuguese. Each language offers comprehensive learning material tailored to your needs.</p>
                 </motion.div>
                 
                 <motion.div 
@@ -376,8 +376,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">2. Assess Your Level</h3>
-                  <p className="text-white/90">Our AI assessment tool determines your current proficiency and suggests the perfect starting point. From beginner (A1) to advanced (C2), we adapt to your skills.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">2. Assess Your Level</h3>
+                  <p className="text-gray-600">Our AI assessment tool determines your current proficiency and suggests the perfect starting point. From beginner (A1) to advanced (C2), we adapt to your skills.</p>
                 </motion.div>
                 
                 <motion.div 
