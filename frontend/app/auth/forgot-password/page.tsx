@@ -129,19 +129,21 @@ export default function ForgotPasswordPage() {
               </p>
               
               <form onSubmit={handleSubmit} noValidate>
-                <div className="field h-[50px] w-full mt-5">
-                  <input 
-                    type="email" 
-                    placeholder="Email Address" 
-                    required
-                    value={email}
-                    onChange={handleEmailChange}
-                    onBlur={handleEmailChange}
-                    className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
-                    style={{transition: 'all 0.3s ease'}}
-                  />
+                <div className="field w-full mt-5">
+                  <div className="h-[50px] w-full">
+                    <input 
+                      type="email" 
+                      placeholder="Email Address" 
+                      required
+                      value={email}
+                      onChange={handleEmailChange}
+                      onBlur={handleEmailChange}
+                      className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
+                      style={{transition: 'all 0.3s ease'}}
+                    />
+                  </div>
                   {validationError && (
-                    <p className="mt-2 text-sm text-red-600">{validationError}</p>
+                    <p className="mt-2 text-sm text-red-600 relative z-10">{validationError}</p>
                   )}
                 </div>
                 
