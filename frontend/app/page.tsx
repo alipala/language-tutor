@@ -167,11 +167,11 @@ export default function Home() {
                     transition={{ duration: 0.6 }}
                   >
                     <span className="block mb-2">Welcome to</span>
-                    <span className="text-white">Your Smart Language Coach</span>
+                    <span className="text-gray-800">Your Smart Language Coach</span>
                   </motion.h1>
                   
                   <motion.div 
-                    className="section-description max-w-xl text-left mb-8 text-white/90 text-lg"
+                    className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.3 }}
@@ -328,18 +328,17 @@ export default function Home() {
             <div className="section-background"></div>
             <div className="section-content">
               <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-white mb-6 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]"
+                className="text-3xl md:text-4xl font-bold text-gray-800 mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
-                style={{ color: '#ffffff' }}
               >
                 How Our Platform Works
               </motion.h2>
               
               <motion.p 
-                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
+                className="text-gray-600 text-lg max-w-2xl mx-auto mb-12"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -458,7 +457,7 @@ export default function Home() {
             <div className="section-background"></div>
             <div className="section-content">
               <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-white mb-6"
+                className="text-3xl md:text-4xl font-bold text-gray-800 mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
@@ -468,7 +467,7 @@ export default function Home() {
               </motion.h2>
               
               <motion.p 
-                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
+                className="text-gray-600 text-lg max-w-2xl mx-auto mb-12"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -687,7 +686,7 @@ export default function Home() {
             <div className="section-background"></div>
             <div className="section-content">
               <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-white mb-6"
+                className="text-3xl md:text-4xl font-bold text-gray-800 mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
@@ -697,7 +696,7 @@ export default function Home() {
               </motion.h2>
               
               <motion.p 
-                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
+                className="text-gray-600 text-lg max-w-2xl mx-auto mb-12"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
