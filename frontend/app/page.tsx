@@ -534,7 +534,7 @@ export default function Home() {
                 
                 {/* Premium Plan - Most Popular */}
                 <motion.div
-                  className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden border-2 border-[#4ECFBF] relative transition-transform duration-300 scale-105 md:scale-110 z-10"
+                  className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-[#4ECFBF] relative transition-transform duration-300 scale-105 md:scale-110 z-10"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
@@ -548,37 +548,37 @@ export default function Home() {
                   <div className="p-6 pt-10">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Premium</h3>
                     <div className="flex items-end mb-4">
-                      <span className="text-4xl font-bold text-white">$19</span>
-                      <span className="text-white/70 ml-1">/month</span>
+                      <span className="text-4xl font-bold text-gray-800">$19</span>
+                      <span className="text-gray-600 ml-1">/month</span>
                     </div>
-                    <p className="text-white/80 mb-6">Ideal for serious language learners</p>
+                    <p className="text-gray-600 mb-6">Ideal for serious language learners</p>
                     
                     <ul className="space-y-3 mb-6">
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>All 6 language options</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Unlimited practice sessions</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Advanced progress tracking</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Priority email support</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -589,7 +589,7 @@ export default function Home() {
                   
                   <div className="px-6 pb-6">
                     <button 
-                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors"
+                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md"
                       onClick={handleStartLearning}
                     >
                       Get Started
