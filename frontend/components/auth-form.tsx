@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import GoogleAuthButton from './google-auth-button';
 
 interface AuthFormProps {
@@ -85,12 +84,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <motion.div 
-        className="bg-white/95 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/20"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="bg-white/95 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/20">
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
@@ -105,24 +99,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </div>
 
         {/* Error Message */}
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <p className="text-red-700 text-sm font-medium">{error}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-700 text-sm font-medium">{error}</p>
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -265,16 +251,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         <div className="text-center">
           <p className="text-gray-600 text-sm">
             {type === 'login' ? "Don't have an account?" : "Already have an account?"}
-            <button
-              type="button"
-              onClick={type === 'login' ? switchToSignup : switchToLogin}
-              className="ml-1 text-[#4ECFBF] hover:text-[#3db3a7] font-medium transition-colors duration-200"
-            >
-              {type === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
           </p>
+          <button
+            type="button"
+            onClick={type === 'login' ? switchToSignup : switchToLogin}
+            className="mt-2 w-full py-2 px-4 border border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white font-medium rounded-lg transition-colors duration-200"
+          >
+            {type === 'login' ? 'Create New Account' : 'Sign In Instead'}
+          </button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

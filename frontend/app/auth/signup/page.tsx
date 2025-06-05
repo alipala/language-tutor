@@ -41,20 +41,12 @@ export default function SignupPage() {
       // Perform signup - wait for it to complete
       await signup(name, email, password);
       
-      // Add a delay to ensure authentication state is properly updated
-      setTimeout(() => {
-        // Only proceed if there's no auth error
-        if (!authError) {
-          // Navigate to the appropriate page
-          const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
-          console.log(`Signup successful, navigating to ${redirectTarget}`);
-          
-          // Use router for navigation
-          router.push(redirectTarget);
-        } else {
-          throw new Error(authError || 'Signup failed. Please try again.');
-        }
-      }, 1000);
+      // Navigate to the appropriate page
+      const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+      console.log(`Signup successful, navigating to ${redirectTarget}`);
+      
+      // Use router for navigation
+      router.push(redirectTarget);
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'Failed to create account. Please try again.');

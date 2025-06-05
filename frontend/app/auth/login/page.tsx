@@ -44,20 +44,12 @@ export default function LoginPage() {
       // Perform login - wait for it to complete
       await login(email, password);
       
-      // Add a delay to ensure authentication state is properly updated
-      setTimeout(() => {
-        // Only proceed if there's no auth error
-        if (!authError) {
-          // Navigate to the appropriate page
-          const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
-          console.log(`Login successful, navigating to ${redirectTarget}`);
-          
-          // Use router for navigation
-          router.push(redirectTarget);
-        } else {
-          throw new Error(authError || 'Login failed. Please try again.');
-        }
-      }, 1000);
+      // Navigate to the appropriate page
+      const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+      console.log(`Login successful, navigating to ${redirectTarget}`);
+      
+      // Use router for navigation
+      router.push(redirectTarget);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Invalid email or password. Please try again.');
