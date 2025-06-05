@@ -198,7 +198,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {/* Name field for signup */}
           {type === 'signup' && (
             <div>
