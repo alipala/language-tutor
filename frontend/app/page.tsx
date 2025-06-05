@@ -817,7 +817,7 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.7 }}
                 viewport={{ once: true }}
               >
-                <p className="text-white/90 text-lg mb-8">Join thousands of language learners who have improved their speaking skills with our AI-powered platform.</p>
+                <p className="text-gray-600 text-lg mb-8">Join thousands of language learners who have improved their speaking skills with our AI-powered platform.</p>
               </motion.div>
               
               {/* FAQ Section */}
