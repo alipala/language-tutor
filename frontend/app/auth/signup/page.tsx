@@ -57,11 +57,16 @@ export default function SignupPage() {
     }
   };
 
-  // This function is now handled by the GoogleAuthButton component
-  const handleGoogleSignup = async () => {
-    // This is just a placeholder as the actual authentication is handled by the GoogleAuthButton component
-    console.log('Google signup button clicked');
-    // We keep this function to maintain compatibility with the AuthForm component
+  // Handle Google signup success
+  const handleGoogleSignupSuccess = async () => {
+    console.log('Google signup successful, showing transition');
+    setShowSuccessTransition(true);
+  };
+
+  // Handle Google signup error
+  const handleGoogleSignupError = (err: Error) => {
+    console.error('Google signup error:', err);
+    setError(err.message || 'Google signup failed. Please try again.');
   };
 
   const handleTransitionComplete = () => {
@@ -95,7 +100,7 @@ export default function SignupPage() {
         <AuthForm 
           type="signup"
           onSubmit={handleSignup}
-          onGoogleAuth={handleGoogleSignup}
+          onGoogleAuth={handleGoogleSignupSuccess}
           isLoading={isLoading}
           error={error}
         />

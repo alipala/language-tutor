@@ -266,14 +266,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </div>
         </div>
 
-          {/* Google Auth Button */}
-          <div>
-            <GoogleAuthButton 
-              onSuccess={onGoogleAuth} 
-              onError={(err) => console.error('Google auth error:', err)}
-              disabled={isLoading}
-            />
-          </div>
+        {/* Google Auth Button */}
+        <div>
+          <GoogleAuthButton 
+            onSuccess={onGoogleAuth} 
+            onError={(err) => console.error('Google auth error:', err)}
+            disabled={isLoading}
+          />
+        </div>
         </div>
       </div>
     </div>

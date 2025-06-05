@@ -60,11 +60,16 @@ export default function LoginPage() {
     }
   };
 
-  // This function is now handled by the GoogleAuthButton component
-  const handleGoogleLogin = async () => {
-    // This is just a placeholder as the actual authentication is handled by the GoogleAuthButton component
-    console.log('Google login button clicked');
-    // We keep this function to maintain compatibility with the AuthForm component
+  // Handle Google login success
+  const handleGoogleLoginSuccess = async () => {
+    console.log('Google login successful, showing transition');
+    setShowSuccessTransition(true);
+  };
+
+  // Handle Google login error
+  const handleGoogleLoginError = (err: Error) => {
+    console.error('Google login error:', err);
+    setError(err.message || 'Google login failed. Please try again.');
   };
 
   const handleTransitionComplete = () => {
@@ -98,7 +103,7 @@ export default function LoginPage() {
         <AuthForm 
           type="login"
           onSubmit={handleLogin}
-          onGoogleAuth={handleGoogleLogin}
+          onGoogleAuth={handleGoogleLoginSuccess}
           isLoading={isLoading}
           error={error}
         />
