@@ -392,8 +392,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">3. Practice Through Conversation</h3>
-                  <p className="text-white/90">Engage in natural, meaningful conversations with our AI tutor on various topics. Receive real-time feedback on pronunciation, grammar, and vocabulary usage.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">3. Practice Through Conversation</h3>
+                  <p className="text-gray-600">Engage in natural, meaningful conversations with our AI tutor on various topics. Receive real-time feedback on pronunciation, grammar, and vocabulary usage.</p>
                 </motion.div>
               </div>
               
@@ -404,31 +404,31 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.4 }}
                 viewport={{ once: true }}
               >
-                <h3 className="text-xl font-bold text-white mb-4 text-center drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">The AI-Powered Learning Process</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">The AI-Powered Learning Process</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">1</div>
-                    <p className="text-white font-medium">Speak & Practice</p>
-                    <p className="text-sm text-white/80">Practice speaking in real conversations</p>
+                    <p className="text-gray-800 font-medium">Speak & Practice</p>
+                    <p className="text-sm text-gray-600">Practice speaking in real conversations</p>
                   </div>
                   
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">2</div>
-                    <p className="text-white font-medium">Get Feedback</p>
-                    <p className="text-sm text-white/80">Receive instant corrections and tips</p>
+                    <p className="text-gray-800 font-medium">Get Feedback</p>
+                    <p className="text-sm text-gray-600">Receive instant corrections and tips</p>
                   </div>
                   
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">3</div>
-                    <p className="text-white font-medium">Track Progress</p>
-                    <p className="text-sm text-white/80">Monitor your improvement over time</p>
+                    <p className="text-gray-800 font-medium">Track Progress</p>
+                    <p className="text-sm text-gray-600">Monitor your improvement over time</p>
                   </div>
                   
                   <div className="flex flex-col items-center p-4">
                     <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">4</div>
-                    <p className="text-white font-medium">Master Language</p>
-                    <p className="text-sm text-white/80">Achieve fluency through regular practice</p>
+                    <p className="text-gray-800 font-medium">Master Language</p>
+                    <p className="text-sm text-gray-600">Achieve fluency through regular practice</p>
                   </div>
                 </div>
               </motion.div>
@@ -719,8 +719,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Speech Recognition</h3>
-                  <p className="text-white/80">Advanced AI technology accurately recognizes your speech patterns, accents, and pronunciations, providing instant feedback on how to improve.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Speech Recognition</h3>
+                  <p className="text-gray-600">Advanced AI technology accurately recognizes your speech patterns, accents, and pronunciations, providing instant feedback on how to improve.</p>
                 </motion.div>
                 
                 {/* Feature 2 */}
@@ -736,8 +736,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Personalized Learning Plans</h3>
-                  <p className="text-white/80">Custom learning paths adapt to your goals, schedule, and proficiency level. Our AI continuously adjusts to focus on areas where you need the most improvement.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Personalized Learning Plans</h3>
+                  <p className="text-gray-600">Custom learning paths adapt to your goals, schedule, and proficiency level. Our AI continuously adjusts to focus on areas where you need the most improvement.</p>
                 </motion.div>
                 
                 {/* Feature 3 */}
@@ -753,8 +753,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Smart Vocabulary Building</h3>
-                  <p className="text-white/80">Our platform intelligently introduces new vocabulary based on your current knowledge, ensuring you learn relevant words that match your interests and goals.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Smart Vocabulary Building</h3>
+                  <p className="text-gray-600">Our platform intelligently introduces new vocabulary based on your current knowledge, ensuring you learn relevant words that match your interests and goals.</p>
                 </motion.div>
                 
                 {/* Feature 4 */}
@@ -770,8 +770,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Real Native Speakers</h3>
-                  <p className="text-white/80">Learn from AI tutors that mimic the speech patterns, expressions, and cultural nuances of native speakers, giving you authentic language exposure.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Real Native Speakers</h3>
+                  <p className="text-gray-600">Learn from AI tutors that mimic the speech patterns, expressions, and cultural nuances of native speakers, giving you authentic language exposure.</p>
                 </motion.div>
                 
                 {/* Feature 5 */}
@@ -787,8 +787,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Grammar Analysis</h3>
-                  <p className="text-white/80">Receive detailed explanations of grammar rules and corrections in real-time as you speak or write, with examples that help you understand and remember.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Grammar Analysis</h3>
+                  <p className="text-gray-600">Receive detailed explanations of grammar rules and corrections in real-time as you speak or write, with examples that help you understand and remember.</p>
                 </motion.div>
                 
                 {/* Feature 6 */}
@@ -805,8 +805,8 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Progress Analytics</h3>
-                  <p className="text-white/80">Track your improvement with detailed analytics showing your fluency level, vocabulary size, grammar accuracy, and conversation confidence over time.</p>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Progress Analytics</h3>
+                  <p className="text-gray-600">Track your improvement with detailed analytics showing your fluency level, vocabulary size, grammar accuracy, and conversation confidence over time.</p>
                 </motion.div>
               </div>
               
@@ -822,15 +822,6 @@ export default function Home() {
               
               {/* FAQ Section */}
               <section id="faq" className="mt-16">
-                <motion.h2 
-                  className="text-3xl md:text-4xl font-bold text-white mb-10 text-center"
-                  initial={{ opacity: 0, y: -20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  viewport={{ once: true }}
-                >
-                  Frequently Asked Questions
-                </motion.h2>
                 <FAQSection />
               </section>
               
