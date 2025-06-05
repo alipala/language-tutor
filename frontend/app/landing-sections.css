@@ -409,7 +409,7 @@
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradientShift 4s ease-in-out infinite;
+  animation: gradientShift 8s ease-in-out infinite;
   font-weight: 800;
   text-shadow: none;
   position: relative;
@@ -460,7 +460,7 @@
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradientShift 4s ease-in-out infinite;
+  animation: gradientShift 8s ease-in-out infinite;
   filter: blur(2px);
   opacity: 0.3;
   z-index: -1;
