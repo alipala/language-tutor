@@ -322,16 +322,16 @@ export default function LevelSelection() {
   const formattedLevels = getLevels(selectedLanguage);
 
   return (
-    <div className="min-h-screen text-white level-selection-container">
+    <div className="min-h-screen text-[#4ECFBF] level-selection-container">
       <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-[#4ECFBF] mb-4 animate-fade-in">
             Select Your Level
           </h1>
-          <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-[#4ECFBF]/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
             {selectedLanguage === 'english' && 'Choose your proficiency level in English'}
             {selectedLanguage === 'spanish' && 'Elige tu nivel de competencia en español'}
@@ -465,11 +465,11 @@ export default function LevelSelection() {
                     className={`
                       relative overflow-hidden flex flex-col items-start p-6 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl
-                      backdrop-blur-sm animate-fade-in h-[220px]
+                      bg-white animate-fade-in h-[220px] border-2
                       ${
                         selectedLevel === level.code
-                          ? `glass-card border border-white/30 shadow-xl shadow-${colors.bg.split(' ')[1]}/20 ring-2 ${colors.ring}/50`
-                          : 'glass-card border border-white/20 hover:border-white/30 shadow-lg hover:shadow-lg hover:shadow-white/10'
+                          ? `border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50`
+                          : 'border-[#4ECFBF] hover:border-[#4ECFBF]/80 shadow-lg hover:shadow-[#4ECFBF]/20'
                       }
                     `}
                     style={{animationDelay: `${300 + parseInt(level.code.charAt(1)) * 100}ms`}}
@@ -482,7 +482,7 @@ export default function LevelSelection() {
                       <span className="relative text-white font-bold text-xs">{level.code}</span>
                     </div>
                     
-                    <h2 className="text-xl font-bold mb-3 text-white">
+                    <h2 className="text-xl font-bold mb-3 text-[#4ECFBF]">
                       {selectedLanguage === 'dutch' && (
                         level.code === 'A1' ? 'Absolute Beginner' : 
                         level.code === 'A2' ? 'Basis Beginner' :
@@ -533,7 +533,7 @@ export default function LevelSelection() {
                         level.code === 'C1' ? 'Advanced' : 'Proficient'
                       )}
                     </h2>
-                    <p className="text-sm text-white/80 mb-4">
+                    <p className="text-sm text-[#4ECFBF]/80 mb-4">
                       {level.description}
                     </p>
                     

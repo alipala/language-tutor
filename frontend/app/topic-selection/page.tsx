@@ -356,16 +356,16 @@ export default function TopicSelection() {
   };
 
   return (
-    <div className="min-h-screen text-white topic-selection-container">
+    <div className="min-h-screen text-[#4ECFBF] topic-selection-container">
       <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-[#4ECFBF] mb-4 animate-fade-in">
             Choose a Topic
           </h1>
-          <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-[#4ECFBF]/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
             {selectedLanguage === 'english' && 'Select a topic for your English conversation (optional)'}
             {selectedLanguage === 'spanish' && 'Selecciona un tema para tu conversación en español (opcional)'}
@@ -412,25 +412,25 @@ export default function TopicSelection() {
               key={topic.id}
               onClick={() => handleTopicSelect(topic.id)}
               disabled={isLoading || isExtendingKnowledge}
-              className={`group relative overflow-hidden rounded-xl transition-all duration-300 glass-card flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] ${
+              className={`group relative overflow-hidden rounded-xl transition-all duration-300 bg-white border-2 border-[#4ECFBF] flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20 ${
                 (isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               } ${
-                isCustomTopicActive && topic.id === 'custom' ? 'ring-2 ring-white/50 shadow-white/20' : ''
+                isCustomTopicActive && topic.id === 'custom' ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''
               }`}
             >
               {/* Glow effect on hover */}
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               {/* Icon */}
               <div className="text-4xl mb-4">{topic.icon}</div>
               
               {/* Title */}
-              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-white transition-colors duration-300">
+              <h3 className="text-xl font-semibold text-[#4ECFBF] mb-2 group-hover:text-[#4ECFBF] transition-colors duration-300">
                 {topic.name}
               </h3>
               
               {/* Description */}
-              <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
+              <p className="text-[#4ECFBF]/70 text-sm group-hover:text-[#4ECFBF] transition-colors duration-300">
                 {topic.description}
               </p>
               
