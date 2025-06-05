@@ -84,19 +84,47 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white/95 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/20">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-            {type === 'login' ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-gray-600 text-sm sm:text-base">
-            {type === 'login' 
-              ? 'Sign in to continue your language learning journey' 
-              : 'Join us and start learning languages today'
-            }
-          </p>
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        {/* Tab Navigation */}
+        <div className="flex bg-gray-50 border-b border-gray-200">
+          <button
+            type="button"
+            onClick={switchToLogin}
+            className={`flex-1 py-4 px-6 text-center font-medium transition-all duration-200 ${
+              type === 'login'
+                ? 'bg-white text-[#4ECFBF] border-b-2 border-[#4ECFBF] shadow-sm'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={switchToSignup}
+            className={`flex-1 py-4 px-6 text-center font-medium transition-all duration-200 ${
+              type === 'signup'
+                ? 'bg-white text-[#4ECFBF] border-b-2 border-[#4ECFBF] shadow-sm'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+            }`}
+          >
+            Sign Up
+          </button>
         </div>
+
+        {/* Form Content */}
+        <div className="p-6 sm:p-8">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
+              {type === 'login' ? 'Welcome Back' : 'Create Your Account'}
+            </h2>
+            <p className="text-gray-600 text-sm">
+              {type === 'login' 
+                ? 'Sign in to continue your language learning journey' 
+                : 'Join us and start learning languages today'
+              }
+            </p>
+          </div>
 
         {/* Error Message */}
         {error && (
@@ -238,27 +266,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </div>
         </div>
 
-        {/* Google Auth Button */}
-        <div className="mb-6">
-          <GoogleAuthButton 
-            onSuccess={onGoogleAuth} 
-            onError={(err) => console.error('Google auth error:', err)}
-            disabled={isLoading}
-          />
-        </div>
-
-        {/* Switch Form Type */}
-        <div className="text-center">
-          <p className="text-gray-600 text-sm">
-            {type === 'login' ? "Don't have an account?" : "Already have an account?"}
-          </p>
-          <button
-            type="button"
-            onClick={type === 'login' ? switchToSignup : switchToLogin}
-            className="mt-2 w-full py-2 px-4 border border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white font-medium rounded-lg transition-colors duration-200"
-          >
-            {type === 'login' ? 'Create New Account' : 'Sign In Instead'}
-          </button>
+          {/* Google Auth Button */}
+          <div>
+            <GoogleAuthButton 
+              onSuccess={onGoogleAuth} 
+              onError={(err) => console.error('Google auth error:', err)}
+              disabled={isLoading}
+            />
+          </div>
         </div>
       </div>
     </div>
