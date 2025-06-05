@@ -166,8 +166,8 @@ export default function Home() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6 }}
                   >
-                    <span className="block mb-2">Welcome to</span>
-                    <span className="text-gray-800">Your Smart Language Coach</span>
+                    <span className="block mb-2 text-gray-800">Welcome to</span>
+                    <span className="animated-gradient-text">Your Smart Language Coach</span>
                   </motion.h1>
                   
                   <motion.div 
