@@ -14,6 +14,7 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Sync auth state with local state
   useEffect(() => {
@@ -23,10 +24,36 @@ export default function ForgotPasswordPage() {
     setIsLoading(authLoading);
   }, [authError, authLoading]);
 
+  // Validation function
+  const validateEmail = (emailValue: string) => {
+    if (!emailValue.trim()) {
+      return 'Please enter your email address';
+    } else if (!/\S+@\S+\.\S+/.test(emailValue)) {
+      return 'Please enter a valid email address (e.g., john@example.com)';
+    }
+    return null;
+  };
+
+  // Handle email change with validation
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    setValidationError(validateEmail(value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setValidationError(null);
+
+    // Validate email before submission
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setValidationError(emailError);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       console.log('Password reset requested for:', email);
@@ -101,17 +128,21 @@ export default function ForgotPasswordPage() {
                 Enter your email address and we'll send you a link to reset your password.
               </p>
               
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} noValidate>
                 <div className="field h-[50px] w-full mt-5">
                   <input 
                     type="email" 
                     placeholder="Email Address" 
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={handleEmailChange}
+                    onBlur={handleEmailChange}
                     className="h-full w-full outline-none pl-4 rounded-md border border-[#4ECFBF] bg-white text-gray-800 placeholder-gray-500 text-base transition-all duration-300 focus:border-[#3db3a7]"
                     style={{transition: 'all 0.3s ease'}}
                   />
+                  {validationError && (
+                    <p className="mt-2 text-sm text-red-600">{validationError}</p>
+                  )}
                 </div>
                 
                 <div className="field btn h-[50px] w-full mt-5 rounded-md relative overflow-hidden">
