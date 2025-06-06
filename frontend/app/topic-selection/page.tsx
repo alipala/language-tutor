@@ -458,31 +458,34 @@ export default function TopicSelection() {
         
         {/* Custom Topic Input Modal - Only show when active */}
         {isCustomTopicActive && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
-            <div className="glass-card p-6 md:p-8 rounded-xl border border-white/20 shadow-lg w-full max-w-md mx-4">
-              {/* Decorative elements */}
-              <div className="absolute -top-20 -right-20 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 animate-fade-in">
+            <div className="bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-50"></div>
               
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-4 relative z-10">
-                {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
-                {selectedLanguage === 'english' && 'Create Your Custom Topic'}
-                {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
-                {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema'}
-                {selectedLanguage === 'french' && 'Créez votre sujet personnalisé'}
-                {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
-                {!selectedLanguage && 'Create Your Custom Topic'}
-              </h3>
-              <p className="text-white/80 text-sm md:text-base mb-6 relative z-10">
-                {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
-                {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
-                {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}
-                {selectedLanguage === 'german' && 'Worüber möchtest du in deinem Gespräch auf Deutsch sprechen?'}
-                {selectedLanguage === 'french' && 'De quoi aimeriez-vous parler dans votre conversation en français?'}
-                {selectedLanguage === 'portuguese' && 'Sobre o que você gostaria de falar em sua conversa em português?'}
-                {!selectedLanguage && 'What would you like to talk about in your conversation?'}
-              </p>
+              {/* Header */}
+              <div className="relative z-10 text-center mb-6">
+                <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
+                  {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
+                  {selectedLanguage === 'english' && 'Create Your Custom Topic'}
+                  {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
+                  {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema'}
+                  {selectedLanguage === 'french' && 'Créez votre sujet personnalisé'}
+                  {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
+                  {!selectedLanguage && 'Create Your Custom Topic'}
+                </h3>
+                <p className="text-gray-600 text-sm md:text-base">
+                  {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
+                  {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
+                  {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}
+                  {selectedLanguage === 'german' && 'Worüber möchtest du in deinem Gespräch auf Deutsch sprechen?'}
+                  {selectedLanguage === 'french' && 'De quoi aimeriez-vous parler dans votre conversation en français?'}
+                  {selectedLanguage === 'portuguese' && 'Sobre o que você gostaria de falar em sua conversa em português?'}
+                  {!selectedLanguage && 'What would you like to talk about in your conversation?'}
+                </p>
+              </div>
               
+              {/* Input Section */}
               <div className="mb-6 relative z-10">
                 <textarea
                   ref={customInputRef}
@@ -498,28 +501,32 @@ export default function TopicSelection() {
                     }
                   }}
                   placeholder="Describe your topic here..."
-                  className="w-full p-3 rounded-lg glass-card border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all duration-300 min-h-[100px] resize-none"
+                  className="w-full p-4 rounded-xl border-2 border-[#4ECFBF]/30 focus:border-[#4ECFBF]/60 bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]/20 transition-all duration-300 min-h-[120px] resize-none shadow-sm"
                   disabled={isExtendingKnowledge}
                 />
-                <p className="text-xs text-white/60 mt-2">
+                <p className="text-xs text-gray-500 mt-2 text-center">
                   Press Enter to submit or Shift+Enter for a new line
                 </p>
               </div>
               
-              <div className="flex justify-between relative z-10">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 relative z-10">
                 <button
                   onClick={() => setIsCustomTopicActive(false)}
-                  className="px-4 py-2 rounded-lg glass-card border border-white/20 hover:bg-white/10 text-white transition-all duration-300 text-sm md:text-base shadow-lg hover:shadow-white/10 transform hover:translate-y-[-1px]"
+                  className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-gray-300 hover:border-gray-400 w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-md transform hover:translate-y-[-1px] touch-target"
                   disabled={isExtendingKnowledge}
                 >
-                  Cancel
+                  <span className="relative z-10 font-medium text-gray-700 group-hover:text-gray-800 transition-colors duration-300">Cancel</span>
+                  <div className="absolute bottom-0 left-0 h-0.5 bg-gray-400 w-0 group-hover:w-full transition-all duration-500"></div>
                 </button>
+                
                 <button
                   onClick={handleCustomTopicSubmit}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition-all duration-300 text-sm md:text-base shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transform hover:translate-y-[-1px]"
+                  className="group relative overflow-hidden bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 border-2 border-[#4ECFBF] w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/30 transform hover:translate-y-[-1px] touch-target"
                   disabled={!customTopicText.trim() || isExtendingKnowledge}
                 >
-                  Submit
+                  <span className="relative z-10 font-medium text-white transition-colors duration-300">Submit</span>
+                  <div className="absolute bottom-0 left-0 h-0.5 bg-white/50 w-0 group-hover:w-full transition-all duration-500"></div>
                 </button>
               </div>
             </div>
