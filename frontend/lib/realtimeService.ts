@@ -402,7 +402,7 @@ export class RealtimeService {
       // Send offer to OpenAI
       console.log('Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview';
+      const model = 'gpt-4o-realtime-preview-2024-12-17';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: completeOffer.sdp,
@@ -604,6 +604,9 @@ export class RealtimeService {
         voice: 'alloy',
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
+        input_audio_noise_reduction: {
+          type: 'near_field' // Optimized for close-talking microphones (headphones, laptop mics)
+        },
         input_audio_transcription: null, // Start with transcription disabled
         turn_detection: null, // Start with turn detection disabled
         tools: [],
@@ -624,19 +627,24 @@ export class RealtimeService {
         type: 'session.update',
         session: {
           input_audio_transcription: {
-            model: 'whisper-1'
+            model: 'whisper-1',
+            language: this.currentLanguageIsoCode || 'en' // Use detected ISO code or default to English
           },
           turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 200 // Use official client's shorter duration
+            // type: 'server_vad',
+            // threshold: 0.5,
+            // prefix_padding_ms: 300,
+            // silence_duration_ms: 200 // Use official client's shorter duration
+            type: 'semantic_vad',
+            eagerness: 'low', // Wait longer for user to complete their thoughts
+            create_response: true, // Enable in conversation mode
+            interrupt_response: true // Allow interruptions in conversation mode
           }
         }
       };
       
       const transcriptionSent = this.sendMessage(transcriptionUpdate);
-      console.log('Transcription update sent:', transcriptionSent);
+      console.log('Enhanced transcription update sent with language:', this.currentLanguageIsoCode || 'en', 'Success:', transcriptionSent);
     }, 1000);
     
     return initialSent;
