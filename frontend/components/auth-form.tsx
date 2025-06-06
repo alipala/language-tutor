@@ -143,7 +143,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border-2 border-[#4ECFBF]/40 overflow-hidden relative">
+        {/* Immersive glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/10 via-transparent to-[#3a9e92]/10 pointer-events-none"></div>
+        <div className="absolute -inset-1 bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 rounded-2xl blur-sm opacity-75 pointer-events-none"></div>
+        <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl">
         {/* Tab Navigation */}
         <div className="flex bg-gray-50 border-b border-gray-200">
           <button
@@ -348,6 +352,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onError={(err) => console.error('Google auth error:', err)}
             disabled={isLoading}
           />
+        </div>
         </div>
         </div>
       </div>
