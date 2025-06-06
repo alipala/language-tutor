@@ -416,7 +416,7 @@ Make this informative and suitable for {level} level {language} language learner
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "gpt-4o-realtime-preview",
+                    "model": "gpt-4o-realtime-preview-2025-06-03",
                     "voice": request.voice,
                     "instructions": instructions,
                     "modalities": ["audio", "text"]
