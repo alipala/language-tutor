@@ -328,10 +328,10 @@ export default function LevelSelection() {
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-[#4ECFBF] mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-gray-800 mb-4 animate-fade-in">
             Select Your Level
           </h1>
-          <p className="text-[#4ECFBF]/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-gray-600 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
             {selectedLanguage === 'english' && 'Choose your proficiency level in English'}
             {selectedLanguage === 'spanish' && 'Elige tu nivel de competencia en español'}
@@ -550,7 +550,7 @@ export default function LevelSelection() {
                         level.code === 'C1' ? 'Advanced' : 'Proficient'
                       )}
                     </h2>
-                    <p className="text-sm text-[#4ECFBF]/80 mb-4">
+                    <p className="text-sm text-gray-600 mb-4">
                       {level.description}
                     </p>
                     
