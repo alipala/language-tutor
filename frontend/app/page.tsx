@@ -852,7 +852,7 @@ export default function Home() {
               <FAQSection />
               
               <motion.button
-                className="px-6 py-3 bg-[#F75A5A] text-white rounded-lg hover:bg-[#E55252] transition-colors shadow-md flex items-center mx-auto border-2 border-white"
+                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md flex items-center mx-auto border-2 border-white"
                 onClick={handleStartLearning}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -870,7 +870,7 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <span>Get Started for Free</span>
+                    <span>Get Started Now</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
