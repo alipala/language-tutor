@@ -522,11 +522,23 @@ export default function TopicSelection() {
                 
                 <button
                   onClick={handleCustomTopicSubmit}
-                  className="group relative overflow-hidden bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 border-2 border-[#4ECFBF] w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/30 transform hover:translate-y-[-1px] touch-target"
+                  className={`group relative overflow-hidden border-2 w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:translate-y-[-1px] touch-target ${
+                    customTopicText.trim() && !isExtendingKnowledge
+                      ? 'bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 border-[#4ECFBF] hover:shadow-lg hover:shadow-[#4ECFBF]/30'
+                      : 'bg-white/95 backdrop-blur-sm border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 hover:shadow-md'
+                  }`}
                   disabled={!customTopicText.trim() || isExtendingKnowledge}
                 >
-                  <span className="relative z-10 font-medium text-white transition-colors duration-300">Submit</span>
-                  <div className="absolute bottom-0 left-0 h-0.5 bg-white/50 w-0 group-hover:w-full transition-all duration-500"></div>
+                  <span className={`relative z-10 font-medium transition-colors duration-300 ${
+                    customTopicText.trim() && !isExtendingKnowledge
+                      ? 'text-white'
+                      : 'text-[#4ECFBF] group-hover:text-[#4ECFBF]'
+                  }`}>Submit</span>
+                  <div className={`absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-500 ${
+                    customTopicText.trim() && !isExtendingKnowledge
+                      ? 'bg-white/50'
+                      : 'bg-[#4ECFBF]'
+                  }`}></div>
                 </button>
               </div>
             </div>
