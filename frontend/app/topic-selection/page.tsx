@@ -383,17 +383,6 @@ export default function TopicSelection() {
               {/* Background glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
-              {/* Modern geometric icon */}
-              <div className="relative z-10 mr-3 w-6 h-6 flex items-center justify-center">
-                <div className="w-5 h-5 relative">
-                  {/* Globe icon with modern styling */}
-                  <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF] group-hover:border-[#4ECFBF] transition-colors duration-300"></div>
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-[#4ECFBF] transform -translate-y-1/2"></div>
-                  <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-[#4ECFBF] transform -translate-x-1/2"></div>
-                  <div className="absolute top-1 bottom-1 left-1 right-1 rounded-full border border-[#4ECFBF]/50"></div>
-                </div>
-              </div>
-              
               {/* Text */}
               <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Language</span>
               
@@ -409,20 +398,6 @@ export default function TopicSelection() {
               {/* Background glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
-              {/* Modern skip icon */}
-              <div className="relative z-10 mr-3 w-6 h-6 flex items-center justify-center">
-                <div className="w-5 h-5 relative">
-                  {/* Fast forward / skip icon */}
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
-                    <div className="w-0 h-0 border-l-[6px] border-l-[#4ECFBF] border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent"></div>
-                  </div>
-                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
-                    <div className="w-0 h-0 border-l-[6px] border-l-[#4ECFBF] border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent"></div>
-                  </div>
-                  <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-[#4ECFBF]"></div>
-                </div>
-              </div>
-              
               {/* Text */}
               <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Skip Topic</span>
               
@@ -437,17 +412,6 @@ export default function TopicSelection() {
             >
               {/* Background glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              
-              {/* Modern restart icon */}
-              <div className="relative z-10 mr-3 w-6 h-6 flex items-center justify-center">
-                <div className="w-5 h-5 relative">
-                  {/* Circular arrow icon */}
-                  <div className="absolute inset-0">
-                    <div className="w-full h-full rounded-full border-2 border-[#4ECFBF] border-t-transparent transform rotate-45"></div>
-                    <div className="absolute top-0 right-1 w-0 h-0 border-l-[3px] border-l-[#4ECFBF] border-t-[2px] border-t-transparent border-b-[2px] border-b-transparent transform rotate-45"></div>
-                  </div>
-                </div>
-              </div>
               
               {/* Text */}
               <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Start Over</span>
