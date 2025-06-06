@@ -2,17 +2,17 @@
 
 /* Override gradient backgrounds with solid colors */
 .landing-first {
-  background: var(--turquoise) !important;
+  background: #f8fafc !important;
   background-image: none !important;
 }
 
 .landing-second {
-  background: var(--yellow) !important;
+  background: #f8fafc !important;
   background-image: none !important;
 }
 
 .landing-third {
-  background: var(--coral) !important;
+  background: #f8fafc !important;
   background-image: none !important;
 }
 
@@ -27,7 +27,7 @@
 .topic-selection-container,
 .level-selection-container,
 .speech-page {
-  background-color: var(--turquoise) !important;
+  background-color: #ffffff !important;
   background-image: none !important;
 }
 

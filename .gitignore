@@ -18,8 +18,10 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+venv_py311/
 venv/
 .env
+
 
 # Node.js
 node_modules/
@@ -48,3 +50,4 @@ tsconfig.tsbuildinfo
 # Temporary and utility files
 fix_openai.py
 *.temp
+

@@ -342,13 +342,13 @@ const languages: Language[] = [
           
           <h1 className="text-5xl font-bold tracking-tight relative z-10 min-h-[4rem] inline-block">
             <div className="relative">
-              <span className="text-white drop-shadow-sm">Choose Your Language</span>
+              <span className="text-gray-800 drop-shadow-sm">Choose Your Language</span>
               {/* Animated underline effect */}
-              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-white/50 animate-pulse"></div>
+              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-[#4ECFBF] animate-pulse"></div>
             </div>
           </h1>
-          <div className="text-white/80 mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
-            <p className="text-white/80 animate-fade-in">Select a language to begin</p>
+          <div className="mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
+            <p className="text-gray-600 animate-fade-in">Select a language to begin</p>
           </div>
         </div>
 
@@ -363,12 +363,12 @@ const languages: Language[] = [
                 className={`
                   group relative overflow-hidden rounded-xl 
                   transition-all duration-500 ease-out 
-                  glass-card
-                  hover:shadow-lg hover:shadow-black/20
+                  bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40
+                  hover:shadow-lg hover:shadow-[#4ECFBF]/20
                   ${
                     selectedLanguage === language.code
-                      ? 'ring-2 ring-purple-300/50 shadow-purple-500/20 shadow-md'
-                      : 'hover:border-white/30'
+                      ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30 shadow-md border-[#4ECFBF]/60'
+                      : 'hover:border-[#4ECFBF]/60'
                   }
                 `}
               >
@@ -423,11 +423,11 @@ const languages: Language[] = [
                     
                     {/* Language details */}
                     <div className="flex-1 text-left pt-1">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-white transition-colors duration-300">
+                      <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[#4ECFBF] transition-colors duration-300">
                         {language.name}
                       </h3>
                       
-                      <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
+                      <p className="text-gray-600 text-sm group-hover:text-gray-700 transition-colors duration-300">
                         {language.code === 'dutch' && 'Leer Nederlandse woordenschat en conversatie'}
                         {language.code === 'english' && 'Practice English speaking and listening'}
                         {language.code === 'spanish' && 'Domina habilidades de conversación en español'}
@@ -462,7 +462,7 @@ const languages: Language[] = [
                 {/* Bottom flowing accent line with animation */}
                 <div 
                   className={`
-                    absolute bottom-0 left-0 h-0.5 bg-white/60
+                    absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF]
                     transition-all duration-700 ease-out opacity-80
                     ${
                       selectedLanguage === language.code

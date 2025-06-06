@@ -322,16 +322,16 @@ export default function LevelSelection() {
   const formattedLevels = getLevels(selectedLanguage);
 
   return (
-    <div className="min-h-screen text-white level-selection-container">
+    <div className="min-h-screen text-[#4ECFBF] level-selection-container">
       <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-gray-800 mb-4 animate-fade-in">
             Select Your Level
           </h1>
-          <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-gray-600 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
             {selectedLanguage === 'english' && 'Choose your proficiency level in English'}
             {selectedLanguage === 'spanish' && 'Elige tu nivel de competencia en español'}
@@ -340,33 +340,50 @@ export default function LevelSelection() {
             {selectedLanguage === 'portuguese' && 'Escolha seu nível de proficiência em português'}
             {!selectedLanguage && 'Choose your proficiency level'}
           </p>
-          <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 animate-fade-in max-w-2xl mx-auto" style={{animationDelay: '200ms'}}>
+            {/* Change Language Button */}
             <button 
               onClick={handleChangeLanguage}
-              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-              </svg>
-              <span>Change Language</span>
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Text */}
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Language</span>
+              
+              {/* Bottom accent line */}
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
+
+            {/* Change Topic Button */}
             <button 
               onClick={handleChangeTopic}
-              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-              </svg>
-              <span>Change Topic</span>
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Text */}
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Topic</span>
+              
+              {/* Bottom accent line */}
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
+
+            {/* Start Over Button */}
             <button 
               onClick={handleStartOver}
-              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Start Over</span>
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Text */}
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Start Over</span>
+              
+              {/* Bottom accent line */}
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
           </div>
         </div>
@@ -465,11 +482,11 @@ export default function LevelSelection() {
                     className={`
                       relative overflow-hidden flex flex-col items-start p-6 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl
-                      backdrop-blur-sm animate-fade-in h-[220px]
+                      bg-white animate-fade-in h-[220px] border-2
                       ${
                         selectedLevel === level.code
-                          ? `glass-card border border-white/30 shadow-xl shadow-${colors.bg.split(' ')[1]}/20 ring-2 ${colors.ring}/50`
-                          : 'glass-card border border-white/20 hover:border-white/30 shadow-lg hover:shadow-lg hover:shadow-white/10'
+                          ? `border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50`
+                          : 'border-[#4ECFBF] hover:border-[#4ECFBF]/80 shadow-lg hover:shadow-[#4ECFBF]/20'
                       }
                     `}
                     style={{animationDelay: `${300 + parseInt(level.code.charAt(1)) * 100}ms`}}
@@ -482,7 +499,7 @@ export default function LevelSelection() {
                       <span className="relative text-white font-bold text-xs">{level.code}</span>
                     </div>
                     
-                    <h2 className="text-xl font-bold mb-3 text-white">
+                    <h2 className="text-xl font-bold mb-3 text-gray-800">
                       {selectedLanguage === 'dutch' && (
                         level.code === 'A1' ? 'Absolute Beginner' : 
                         level.code === 'A2' ? 'Basis Beginner' :
@@ -533,7 +550,7 @@ export default function LevelSelection() {
                         level.code === 'C1' ? 'Advanced' : 'Proficient'
                       )}
                     </h2>
-                    <p className="text-sm text-white/80 mb-4">
+                    <p className="text-sm text-gray-600 mb-4">
                       {level.description}
                     </p>
                     

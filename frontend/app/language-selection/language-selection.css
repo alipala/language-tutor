@@ -2,7 +2,7 @@
 
 .language-selection-page {
   min-height: 100vh;
-  background-color: var(--turquoise);
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -31,18 +31,20 @@
 
 /* Modern Flag Container Styling */
 .flag-container {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border: 2px solid #4ECFBF;
   border-radius: 0.5rem;
   overflow: hidden;
   transform-style: preserve-3d;
   perspective: 800px;
   transform: translateZ(0);
   backface-visibility: hidden;
-  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out, border-color 0.3s ease-out;
 }
 
 /* Flag hover effects */
 .flag-container:hover {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 28px rgba(78, 207, 191, 0.3);
+  border-color: rgba(78, 207, 191, 0.8);
   transform: translateY(-2px) translateZ(0);
 }

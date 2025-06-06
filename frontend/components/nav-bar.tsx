@@ -92,7 +92,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, []);
 
   // Keep the navbar fixed with appropriate styling
-  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#3a9e92]/90 shadow-lg' : 'bg-transparent'} ${activeSection ? 'navbar-section1' : ''}`;
+  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/90 shadow-lg' : 'bg-[#4ECFBF]/80'} ${activeSection ? 'navbar-section1' : ''}`;
   navbarClass += isScrolled ? ' py-2' : ' py-4';
   
   return (

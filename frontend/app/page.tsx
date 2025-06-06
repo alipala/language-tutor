@@ -153,10 +153,10 @@ export default function Home() {
       ) : (
         <main className="start-screen">
           {/* First Section */}
-          <section id="features" className="landing-section landing-first pt-2">
+          <section id="features" className="landing-section landing-first pt-16">
             <div className="section-background"></div>
             <div className="section-content">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-10 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(255,255,255,0.15)] transition-shadow duration-300 w-[125%] max-w-none -mx-[12.5%] py-16">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-10 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] w-[125%] max-w-none -mx-[12.5%] py-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                   {/* Left Column - Content */}
                   <div className="text-left">
@@ -166,12 +166,12 @@ export default function Home() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6 }}
                   >
-                    <span className="block mb-2">Welcome to</span>
-                    <span className="text-white">Your Smart Language Coach</span>
+                    <span className="block mb-2 text-gray-800">Welcome to</span>
+                    <span className="animated-gradient-text">Your Smart Language Coach</span>
                   </motion.h1>
                   
                   <motion.div 
-                    className="section-description max-w-xl text-left mb-8 text-white/90 text-lg"
+                    className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.3 }}
@@ -317,144 +317,62 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="scroll-indicator" onClick={() => scrollToSection('how-it-works')}>
-              <span>Scroll to learn more</span>
-              <div className="scroll-arrow"></div>
-            </div>
+            <motion.div 
+              className="flex flex-col items-center justify-center mt-16 cursor-pointer group"
+              onClick={() => scrollToSection('how-it-works')}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.2 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <motion.div
+                className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <motion.svg 
+                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  animate={{ y: [0, 4, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </motion.svg>
+                
+                {/* Ripple effect */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-white/30"
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.7, 0, 0.7] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-white/20"
+                  animate={{ scale: [1, 2, 1], opacity: [0.5, 0, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                />
+              </motion.div>
+              
+              <motion.span 
+                className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300"
+                animate={{ opacity: [0.8, 1, 0.8] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                Discover How It Works
+              </motion.span>
+              
+              <motion.div
+                className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                animate={{ scaleX: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </motion.div>
           </section>
 
           {/* How It Works Section */}
           <section id="how-it-works" className="landing-section landing-second">
-            <div className="section-background"></div>
-            <div className="section-content">
-              <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-white mb-6 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]"
-                initial={{ opacity: 0, y: -20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                style={{ color: '#ffffff' }}
-              >
-                How Our Platform Works
-              </motion.h2>
-              
-              <motion.p 
-                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
-              >
-                Your Smart Language Coach uses advanced AI to create a personalized learning experience that adapts to your needs and helps you improve quickly.
-              </motion.p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <motion.div 
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 flex flex-col items-center text-center h-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-16 h-16 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">1. Choose Your Language</h3>
-                  <p className="text-white/90">Select from multiple languages including Spanish, French, German, Dutch, and Portuguese. Each language offers comprehensive learning material tailored to your needs.</p>
-                </motion.div>
-                
-                <motion.div 
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 flex flex-col items-center text-center h-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-16 h-16 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">2. Assess Your Level</h3>
-                  <p className="text-white/90">Our AI assessment tool determines your current proficiency and suggests the perfect starting point. From beginner (A1) to advanced (C2), we adapt to your skills.</p>
-                </motion.div>
-                
-                <motion.div 
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 flex flex-col items-center text-center h-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-16 h-16 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">3. Practice Through Conversation</h3>
-                  <p className="text-white/90">Engage in natural, meaningful conversations with our AI tutor on various topics. Receive real-time feedback on pronunciation, grammar, and vocabulary usage.</p>
-                </motion.div>
-              </div>
-              
-              <motion.div
-                className="bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 max-w-4xl mx-auto mb-8"
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                viewport={{ once: true }}
-              >
-                <h3 className="text-xl font-bold text-white mb-4 text-center drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">The AI-Powered Learning Process</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-                  <div className="flex flex-col items-center p-4">
-                    <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">1</div>
-                    <p className="text-white font-medium">Speak & Practice</p>
-                    <p className="text-sm text-white/80">Practice speaking in real conversations</p>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4">
-                    <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">2</div>
-                    <p className="text-white font-medium">Get Feedback</p>
-                    <p className="text-sm text-white/80">Receive instant corrections and tips</p>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4">
-                    <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">3</div>
-                    <p className="text-white font-medium">Track Progress</p>
-                    <p className="text-sm text-white/80">Monitor your improvement over time</p>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4">
-                    <div className="w-12 h-12 rounded-full bg-[#4ECFBF] text-white flex items-center justify-center mb-2 text-lg font-bold">4</div>
-                    <p className="text-white font-medium">Master Language</p>
-                    <p className="text-sm text-white/80">Achieve fluency through regular practice</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.button
-                className="px-6 py-3 bg-[#FFD63A] text-white font-medium rounded-lg hover:bg-[#ECC235] transition-colors shadow-md flex items-center mx-auto border-2 border-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]"
-                onClick={handleStartLearning}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-                viewport={{ once: true }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-              >
-                Start Your Learning Journey
-                <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </motion.button>
-            </div>
-          </section>
-
-          {/* Pricing Section */}
-          <section id="pricing" className="landing-section landing-first">
             <div className="section-background"></div>
             <div className="section-content">
               <motion.h2 
@@ -464,11 +382,255 @@ export default function Home() {
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
               >
+                How It Works
+              </motion.h2>
+              
+              
+              {/* Learning Journey Flow */}
+              <div className="max-w-7xl mx-auto mb-20">
+                {/* Assessment Path */}
+                <motion.div
+                  className="mb-16"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-3">🎯 Assessment Mode</h3>
+                    <p className="text-gray-600 text-lg">Discover your current level with AI-powered speaking assessment</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Speak Naturally</h4>
+                      <p className="text-gray-600 text-sm">Record yourself speaking for 15-60 seconds on any topic</p>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">AI Analysis</h4>
+                      <p className="text-gray-600 text-sm">Advanced AI evaluates pronunciation, grammar, vocabulary & fluency</p>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">CEFR Level</h4>
+                      <p className="text-gray-600 text-sm">Get your official language level from A1 (beginner) to C2 (native)</p>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Start Practicing</h4>
+                      <p className="text-gray-600 text-sm">Begin personalized conversations based on your assessed level</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Practice Mode Path */}
+                <motion.div
+                  className="mb-16"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-3">💬 Practice Mode</h3>
+                    <p className="text-gray-600 text-lg">Engage in real-time conversations with your AI language tutor</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 12h6m-6 4h6" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Choose Your Topic</h4>
+                      <p className="text-gray-600 text-sm">Select from popular topics like travel, food, work, or create your own custom conversation theme</p>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Real-Time Conversation</h4>
+                      <p className="text-gray-600 text-sm">Speak naturally with our AI tutor using WebRTC technology for instant voice interaction - just like talking to a real person</p>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Instant Feedback</h4>
+                      <p className="text-gray-600 text-sm">Get immediate corrections and suggestions as you speak, with detailed analysis of your pronunciation, grammar, and vocabulary</p>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Adaptive Learning</h4>
+                      <p className="text-gray-600 text-sm">Personalized lessons that adapt to your learning pace and style</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Progress Tracking */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-3">📊 Progress Tracking</h3>
+                    <p className="text-gray-600 text-lg">Monitor your improvement with detailed analytics and achievements</p>
+                  </div>
+                  
+                  <div className="bg-white/90 backdrop-blur-sm rounded-xl p-8 border border-gray-200 shadow-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                          </svg>
+                        </div>
+                        <h4 className="text-gray-800 font-semibold mb-2">Conversation History</h4>
+                        <p className="text-gray-600 text-sm">Save and review all your practice sessions with AI-generated summaries</p>
+                      </div>
+                      
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-gray-800 font-semibold mb-2">Learning Streaks</h4>
+                        <p className="text-gray-600 text-sm">Build daily practice habits and maintain your learning momentum</p>
+                      </div>
+                      
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-gray-800 font-semibold mb-2">Achievements</h4>
+                        <p className="text-gray-600 text-sm">Unlock badges and milestones as you reach your language learning goals</p>
+                      </div>
+                      
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-gray-800 font-semibold mb-2">Detailed Analytics</h4>
+                        <p className="text-gray-600 text-sm">Track your speaking time, complexity growth, and improvement areas</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+              
+            </div>
+            
+            <motion.div 
+              className="flex flex-col items-center justify-center mt-16 cursor-pointer group"
+              onClick={() => scrollToSection('pricing')}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <motion.div
+                className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <motion.svg 
+                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  animate={{ y: [0, 4, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </motion.svg>
+                
+                {/* Ripple effect */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-white/30"
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.7, 0, 0.7] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-white/20"
+                  animate={{ scale: [1, 2, 1], opacity: [0.5, 0, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                />
+              </motion.div>
+              
+              <motion.span 
+                className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300"
+                animate={{ opacity: [0.8, 1, 0.8] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                Explore Our Plans
+              </motion.span>
+              
+              <motion.div
+                className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                animate={{ scaleX: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </motion.div>
+          </section>
+
+          {/* Pricing Section */}
+          <section id="pricing" className="landing-section landing-first">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <motion.h2 
+                className="text-3xl md:text-4xl font-bold text-gray-800 mb-6"
+                initial={{ opacity: 0, y: -20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+              >
                 Choose Your Plan
               </motion.h2>
               
               <motion.p 
-                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
+                className="text-gray-600 text-lg max-w-2xl mx-auto mb-12"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -480,7 +642,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
                 {/* Basic Plan */}
                 <motion.div
-                  className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-[#4ECFBF]/20 transition-transform duration-300 hover:shadow-xl"
+                  className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
@@ -490,31 +652,31 @@ export default function Home() {
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Basic</h3>
                     <div className="flex items-end mb-4">
-                      <span className="text-4xl font-bold text-white">$9</span>
-                      <span className="text-white/70 ml-1">/month</span>
+                      <span className="text-4xl font-bold text-gray-800">$9</span>
+                      <span className="text-gray-600 ml-1">/month</span>
                     </div>
-                    <p className="text-white/80 mb-6">Perfect for casual learners</p>
+                    <p className="text-gray-600 mb-6">Perfect for casual learners</p>
                     
                     <ul className="space-y-3 mb-6">
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>2 language options</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>2 practice sessions daily</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Basic progress tracking</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -525,7 +687,7 @@ export default function Home() {
                   
                   <div className="px-6 pb-6">
                     <button 
-                      className="w-full py-3 bg-[#4ECFBF]/10 text-[#4ECFBF] font-medium rounded-lg hover:bg-[#4ECFBF]/20 transition-colors"
+                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md"
                       onClick={handleStartLearning}
                     >
                       Get Started
@@ -535,7 +697,7 @@ export default function Home() {
                 
                 {/* Premium Plan - Most Popular */}
                 <motion.div
-                  className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden border-2 border-[#4ECFBF] relative transition-transform duration-300 scale-105 md:scale-110 z-10"
+                  className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-[#4ECFBF] relative transition-transform duration-300 scale-105 md:scale-110 z-10"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
@@ -549,37 +711,37 @@ export default function Home() {
                   <div className="p-6 pt-10">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Premium</h3>
                     <div className="flex items-end mb-4">
-                      <span className="text-4xl font-bold text-white">$19</span>
-                      <span className="text-white/70 ml-1">/month</span>
+                      <span className="text-4xl font-bold text-gray-800">$19</span>
+                      <span className="text-gray-600 ml-1">/month</span>
                     </div>
-                    <p className="text-white/80 mb-6">Ideal for serious language learners</p>
+                    <p className="text-gray-600 mb-6">Ideal for serious language learners</p>
                     
                     <ul className="space-y-3 mb-6">
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>All 6 language options</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Unlimited practice sessions</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Advanced progress tracking</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Priority email support</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -590,7 +752,7 @@ export default function Home() {
                   
                   <div className="px-6 pb-6">
                     <button 
-                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors"
+                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md"
                       onClick={handleStartLearning}
                     >
                       Get Started
@@ -600,7 +762,7 @@ export default function Home() {
                 
                 {/* Business Plan */}
                 <motion.div
-                  className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-[#4ECFBF]/20 transition-transform duration-300 hover:shadow-xl"
+                  className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
@@ -610,37 +772,37 @@ export default function Home() {
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Business</h3>
                     <div className="flex items-end mb-4">
-                      <span className="text-4xl font-bold text-white">$49</span>
-                      <span className="text-white/70 ml-1">/month</span>
+                      <span className="text-4xl font-bold text-gray-800">$49</span>
+                      <span className="text-gray-600 ml-1">/month</span>
                     </div>
-                    <p className="text-white/80 mb-6">For teams and organizations</p>
+                    <p className="text-gray-600 mb-6">For teams and organizations</p>
                     
                     <ul className="space-y-3 mb-6">
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>All Premium features</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Up to 5 team members</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Team progress dashboard</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Dedicated account manager</span>
                       </li>
-                      <li className="flex items-center text-white/90">
+                      <li className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 mr-2 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -651,7 +813,7 @@ export default function Home() {
                   
                   <div className="px-6 pb-6">
                     <button 
-                      className="w-full py-3 bg-[#4ECFBF]/10 text-[#4ECFBF] font-medium rounded-lg hover:bg-[#4ECFBF]/20 transition-colors"
+                      className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md"
                       onClick={handleStartLearning}
                     >
                       Contact Sales
@@ -661,16 +823,16 @@ export default function Home() {
               </div>
               
               <motion.div
-                className="bg-[#1a4d47]/90 backdrop-blur-sm rounded-xl p-6 border border-[#4ECFBF]/30 max-w-4xl mx-auto text-center"
+                className="bg-white rounded-xl p-6 border-2 border-[#4ECFBF] max-w-4xl mx-auto text-center shadow-lg"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
                 viewport={{ once: true }}
               >
                 <h3 className="text-xl font-bold text-[#4ECFBF] mb-3">Need a custom solution?</h3>
-                <p className="text-white/80 mb-4">Contact us for enterprise pricing and customized language training programs for larger organizations.</p>
+                <p className="text-gray-600 mb-4">Contact us for enterprise pricing and customized language training programs for larger organizations.</p>
                 <button 
-                  className="px-6 py-2 border border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors inline-flex items-center"
+                  className="px-6 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors inline-flex items-center shadow-md"
                   onClick={() => window.location.href = "mailto:contact@yoursmartlanguagecoach.com"}
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -682,161 +844,15 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Features Section */}
-          <section id="features" className="landing-section landing-third">
+          {/* Final Section with FAQ */}
+          <section id="faq" className="landing-section landing-third">
             <div className="section-background"></div>
             <div className="section-content">
-              <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-white mb-6"
-                initial={{ opacity: 0, y: -20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-              >
-                Powerful Features for Language Mastery
-              </motion.h2>
-              
-              <motion.p 
-                className="text-white/90 text-lg max-w-2xl mx-auto mb-12"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
-              >
-                Discover the innovative features that make Your Smart Language Coach the most effective way to achieve fluency in a new language.
-              </motion.p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-                {/* Feature 1 */}
-                <motion.div
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 h-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-5">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Speech Recognition</h3>
-                  <p className="text-white/80">Advanced AI technology accurately recognizes your speech patterns, accents, and pronunciations, providing instant feedback on how to improve.</p>
-                </motion.div>
-                
-                {/* Feature 2 */}
-                <motion.div
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 h-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-5">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Personalized Learning Plans</h3>
-                  <p className="text-white/80">Custom learning paths adapt to your goals, schedule, and proficiency level. Our AI continuously adjusts to focus on areas where you need the most improvement.</p>
-                </motion.div>
-                
-                {/* Feature 3 */}
-                <motion.div
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 h-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-5">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Smart Vocabulary Building</h3>
-                  <p className="text-white/80">Our platform intelligently introduces new vocabulary based on your current knowledge, ensuring you learn relevant words that match your interests and goals.</p>
-                </motion.div>
-                
-                {/* Feature 4 */}
-                <motion.div
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 h-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-5">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Real Native Speakers</h3>
-                  <p className="text-white/80">Learn from AI tutors that mimic the speech patterns, expressions, and cultural nuances of native speakers, giving you authentic language exposure.</p>
-                </motion.div>
-                
-                {/* Feature 5 */}
-                <motion.div
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 h-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.5 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-5">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Grammar Analysis</h3>
-                  <p className="text-white/80">Receive detailed explanations of grammar rules and corrections in real-time as you speak or write, with examples that help you understand and remember.</p>
-                </motion.div>
-                
-                {/* Feature 6 */}
-                <motion.div
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 h-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.6 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center mb-5">
-                    <svg className="w-8 h-8 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Progress Analytics</h3>
-                  <p className="text-white/80">Track your improvement with detailed analytics showing your fluency level, vocabulary size, grammar accuracy, and conversation confidence over time.</p>
-                </motion.div>
-              </div>
-              
-              <motion.div
-                className="text-center"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.7 }}
-                viewport={{ once: true }}
-              >
-                <p className="text-white/90 text-lg mb-8">Join thousands of language learners who have improved their speaking skills with our AI-powered platform.</p>
-              </motion.div>
-              
               {/* FAQ Section */}
-              <section id="faq" className="mt-16">
-                <motion.h2 
-                  className="text-3xl md:text-4xl font-bold text-white mb-10 text-center"
-                  initial={{ opacity: 0, y: -20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  viewport={{ once: true }}
-                >
-                  Frequently Asked Questions
-                </motion.h2>
-                <FAQSection />
-              </section>
+              <FAQSection />
               
               <motion.button
-                className="px-6 py-3 bg-[#F75A5A] text-white rounded-lg hover:bg-[#E55252] transition-colors shadow-md flex items-center mx-auto border-2 border-white"
+                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md flex items-center mx-auto border-2 border-white"
                 onClick={handleStartLearning}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -854,7 +870,7 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <span>Get Started for Free</span>
+                    <span>Get Started Now</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>

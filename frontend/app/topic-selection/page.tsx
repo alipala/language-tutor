@@ -356,16 +356,16 @@ export default function TopicSelection() {
   };
 
   return (
-    <div className="min-h-screen text-white topic-selection-container">
+    <div className="min-h-screen text-[#4ECFBF] topic-selection-container">
       <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8">
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-[#4ECFBF] mb-4 animate-fade-in">
             Choose a Topic
           </h1>
-          <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-[#4ECFBF]/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
             {selectedLanguage === 'english' && 'Select a topic for your English conversation (optional)'}
             {selectedLanguage === 'spanish' && 'Selecciona un tema para tu conversación en español (opcional)'}
@@ -374,33 +374,50 @@ export default function TopicSelection() {
             {selectedLanguage === 'portuguese' && 'Selecione um tópico para sua conversa em português (opcional)'}
             {!selectedLanguage && 'Select a topic for your conversation (optional)'}
           </p>
-          <div className="flex space-x-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 animate-fade-in max-w-2xl mx-auto" style={{animationDelay: '200ms'}}>
+            {/* Change Language Button */}
             <button 
               onClick={handleChangeLanguage}
-              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-              </svg>
-              <span>Change Language</span>
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Text */}
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Language</span>
+              
+              {/* Bottom accent line */}
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
+
+            {/* Skip Topic Button */}
             <button 
               onClick={handleSkipTopic}
-              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-              <span>Skip Topic</span>
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Text */}
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Skip Topic</span>
+              
+              {/* Bottom accent line */}
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
+
+            {/* Start Over Button */}
             <button 
               onClick={handleStartOver}
-              className="primary-button px-4 py-2 rounded-lg flex items-center space-x-2" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Start Over</span>
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Text */}
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Start Over</span>
+              
+              {/* Bottom accent line */}
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
           </div>
         </div>
@@ -412,25 +429,25 @@ export default function TopicSelection() {
               key={topic.id}
               onClick={() => handleTopicSelect(topic.id)}
               disabled={isLoading || isExtendingKnowledge}
-              className={`group relative overflow-hidden rounded-xl transition-all duration-300 glass-card flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] ${
+              className={`group relative overflow-hidden rounded-xl transition-all duration-300 bg-white border-2 border-[#4ECFBF] flex flex-col p-6 text-left min-h-44 transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20 ${
                 (isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               } ${
-                isCustomTopicActive && topic.id === 'custom' ? 'ring-2 ring-white/50 shadow-white/20' : ''
+                isCustomTopicActive && topic.id === 'custom' ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''
               }`}
             >
               {/* Glow effect on hover */}
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               {/* Icon */}
               <div className="text-4xl mb-4">{topic.icon}</div>
               
               {/* Title */}
-              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-white transition-colors duration-300">
+              <h3 className="text-xl font-semibold text-gray-800 mb-2 group-hover:text-[#4ECFBF] transition-colors duration-300">
                 {topic.name}
               </h3>
               
               {/* Description */}
-              <p className="text-white/70 text-sm group-hover:text-white transition-colors duration-300">
+              <p className="text-gray-600 text-sm group-hover:text-gray-700 transition-colors duration-300">
                 {topic.description}
               </p>
               
@@ -441,31 +458,34 @@ export default function TopicSelection() {
         
         {/* Custom Topic Input Modal - Only show when active */}
         {isCustomTopicActive && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
-            <div className="glass-card p-6 md:p-8 rounded-xl border border-white/20 shadow-lg w-full max-w-md mx-4">
-              {/* Decorative elements */}
-              <div className="absolute -top-20 -right-20 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 animate-fade-in">
+            <div className="bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-50"></div>
               
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-4 relative z-10">
-                {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
-                {selectedLanguage === 'english' && 'Create Your Custom Topic'}
-                {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
-                {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema'}
-                {selectedLanguage === 'french' && 'Créez votre sujet personnalisé'}
-                {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
-                {!selectedLanguage && 'Create Your Custom Topic'}
-              </h3>
-              <p className="text-white/80 text-sm md:text-base mb-6 relative z-10">
-                {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
-                {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
-                {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}
-                {selectedLanguage === 'german' && 'Worüber möchtest du in deinem Gespräch auf Deutsch sprechen?'}
-                {selectedLanguage === 'french' && 'De quoi aimeriez-vous parler dans votre conversation en français?'}
-                {selectedLanguage === 'portuguese' && 'Sobre o que você gostaria de falar em sua conversa em português?'}
-                {!selectedLanguage && 'What would you like to talk about in your conversation?'}
-              </p>
+              {/* Header */}
+              <div className="relative z-10 text-center mb-6">
+                <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
+                  {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
+                  {selectedLanguage === 'english' && 'Create Your Custom Topic'}
+                  {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
+                  {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema'}
+                  {selectedLanguage === 'french' && 'Créez votre sujet personnalisé'}
+                  {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
+                  {!selectedLanguage && 'Create Your Custom Topic'}
+                </h3>
+                <p className="text-gray-600 text-sm md:text-base">
+                  {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
+                  {selectedLanguage === 'english' && 'What would you like to talk about in your English conversation?'}
+                  {selectedLanguage === 'spanish' && '¿De qué te gustaría hablar en tu conversación en español?'}
+                  {selectedLanguage === 'german' && 'Worüber möchtest du in deinem Gespräch auf Deutsch sprechen?'}
+                  {selectedLanguage === 'french' && 'De quoi aimeriez-vous parler dans votre conversation en français?'}
+                  {selectedLanguage === 'portuguese' && 'Sobre o que você gostaria de falar em sua conversa em português?'}
+                  {!selectedLanguage && 'What would you like to talk about in your conversation?'}
+                </p>
+              </div>
               
+              {/* Input Section */}
               <div className="mb-6 relative z-10">
                 <textarea
                   ref={customInputRef}
@@ -481,28 +501,44 @@ export default function TopicSelection() {
                     }
                   }}
                   placeholder="Describe your topic here..."
-                  className="w-full p-3 rounded-lg glass-card border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all duration-300 min-h-[100px] resize-none"
+                  className="w-full p-4 rounded-xl border-2 border-[#4ECFBF]/30 focus:border-[#4ECFBF]/60 bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]/20 transition-all duration-300 min-h-[120px] resize-none shadow-sm"
                   disabled={isExtendingKnowledge}
                 />
-                <p className="text-xs text-white/60 mt-2">
+                <p className="text-xs text-gray-500 mt-2 text-center">
                   Press Enter to submit or Shift+Enter for a new line
                 </p>
               </div>
               
-              <div className="flex justify-between relative z-10">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 relative z-10">
                 <button
                   onClick={() => setIsCustomTopicActive(false)}
-                  className="px-4 py-2 rounded-lg glass-card border border-white/20 hover:bg-white/10 text-white transition-all duration-300 text-sm md:text-base shadow-lg hover:shadow-white/10 transform hover:translate-y-[-1px]"
+                  className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-gray-300 hover:border-gray-400 w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-md transform hover:translate-y-[-1px] touch-target"
                   disabled={isExtendingKnowledge}
                 >
-                  Cancel
+                  <span className="relative z-10 font-medium text-gray-700 group-hover:text-gray-800 transition-colors duration-300">Cancel</span>
+                  <div className="absolute bottom-0 left-0 h-0.5 bg-gray-400 w-0 group-hover:w-full transition-all duration-500"></div>
                 </button>
+                
                 <button
                   onClick={handleCustomTopicSubmit}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition-all duration-300 text-sm md:text-base shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transform hover:translate-y-[-1px]"
+                  className={`group relative overflow-hidden border-2 w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:translate-y-[-1px] touch-target ${
+                    customTopicText.trim() && !isExtendingKnowledge
+                      ? 'bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 border-[#4ECFBF] hover:shadow-lg hover:shadow-[#4ECFBF]/30'
+                      : 'bg-white/95 backdrop-blur-sm border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 hover:shadow-md'
+                  }`}
                   disabled={!customTopicText.trim() || isExtendingKnowledge}
                 >
-                  Submit
+                  <span className={`relative z-10 font-medium transition-colors duration-300 ${
+                    customTopicText.trim() && !isExtendingKnowledge
+                      ? 'text-white'
+                      : 'text-[#4ECFBF] group-hover:text-[#4ECFBF]'
+                  }`}>Submit</span>
+                  <div className={`absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-500 ${
+                    customTopicText.trim() && !isExtendingKnowledge
+                      ? 'bg-white/50'
+                      : 'bg-[#4ECFBF]'
+                  }`}></div>
                 </button>
               </div>
             </div>

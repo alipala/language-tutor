@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 
-// Custom icons for the FAQ accordion
+// Simple, universally recognizable icons for the FAQ accordion
 const QuestionIcon = (props: any) => {
   return (
     <svg
@@ -16,9 +16,16 @@ const QuestionIcon = (props: any) => {
       width="24"
       {...props}
     >
+      <defs>
+        <linearGradient id="questionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4ECFBF" />
+          <stop offset="100%" stopColor="#3a9e92" />
+        </linearGradient>
+      </defs>
+      {/* Simple gear/cog for "how it works" */}
       <path
-        d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-1-5h2v2h-2v-2zm2-1.645V14h-2v-1.5a1 1 0 0 1 1-1 1.5 1.5 0 1 0-1.471-1.794l-1.962-.393A3.5 3.5 0 1 1 13 13.355z"
-        fill="currentColor"
+        d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"
+        fill="url(#questionGradient)"
       />
     </svg>
   );
@@ -35,10 +42,23 @@ const SpeakingIcon = (props: any) => {
       width="24"
       {...props}
     >
+      <defs>
+        <linearGradient id="speakingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4ECFBF" />
+          <stop offset="100%" stopColor="#3a9e92" />
+        </linearGradient>
+      </defs>
+      {/* Classic microphone icon */}
       <path
-        d="M12 1a5 5 0 0 1 5 5v6a5 5 0 0 1-10 0V6a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zm7 9h-2a7.01 7.01 0 0 1-5 6.72V21h-2v-2.28A7.01 7.01 0 0 1 5 12H3v-2h16v2z"
-        fill="currentColor"
+        d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"
+        fill="url(#speakingGradient)"
       />
+      <path
+        d="M19 10v1a7 7 0 0 1-14 0v-1h2v1a5 5 0 0 0 10 0v-1h2z"
+        fill="url(#speakingGradient)"
+      />
+      <rect x="11" y="18" width="2" height="4" fill="url(#speakingGradient)" />
+      <rect x="8" y="22" width="8" height="1" fill="url(#speakingGradient)" />
     </svg>
   );
 };
@@ -54,10 +74,28 @@ const PricingIcon = (props: any) => {
       width="24"
       {...props}
     >
+      <defs>
+        <linearGradient id="pricingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4ECFBF" />
+          <stop offset="100%" stopColor="#3a9e92" />
+        </linearGradient>
+      </defs>
+      {/* Clean dollar sign */}
       <path
-        d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-3.5-6H14a.5.5 0 1 0 0-1h-4a2.5 2.5 0 1 1 0-5h1V6h2v2h2.5v2H10a.5.5 0 1 0 0 1h4a2.5 2.5 0 1 1 0 5h-1v2h-2v-2H8.5v-2z"
-        fill="currentColor"
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm0-4h-2c0-3.25 2.75-3 2.75-5 0-.83-.67-1.5-1.5-1.5S10.75 7.17 10.75 8H9.25c0-1.93 1.57-3.5 3.5-3.5S16.25 6.07 16.25 8c0 2.5-2.75 2.75-2.75 5z"
+        fill="url(#pricingGradient)"
+        transform="scale(0.8) translate(3, 3)"
       />
+      <text
+        x="12"
+        y="16"
+        textAnchor="middle"
+        fontSize="14"
+        fontWeight="bold"
+        fill="url(#pricingGradient)"
+      >
+        $
+      </text>
     </svg>
   );
 };
@@ -73,9 +111,24 @@ const PrivacyIcon = (props: any) => {
       width="24"
       {...props}
     >
+      <defs>
+        <linearGradient id="privacyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4ECFBF" />
+          <stop offset="100%" stopColor="#3a9e92" />
+        </linearGradient>
+      </defs>
+      {/* Simple shield icon */}
       <path
-        d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-4.987-3.744A7.966 7.966 0 0 0 12 20c1.97 0 3.773-.712 5.167-1.892A6.979 6.979 0 0 0 12.16 16a6.981 6.981 0 0 0-5.147 2.256zM5.616 16.82A8.975 8.975 0 0 1 12.16 14a8.972 8.972 0 0 1 6.362 2.634 8 8 0 1 0-12.906.187zM12 13a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"
-        fill="currentColor"
+        d="M12 2l8 3v6c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l8-3z"
+        fill="url(#privacyGradient)"
+      />
+      <path
+        d="M9 12l2 2 4-4"
+        stroke="white"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -85,7 +138,7 @@ const FAQSection: React.FC = () => {
   return (
     <div className="w-full max-w-3xl mx-auto mt-12 faq-section">
       <motion.h3 
-        className="text-2xl font-bold text-white mb-6 text-center"
+        className="text-2xl font-bold text-gray-800 mb-6 text-center"
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -95,6 +148,7 @@ const FAQSection: React.FC = () => {
       </motion.h3>
       
       <motion.div
+        className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border-2 border-[#4ECFBF]/30 shadow-lg"
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
@@ -107,11 +161,13 @@ const FAQSection: React.FC = () => {
             indicator={<QuestionIcon />} 
             title="How does Your Smart Language Coach work?"
           >
-            Your Smart Language Coach uses advanced AI to create personalized language learning experiences. 
-            Our system adapts to your learning style, proficiency level, and interests to provide 
-            customized lessons and conversation practice. The AI tutor provides real-time feedback 
-            on pronunciation, grammar, and vocabulary, helping you improve faster than traditional 
-            methods.
+            <div className="text-justify leading-relaxed">
+              Your Smart Language Coach uses OpenAI's advanced GPT-4o and Whisper models to provide real-time 
+              AI conversations and speaking assessments. Simply choose your target language (English, Spanish, 
+              French, German, Dutch, or Portuguese), select your proficiency level, pick a conversation topic, 
+              and start practicing! Our AI tutor adapts to your level and provides instant feedback on 
+              pronunciation, grammar, vocabulary, and fluency to help you improve naturally through conversation.
+            </div>
           </AccordionItem>
           
           <AccordionItem 
@@ -120,11 +176,13 @@ const FAQSection: React.FC = () => {
             indicator={<SpeakingIcon />} 
             title="How does the speaking practice work?"
           >
-            Our speaking practice feature uses speech recognition technology to analyze your 
-            pronunciation and fluency. You'll engage in natural conversations with our AI tutor, 
-            which responds to your speech in real-time. The system provides immediate feedback on 
-            your pronunciation, suggests corrections, and adapts the difficulty based on your 
-            performance, creating a supportive environment for improving your speaking skills.
+            <div className="text-justify leading-relaxed">
+              Our speaking practice uses WebRTC technology for real-time voice conversations with your AI tutor. 
+              You can take speaking assessments (15 seconds for guests, 60 seconds for registered users) to get 
+              your CEFR level (A1-C2) with detailed feedback. For conversation practice, guests get 1-minute 
+              sessions while registered users enjoy 5-minute conversations. The AI provides immediate responses 
+              and corrections, making it feel like talking to a real language teacher.
+            </div>
           </AccordionItem>
           
           <AccordionItem 
@@ -133,11 +191,13 @@ const FAQSection: React.FC = () => {
             indicator={<PricingIcon />} 
             title="What are the pricing options?"
           >
-            Your Smart Language Coach offers a free tier that gives you access to basic features and limited 
-            lessons. Our premium subscription unlocks unlimited lessons, advanced speaking practice, 
-            personalized learning paths, and detailed progress tracking. We also offer special rates 
-            for students and educational institutions. Check our pricing page for the most current 
-            information on our plans and features.
+            <div className="text-justify leading-relaxed">
+              Your Smart Language Coach is completely free! Guest users can try speaking assessments and 
+              short conversations with limited time. By creating a free account, you unlock longer assessment 
+              times (60 seconds vs 15 seconds), extended conversation sessions (5 minutes vs 1 minute), 
+              unlimited practice sessions, progress tracking, conversation history, and achievement badges. 
+              No premium subscription required - just sign up for free to access all features!
+            </div>
           </AccordionItem>
           
           <AccordionItem 
@@ -146,12 +206,13 @@ const FAQSection: React.FC = () => {
             indicator={<PrivacyIcon />} 
             title="How is my data handled?"
           >
-            We take your privacy seriously. Your personal information and learning data are 
-            encrypted and stored securely. We use your data only to improve your learning 
-            experience and never share it with third parties without your explicit consent. 
-            Voice recordings for speaking practice are processed in real-time and are not 
-            permanently stored unless you choose to save them for your own review. You can 
-            request deletion of your data at any time through your account settings.
+            <div className="text-justify leading-relaxed">
+              Your privacy is our priority. We use secure JWT authentication and encrypt all data in transit. 
+              Conversation transcripts are processed using OpenAI's API and stored securely in our MongoDB 
+              database for registered users to track their progress. Guest data is automatically cleaned up 
+              after 7 days. Voice recordings are processed in real-time for speech recognition and are not 
+              permanently stored. You can delete your account and all associated data anytime from your profile.
+            </div>
           </AccordionItem>
         </Accordion>
       </motion.div>

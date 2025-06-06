@@ -28,7 +28,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   };
 
   return (
-    <div className="border-b border-white/20 last:border-b-0">
+    <div className="border-b border-gray-200 last:border-b-0">
       <button
         className="flex justify-between items-center w-full py-4 px-2 text-left focus:outline-none"
         onClick={toggleAccordion}
@@ -36,8 +36,8 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
         aria-controls={`accordion-content-${title.replace(/\s+/g, '-').toLowerCase()}`}
         aria-label={ariaLabel || title}
       >
-        <span className="text-lg font-medium text-white">{title}</span>
-        <div className="text-white transition-transform duration-300" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+        <span className="text-lg font-medium text-gray-800">{title}</span>
+        <div className="text-gray-800 transition-transform duration-300" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
           {indicator || (
             <svg 
               width="24" 
@@ -67,7 +67,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
             transition={{ duration: 0.3 }}
             className="overflow-hidden accordion-content"
           >
-            <div className="p-4 text-white/90">
+            <div className="p-4 text-gray-600">
               {children}
             </div>
           </motion.div>
@@ -79,7 +79,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
 
 export const Accordion: React.FC<AccordionProps> = ({ children, className = '' }) => {
   return (
-    <div className={`rounded-lg bg-white/10 backdrop-blur-sm overflow-hidden accordion ${className}`}>
+    <div className={`rounded-lg bg-white/90 backdrop-blur-sm overflow-hidden accordion border border-gray-200 ${className}`}>
       {children}
     </div>
   );
