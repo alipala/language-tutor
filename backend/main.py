@@ -506,6 +506,129 @@ Make this informative and suitable for {level} level {language} language learner
             print(f"[REALTIME_TOKEN] 📝 Final instructions length: {len(instructions)} characters")
             print(f"[REALTIME_TOKEN] 🎯 Custom topic setup complete with {'research-enhanced' if web_search_results else 'basic'} knowledge (source: {research_source})")
         
+        # Add regular topic instructions for predefined topics
+        elif request.topic and request.topic != "custom":
+            print(f"[REALTIME_TOKEN] Processing regular topic: {request.topic}")
+            
+            # Define topic-specific conversation starters and focus areas
+            topic_details = {
+                "travel": {
+                    "name": "Travel & Tourism",
+                    "focus_areas": ["destinations", "transportation", "accommodation", "cultural experiences", "travel planning", "local customs"],
+                    "starter_questions": [
+                        "What's your favorite travel destination and why?",
+                        "Tell me about a memorable trip you've taken.",
+                        "What type of accommodation do you prefer when traveling?",
+                        "How do you usually plan your trips?"
+                    ]
+                },
+                "food": {
+                    "name": "Food & Cooking",
+                    "focus_areas": ["cuisines", "cooking techniques", "recipes", "restaurants", "food culture", "dietary preferences"],
+                    "starter_questions": [
+                        "What's your favorite cuisine and why?",
+                        "Do you enjoy cooking? What's your specialty?",
+                        "Tell me about a traditional dish from your country.",
+                        "What's the most interesting food you've ever tried?"
+                    ]
+                },
+                "hobbies": {
+                    "name": "Hobbies & Interests",
+                    "focus_areas": ["sports", "arts", "music", "reading", "games", "outdoor activities", "creative pursuits"],
+                    "starter_questions": [
+                        "What hobbies do you enjoy in your free time?",
+                        "How did you get started with your favorite hobby?",
+                        "Do you prefer indoor or outdoor activities?",
+                        "What new hobby would you like to try?"
+                    ]
+                },
+                "culture": {
+                    "name": "Culture & Traditions",
+                    "focus_areas": ["festivals", "customs", "traditions", "art", "history", "social norms", "celebrations"],
+                    "starter_questions": [
+                        "What's an important tradition in your culture?",
+                        "How do you celebrate holidays in your country?",
+                        "What cultural differences have you noticed when traveling?",
+                        "Tell me about a festival or celebration you enjoy."
+                    ]
+                },
+                "movies": {
+                    "name": "Movies & TV Shows",
+                    "focus_areas": ["genres", "actors", "directors", "streaming", "cinema", "entertainment", "storytelling"],
+                    "starter_questions": [
+                        "What's your favorite movie genre and why?",
+                        "Tell me about a movie or TV show you recently watched.",
+                        "Do you prefer watching at home or in the cinema?",
+                        "Who's your favorite actor or actress?"
+                    ]
+                },
+                "music": {
+                    "name": "Music",
+                    "focus_areas": ["genres", "instruments", "concerts", "artists", "streaming", "live performances", "music culture"],
+                    "starter_questions": [
+                        "What type of music do you enjoy listening to?",
+                        "Do you play any musical instruments?",
+                        "Tell me about a concert or live performance you've attended.",
+                        "How do you usually discover new music?"
+                    ]
+                },
+                "technology": {
+                    "name": "Technology",
+                    "focus_areas": ["gadgets", "apps", "social media", "innovation", "digital trends", "artificial intelligence", "smartphones"],
+                    "starter_questions": [
+                        "What's your favorite piece of technology and why?",
+                        "How has technology changed your daily life?",
+                        "What apps do you use most frequently?",
+                        "What do you think about artificial intelligence?"
+                    ]
+                },
+                "environment": {
+                    "name": "Environment & Nature",
+                    "focus_areas": ["climate change", "sustainability", "wildlife", "conservation", "renewable energy", "recycling", "nature"],
+                    "starter_questions": [
+                        "What do you do to help protect the environment?",
+                        "Tell me about your favorite place in nature.",
+                        "How concerned are you about climate change?",
+                        "What environmental changes have you noticed in your area?"
+                    ]
+                }
+            }
+            
+            # Get topic details or use generic fallback
+            topic_info = topic_details.get(request.topic, {
+                "name": request.topic.title(),
+                "focus_areas": [request.topic],
+                "starter_questions": [f"What interests you about {request.topic}?"]
+            })
+            
+            # Create topic-specific instructions
+            regular_topic_instructions = f"\n\n🎯 CRITICAL TOPIC FOCUS INSTRUCTION - HIGHEST PRIORITY:\n\n"
+            regular_topic_instructions += f"The user has specifically chosen to practice {language} by discussing the topic: '{topic_info['name']}'\n\n"
+            
+            regular_topic_instructions += f"📋 TOPIC FOCUS AREAS: {', '.join(topic_info['focus_areas'])}\n\n"
+            
+            regular_topic_instructions += f"🚀 YOU MUST START YOUR VERY FIRST MESSAGE by introducing this topic and asking an engaging question about it.\n\n"
+            
+            regular_topic_instructions += f"EXAMPLE STARTER QUESTIONS FOR {topic_info['name'].upper()}:\n"
+            for question in topic_info['starter_questions']:
+                regular_topic_instructions += f"- {question}\n"
+            
+            regular_topic_instructions += f"\n💡 CONVERSATION RULES:\n"
+            regular_topic_instructions += f"1. Your FIRST message must introduce the topic '{topic_info['name']}' and ask an engaging question\n"
+            regular_topic_instructions += f"2. Keep the entire conversation focused on '{topic_info['name']}' and related subtopics\n"
+            regular_topic_instructions += f"3. If the user asks 'what is the topic' or 'what are we discussing', clearly state: 'We're discussing {topic_info['name']}'\n"
+            regular_topic_instructions += f"4. Provide vocabulary and phrases related to {topic_info['name']}\n"
+            regular_topic_instructions += f"5. Ask follow-up questions about the focus areas: {', '.join(topic_info['focus_areas'])}\n"
+            regular_topic_instructions += f"6. Adapt the complexity to {level} level while staying on topic\n"
+            regular_topic_instructions += f"7. If conversation drifts, gently guide it back to {topic_info['name']}\n\n"
+            
+            regular_topic_instructions += f"🎯 REMEMBER: The user specifically chose '{topic_info['name']}' as their conversation topic, so make sure they get a rich, engaging discussion about this subject!\n"
+            
+            instructions = regular_topic_instructions + "\n\n" + instructions
+            print(f"[REALTIME_TOKEN] ✅ Added regular topic instructions for '{topic_info['name']}'")
+            print(f"[REALTIME_TOKEN] 📝 Topic focus areas: {', '.join(topic_info['focus_areas'])}")
+            print(f"[REALTIME_TOKEN] 📝 Final instructions length: {len(instructions)} characters")
+        
         # Add universal formatting and speech instructions
         formatting_instructions = "\n\nFORMATTING INSTRUCTIONS: Always use proper spacing between words and sentences. Ensure there is a space after punctuation marks like periods, commas, question marks, and exclamation points. Maintain proper paragraph structure with line breaks between paragraphs. Use proper capitalization at the beginning of sentences."
         
