@@ -374,24 +374,28 @@ export default function TopicSelection() {
             {selectedLanguage === 'portuguese' && 'Selecione um tópico para sua conversa em português (opcional)'}
             {!selectedLanguage && 'Select a topic for your conversation (optional)'}
           </p>
-          <div className="flex flex-wrap gap-4 justify-center mb-10 animate-fade-in" style={{animationDelay: '200ms'}}>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 animate-fade-in max-w-2xl mx-auto" style={{animationDelay: '200ms'}}>
             {/* Change Language Button */}
             <button 
               onClick={handleChangeLanguage}
-              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 px-6 py-3 rounded-xl flex items-center space-x-3 transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-2px]" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
               {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
-              {/* Icon with enhanced styling */}
-              <div className="relative z-10 w-8 h-8 rounded-lg bg-[#4ECFBF]/10 flex items-center justify-center group-hover:bg-[#4ECFBF]/20 transition-colors duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                </svg>
+              {/* Modern geometric icon */}
+              <div className="relative z-10 mr-3 w-6 h-6 flex items-center justify-center">
+                <div className="w-5 h-5 relative">
+                  {/* Globe icon with modern styling */}
+                  <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF] group-hover:border-[#4ECFBF] transition-colors duration-300"></div>
+                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-[#4ECFBF] transform -translate-y-1/2"></div>
+                  <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-[#4ECFBF] transform -translate-x-1/2"></div>
+                  <div className="absolute top-1 bottom-1 left-1 right-1 rounded-full border border-[#4ECFBF]/50"></div>
+                </div>
               </div>
               
               {/* Text */}
-              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300">Change Language</span>
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Language</span>
               
               {/* Bottom accent line */}
               <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
@@ -400,20 +404,27 @@ export default function TopicSelection() {
             {/* Skip Topic Button */}
             <button 
               onClick={handleSkipTopic}
-              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 px-6 py-3 rounded-xl flex items-center space-x-3 transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-2px]" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
               {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
-              {/* Icon with enhanced styling */}
-              <div className="relative z-10 w-8 h-8 rounded-lg bg-[#4ECFBF]/10 flex items-center justify-center group-hover:bg-[#4ECFBF]/20 transition-colors duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+              {/* Modern skip icon */}
+              <div className="relative z-10 mr-3 w-6 h-6 flex items-center justify-center">
+                <div className="w-5 h-5 relative">
+                  {/* Fast forward / skip icon */}
+                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
+                    <div className="w-0 h-0 border-l-[6px] border-l-[#4ECFBF] border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent"></div>
+                  </div>
+                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                    <div className="w-0 h-0 border-l-[6px] border-l-[#4ECFBF] border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent"></div>
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-[#4ECFBF]"></div>
+                </div>
               </div>
               
               {/* Text */}
-              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300">Skip Topic</span>
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Skip Topic</span>
               
               {/* Bottom accent line */}
               <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
@@ -422,20 +433,24 @@ export default function TopicSelection() {
             {/* Start Over Button */}
             <button 
               onClick={handleStartOver}
-              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 px-6 py-3 rounded-xl flex items-center space-x-3 transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-2px]" 
+              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
             >
               {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
-              {/* Icon with enhanced styling */}
-              <div className="relative z-10 w-8 h-8 rounded-lg bg-[#4ECFBF]/10 flex items-center justify-center group-hover:bg-[#4ECFBF]/20 transition-colors duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+              {/* Modern restart icon */}
+              <div className="relative z-10 mr-3 w-6 h-6 flex items-center justify-center">
+                <div className="w-5 h-5 relative">
+                  {/* Circular arrow icon */}
+                  <div className="absolute inset-0">
+                    <div className="w-full h-full rounded-full border-2 border-[#4ECFBF] border-t-transparent transform rotate-45"></div>
+                    <div className="absolute top-0 right-1 w-0 h-0 border-l-[3px] border-l-[#4ECFBF] border-t-[2px] border-t-transparent border-b-[2px] border-b-transparent transform rotate-45"></div>
+                  </div>
+                </div>
               </div>
               
               {/* Text */}
-              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300">Start Over</span>
+              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Start Over</span>
               
               {/* Bottom accent line */}
               <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
