@@ -117,4 +117,60 @@ Example first message: "Let's talk about {request.topic}! [topic-specific openin
 
 ## Conclusion
 
-The issue is in the backend where regular topics are not being processed into the AI instructions, even though the topic parameter flows correctly through the entire frontend. The fix requires adding topic-specific instruction generation for regular topics in the backend.
+The issue was in the backend where regular topics were not being processed into the AI instructions, even though the topic parameter flows correctly through the entire frontend. 
+
+## ✅ ISSUE RESOLVED
+
+**Fix Implemented**: Added comprehensive regular topic handling to the backend `/api/realtime/token` endpoint in `backend/main.py`.
+
+### What Was Added:
+
+1. **Topic-Specific Instructions**: Each predefined topic (travel, food, hobbies, culture, movies, music, technology, environment) now has:
+   - Detailed focus areas
+   - Multiple starter questions
+   - Conversation rules to keep discussions on topic
+   - Clear instructions for the AI to introduce and maintain topic focus
+
+2. **Topic Recognition**: When users ask "what is the topic?", the tutor will now clearly respond with the chosen topic name.
+
+3. **Conversation Flow**: The AI now:
+   - Starts conversations by introducing the selected topic
+   - Asks engaging topic-specific questions
+   - Keeps conversations focused on the chosen subject
+   - Provides relevant vocabulary and phrases for each topic
+
+### Example Implementation:
+For "Travel & Tourism" topic, the AI now receives instructions to:
+- Focus on destinations, transportation, accommodation, cultural experiences, travel planning, local customs
+- Ask questions like "What's your favorite travel destination and why?"
+- Clearly state "We're discussing Travel & Tourism" when asked about the topic
+
+**Status**: ✅ **FIXED** - Regular topics are now properly passed to and recognized by the tutor in conversations.
+
+**Commit**: `1e95b076045bbc4e0ed8fa6f4073f2b288424f1b`
+
+### Additional Fix Applied:
+
+**Commit**: `f52a424052aa8183f5b5eb203db8840b7de5e780`
+
+**Issue**: The initial fix used complex emoji-heavy instructions that the OpenAI Realtime API might not follow properly.
+
+**Solution**: Simplified the topic instructions to use clear, direct language without complex formatting:
+- Removed emojis and complex formatting that might confuse the AI model
+- Used simple, straightforward instructions that are easier for the model to follow
+- Maintained topic focus while improving instruction clarity
+
+**Example of simplified instructions**:
+```
+IMPORTANT: The user has chosen to discuss Travel & Tourism.
+
+You must start your first message by introducing Travel & Tourism and asking a question about it.
+
+If the user asks what topic you are discussing, respond: 'We are discussing Travel & Tourism'.
+
+Keep the conversation focused on Travel & Tourism and related topics like: destinations, transportation, accommodation, cultural experiences, travel planning, local customs.
+
+Example first message: 'Let's talk about Travel & Tourism! What's your favorite travel destination and why?'
+```
+
+This approach ensures better compliance with the OpenAI Realtime API's instruction processing.
