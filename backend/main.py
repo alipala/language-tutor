@@ -601,28 +601,12 @@ Make this informative and suitable for {level} level {language} language learner
                 "starter_questions": [f"What interests you about {request.topic}?"]
             })
             
-            # Create topic-specific instructions
-            regular_topic_instructions = f"\n\n🎯 CRITICAL TOPIC FOCUS INSTRUCTION - HIGHEST PRIORITY:\n\n"
-            regular_topic_instructions += f"The user has specifically chosen to practice {language} by discussing the topic: '{topic_info['name']}'\n\n"
-            
-            regular_topic_instructions += f"📋 TOPIC FOCUS AREAS: {', '.join(topic_info['focus_areas'])}\n\n"
-            
-            regular_topic_instructions += f"🚀 YOU MUST START YOUR VERY FIRST MESSAGE by introducing this topic and asking an engaging question about it.\n\n"
-            
-            regular_topic_instructions += f"EXAMPLE STARTER QUESTIONS FOR {topic_info['name'].upper()}:\n"
-            for question in topic_info['starter_questions']:
-                regular_topic_instructions += f"- {question}\n"
-            
-            regular_topic_instructions += f"\n💡 CONVERSATION RULES:\n"
-            regular_topic_instructions += f"1. Your FIRST message must introduce the topic '{topic_info['name']}' and ask an engaging question\n"
-            regular_topic_instructions += f"2. Keep the entire conversation focused on '{topic_info['name']}' and related subtopics\n"
-            regular_topic_instructions += f"3. If the user asks 'what is the topic' or 'what are we discussing', clearly state: 'We're discussing {topic_info['name']}'\n"
-            regular_topic_instructions += f"4. Provide vocabulary and phrases related to {topic_info['name']}\n"
-            regular_topic_instructions += f"5. Ask follow-up questions about the focus areas: {', '.join(topic_info['focus_areas'])}\n"
-            regular_topic_instructions += f"6. Adapt the complexity to {level} level while staying on topic\n"
-            regular_topic_instructions += f"7. If conversation drifts, gently guide it back to {topic_info['name']}\n\n"
-            
-            regular_topic_instructions += f"🎯 REMEMBER: The user specifically chose '{topic_info['name']}' as their conversation topic, so make sure they get a rich, engaging discussion about this subject!\n"
+            # Create simple, direct topic-specific instructions
+            regular_topic_instructions = f"\n\nIMPORTANT: The user has chosen to discuss {topic_info['name']}.\n\n"
+            regular_topic_instructions += f"You must start your first message by introducing {topic_info['name']} and asking a question about it.\n\n"
+            regular_topic_instructions += f"If the user asks what topic you are discussing, respond: 'We are discussing {topic_info['name']}'.\n\n"
+            regular_topic_instructions += f"Keep the conversation focused on {topic_info['name']} and related topics like: {', '.join(topic_info['focus_areas'])}.\n\n"
+            regular_topic_instructions += f"Example first message: 'Let's talk about {topic_info['name']}! {topic_info['starter_questions'][0]}'\n\n"
             
             instructions = regular_topic_instructions + "\n\n" + instructions
             print(f"[REALTIME_TOKEN] ✅ Added regular topic instructions for '{topic_info['name']}'")
