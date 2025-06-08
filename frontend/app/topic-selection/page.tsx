@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import NavBar from '@/components/nav-bar';
 import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
+import LoadingModal from '@/components/loading-modal';
 
 interface Topic {
   id: string;
@@ -546,19 +547,7 @@ export default function TopicSelection() {
         )}
         
         {/* Knowledge Extension Message */}
-        {isExtendingKnowledge && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 animate-fade-in">
-            <div className="glass-card p-6 md:p-8 rounded-xl border border-white/20 shadow-lg w-full max-w-md mx-4 text-center">
-              <div className="text-4xl mb-4 animate-pulse">🧠</div>
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-4">
-                Your taalcoach knowledge is being extended. Hold on please!
-              </h3>
-              <div className="flex justify-center">
-                <div className="w-12 h-1 bg-indigo-500 rounded-full animate-pulse"></div>
-              </div>
-            </div>
-          </div>
-        )}
+        <LoadingModal isOpen={isExtendingKnowledge} />
         </div>
       </main>
     </div>
