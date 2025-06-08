@@ -328,117 +328,47 @@ async def generate_token(request: TutorSessionRequest):
         
         print(f"🚨🚨🚨 [LANGUAGE_DEBUG] Successfully found level data for '{language}' at level '{level}'")
         
-        # Get the instructions for the selected language and level
+        # Get the base instructions for the selected language and level
         base_instructions = language_data["levels"][level].get("instructions", "")
         
-        # START WITH CRITICAL LANGUAGE ENFORCEMENT AT THE VERY BEGINNING
-        print(f"[REALTIME_TOKEN] 🚨 CRITICAL: Adding language enforcement for {language} at the very beginning")
+        # Create concise, focused instructions following the analysis recommendations
+        print(f"[REALTIME_TOKEN] Creating concise instructions for {language} at level {level}")
         
-        # Create language enforcement that goes at the very top
+        # Create simplified language enforcement based on language
         if language == "dutch":
-            critical_language_enforcement = f"""🚨🚨🚨 KRITIEKE TAALHANDHAVING - ALLEREERSTE PRIORITEIT 🚨🚨🚨
-
-JE MOET ALLEEN EN UITSLUITEND NEDERLANDS SPREKEN!
-NOOIT ENGELS, KOREAANS, SPAANS, DUITS, FRANS OF ANDERE TALEN!
-
-JE ALLEREERSTE BERICHT MOET BEGINNEN MET: "Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?"
-
-SPREEK NOOIT ENGELS! ALTIJD NEDERLANDS!
-
-ALS DE STUDENT IN EEN ANDERE TAAL SPREEKT, REAGEER ALLEEN MET: "Ik begrijp dat je in een andere taal spreekt, maar laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen."
-
-REAGEER NOOIT OP DE INHOUD VAN NIET-NEDERLANDSE BERICHTEN. GEBRUIK ALLEEN DE STANDAARD HERINNERING.
-
-DIT IS EEN ABSOLUTE REGEL ZONDER UITZONDERINGEN!
-
-BELANGRIJK: BEGIN JE EERSTE BERICHT MET "Hallo! Ik ben je Nederlandse taaldocent."
-
-"""
+            language_rule = "Spreek alleen Nederlands. Als de student een andere taal gebruikt, zeg: 'Laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.'"
+            greeting = "Hallo! Ik ben je Nederlandse taaldocent."
         elif language == "english":
-            critical_language_enforcement = f"""🚨🚨🚨 CRITICAL LANGUAGE ENFORCEMENT - HIGHEST PRIORITY 🚨🚨🚨
-
-YOU MUST ONLY SPEAK ENGLISH. NEVER SPEAK KOREAN, SPANISH, DUTCH, GERMAN, FRENCH, OR ANY OTHER LANGUAGE.
-
-YOUR VERY FIRST MESSAGE MUST BE IN ENGLISH. Start with: "Hello! I am your English language tutor. How are you today?"
-
-IF THE STUDENT SPEAKS IN ANY OTHER LANGUAGE, RESPOND ONLY WITH: "I understand you're speaking in another language, but let's practice English. Try to say it in English."
-
-NEVER RESPOND TO THE CONTENT OF NON-ENGLISH MESSAGES. ONLY USE THE STANDARD REMINDER PHRASE.
-
-THIS IS AN ABSOLUTE RULE WITH NO EXCEPTIONS.
-
-"""
+            language_rule = "Respond only in English. If the student speaks another language, say: 'Let's practice in English. Try saying that in English.'"
+            greeting = "Hello! I am your English language tutor."
         elif language == "spanish":
-            critical_language_enforcement = f"""🚨 APLICACIÓN CRÍTICA DEL IDIOMA - MÁXIMA PRIORIDAD 🚨
-
-DEBES HABLAR SOLO EN ESPAÑOL. NUNCA EN INGLÉS, COREANO, HOLANDÉS, ALEMÁN, FRANCÉS U OTROS IDIOMAS.
-
-TU PRIMER MENSAJE DEBE SER EN ESPAÑOL. Comienza con: "¡Hola! Soy tu profesor de español. ¿Cómo estás hoy?"
-
-SI EL ESTUDIANTE HABLA EN OTRO IDIOMA, RESPONDE SOLO CON: "Entiendo que estás hablando en otro idioma, pero practiquemos español. Intenta decirlo en español."
-
-NUNCA RESPONDAS AL CONTENIDO DE MENSAJES NO ESPAÑOLES. USA SOLO LA FRASE RECORDATORIA ESTÁNDAR.
-
-ESTA ES UNA REGLA ABSOLUTA SIN EXCEPCIONES.
-
-"""
+            language_rule = "Responde solo en español. Si el estudiante habla otro idioma, di: 'Practiquemos español. Intenta decirlo en español.'"
+            greeting = "¡Hola! Soy tu profesor de español."
         elif language == "german":
-            critical_language_enforcement = f"""🚨 KRITISCHE SPRACHDURCHSETZUNG - HÖCHSTE PRIORITÄT 🚨
-
-DU MUSST NUR DEUTSCH SPRECHEN. NIEMALS ENGLISCH, KOREANISCH, SPANISCH, NIEDERLÄNDISCH, FRANZÖSISCH ODER ANDERE SPRACHEN.
-
-DEINE ALLERERSTE NACHRICHT MUSS AUF DEUTSCH SEIN. Beginne mit: "Hallo! Ich bin dein Deutschlehrer. Wie geht es dir heute?"
-
-WENN DER SCHÜLER IN EINER ANDEREN SPRACHE SPRICHT, ANTWORTE NUR MIT: "Ich verstehe, dass du in einer anderen Sprache sprichst, aber lass uns Deutsch üben. Versuche es auf Deutsch zu sagen."
-
-ANTWORTE NIEMALS AUF DEN INHALT VON NICHT-DEUTSCHEN NACHRICHTEN. VERWENDE NUR DIE STANDARD-ERINNERUNGSPHRASE.
-
-DAS IST EINE ABSOLUTE REGEL OHNE AUSNAHMEN.
-
-"""
+            language_rule = "Antworte nur auf Deutsch. Wenn der Schüler eine andere Sprache spricht, sage: 'Lass uns Deutsch üben. Versuche es auf Deutsch zu sagen.'"
+            greeting = "Hallo! Ich bin dein Deutschlehrer."
         elif language == "french":
-            critical_language_enforcement = f"""🚨 APPLICATION CRITIQUE DE LA LANGUE - PRIORITÉ MAXIMALE 🚨
-
-TU DOIS PARLER UNIQUEMENT EN FRANÇAIS. JAMAIS EN ANGLAIS, CORÉEN, ESPAGNOL, NÉERLANDAIS, ALLEMAND OU AUTRES LANGUES.
-
-TON TOUT PREMIER MESSAGE DOIT ÊTRE EN FRANÇAIS. Commence par: "Bonjour! Je suis ton professeur de français. Comment vas-tu aujourd'hui?"
-
-SI L'ÉTUDIANT PARLE DANS UNE AUTRE LANGUE, RÉPONDS SEULEMENT AVEC: "Je comprends que tu parles dans une autre langue, mais pratiquons le français. Essaie de le dire en français."
-
-NE RÉPONDS JAMAIS AU CONTENU DES MESSAGES NON FRANÇAIS. UTILISE SEULEMENT LA PHRASE DE RAPPEL STANDARD.
-
-C'EST UNE RÈGLE ABSOLUE SANS EXCEPTIONS.
-
-"""
+            language_rule = "Réponds uniquement en français. Si l'étudiant parle une autre langue, dis: 'Pratiquons le français. Essaie de le dire en français.'"
+            greeting = "Bonjour! Je suis ton professeur de français."
         elif language == "portuguese":
-            critical_language_enforcement = f"""🚨 APLICAÇÃO CRÍTICA DO IDIOMA - MÁXIMA PRIORIDADE 🚨
-
-VOCÊ DEVE FALAR APENAS EM PORTUGUÊS. NUNCA EM INGLÊS, COREANO, ESPANHOL, HOLANDÊS, ALEMÃO, FRANCÊS OU OUTRAS LÍNGUAS.
-
-SUA PRIMEIRA MENSAGEM DEVE SER EM PORTUGUÊS. Comece com: "Olá! Eu sou seu professor de português. Como você está hoje?"
-
-SE O ALUNO FALAR EM OUTRO IDIOMA, RESPONDA APENAS COM: "Eu entendo que você está falando em outro idioma, mas vamos praticar português. Tente dizer isso em português."
-
-NUNCA RESPONDA AO CONTEÚDO DE MENSAGENS NÃO PORTUGUESAS. USE APENAS A FRASE LEMBRETE PADRÃO.
-
-ESTA É UMA REGRA ABSOLUTA SEM EXCEÇÕES.
-
-"""
+            language_rule = "Responda apenas em português. Se o aluno falar outro idioma, diga: 'Vamos praticar português. Tente dizer isso em português.'"
+            greeting = "Olá! Eu sou seu professor de português."
         else:
-            critical_language_enforcement = f"""🚨 CRITICAL LANGUAGE ENFORCEMENT - HIGHEST PRIORITY 🚨
-
-YOU MUST ONLY SPEAK {language.upper()}. NEVER SPEAK ENGLISH, KOREAN, SPANISH, DUTCH, GERMAN, FRENCH, OR ANY OTHER LANGUAGE.
-
-YOUR VERY FIRST MESSAGE MUST BE IN {language.upper()}.
-
-IF THE STUDENT SPEAKS IN ANY OTHER LANGUAGE, RESPOND WITH THE APPROPRIATE REMINDER IN {language.upper()}.
-
-THIS IS AN ABSOLUTE RULE WITH NO EXCEPTIONS.
-
-"""
+            language_rule = f"Respond only in {language}. If the student speaks another language, redirect them to practice in {language}."
+            greeting = f"Hello! I am your {language} language tutor."
         
-        # Start instructions with critical language enforcement
-        instructions = critical_language_enforcement + base_instructions
+        # Create concise instructions (following the 80% reduction recommendation)
+        instructions = f"""You are a {language} language tutor for {level} level students.
+
+LANGUAGE RULE: {language_rule}
+
+Start with: "{greeting}"
+
+{base_instructions}
+
+Be engaging and encourage conversation."""
+        
+        print(f"[REALTIME_TOKEN] Simplified instructions length: {len(instructions)} characters (reduced from ~5000)")
         
         # Add custom topic instructions with research data if provided
         if request.topic == "custom" and request.user_prompt:
@@ -621,110 +551,9 @@ Make this informative and suitable for {level} level {language} language learner
         # Add enhanced language detection and enforcement instructions
         language_detection_instructions = f"\n\nCRITICAL LANGUAGE DETECTION ENHANCEMENT: You have advanced language detection capabilities. Before responding to any user input, carefully analyze the language being spoken. Listen for pronunciation patterns, vocabulary, grammar structures, and accent characteristics. If the user is speaking in the target language ({language}), respond normally. If they are speaking in a different language, use the standard language reminder response. Pay special attention to pronunciation, accent, and context clues to accurately identify the language being spoken. Do not assume a language based on a single unclear word - analyze the overall speech pattern."
         
-        # Add language-specific enforcement to ensure the tutor always speaks the correct language
-        if language == "dutch":
-            # Extra enforcement for Dutch language to ensure it NEVER speaks English
-            extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: Je MOET ALLEEN in het Nederlands antwoorden. NOOIT in het Engels of een andere taal antwoorden, zelfs niet als de student in het Engels vraagt. Je EERSTE bericht MOET in het Nederlands zijn. Begin ALTIJD met een Nederlandse begroeting die past bij het niveau. Bij niveau A1 begin je met: 'Hallo! Ik ben je Nederlandse taaldocent. Hoe gaat het met jou?'"
-            
-            # Add language detection and enforcement instructions
-            language_enforcement = "\n\nAls de student NIET in het Nederlands spreekt, maar in een andere taal zoals Engels, Frans, Duits, Turks, Arabisch of een andere taal, moet je ALTIJD reageren met: 'Ik begrijp dat je in een andere taal spreekt, maar laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.' Vervolgens help je de student met een eenvoudige Nederlandse zin die ze kunnen gebruiken. Geef NOOIT antwoord in dezelfde niet-Nederlandse taal die de student gebruikt."
-            
-            # Add Dutch-specific formatting instructions
-            dutch_formatting = "\n\nZorg voor correcte spatiëring tussen woorden en na leestekens. Gebruik hoofdletters aan het begin van zinnen. Spreek duidelijk en articuleer woorden goed, met natuurlijke pauzes tussen zinnen."
-            
-            # Add first message enforcement
-            first_message_enforcement = "\n\nJe EERSTE bericht in de conversatie MOET in het Nederlands zijn. Begin NOOIT in het Engels of een andere taal. Begin met een Nederlandse begroeting zoals 'Hallo' of 'Goedendag' gevolgd door een eenvoudige vraag in het Nederlands."
-            
-            instructions = instructions + extra_instructions + language_enforcement + dutch_formatting + first_message_enforcement
-            print("Added extra Dutch-only enforcement to instructions")
-            
-        elif language == "spanish":
-            # Extra enforcement for Spanish language
-            extra_instructions = "\n\nINSTRUCCIÓN EXTREMADAMENTE IMPORTANTE: DEBES responder SOLO en español. NUNCA respondas en inglés u otro idioma, incluso si el estudiante pregunta en inglés. Tu PRIMER mensaje DEBE ser en español. Siempre comienza con un saludo en español apropiado para el nivel. Para el nivel A1, comienza con: '¡Hola! Soy tu profesor de español. ¿Cómo estás hoy?'"
-            
-            # Add language detection and enforcement instructions
-            language_enforcement = "\n\nSi el estudiante NO habla en español, sino en otro idioma como inglés, francés, alemán u otro, SIEMPRE debes responder con: 'Entiendo que estás hablando en otro idioma, pero practiquemos español. Intenta decirlo en español.' Luego, ayuda al estudiante con una frase simple en español que puedan usar. NUNCA respondas en el mismo idioma no español que usa el estudiante."
-            
-            # Add Spanish-specific formatting instructions
-            spanish_formatting = "\n\nAsegúrate de usar el espaciado correcto entre palabras y después de signos de puntuación. Usa mayúsculas al comienzo de las oraciones. Habla claramente y articula bien las palabras, con pausas naturales entre oraciones."
-            
-            # Add first message enforcement
-            first_message_enforcement = "\n\nTu PRIMER mensaje en la conversación DEBE ser en español. NUNCA comiences en inglés u otro idioma. Comienza con un saludo en español como '¡Hola!' o '¡Buenos días!' seguido de una pregunta simple en español."
-            
-            instructions = instructions + extra_instructions + language_enforcement + spanish_formatting + first_message_enforcement
-            print("Added extra Spanish-only enforcement to instructions")
-            
-        elif language == "german":
-            # Extra enforcement for German language
-            extra_instructions = "\n\nÄUßERST WICHTIGE ANWEISUNG: Du MUSST NUR auf Deutsch antworten. NIEMALS auf Englisch oder in einer anderen Sprache antworten, auch wenn der Schüler auf Englisch fragt. Deine ERSTE Nachricht MUSS auf Deutsch sein. Beginne immer mit einer deutschen Begrüßung, die dem Niveau entspricht. Für Niveau A1 beginne mit: 'Hallo! Ich bin dein Deutschlehrer. Wie geht es dir heute?'"
-            
-            # Add language detection and enforcement instructions
-            language_enforcement = "\n\nWenn der Schüler NICHT auf Deutsch spricht, sondern in einer anderen Sprache wie Englisch, Französisch, Spanisch oder einer anderen Sprache, musst du IMMER antworten mit: 'Ich verstehe, dass du in einer anderen Sprache sprichst, aber lass uns Deutsch üben. Versuche es auf Deutsch zu sagen.' Dann hilfst du dem Schüler mit einem einfachen deutschen Satz, den sie verwenden können. Antworte NIEMALS in der gleichen nicht-deutschen Sprache, die der Schüler verwendet."
-            
-            # Add German-specific formatting instructions
-            german_formatting = "\n\nAchte auf korrekte Abstände zwischen Wörtern und nach Satzzeichen. Verwende Großbuchstaben am Anfang von Sätzen. Sprich deutlich und artikuliere Wörter gut, mit natürlichen Pausen zwischen Sätzen."
-            
-            # Add first message enforcement
-            first_message_enforcement = "\n\nDeine ERSTE Nachricht in der Konversation MUSS auf Deutsch sein. Beginne NIEMALS auf Englisch oder in einer anderen Sprache. Beginne mit einer deutschen Begrüßung wie 'Hallo' oder 'Guten Tag', gefolgt von einer einfachen Frage auf Deutsch."
-            
-            instructions = instructions + extra_instructions + language_enforcement + german_formatting + first_message_enforcement
-            print("Added extra German-only enforcement to instructions")
-            
-        elif language == "french":
-            # Extra enforcement for French language
-            extra_instructions = "\n\nINSTRUCTION EXTRÊMEMENT IMPORTANTE: Tu DOIS répondre UNIQUEMENT en français. Ne réponds JAMAIS en anglais ou dans une autre langue, même si l'étudiant pose une question en anglais. Ton PREMIER message DOIT être en français. Commence toujours par une salutation en français adaptée au niveau. Pour le niveau A1, commence par: 'Bonjour! Je suis ton professeur de français. Comment vas-tu aujourd'hui?'"
-            
-            # Add language detection and enforcement instructions
-            language_enforcement = "\n\nSi l'étudiant NE parle PAS français, mais une autre langue comme l'anglais, l'allemand, l'espagnol ou une autre langue, tu dois TOUJOURS répondre avec: 'Je comprends que tu parles dans une autre langue, mais pratiquons le français. Essaie de le dire en français.' Ensuite, aide l'étudiant avec une phrase simple en français qu'il peut utiliser. Ne réponds JAMAIS dans la même langue non française que l'étudiant utilise."
-            
-            # Add French-specific formatting instructions
-            french_formatting = "\n\nAssure-toi d'utiliser un espacement correct entre les mots et après les signes de ponctuation. Utilise des majuscules au début des phrases. Parle clairement et articule bien les mots, avec des pauses naturelles entre les phrases."
-            
-            # Add first message enforcement
-            first_message_enforcement = "\n\nTon PREMIER message dans la conversation DOIT être en français. Ne commence JAMAIS en anglais ou dans une autre langue. Commence par une salutation en français comme 'Bonjour' ou 'Salut' suivie d'une question simple en français."
-            
-            instructions = instructions + extra_instructions + language_enforcement + french_formatting + first_message_enforcement
-            print("Added extra French-only enforcement to instructions")
-            
-        elif language == "portuguese":
-            # Extra enforcement for Portuguese language
-            extra_instructions = "\n\nINSTRUÇÃO EXTREMAMENTE IMPORTANTE: Você DEVE responder APENAS em português. NUNCA responda em inglês ou em outro idioma, mesmo que o aluno pergunte em inglês. Sua PRIMEIRA mensagem DEVE ser em português. Sempre comece com uma saudação em português apropriada para o nível. Para o nível A1, comece com: 'Olá! Eu sou seu professor de português. Como você está hoje?'"
-            
-            # Add language detection and enforcement instructions
-            language_enforcement = "\n\nSe o aluno NÃO estiver falando em português, mas em outro idioma como inglês, francês, alemão ou outro idioma, você deve SEMPRE responder com: 'Eu entendo que você está falando em outro idioma, mas vamos praticar português. Tente dizer isso em português.' Em seguida, ajude o aluno com uma frase simples em português que ele possa usar. NUNCA responda no mesmo idioma não português que o aluno está usando."
-            
-            # Add Portuguese-specific formatting instructions
-            portuguese_formatting = "\n\nCertifique-se de usar o espaçamento correto entre palavras e após sinais de pontuação. Use letras maiúsculas no início das frases. Fale claramente e articule bem as palavras, com pausas naturais entre as frases."
-            
-            # Add first message enforcement
-            first_message_enforcement = "\n\nSua PRIMEIRA mensagem na conversa DEVE ser em português. NUNCA comece em inglês ou em outro idioma. Comece com uma saudação em português como 'Olá' ou 'Bom dia' seguida de uma pergunta simples em português."
-            
-            instructions = instructions + extra_instructions + language_enforcement + portuguese_formatting + first_message_enforcement
-            print("Added extra Portuguese-only enforcement to instructions")
-            
-        elif language == "english":
-            # Enhanced enforcement for English language with better language detection
-            extra_instructions = "\n\nEXTREMELY IMPORTANT INSTRUCTION: You MUST ONLY respond in English. Your FIRST message MUST be in English. Always start with an English greeting appropriate for the level. For A1 level, start with: 'Hello! I am your English language tutor. How are you today?'"
-            
-            # Add enhanced language detection and enforcement instructions
-            language_enforcement = "\n\nMOST IMPORTANT INSTRUCTION ON LANGUAGE ENFORCEMENT: If the student is NOT speaking in English, but in another language such as Dutch, Spanish, German, French, Turkish, Arabic, or any other language, you must EXCLUSIVELY respond with: 'I understand you're speaking in another language, but let's practice English. Try to say it in English.' and then provide a simple English sentence they can use as an example.\n\nYou must ABSOLUTELY NOT respond to the CONTENT of what the student says in another language. COMPLETELY IGNORE what the student has said in another language. Do NOT attempt to understand, translate, or respond to the meaning of their message. Respond ONLY with the standard language reminder phrase. Do NOT continue the conversation or topic until the student speaks in English.\n\nExample of what NOT to do: If the student says in Turkish 'My favorite color is red', do NOT respond with 'You say your favorite color is red. Let's practice English.' This is INCORRECT because you are responding to the content.\n\nExample of what TO do: If the student speaks in Turkish, German, or any other language, respond ONLY with: 'I understand you're speaking in another language, but let's practice English. Try to say it in English. For example, you could say: My favorite color is...'\n\nIf the student CONTINUES to speak in another language, continue repeating this instruction and NEVER respond to the content of their messages until they speak in English. This is an ABSOLUTE RULE with no exceptions."
-            
-            # Add English-specific formatting instructions
-            english_formatting = "\n\nEnsure correct spacing between words and after punctuation marks. Use capital letters at the beginning of sentences. Speak clearly and articulate words well, with natural pauses between sentences."
-            
-            # Add first message enforcement
-            first_message_enforcement = "\n\nYour FIRST message in the conversation MUST be in English. NEVER start in another language. Begin with an English greeting like 'Hello' or 'Good day' followed by a simple question in English."
-            
-            instructions = instructions + extra_instructions + language_enforcement + english_formatting + first_message_enforcement
-            print("Added enhanced English-only enforcement to instructions")
-        else:
-            # For other languages, add general language quality instructions
-            language_quality = f"\n\nLANGUAGE QUALITY: Use natural, conversational language appropriate for the student's level. Avoid overly complex vocabulary or grammar for lower levels. For higher levels, introduce more sophisticated language patterns gradually. ALWAYS start with a greeting in the selected language ({language})."
-            
-            # Add first message enforcement for other languages
-            first_message_enforcement = f"\n\nYour FIRST message in the conversation MUST be in {language}. NEVER start in any other language."
-            
-            instructions = instructions + language_quality + first_message_enforcement
+        # The simplified language rules are already included in the base instructions above
+        # No additional verbose enforcement needed - this was the main issue!
+        print(f"[REALTIME_TOKEN] Using simplified language rules only (no verbose enforcement)")
         
         # Combine all instructions
         instructions = instructions + language_detection_instructions + formatting_instructions + speech_instructions
