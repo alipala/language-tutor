@@ -324,7 +324,7 @@ export default function LevelSelection() {
   return (
     <div className="min-h-screen text-[#4ECFBF] level-selection-container">
       <NavBar activeSection="section1" />
-      <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar">
+      <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar" style={{paddingTop: '220px'}}>
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
