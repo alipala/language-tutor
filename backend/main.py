@@ -392,7 +392,7 @@ async def generate_token(request: TutorSessionRequest):
             },
             "turn_detection": {
                 "type": "semantic_vad",
-                "eagerness": "medium",
+                "eagerness": "low",
                 "create_response": True,
                 "interrupt_response": True
             }
