@@ -812,22 +812,22 @@
 
 /* Fixed navbar compensation styles */
 .navbar-compensated {
-  padding-top: 160px; /* Further increased padding for complete clearance */
+  padding-top: 200px; /* Much larger padding to ensure complete clearance */
 }
 
 /* For pages with fixed navbar - add top padding to main content */
 .main-content-with-navbar {
-  padding-top: 160px; /* Further increased padding for complete clearance */
+  padding-top: 200px; /* Much larger padding to ensure complete clearance */
 }
 
 /* Responsive navbar compensation */
 @media (max-width: 768px) {
   .navbar-compensated {
-    padding-top: 140px; /* Further increased mobile padding */
+    padding-top: 180px; /* Much larger mobile padding */
   }
   
   .main-content-with-navbar {
-    padding-top: 140px; /* Further increased mobile padding */
+    padding-top: 180px; /* Much larger mobile padding */
   }
 }
 
