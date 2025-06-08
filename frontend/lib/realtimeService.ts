@@ -590,64 +590,151 @@ export class RealtimeService {
   }
   
   /**
-   * Update the session configuration following official OpenAI client pattern
+   * Update the session configuration with topic-specific instructions
    */
   private updateSession(): boolean {
     console.log('Updating session with transcription language:', this.currentLanguage || 'auto-detect', 'ISO code:', this.currentLanguageIsoCode || 'auto-detect');
     
-    // First session update: Match official OpenAI client defaults exactly
-    const initialSessionUpdate = {
+    const sessionUpdate = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
-        instructions: 'You are a helpful language tutor. Have a conversation with the user to help them practice their language skills.',
+        instructions: this.getTopicSpecificInstructions(),
         voice: 'alloy',
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
-        input_audio_noise_reduction: {
-          type: 'near_field' // Optimized for close-talking microphones (headphones, laptop mics)
+        input_audio_transcription: {
+          model: 'whisper-1',
+          language: this.currentLanguageIsoCode || 'en'
         },
-        input_audio_transcription: null, // Start with transcription disabled
-        turn_detection: null, // Start with turn detection disabled
-        tools: [],
-        tool_choice: 'auto',
-        temperature: 0.8,
-        max_response_output_tokens: 4096
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 200
+        }
       }
     };
     
-    // Send the initial session update
-    const initialSent = this.sendMessage(initialSessionUpdate);
-    console.log('Initial session update sent:', initialSent);
-    
-    // Wait a moment, then enable transcription
-    setTimeout(() => {
-      console.log('Enabling transcription...');
-      const transcriptionUpdate = {
-        type: 'session.update',
-        session: {
-          input_audio_transcription: {
-            model: 'whisper-1',
-            language: this.currentLanguageIsoCode || 'en' // Use detected ISO code or default to English
-          },
-          turn_detection: {
-            // type: 'server_vad',
-            // threshold: 0.5,
-            // prefix_padding_ms: 300,
-            // silence_duration_ms: 200 // Use official client's shorter duration
-            type: 'semantic_vad',
-            eagerness: 'low', // Wait longer for user to complete their thoughts
-            create_response: true, // Enable in conversation mode
-            interrupt_response: true // Allow interruptions in conversation mode
-          }
-        }
-      };
+    const sent = this.sendMessage(sessionUpdate);
+    console.log('Session update sent with topic instructions:', sent);
+    return sent;
+  }
+
+  /**
+   * Get topic-specific instructions from session storage
+   */
+  private getTopicSpecificInstructions(): string {
+    try {
+      const topic = sessionStorage.getItem('selectedTopic');
+      const language = sessionStorage.getItem('selectedLanguage');
+      const level = sessionStorage.getItem('selectedLevel');
       
-      const transcriptionSent = this.sendMessage(transcriptionUpdate);
-      console.log('Enhanced transcription update sent with language:', this.currentLanguageIsoCode || 'en', 'Success:', transcriptionSent);
-    }, 1000);
-    
-    return initialSent;
+      console.log('Building topic-specific instructions for:', { topic, language, level });
+      
+      if (!language || !level) {
+        console.warn('Missing language or level in session storage, using default instructions');
+        return 'You are a helpful language tutor. Have a conversation with the user to help them practice their language skills.';
+      }
+      
+      // Create simplified language enforcement based on language
+      let languageRule = '';
+      let greeting = '';
+      
+      switch (language.toLowerCase()) {
+        case 'dutch':
+          languageRule = "Spreek alleen Nederlands. Als de student een andere taal gebruikt, zeg: 'Laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.'";
+          greeting = "Hallo! Ik ben je Nederlandse taaldocent.";
+          break;
+        case 'english':
+          languageRule = "Respond only in English. If the student speaks another language, say: 'Let's practice in English. Try saying that in English.'";
+          greeting = "Hello! I am your English language tutor.";
+          break;
+        case 'spanish':
+          languageRule = "Responde solo en español. Si el estudiante habla otro idioma, di: 'Practiquemos español. Intenta decirlo en español.'";
+          greeting = "¡Hola! Soy tu profesor de español.";
+          break;
+        case 'german':
+          languageRule = "Antworte nur auf Deutsch. Wenn der Schüler eine andere Sprache spricht, sage: 'Lass uns Deutsch üben. Versuche es auf Deutsch zu sagen.'";
+          greeting = "Hallo! Ich bin dein Deutschlehrer.";
+          break;
+        case 'french':
+          languageRule = "Réponds uniquement en français. Si l'étudiant parle une autre langue, dis: 'Pratiquons le français. Essaie de le dire en français.'";
+          greeting = "Bonjour! Je suis ton professeur de français.";
+          break;
+        case 'portuguese':
+          languageRule = "Responda apenas em português. Se o aluno falar outro idioma, diga: 'Vamos praticar português. Tente dizer isso em português.'";
+          greeting = "Olá! Eu sou seu professor de português.";
+          break;
+        default:
+          languageRule = `Respond only in ${language}. If the student speaks another language, redirect them to practice in ${language}.`;
+          greeting = `Hello! I am your ${language} language tutor.`;
+      }
+      
+      // Build base instructions
+      let instructions = `You are a ${language} language tutor for ${level} level students.
+
+LANGUAGE RULE: ${languageRule}
+
+Start with: "${greeting}"
+
+Be engaging and encourage conversation.`;
+      
+      // Add topic-specific instructions if a topic is selected
+      if (topic && topic !== 'general') {
+        if (topic === 'custom') {
+          // For custom topics, check if we have research data
+          const customTopicResearch = sessionStorage.getItem('customTopicResearch');
+          if (customTopicResearch) {
+            try {
+              const researchData = JSON.parse(customTopicResearch);
+              if (researchData.success && researchData.topic && researchData.research) {
+                const topicInstructions = `
+
+TOPIC FOCUS: The user has chosen to discuss "${researchData.topic}".
+
+RESEARCH CONTEXT: ${researchData.research}
+
+Start your first message by discussing this specific topic using the research context provided. Ask engaging questions about this topic.`;
+                instructions = topicInstructions + '\n\n' + instructions;
+                console.log('Added custom topic instructions with research data');
+              }
+            } catch (e) {
+              console.error('Error parsing custom topic research:', e);
+            }
+          }
+        } else {
+          // For predefined topics
+          const topicMap: { [key: string]: { name: string; focus: string } } = {
+            'travel': { name: 'Travel & Tourism', focus: 'destinations, transportation, accommodation, cultural experiences' },
+            'food': { name: 'Food & Cooking', focus: 'cuisines, cooking techniques, recipes, restaurants, food culture' },
+            'hobbies': { name: 'Hobbies & Interests', focus: 'sports, arts, music, reading, games, outdoor activities' },
+            'culture': { name: 'Culture & Traditions', focus: 'festivals, customs, traditions, art, history, celebrations' },
+            'movies': { name: 'Movies & TV Shows', focus: 'genres, actors, directors, streaming, cinema, entertainment' },
+            'music': { name: 'Music', focus: 'genres, instruments, concerts, artists, streaming, live performances' },
+            'technology': { name: 'Technology', focus: 'gadgets, apps, social media, innovation, digital trends, AI' },
+            'environment': { name: 'Environment & Nature', focus: 'climate change, sustainability, wildlife, conservation, renewable energy' }
+          };
+          
+          const topicInfo = topicMap[topic] || { name: topic, focus: topic };
+          const topicInstructions = `
+
+TOPIC FOCUS: The user has chosen to discuss ${topicInfo.name}.
+
+Start your first message by introducing ${topicInfo.name} and asking a question about it. Keep the conversation focused on ${topicInfo.name} and related topics like: ${topicInfo.focus}.`;
+          
+          instructions = topicInstructions + '\n\n' + instructions;
+          console.log(`Added topic instructions for: ${topicInfo.name}`);
+        }
+      }
+      
+      console.log('Final session instructions length:', instructions.length);
+      return instructions;
+      
+    } catch (error) {
+      console.error('Error building topic-specific instructions:', error);
+      return 'You are a helpful language tutor. Have a conversation with the user to help them practice their language skills.';
+    }
   }
   
   /**
