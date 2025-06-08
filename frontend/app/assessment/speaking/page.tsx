@@ -103,14 +103,14 @@ export default function SpeakingAssessmentPage() {
   return (
     <div className="min-h-screen flex flex-col text-white bg-[var(--turquoise)]">
       <NavBar />
-      <main className="flex-grow flex flex-col p-4 md:p-8">
+      <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar">
         <div className="flex flex-col flex-1 items-stretch space-y-8 w-full max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-5xl font-bold text-white mb-4 animate-fade-in">
+            <h1 className="text-5xl font-bold text-black mb-4 animate-fade-in">
               Speaking Assessment
             </h1>
-            <p className="text-white/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+            <p className="text-gray-600 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
               {selectedLanguage === 'dutch' && 'Beoordeel je spreekvaardigheid in het Nederlands'}
               {selectedLanguage === 'english' && 'Assess your speaking proficiency in English'}
               {selectedLanguage === 'spanish' && 'Evalúa tu habilidad para hablar en español'}

@@ -153,7 +153,7 @@ export default function Home() {
       ) : (
         <main className="start-screen">
           {/* First Section */}
-          <section id="features" className="landing-section landing-first pt-16">
+          <section id="features" className="landing-section landing-first">
             <div className="section-background"></div>
             <div className="section-content">
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-10 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] w-[125%] max-w-none -mx-[12.5%] py-16">
