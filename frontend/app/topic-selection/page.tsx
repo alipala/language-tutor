@@ -363,10 +363,10 @@ export default function TopicSelection() {
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-[#4ECFBF] mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-black mb-4 animate-fade-in">
             Choose a Topic
           </h1>
-          <p className="text-[#4ECFBF]/80 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-gray-600 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
             {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
             {selectedLanguage === 'english' && 'Select a topic for your English conversation (optional)'}
             {selectedLanguage === 'spanish' && 'Selecciona un tema para tu conversación en español (opcional)'}
