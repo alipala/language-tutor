@@ -340,52 +340,6 @@ export default function LevelSelection() {
             {selectedLanguage === 'portuguese' && 'Escolha seu nível de proficiência em português'}
             {!selectedLanguage && 'Choose your proficiency level'}
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 animate-fade-in max-w-2xl mx-auto" style={{animationDelay: '200ms'}}>
-            {/* Change Language Button */}
-            <button 
-              onClick={handleChangeLanguage}
-              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
-            >
-              {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              
-              {/* Text */}
-              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Language</span>
-              
-              {/* Bottom accent line */}
-              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
-            </button>
-
-            {/* Change Topic Button */}
-            <button 
-              onClick={handleChangeTopic}
-              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
-            >
-              {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              
-              {/* Text */}
-              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Change Topic</span>
-              
-              {/* Bottom accent line */}
-              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
-            </button>
-
-            {/* Start Over Button */}
-            <button 
-              onClick={handleStartOver}
-              className="group relative overflow-hidden bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 w-full sm:w-48 h-14 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/20 transform hover:translate-y-[-1px] touch-target" 
-            >
-              {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              
-              {/* Text */}
-              <span className="relative z-10 font-medium text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-sm sm:text-base">Start Over</span>
-              
-              {/* Bottom accent line */}
-              <div className="absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
-            </button>
-          </div>
         </div>
 
         {isLoading ? (
