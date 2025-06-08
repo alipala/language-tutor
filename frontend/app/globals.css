@@ -271,12 +271,28 @@
   }
 }
 
+@keyframes loading-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .animate-ping-slow {
   animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 .animate-ping-slower {
   animation: ping-slower 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-loading-progress {
+  animation: loading-progress 2s ease-in-out infinite;
 }
 
 .mic-active {
