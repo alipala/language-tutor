@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AssessmentCard } from '@/components/assessment-card';
+import AssessmentLearningPlanCard from '@/components/assessment-learning-plan-card';
 import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
 import { Progress } from '@/components/ui/progress';
@@ -43,51 +44,70 @@ export default function ProfilePage() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   
-  // Collect all assessments from learning plans and user data
-  const assessments = [];
+  // Create assessment-learning plan pairs
+  const assessmentLearningPairs: Array<{
+    assessment: any;
+    learningPlan: LearningPlan | null;
+  }> = [];
   
-  // Add user's last assessment if available
+  // Add user's last assessment if available (standalone assessment)
   if (user?.last_assessment_data) {
-    assessments.push({
-      ...user.last_assessment_data,
-      date: new Date().toISOString(),
-      source: 'User Profile',
-      expanded: true
-    });
+    // Check if this assessment is already linked to a learning plan
+    const linkedPlan = learningPlans.find(plan => 
+      plan.assessment_data && 
+      plan.assessment_data.overall_score === user.last_assessment_data.overall_score &&
+      plan.assessment_data.confidence === user.last_assessment_data.confidence
+    );
+    
+    if (!linkedPlan) {
+      assessmentLearningPairs.push({
+        assessment: {
+          ...user.last_assessment_data,
+          date: new Date().toISOString(),
+          source: 'User Profile',
+          expanded: true
+        },
+        learningPlan: null
+      });
+    }
   }
   
-  // Add assessments from learning plans
+  // Add assessments from learning plans (linked pairs)
   learningPlans.forEach((plan, index) => {
     if (plan.assessment_data) {
-      assessments.push({
-        ...plan.assessment_data,
-        date: plan.created_at || new Date().toISOString(),
-        planId: plan.id,
-        language: plan.language,
-        level: plan.proficiency_level,
-        source: `${plan.language} - ${plan.proficiency_level}`,
-        expanded: assessments.length === 0
+      assessmentLearningPairs.push({
+        assessment: {
+          ...plan.assessment_data,
+          date: plan.created_at || new Date().toISOString(),
+          planId: plan.id,
+          language: plan.language,
+          level: plan.proficiency_level,
+          source: `${plan.language} - ${plan.proficiency_level}`,
+          expanded: assessmentLearningPairs.length === 0
+        },
+        learningPlan: plan
       });
     }
   });
   
-  // Sort assessments by date (newest first)
-  assessments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Sort pairs by assessment date (newest first)
+  assessmentLearningPairs.sort((a, b) => new Date(b.assessment.date).getTime() - new Date(a.assessment.date).getTime());
   
-  // Get the latest assessment for quick access
-  const latestAssessment = assessments.length > 0 ? assessments[0] : null;
+  // State to track which assessment-plan pairs are expanded
+  const [expandedAssessmentPlans, setExpandedAssessmentPlans] = useState<Record<number, boolean>>({});
   
-  // State to track which assessments are expanded
-  const [expandedAssessments, setExpandedAssessments] = useState<Record<number, boolean>>(
-    assessments.reduce((acc, assessment, index) => {
-      acc[index] = assessment.expanded || false;
-      return acc;
-    }, {})
-  );
+  // Initialize expanded state when pairs change
+  useEffect(() => {
+    const initialExpanded: Record<number, boolean> = {};
+    assessmentLearningPairs.forEach((pair, index) => {
+      initialExpanded[index] = pair.assessment.expanded || false;
+    });
+    setExpandedAssessmentPlans(initialExpanded);
+  }, [assessmentLearningPairs.length]);
   
-  // Toggle assessment expansion
-  const toggleAssessment = (index: number) => {
-    setExpandedAssessments(prev => ({
+  // Toggle assessment-plan pair expansion
+  const toggleAssessmentPlan = (index: number) => {
+    setExpandedAssessmentPlans(prev => ({
       ...prev,
       [index]: !prev[index]
     }));
@@ -625,24 +645,25 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Assessment Results */}
-              {assessments.length > 0 && (
+              {/* Assessment & Learning Plan Results */}
+              {assessmentLearningPairs.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
                     <Award className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
-                    Your Assessment Results
-                    <span className="ml-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-full">
-                      {assessments.length}
+                    Your Learning Journey
+                    <span className="ml-2 bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full">
+                      {assessmentLearningPairs.length}
                     </span>
                   </h3>
                   
-                  <div className="space-y-4">
-                    {assessments.map((assessment, index) => (
-                      <AssessmentCard
+                  <div className="space-y-6">
+                    {assessmentLearningPairs.map((pair, index) => (
+                      <AssessmentLearningPlanCard
                         key={index}
-                        assessment={assessment}
-                        isExpanded={expandedAssessments[index]}
-                        onToggle={() => toggleAssessment(index)}
+                        assessment={pair.assessment}
+                        learningPlan={pair.learningPlan}
+                        isExpanded={expandedAssessmentPlans[index] || false}
+                        onToggle={() => toggleAssessmentPlan(index)}
                         index={index}
                       />
                     ))}
