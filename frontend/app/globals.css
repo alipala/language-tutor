@@ -810,6 +810,46 @@
   background-color: transparent;
 }
 
+/* Fixed navbar compensation styles */
+.navbar-compensated {
+  padding-top: 80px; /* Adjust based on navbar height */
+}
+
+/* For pages with fixed navbar - add top padding to main content */
+.main-content-with-navbar {
+  padding-top: 80px;
+}
+
+/* Responsive navbar compensation */
+@media (max-width: 768px) {
+  .navbar-compensated {
+    padding-top: 70px; /* Slightly less padding on mobile */
+  }
+  
+  .main-content-with-navbar {
+    padding-top: 70px;
+  }
+}
+
+/* Landing page sections compensation */
+.landing-section {
+  padding-top: 80px;
+}
+
+.landing-section:first-child {
+  padding-top: 100px; /* Extra padding for first section */
+}
+
+@media (max-width: 768px) {
+  .landing-section {
+    padding-top: 70px;
+  }
+  
+  .landing-section:first-child {
+    padding-top: 90px;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
