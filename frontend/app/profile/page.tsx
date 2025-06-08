@@ -645,6 +645,12 @@ export default function ProfilePage() {
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* Learning Progress Tab */}
+          {activeTab === 'progress' && (
+            <div className="space-y-8">
               {/* Assessment & Learning Plan Results */}
               {assessmentLearningPairs.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -670,12 +676,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Learning Progress Tab */}
-          {activeTab === 'progress' && (
-            <div className="space-y-8">
               {plansLoading ? (
                 <div className="bg-white rounded-2xl shadow-lg p-8 flex justify-center items-center">
                   <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
@@ -687,194 +688,21 @@ export default function ProfilePage() {
                   </svg>
                   {plansError}
                 </div>
-              ) : learningPlans.length === 0 ? (
+              ) : assessmentLearningPairs.length === 0 && learningPlans.length === 0 ? (
                 <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
                     <BookOpen className="h-8 w-8 text-indigo-500" />
                   </div>
-                  <h4 className="text-lg font-medium text-gray-800 mb-2">No Learning Plans Yet</h4>
-                  <p className="text-gray-600 mb-4">Start your language learning journey by creating your first plan.</p>
+                  <h4 className="text-lg font-medium text-gray-800 mb-2">No Learning Journey Yet</h4>
+                  <p className="text-gray-600 mb-4">Start your language learning journey by taking an assessment and creating your first plan.</p>
                   <Button 
                     onClick={() => router.push('/language-selection')}
                     className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition-all"
                   >
-                    Create Your First Plan
+                    Start Your Journey
                   </Button>
                 </div>
-              ) : (
-                learningPlans.map((plan) => (
-                  <div key={plan.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    {/* Plan Header */}
-                    <div className="p-6 text-white" style={{ backgroundColor: '#4ECFBF' }}>
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-2xl font-bold capitalize flex items-center">
-                            <span className="mr-3">{plan.language === 'Spanish' ? '🇪🇸' : plan.language === 'French' ? '🇫🇷' : '🌍'}</span>
-                            {plan.language} - {plan.proficiency_level}
-                          </h3>
-                          <p className="text-white/80 mt-1">
-                            Created {new Date(plan.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} • {plan.duration_months} month journey
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-3xl font-bold">75%</div>
-                          <div className="text-white/80 text-sm">Complete</div>
-                        </div>
-                      </div>
-                      
-                      <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: '75%',
-                            backgroundColor: getProgressBarColor(75)
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* Plan Content */}
-                    <div className="p-6">
-                      {/* Learning Goals */}
-                      <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                          <Target className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
-                          Learning Goals
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {plan.goals.map((goal, index) => (
-                            <span key={index} className="px-3 py-1 rounded-full text-sm font-medium border" style={{ backgroundColor: '#E6FFFE', color: '#4ECFBF', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
-                              {goal}
-                            </span>
-                          ))}
-                          {plan.custom_goal && (
-                            <span className="px-3 py-1 rounded-full text-sm font-medium border" style={{ backgroundColor: '#FFF4E6', color: '#FFA955', borderColor: 'rgba(255, 169, 85, 0.2)' }}>
-                              {plan.custom_goal}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Assessment Results */}
-                      {plan.assessment_data && (
-                        <div className="border rounded-xl p-6 mb-6" style={{ backgroundColor: '#F0F9FF', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-semibold text-gray-800 flex items-center">
-                              <Award className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
-                              Latest Assessment Results
-                            </h4>
-                            <button
-                              onClick={() => togglePlanExpansion(plan.id)}
-                              className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                              style={{ color: '#4ECFBF' }}
-                            >
-                              {expandedPlans[plan.id] ? 'Show less' : 'Show details'}
-                              <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
-                                expandedPlans[plan.id] ? 'rotate-180' : ''
-                              }`} />
-                            </button>
-                          </div>
-
-                          {/* Quick Assessment Overview */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>{plan.assessment_data.overall_score}</div>
-                              <div className="text-sm text-gray-600">Overall Score</div>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <div className="text-2xl font-bold" style={{ color: '#FFD63A' }}>{plan.assessment_data.confidence}%</div>
-                              <div className="text-sm text-gray-600">Confidence</div>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <div className="text-2xl font-bold" style={{ color: '#FFA955' }}>B2</div>
-                              <div className="text-sm text-gray-600">CEFR Level</div>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <div className="text-sm text-gray-500">{new Date(plan.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                              <div className="text-sm text-gray-600">Assessed</div>
-                            </div>
-                          </div>
-
-                          {/* Detailed Assessment View */}
-                          {expandedPlans[plan.id] && (
-                            <div className="space-y-6 mt-6 pt-6 border-t" style={{ borderColor: 'rgba(78, 207, 191, 0.2)' }}>
-                              {/* Skill Breakdown */}
-                              <div>
-                                <h5 className="font-semibold text-gray-800 mb-3">Skill Breakdown</h5>
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                  {['pronunciation', 'grammar', 'vocabulary', 'fluency', 'coherence'].map((skill) => {
-                                    const skillData = plan.assessment_data ? 
-                                      (plan.assessment_data as any)[skill] : { score: 0, feedback: '' };
-                                    
-                                    return (
-                                      <div key={skill} className="bg-white rounded-lg p-4 text-center">
-                                        <div className="capitalize text-sm text-gray-600 mb-2">{skill}</div>
-                                        <div className="text-xl font-bold text-gray-800 mb-2">{skillData.score}</div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                          <div 
-                                            className={`h-full ${getSkillColor(skillData.score)} rounded-full`}
-                                            style={{width: `${skillData.score}%`}}
-                                          ></div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-
-                              {/* Strengths and Improvements */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                  <h5 className="font-semibold text-green-700 mb-3 flex items-center">
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Strengths
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {plan.assessment_data?.strengths?.map((strength: string, index: number) => (
-                                      <div key={index} className="bg-green-50 text-green-800 p-3 rounded-lg text-sm">
-                                        {strength}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                                <div>
-                                  <h5 className="font-semibold text-orange-700 mb-3 flex items-center">
-                                    <Target className="h-4 w-4 mr-2" />
-                                    Areas for Improvement
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {plan.assessment_data?.areas_for_improvement?.map((improvement: string, index: number) => (
-                                      <div key={index} className="bg-orange-50 text-orange-800 p-3 rounded-lg text-sm">
-                                        {improvement}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                        <button 
-                          onClick={() => router.push(`/speech?plan=${plan.id}`)}
-                          className="flex-1 text-white py-3 px-6 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center" 
-                          style={{ backgroundColor: '#4ECFBF' }}
-                        >
-                          <BookOpen className="h-5 w-5 mr-2" />
-                          Continue Learning
-                        </button>
-                        <button className="flex-1 border-2 py-3 px-6 rounded-xl font-medium hover:bg-opacity-10 transition-all flex items-center justify-center" style={{ borderColor: '#4ECFBF', color: '#4ECFBF', backgroundColor: 'rgba(230, 255, 254, 0.5)' }}>
-                          <Share2 className="h-5 w-5 mr-2" />
-                          Share Progress
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+              ) : null}
             </div>
           )}
 
