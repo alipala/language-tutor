@@ -573,7 +573,7 @@ Make this informative and suitable for {level} level {language} language learner
         
         # Log the exact JSON payload being sent
         payload = {
-            "model": "gpt-4o-mini-realtime-preview-2024-12-17",
+            "model": "gpt-4o-realtime-preview-2024-12-17",
             "voice": request.voice,
             "instructions": instructions,
             "modalities": ["audio", "text"]
