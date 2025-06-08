@@ -16,7 +16,6 @@ export class RealtimeService {
   private maxReconnectAttempts: number = 3;
   private currentLanguage: string = '';
   private currentLanguageIsoCode: string = '';
-  private sessionUpdated: boolean = false;
 
   constructor() {
     // Only initialize Audio in browser environments
@@ -40,7 +39,7 @@ export class RealtimeService {
     assessmentData?: any
   ): Promise<boolean> {
     try {
-      console.log('Initializing realtime service...');
+      console.log('🌐 [UNIVERSAL] Initializing realtime service...');
       // Clean up any existing connections first
       this.disconnect();
       
@@ -53,7 +52,7 @@ export class RealtimeService {
       if (language) {
         this.currentLanguage = language.toLowerCase();
         this.currentLanguageIsoCode = this.getLanguageIsoCode(this.currentLanguage);
-        console.log('Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
+        console.log('🌐 Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
       }
       
       // Use the correct backend URL (default to localhost:8000 if running locally)
@@ -64,21 +63,21 @@ export class RealtimeService {
         }
       }
       
-      console.log('Using backend URL:', this.backendUrl);
+      console.log('🌐 Using backend URL:', this.backendUrl);
       
       // Test the connection to the backend first
       try {
         const testResponse = await fetch(`${this.backendUrl}/api/test`, {
-        credentials: 'same-origin'
-      });
+          credentials: 'same-origin'
+        });
         if (!testResponse.ok) {
-          console.error('Backend connection test failed:', await testResponse.text());
+          console.error('❌ Backend connection test failed:', await testResponse.text());
           return false;
         }
         const testData = await testResponse.json();
-        console.log('Backend connection test successful:', testData.message);
+        console.log('✅ Backend connection test successful:', testData.message);
       } catch (err) {
-        console.error('Error connecting to backend:', err);
+        console.error('❌ Error connecting to backend:', err);
         return false;
       }
       
@@ -86,28 +85,30 @@ export class RealtimeService {
         // Get ephemeral key from backend with language and level if provided
         const token = await this.getEphemeralKey(language, level, topic, userPrompt, assessmentData);
         if (!token) {
-          console.error('Failed to get ephemeral key (empty token)');
+          console.error('❌ Failed to get ephemeral key (empty token)');
           return false;
         }
         
-        console.log('Ephemeral key obtained successfully');
+        console.log('✅ Ephemeral key obtained successfully');
         this.ephemeralKey = token;
         return true;
       } catch (err) {
-        console.error('Error getting ephemeral key:', err);
+        console.error('❌ Error getting ephemeral key:', err);
         return false;
       }
     } catch (error) {
-      console.error('Error initializing realtime service:', error);
+      console.error('❌ Error initializing realtime service:', error);
       return false;
     }
   }
   
   /**
-   * Set up WebRTC connection
+   * Set up WebRTC connection with universal browser compatibility
    */
   private setupWebRTC(): boolean {
     try {
+      console.log('🌐 Setting up WebRTC for universal browser support...');
+      
       // Create peer connection with STUN servers
       this.peerConnection = new RTCPeerConnection({
         iceServers: [
@@ -118,9 +119,21 @@ export class RealtimeService {
       
       // Set up audio handling
       this.peerConnection.ontrack = (e) => {
-        console.log('Received remote track', e.streams);
+        console.log('🎵 Received remote track', e.streams);
         if (this.audioElement && e.streams && e.streams[0]) {
           this.audioElement.srcObject = e.streams[0];
+        }
+      };
+      
+      // ✅ UNIVERSAL: Listen for connection state changes (recommended by OpenAI)
+      this.peerConnection.onconnectionstatechange = () => {
+        const state = this.peerConnection?.connectionState;
+        console.log('🌐 Connection state changed:', state);
+        
+        if (state === 'connected') {
+          console.log('✅ WebRTC connection fully established');
+        } else if (state === 'failed' || state === 'disconnected') {
+          console.warn('⚠️ WebRTC connection failed/disconnected');
         }
       };
       
@@ -131,21 +144,19 @@ export class RealtimeService {
       });
       
       this.dataChannel.onopen = () => {
-        console.log('Data channel opened');
+        console.log('✅ Data channel opened');
         this.isConnected = true;
         
-        // As soon as the data channel opens, send a session.update event to enable transcription
-        // This is critical for ensuring transcription works from the beginning
-        this.updateSession();
-        
-        // Mark that we've already sent the session update
-        this.sessionUpdated = true;
+        // ✅ CRITICAL CHANGE: DO NOT send session.update here
+        // The ephemeral token already contains all the instructions
+        // This eliminates race conditions on mobile browsers
+        console.log('✅ Data channel ready - using ephemeral token instructions only');
         
         if (this.onConnectedCallback) this.onConnectedCallback();
       };
       
       this.dataChannel.onclose = () => {
-        console.log('Data channel closed');
+        console.log('❌ Data channel closed');
         this.isConnected = false;
         if (this.onDisconnectedCallback) this.onDisconnectedCallback();
       };
@@ -154,72 +165,73 @@ export class RealtimeService {
         if (this.onMessageCallback) {
           try {
             const eventData = JSON.parse(e.data) as RealtimeEvent;
-            console.log('Received message type:', eventData.type);
+            console.log('📨 Received message type:', eventData.type);
             
             // Log specific details for transcription events
             if (eventData.type === 'conversation.item.created') {
-              console.log('Conversation item created:', 
+              console.log('💬 Conversation item created:', 
                 eventData.item?.role, 
                 eventData.item?.content ? 'Content array present' : 'No content array',
                 eventData.item?.input ? 'Input present' : 'No input');
             } else if (eventData.type === 'conversation.item.input_audio_transcription.completed') {
-              console.log('Transcription completed:', eventData.transcription?.text);
+              console.log('📝 Transcription completed:', eventData.transcription?.text);
             }
             
             this.onMessageCallback(eventData);
           } catch (error) {
-            console.error('Error parsing message:', error);
+            console.error('❌ Error parsing message:', error);
           }
         }
       };
       
       // Set up ICE candidate handling
       this.peerConnection.onicecandidate = (event) => {
-        console.log('ICE candidate', event.candidate);
+        console.log('🧊 ICE candidate', event.candidate);
       };
       
       this.peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE connection state:', this.peerConnection?.iceConnectionState);
+        console.log('🧊 ICE connection state:', this.peerConnection?.iceConnectionState);
         if (this.peerConnection?.iceConnectionState === 'failed' || 
             this.peerConnection?.iceConnectionState === 'disconnected') {
-          console.warn('ICE connection failed or disconnected');
+          console.warn('⚠️ ICE connection failed or disconnected');
         }
       };
       
       return true;
     } catch (error) {
-      console.error('Error setting up WebRTC:', error);
+      console.error('❌ Error setting up WebRTC:', error);
       return false;
     }
   }
   
   /**
    * Request microphone access and add tracks to peer connection
+   * Universal implementation that works on both desktop and mobile
    */
   public async startMicrophone(): Promise<boolean> {
     try {
-      console.log('Requesting microphone access...');
+      console.log('🎤 Requesting microphone access (universal)...');
       if (typeof window === 'undefined') return false;
       
       // Set up WebRTC if not already done
       if (!this.peerConnection) {
-        console.log('Setting up WebRTC connection first...');
+        console.log('🌐 Setting up WebRTC connection first...');
         const setupSuccess = this.setupWebRTC();
         if (!setupSuccess) {
-          console.error('Failed to set up WebRTC connection');
+          console.error('❌ Failed to set up WebRTC connection');
           return false;
         }
         
-        // Add a small delay after WebRTC setup to ensure it's ready
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // ✅ UNIVERSAL: Add delay for all browsers to ensure WebRTC is ready
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       
       // Release any existing stream to avoid resource leaks
       if (this.localStream) {
-        console.log('Releasing existing media stream...');
+        console.log('🧹 Releasing existing media stream...');
         this.localStream.getTracks().forEach(track => {
           track.stop();
-          console.log(`Stopped track: ${track.kind}`);
+          console.log(`🛑 Stopped track: ${track.kind}`);
         });
         this.localStream = null;
         
@@ -227,7 +239,7 @@ export class RealtimeService {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      // Request microphone access with constraints
+      // ✅ UNIVERSAL: Request microphone with fallback constraints
       const constraints = {
         audio: {
           echoCancellation: true,
@@ -236,7 +248,7 @@ export class RealtimeService {
         }
       };
       
-      console.log('Requesting user media with constraints:', JSON.stringify(constraints));
+      console.log('🎤 Requesting user media with constraints:', JSON.stringify(constraints));
       
       try {
         // First try with a timeout to prevent hanging if permission dialog is ignored
@@ -246,19 +258,19 @@ export class RealtimeService {
         });
         
         this.localStream = await Promise.race([getUserMediaPromise, timeoutPromise]);
-        console.log('Microphone access granted', this.localStream);
+        console.log('✅ Microphone access granted', this.localStream);
       } catch (mediaError) {
-        console.error('First attempt to get user media failed:', mediaError);
+        console.error('⚠️ First attempt to get user media failed:', mediaError);
         
         // Wait a moment and try again with a simpler constraint
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Retrying with simpler constraints...');
+        console.log('🔄 Retrying with simpler constraints...');
         
         try {
           this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          console.log('Microphone access granted on second attempt');
+          console.log('✅ Microphone access granted on second attempt');
         } catch (retryError) {
-          console.error('Second attempt to get user media failed:', retryError);
+          console.error('❌ Second attempt to get user media failed:', retryError);
           throw retryError; // Re-throw to be caught by the outer catch block
         }
       }
@@ -267,37 +279,37 @@ export class RealtimeService {
       if (this.peerConnection && this.localStream) {
         const audioTracks = this.localStream.getAudioTracks();
         if (audioTracks.length === 0) {
-          console.error('No audio tracks found in media stream');
+          console.error('❌ No audio tracks found in media stream');
           return false;
         }
         
-        console.log('Adding audio track to peer connection', audioTracks[0].label);
+        console.log('🎵 Adding audio track to peer connection', audioTracks[0].label);
         
         try {
           const sender = this.peerConnection.addTrack(audioTracks[0], this.localStream);
-          console.log('Track added successfully, sender created:', sender ? 'Yes' : 'No');
+          console.log('✅ Track added successfully, sender created:', sender ? 'Yes' : 'No');
           
-          // Add a small delay after adding track to ensure it's properly registered
+          // ✅ UNIVERSAL: Add delay after adding track (helps mobile browsers)
           await new Promise(resolve => setTimeout(resolve, 200));
           return true;
         } catch (trackError) {
-          console.error('Error adding track to peer connection:', trackError);
+          console.error('❌ Error adding track to peer connection:', trackError);
           return false;
         }
       }
       
       return false;
     } catch (error) {
-      console.error('Error starting microphone:', error);
+      console.error('❌ Error starting microphone:', error);
       
       // Specific error handling for common issues
       if (error instanceof DOMException) {
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          console.error('Microphone permission denied by user');
+          console.error('🚫 Microphone permission denied by user');
         } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-          console.error('No microphone found on this device');
+          console.error('🔍 No microphone found on this device');
         } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-          console.error('Microphone is already in use by another application');
+          console.error('🔒 Microphone is already in use by another application');
         }
       }
       
@@ -310,9 +322,9 @@ export class RealtimeService {
    */
   public async connect(): Promise<boolean> {
     try {
-      console.log('Connecting to OpenAI...');
+      console.log('🚀 Connecting to OpenAI...');
       if (!this.peerConnection) {
-        console.error('Peer connection not initialized');
+        console.error('❌ Peer connection not initialized');
         return false;
       }
       
@@ -323,28 +335,28 @@ export class RealtimeService {
       
       // Set connection timeout
       this.connectionAttemptTimeout = setTimeout(() => {
-        console.error('Connection attempt timed out');
+        console.error('⏰ Connection attempt timed out');
         this.disconnect();
       }, 15000);
       
       // Make sure data channel is created before creating the offer
       if (!this.dataChannel || this.dataChannel.readyState === 'closed') {
-        console.log('Creating new data channel before offer...');
+        console.log('🔄 Creating new data channel before offer...');
         try {
           this.dataChannel = this.peerConnection.createDataChannel('oai-events', {
             ordered: true
           });
           
-          console.log('Data channel created successfully');
+          console.log('✅ Data channel created successfully');
           
           this.dataChannel.onopen = () => {
-            console.log('Data channel opened');
+            console.log('✅ Data channel opened');
             this.isConnected = true;
             if (this.onConnectedCallback) this.onConnectedCallback();
           };
           
           this.dataChannel.onclose = () => {
-            console.log('Data channel closed');
+            console.log('❌ Data channel closed');
             this.isConnected = false;
             if (this.onDisconnectedCallback) this.onDisconnectedCallback();
           };
@@ -355,7 +367,7 @@ export class RealtimeService {
                 const eventData = JSON.parse(e.data) as RealtimeEvent;
                 this.onMessageCallback(eventData);
               } catch (error) {
-                console.error('Error parsing message:', error);
+                console.error('❌ Error parsing message:', error);
               }
             }
           };
@@ -363,13 +375,13 @@ export class RealtimeService {
           // Add a small delay after creating the data channel
           await new Promise(resolve => setTimeout(resolve, 200));
         } catch (channelError) {
-          console.error('Error creating data channel:', channelError);
+          console.error('❌ Error creating data channel:', channelError);
           return false;
         }
       }
       
       // Create offer
-      console.log('Creating offer...');
+      console.log('📝 Creating offer...');
       // Variable to store the complete offer with ICE candidates
       let completeOffer: RTCSessionDescriptionInit | null = null;
       
@@ -378,29 +390,29 @@ export class RealtimeService {
           offerToReceiveAudio: true
         });
         
-        console.log('Setting local description...');
+        console.log('📝 Setting local description...');
         await this.peerConnection.setLocalDescription(offer);
-        console.log('Local description set successfully');
+        console.log('✅ Local description set successfully');
         
         // Add a small delay after setting local description
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Wait for ICE gathering to complete
-        console.log('Waiting for ICE gathering to complete...');
+        console.log('🧊 Waiting for ICE gathering to complete...');
         completeOffer = await this.waitForIceComplete();
         if (!completeOffer) {
-          console.error('Failed to gather ICE candidates');
+          console.error('❌ Failed to gather ICE candidates');
           return false;
         }
         
-        console.log('ICE gathering completed successfully');
+        console.log('✅ ICE gathering completed successfully');
       } catch (offerError) {
-        console.error('Error creating or processing offer:', offerError);
+        console.error('❌ Error creating or processing offer:', offerError);
         return false;
       }
       
       // Send offer to OpenAI
-      console.log('Sending offer to OpenAI...');
+      console.log('📤 Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
       const model = 'gpt-4o-realtime-preview-2024-12-17';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
@@ -414,12 +426,12 @@ export class RealtimeService {
       
       if (!sdpResponse.ok) {
         const errorText = await sdpResponse.text();
-        console.error('Error connecting to OpenAI:', errorText);
+        console.error('❌ Error connecting to OpenAI:', errorText);
         return false;
       }
       
       // Set remote description
-      console.log('Setting remote description...');
+      console.log('📝 Setting remote description...');
       const answer = {
         type: 'answer' as RTCSdpType,
         sdp: await sdpResponse.text(),
@@ -433,10 +445,10 @@ export class RealtimeService {
         this.connectionAttemptTimeout = null;
       }
       
-      console.log('Connected to OpenAI successfully');
+      console.log('✅ Connected to OpenAI successfully');
       return true;
     } catch (error) {
-      console.error('Error connecting to OpenAI:', error);
+      console.error('❌ Error connecting to OpenAI:', error);
       return false;
     }
   }
@@ -452,7 +464,7 @@ export class RealtimeService {
     return new Promise((resolve) => {
       // Set a timeout to prevent waiting indefinitely
       const timeout = setTimeout(() => {
-        console.warn('ICE gathering timed out, proceeding with available candidates');
+        console.warn('⚠️ ICE gathering timed out, proceeding with available candidates');
         if (this.peerConnection?.localDescription) {
           resolve(this.peerConnection.localDescription);
         } else {
@@ -478,55 +490,55 @@ export class RealtimeService {
    */
   public sendMessage(message: RealtimeEvent): boolean {
     if (!this.dataChannel) {
-      console.error('Data channel not available, cannot send message');
+      console.error('❌ Data channel not available, cannot send message');
       return false;
     }
     
     // If data channel is connecting, wait for it to open
     if (this.dataChannel.readyState === 'connecting') {
-      console.log('Data channel is connecting, waiting for it to open...');
+      console.log('⏳ Data channel is connecting, waiting for it to open...');
       return false;
     }
     
     // If data channel is not open, cannot send message
     if (this.dataChannel.readyState !== 'open') {
-      console.error(`Data channel not open (state: ${this.dataChannel.readyState}), cannot send message`);
+      console.error(`❌ Data channel not open (state: ${this.dataChannel.readyState}), cannot send message`);
       return false;
     }
     
     try {
       const messageString = JSON.stringify(message);
-      console.log('Sending message:', message.type);
+      console.log('📤 Sending message:', message.type);
       this.dataChannel.send(messageString);
       return true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
       return false;
     }
   }
   
   /**
-   * Start a conversation with OpenAI
+   * Start a conversation with OpenAI - Universal implementation
    */
   public async startConversation(instructions?: string): Promise<boolean> {
-    console.log('Starting conversation...');
+    console.log('🚀 Starting conversation with universal approach...');
     
     // Check if data channel is ready
     if (!this.dataChannel) {
-      console.error('Data channel not initialized');
+      console.error('❌ Data channel not initialized');
       return false;
     }
     
-    // If data channel is connecting, wait for it to open
+    // ✅ UNIVERSAL: Wait for data channel to be ready
     if (this.dataChannel.readyState !== 'open') {
-      console.log(`Data channel not open (state: ${this.dataChannel.readyState}), waiting before starting conversation...`);
+      console.log('⏳ Data channel not open, waiting before starting conversation...');
       
       // Wait for the data channel to open
       try {
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error('Timed out waiting for data channel to open'));
-          }, 5000);
+          }, 8000); // Longer timeout for mobile browsers
           
           const checkDataChannel = () => {
             if (!this.dataChannel) {
@@ -549,199 +561,38 @@ export class RealtimeService {
           checkDataChannel();
         });
       } catch (error) {
-        console.error('Error waiting for data channel to open:', error);
+        console.error('❌ Error waiting for data channel to open:', error);
         return false;
       }
     }
     
-    // Add a small delay to ensure the data channel is fully ready
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // ✅ UNIVERSAL: Longer delay for mobile browsers to ensure everything is ready
+    console.log('⏳ Ensuring data channel is fully ready...');
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Only send session.update if we haven't already sent it when the data channel opened
-    if (!this.sessionUpdated) {
-      console.log('Sending initial session update...');
-      const updateSuccess = this.updateSession();
-      if (!updateSuccess) {
-        console.error('Failed to send session update event');
-        return false;
-      }
-      
-      this.sessionUpdated = true;
-      
-      // Add a small delay after sending the session update
-      await new Promise(resolve => setTimeout(resolve, 300));
-    } else {
-      console.log('Session already updated, skipping duplicate update');
-    }
+    // ✅ CRITICAL CHANGE: NO session.update calls
+    // The ephemeral token contains all instructions
+    console.log('✅ Skipping session.update - using ephemeral token instructions only');
     
-    // Add a small delay after sending the session update
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Then send the response.create event to start the conversation
+    // ✅ Send response.create event to start the conversation immediately
     const event: RealtimeResponseCreateEvent = {
       type: 'response.create',
       response: {
         modalities: ['text', 'audio'],
-        instructions: instructions || 'Have a conversation with me.',
+        // ✅ IMPORTANT: Do NOT override instructions here
+        // Let the ephemeral token instructions take effect
       },
     };
     
+    console.log('✅ Starting conversation with response.create (no instruction override)');
     return this.sendMessage(event);
-  }
-  
-  /**
-   * Update the session configuration with topic-specific instructions
-   */
-  private updateSession(): boolean {
-    console.log('Updating session with transcription language:', this.currentLanguage || 'auto-detect', 'ISO code:', this.currentLanguageIsoCode || 'auto-detect');
-    
-    const sessionUpdate = {
-      type: 'session.update',
-      session: {
-        modalities: ['text', 'audio'],
-        instructions: this.getTopicSpecificInstructions(),
-        voice: 'alloy',
-        input_audio_format: 'pcm16',
-        output_audio_format: 'pcm16',
-        input_audio_transcription: {
-          model: 'whisper-1',
-          language: this.currentLanguageIsoCode || 'en'
-        },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 200
-        }
-      }
-    };
-    
-    const sent = this.sendMessage(sessionUpdate);
-    console.log('Session update sent with topic instructions:', sent);
-    return sent;
-  }
-
-  /**
-   * Get topic-specific instructions from session storage
-   */
-  private getTopicSpecificInstructions(): string {
-    try {
-      const topic = sessionStorage.getItem('selectedTopic');
-      const language = sessionStorage.getItem('selectedLanguage');
-      const level = sessionStorage.getItem('selectedLevel');
-      
-      console.log('Building topic-specific instructions for:', { topic, language, level });
-      
-      if (!language || !level) {
-        console.warn('Missing language or level in session storage, using default instructions');
-        return 'You are a helpful language tutor. Have a conversation with the user to help them practice their language skills.';
-      }
-      
-      // Create simplified language enforcement based on language
-      let languageRule = '';
-      let greeting = '';
-      
-      switch (language.toLowerCase()) {
-        case 'dutch':
-          languageRule = "Spreek alleen Nederlands. Als de student een andere taal gebruikt, zeg: 'Laten we Nederlands oefenen. Probeer het in het Nederlands te zeggen.'";
-          greeting = "Hallo! Ik ben je Nederlandse taaldocent.";
-          break;
-        case 'english':
-          languageRule = "Respond only in English. If the student speaks another language, say: 'Let's practice in English. Try saying that in English.'";
-          greeting = "Hello! I am your English language tutor.";
-          break;
-        case 'spanish':
-          languageRule = "Responde solo en español. Si el estudiante habla otro idioma, di: 'Practiquemos español. Intenta decirlo en español.'";
-          greeting = "¡Hola! Soy tu profesor de español.";
-          break;
-        case 'german':
-          languageRule = "Antworte nur auf Deutsch. Wenn der Schüler eine andere Sprache spricht, sage: 'Lass uns Deutsch üben. Versuche es auf Deutsch zu sagen.'";
-          greeting = "Hallo! Ich bin dein Deutschlehrer.";
-          break;
-        case 'french':
-          languageRule = "Réponds uniquement en français. Si l'étudiant parle une autre langue, dis: 'Pratiquons le français. Essaie de le dire en français.'";
-          greeting = "Bonjour! Je suis ton professeur de français.";
-          break;
-        case 'portuguese':
-          languageRule = "Responda apenas em português. Se o aluno falar outro idioma, diga: 'Vamos praticar português. Tente dizer isso em português.'";
-          greeting = "Olá! Eu sou seu professor de português.";
-          break;
-        default:
-          languageRule = `Respond only in ${language}. If the student speaks another language, redirect them to practice in ${language}.`;
-          greeting = `Hello! I am your ${language} language tutor.`;
-      }
-      
-      // Build base instructions
-      let instructions = `You are a ${language} language tutor for ${level} level students.
-
-LANGUAGE RULE: ${languageRule}
-
-Start with: "${greeting}"
-
-Be engaging and encourage conversation.`;
-      
-      // Add topic-specific instructions if a topic is selected
-      if (topic && topic !== 'general') {
-        if (topic === 'custom') {
-          // For custom topics, check if we have research data
-          const customTopicResearch = sessionStorage.getItem('customTopicResearch');
-          if (customTopicResearch) {
-            try {
-              const researchData = JSON.parse(customTopicResearch);
-              if (researchData.success && researchData.topic && researchData.research) {
-                const topicInstructions = `
-
-TOPIC FOCUS: The user has chosen to discuss "${researchData.topic}".
-
-RESEARCH CONTEXT: ${researchData.research}
-
-Start your first message by discussing this specific topic using the research context provided. Ask engaging questions about this topic.`;
-                instructions = topicInstructions + '\n\n' + instructions;
-                console.log('Added custom topic instructions with research data');
-              }
-            } catch (e) {
-              console.error('Error parsing custom topic research:', e);
-            }
-          }
-        } else {
-          // For predefined topics
-          const topicMap: { [key: string]: { name: string; focus: string } } = {
-            'travel': { name: 'Travel & Tourism', focus: 'destinations, transportation, accommodation, cultural experiences' },
-            'food': { name: 'Food & Cooking', focus: 'cuisines, cooking techniques, recipes, restaurants, food culture' },
-            'hobbies': { name: 'Hobbies & Interests', focus: 'sports, arts, music, reading, games, outdoor activities' },
-            'culture': { name: 'Culture & Traditions', focus: 'festivals, customs, traditions, art, history, celebrations' },
-            'movies': { name: 'Movies & TV Shows', focus: 'genres, actors, directors, streaming, cinema, entertainment' },
-            'music': { name: 'Music', focus: 'genres, instruments, concerts, artists, streaming, live performances' },
-            'technology': { name: 'Technology', focus: 'gadgets, apps, social media, innovation, digital trends, AI' },
-            'environment': { name: 'Environment & Nature', focus: 'climate change, sustainability, wildlife, conservation, renewable energy' }
-          };
-          
-          const topicInfo = topicMap[topic] || { name: topic, focus: topic };
-          const topicInstructions = `
-
-TOPIC FOCUS: The user has chosen to discuss ${topicInfo.name}.
-
-Start your first message by introducing ${topicInfo.name} and asking a question about it. Keep the conversation focused on ${topicInfo.name} and related topics like: ${topicInfo.focus}.`;
-          
-          instructions = topicInstructions + '\n\n' + instructions;
-          console.log(`Added topic instructions for: ${topicInfo.name}`);
-        }
-      }
-      
-      console.log('Final session instructions length:', instructions.length);
-      return instructions;
-      
-    } catch (error) {
-      console.error('Error building topic-specific instructions:', error);
-      return 'You are a helpful language tutor. Have a conversation with the user to help them practice their language skills.';
-    }
   }
   
   /**
    * Disconnect and clean up all resources
    */
   public disconnect(): void {
-    console.log('Disconnecting...');
+    console.log('🧹 Disconnecting...');
     try {
       // Clear any pending timeouts
       if (this.connectionAttemptTimeout) {
@@ -749,19 +600,16 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
         this.connectionAttemptTimeout = null;
       }
       
-      // Reset session updated flag
-      this.sessionUpdated = false;
-      
       // Stop all media tracks first
       if (this.localStream) {
-        console.log('Stopping local stream tracks...');
+        console.log('🛑 Stopping local stream tracks...');
         const tracks = this.localStream.getTracks();
         tracks.forEach(track => {
           try {
             track.stop();
-            console.log('Stopped track:', track.kind, track.label);
+            console.log('🛑 Stopped track:', track.kind, track.label);
           } catch (e) {
-            console.error('Error stopping track:', e);
+            console.error('❌ Error stopping track:', e);
           }
         });
         this.localStream = null;
@@ -769,22 +617,22 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
       
       // Close data channel
       if (this.dataChannel) {
-        console.log('Closing data channel...');
+        console.log('🔌 Closing data channel...');
         try {
           this.dataChannel.close();
         } catch (e) {
-          console.error('Error closing data channel:', e);
+          console.error('❌ Error closing data channel:', e);
         }
         this.dataChannel = null;
       }
       
       // Close peer connection
       if (this.peerConnection) {
-        console.log('Closing peer connection...');
+        console.log('🔌 Closing peer connection...');
         try {
           this.peerConnection.close();
         } catch (e) {
-          console.error('Error closing peer connection:', e);
+          console.error('❌ Error closing peer connection:', e);
         }
         this.peerConnection = null;
       }
@@ -794,17 +642,14 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
         this.audioElement.srcObject = null;
       }
     } catch (e) {
-      console.error('Error during disconnect:', e);
+      console.error('❌ Error during disconnect:', e);
     } finally {
       this.isConnected = false;
-      console.log('Disconnected');
+      console.log('✅ Disconnected');
       if (this.onDisconnectedCallback) this.onDisconnectedCallback();
     }
   }
   
-  /**
-   * Get an ephemeral key from the backend
-   */
   /**
    * Convert language name to ISO-639-1 code
    */
@@ -863,25 +708,25 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
     
     try {
       console.log('================================================================================');
-      console.log('[FRONTEND] Getting ephemeral key from backend...');
-      console.log('[FRONTEND] Timestamp:', new Date().toISOString());
-      console.log('[FRONTEND] Language:', language);
-      console.log('[FRONTEND] Level:', level);
-      console.log('[FRONTEND] Topic:', topic);
-      console.log('[FRONTEND] User prompt length:', userPrompt ? userPrompt.length : 0);
-      console.log('[FRONTEND] User prompt preview:', userPrompt ? userPrompt.substring(0, 100) + '...' : 'None');
-      console.log('[FRONTEND] Assessment data provided:', !!assessmentData);
+      console.log('🌐 [UNIVERSAL] Getting ephemeral key from backend...');
+      console.log('🌐 [UNIVERSAL] Timestamp:', new Date().toISOString());
+      console.log('🌐 [UNIVERSAL] Language:', language);
+      console.log('🌐 [UNIVERSAL] Level:', level);
+      console.log('🌐 [UNIVERSAL] Topic:', topic);
+      console.log('🌐 [UNIVERSAL] User prompt length:', userPrompt ? userPrompt.length : 0);
+      console.log('🌐 [UNIVERSAL] User prompt preview:', userPrompt ? userPrompt.substring(0, 100) + '...' : 'None');
+      console.log('🌐 [UNIVERSAL] Assessment data provided:', !!assessmentData);
       console.log('================================================================================');
       
       // Ensure we have both language and level
       if (!language || !level) {
-        console.error('Missing language or level parameters');
+        console.error('❌ Missing language or level parameters');
         throw new Error('Language and level are required parameters');
       }
       
       // First try the real endpoint
       let endpoint = `${this.backendUrl}/api/realtime/token`;
-      console.log('Fetching ephemeral key from:', endpoint);
+      console.log('📤 Fetching ephemeral key from:', endpoint);
       
       // Get research data from session storage if it's a custom topic
       let researchData = null;
@@ -913,15 +758,15 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
       
       // Log if assessment data is provided
       if (assessmentData) {
-        console.log('Including assessment data in token request');
+        console.log('📊 Including assessment data in token request');
       }
       
       // Log if we're using a custom topic with user prompt
       if (topic === 'custom' && userPrompt) {
-        console.log('Using custom topic with user prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
+        console.log('🎯 Using custom topic with user prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
       }
       
-      console.log('Request body:', JSON.stringify(requestBody));
+      console.log('📋 Request body:', JSON.stringify(requestBody));
       
       // Variable to store error from real endpoint if it fails
       let realEndpointError: any = null;
@@ -939,16 +784,16 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Received response from backend:', data);
+          console.log('📥 Received response from backend:', data);
           
           if (data.ephemeral_key) {
-            console.log('Successfully obtained real ephemeral key');
+            console.log('✅ Successfully obtained real ephemeral key');
             return data.ephemeral_key;
           } else if (data.client_secret && data.client_secret.value) {
-            console.log('Successfully obtained client secret value');
+            console.log('✅ Successfully obtained client secret value');
             return data.client_secret.value;
           } else {
-            console.error('Response did not contain expected token format:', data);
+            console.error('❌ Response did not contain expected token format:', data);
             throw new Error('Invalid response format from token endpoint');
           }
         } else {
@@ -956,11 +801,11 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
           let errorData: any = null;
           try {
             errorData = await response.json();
-            console.error('Error response from token endpoint:', response.status, errorData);
+            console.error('❌ Error response from token endpoint:', response.status, errorData);
           } catch (jsonError) {
             // If it's not JSON, get it as text
             const errorText = await response.text();
-            console.error('Error from real endpoint (status ' + response.status + '):', errorText);
+            console.error('❌ Error from real endpoint (status ' + response.status + '):', errorText);
             errorData = errorText;
           }
           
@@ -972,16 +817,16 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
           throw new Error(`Token endpoint returned ${response.status}`);
         }
       } catch (error) {
-        console.error('Error with real endpoint:', error);
+        console.error('❌ Error with real endpoint:', error);
         realEndpointError = error;
-        console.log('Real endpoint failed, trying mock endpoint as fallback...');
+        console.log('🔄 Real endpoint failed, trying mock endpoint as fallback...');
       }
       
       // Try the mock endpoint as a fallback
       usedMockToken = true;
       endpoint = `${this.backendUrl}/api/mock-token`;
-      console.log('Fetching mock ephemeral key from:', endpoint);
-      console.log('Mock request body:', JSON.stringify(requestBody));
+      console.log('📤 Fetching mock ephemeral key from:', endpoint);
+      console.log('📋 Mock request body:', JSON.stringify(requestBody));
       
       try {
         const mockResponse = await fetch(endpoint, {
@@ -1002,7 +847,7 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
             errorInfo = await mockResponse.text();
           }
           
-          console.error(`Failed to get mock ephemeral key (status ${mockResponse.status}):`, errorInfo);
+          console.error(`❌ Failed to get mock ephemeral key (status ${mockResponse.status}):`, errorInfo);
           
           // If both real and mock endpoints failed, provide comprehensive error
           if (realEndpointError) {
@@ -1013,17 +858,17 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
         }
         
         const mockData = await mockResponse.json();
-        console.log('Received mock response from backend');
+        console.log('📥 Received mock response from backend');
         
         if (mockData.ephemeral_key) {
-          console.log('Using mock ephemeral key for testing');
+          console.log('✅ Using mock ephemeral key for testing');
           return mockData.ephemeral_key;
         } else {
-          console.error('Invalid mock response format:', mockData);
+          console.error('❌ Invalid mock response format:', mockData);
           throw new Error('Invalid mock response format');
         }
       } catch (mockError) {
-        console.error('Error with mock endpoint:', mockError);
+        console.error('❌ Error with mock endpoint:', mockError);
         
         // If both endpoints failed, provide a comprehensive error message
         if (realEndpointError) {
@@ -1033,10 +878,10 @@ Start your first message by introducing ${topicInfo.name} and asking a question 
         throw mockError;
       }
     } catch (error) {
-      console.error('Error getting ephemeral key:', error);
+      console.error('❌ Error getting ephemeral key:', error);
       
       // Log detailed debugging information
-      console.error('Detailed error context:', {
+      console.error('🔍 Detailed error context:', {
         error,
         language,
         level,
