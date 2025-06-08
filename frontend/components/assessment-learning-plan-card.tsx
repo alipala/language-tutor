@@ -15,7 +15,11 @@ import {
   Star,
   Calendar,
   Clock,
-  Share2
+  Share2,
+  Heart,
+  GraduationCap,
+  Timer,
+  BarChart3
 } from 'lucide-react';
 
 interface SkillData {
@@ -168,23 +172,34 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           
           {/* Quick Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white/20 rounded-lg p-2 text-center">
+            {/* Confidence */}
+            <div className="bg-gradient-to-br from-pink-400 to-rose-500 rounded-lg p-3 text-center text-white shadow-md">
+              <Heart className="h-4 w-4 mx-auto mb-1 opacity-90" />
               <div className="text-sm font-bold">{assessment.confidence}%</div>
-              <div className="text-white/80 text-xs">Confidence</div>
+              <div className="text-white/90 text-xs">Confidence</div>
             </div>
-            <div className="bg-white/20 rounded-lg p-2 text-center">
+            
+            {/* CEFR Level */}
+            <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg p-3 text-center text-white shadow-md">
+              <GraduationCap className="h-4 w-4 mx-auto mb-1 opacity-90" />
               <div className="text-sm font-bold">{assessment.recommended_level || "B1"}</div>
-              <div className="text-white/80 text-xs">CEFR Level</div>
+              <div className="text-white/90 text-xs">CEFR Level</div>
             </div>
+            
             {learningPlan && (
               <>
-                <div className="bg-white/20 rounded-lg p-2 text-center">
+                {/* Plan Duration */}
+                <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg p-3 text-center text-white shadow-md">
+                  <Timer className="h-4 w-4 mx-auto mb-1 opacity-90" />
                   <div className="text-sm font-bold">{learningPlan.duration_months}m</div>
-                  <div className="text-white/80 text-xs">Plan Duration</div>
+                  <div className="text-white/90 text-xs">Plan Duration</div>
                 </div>
-                <div className="bg-white/20 rounded-lg p-2 text-center">
+                
+                {/* Progress */}
+                <div className="bg-gradient-to-br from-emerald-400 to-green-500 rounded-lg p-3 text-center text-white shadow-md">
+                  <BarChart3 className="h-4 w-4 mx-auto mb-1 opacity-90" />
                   <div className="text-sm font-bold">75%</div>
-                  <div className="text-white/80 text-xs">Progress</div>
+                  <div className="text-white/90 text-xs">Progress</div>
                 </div>
               </>
             )}
