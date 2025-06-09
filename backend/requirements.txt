@@ -16,3 +16,5 @@ email-validator==2.1.1
 google-auth==2.27.0
 google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
+# PDF generation packages
+reportlab==4.0.9

@@ -89,6 +89,10 @@ app.include_router(learning_router)
 from progress_routes import router as progress_router
 app.include_router(progress_router)
 
+# Include export routes
+from export_routes import router as export_router
+app.include_router(export_router)
+
 # Initialize MongoDB on startup
 @app.on_event("startup")
 async def startup_db_client():

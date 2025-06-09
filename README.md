@@ -34,7 +34,36 @@ This repository contains comprehensive documentation to help you understand, use
 - 🌍 **Multi-language Support**: Currently Dutch and English with all CEFR levels (A1-C2)
 - 🔐 **Flexible Authentication**: Email/password, Google Sign-In, and guest user functionality
 - 📱 **Responsive Design**: Modern UI optimized for both desktop and mobile devices
+- 📊 **Comprehensive Data Export**: Export your complete learning journey in multiple formats
 - 🚀 **Production-Ready**: Optimized for Railway deployment with robust error handling
+
+### 📊 Data Export & Learning Analytics
+
+Transform your learning journey into professional documents and comprehensive data packages:
+
+#### 🎯 **Assessment & Learning Plans Export**
+- **Professional PDF Reports**: Beautifully formatted documents showcasing your assessment results, skill breakdowns, and personalized learning plans
+- **Detailed Analytics**: Comprehensive statistics including average scores, level distribution, and learning goal analysis
+- **Progress Visualization**: Color-coded skill assessments with pronunciation, grammar, vocabulary, fluency, and coherence scores
+
+#### 💬 **Conversation History & AI Analysis Export**
+- **Complete Session Records**: Full transcripts of all your practice conversations with timestamps and metadata
+- **Enhanced AI Insights**: Detailed analysis including conversation quality metrics, breakthrough moments, and areas for improvement
+- **Multiple Formats**: Available in both PDF (professional reports) and CSV (data analysis) formats
+- **Vocabulary Tracking**: Highlights of new vocabulary learned and usage patterns
+
+#### 📦 **Complete Learning Data Package**
+- **All-in-One ZIP Archive**: Comprehensive package containing all your learning data in multiple formats
+- **Professional Documentation**: Ready-to-share course completion certificates and progress reports
+- **Data Portability**: JSON format for advanced analysis and integration with other tools
+- **Backup & Recovery**: Complete data export for personal backup and account migration
+
+#### 🔒 **Privacy & Security**
+- **Personal Data Only**: Exports contain only your individual learning information
+- **Secure Generation**: All exports are generated on-demand and not stored on servers
+- **GDPR Compliant**: Full data portability rights with comprehensive export functionality
+
+**Access your export options through the Profile → Export Data tab for instant downloads of your learning achievements.**
 
 - **API endpoints** for authentication, learning plan management, real-time conversation, speaking/sentence assessment, and web search.
 - **Authentication** using JWT and Google OAuth, with secure password storage and token validation.
@@ -292,6 +321,9 @@ To run the application locally:
 | `/api/mock-token` | POST | Mock token for testing |
 | `/api/assessment/speaking/prompts` | GET | Get speaking assessment prompts |
 | `/api/speaking-prompts` | GET | Alternative endpoint for speaking prompts |
+| `/api/export/learning-plans` | GET | Export learning plans and assessments (PDF/CSV/JSON) |
+| `/api/export/conversations` | GET | Export conversation history and AI analysis (PDF/CSV/JSON) |
+| `/api/export/data` | GET | Export complete learning data package (ZIP/JSON) |
 
 ## Contributing
 

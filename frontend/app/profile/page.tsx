@@ -23,6 +23,7 @@ import {
   Gem, Heart, Volume2, Mic, CheckCircle, Brain
 } from 'lucide-react';
 import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
+import ExportModal from '@/components/export-modal';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -154,6 +155,73 @@ export default function ProfilePage() {
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
   const [selectedSessionInfo, setSelectedSessionInfo] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+  
+  // Export loading states
+  const [exportLoading, setExportLoading] = useState<Record<string, boolean>>({});
+  
+  // Calculate export stats for export modal
+  const exportStats = {
+    learningPlans: learningPlans.length,
+    conversations: conversationHistory.length,
+    assessments: assessmentLearningPairs.length
+  };
+
+  // Direct export functions
+  const handleDirectExport = async (type: 'learning-plans' | 'conversations' | 'data', format: 'pdf' | 'csv' | 'zip' | 'json') => {
+    if (!user) return;
+    
+    const exportKey = `${type}-${format}`;
+    setExportLoading(prev => ({ ...prev, [exportKey]: true }));
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_URL}/api/export/${type}?format=${format}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get filename from response headers or create default
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${type}_${user.name.replace(' ', '_')}.${format}`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      // You could add a toast notification here
+    } finally {
+      setExportLoading(prev => ({ ...prev, [exportKey]: false }));
+    }
+  };
 
   // Mock user stats for display (will be replaced with real data)
   const userStats = {
@@ -388,7 +456,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-end space-y-1">
+                  <div className="flex flex-col items-end space-y-2">
                     <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
                       <Trophy className="h-4 w-4" />
                       <span className="font-semibold text-sm">Level {userStats.currentLevel}</span>
@@ -434,6 +502,7 @@ export default function ProfilePage() {
                   { id: 'overview', label: 'Overview', icon: TrendingUp },
                   { id: 'progress', label: 'Learning Progress', icon: Target },
                   { id: 'achievements', label: 'Achievements', icon: Trophy },
+                  { id: 'export', label: 'Export Data', icon: Download },
                   { id: 'settings', label: 'Settings', icon: Settings }
                 ].map(tab => (
                   <button
@@ -764,6 +833,263 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* Export Data Tab */}
+          {activeTab === 'export' && (
+            <div className="space-y-8">
+              {/* Export Overview */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <Download className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+                  Export Your Learning Data
+                </h3>
+                
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-teal-700">
+                    <strong>📊 Data Available for Export:</strong> Download your complete learning journey including assessments, 
+                    learning plans, conversation history, and detailed AI analysis. All data is available in multiple formats 
+                    for your convenience.
+                  </p>
+                </div>
+
+                {/* Data Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <BookOpen className="h-8 w-8 text-blue-500" />
+                      <span className="text-2xl font-bold text-blue-600">{learningPlans.length}</span>
+                    </div>
+                    <h4 className="font-semibold text-blue-800">Learning Plans</h4>
+                    <p className="text-sm text-blue-600">Assessment results & personalized plans</p>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Mic className="h-8 w-8 text-green-500" />
+                      <span className="text-2xl font-bold text-green-600">{conversationHistory.length}</span>
+                    </div>
+                    <h4 className="font-semibold text-green-800">Conversations</h4>
+                    <p className="text-sm text-green-600">Practice sessions & AI analysis</p>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Award className="h-8 w-8 text-purple-500" />
+                      <span className="text-2xl font-bold text-purple-600">{assessmentLearningPairs.length}</span>
+                    </div>
+                    <h4 className="font-semibold text-purple-800">Assessments</h4>
+                    <p className="text-sm text-purple-600">Skill evaluations & progress tracking</p>
+                  </div>
+                </div>
+
+                {/* Export Options */}
+                <div className="space-y-6">
+                  {/* Learning Plans Export */}
+                  <div className={`border rounded-xl p-6 ${learningPlans.length === 0 ? 'border-gray-300 bg-gray-50 opacity-60' : 'border-gray-200'}`}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${learningPlans.length === 0 ? 'bg-gray-200' : 'bg-blue-100'}`}>
+                          <BookOpen className={`h-6 w-6 ${learningPlans.length === 0 ? 'text-gray-400' : 'text-blue-600'}`} />
+                        </div>
+                        <div>
+                          <h4 className={`text-lg font-semibold ${learningPlans.length === 0 ? 'text-gray-500' : 'text-gray-800'}`}>Assessment & Learning Plans</h4>
+                          <p className={`text-sm ${learningPlans.length === 0 ? 'text-gray-400' : 'text-gray-600'}`}>Complete assessment results, skill breakdowns, and personalized learning plans</p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className={learningPlans.length === 0 ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700'}>
+                        {learningPlans.length} plans
+                      </Badge>
+                    </div>
+                    
+                    <div className={`rounded-lg p-4 mb-4 ${learningPlans.length === 0 ? 'bg-gray-100' : 'bg-gray-50'}`}>
+                      <h5 className={`font-medium mb-2 ${learningPlans.length === 0 ? 'text-gray-500' : 'text-gray-800'}`}>📋 Includes:</h5>
+                      <ul className={`text-sm space-y-1 ${learningPlans.length === 0 ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <li>• Assessment scores and skill breakdowns (pronunciation, grammar, vocabulary, fluency)</li>
+                        <li>• Personalized learning plans with goals and recommendations</li>
+                        <li>• Progress tracking and level assessments</li>
+                        <li>• Learning statistics and performance analytics</li>
+                      </ul>
+                    </div>
+                    
+                    {learningPlans.length === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500 mb-3">No learning plans available to export</p>
+                        <Button
+                          onClick={() => router.push('/language-selection')}
+                          variant="outline"
+                          size="sm"
+                          className="border-gray-300 text-gray-500 hover:bg-gray-100"
+                        >
+                          Create Your First Plan
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          onClick={() => handleDirectExport('learning-plans', 'pdf')}
+                          disabled={exportLoading['learning-plans-pdf']}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          size="sm"
+                        >
+                          {exportLoading['learning-plans-pdf'] ? (
+                            <div className="animate-spin h-4 w-4 mr-2 border border-white border-t-transparent rounded-full"></div>
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          Export as PDF
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Conversation History Export */}
+                  <div className={`border rounded-xl p-6 ${conversationHistory.length === 0 ? 'border-gray-300 bg-gray-50 opacity-60' : 'border-gray-200'}`}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${conversationHistory.length === 0 ? 'bg-gray-200' : 'bg-green-100'}`}>
+                          <Mic className={`h-6 w-6 ${conversationHistory.length === 0 ? 'text-gray-400' : 'text-green-600'}`} />
+                        </div>
+                        <div>
+                          <h4 className={`text-lg font-semibold ${conversationHistory.length === 0 ? 'text-gray-500' : 'text-gray-800'}`}>Conversation History & Analysis</h4>
+                          <p className={`text-sm ${conversationHistory.length === 0 ? 'text-gray-400' : 'text-gray-600'}`}>Practice sessions, AI analysis, and detailed conversation insights</p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className={conversationHistory.length === 0 ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-700'}>
+                        {conversationHistory.length} sessions
+                      </Badge>
+                    </div>
+                    
+                    <div className={`rounded-lg p-4 mb-4 ${conversationHistory.length === 0 ? 'bg-gray-100' : 'bg-gray-50'}`}>
+                      <h5 className={`font-medium mb-2 ${conversationHistory.length === 0 ? 'text-gray-500' : 'text-gray-800'}`}>💬 Includes:</h5>
+                      <ul className={`text-sm space-y-1 ${conversationHistory.length === 0 ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <li>• Complete conversation transcripts and session summaries</li>
+                        <li>• Enhanced AI analysis with quality metrics and insights</li>
+                        <li>• Breakthrough moments and areas for improvement</li>
+                        <li>• Vocabulary highlights and personalized recommendations</li>
+                      </ul>
+                    </div>
+                    
+                    {conversationHistory.length === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500 mb-3">No conversation history available to export</p>
+                        <Button
+                          onClick={() => router.push('/speech')}
+                          variant="outline"
+                          size="sm"
+                          className="border-gray-300 text-gray-500 hover:bg-gray-100"
+                        >
+                          Start Practicing
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          onClick={() => handleDirectExport('conversations', 'pdf')}
+                          disabled={exportLoading['conversations-pdf']}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          {exportLoading['conversations-pdf'] ? (
+                            <div className="animate-spin h-4 w-4 mr-2 border border-white border-t-transparent rounded-full"></div>
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          Export as PDF
+                        </Button>
+                        <Button
+                          onClick={() => handleDirectExport('conversations', 'csv')}
+                          disabled={exportLoading['conversations-csv']}
+                          variant="outline"
+                          className="border-green-200 text-green-600 hover:bg-green-50"
+                          size="sm"
+                        >
+                          {exportLoading['conversations-csv'] ? (
+                            <div className="animate-spin h-4 w-4 mr-2 border border-green-600 border-t-transparent rounded-full"></div>
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          Export as CSV
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Complete Data Export */}
+                  <div className="border-2 border-teal-200 rounded-xl p-6 bg-gradient-to-br from-teal-50 to-cyan-50">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                          <Share2 className="h-6 w-6 text-teal-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-800">Complete Learning Data</h4>
+                          <p className="text-sm text-gray-600">Everything in one comprehensive package - perfect for backup or analysis</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-teal-600 text-white">
+                        Recommended
+                      </Badge>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-4 mb-4 border border-teal-200">
+                      <h5 className="font-medium text-gray-800 mb-2">📦 Complete Package Includes:</h5>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li>• All assessment results and learning plans (PDF + CSV)</li>
+                        <li>• Complete conversation history and AI analysis (PDF + CSV)</li>
+                        <li>• Professional course documents ready for sharing</li>
+                        <li>• Organized in a convenient ZIP archive</li>
+                      </ul>
+                    </div>
+                    
+                    {(learningPlans.length === 0 && conversationHistory.length === 0) ? (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500 mb-3">No data available to export</p>
+                        <Button
+                          onClick={() => router.push('/language-selection')}
+                          variant="outline"
+                          size="sm"
+                          className="border-gray-300 text-gray-500 hover:bg-gray-100"
+                        >
+                          Start Your Learning Journey
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          onClick={() => handleDirectExport('data', 'zip')}
+                          disabled={exportLoading['data-zip']}
+                          className="text-white"
+                          style={{ backgroundColor: '#4ECFBF' }}
+                          size="sm"
+                        >
+                          {exportLoading['data-zip'] ? (
+                            <div className="animate-spin h-4 w-4 mr-2 border border-white border-t-transparent rounded-full"></div>
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          Export Complete Package (ZIP)
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Privacy Notice */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-6">
+                  <div className="flex items-start space-x-3">
+                    <Lock className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h5 className="font-medium text-gray-800 mb-1">🔒 Privacy & Security</h5>
+                      <p className="text-sm text-gray-600">
+                        Your exported data contains only your personal learning information. No other user data is included. 
+                        All exports are generated securely and are not stored on our servers after download.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="space-y-8">
@@ -888,6 +1214,15 @@ export default function ProfilePage() {
           onClose={() => setShowEnhancedAnalysis(false)}
           analysis={selectedAnalysis}
           sessionInfo={selectedSessionInfo}
+        />
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          userName={user?.name || 'User'}
         />
       )}
 
