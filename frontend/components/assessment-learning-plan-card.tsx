@@ -126,6 +126,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
 }) => {
   const router = useRouter();
   const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [currentWeekPage, setCurrentWeekPage] = useState(0);
   
   const formattedDate = assessment.date ? formatDate(new Date(assessment.date)) : 'N/A';
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
@@ -661,7 +662,6 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                       learningPlan.plan_content.weekly_schedule
                     );
                     
-                    const [currentWeekPage, setCurrentWeekPage] = React.useState(0);
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
                     const currentWeeks = allWeeks.slice(
