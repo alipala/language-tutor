@@ -593,10 +593,23 @@ CONVERSATION GUIDANCE:
             except Exception as e:
                 print(f"⚠️ Research failed: {str(e)}")
         
-        # ✅ Universal custom topic instructions with assessment data
+        # ✅ Universal custom topic instructions with assessment data and guardrails
         instructions = f"""🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
 
 You are a {language} language tutor for {level} level students.
+
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
+   "Let's focus on practicing {language} with our topic: {request.user_prompt}. This helps improve your language skills."
+4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
 
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
@@ -639,6 +652,19 @@ CONVERSATION FOCUS:
         
         instructions = f"""You are a {language} language tutor for {level} level students.
 
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
+   "Let's focus on practicing {language} with our topic: {topic_name}. This helps improve your language skills."
+4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
 {learning_plan_context}
@@ -658,6 +684,19 @@ If learning plan context is available, connect the topic to the student's weekly
     # Default general conversation with assessment and learning plan data
     else:
         instructions = f"""You are a {language} language tutor for {level} level students.
+
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and educational topics
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
+   "Let's focus on practicing {language} and improving your language skills. What would you like to talk about in {language}?"
+4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
 
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
