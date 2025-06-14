@@ -82,6 +82,9 @@ interface LearningPlan {
   };
   assessment_data?: AssessmentData;
   created_at: string;
+  total_sessions?: number;
+  completed_sessions?: number;
+  progress_percentage?: number;
 }
 
 interface AssessmentLearningPlanCardProps {
@@ -198,7 +201,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 {/* Progress */}
                 <div className="bg-gradient-to-br from-emerald-400 to-green-500 rounded-lg p-3 text-center text-white shadow-md">
                   <BarChart3 className="h-4 w-4 mx-auto mb-1 opacity-90" />
-                  <div className="text-sm font-bold">75%</div>
+                  <div className="text-sm font-bold">{Math.round(learningPlan.progress_percentage || 0)}%</div>
                   <div className="text-white/90 text-xs">Progress</div>
                 </div>
               </>
@@ -368,6 +371,110 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                   <div className="text-center text-sm text-gray-600">
                     <Clock className="h-4 w-4 inline mr-1" />
                     Plan created on {planDate}
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Tracking Section */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
+                  <BarChart3 className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
+                  Learning Progress
+                </h4>
+                
+                {/* Session Progress */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      <div className="bg-blue-100 rounded-full p-2 mr-3">
+                        <CheckCircle className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h5 className="font-medium text-gray-800">Session Progress</h5>
+                        <p className="text-sm text-gray-600">
+                          {learningPlan.completed_sessions || 0} of {learningPlan.total_sessions || 0} sessions completed
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {Math.round(learningPlan.progress_percentage || 0)}%
+                      </div>
+                      <div className="text-xs text-gray-500">Complete</div>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${Math.min(learningPlan.progress_percentage || 0, 100)}%` }}
+                    ></div>
+                  </div>
+                  
+                  {/* Session Stats */}
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">
+                        {learningPlan.completed_sessions || 0}
+                      </div>
+                      <div className="text-xs text-gray-600">Completed</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-600">
+                        {(learningPlan.total_sessions || 0) - (learningPlan.completed_sessions || 0)}
+                      </div>
+                      <div className="text-xs text-gray-600">Remaining</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weekly Schedule Progress */}
+                {learningPlan.plan_content.weekly_schedule && learningPlan.plan_content.weekly_schedule.length > 0 && (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4">
+                    <h5 className="font-medium text-gray-800 mb-3 flex items-center">
+                      <Calendar className="h-4 w-4 mr-2 text-amber-600" />
+                      Weekly Schedule Progress
+                    </h5>
+                    
+                    {/* Calculate weeks progress based on sessions */}
+                    {(() => {
+                      const totalWeeks = learningPlan.duration_months * 4; // 4 weeks per month
+                      const sessionsPerWeek = 2; // Assuming 2 sessions per week
+                      const completedWeeks = Math.floor((learningPlan.completed_sessions || 0) / sessionsPerWeek);
+                      const currentWeek = Math.min(completedWeeks + 1, totalWeeks);
+                      
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Week {currentWeek} of {totalWeeks}</span>
+                            <span className="font-medium text-amber-700">
+                              {Math.round((completedWeeks / totalWeeks) * 100)}% of weeks completed
+                            </span>
+                          </div>
+                          
+                          {/* Week Progress Bar */}
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-500 ease-out"
+                              style={{ width: `${Math.min((completedWeeks / totalWeeks) * 100, 100)}%` }}
+                            ></div>
+                          </div>
+                          
+                          {/* Current Week Focus */}
+                          {learningPlan.plan_content.weekly_schedule[Math.min(currentWeek - 1, learningPlan.plan_content.weekly_schedule.length - 1)] && (
+                            <div className="mt-3 p-3 bg-white rounded-lg border border-amber-200">
+                              <h6 className="font-medium text-gray-800 text-sm mb-1">
+                                Current Focus (Week {currentWeek}):
+                              </h6>
+                              <p className="text-sm text-gray-600">
+                                {learningPlan.plan_content.weekly_schedule[Math.min(currentWeek - 1, learningPlan.plan_content.weekly_schedule.length - 1)].focus}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

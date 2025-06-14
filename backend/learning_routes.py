@@ -42,6 +42,9 @@ class LearningPlan(BaseModel):
     plan_content: Dict[str, Any]
     assessment_data: Optional[Dict[str, Any]] = None
     created_at: str
+    total_sessions: Optional[int] = None
+    completed_sessions: Optional[int] = 0
+    progress_percentage: Optional[float] = 0.0
 
 # Initialize learning goals collection
 learning_goals_collection = database.learning_goals
@@ -218,6 +221,20 @@ async def create_learning_plan(
         # We're using the mock plan content defined above
         # No need to call OpenAI API or parse the response
         
+        # Calculate total sessions based on duration
+        def calculate_total_sessions(duration_months: int) -> int:
+            """Calculate total sessions based on duration"""
+            session_mapping = {
+                1: 8,   # 1 month = 4 weeks, 8 sessions
+                2: 16,  # 2 months = 8 weeks, 16 sessions
+                3: 24,  # 3 months = 12 weeks, 24 sessions
+                6: 48,  # 6 months = 24 weeks, 48 sessions
+                12: 96  # 12 months = 48 weeks, 96 sessions
+            }
+            return session_mapping.get(duration_months, duration_months * 8)  # Default: 8 sessions per month
+        
+        total_sessions = calculate_total_sessions(plan_request.duration_months)
+        
         # Create a new learning plan
         from datetime import datetime
         import uuid
@@ -232,7 +249,10 @@ async def create_learning_plan(
             "custom_goal": plan_request.custom_goal,
             "plan_content": plan_content_json,
             "assessment_data": plan_request.assessment_data,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
+            "total_sessions": total_sessions,
+            "completed_sessions": 0,
+            "progress_percentage": 0.0
         }
         
         # If user is authenticated and assessment data is provided, update user profile
@@ -283,6 +303,40 @@ async def get_learning_plan(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this learning plan"
         )
+    
+    # Ensure backward compatibility - add missing progress fields for existing plans
+    if "total_sessions" not in plan or plan.get("total_sessions") is None:
+        def calculate_total_sessions(duration_months: int) -> int:
+            """Calculate total sessions based on duration"""
+            session_mapping = {
+                1: 8,   # 1 month = 4 weeks, 8 sessions
+                2: 16,  # 2 months = 8 weeks, 16 sessions
+                3: 24,  # 3 months = 12 weeks, 24 sessions
+                6: 48,  # 6 months = 24 weeks, 48 sessions
+                12: 96  # 12 months = 48 weeks, 96 sessions
+            }
+            return session_mapping.get(duration_months, duration_months * 8)  # Default: 8 sessions per month
+        
+        total_sessions = calculate_total_sessions(plan.get("duration_months", 1))
+        completed_sessions = plan.get("completed_sessions", 0)
+        progress_percentage = (completed_sessions / total_sessions) * 100 if total_sessions > 0 else 0.0
+        
+        # Update the plan in the database
+        await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {
+                "total_sessions": total_sessions,
+                "completed_sessions": completed_sessions,
+                "progress_percentage": progress_percentage
+            }}
+        )
+        
+        # Update the plan object to return
+        plan["total_sessions"] = total_sessions
+        plan["completed_sessions"] = completed_sessions
+        plan["progress_percentage"] = progress_percentage
+        
+        print(f"Updated existing plan {plan_id} with progress tracking: {completed_sessions}/{total_sessions} sessions ({progress_percentage:.1f}%)")
     
     return plan
 
@@ -385,18 +439,118 @@ async def get_user_learning_plans(
                 pass
         else:
             logger.info(f"Found {len(plans)} plans using string user ID")
+        
+        # Ensure backward compatibility - add missing progress fields for existing plans
+        def calculate_total_sessions(duration_months: int) -> int:
+            """Calculate total sessions based on duration"""
+            session_mapping = {
+                1: 8,   # 1 month = 4 weeks, 8 sessions
+                2: 16,  # 2 months = 8 weeks, 16 sessions
+                3: 24,  # 3 months = 12 weeks, 24 sessions
+                6: 48,  # 6 months = 24 weeks, 48 sessions
+                12: 96  # 12 months = 48 weeks, 96 sessions
+            }
+            return session_mapping.get(duration_months, duration_months * 8)  # Default: 8 sessions per month
+        
+        updated_plans = []
+        for plan in plans:
+            # Check if plan needs progress tracking fields
+            if "total_sessions" not in plan or plan.get("total_sessions") is None:
+                total_sessions = calculate_total_sessions(plan.get("duration_months", 1))
+                completed_sessions = plan.get("completed_sessions", 0)
+                progress_percentage = (completed_sessions / total_sessions) * 100 if total_sessions > 0 else 0.0
+                
+                # Update the plan in the database
+                await learning_plans_collection.update_one(
+                    {"id": plan["id"]},
+                    {"$set": {
+                        "total_sessions": total_sessions,
+                        "completed_sessions": completed_sessions,
+                        "progress_percentage": progress_percentage
+                    }}
+                )
+                
+                # Update the plan object
+                plan["total_sessions"] = total_sessions
+                plan["completed_sessions"] = completed_sessions
+                plan["progress_percentage"] = progress_percentage
+                
+                print(f"Updated existing plan {plan['id']} with progress tracking: {completed_sessions}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+            
+            updated_plans.append(plan)
+        
+        return updated_plans
     
     except Exception as e:
         logger.error(f"Error fetching learning plans: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching learning plans: {str(e)}")
-    
-    return plans
 
 
 class SpeakingAssessmentData(BaseModel):
     """Model for speaking assessment data"""
     assessment_data: Dict[str, Any]
 
+
+class SessionProgressUpdate(BaseModel):
+    """Model for updating session progress"""
+    plan_id: str
+    completed_sessions: int
+
+@router.put("/plan/{plan_id}/progress")
+async def update_session_progress(
+    plan_id: str,
+    progress_update: SessionProgressUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Update the session progress for a learning plan
+    """
+    try:
+        # Find the plan
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        
+        if not plan:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning plan not found"
+            )
+        
+        # Check if the plan belongs to the current user
+        if plan.get("user_id") and plan.get("user_id") != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to update this learning plan"
+            )
+        
+        # Calculate progress percentage
+        total_sessions = plan.get("total_sessions", 1)
+        progress_percentage = min((progress_update.completed_sessions / total_sessions) * 100, 100.0)
+        
+        # Update the plan
+        result = await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {
+                "completed_sessions": progress_update.completed_sessions,
+                "progress_percentage": progress_percentage
+            }}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update learning plan progress"
+            )
+        
+        # Get the updated plan
+        updated_plan = await learning_plans_collection.find_one({"id": plan_id})
+        return updated_plan
+        
+    except Exception as e:
+        logger.error(f"Error updating session progress: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating session progress: {str(e)}"
+        )
 
 @router.post("/save-assessment", response_model=UserResponse)
 async def save_assessment_data(
