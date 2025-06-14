@@ -94,7 +94,7 @@ export const assessSpeaking = async (
     const apiUrl = getApiUrl();
     
     // Make the API request
-    const response = await fetch(`${apiUrl}/api/assessment/speaking`, {
+    const response = await fetch(`${apiUrl}/api/speaking/assess`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -207,7 +207,7 @@ export const fetchSpeakingPrompts = async (
     // Try the first endpoint
     try {
       const response = await fetchWithTimeout(
-        `${apiUrl}/api/speaking-prompts?language=${encodeURIComponent(language)}`,
+        `${apiUrl}/api/speaking/prompts?language=${encodeURIComponent(language)}`,
         {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }

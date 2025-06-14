@@ -622,45 +622,9 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
                   {/* Weekly Schedule Preview with Pagination */}
                   {(() => {
-                    // Generate weekly schedule data if not available or incomplete
-                    const generateWeeklySchedule = (duration: number, existingSchedule?: any[]) => {
-                      const totalWeeks = duration * 4; // 4 weeks per month
-                      const weeks = [];
-                      
-                      for (let i = 1; i <= totalWeeks; i++) {
-                        // Check if we have existing data for this week
-                        const existingWeek = existingSchedule?.find(w => w.week === i);
-                        
-                        if (existingWeek) {
-                          weeks.push(existingWeek);
-                        } else {
-                          // Generate default week data based on learning progression
-                          const weekData = {
-                            week: i,
-                            focus: i <= 4 ? "Foundation Building" :
-                                   i <= 8 ? "Skill Development" :
-                                   i <= 12 ? "Practical Application" :
-                                   i <= 16 ? "Advanced Practice" :
-                                   i <= 20 ? "Fluency Enhancement" :
-                                   "Mastery & Refinement",
-                            activities: [
-                              `Week ${i} vocabulary expansion`,
-                              `Grammar practice for ${learningPlan.proficiency_level} level`,
-                              `Speaking exercises and conversation practice`,
-                              "Listening comprehension activities"
-                            ]
-                          };
-                          weeks.push(weekData);
-                        }
-                      }
-                      
-                      return weeks;
-                    };
-                    
-                    const allWeeks = generateWeeklySchedule(
-                      learningPlan.duration_months, 
-                      learningPlan.plan_content.weekly_schedule
-                    );
+                    // Use only the personalized weekly schedule from the learning plan
+                    // Don't generate generic weeks - show only what was created based on assessment
+                    const allWeeks = learningPlan.plan_content.weekly_schedule || [];
                     
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);

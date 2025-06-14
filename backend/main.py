@@ -465,6 +465,8 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
     
     # ✅ Build assessment-aware instructions
     assessment_context = ""
+    learning_plan_context = ""
+    
     if request.assessment_data:
         print(f"🎯 [ASSESSMENT] Integrating assessment data into instructions")
         
@@ -503,6 +505,67 @@ PERSONALIZED APPROACH:
         
         print(f"✅ Assessment context integrated: {len(assessment_context)} characters")
     
+    # ✅ Extract learning plan data if available
+    if request.assessment_data and 'learning_plan_data' in request.assessment_data:
+        print(f"🎯 [LEARNING_PLAN] Integrating learning plan data into instructions")
+        
+        learning_plan_data = request.assessment_data.get('learning_plan_data', {})
+        plan_content = learning_plan_data.get('plan_content', {})
+        
+        if plan_content:
+            # Calculate current week based on completed sessions and total sessions
+            completed_sessions = learning_plan_data.get('completed_sessions', 0)
+            total_sessions = learning_plan_data.get('total_sessions', 8)
+            
+            # Calculate sessions per week (assuming 2 sessions per week)
+            sessions_per_week = 2
+            current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
+            current_session_in_week = (completed_sessions % sessions_per_week) + 1
+            
+            # Extract current week data for focused conversation
+            weekly_schedule = plan_content.get('weekly_schedule', [])
+            current_week = weekly_schedule[current_week_number - 1] if current_week_number <= len(weekly_schedule) else weekly_schedule[0] if weekly_schedule else None
+            
+            if current_week:
+                week_focus = current_week.get('focus', 'Building foundational skills')
+                week_activities = current_week.get('activities', [])
+                
+                # Get previous session summaries if available
+                previous_sessions_context = ""
+                session_summaries = learning_plan_data.get('session_summaries', [])
+                if session_summaries:
+                    previous_sessions_context = f"""
+📝 PREVIOUS SESSION SUMMARIES:
+{chr(10).join([f"- Session {i+1}: {summary}" for i, summary in enumerate(session_summaries[-3:])])}
+
+LEARNING PROGRESSION:
+- Build upon insights from previous sessions
+- Reference progress made in earlier conversations
+- Continue developing skills identified in previous summaries"""
+                
+                learning_plan_context = f"""
+📚 LEARNING PLAN CONTEXT:
+- Plan Title: {plan_content.get('title', 'Personalized Learning Plan')}
+- Plan Overview: {plan_content.get('overview', 'Customized based on assessment results')}
+
+🎯 CURRENT WEEK FOCUS (Week {current_week_number}, Session {current_session_in_week}):
+- Focus Area: {week_focus}
+- Key Activities: {', '.join(week_activities[:3]) if week_activities else 'Practice conversation skills'}
+{previous_sessions_context}
+
+CONVERSATION GUIDANCE:
+- Center the conversation around this week's focus: "{week_focus}"
+- Incorporate activities from the learning plan: {', '.join(week_activities[:2]) if week_activities else 'speaking practice'}
+- Reference the student's learning journey and progress
+- Connect speaking practice to their personalized learning objectives
+- Encourage practice of specific skills mentioned in the weekly activities
+- Build upon previous session insights and maintain learning continuity"""
+                
+                print(f"✅ Learning plan context integrated: {len(learning_plan_context)} characters")
+                print(f"🎯 Current week {current_week_number} focus: {week_focus}")
+                print(f"🎯 Current week activities: {week_activities}")
+                print(f"🎯 Session {current_session_in_week} of week {current_week_number}")
+    
     # ✅ Handle custom topic (works on all browsers)
     if request.topic == "custom" and request.user_prompt:
         print(f"🎯 [CUSTOM_TOPIC] Creating universal custom topic instructions")
@@ -530,13 +593,27 @@ PERSONALIZED APPROACH:
             except Exception as e:
                 print(f"⚠️ Research failed: {str(e)}")
         
-        # ✅ Universal custom topic instructions with assessment data
+        # ✅ Universal custom topic instructions with assessment data and guardrails
         instructions = f"""🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
 
 You are a {language} language tutor for {level} level students.
 
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
+   "Let's focus on practicing {language} with our topic: {request.user_prompt}. This helps improve your language skills."
+4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
+{learning_plan_context}
 
 📚 TOPIC INFORMATION:
 {research_content if research_content else f'Use your knowledge about {request.user_prompt}.'}
@@ -552,7 +629,8 @@ CONVERSATION FOCUS:
 - Use the topic information provided
 - Adapt language complexity to {level} level
 - Be engaging and educational
-- Apply personalized feedback based on assessment results"""
+- Apply personalized feedback based on assessment results
+- If learning plan context is available, connect the topic to the student's learning objectives"""
         
         print(f"✅ Custom topic instructions: {len(instructions)} characters")
         return instructions
@@ -574,8 +652,22 @@ CONVERSATION FOCUS:
         
         instructions = f"""You are a {language} language tutor for {level} level students.
 
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
+   "Let's focus on practicing {language} with our topic: {topic_name}. This helps improve your language skills."
+4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
+{learning_plan_context}
 
 TOPIC: {topic_name}
 
@@ -584,23 +676,112 @@ Start your first message by introducing {topic_name} and asking an engaging ques
 Example: "Let's talk about {topic_name}! What interests you most about this topic?"
 
 Keep the conversation focused on {topic_name}.
-Apply personalized feedback based on assessment results."""
+Apply personalized feedback based on assessment results.
+If learning plan context is available, connect the topic to the student's weekly learning objectives."""
         
         return instructions
     
-    # Default general conversation with assessment data
+    # Default general conversation with assessment and learning plan data
     else:
         instructions = f"""You are a {language} language tutor for {level} level students.
 
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and educational topics
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
+   "Let's focus on practicing {language} and improving your language skills. What would you like to talk about in {language}?"
+4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
+{learning_plan_context}
 
 Start with: "{config['greeting']}"
 
 Be engaging and encourage conversation.
-Apply personalized feedback based on assessment results."""
+Apply personalized feedback based on assessment results.
+If learning plan context is available, focus the conversation on the current week's learning objectives."""
         
         return instructions
+
+# Add endpoint for session summary storage
+@app.post("/api/learning/session-summary")
+async def store_session_summary(
+    plan_id: str,
+    session_summary: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Store conversation analysis summary for a learning plan session
+    """
+    try:
+        from learning_routes import learning_plans_collection
+        
+        # Find the plan
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        
+        if not plan:
+            raise HTTPException(
+                status_code=404,
+                detail="Learning plan not found"
+            )
+        
+        # Check if the plan belongs to the current user
+        if plan.get("user_id") and plan.get("user_id") != str(current_user.id):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to update this learning plan"
+            )
+        
+        # Get existing session summaries or initialize empty list
+        session_summaries = plan.get("session_summaries", [])
+        
+        # Add new session summary
+        session_summaries.append(session_summary)
+        
+        # Update completed sessions count
+        completed_sessions = plan.get("completed_sessions", 0) + 1
+        total_sessions = plan.get("total_sessions", 8)
+        progress_percentage = min((completed_sessions / total_sessions) * 100, 100.0)
+        
+        # Update the plan
+        result = await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {
+                "session_summaries": session_summaries,
+                "completed_sessions": completed_sessions,
+                "progress_percentage": progress_percentage
+            }}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update learning plan with session summary"
+            )
+        
+        print(f"✅ Session summary stored for plan {plan_id}, session {completed_sessions}")
+        
+        return {
+            "success": True,
+            "completed_sessions": completed_sessions,
+            "progress_percentage": progress_percentage,
+            "total_summaries": len(session_summaries)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error storing session summary: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error storing session summary: {str(e)}"
+        )
+
 # Add endpoint for sentence construction assessment
 @app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
 async def assess_sentence_construction(request: SentenceAssessmentRequest):
@@ -637,372 +818,91 @@ async def assess_sentence_construction(request: SentenceAssessmentRequest):
             text=recognized_text,
             language=request.language,
             level=request.level,
-            exercise_type=request.exercise_type,
-            target_grammar=request.target_grammar
+            exercise_type=request.exercise_type
         )
         
-        # Combine the recognized text with the assessment results
-        result = SentenceAssessmentResponse(
-            recognized_text=recognized_text,
-            **assessment
-        )
+        return assessment
         
-        return result
-    
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         print(f"Error in sentence assessment: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Sentence assessment failed: {str(e)}")
-
-# New endpoint to handle custom topic research (called when user clicks Submit)
-@app.post("/api/custom-topic/research")
-async def research_custom_topic(request: CustomTopicRequest):
-    try:
-        # Extract user input from request
-        user_prompt = request.user_prompt
-        language = request.language.lower()
-        level = request.level.upper()
-        
-        # Enhanced logging for debugging
-        print("="*80)
-        print(f"[TOPIC_RESEARCH] Starting topic research request")
-        print(f"[TOPIC_RESEARCH] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
-        print(f"[TOPIC_RESEARCH] Language: {language}")
-        print(f"[TOPIC_RESEARCH] Level: {level}")
-        print(f"[TOPIC_RESEARCH] User prompt: {user_prompt}")
-        print("="*80)
-        
-        # Perform topic research using GPT-4o
-        try:
-            print(f"[TOPIC_RESEARCH] Using GPT-4o for comprehensive topic research")
-            research_prompt = f"""Provide comprehensive, educational information about: {user_prompt}
-            
-Please include:
-            - Key facts and context
-            - Recent developments (if applicable)
-            - Background information
-            - Relevant vocabulary for language learners
-            - Educational insights
-            
-Make this informative and suitable for {level} level {language} language learners."""
-            
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are an educational research assistant. Provide comprehensive, factual information about topics in a way that's educational for language learners. Include context, key vocabulary, and relevant details."},
-                    {"role": "user", "content": research_prompt}
-                ],
-                temperature=0.3,
-                max_tokens=1500
-            )
-            
-            if response and response.choices:
-                research_results = response.choices[0].message.content
-                print(f"[TOPIC_RESEARCH] ✅ Research successful - got {len(research_results)} characters")
-                print(f"[TOPIC_RESEARCH] Research preview: {research_results[:200]}...")
-                
-                return {
-                    "success": True,
-                    "topic": user_prompt,
-                    "research": research_results,
-                    "message": "Topic research completed successfully. You can now start speaking!"
-                }
-            else:
-                print(f"[TOPIC_RESEARCH] ❌ No research results returned")
-                return {
-                    "success": False,
-                    "topic": user_prompt,
-                    "research": "",
-                    "message": "Research failed, but you can still practice with this topic."
-                }
-                
-        except Exception as research_error:
-            print(f"[TOPIC_RESEARCH] ❌ Research failed: {str(research_error)}")
-            return {
-                "success": False,
-                "topic": user_prompt,
-                "research": "",
-                "message": "Research failed, but you can still practice with this topic."
-            }
-    
-    except Exception as e:
-        print(f"[TOPIC_RESEARCH] ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to research topic: {str(e)}")
-
-# Endpoint to handle custom topic prompts
-@app.post("/api/custom-topic")
-async def custom_topic(request: CustomTopicRequest):
-    try:
-        # Extract user input from request
-        user_prompt = request.user_prompt
-        language = request.language.lower()
-        level = request.level.upper()
-        
-        # Enhanced logging for debugging
-        print("="*80)
-        print(f"[CUSTOM_TOPIC] Starting custom topic request processing")
-        print(f"[CUSTOM_TOPIC] Timestamp: {__import__('datetime').datetime.now().isoformat()}")
-        print(f"[CUSTOM_TOPIC] Language: {language}")
-        print(f"[CUSTOM_TOPIC] Level: {level}")
-        print(f"[CUSTOM_TOPIC] Voice: {request.voice}")
-        print(f"[CUSTOM_TOPIC] Topic: {request.topic}")
-        print(f"[CUSTOM_TOPIC] User prompt length: {len(user_prompt)} characters")
-        print(f"[CUSTOM_TOPIC] User prompt preview: {user_prompt[:100]}...")
-        print(f"[CUSTOM_TOPIC] Full request data: {request.dict()}")
-        print("="*80)
-        
-        # Prepare system prompt based on language learning context
-        system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
-        system_prompt += "When answering questions, search for current information to provide accurate, up-to-date responses. "
-        system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
-        system_prompt += "Adapt your language complexity to the {level} proficiency level and make the response educational for language learning."
-        
-        # Note: OpenAI's web search is not yet available for gpt-4o-mini in the standard API
-        # Using enhanced prompting to provide the best possible response with available knowledge
-        print(f"[CUSTOM_TOPIC] Using enhanced language tutor response (web search not available for gpt-4o-mini)")
-        
-        # Enhanced fallback with better prompting
-        enhanced_system_prompt = f"You are a helpful language tutor for {language.capitalize()} at {level} level. "
-        enhanced_system_prompt += "While you don't have access to real-time information, provide the most comprehensive and educational response possible based on your training data. "
-        enhanced_system_prompt += "Include relevant vocabulary and phrases in your response when appropriate. "
-        enhanced_system_prompt += f"Adapt your language complexity to the {level} proficiency level. "
-        enhanced_system_prompt += "If the topic might have recent developments, acknowledge this and suggest where users might find more current information."
-        
-        print(f"[CUSTOM_TOPIC] System prompt length: {len(enhanced_system_prompt)} characters")
-        print(f"[CUSTOM_TOPIC] System prompt preview: {enhanced_system_prompt[:200]}...")
-        print(f"[CUSTOM_TOPIC] Calling OpenAI API with model: gpt-4o-mini")
-        
-        # Call OpenAI API to generate response using the standard chat completions endpoint
-        start_time = __import__('time').time()
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": enhanced_system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.7,
-                max_tokens=2048
-            )
-            end_time = __import__('time').time()
-            print(f"[CUSTOM_TOPIC] OpenAI API call completed in {end_time - start_time:.2f} seconds")
-            
-            # Log response details
-            print(f"[CUSTOM_TOPIC] Response object type: {type(response)}")
-            print(f"[CUSTOM_TOPIC] Response has choices: {hasattr(response, 'choices')}")
-            if hasattr(response, 'choices'):
-                print(f"[CUSTOM_TOPIC] Number of choices: {len(response.choices)}")
-                if response.choices:
-                    print(f"[CUSTOM_TOPIC] First choice type: {type(response.choices[0])}")
-                    print(f"[CUSTOM_TOPIC] First choice has message: {hasattr(response.choices[0], 'message')}")
-                    if hasattr(response.choices[0], 'message'):
-                        message = response.choices[0].message
-                        print(f"[CUSTOM_TOPIC] Message has content: {hasattr(message, 'content')}")
-                        if hasattr(message, 'content'):
-                            content = message.content
-                            print(f"[CUSTOM_TOPIC] Content length: {len(content) if content else 0} characters")
-                            print(f"[CUSTOM_TOPIC] Content preview: {content[:200] if content else 'None'}...")
-            
-            # Extract the response content
-            if response and hasattr(response, 'choices') and response.choices:
-                content = response.choices[0].message.content
-                print(f"[CUSTOM_TOPIC] Successfully extracted content, returning response")
-                print(f"[CUSTOM_TOPIC] Final response length: {len(content)} characters")
-                print("="*80)
-                return {"response": content}
-            else:
-                print(f"[CUSTOM_TOPIC] ERROR: Unexpected response structure")
-                print(f"[CUSTOM_TOPIC] Response: {response}")
-                print("="*80)
-                return {"response": "I apologize, but I received an unexpected response format. Please try again later."}
-                
-        except Exception as api_error:
-            end_time = __import__('time').time()
-            print(f"[CUSTOM_TOPIC] ERROR: OpenAI API call failed after {end_time - start_time:.2f} seconds")
-            print(f"[CUSTOM_TOPIC] API Error: {str(api_error)}")
-            print(f"[CUSTOM_TOPIC] API Error type: {type(api_error)}")
-            print("="*80)
-            raise api_error
-    
-    except Exception as e:
-        print(f"Error processing custom topic request: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to process custom topic request: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error analyzing sentence: {str(e)}")
 
 # Add endpoint for speaking assessment
-@app.post("/api/assessment/speaking", response_model=SpeakingAssessmentResponse)
-async def assess_speaking_proficiency(request: SpeakingAssessmentRequest):
+@app.post("/api/speaking/assess", response_model=SpeakingAssessmentResponse)
+async def assess_speaking(request: SpeakingAssessmentRequest):
     try:
-        # First, transcribe the audio if provided
-        if not request.transcript and request.audio_base64:
+        # Transcribe audio if provided
+        recognized_text = None
+        if request.audio_base64:
             try:
                 print("Transcribing audio for speaking assessment...")
-                request.transcript = await recognize_speech(request.audio_base64, request.language)
-                print(f"Transcribed text: '{request.transcript}'")
-            except Exception as audio_err:
-                print(f"Error transcribing assessment audio: {str(audio_err)}")
-                raise HTTPException(
-                    status_code=500, 
-                    detail="Failed to transcribe audio for assessment"
-                )
+                recognized_text = await recognize_speech(request.audio_base64, request.language)
+                print(f"Transcribed text: '{recognized_text}'")
+            except Exception as e:
+                print(f"Error transcribing audio: {str(e)}")
+                raise HTTPException(status_code=400, detail="Failed to transcribe audio")
         
-        if not request.transcript or request.transcript.strip() == "":
-            raise HTTPException(
-                status_code=400, 
-                detail="No speech detected or text provided for assessment"
-            )
+        if not recognized_text or recognized_text.strip() == "":
+            raise HTTPException(status_code=400, detail="No speech detected")
         
-        # Perform comprehensive language proficiency assessment
-        assessment_result = await evaluate_language_proficiency(
-            text=request.transcript,
+        # Evaluate language proficiency
+        assessment = await evaluate_language_proficiency(
+            text=recognized_text,
             language=request.language,
-            duration=request.duration
+            duration=request.duration or 60
         )
         
-        return assessment_result
-    
+        return assessment
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         print(f"Error in speaking assessment: {str(e)}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Speaking assessment failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error assessing speaking: {str(e)}")
 
-# Setup static file serving for the frontend
-# Check if we're in Railway environment and frontend build exists
-# Handle different working directory scenarios (local vs Railway)
-if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
-    # In Railway, the working directory is 'backend' but we need to access the parent directory
-    frontend_build_path = Path("/app/frontend/out")
-else:
-    # Local development - relative path from backend directory
-    frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+# Add endpoint for generating speaking prompts
+@app.get("/api/speaking/prompts")
+async def get_speaking_prompts(language: str, level: str, count: int = 3):
+    try:
+        prompts = await generate_speaking_prompts(language, level, count)
+        return {"prompts": prompts}
+    except Exception as e:
+        print(f"Error generating speaking prompts: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating prompts: {str(e)}")
 
-frontend_next_static_path = frontend_build_path / "_next" / "static"
-
-print(f"Checking for frontend build at: {frontend_build_path}")
-print(f"Frontend build exists: {frontend_build_path.exists()}")
-print(f"Frontend Next.js static exists: {frontend_next_static_path.exists()}")
-
-# Mount Next.js static files if they exist
-if frontend_next_static_path.exists():
-    print("Mounting Next.js static files")
-    app.mount("/_next/static", StaticFiles(directory=str(frontend_next_static_path)), name="nextstatic")
-
-# Mount other static assets from the out directory
-if frontend_build_path.exists():
-    # Mount images and other assets
-    frontend_images_path = frontend_build_path / "images"
-    frontend_sounds_path = frontend_build_path / "sounds"
-    
-    if frontend_images_path.exists():
-        print("Mounting frontend images")
-        app.mount("/images", StaticFiles(directory=str(frontend_images_path)), name="images")
-    
-    if frontend_sounds_path.exists():
-        print("Mounting frontend sounds")
-        app.mount("/sounds", StaticFiles(directory=str(frontend_sounds_path)), name="sounds")
-
-# Catch-all route to serve the frontend application
-@app.get("/{full_path:path}")
-async def serve_frontend(request: Request, full_path: str):
+# Add mock token endpoint for testing
+@app.post("/api/mock-token")
+async def generate_mock_token(request: TutorSessionRequest):
     """
-    Catch-all route to serve the Next.js frontend application.
-    This should be the last route defined.
+    Mock endpoint for testing when OpenAI API is not available
     """
-    # Don't serve frontend for API routes
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API endpoint not found")
-    
-    # Try to serve static files from the Next.js out directory
-    if frontend_build_path.exists():
-        try:
-            # Handle root path - serve index.html
-            if full_path == "" or full_path == "/":
-                index_path = frontend_build_path / "index.html"
-                if index_path.exists():
-                    print(f"Serving index.html from: {index_path}")
-                    return FileResponse(str(index_path), media_type="text/html")
-            
-            # Handle other paths - try to serve the corresponding HTML file
-            else:
-                # Clean the path
-                clean_path = full_path.strip("/")
-                
-                # Try to serve the exact file if it exists
-                file_path = frontend_build_path / clean_path
-                if file_path.exists() and file_path.is_file():
-                    print(f"Serving file: {file_path}")
-                    return FileResponse(str(file_path))
-                
-                # Try to serve as HTML file
-                html_path = frontend_build_path / f"{clean_path}.html"
-                if html_path.exists():
-                    print(f"Serving HTML file: {html_path}")
-                    return FileResponse(str(html_path), media_type="text/html")
-                
-                # Try to serve index.html from subdirectory
-                dir_index_path = frontend_build_path / clean_path / "index.html"
-                if dir_index_path.exists():
-                    print(f"Serving directory index: {dir_index_path}")
-                    return FileResponse(str(dir_index_path), media_type="text/html")
-                
-                # If nothing found, serve the main index.html (SPA fallback)
-                index_path = frontend_build_path / "index.html"
-                if index_path.exists():
-                    print(f"Serving SPA fallback index.html for path: {full_path}")
-                    return FileResponse(str(index_path), media_type="text/html")
-                    
-        except Exception as e:
-            print(f"Error serving static frontend file: {str(e)}")
-    
-    # Fallback: serve a basic HTML page that explains the issue
-    return HTMLResponse(
-        content="""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Language Tutor - Setup Required</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-                .container { max-width: 600px; margin: 0 auto; }
-                .error { background: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; border-radius: 5px; }
-                .api-link { background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 20px 0; }
-                code { background: #f1f3f4; padding: 2px 4px; border-radius: 3px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>Language Tutor Backend</h1>
-                <div class="error">
-                    <h2>Frontend Not Found</h2>
-                    <p>The frontend application build was not found. This usually means:</p>
-                    <ul>
-                        <li>The frontend hasn't been built yet</li>
-                        <li>The build process failed during deployment</li>
-                        <li>The frontend files are in a different location</li>
-                    </ul>
-                </div>
-                
-                <div class="api-link">
-                    <h3>API Status</h3>
-                    <p>The backend API is running. You can check the health status:</p>
-                    <p><a href="/api/health">API Health Check</a></p>
-                    <p><a href="/api/test">API Test Endpoint</a></p>
-                </div>
-                
-                <h3>Deployment Information</h3>
-                <p><strong>Environment:</strong> Railway</p>
-                <p><strong>Frontend Build Path:</strong> <code>frontend/.next</code></p>
-                <p><strong>Expected Files:</strong> Next.js standalone build</p>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=200
-    )
+    try:
+        print("🧪 [MOCK] Creating mock ephemeral token for testing")
+        
+        # Return a mock response that matches the expected format
+        mock_response = {
+            "id": "sess_mock_test_session",
+            "object": "realtime.session",
+            "model": "gpt-4o-realtime-preview-2024-12-17",
+            "expires_at": 1234567890,
+            "client_secret": {
+                "value": "ek_mock_test_key_for_development",
+                "expires_at": 1234567890
+            },
+            "ephemeral_key": "ek_mock_test_key_for_development"
+        }
+        
+        print("✅ [MOCK] Mock token created successfully")
+        return mock_response
+        
+    except Exception as e:
+        print(f"❌ [MOCK] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
