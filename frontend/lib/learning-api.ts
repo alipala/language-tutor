@@ -93,6 +93,11 @@ export interface LearningPlan {
     next_steps: string[];
   };
   created_at: string;
+  // Progress tracking fields (optional for backward compatibility)
+  total_sessions?: number;
+  completed_sessions?: number;
+  progress_percentage?: number;
+  session_summaries?: string[];
 }
 
 // Get learning goals

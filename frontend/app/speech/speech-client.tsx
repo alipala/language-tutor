@@ -408,8 +408,25 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
               // Check if the assessment data is recent and relevant
               const assessmentAge = plan.assessment_data.recognized_text;
               if (assessmentAge && assessmentAge !== 'Me too. Me too.' && assessmentAge.trim().length > 5) {
-                assessmentData = plan.assessment_data;
-                console.log('Retrieved valid assessment data from learning plan:', planParam);
+                // Include both assessment data and learning plan data
+                assessmentData = {
+                  ...plan.assessment_data,
+                  learning_plan_data: {
+                    plan_content: plan.plan_content,
+                    duration_months: plan.duration_months,
+                    goals: plan.goals,
+                    total_sessions: plan.total_sessions,
+                    completed_sessions: plan.completed_sessions,
+                    progress_percentage: plan.progress_percentage,
+                    session_summaries: plan.session_summaries || []
+                  }
+                };
+                console.log('Retrieved valid assessment data and learning plan data from learning plan:', planParam);
+                console.log('Learning plan data included:', {
+                  title: plan.plan_content?.title,
+                  weekly_schedule_length: plan.plan_content?.weekly_schedule?.length,
+                  first_week_focus: plan.plan_content?.weekly_schedule?.[0]?.focus
+                });
               } else {
                 console.log('Skipping old/invalid assessment data from learning plan');
               }

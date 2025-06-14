@@ -45,6 +45,7 @@ class LearningPlan(BaseModel):
     total_sessions: Optional[int] = None
     completed_sessions: Optional[int] = 0
     progress_percentage: Optional[float] = 0.0
+    session_summaries: Optional[List[str]] = []
 
 # Initialize learning goals collection
 learning_goals_collection = database.learning_goals

@@ -59,6 +59,13 @@ export const getGuestLimitationsDescription = (): string => {
 export const isPlanValid = (isAuthenticated: boolean, planCreationTime: string | null): boolean => {
   if (!planCreationTime) return false;
   
+  // For authenticated users, learning plans don't expire based on time
+  // They have persistent access to their learning plans
+  if (isAuthenticated) {
+    return true;
+  }
+  
+  // For guest users, apply time-based expiration
   try {
     const creationTime = new Date(planCreationTime).getTime();
     const currentTime = new Date().getTime();
@@ -84,6 +91,12 @@ export const isPlanValid = (isAuthenticated: boolean, planCreationTime: string |
 export const getRemainingTime = (isAuthenticated: boolean, planCreationTime: string | null): number => {
   if (!planCreationTime) return 0;
   
+  // For authenticated users, return the full conversation duration since plans don't expire
+  if (isAuthenticated) {
+    return getConversationDuration(isAuthenticated);
+  }
+  
+  // For guest users, calculate actual remaining time
   try {
     const creationTime = new Date(planCreationTime).getTime();
     const currentTime = new Date().getTime();
@@ -110,6 +123,14 @@ export const getRemainingTime = (isAuthenticated: boolean, planCreationTime: str
  * @returns {boolean} Whether the session is expired
  */
 export const checkAndMarkSessionExpired = (planId: string, isAuthenticated: boolean): boolean => {
+  // For authenticated users, learning plans never expire based on time
+  if (isAuthenticated) {
+    // Clear any existing expiration flag for authenticated users
+    sessionStorage.removeItem(`plan_${planId}_expired`);
+    return false;
+  }
+  
+  // For guest users, check expiration
   // Check if already marked as expired
   const isAlreadyExpired = sessionStorage.getItem(`plan_${planId}_expired`) === 'true';
   if (isAlreadyExpired) {
