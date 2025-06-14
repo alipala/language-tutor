@@ -327,21 +327,11 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {/* Learning Plan Section */}
           {learningPlan ? (
             <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                   <BookOpen className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
                   Your Personalized Learning Plan
                 </h3>
-                <button
-                  onClick={() => setShowPlanDetails(!showPlanDetails)}
-                  className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                  style={{ color: '#4ECFBF' }}
-                >
-                  {showPlanDetails ? 'Show less' : 'Show details'}
-                  <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
-                    showPlanDetails ? 'rotate-180' : ''
-                  }`} />
-                </button>
               </div>
               
               {/* Plan Overview */}
@@ -596,10 +586,22 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               
               {/* Learning Goals */}
               <div className="mb-4">
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-                  <Target className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
-                  Learning Goals
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-800 flex items-center">
+                    <Target className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
+                    Learning Goals
+                  </h4>
+                  <button
+                    onClick={() => setShowPlanDetails(!showPlanDetails)}
+                    className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
+                    style={{ color: '#4ECFBF' }}
+                  >
+                    {showPlanDetails ? 'Show less' : 'Show details'}
+                    <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
+                      showPlanDetails ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {learningPlan.goals.map((goal, index) => (
                     <Badge key={index} variant="secondary" className="bg-teal-100 text-teal-700">
