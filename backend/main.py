@@ -463,6 +463,46 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
         "greeting": f"Hello! I am your {language} language tutor."
     })
     
+    # ✅ Build assessment-aware instructions
+    assessment_context = ""
+    if request.assessment_data:
+        print(f"🎯 [ASSESSMENT] Integrating assessment data into instructions")
+        
+        # Extract assessment information
+        overall_score = request.assessment_data.get('overall_score', 0)
+        recommended_level = request.assessment_data.get('recommended_level', level)
+        strengths = request.assessment_data.get('strengths', [])
+        areas_for_improvement = request.assessment_data.get('areas_for_improvement', [])
+        
+        # Extract skill scores
+        pronunciation_score = request.assessment_data.get('pronunciation', {}).get('score', 0)
+        grammar_score = request.assessment_data.get('grammar', {}).get('score', 0)
+        vocabulary_score = request.assessment_data.get('vocabulary', {}).get('score', 0)
+        fluency_score = request.assessment_data.get('fluency', {}).get('score', 0)
+        coherence_score = request.assessment_data.get('coherence', {}).get('score', 0)
+        
+        # Build personalized context
+        assessment_context = f"""
+📊 STUDENT ASSESSMENT PROFILE:
+- Overall Score: {overall_score}/100
+- Recommended Level: {recommended_level}
+- Pronunciation: {pronunciation_score}/100
+- Grammar: {grammar_score}/100  
+- Vocabulary: {vocabulary_score}/100
+- Fluency: {fluency_score}/100
+- Coherence: {coherence_score}/100
+
+💪 STRENGTHS: {', '.join(strengths) if strengths else 'General communication'}
+🎯 FOCUS AREAS: {', '.join(areas_for_improvement) if areas_for_improvement else 'Overall improvement'}
+
+PERSONALIZED APPROACH:
+- Acknowledge their strengths in {', '.join(strengths[:2]) if strengths else 'communication'}
+- Focus on improving {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'speaking skills'}
+- Adapt difficulty to their {recommended_level} level capabilities
+- Provide targeted feedback based on their assessment results"""
+        
+        print(f"✅ Assessment context integrated: {len(assessment_context)} characters")
+    
     # ✅ Handle custom topic (works on all browsers)
     if request.topic == "custom" and request.user_prompt:
         print(f"🎯 [CUSTOM_TOPIC] Creating universal custom topic instructions")
@@ -490,12 +530,13 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
             except Exception as e:
                 print(f"⚠️ Research failed: {str(e)}")
         
-        # ✅ Universal custom topic instructions
+        # ✅ Universal custom topic instructions with assessment data
         instructions = f"""🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
 
 You are a {language} language tutor for {level} level students.
 
 LANGUAGE RULE: {config['rule']}
+{assessment_context}
 
 📚 TOPIC INFORMATION:
 {research_content if research_content else f'Use your knowledge about {request.user_prompt}.'}
@@ -510,7 +551,8 @@ CONVERSATION FOCUS:
 - Keep all conversation about '{request.user_prompt}'
 - Use the topic information provided
 - Adapt language complexity to {level} level
-- Be engaging and educational"""
+- Be engaging and educational
+- Apply personalized feedback based on assessment results"""
         
         print(f"✅ Custom topic instructions: {len(instructions)} characters")
         return instructions
@@ -533,6 +575,7 @@ CONVERSATION FOCUS:
         instructions = f"""You are a {language} language tutor for {level} level students.
 
 LANGUAGE RULE: {config['rule']}
+{assessment_context}
 
 TOPIC: {topic_name}
 
@@ -540,19 +583,22 @@ Start your first message by introducing {topic_name} and asking an engaging ques
 
 Example: "Let's talk about {topic_name}! What interests you most about this topic?"
 
-Keep the conversation focused on {topic_name}."""
+Keep the conversation focused on {topic_name}.
+Apply personalized feedback based on assessment results."""
         
         return instructions
     
-    # Default general conversation
+    # Default general conversation with assessment data
     else:
         instructions = f"""You are a {language} language tutor for {level} level students.
 
 LANGUAGE RULE: {config['rule']}
+{assessment_context}
 
 Start with: "{config['greeting']}"
 
-Be engaging and encourage conversation."""
+Be engaging and encourage conversation.
+Apply personalized feedback based on assessment results."""
         
         return instructions
 # Add endpoint for sentence construction assessment

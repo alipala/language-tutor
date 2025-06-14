@@ -82,6 +82,9 @@ interface LearningPlan {
   };
   assessment_data?: AssessmentData;
   created_at: string;
+  total_sessions?: number;
+  completed_sessions?: number;
+  progress_percentage?: number;
 }
 
 interface AssessmentLearningPlanCardProps {
@@ -123,6 +126,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
 }) => {
   const router = useRouter();
   const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [currentWeekPage, setCurrentWeekPage] = useState(0);
   
   const formattedDate = assessment.date ? formatDate(new Date(assessment.date)) : 'N/A';
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
@@ -198,7 +202,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 {/* Progress */}
                 <div className="bg-gradient-to-br from-emerald-400 to-green-500 rounded-lg p-3 text-center text-white shadow-md">
                   <BarChart3 className="h-4 w-4 mx-auto mb-1 opacity-90" />
-                  <div className="text-sm font-bold">75%</div>
+                  <div className="text-sm font-bold">{Math.round(learningPlan.progress_percentage || 0)}%</div>
                   <div className="text-white/90 text-xs">Progress</div>
                 </div>
               </>
@@ -324,21 +328,11 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {/* Learning Plan Section */}
           {learningPlan ? (
             <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                   <BookOpen className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
                   Your Personalized Learning Plan
                 </h3>
-                <button
-                  onClick={() => setShowPlanDetails(!showPlanDetails)}
-                  className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                  style={{ color: '#4ECFBF' }}
-                >
-                  {showPlanDetails ? 'Show less' : 'Show details'}
-                  <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
-                    showPlanDetails ? 'rotate-180' : ''
-                  }`} />
-                </button>
               </div>
               
               {/* Plan Overview */}
@@ -371,13 +365,244 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                   </div>
                 )}
               </div>
+
+              {/* Progress Tracking Section - Modern Card Design */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-800 mb-6 flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
+                  Learning Progress
+                </h4>
+                
+                {/* Modern Session Progress Card */}
+                <div className="relative overflow-hidden bg-white rounded-2xl shadow-lg border border-gray-100 mb-6">
+                  {/* Animated Background Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 opacity-60"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-200/30 to-transparent rounded-full -mr-16 -mt-16"></div>
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-200/30 to-transparent rounded-full -ml-12 -mb-12"></div>
+                  
+                  <div className="relative z-10 p-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center">
+                        <div className="relative">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <CheckCircle className="h-6 w-6 text-white" />
+                          </div>
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div className="ml-4">
+                          <h5 className="text-lg font-bold text-gray-800">Session Progress</h5>
+                          <p className="text-sm text-gray-600">
+                            {learningPlan.completed_sessions || 0} of {learningPlan.total_sessions || 0} sessions completed
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Circular Progress Indicator */}
+                      <div className="relative w-16 h-16">
+                        <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            className="text-gray-200"
+                          />
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            strokeDasharray={`${2 * Math.PI * 28}`}
+                            strokeDashoffset={`${2 * Math.PI * 28 * (1 - (learningPlan.progress_percentage || 0) / 100)}`}
+                            className="text-blue-500 transition-all duration-1000 ease-out"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-sm font-bold text-gray-800">
+                            {Math.round(learningPlan.progress_percentage || 0)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Modern Progress Bar with Sliding Animation */}
+                    <div className="mb-6">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+                        <span className="text-sm text-gray-500">{Math.round(learningPlan.progress_percentage || 0)}% Complete</span>
+                      </div>
+                      <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                        {/* Background shimmer effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        {/* Progress fill with sliding animation */}
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                          style={{ width: `${Math.min(learningPlan.progress_percentage || 0, 100)}%` }}
+                        >
+                          {/* Sliding highlight effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Stats Cards with Hover Effects */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="group bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-2 group-hover:bg-green-200 transition-colors">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          </div>
+                          <div className="text-xl font-bold text-green-600">
+                            {learningPlan.completed_sessions || 0}
+                          </div>
+                          <div className="text-xs text-gray-600 font-medium">Completed</div>
+                        </div>
+                      </div>
+                      
+                      <div className="group bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-2 group-hover:bg-orange-200 transition-colors">
+                            <Clock className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <div className="text-xl font-bold text-orange-600">
+                            {(learningPlan.total_sessions || 0) - (learningPlan.completed_sessions || 0)}
+                          </div>
+                          <div className="text-xs text-gray-600 font-medium">Remaining</div>
+                        </div>
+                      </div>
+                      
+                      <div className="group bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-200 transition-colors">
+                            <Target className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div className="text-xl font-bold text-blue-600">
+                            {learningPlan.total_sessions || 0}
+                          </div>
+                          <div className="text-xs text-gray-600 font-medium">Total</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weekly Schedule Progress - Modern Card */}
+                {learningPlan.plan_content.weekly_schedule && learningPlan.plan_content.weekly_schedule.length > 0 && (
+                  <div className="relative overflow-hidden bg-white rounded-2xl shadow-lg border border-gray-100">
+                    {/* Animated Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 opacity-60"></div>
+                    <div className="absolute top-0 left-0 w-28 h-28 bg-gradient-to-br from-amber-200/30 to-transparent rounded-full -ml-14 -mt-14"></div>
+                    <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-orange-200/30 to-transparent rounded-full -mr-10 -mb-10"></div>
+                    
+                    <div className="relative z-10 p-6">
+                      <div className="flex items-center mb-6">
+                        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <Calendar className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="ml-4">
+                          <h5 className="text-lg font-bold text-gray-800">Weekly Schedule</h5>
+                          <p className="text-sm text-gray-600">Track your weekly learning journey</p>
+                        </div>
+                      </div>
+                      
+                      {/* Calculate weeks progress based on sessions */}
+                      {(() => {
+                        const totalWeeks = learningPlan.duration_months * 4; // 4 weeks per month
+                        const sessionsPerWeek = 2; // Assuming 2 sessions per week
+                        const completedWeeks = Math.floor((learningPlan.completed_sessions || 0) / sessionsPerWeek);
+                        const currentWeek = Math.min(completedWeeks + 1, totalWeeks);
+                        const weekProgress = (completedWeeks / totalWeeks) * 100;
+                        
+                        return (
+                          <div className="space-y-4">
+                            {/* Week Progress Header */}
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center space-x-3">
+                                <div className="bg-white/80 backdrop-blur-sm rounded-lg px-3 py-1 border border-amber-200">
+                                  <span className="text-sm font-medium text-amber-800">
+                                    Week {currentWeek} of {totalWeeks}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {Math.round(weekProgress)}% weeks completed
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Modern Week Progress Bar */}
+                            <div className="relative">
+                              <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-full transition-all duration-1000 ease-out relative"
+                                  style={{ width: `${Math.min(weekProgress, 100)}%` }}
+                                >
+                                  {/* Sliding shine effect */}
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse"></div>
+                                </div>
+                              </div>
+                              {/* Progress markers */}
+                              <div className="absolute top-0 left-0 w-full h-full flex justify-between items-center px-1">
+                                {Array.from({ length: Math.min(totalWeeks, 12) }, (_, i) => (
+                                  <div 
+                                    key={i}
+                                    className={`w-1 h-6 rounded-full ${
+                                      i < completedWeeks ? 'bg-white/80' : 'bg-gray-300/50'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Current Week Focus Card */}
+                            {learningPlan.plan_content.weekly_schedule[Math.min(currentWeek - 1, learningPlan.plan_content.weekly_schedule.length - 1)] && (
+                              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-amber-200 hover:shadow-md transition-all duration-300">
+                                <div className="flex items-start space-x-3">
+                                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <Star className="h-4 w-4 text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <h6 className="font-semibold text-gray-800 text-sm mb-1">
+                                      Current Focus (Week {currentWeek})
+                                    </h6>
+                                    <p className="text-sm text-gray-600 leading-relaxed">
+                                      {learningPlan.plan_content.weekly_schedule[Math.min(currentWeek - 1, learningPlan.plan_content.weekly_schedule.length - 1)].focus}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
               
               {/* Learning Goals */}
               <div className="mb-4">
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-                  <Target className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
-                  Learning Goals
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-800 flex items-center">
+                    <Target className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
+                    Learning Goals
+                  </h4>
+                  <button
+                    onClick={() => setShowPlanDetails(!showPlanDetails)}
+                    className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
+                    style={{ color: '#4ECFBF' }}
+                  >
+                    {showPlanDetails ? 'Show less' : 'Show details'}
+                    <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
+                      showPlanDetails ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {learningPlan.goals.map((goal, index) => (
                     <Badge key={index} variant="secondary" className="bg-teal-100 text-teal-700">
@@ -395,27 +620,215 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               {/* Detailed Plan View */}
               {showPlanDetails && (
                 <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
-                  {/* Weekly Schedule Preview */}
-                  {learningPlan.plan_content.weekly_schedule && learningPlan.plan_content.weekly_schedule.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">Weekly Schedule Preview</h5>
-                      <div className="space-y-3">
-                        {learningPlan.plan_content.weekly_schedule.slice(0, 2).map((week, index) => (
-                          <div key={index} className="bg-gray-50 rounded-lg p-4">
-                            <h6 className="font-medium text-gray-800 mb-2">Week {week.week}: {week.focus}</h6>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {week.activities.map((activity, actIndex) => (
-                                <li key={actIndex} className="flex items-start">
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-400 mt-2 mr-2 flex-shrink-0"></span>
-                                  {activity}
-                                </li>
-                              ))}
-                            </ul>
+                  {/* Weekly Schedule Preview with Pagination */}
+                  {(() => {
+                    // Generate weekly schedule data if not available or incomplete
+                    const generateWeeklySchedule = (duration: number, existingSchedule?: any[]) => {
+                      const totalWeeks = duration * 4; // 4 weeks per month
+                      const weeks = [];
+                      
+                      for (let i = 1; i <= totalWeeks; i++) {
+                        // Check if we have existing data for this week
+                        const existingWeek = existingSchedule?.find(w => w.week === i);
+                        
+                        if (existingWeek) {
+                          weeks.push(existingWeek);
+                        } else {
+                          // Generate default week data based on learning progression
+                          const weekData = {
+                            week: i,
+                            focus: i <= 4 ? "Foundation Building" :
+                                   i <= 8 ? "Skill Development" :
+                                   i <= 12 ? "Practical Application" :
+                                   i <= 16 ? "Advanced Practice" :
+                                   i <= 20 ? "Fluency Enhancement" :
+                                   "Mastery & Refinement",
+                            activities: [
+                              `Week ${i} vocabulary expansion`,
+                              `Grammar practice for ${learningPlan.proficiency_level} level`,
+                              `Speaking exercises and conversation practice`,
+                              "Listening comprehension activities"
+                            ]
+                          };
+                          weeks.push(weekData);
+                        }
+                      }
+                      
+                      return weeks;
+                    };
+                    
+                    const allWeeks = generateWeeklySchedule(
+                      learningPlan.duration_months, 
+                      learningPlan.plan_content.weekly_schedule
+                    );
+                    
+                    const weeksPerPage = 2;
+                    const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
+                    const currentWeeks = allWeeks.slice(
+                      currentWeekPage * weeksPerPage, 
+                      (currentWeekPage + 1) * weeksPerPage
+                    );
+                    
+                    return allWeeks.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h5 className="font-semibold text-gray-800">Weekly Schedule Preview</h5>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">
+                              {currentWeekPage * weeksPerPage + 1}-{Math.min((currentWeekPage + 1) * weeksPerPage, allWeeks.length)} of {allWeeks.length} weeks
+                            </span>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => setCurrentWeekPage(Math.max(0, currentWeekPage - 1))}
+                                disabled={currentWeekPage === 0}
+                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                style={{ color: '#4ECFBF' }}
+                              >
+                                <ChevronDown className="h-4 w-4 rotate-90" />
+                              </button>
+                              <button
+                                onClick={() => setCurrentWeekPage(Math.min(totalPages - 1, currentWeekPage + 1))}
+                                disabled={currentWeekPage === totalPages - 1}
+                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                style={{ color: '#4ECFBF' }}
+                              >
+                                <ChevronDown className="h-4 w-4 -rotate-90" />
+                              </button>
+                            </div>
                           </div>
-                        ))}
+                        </div>
+                        
+                        {/* Horizontal Sliding Cards Container */}
+                        <div className="relative overflow-hidden">
+                          <div 
+                            className="flex transition-transform duration-500 ease-in-out space-x-4"
+                            style={{ transform: `translateX(-${currentWeekPage * 100}%)` }}
+                          >
+                            {Array.from({ length: totalPages }, (_, pageIndex) => (
+                              <div key={pageIndex} className="flex-shrink-0 w-full">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {allWeeks.slice(pageIndex * weeksPerPage, (pageIndex + 1) * weeksPerPage).map((week, weekIndex) => {
+                                    const isCurrentWeek = week.week === Math.floor((learningPlan.completed_sessions || 0) / 2) + 1;
+                                    const isCompleted = week.week <= Math.floor((learningPlan.completed_sessions || 0) / 2);
+                                    
+                                    return (
+                                      <div 
+                                        key={week.week} 
+                                        className={`relative rounded-xl p-5 border-2 transition-all duration-300 hover:shadow-lg ${
+                                          isCurrentWeek 
+                                            ? 'border-blue-300 bg-blue-50 shadow-md' 
+                                            : isCompleted 
+                                              ? 'border-green-200 bg-green-50' 
+                                              : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                                        }`}
+                                      >
+                                        {/* Week Status Badge */}
+                                        <div className="absolute top-3 right-3">
+                                          {isCompleted ? (
+                                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                              <CheckCircle className="h-4 w-4 text-white" />
+                                            </div>
+                                          ) : isCurrentWeek ? (
+                                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                              <Clock className="h-4 w-4 text-white" />
+                                            </div>
+                                          ) : (
+                                            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
+                                              <span className="text-xs font-bold text-gray-600">{week.week}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Week Header */}
+                                        <div className="mb-4 pr-8">
+                                          <h6 className={`font-bold text-lg mb-1 ${
+                                            isCurrentWeek ? 'text-blue-800' : 
+                                            isCompleted ? 'text-green-800' : 'text-gray-800'
+                                          }`}>
+                                            Week {week.week}
+                                          </h6>
+                                          <p className={`text-sm font-medium ${
+                                            isCurrentWeek ? 'text-blue-700' : 
+                                            isCompleted ? 'text-green-700' : 'text-gray-600'
+                                          }`}>
+                                            {week.focus}
+                                          </p>
+                                        </div>
+                                        
+                                        {/* Week Activities */}
+                                        <div className="space-y-2">
+                                          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                            Activities
+                                          </div>
+                                          <ul className="space-y-2">
+                                            {week.activities.slice(0, 3).map((activity: string, actIndex: number) => (
+                                              <li key={actIndex} className="flex items-start text-sm">
+                                                <div className={`w-1.5 h-1.5 rounded-full mt-2 mr-3 flex-shrink-0 ${
+                                                  isCurrentWeek ? 'bg-blue-500' : 
+                                                  isCompleted ? 'bg-green-500' : 'bg-gray-400'
+                                                }`}></div>
+                                                <span className={`leading-relaxed ${
+                                                  isCurrentWeek ? 'text-blue-800' : 
+                                                  isCompleted ? 'text-green-800' : 'text-gray-700'
+                                                }`}>
+                                                  {activity}
+                                                </span>
+                                              </li>
+                                            ))}
+                                            {week.activities.length > 3 && (
+                                              <li className="text-xs text-gray-500 ml-5">
+                                                +{week.activities.length - 3} more activities
+                                              </li>
+                                            )}
+                                          </ul>
+                                        </div>
+                                        
+                                        {/* Progress Indicator for Current Week */}
+                                        {isCurrentWeek && (
+                                          <div className="mt-4 pt-3 border-t border-blue-200">
+                                            <div className="flex items-center justify-between text-xs text-blue-700 mb-1">
+                                              <span>Week Progress</span>
+                                              <span>In Progress</span>
+                                            </div>
+                                            <div className="w-full bg-blue-200 rounded-full h-1.5">
+                                              <div 
+                                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                                                style={{ width: '60%' }}
+                                              ></div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Page Indicators */}
+                        {totalPages > 1 && (
+                          <div className="flex justify-center mt-4 space-x-2">
+                            {Array.from({ length: totalPages }, (_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentWeekPage(index)}
+                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                  index === currentWeekPage 
+                                    ? 'w-6 h-2' 
+                                    : 'hover:bg-gray-400'
+                                }`}
+                                style={{ 
+                                  backgroundColor: index === currentWeekPage ? '#4ECFBF' : '#D1D5DB'
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   
                   {/* Resources */}
                   {learningPlan.plan_content.resources && (
