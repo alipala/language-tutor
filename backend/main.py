@@ -852,7 +852,7 @@ async def assess_speaking(request: SpeakingAssessmentRequest):
         assessment = await evaluate_language_proficiency(
             text=recognized_text,
             language=request.language,
-            level=request.level
+            duration=request.duration or 60
         )
         
         return assessment
