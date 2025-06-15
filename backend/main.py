@@ -944,6 +944,16 @@ frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
 # Only mount static files if the build directory exists
 if frontend_build_path.exists():
     print(f"Mounting static files from: {frontend_build_path}")
+    
+    # List some files for debugging
+    html_files = list(frontend_build_path.glob("*.html"))
+    print(f"Found {len(html_files)} HTML files: {[f.name for f in html_files[:10]]}")
+    
+    # Check for specific files
+    for page in ["privacy.html", "terms.html", "cookies.html", "gdpr.html"]:
+        page_path = frontend_build_path / page
+        print(f"  {page}: {'EXISTS' if page_path.exists() else 'MISSING'}")
+    
     app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
 else:
     print(f"Warning: Frontend build directory not found at {frontend_build_path}")
