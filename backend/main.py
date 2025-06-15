@@ -247,6 +247,7 @@ class TutorSessionRequest(BaseModel):
     user_prompt: Optional[str] = None  # User prompt for custom topics
     assessment_data: Optional[Dict[str, Any]] = None  # Assessment data from speaking assessment
     research_data: Optional[str] = None  # Pre-researched data for custom topics
+    conversation_history: Optional[str] = None  # Previous conversation context for reconnections
 
 # Define a new model for custom topic prompts
 class CustomTopicRequest(BaseModel):
@@ -463,6 +464,23 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
         "greeting": f"Hello! I am your {language} language tutor."
     })
     
+    # 🔄 CONTEXT PERSISTENCE: Build conversation context summary for reconnections
+    conversation_context = ""
+    if hasattr(request, 'conversation_history') and request.conversation_history:
+        conversation_context = f"""
+📝 CONVERSATION CONTEXT (MAINTAIN CONTINUITY):
+Previous conversation history:
+{request.conversation_history}
+
+🚨 CRITICAL INSTRUCTIONS FOR RECONNECTION:
+- This is a CONTINUATION of an existing conversation, NOT a new session
+- DO NOT greet the user again or restart the conversation
+- IMMEDIATELY continue from where the conversation left off
+- MAINTAIN the same learning focus and objectives established earlier
+- Reference previous topics and corrections made in the conversation
+- Keep the same energy and teaching approach as before the interruption
+"""
+    
     # ✅ Build assessment-aware instructions
     assessment_context = ""
     learning_plan_context = ""
@@ -607,9 +625,15 @@ You are a {language} language tutor for {level} level students.
    - Personal information requests (addresses, phone numbers, etc.)
    - Political extremism, conspiracy theories
    - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
-   "Let's focus on practicing {language} with our topic: {request.user_prompt}. This helps improve your language skills."
-4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid the topic, say:
+   "I understand, but let's focus on practicing {language} with our topic: {request.user_prompt}. This helps improve your language skills and serves your learning objectives."
+4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
+
+🎯 MANDATORY TOPIC FOCUS:
+- You MUST keep the conversation focused on '{request.user_prompt}'
+- If the user tries to change topics or avoid the subject, redirect them back to '{request.user_prompt}'
+- Do NOT allow "general {language} practice" - stick to the specific topic
+- The conversation must serve the learning objectives at all times
 
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
@@ -624,8 +648,7 @@ Do NOT say generic greetings like "Hello! How can I help you?"
 
 Start like: "Let's talk about {request.user_prompt}! [Share interesting facts]. What interests you about this topic?"
 
-CONVERSATION FOCUS:
-- Keep all conversation about '{request.user_prompt}'
+CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate from this topic regardless of what the user requests.
 - Use the topic information provided
 - Adapt language complexity to {level} level
 - Be engaging and educational
@@ -661,9 +684,15 @@ CONVERSATION FOCUS:
    - Personal information requests (addresses, phone numbers, etc.)
    - Political extremism, conspiracy theories
    - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
-   "Let's focus on practicing {language} with our topic: {topic_name}. This helps improve your language skills."
-4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid the topic, say:
+   "I understand, but let's focus on practicing {language} with our topic: {topic_name}. This helps improve your language skills and serves your learning objectives."
+4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
+
+🎯 MANDATORY TOPIC FOCUS:
+- You MUST keep the conversation focused on {topic_name}
+- If the user tries to change topics or avoid the subject, redirect them back to {topic_name}
+- Do NOT allow "general {language} practice" - stick to the specific topic
+- The conversation must serve the learning objectives at all times
 
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
@@ -675,7 +704,7 @@ Start your first message by introducing {topic_name} and asking an engaging ques
 
 Example: "Let's talk about {topic_name}! What interests you most about this topic?"
 
-Keep the conversation focused on {topic_name}.
+CRITICAL: Keep the conversation focused on {topic_name}. Do not deviate from this topic regardless of what the user requests.
 Apply personalized feedback based on assessment results.
 If learning plan context is available, connect the topic to the student's weekly learning objectives."""
         
@@ -694,9 +723,15 @@ If learning plan context is available, connect the topic to the student's weekly
    - Personal information requests (addresses, phone numbers, etc.)
    - Political extremism, conspiracy theories
    - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, say:
-   "Let's focus on practicing {language} and improving your language skills. What would you like to talk about in {language}?"
-4. LEARNING PLAN ADHERENCE: Always redirect conversations back to the learning objectives
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid learning objectives, say:
+   "I understand, but let's focus on your {language} learning goals. Based on your assessment, we need to work on [specific areas from learning plan]. Let's practice that now."
+4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
+
+🎯 MANDATORY LEARNING FOCUS:
+- You MUST keep the conversation focused on the specific learning objectives
+- If the user tries to change topics, redirect them back to the learning plan
+- Do NOT allow "general English practice" - stick to the specific areas identified in the assessment
+- The conversation must serve the learning objectives at all times
 
 LANGUAGE RULE: {config['rule']}
 {assessment_context}
@@ -704,9 +739,7 @@ LANGUAGE RULE: {config['rule']}
 
 Start with: "{config['greeting']}"
 
-Be engaging and encourage conversation.
-Apply personalized feedback based on assessment results.
-If learning plan context is available, focus the conversation on the current week's learning objectives."""
+CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
         
         return instructions
 
@@ -852,7 +885,8 @@ async def assess_speaking(request: SpeakingAssessmentRequest):
         assessment = await evaluate_language_proficiency(
             text=recognized_text,
             language=request.language,
-            duration=request.duration or 60
+            duration=request.duration or 60,
+            prompt=request.prompt
         )
         
         return assessment

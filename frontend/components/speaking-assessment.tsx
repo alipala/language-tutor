@@ -158,12 +158,15 @@ export default function SpeakingAssessment({
     try {
       setStatus('processing');
       
+      // Create a general speaking prompt for assessment
+      const assessmentPrompt = `Please speak naturally in ${language} about any topic you're comfortable with. You can talk about your hobbies, daily life, experiences, or anything that interests you.`;
+      
       // Get assessment from API
       const result = await assessSpeaking(
         blob, 
         language, 
         initialDuration - timer,
-        promptRef.current
+        assessmentPrompt
       );
       
       // Set assessment result
