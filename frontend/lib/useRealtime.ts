@@ -2,6 +2,26 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import realtimeService from './realtimeService';
 import { RealtimeMessage, RealtimeEvent, RealtimeTextDeltaEvent, RealtimeAudioTranscriptionEvent } from './types';
 
+// Enhanced conversation memory interface
+interface ConversationMemory {
+  recentMessages: RealtimeMessage[];
+  conversationSummary: string;
+  learningContext: {
+    corrections: string[];
+    objectives: string[];
+    progressNotes: string[];
+  };
+  sessionMetadata: {
+    planId?: string;
+    weekNumber?: number;
+    sessionNumber?: number;
+    startTime: Date;
+    language: string;
+    level: string;
+    topic: string;
+  };
+}
+
 // Helper function to clean transcript text by removing duplicates
 function cleanTranscript(transcript: string): string {
   if (!transcript) return '';
@@ -14,6 +34,74 @@ function cleanTranscript(transcript: string): string {
   
   // Join back with a single space if there are multiple unique lines
   return uniqueLines.join(' ');
+}
+
+// Helper function to manage sliding window memory
+function manageConversationMemory(
+  messages: RealtimeMessage[], 
+  existingMemory?: ConversationMemory
+): ConversationMemory {
+  const RECENT_MESSAGE_LIMIT = 12; // Keep last 12 messages in full detail
+  
+  // Get recent messages
+  const recentMessages = messages.slice(-RECENT_MESSAGE_LIMIT);
+  
+  // If we have more messages than the limit, we need to summarize older ones
+  const olderMessages = messages.slice(0, -RECENT_MESSAGE_LIMIT);
+  
+  let conversationSummary = existingMemory?.conversationSummary || '';
+  
+  // If we have older messages that aren't summarized yet, create a simple summary
+  if (olderMessages.length > 0 && !conversationSummary) {
+    const userMessages = olderMessages.filter(m => m.role === 'user').length;
+    const assistantMessages = olderMessages.filter(m => m.role === 'assistant').length;
+    conversationSummary = `Earlier conversation: ${userMessages} student messages, ${assistantMessages} tutor responses. Topics covered and corrections made.`;
+  }
+  
+  return {
+    recentMessages,
+    conversationSummary,
+    learningContext: existingMemory?.learningContext || {
+      corrections: [],
+      objectives: [],
+      progressNotes: []
+    },
+    sessionMetadata: existingMemory?.sessionMetadata || {
+      startTime: new Date(),
+      language: '',
+      level: '',
+      topic: ''
+    }
+  };
+}
+
+// Enhanced context builder for conversation resumption
+function buildEnhancedConversationContext(memory: ConversationMemory): string {
+  const recentHistory = memory.recentMessages
+    .map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.content}`)
+    .join('\n');
+  
+  let context = '';
+  
+  if (memory.conversationSummary) {
+    context += `CONVERSATION SUMMARY:\n${memory.conversationSummary}\n\n`;
+  }
+  
+  if (memory.recentMessages.length > 0) {
+    context += `RECENT CONVERSATION:\n${recentHistory}\n\n`;
+  }
+  
+  if (memory.learningContext.corrections.length > 0) {
+    context += `CORRECTIONS MADE:\n${memory.learningContext.corrections.join(', ')}\n\n`;
+  }
+  
+  if (memory.learningContext.objectives.length > 0) {
+    context += `LEARNING OBJECTIVES COVERED:\n${memory.learningContext.objectives.join(', ')}\n\n`;
+  }
+  
+  context += 'CONTINUE SEAMLESSLY from where the conversation left off. Do not restart or greet again.';
+  
+  return context;
 }
 
 export function useRealtime() {
@@ -35,8 +123,82 @@ export function useRealtime() {
   const levelRef = useRef<string | undefined>();
   const topicRef = useRef<string | undefined>();
   
+  // Enhanced conversation memory state
+  const [conversationMemory, setConversationMemory] = useState<ConversationMemory | null>(null);
+  const conversationMemoryRef = useRef<ConversationMemory | null>(null);
+  
   // Reduce number of logs to prevent console spam
   const shouldLogEvent = useRef(true);
+
+  // Session storage key for conversation memory
+  const CONVERSATION_MEMORY_KEY = 'conversation_memory';
+
+  // Load conversation memory from session storage
+  const loadConversationMemory = useCallback((): ConversationMemory | null => {
+    if (!isBrowser) return null;
+    
+    try {
+      const stored = sessionStorage.getItem(CONVERSATION_MEMORY_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Convert startTime back to Date object
+        if (parsed.sessionMetadata?.startTime) {
+          parsed.sessionMetadata.startTime = new Date(parsed.sessionMetadata.startTime);
+        }
+        console.log('📚 Loaded conversation memory from session storage');
+        return parsed;
+      }
+    } catch (error) {
+      console.error('Error loading conversation memory:', error);
+    }
+    return null;
+  }, [isBrowser]);
+
+  // Save conversation memory to session storage
+  const saveConversationMemory = useCallback((memory: ConversationMemory) => {
+    if (!isBrowser) return;
+    
+    try {
+      sessionStorage.setItem(CONVERSATION_MEMORY_KEY, JSON.stringify(memory));
+      console.log('💾 Saved conversation memory to session storage');
+    } catch (error) {
+      console.error('Error saving conversation memory:', error);
+    }
+  }, [isBrowser]);
+
+  // Update conversation memory when messages change
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    // Get existing memory or create new one
+    const existingMemory = conversationMemoryRef.current || loadConversationMemory();
+    
+    // Auto-detect learning plan context from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const planId = urlParams.get('plan');
+    
+    // Create updated memory
+    const updatedMemory = manageConversationMemory(messages, existingMemory || undefined);
+    
+    // Update session metadata if we have current context
+    if (languageRef.current || levelRef.current || topicRef.current) {
+      updatedMemory.sessionMetadata = {
+        ...updatedMemory.sessionMetadata,
+        planId: planId || updatedMemory.sessionMetadata.planId,
+        language: languageRef.current || updatedMemory.sessionMetadata.language,
+        level: levelRef.current || updatedMemory.sessionMetadata.level,
+        topic: topicRef.current || updatedMemory.sessionMetadata.topic,
+        startTime: updatedMemory.sessionMetadata.startTime || new Date()
+      };
+    }
+    
+    // Update state and ref
+    setConversationMemory(updatedMemory);
+    conversationMemoryRef.current = updatedMemory;
+    
+    // Save to session storage
+    saveConversationMemory(updatedMemory);
+  }, [messages, loadConversationMemory, saveConversationMemory]);
 
   // Helper function to determine if we need a space between text segments
   const needSpaceBetween = (currentText: string, newText: string): boolean => {
@@ -418,11 +580,16 @@ export function useRealtime() {
     }
   }, [isBrowser, handleMessage]); // Add handleMessage to dependencies
 
-  // Format messages into a conversation history string
+  // Enhanced conversation history with sliding window memory
   const getFormattedConversationHistory = useCallback(() => {
     if (messages.length === 0) return '';
     
-    // Create a formatted string with roles and content
+    // Use enhanced conversation memory if available
+    if (conversationMemoryRef.current) {
+      return buildEnhancedConversationContext(conversationMemoryRef.current);
+    }
+    
+    // Fallback to simple formatting
     const formattedHistory = messages.map(msg => {
       const role = msg.role === 'assistant' ? 'Tutor' : 'Student';
       return `${role}: ${msg.content}`;
@@ -430,6 +597,11 @@ export function useRealtime() {
     
     return formattedHistory;
   }, [messages]);
+
+  // Get enhanced conversation memory for external use
+  const getConversationMemory = useCallback(() => {
+    return conversationMemoryRef.current;
+  }, []);
 
   // Start a conversation
   const startConversation = useCallback(async (conversationHistory?: string) => {
