@@ -939,7 +939,19 @@ async def generate_mock_token(request: TutorSessionRequest):
 
 # Mount static files from frontend build - MUST be at the end after all API routes
 # Get the path to the frontend build directory
-frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+# In Docker, we're running from /app/backend, so frontend/out is at /app/frontend/out
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production":
+    # In production (Railway), use absolute path from app root
+    frontend_build_path = Path("/app/frontend/out")
+else:
+    # In development, use relative path
+    frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+
+print(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
+print(f"Railway: {os.getenv('RAILWAY_ENVIRONMENT', 'false')}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"__file__ location: {Path(__file__).parent}")
+print(f"Calculated frontend build path: {frontend_build_path}")
 
 # Only mount static files if the build directory exists
 if frontend_build_path.exists():
