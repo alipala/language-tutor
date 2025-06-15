@@ -28,23 +28,23 @@
   }
   
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.4);
+    background: rgba(78, 207, 191, 0.1);
     border-radius: 4px;
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 214, 58, 0.5);
+    background: rgba(78, 207, 191, 0.5);
     border-radius: 4px;
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 169, 85, 0.7);
+    background: rgba(78, 207, 191, 0.7);
   }
   
   /* Firefox scrollbar */
   .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 214, 58, 0.5) rgba(30, 41, 59, 0.4);
+    scrollbar-color: rgba(78, 207, 191, 0.5) rgba(78, 207, 191, 0.1);
   }
   
   /* Microphone button animations */
@@ -93,8 +93,8 @@
 @layer base {
   :root {
     /* Modern gradient background colors */
-    --background: 235 25% 15%;
-    --background-end: 260 30% 10%;
+    --background: 180 60% 85%;
+    --background-end: 180 50% 75%;
     --foreground: 210 40% 98%;
     
     /* Font settings */
@@ -471,8 +471,8 @@
 
 /* Consistent app background */
 .app-background {
-  background-color: #0f172a;
-  background-image: linear-gradient(to bottom, #0f172a, #1e293b);
+  background-color: #4ECFBF;
+  background-image: linear-gradient(to bottom, #4ECFBF, #3a9e92);
   min-height: 100vh;
   width: 100%;
 }

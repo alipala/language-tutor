@@ -878,12 +878,6 @@ export default function Home() {
                 )}
               </motion.button>
               
-              <div className="contact-info">
-                <p className="email">Questions? Contact us at: support@languagetutor.ai</p>
-                <p className="project-info">Powered by advanced AI language models</p>
-                <p className="copyright">© 2025 Your Smart Language Coach. All rights reserved.</p>
-              </div>
-              
               {error && (
                 <div className="p-4 glass-card rounded-lg mt-8 border border-white/20 max-w-md mx-auto">
                   <p className="text-sm text-white/80">
