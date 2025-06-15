@@ -992,6 +992,96 @@ if frontend_build_path.exists():
         page_path = frontend_build_path / page
         print(f"  {page}: {'EXISTS' if page_path.exists() else 'MISSING'}")
     
+    # 🔧 FIX: Add explicit route handlers for static pages
+    # FastAPI's StaticFiles html=True is not working reliably, so we'll handle these explicitly
+    
+    @app.get("/privacy")
+    async def serve_privacy():
+        privacy_file = frontend_build_path / "privacy.html"
+        if privacy_file.exists():
+            return FileResponse(privacy_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Privacy page not found")
+    
+    @app.get("/terms")
+    async def serve_terms():
+        terms_file = frontend_build_path / "terms.html"
+        if terms_file.exists():
+            return FileResponse(terms_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Terms page not found")
+    
+    @app.get("/cookies")
+    async def serve_cookies():
+        cookies_file = frontend_build_path / "cookies.html"
+        if cookies_file.exists():
+            return FileResponse(cookies_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Cookies page not found")
+    
+    @app.get("/gdpr")
+    async def serve_gdpr():
+        gdpr_file = frontend_build_path / "gdpr.html"
+        if gdpr_file.exists():
+            return FileResponse(gdpr_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="GDPR page not found")
+    
+    @app.get("/about")
+    async def serve_about():
+        about_file = frontend_build_path / "about.html"
+        if about_file.exists():
+            return FileResponse(about_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="About page not found")
+    
+    @app.get("/help")
+    async def serve_help():
+        help_file = frontend_build_path / "help.html"
+        if help_file.exists():
+            return FileResponse(help_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Help page not found")
+    
+    @app.get("/careers")
+    async def serve_careers():
+        careers_file = frontend_build_path / "careers.html"
+        if careers_file.exists():
+            return FileResponse(careers_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Careers page not found")
+    
+    @app.get("/press")
+    async def serve_press():
+        press_file = frontend_build_path / "press.html"
+        if press_file.exists():
+            return FileResponse(press_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Press page not found")
+    
+    @app.get("/blog")
+    async def serve_blog():
+        blog_file = frontend_build_path / "blog.html"
+        if blog_file.exists():
+            return FileResponse(blog_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Blog page not found")
+    
+    @app.get("/research")
+    async def serve_research():
+        research_file = frontend_build_path / "research.html"
+        if research_file.exists():
+            return FileResponse(research_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Research page not found")
+    
+    @app.get("/community")
+    async def serve_community():
+        community_file = frontend_build_path / "community.html"
+        if community_file.exists():
+            return FileResponse(community_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Community page not found")
+    
+    @app.get("/status")
+    async def serve_status():
+        status_file = frontend_build_path / "status.html"
+        if status_file.exists():
+            return FileResponse(status_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Status page not found")
+    
+    print("✅ Added explicit route handlers for static pages")
+    
+    # Still mount StaticFiles for other assets like _next, images, etc.
     app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
 else:
     print(f"Warning: Frontend build directory not found at {frontend_build_path}")
