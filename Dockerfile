@@ -30,8 +30,17 @@ RUN npm cache clean --force
 # Install dependencies with explicit framer-motion
 RUN npm install
 RUN npm install framer-motion@12.6.2 --save
-# Build with increased memory allocation
-RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
+
+# Set production environment variables BEFORE build
+ENV NODE_ENV=production
+ENV ENVIRONMENT=production
+
+# Build with increased memory allocation and production environment
+RUN NODE_OPTIONS="--max-old-space-size=4096" NODE_ENV=production npm run build
+
+# Verify the build output exists
+RUN ls -la /app/frontend/out/ || echo "Build output directory not found"
+RUN ls -la /app/frontend/out/*.html || echo "No HTML files found in build output"
 
 # For static export mode, the build output is already in the 'out' directory
 # No need to copy files - the backend will serve directly from frontend/out
@@ -40,9 +49,8 @@ RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 # Back to app directory
 WORKDIR /app
 
-# Set environment variables
+# Set additional environment variables
 ENV PORT=3001
-ENV ENVIRONMENT=production
 
 # Expose the port
 EXPOSE 3001

@@ -937,6 +937,160 @@ async def generate_mock_token(request: TutorSessionRequest):
         print(f"❌ [MOCK] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Mount static files from frontend build - MUST be at the end after all API routes
+print("="*80)
+print("🔧 STATIC FILE MOUNTING DEBUG")
+print("="*80)
+
+# Get the path to the frontend build directory
+# In Docker, we're running from /app/backend, so frontend/out is at /app/frontend/out
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production":
+    # In production (Railway), use absolute path from app root
+    frontend_build_path = Path("/app/frontend/out")
+    print("🚀 PRODUCTION MODE DETECTED")
+else:
+    # In development, use relative path
+    frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+    print("🛠️ DEVELOPMENT MODE DETECTED")
+
+print(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
+print(f"Railway: {os.getenv('RAILWAY_ENVIRONMENT', 'false')}")
+print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not_set')}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"__file__ location: {Path(__file__).parent}")
+print(f"Calculated frontend build path: {frontend_build_path}")
+print(f"Frontend build path exists: {frontend_build_path.exists()}")
+
+# Additional debugging - check if files exist
+if frontend_build_path.exists():
+    try:
+        all_files = list(frontend_build_path.iterdir())
+        print(f"Total files/dirs in build path: {len(all_files)}")
+        html_files = list(frontend_build_path.glob("*.html"))
+        print(f"HTML files found: {len(html_files)}")
+        print(f"First 5 HTML files: {[f.name for f in html_files[:5]]}")
+        
+        # Check specific files
+        for page in ["privacy.html", "terms.html", "cookies.html", "about.html"]:
+            page_path = frontend_build_path / page
+            print(f"  {page}: {'✅ EXISTS' if page_path.exists() else '❌ MISSING'}")
+    except Exception as e:
+        print(f"❌ Error listing files: {e}")
+else:
+    print("❌ Frontend build path does not exist!")
+
+# Only mount static files if the build directory exists
+if frontend_build_path.exists():
+    print(f"Mounting static files from: {frontend_build_path}")
+    
+    # List some files for debugging
+    html_files = list(frontend_build_path.glob("*.html"))
+    print(f"Found {len(html_files)} HTML files: {[f.name for f in html_files[:10]]}")
+    
+    # Check for specific files
+    for page in ["privacy.html", "terms.html", "cookies.html", "gdpr.html"]:
+        page_path = frontend_build_path / page
+        print(f"  {page}: {'EXISTS' if page_path.exists() else 'MISSING'}")
+    
+    # 🔧 FIX: Add explicit route handlers for static pages
+    # FastAPI's StaticFiles html=True is not working reliably, so we'll handle these explicitly
+    
+    @app.get("/privacy")
+    async def serve_privacy():
+        privacy_file = frontend_build_path / "privacy.html"
+        if privacy_file.exists():
+            return FileResponse(privacy_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Privacy page not found")
+    
+    @app.get("/terms")
+    async def serve_terms():
+        terms_file = frontend_build_path / "terms.html"
+        if terms_file.exists():
+            return FileResponse(terms_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Terms page not found")
+    
+    @app.get("/cookies")
+    async def serve_cookies():
+        cookies_file = frontend_build_path / "cookies.html"
+        if cookies_file.exists():
+            return FileResponse(cookies_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Cookies page not found")
+    
+    @app.get("/gdpr")
+    async def serve_gdpr():
+        gdpr_file = frontend_build_path / "gdpr.html"
+        if gdpr_file.exists():
+            return FileResponse(gdpr_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="GDPR page not found")
+    
+    @app.get("/about")
+    async def serve_about():
+        about_file = frontend_build_path / "about.html"
+        if about_file.exists():
+            return FileResponse(about_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="About page not found")
+    
+    @app.get("/help")
+    async def serve_help():
+        help_file = frontend_build_path / "help.html"
+        if help_file.exists():
+            return FileResponse(help_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Help page not found")
+    
+    @app.get("/careers")
+    async def serve_careers():
+        careers_file = frontend_build_path / "careers.html"
+        if careers_file.exists():
+            return FileResponse(careers_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Careers page not found")
+    
+    @app.get("/press")
+    async def serve_press():
+        press_file = frontend_build_path / "press.html"
+        if press_file.exists():
+            return FileResponse(press_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Press page not found")
+    
+    @app.get("/blog")
+    async def serve_blog():
+        blog_file = frontend_build_path / "blog.html"
+        if blog_file.exists():
+            return FileResponse(blog_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Blog page not found")
+    
+    @app.get("/research")
+    async def serve_research():
+        research_file = frontend_build_path / "research.html"
+        if research_file.exists():
+            return FileResponse(research_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Research page not found")
+    
+    @app.get("/community")
+    async def serve_community():
+        community_file = frontend_build_path / "community.html"
+        if community_file.exists():
+            return FileResponse(community_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Community page not found")
+    
+    @app.get("/status")
+    async def serve_status():
+        status_file = frontend_build_path / "status.html"
+        if status_file.exists():
+            return FileResponse(status_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Status page not found")
+    
+    print("✅ Added explicit route handlers for static pages")
+    
+    # Still mount StaticFiles for other assets like _next, images, etc.
+    app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
+else:
+    print(f"Warning: Frontend build directory not found at {frontend_build_path}")
+    
+    # Add a fallback route for the root path
+    @app.get("/")
+    async def root():
+        return {"message": "Language Tutor API is running", "frontend_build": "not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
