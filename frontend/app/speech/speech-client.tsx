@@ -1215,7 +1215,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         ) : (
                           <>
                             <MicrophoneIcon isRecording={false} size={20} />
-                            <span className="font-medium text-slate-800 font-bold">Click to start speaking</span>
+                            <span className="font-medium text-gray-800 font-bold">Click to start speaking</span>
                           </>
                         )}
                       </Button>
@@ -1285,18 +1285,18 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                 >
                                   {message.role !== 'user' ? (
                                     <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md">
-                                      <span className="text-xs font-bold text-slate-800">T</span>
+                                      <span className="text-xs font-bold text-gray-800">T</span>
                                     </div>
                                   ) : (
                                     <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#D6E6FF] flex items-center justify-center ml-2 order-last shadow-md">
-                                      <span className="text-xs font-bold text-slate-800">{firstName.charAt(0)}</span>
+                                      <span className="text-xs font-bold text-gray-800">{firstName.charAt(0)}</span>
                                     </div>
                                   )}
                                   <div 
                                     className={`max-w-[85%] sm:max-w-[80%] break-words p-3 sm:p-4 lg:p-5 rounded-2xl shadow-md ${
                                       message.role === 'user' 
-                                        ? 'bg-[#D6E6FF] text-slate-800 ml-2 rounded-tr-none' 
-                                        : 'bg-[#AFF4EB] text-slate-800 mr-2 rounded-tl-none'
+                                        ? 'bg-[#D6E6FF] text-gray-800 ml-2 rounded-tr-none'
+                                        : 'bg-[#AFF4EB] text-gray-800 mr-2 rounded-tl-none'
                                     }`}
                                     style={{
                                       wordBreak: 'break-word',
@@ -1304,7 +1304,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                       whiteSpace: 'pre-wrap'
                                     }}
                                   >
-                                    <div className="flex items-center justify-between mb-1 text-slate-800">
+                                    <div className="flex items-center justify-between mb-1 text-gray-800">
                                       <span className="text-xs font-semibold">
                                         {message.role === 'user' ? firstName : 'Tutor'}
                                       </span>
@@ -1312,7 +1312,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                         {timeDisplay}
                                       </span>
                                     </div>
-                                    <p className="text-xs sm:text-sm leading-relaxed mt-1 text-slate-800">{message.content}</p>
+                                    <p className="text-xs sm:text-sm leading-relaxed mt-1 text-gray-800">{message.content}</p>
                                     
                                     {/* Analyze button in user message bubble - only show for messages that haven't been analyzed yet */}
                                     {message.role === 'user' && 
@@ -1327,7 +1327,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                               // Call the analyze function
                                               if (analyzeButtonRef.current) analyzeButtonRef.current();
                                             }}
-                                            className="px-2 py-1.5 sm:py-1 bg-[#FFD63A] hover:bg-[#FFA955] text-slate-800 text-xs rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1"
+                                            className="px-2 py-1.5 sm:py-1 bg-[#FFD63A] hover:bg-[#FFA955] text-gray-800 text-xs rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1"
                                           >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1392,7 +1392,7 @@ function MicrophoneIcon({ isRecording, size = 20 }: { isRecording: boolean; size
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="text-slate-800"
+      className="text-gray-800"
     >
       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
       <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>

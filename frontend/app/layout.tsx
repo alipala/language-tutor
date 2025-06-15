@@ -4,6 +4,8 @@ import Script from 'next/script'
 import './globals.css'
 import AuthProviderWrapper from '@/components/auth-provider-wrapper'
 import { NavigationProvider } from '@/lib/navigation'
+import NavBar from '@/components/nav-bar'
+import Footer from '@/components/footer'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -63,9 +65,11 @@ export default function RootLayout({
         <NavigationProvider>
           <AuthProviderWrapper>
             <div className="app-background min-h-screen w-full bg-[var(--turquoise)]">
+              <NavBar />
               <main id="main-content" tabIndex={-1} className="outline-none">
                 {children}
               </main>
+              <Footer />
             </div>
           </AuthProviderWrapper>
         </NavigationProvider>
