@@ -937,6 +937,22 @@ async def generate_mock_token(request: TutorSessionRequest):
         print(f"❌ [MOCK] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Mount static files from frontend build - MUST be at the end after all API routes
+# Get the path to the frontend build directory
+frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
+
+# Only mount static files if the build directory exists
+if frontend_build_path.exists():
+    print(f"Mounting static files from: {frontend_build_path}")
+    app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
+else:
+    print(f"Warning: Frontend build directory not found at {frontend_build_path}")
+    
+    # Add a fallback route for the root path
+    @app.get("/")
+    async def root():
+        return {"message": "Language Tutor API is running", "frontend_build": "not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
