@@ -825,12 +825,15 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
     
     if (isRecording) {
+      // Stop recording and pause the timer
+      console.log('🛑 Stopping recording - pausing timer');
+      setIsConversationTimerActive(false);
       handleEndConversation();
       return;
     }
     
     // Initialize timer but don't start it yet - it will start when AI begins speaking
-    if (!isConversationTimerActive) {
+    if (!isConversationTimerActive && conversationTimer === null) {
       const isUserAuthenticated = isAuthenticated();
       const duration = getConversationDuration(isUserAuthenticated); // Get appropriate duration based on auth status
       setConversationTimer(duration);
@@ -838,6 +841,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       setConversationTimeUp(false);
       
       console.log('Timer initialized but not started - waiting for AI to begin speaking');
+    } else if (conversationTimer !== null && !isConversationTimerActive) {
+      // Timer was paused, it will resume when AI begins speaking again
+      console.log('🔄 Resuming conversation - timer will restart when AI speaks');
     }
     
     // If starting a brand new conversation, reset the paused state
