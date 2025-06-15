@@ -459,6 +459,48 @@ export function useRealtime() {
         }
       }
       
+      // 🔄 CONTEXT PERSISTENCE: If we have conversation history, reinitialize with it
+      if (conversationHistory && conversationHistory.trim()) {
+        console.log('🔄 Reconnecting with conversation history:', conversationHistory.substring(0, 100) + '...');
+        
+        // Get a new ephemeral key with conversation history
+        try {
+          const storedUserPrompt = topicRef.current === 'custom' ? 
+            sessionStorage.getItem('customTopicPrompt') || undefined : undefined;
+          
+          // Get assessment data from session storage if available
+          let assessmentData = null;
+          const storedAssessmentData = sessionStorage.getItem('speakingAssessmentData');
+          if (storedAssessmentData) {
+            try {
+              assessmentData = JSON.parse(storedAssessmentData);
+            } catch (e) {
+              console.error('Error parsing assessment data:', e);
+            }
+          }
+          
+          // Get new ephemeral key with conversation history
+          const newKey = await realtimeService.getEphemeralKey(
+            languageRef.current,
+            levelRef.current,
+            topicRef.current,
+            storedUserPrompt,
+            assessmentData,
+            conversationHistory
+          );
+          
+          if (newKey) {
+            console.log('✅ Got new ephemeral key with conversation context');
+            // The service will use this new key with embedded conversation history
+          } else {
+            console.warn('⚠️ Failed to get new key with conversation history, proceeding without it');
+          }
+        } catch (contextError) {
+          console.error('❌ Error getting context-aware ephemeral key:', contextError);
+          // Continue without conversation history rather than failing completely
+        }
+      }
+      
       // Request microphone access
       console.log('Requesting microphone access...');
       const micSuccess = await realtimeService.startMicrophone();

@@ -34,7 +34,7 @@ class SpeakingAssessmentResponse(BaseModel):
     areas_for_improvement: List[str]
     next_steps: List[str]
 
-async def evaluate_language_proficiency(text: str, language: str, duration: int = 60) -> Dict:
+async def evaluate_language_proficiency(text: str, language: str, duration: int = 60, prompt: str = None) -> Dict:
     """Comprehensive assessment of language proficiency based on spoken text"""
     
     # CEFR level descriptions and criteria
@@ -119,6 +119,24 @@ async def evaluate_language_proficiency(text: str, language: str, duration: int 
     
     lang_focus = language_features.get(language.lower(), language_features["english"])
     
+    # Build prompt context for topic-specific assessment
+    prompt_context = ""
+    if prompt and prompt.strip():
+        prompt_context = f"""
+    
+    TOPIC CONTEXT: The user was asked to speak about: "{prompt}"
+    
+    🚨 CONTENT GUARDRAILS - ASSESS ADHERENCE:
+    1. TOPIC RELEVANCE: Evaluate if the speech stays on the given topic
+    2. EDUCATIONAL APPROPRIATENESS: Ensure content is educational and appropriate
+    3. OFF-TOPIC DETECTION: Note if the user went off-topic from "{prompt}"
+    
+    Include in your assessment:
+    - Whether the speaker stayed on topic
+    - How well they addressed the given prompt
+    - Topic-specific vocabulary usage
+    """
+    
     # Create customized prompt for OpenAI based on language and criteria
     system_prompt = f"""
     You are an expert CEFR language proficiency assessor for {language}. 
@@ -126,6 +144,7 @@ async def evaluate_language_proficiency(text: str, language: str, duration: int 
     
     For this language, pay special attention to: {lang_focus['assessment_focus']}
     Common pronunciation challenges include: {lang_focus['phonetic_challenges']}
+    {prompt_context}
     
     Consider these factors in your assessment:
     1. Grammatical accuracy and complexity
@@ -133,12 +152,14 @@ async def evaluate_language_proficiency(text: str, language: str, duration: int 
     3. Fluency and pace
     4. Coherence and organization
     5. Pronunciation and intonation
+    6. Topic adherence (if a specific topic was given)
     
     Based on a {duration}-second speaking sample, analyze the text and:
     - Count the total words spoken (important for fluency assessment)
     - Identify grammatical structures used and errors made
     - Assess vocabulary range, repetition, and appropriateness
     - Evaluate sentence complexity and connection of ideas
+    - Check topic relevance if a specific prompt was provided
     
     Then provide a comprehensive assessment in JSON format with these keys:
     - recognized_text (echo back the input text)

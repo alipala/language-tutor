@@ -702,7 +702,7 @@ export class RealtimeService {
   /**
    * Get an ephemeral key from the backend
    */
-  private async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any): Promise<string> {
+  public async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any, conversationHistory?: string): Promise<string> {
     // Flag to track if we're using the mock token endpoint
     let usedMockToken = false;
     
@@ -753,7 +753,8 @@ export class RealtimeService {
         topic: topic || null, // Add topic if provided
         user_prompt: userPrompt || null, // Add user prompt for custom topics
         assessment_data: assessmentData || null, // Add assessment data if provided
-        research_data: researchData || null // Add research data if available
+        research_data: researchData || null, // Add research data if available
+        conversation_history: conversationHistory || null // Add conversation history for reconnections
       };
       
       // Log if assessment data is provided
