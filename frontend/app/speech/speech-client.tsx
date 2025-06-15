@@ -595,6 +595,22 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     return !isLikelyWrongLanguage;
   };
 
+  // Start timer when AI begins speaking (first assistant message)
+  useEffect(() => {
+    const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+    
+    // If we have the first assistant message and timer is initialized but not active
+    if (assistantMessages.length > 0 && 
+        conversationTimer !== null && 
+        !isConversationTimerActive && 
+        !conversationTimeUp &&
+        isRecording) {
+      
+      console.log('🎯 AI has started speaking - starting conversation timer now!');
+      setIsConversationTimerActive(true);
+    }
+  }, [messages, conversationTimer, isConversationTimerActive, conversationTimeUp, isRecording]);
+
   // Handle transcript updates and language detection
   useEffect(() => {
     // Extract the latest user message for the transcript
@@ -809,20 +825,25 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
     
     if (isRecording) {
+      // Stop recording and pause the timer
+      console.log('🛑 Stopping recording - pausing timer');
+      setIsConversationTimerActive(false);
       handleEndConversation();
       return;
     }
     
-    // Start timer with appropriate duration for both guest and registered users
-    if (!isConversationTimerActive) {
+    // Initialize timer but don't start it yet - it will start when AI begins speaking
+    if (!isConversationTimerActive && conversationTimer === null) {
       const isUserAuthenticated = isAuthenticated();
       const duration = getConversationDuration(isUserAuthenticated); // Get appropriate duration based on auth status
       setConversationTimer(duration);
-      setIsConversationTimerActive(true);
+      // Don't start the timer here - it will start when AI begins speaking
       setConversationTimeUp(false);
       
-      // Timer information is now displayed visually in the modern timer component
-      // No need for popup notifications
+      console.log('Timer initialized but not started - waiting for AI to begin speaking');
+    } else if (conversationTimer !== null && !isConversationTimerActive) {
+      // Timer was paused, it will resume when AI begins speaking again
+      console.log('🔄 Resuming conversation - timer will restart when AI speaks');
     }
     
     // If starting a brand new conversation, reset the paused state
