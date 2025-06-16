@@ -305,9 +305,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = await response.json();
       console.log('Signup successful, user created:', userData);
       
-      // After signup, automatically log in
-      console.log('Proceeding to login after successful signup');
-      await login(email, password);
+      // Don't automatically login after signup - user needs to verify email first
+      // The signup page will handle showing the verification message
+      console.log('Signup completed successfully. User needs to verify email before login.');
+      
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'Signup failed');

@@ -16,6 +16,8 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessTransition, setShowSuccessTransition] = useState(false);
+  const [signupEmail, setSignupEmail] = useState<string>('');
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
   
   // Sync auth state with local state
   useEffect(() => {
@@ -33,28 +35,19 @@ export default function SignupPage() {
       const { name, email, password } = data;
       console.log('Signing up with:', { name, email });
       
-      // Check if there's a pending learning plan
-      const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
-      
-      // Store navigation intent in sessionStorage before authentication
-      sessionStorage.setItem('pendingRedirect', 'true');
-      sessionStorage.setItem('redirectTarget', pendingLearningPlanId ? '/speech' : '/language-selection');
-      sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
-      
       // Perform signup - wait for it to complete
       await signup(name, email, password);
       
-      // Show success transition
+      // Store email for verification message
+      setSignupEmail(email);
+      
+      // Show verification message instead of success transition
       setIsLoading(false);
-      setShowSuccessTransition(true);
+      setShowVerificationMessage(true);
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'Failed to create account. Please try again.');
       setIsLoading(false);
-      // Clear navigation intent on error
-      sessionStorage.removeItem('pendingRedirect');
-      sessionStorage.removeItem('redirectTarget');
-      sessionStorage.removeItem('redirectAttemptTime');
     }
   };
 
@@ -78,6 +71,11 @@ export default function SignupPage() {
     router.push(redirectTarget);
   };
 
+  const handleResendVerification = () => {
+    // Navigate to resend verification page with email
+    router.push(`/auth/resend-verification?email=${encodeURIComponent(signupEmail)}`);
+  };
+
   return (
     <div className="auth-page">
       {/* Navigation Bar */}
@@ -85,13 +83,60 @@ export default function SignupPage() {
 
       {/* Main content */}
       <main className="flex-grow flex items-center justify-center p-4 pt-20">
-        <AuthForm 
-          type="signup"
-          onSubmit={handleSignup}
-          onGoogleAuth={handleGoogleSignupSuccess}
-          isLoading={isLoading}
-          error={error}
-        />
+        {showVerificationMessage ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md mx-auto"
+          >
+            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Check Your Email
+              </h2>
+              
+              <p className="text-gray-600 mb-6">
+                We've sent a verification link to <strong>{signupEmail}</strong>. 
+                Please check your email and click the link to verify your account.
+              </p>
+              
+              <div className="space-y-4">
+                <button
+                  onClick={handleResendVerification}
+                  className="w-full bg-teal-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                >
+                  Resend Verification Email
+                </button>
+                
+                <Link
+                  href="/auth/login"
+                  className="block w-full text-center text-teal-600 py-3 px-4 rounded-lg font-medium hover:bg-teal-50 transition-colors"
+                >
+                  Back to Login
+                </Link>
+              </div>
+              
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Tip:</strong> Check your spam folder if you don't see the email within a few minutes.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <AuthForm 
+            type="signup"
+            onSubmit={handleSignup}
+            onGoogleAuth={handleGoogleSignupSuccess}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
       </main>
 
       {/* Success Transition */}
