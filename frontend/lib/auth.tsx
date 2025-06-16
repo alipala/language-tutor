@@ -5,7 +5,10 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 
 // API base URL
 // In Railway deployment, the API is served from the same domain
-const isRailway = typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
+const isRailway = typeof window !== 'undefined' && (
+  window.location.hostname.includes('railway.app') || 
+  window.location.hostname === 'mytacoai.com'
+);
 const API_URL = isRailway 
   ? '' // Empty string means same domain, which is correct for Railway
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
@@ -46,8 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuth = async () => {
       try {
         // Check if we're in Railway environment for additional logging
-        const isRailway = typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
-        if (isRailway) {
+        const isRailwayEnv = typeof window !== 'undefined' && (
+          window.location.hostname.includes('railway.app') || 
+          window.location.hostname === 'mytacoai.com'
+        );
+        if (isRailwayEnv) {
           console.log('Running auth check in Railway environment');
           console.log('API_URL:', API_URL);
         }
