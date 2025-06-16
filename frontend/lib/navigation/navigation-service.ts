@@ -25,7 +25,9 @@ class NavigationService {
    * Determines if the application is running in Railway production environment
    */
   isRailwayEnvironment(): boolean {
-    return typeof window !== 'undefined' && window.location.hostname.includes('railway.app');
+    return typeof window !== 'undefined' && 
+           (window.location.hostname.includes('railway.app') || 
+            window.location.hostname === 'mytacoai.com');
   }
 
   /**

@@ -44,18 +44,22 @@ origins = ["*"]  # Start with permissive setting
 # Check for Railway-specific environment
 if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
     print("Running in Railway environment, using permissive CORS settings")
-    # The correct frontend URL based on previous memory
-    frontend_url = "https://taco.up.railway.app"
+    # Support both domains
+    frontend_url = "https://mytacoai.com"  # Primary domain
     
-    # In production Railway environment, we use wildcard origins for maximum compatibility
-    # This is based on our previous deployment experience
-    origins = ["*"]
+    # In production Railway environment, include both domains
+    origins = [
+        "https://mytacoai.com",
+        "https://taco.up.railway.app",
+        "*"  # Keep wildcard for maximum compatibility
+    ]
 elif os.getenv("ENVIRONMENT") == "production":
     # For other production environments
-    frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
+    frontend_url = os.getenv("FRONTEND_URL", "https://mytacoai.com")
     origins = [
-        frontend_url,
+        "https://mytacoai.com",
         "https://taco.up.railway.app",
+        frontend_url,
     ]
 else:
     # For local development - explicitly include localhost:3000
