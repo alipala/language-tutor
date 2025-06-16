@@ -52,7 +52,13 @@ export default function LoginPage() {
       setShowSuccessTransition(true);
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Invalid email or password. Please try again.');
+      if (err.message === 'EMAIL_NOT_VERIFIED') {
+        setError('Your email address has not been verified. Please check your email for a verification link or request a new one.');
+        // Store email for potential resend
+        sessionStorage.setItem('unverifiedEmail', email);
+      } else {
+        setError(err.message || 'Invalid email or password. Please try again.');
+      }
       setIsLoading(false);
       // Clear navigation intent on error
       sessionStorage.removeItem('pendingRedirect');

@@ -59,6 +59,7 @@ try:
     users_collection = database.users
     sessions_collection = database.sessions
     password_reset_collection = database.password_resets
+    email_verification_collection = database.email_verifications
     conversation_sessions_collection = database.conversation_sessions
     learning_plans_collection = database.learning_plans
 except Exception as e:
@@ -69,6 +70,7 @@ except Exception as e:
     users_collection = None
     sessions_collection = None
     password_reset_collection = None
+    email_verification_collection = None
     conversation_sessions_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
@@ -86,7 +88,8 @@ async def init_db():
         # Check if collections are available
         if (users_collection is None or 
             sessions_collection is None or 
-            password_reset_collection is None):
+            password_reset_collection is None or
+            email_verification_collection is None):
             print("WARNING: Cannot initialize database indexes - collections not available")
             return
             
@@ -95,6 +98,9 @@ async def init_db():
         
         # Create TTL index for password reset tokens (expire after 1 hour)
         await password_reset_collection.create_index("created_at", expireAfterSeconds=60 * 60)
+        
+        # Create TTL index for email verification tokens (expire after 24 hours)
+        await email_verification_collection.create_index("expires_at", expireAfterSeconds=0)
         
         # Create unique index for email in users collection
         await users_collection.create_index("email", unique=True)

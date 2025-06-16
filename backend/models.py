@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field
 from bson import ObjectId
@@ -117,6 +117,30 @@ class PasswordReset(BaseModel):
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+
+# Email verification model
+class EmailVerification(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: str
+    email: EmailStr
+    token: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=24))
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+# Email verification request models
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+
+class EmailVerificationConfirm(BaseModel):
+    token: str
+    
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 # Conversation session models
 class ConversationMessage(BaseModel):

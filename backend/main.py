@@ -116,6 +116,14 @@ async def startup_db_client():
         await init_db()
         print("MongoDB initialized successfully")
         
+        # Mark existing users as verified (for email verification migration)
+        try:
+            from auth import mark_existing_users_verified
+            count = await mark_existing_users_verified()
+            print(f"✅ Email verification migration: Marked {count} existing users as verified")
+        except Exception as e:
+            print(f"⚠️ Email verification migration warning: {str(e)}")
+        
         # Log available collections and their document counts
         from database import database
         if database is not None:

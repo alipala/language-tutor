@@ -17,7 +17,10 @@ from models import (
     GoogleLoginRequest, 
     PasswordResetRequest, 
     PasswordResetConfirm,
-    UserUpdate
+    UserUpdate,
+    EmailVerificationRequest,
+    EmailVerificationConfirm,
+    ResendVerificationRequest
 )
 from auth import (
     authenticate_user, 
@@ -27,8 +30,14 @@ from auth import (
     create_password_reset_token,
     reset_password,
     create_session,
-    delete_session
+    delete_session,
+    verify_email_token,
+    mark_user_verified,
+    resend_verification_email,
+    mark_existing_users_verified,
+    get_user_by_id
 )
+from email_service import send_welcome_email
 from database import users_collection
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -50,6 +59,14 @@ async def login(login_data: LoginRequest):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Check if user's email is verified
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. Please check your email and click the verification link.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -303,3 +320,120 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     del updated_user["_id"]
     
     return UserResponse(**updated_user)
+
+# Email verification endpoints
+@router.post("/verify-email")
+async def verify_email(request: EmailVerificationConfirm):
+    """
+    Verify email address using verification token
+    """
+    try:
+        # Verify the token
+        user_id = await verify_email_token(request.token)
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired verification token"
+            )
+        
+        # Mark user as verified
+        success = await mark_user_verified(user_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to verify email"
+            )
+        
+        # Get user details for welcome email
+        user = await get_user_by_id(user_id)
+        if user:
+            # Send welcome email
+            try:
+                await send_welcome_email(user.email, user.name)
+                print(f"✅ Welcome email sent to {user.email}")
+            except Exception as e:
+                print(f"❌ Error sending welcome email: {str(e)}")
+                # Don't fail verification if welcome email fails
+        
+        return {
+            "message": "Email verified successfully",
+            "verified": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error verifying email: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to verify email"
+        )
+
+@router.post("/resend-verification")
+async def resend_verification(request: ResendVerificationRequest):
+    """
+    Resend verification email to user
+    """
+    try:
+        success = await resend_verification_email(request.email)
+        
+        # Always return success to prevent email enumeration
+        return {
+            "message": "If your email is registered and not yet verified, a new verification email has been sent.",
+            "sent": True
+        }
+        
+    except Exception as e:
+        print(f"❌ Error resending verification email: {str(e)}")
+        # Still return success to prevent email enumeration
+        return {
+            "message": "If your email is registered and not yet verified, a new verification email has been sent.",
+            "sent": True
+        }
+
+@router.post("/mark-existing-users-verified")
+async def mark_existing_verified():
+    """
+    Mark all existing users as verified (migration endpoint)
+    """
+    try:
+        count = await mark_existing_users_verified()
+        return {
+            "message": f"Marked {count} existing users as verified",
+            "count": count
+        }
+    except Exception as e:
+        print(f"❌ Error marking existing users as verified: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to mark existing users as verified"
+        )
+
+@router.get("/verification-status/{email}")
+async def get_verification_status(email: str):
+    """
+    Get verification status for an email (for debugging)
+    """
+    try:
+        user = await users_collection.find_one({"email": email})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        return {
+            "email": email,
+            "is_verified": user.get("is_verified", False),
+            "created_at": user.get("created_at"),
+            "last_login": user.get("last_login")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting verification status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get verification status"
+        )

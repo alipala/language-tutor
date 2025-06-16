@@ -233,8 +233,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Google login failed');
+        const error = await response.json();
+        if (response.status === 403 && error.detail?.includes('Email not verified')) {
+          throw new Error('EMAIL_NOT_VERIFIED');
+        }
+        throw new Error(error.detail || 'Login failed');
       }
 
       const data = await response.json();

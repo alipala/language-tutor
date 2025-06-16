@@ -14,8 +14,9 @@ from bson import ObjectId
 # We're using a simple hashlib implementation to avoid bcrypt issues
 print("Using hashlib for password hashing (bcrypt bypass)")
 
-from database import users_collection, sessions_collection, password_reset_collection
-from models import UserInDB, TokenData, UserResponse, UserCreate, PasswordReset
+from database import users_collection, sessions_collection, password_reset_collection, email_verification_collection
+from models import UserInDB, TokenData, UserResponse, UserCreate, PasswordReset, EmailVerification
+from email_service import send_verification_email, send_welcome_email
 
 # Load environment variables
 load_dotenv()
@@ -146,9 +147,8 @@ async def create_user(user: UserCreate) -> UserResponse:
     user_dict["hashed_password"] = hashed_password
     user_dict["created_at"] = datetime.utcnow()
     
-    # For local testing: automatically set users as verified
-    # In production, this would be done via email confirmation
-    user_dict["is_verified"] = True
+    # New users require email verification
+    user_dict["is_verified"] = False
     
     # Insert user into database
     result = await users_collection.insert_one(user_dict)
@@ -162,15 +162,27 @@ async def create_user(user: UserCreate) -> UserResponse:
             detail="Failed to create user"
         )
     
+    # Convert ObjectId to string for user_id
+    user_id = str(created_user["_id"])
+    
+    # Create email verification token and send verification email
+    try:
+        verification_token = await create_email_verification_token(user_id, user.email)
+        await send_verification_email(user.email, user.name, verification_token)
+        print(f"✅ Verification email sent to {user.email}")
+    except Exception as e:
+        print(f"❌ Error sending verification email: {str(e)}")
+        # Don't fail user creation if email sending fails
+    
     # Convert to UserResponse
     created_user_dict = created_user.copy()
     created_user_dict.pop("hashed_password", None)
     
     # Convert ObjectId to string for Pydantic model
-    created_user_dict["_id"] = str(created_user_dict["_id"])
+    created_user_dict["_id"] = user_id
     
     # Log successful user creation
-    print(f"User created successfully: {created_user_dict['email']}")
+    print(f"User created successfully: {created_user_dict['email']} (verification required)")
     
     return UserResponse(**created_user_dict)
 
@@ -274,3 +286,100 @@ async def delete_session(token: str) -> bool:
     # Delete the session
     result = await sessions_collection.delete_one({"token": token})
     return result.deleted_count > 0
+
+# Email verification functions
+async def create_email_verification_token(user_id: str, email: str) -> str:
+    """Create an email verification token for a user"""
+    # Generate a secure random token
+    token = secrets.token_urlsafe(32)
+    
+    # Delete any existing verification tokens for this user
+    await email_verification_collection.delete_many({"user_id": user_id})
+    
+    # Create verification record
+    verification_data = {
+        "user_id": user_id,
+        "email": email,
+        "token": token,
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(hours=24)
+    }
+    
+    # Insert the verification token
+    await email_verification_collection.insert_one(verification_data)
+    
+    return token
+
+async def verify_email_token(token: str) -> Optional[str]:
+    """Verify an email verification token and return user_id if valid"""
+    # Find the verification record
+    verification = await email_verification_collection.find_one({"token": token})
+    if not verification:
+        return None
+    
+    # Check if the token is expired
+    if datetime.utcnow() > verification.get("expires_at", datetime.min):
+        # Delete the expired token
+        await email_verification_collection.delete_one({"token": token})
+        return None
+    
+    return verification.get("user_id")
+
+async def mark_user_verified(user_id: str) -> bool:
+    """Mark a user as verified and delete their verification tokens"""
+    try:
+        # Convert user_id to ObjectId if it's a string
+        if isinstance(user_id, str) and ObjectId.is_valid(user_id):
+            user_object_id = ObjectId(user_id)
+        else:
+            user_object_id = user_id
+        
+        # Update user verification status
+        result = await users_collection.update_one(
+            {"_id": user_object_id},
+            {"$set": {"is_verified": True}}
+        )
+        
+        # Delete all verification tokens for this user
+        await email_verification_collection.delete_many({"user_id": user_id})
+        
+        return result.modified_count > 0
+    except Exception as e:
+        print(f"Error marking user as verified: {str(e)}")
+        return False
+
+async def resend_verification_email(email: str) -> bool:
+    """Resend verification email to a user"""
+    try:
+        # Find the user
+        user = await get_user_by_email(email)
+        if not user:
+            return False
+        
+        # Check if user is already verified
+        if user.is_verified:
+            return False
+        
+        # Create new verification token
+        token = await create_email_verification_token(str(user.id), email)
+        
+        # Send verification email
+        success = await send_verification_email(email, user.name, token)
+        
+        return success
+    except Exception as e:
+        print(f"Error resending verification email: {str(e)}")
+        return False
+
+async def mark_existing_users_verified():
+    """Mark all existing users as verified (for migration)"""
+    try:
+        result = await users_collection.update_many(
+            {"is_verified": {"$ne": True}},
+            {"$set": {"is_verified": True}}
+        )
+        print(f"✅ Marked {result.modified_count} existing users as verified")
+        return result.modified_count
+    except Exception as e:
+        print(f"❌ Error marking existing users as verified: {str(e)}")
+        return 0
