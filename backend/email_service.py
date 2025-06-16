@@ -182,8 +182,13 @@ The Language Tutor Team
 async def send_verification_email(email: str, name: str, verification_token: str) -> bool:
     """Send email verification email to user"""
     try:
+        print(f"[EMAIL] Attempting to send verification email to {email}")
+        print(f"[EMAIL] SMTP Config - Server: {SMTP_SERVER}, Port: {SMTP_PORT}, Username: {SMTP_USERNAME}")
+        print(f"[EMAIL] Frontend URL: {FRONTEND_URL}")
+        
         # Create verification link
         verification_link = f"{FRONTEND_URL}/auth/verify-email?token={verification_token}"
+        print(f"[EMAIL] Verification link: {verification_link}")
         
         # Create email message
         msg = MIMEMultipart('alternative')
@@ -202,17 +207,28 @@ async def send_verification_email(email: str, name: str, verification_token: str
         msg.attach(text_part)
         msg.attach(html_part)
         
-        # Send email
+        # Send email with detailed error handling
+        print(f"[EMAIL] Connecting to SMTP server...")
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            print(f"[EMAIL] Starting TLS...")
             server.starttls()
+            print(f"[EMAIL] Logging in with username: {SMTP_USERNAME}")
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            print(f"[EMAIL] Sending message...")
             server.send_message(msg)
         
         print(f"✅ Verification email sent successfully to {email}")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication Error for {email}: {str(e)}")
+        print(f"[EMAIL] Check SMTP credentials - Username: {SMTP_USERNAME}, Server: {SMTP_SERVER}")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP Error sending verification email to {email}: {str(e)}")
+        return False
     except Exception as e:
-        print(f"❌ Error sending verification email to {email}: {str(e)}")
+        print(f"❌ General error sending verification email to {email}: {str(e)}")
         return False
 
 async def send_welcome_email(email: str, name: str) -> bool:
