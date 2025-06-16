@@ -1112,7 +1112,50 @@ if frontend_build_path.exists():
             return FileResponse(reset_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Reset password page not found")
     
-    print("✅ Added explicit route handlers for static pages and auth routes")
+    # Add explicit handlers for main application routes
+    @app.get("/language-selection")
+    async def serve_language_selection():
+        file_path = frontend_build_path / "language-selection.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Language selection page not found")
+    
+    @app.get("/level-selection")
+    async def serve_level_selection():
+        file_path = frontend_build_path / "level-selection.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Level selection page not found")
+    
+    @app.get("/topic-selection")
+    async def serve_topic_selection():
+        file_path = frontend_build_path / "topic-selection.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Topic selection page not found")
+    
+    @app.get("/speech")
+    async def serve_speech():
+        file_path = frontend_build_path / "speech.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Speech page not found")
+    
+    @app.get("/profile")
+    async def serve_profile():
+        file_path = frontend_build_path / "profile.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Profile page not found")
+    
+    @app.get("/loading-modal-demo")
+    async def serve_loading_modal_demo():
+        file_path = frontend_build_path / "loading-modal-demo.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Loading modal demo page not found")
+    
+    print("✅ Added explicit route handlers for static pages, auth routes, and main application routes")
     
     # Still mount StaticFiles for other assets like _next, images, etc.
     app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
