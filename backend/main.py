@@ -1083,7 +1083,36 @@ if frontend_build_path.exists():
             return FileResponse(status_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Status page not found")
     
-    print("✅ Added explicit route handlers for static pages")
+    # Add explicit handlers for auth routes
+    @app.get("/auth/login")
+    async def serve_auth_login():
+        login_file = frontend_build_path / "auth" / "login.html"
+        if login_file.exists():
+            return FileResponse(login_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Login page not found")
+    
+    @app.get("/auth/signup")
+    async def serve_auth_signup():
+        signup_file = frontend_build_path / "auth" / "signup.html"
+        if signup_file.exists():
+            return FileResponse(signup_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Signup page not found")
+    
+    @app.get("/auth/forgot-password")
+    async def serve_auth_forgot_password():
+        forgot_file = frontend_build_path / "auth" / "forgot-password.html"
+        if forgot_file.exists():
+            return FileResponse(forgot_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Forgot password page not found")
+    
+    @app.get("/auth/reset-password")
+    async def serve_auth_reset_password():
+        reset_file = frontend_build_path / "auth" / "reset-password.html"
+        if reset_file.exists():
+            return FileResponse(reset_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Reset password page not found")
+    
+    print("✅ Added explicit route handlers for static pages and auth routes")
     
     # Still mount StaticFiles for other assets like _next, images, etc.
     app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
