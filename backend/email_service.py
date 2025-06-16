@@ -209,13 +209,25 @@ async def send_verification_email(email: str, name: str, verification_token: str
         
         # Send email with detailed error handling
         print(f"[EMAIL] Connecting to SMTP server...")
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            print(f"[EMAIL] Starting TLS...")
-            server.starttls()
-            print(f"[EMAIL] Logging in with username: {SMTP_USERNAME}")
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            print(f"[EMAIL] Sending message...")
-            server.send_message(msg)
+        
+        # Try SSL connection first (port 465), then fallback to STARTTLS (port 587)
+        if SMTP_PORT == 465:
+            # Use SSL connection
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                print(f"[EMAIL] Using SSL connection on port {SMTP_PORT}")
+                print(f"[EMAIL] Logging in with username: {SMTP_USERNAME}")
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                print(f"[EMAIL] Sending message...")
+                server.send_message(msg)
+        else:
+            # Use STARTTLS connection
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                print(f"[EMAIL] Starting TLS on port {SMTP_PORT}...")
+                server.starttls()
+                print(f"[EMAIL] Logging in with username: {SMTP_USERNAME}")
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                print(f"[EMAIL] Sending message...")
+                server.send_message(msg)
         
         print(f"✅ Verification email sent successfully to {email}")
         return True
