@@ -1,4 +1,5 @@
 # Use Python for the backend and Node.js for frontend build
+# Updated to fix domain configuration for mytacoai.com
 FROM python:3.11-slim
 
 # Set working directory

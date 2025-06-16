@@ -44,18 +44,22 @@ origins = ["*"]  # Start with permissive setting
 # Check for Railway-specific environment
 if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
     print("Running in Railway environment, using permissive CORS settings")
-    # The correct frontend URL based on previous memory
-    frontend_url = "https://taco.up.railway.app"
+    # Support both domains
+    frontend_url = "https://mytacoai.com"  # Primary domain
     
-    # In production Railway environment, we use wildcard origins for maximum compatibility
-    # This is based on our previous deployment experience
-    origins = ["*"]
+    # In production Railway environment, include both domains
+    origins = [
+        "https://mytacoai.com",
+        "https://taco.up.railway.app",
+        "*"  # Keep wildcard for maximum compatibility
+    ]
 elif os.getenv("ENVIRONMENT") == "production":
     # For other production environments
-    frontend_url = os.getenv("FRONTEND_URL", "https://taco.up.railway.app")
+    frontend_url = os.getenv("FRONTEND_URL", "https://mytacoai.com")
     origins = [
-        frontend_url,
+        "https://mytacoai.com",
         "https://taco.up.railway.app",
+        frontend_url,
     ]
 else:
     # For local development - explicitly include localhost:3000
@@ -1079,7 +1083,79 @@ if frontend_build_path.exists():
             return FileResponse(status_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Status page not found")
     
-    print("✅ Added explicit route handlers for static pages")
+    # Add explicit handlers for auth routes
+    @app.get("/auth/login")
+    async def serve_auth_login():
+        login_file = frontend_build_path / "auth" / "login.html"
+        if login_file.exists():
+            return FileResponse(login_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Login page not found")
+    
+    @app.get("/auth/signup")
+    async def serve_auth_signup():
+        signup_file = frontend_build_path / "auth" / "signup.html"
+        if signup_file.exists():
+            return FileResponse(signup_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Signup page not found")
+    
+    @app.get("/auth/forgot-password")
+    async def serve_auth_forgot_password():
+        forgot_file = frontend_build_path / "auth" / "forgot-password.html"
+        if forgot_file.exists():
+            return FileResponse(forgot_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Forgot password page not found")
+    
+    @app.get("/auth/reset-password")
+    async def serve_auth_reset_password():
+        reset_file = frontend_build_path / "auth" / "reset-password.html"
+        if reset_file.exists():
+            return FileResponse(reset_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Reset password page not found")
+    
+    # Add explicit handlers for main application routes
+    @app.get("/language-selection")
+    async def serve_language_selection():
+        file_path = frontend_build_path / "language-selection.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Language selection page not found")
+    
+    @app.get("/level-selection")
+    async def serve_level_selection():
+        file_path = frontend_build_path / "level-selection.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Level selection page not found")
+    
+    @app.get("/topic-selection")
+    async def serve_topic_selection():
+        file_path = frontend_build_path / "topic-selection.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Topic selection page not found")
+    
+    @app.get("/speech")
+    async def serve_speech():
+        file_path = frontend_build_path / "speech.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Speech page not found")
+    
+    @app.get("/profile")
+    async def serve_profile():
+        file_path = frontend_build_path / "profile.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Profile page not found")
+    
+    @app.get("/loading-modal-demo")
+    async def serve_loading_modal_demo():
+        file_path = frontend_build_path / "loading-modal-demo.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Loading modal demo page not found")
+    
+    print("✅ Added explicit route handlers for static pages, auth routes, and main application routes")
     
     # Still mount StaticFiles for other assets like _next, images, etc.
     app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
