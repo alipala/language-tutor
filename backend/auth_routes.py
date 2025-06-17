@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse
 from datetime import datetime, timedelta
 from typing import Optional
 import httpx
@@ -325,17 +326,75 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
 @router.get("/verify-email")
 async def verify_email_get_redirect(token: str):
     """
-    Handle GET requests from email links - redirect to frontend verification page
+    Handle GET requests from email links - directly verify and show success page
     """
-    print(f"[VERIFY-GET] Redirecting to frontend verification page with token: {token[:10]}...")
+    print(f"[VERIFY-GET] Processing verification directly for token: {token[:10]}...")
     
-    # Redirect to frontend verification page with a different path to avoid loop
-    from fastapi.responses import RedirectResponse
-    frontend_url = os.getenv("FRONTEND_URL", "https://mytacoai.com")
-    redirect_url = f"{frontend_url}/auth/email-verification?token={token}"
-    
-    print(f"[VERIFY-GET] Redirecting to: {redirect_url}")
-    return RedirectResponse(url=redirect_url, status_code=302)
+    try:
+        # Verify the token directly
+        user_id = await verify_email_token(token)
+        
+        if not user_id:
+            print(f"[VERIFY-GET] ❌ Token verification failed")
+            return HTMLResponse("""
+            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <h1 style="color: red;">Verification Failed</h1>
+                <p>The verification link is invalid or has expired.</p>
+                <a href="/auth/login" style="color: #4ECFBF; text-decoration: none;">Go to Login</a>
+            </body></html>
+            """)
+        
+        # Mark user as verified
+        success = await mark_user_verified(user_id)
+        
+        if not success:
+            print(f"[VERIFY-GET] ❌ Failed to mark user as verified")
+            return HTMLResponse("""
+            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <h1 style="color: red;">Verification Failed</h1>
+                <p>Failed to verify email. Please try again.</p>
+                <a href="/auth/login" style="color: #4ECFBF; text-decoration: none;">Go to Login</a>
+            </body></html>
+            """)
+        
+        print(f"[VERIFY-GET] ✅ User verified successfully")
+        
+        # Return success page with auto-redirect
+        return HTMLResponse("""
+        <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: linear-gradient(135deg, #4ECFBF, #3a9e92);">
+            <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto;">
+                <div style="width: 60px; height: 60px; background: #4ECFBF; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: white; font-size: 30px;">✓</span>
+                </div>
+                <h1 style="color: #2d7a6e; margin-bottom: 10px;">Email Verified!</h1>
+                <p style="color: #666; margin-bottom: 30px;">Your email has been successfully verified.</p>
+                <p style="color: #666; margin-bottom: 20px;">Redirecting to login page in <span id="countdown">3</span> seconds...</p>
+                <a href="/auth/login" style="background: #4ECFBF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Go to Login Now</a>
+            </div>
+            <script>
+                let count = 3;
+                const countdown = document.getElementById('countdown');
+                const timer = setInterval(() => {
+                    count--;
+                    countdown.textContent = count;
+                    if (count <= 0) {
+                        clearInterval(timer);
+                        window.location.href = '/auth/login?verified=true';
+                    }
+                }, 1000);
+            </script>
+        </body></html>
+        """)
+        
+    except Exception as e:
+        print(f"[VERIFY-GET] ❌ Error: {str(e)}")
+        return HTMLResponse("""
+        <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1 style="color: red;">Verification Error</h1>
+            <p>An error occurred during verification. Please try again.</p>
+            <a href="/auth/login" style="color: #4ECFBF; text-decoration: none;">Go to Login</a>
+        </body></html>
+        """)
 
 @router.post("/verify-email")
 async def verify_email(request: EmailVerificationConfirm):
