@@ -232,7 +232,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <Button
+          <button
             onClick={() => {
               // Clear any previous selections and navigate to language selection
               sessionStorage.removeItem('selectedLanguage');
@@ -242,7 +242,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               sessionStorage.removeItem('practiceMode');
               router.push('/language-selection');
             }}
-            className="bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold py-6 px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16"
+            className="bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16 flex items-center justify-center"
           >
             {/* Animated gradient text effect */}
             <span className="relative z-10 flex items-center justify-center">
@@ -251,7 +251,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
             
             {/* Animated background shimmer */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-teal-100/30 to-transparent transform -skew-x-12 -translate-x-full animate-shimmer"></div>
-          </Button>
+          </button>
         </motion.div>
 
         {/* Motivational message */}
