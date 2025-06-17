@@ -25,13 +25,20 @@ export default function VerifyEmailPage() {
   const verifyEmail = async (token: string) => {
     try {
       const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/auth/verify-email`, {
+      console.log('[VERIFY] Starting email verification process');
+      console.log('[VERIFY] API URL:', apiUrl);
+      console.log('[VERIFY] Token:', token);
+      
+      const response = await fetch(`${apiUrl}/auth/verify-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ token }),
       });
+      
+      console.log('[VERIFY] Response status:', response.status);
+      console.log('[VERIFY] Response headers:', Object.fromEntries(response.headers.entries()));
 
       const data = await response.json();
 

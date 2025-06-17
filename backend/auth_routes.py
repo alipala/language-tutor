@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse
 from datetime import datetime, timedelta
 from typing import Optional
 import httpx
@@ -322,48 +323,141 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     return UserResponse(**updated_user)
 
 # Email verification endpoints
+@router.get("/verify-email")
+async def verify_email_get_redirect(token: str):
+    """
+    Handle GET requests from email links - directly verify and show success page
+    """
+    print(f"[VERIFY-GET] Processing verification directly for token: {token[:10]}...")
+    
+    try:
+        # Verify the token directly
+        user_id = await verify_email_token(token)
+        
+        if not user_id:
+            print(f"[VERIFY-GET] ❌ Token verification failed")
+            return HTMLResponse("""
+            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <h1 style="color: red;">Verification Failed</h1>
+                <p>The verification link is invalid or has expired.</p>
+                <a href="/auth/login" style="color: #4ECFBF; text-decoration: none;">Go to Login</a>
+            </body></html>
+            """)
+        
+        # Mark user as verified
+        success = await mark_user_verified(user_id)
+        
+        if not success:
+            print(f"[VERIFY-GET] ❌ Failed to mark user as verified")
+            return HTMLResponse("""
+            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <h1 style="color: red;">Verification Failed</h1>
+                <p>Failed to verify email. Please try again.</p>
+                <a href="/auth/login" style="color: #4ECFBF; text-decoration: none;">Go to Login</a>
+            </body></html>
+            """)
+        
+        print(f"[VERIFY-GET] ✅ User verified successfully")
+        
+        # Return success page with auto-redirect
+        return HTMLResponse("""
+        <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: linear-gradient(135deg, #4ECFBF, #3a9e92);">
+            <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto;">
+                <div style="width: 60px; height: 60px; background: #4ECFBF; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: white; font-size: 30px;">✓</span>
+                </div>
+                <h1 style="color: #2d7a6e; margin-bottom: 10px;">Email Verified!</h1>
+                <p style="color: #666; margin-bottom: 30px;">Your email has been successfully verified.</p>
+                <p style="color: #666; margin-bottom: 20px;">Redirecting to login page in <span id="countdown">3</span> seconds...</p>
+                <a href="/auth/login" style="background: #4ECFBF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Go to Login Now</a>
+            </div>
+            <script>
+                let count = 3;
+                const countdown = document.getElementById('countdown');
+                const timer = setInterval(() => {
+                    count--;
+                    countdown.textContent = count;
+                    if (count <= 0) {
+                        clearInterval(timer);
+                        window.location.href = '/auth/login?verified=true';
+                    }
+                }, 1000);
+            </script>
+        </body></html>
+        """)
+        
+    except Exception as e:
+        print(f"[VERIFY-GET] ❌ Error: {str(e)}")
+        return HTMLResponse("""
+        <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1 style="color: red;">Verification Error</h1>
+            <p>An error occurred during verification. Please try again.</p>
+            <a href="/auth/login" style="color: #4ECFBF; text-decoration: none;">Go to Login</a>
+        </body></html>
+        """)
+
 @router.post("/verify-email")
 async def verify_email(request: EmailVerificationConfirm):
     """
     Verify email address using verification token
     """
+    print(f"[VERIFY-BACKEND] Starting email verification process")
+    print(f"[VERIFY-BACKEND] Token received: {request.token[:10]}...")
+    
     try:
         # Verify the token
+        print(f"[VERIFY-BACKEND] Verifying token...")
         user_id = await verify_email_token(request.token)
+        
         if not user_id:
+            print(f"[VERIFY-BACKEND] ❌ Token verification failed - invalid or expired token")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired verification token"
             )
         
+        print(f"[VERIFY-BACKEND] ✅ Token verified successfully for user_id: {user_id}")
+        
         # Mark user as verified
+        print(f"[VERIFY-BACKEND] Marking user as verified...")
         success = await mark_user_verified(user_id)
+        
         if not success:
+            print(f"[VERIFY-BACKEND] ❌ Failed to mark user as verified")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to verify email"
             )
         
+        print(f"[VERIFY-BACKEND] ✅ User marked as verified successfully")
+        
         # Get user details for welcome email
         user = await get_user_by_id(user_id)
         if user:
+            print(f"[VERIFY-BACKEND] User details retrieved: {user.email}")
             # Send welcome email
             try:
                 await send_welcome_email(user.email, user.name)
-                print(f"✅ Welcome email sent to {user.email}")
+                print(f"[VERIFY-BACKEND] ✅ Welcome email sent to {user.email}")
             except Exception as e:
-                print(f"❌ Error sending welcome email: {str(e)}")
+                print(f"[VERIFY-BACKEND] ❌ Error sending welcome email: {str(e)}")
                 # Don't fail verification if welcome email fails
+        else:
+            print(f"[VERIFY-BACKEND] ⚠️ Could not retrieve user details for user_id: {user_id}")
         
+        print(f"[VERIFY-BACKEND] ✅ Email verification completed successfully")
         return {
             "message": "Email verified successfully",
             "verified": True
         }
         
-    except HTTPException:
+    except HTTPException as he:
+        print(f"[VERIFY-BACKEND] ❌ HTTP Exception: {he.detail}")
         raise
     except Exception as e:
-        print(f"❌ Error verifying email: {str(e)}")
+        print(f"[VERIFY-BACKEND] ❌ Unexpected error verifying email: {str(e)}")
+        import traceback
+        print(f"[VERIFY-BACKEND] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to verify email"
