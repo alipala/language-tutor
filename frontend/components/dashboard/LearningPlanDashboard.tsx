@@ -167,7 +167,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   }
 
   return (
-    <section className={`py-12 bg-gradient-to-br from-gray-50 to-white ${className}`}>
+    <section className={`pt-24 pb-12 bg-gradient-to-br from-gray-50 to-white ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
