@@ -183,24 +183,15 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
             Continue your progress and achieve your language goals
           </p>
           
-          {/* Quick stats - removed minutes, kept sessions and streak */}
-          {progressStats && (
+          {/* Quick stats - only show streak if exists */}
+          {progressStats && progressStats.current_streak > 0 && (
             <div className="flex flex-wrap justify-center gap-6 text-sm">
               <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                <TrendingUp className="h-4 w-4 text-teal-500" />
+                <Award className="h-4 w-4 text-orange-500" />
                 <span className="text-gray-600">
-                  <strong className="text-gray-800">{progressStats.total_sessions}</strong> sessions
+                  <strong className="text-gray-800">{progressStats.current_streak}</strong> day streak
                 </span>
               </div>
-              
-              {progressStats.current_streak > 0 && (
-                <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                  <Award className="h-4 w-4 text-orange-500" />
-                  <span className="text-gray-600">
-                    <strong className="text-gray-800">{progressStats.current_streak}</strong> day streak
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </motion.div>
@@ -244,17 +235,17 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               sessionStorage.removeItem('practiceMode');
               router.push('/language-selection');
             }}
-            className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 hover:from-teal-600 hover:via-blue-600 hover:to-purple-600 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg relative overflow-hidden"
+            className="bg-white border-2 border-teal-500 hover:border-teal-600 text-teal-600 hover:text-teal-700 font-semibold py-4 px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg relative overflow-hidden min-w-[320px]"
           >
             {/* Animated gradient text effect */}
             <span className="relative z-10 flex items-center">
-              <Play className="h-6 w-6 mr-3" />
+              <Play className="h-6 w-6 mr-3 text-teal-500" />
               <span className="animated-gradient-text">Start New Learning Session</span>
-              <ChevronRight className="h-5 w-5 ml-2" />
+              <ChevronRight className="h-5 w-5 ml-2 text-teal-500" />
             </span>
             
             {/* Animated background shimmer */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full animate-shimmer"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-teal-100/30 to-transparent transform -skew-x-12 -translate-x-full animate-shimmer"></div>
           </Button>
         </motion.div>
 
