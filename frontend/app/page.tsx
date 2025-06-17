@@ -6,6 +6,7 @@ import { useNavigation } from '@/lib/navigation';
 import NavBar from '@/components/nav-bar';
 import { TypeAnimation } from 'react-type-animation';
 import FAQSection from '@/components/faq-section';
+import LearningPlanDashboard from '@/components/dashboard/LearningPlanDashboard';
 import './landing-sections.css';
 import { motion } from 'framer-motion';
 
@@ -118,7 +119,18 @@ export default function Home() {
       setIsLoading(false);
     }
   }, [authLoading, user, shouldAutoNavigate]);
+
+  // Show dashboard for authenticated users
+  if (!authLoading && user) {
+    return (
+      <div className="min-h-screen overflow-x-hidden w-full">
+        <NavBar />
+        <LearningPlanDashboard />
+      </div>
+    );
+  }
   
+  // Show landing page for guests
   return (
     <div className="min-h-screen overflow-x-hidden w-full">
       <NavBar />
