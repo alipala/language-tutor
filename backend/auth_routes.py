@@ -327,43 +327,63 @@ async def verify_email(request: EmailVerificationConfirm):
     """
     Verify email address using verification token
     """
+    print(f"[VERIFY-BACKEND] Starting email verification process")
+    print(f"[VERIFY-BACKEND] Token received: {request.token[:10]}...")
+    
     try:
         # Verify the token
+        print(f"[VERIFY-BACKEND] Verifying token...")
         user_id = await verify_email_token(request.token)
+        
         if not user_id:
+            print(f"[VERIFY-BACKEND] ❌ Token verification failed - invalid or expired token")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired verification token"
             )
         
+        print(f"[VERIFY-BACKEND] ✅ Token verified successfully for user_id: {user_id}")
+        
         # Mark user as verified
+        print(f"[VERIFY-BACKEND] Marking user as verified...")
         success = await mark_user_verified(user_id)
+        
         if not success:
+            print(f"[VERIFY-BACKEND] ❌ Failed to mark user as verified")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to verify email"
             )
         
+        print(f"[VERIFY-BACKEND] ✅ User marked as verified successfully")
+        
         # Get user details for welcome email
         user = await get_user_by_id(user_id)
         if user:
+            print(f"[VERIFY-BACKEND] User details retrieved: {user.email}")
             # Send welcome email
             try:
                 await send_welcome_email(user.email, user.name)
-                print(f"✅ Welcome email sent to {user.email}")
+                print(f"[VERIFY-BACKEND] ✅ Welcome email sent to {user.email}")
             except Exception as e:
-                print(f"❌ Error sending welcome email: {str(e)}")
+                print(f"[VERIFY-BACKEND] ❌ Error sending welcome email: {str(e)}")
                 # Don't fail verification if welcome email fails
+        else:
+            print(f"[VERIFY-BACKEND] ⚠️ Could not retrieve user details for user_id: {user_id}")
         
+        print(f"[VERIFY-BACKEND] ✅ Email verification completed successfully")
         return {
             "message": "Email verified successfully",
             "verified": True
         }
         
-    except HTTPException:
+    except HTTPException as he:
+        print(f"[VERIFY-BACKEND] ❌ HTTP Exception: {he.detail}")
         raise
     except Exception as e:
-        print(f"❌ Error verifying email: {str(e)}")
+        print(f"[VERIFY-BACKEND] ❌ Unexpected error verifying email: {str(e)}")
+        import traceback
+        print(f"[VERIFY-BACKEND] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to verify email"

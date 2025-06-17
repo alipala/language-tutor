@@ -312,17 +312,26 @@ async def create_email_verification_token(user_id: str, email: str) -> str:
 
 async def verify_email_token(token: str) -> Optional[str]:
     """Verify an email verification token and return user_id if valid"""
+    print(f"[AUTH] Verifying email token: {token[:10]}...")
+    
     # Find the verification record
     verification = await email_verification_collection.find_one({"token": token})
     if not verification:
+        print(f"[AUTH] ❌ Token not found in database")
         return None
+    
+    print(f"[AUTH] ✅ Token found for user_id: {verification.get('user_id')}")
+    print(f"[AUTH] Token expires at: {verification.get('expires_at')}")
+    print(f"[AUTH] Current time: {datetime.utcnow()}")
     
     # Check if the token is expired
     if datetime.utcnow() > verification.get("expires_at", datetime.min):
+        print(f"[AUTH] ❌ Token has expired, deleting from database")
         # Delete the expired token
         await email_verification_collection.delete_one({"token": token})
         return None
     
+    print(f"[AUTH] ✅ Token is valid and not expired")
     return verification.get("user_id")
 
 async def mark_user_verified(user_id: str) -> bool:
