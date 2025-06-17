@@ -242,7 +242,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               sessionStorage.removeItem('practiceMode');
               router.push('/language-selection');
             }}
-            className="bg-white border-2 border-teal-500 hover:border-teal-600 text-teal-600 hover:text-teal-700 font-semibold py-6 px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16"
+            className="bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold py-6 px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16"
           >
             {/* Animated gradient text effect */}
             <span className="relative z-10 flex items-center justify-center">
