@@ -331,9 +331,45 @@ async def verify_email_get(token: str):
     print(f"[VERIFY-BACKEND-GET] Token received: {token[:10]}...")
     
     try:
-        # Verify the token
-        print(f"[VERIFY-BACKEND-GET] Verifying token...")
-        user_id = await verify_email_token(token)
+        # Add timeout protection and better error handling
+        import asyncio
+        
+        # Verify the token with timeout
+        print(f"[VERIFY-BACKEND-GET] Verifying token with timeout protection...")
+        try:
+            user_id = await asyncio.wait_for(verify_email_token(token), timeout=10.0)
+        except asyncio.TimeoutError:
+            print(f"[VERIFY-BACKEND-GET] ❌ Token verification timed out after 10 seconds")
+            from fastapi.responses import HTMLResponse
+            return HTMLResponse(content="""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Email Verification Timeout</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #e74c3c; }
+                    .button { display: inline-block; background: #4ECFBF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1 class="error">⏰ Verification Timeout</h1>
+                    <p>The verification process is taking too long. This might be a temporary issue.</p>
+                    <p>Please try again in a few minutes or request a new verification email.</p>
+                    <a href="https://mytacoai.com/auth/resend-verification" class="button">Request New Verification</a>
+                </div>
+                <script>
+                    setTimeout(() => {
+                        window.location.href = 'https://mytacoai.com/auth/login?error=verification_timeout';
+                    }, 5000);
+                </script>
+            </body>
+            </html>
+            """, status_code=408)
         
         if not user_id:
             print(f"[VERIFY-BACKEND-GET] ❌ Token verification failed - invalid or expired token")
