@@ -15,7 +15,10 @@ import {
   RefreshCw,
   TrendingUp,
   Award,
-  Calendar
+  Calendar,
+  Mic,
+  Target,
+  Play
 } from 'lucide-react';
 
 interface ProgressStats {
@@ -207,6 +210,31 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               )}
             </div>
           )}
+        </motion.div>
+
+        {/* Main Action Button for Registered Users */}
+        <motion.div
+          className="flex items-center justify-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <Button
+            onClick={() => {
+              // Clear any previous selections and navigate to language selection
+              sessionStorage.removeItem('selectedLanguage');
+              sessionStorage.removeItem('selectedLevel');
+              sessionStorage.removeItem('selectedTopic');
+              sessionStorage.removeItem('assessmentMode');
+              sessionStorage.removeItem('practiceMode');
+              router.push('/language-selection');
+            }}
+            className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 hover:from-teal-600 hover:via-blue-600 hover:to-purple-600 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg"
+          >
+            <Play className="h-6 w-6 mr-3" />
+            Start New Learning Session
+            <ChevronRight className="h-5 w-5 ml-2" />
+          </Button>
         </motion.div>
 
         {/* Plans Grid */}
