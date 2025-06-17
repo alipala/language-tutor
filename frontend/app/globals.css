@@ -810,6 +810,43 @@
   background-color: transparent;
 }
 
+/* Animated gradient text effect like landing page */
+@keyframes gradient-text {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient-text {
+  background: linear-gradient(-45deg, #4ECFBF, #6366f1, #8b5cf6, #d946ef, #4ECFBF);
+  background-size: 400% 400%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: gradient-text 3s ease infinite;
+  font-weight: 600;
+}
+
+/* Shimmer animation for button */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
 /* Fixed navbar compensation styles */
 .navbar-compensated {
   padding-top: 200px; /* Much larger padding to ensure complete clearance */

@@ -183,20 +183,13 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
             Continue your progress and achieve your language goals
           </p>
           
-          {/* Quick stats */}
+          {/* Quick stats - removed minutes, kept sessions and streak */}
           {progressStats && (
             <div className="flex flex-wrap justify-center gap-6 text-sm">
               <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm">
                 <TrendingUp className="h-4 w-4 text-teal-500" />
                 <span className="text-gray-600">
                   <strong className="text-gray-800">{progressStats.total_sessions}</strong> sessions
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                <Calendar className="h-4 w-4 text-blue-500" />
-                <span className="text-gray-600">
-                  <strong className="text-gray-800">{Math.round(progressStats.total_minutes)}</strong> minutes
                 </span>
               </div>
               
@@ -212,34 +205,9 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           )}
         </motion.div>
 
-        {/* Main Action Button for Registered Users */}
-        <motion.div
-          className="flex items-center justify-center mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <Button
-            onClick={() => {
-              // Clear any previous selections and navigate to language selection
-              sessionStorage.removeItem('selectedLanguage');
-              sessionStorage.removeItem('selectedLevel');
-              sessionStorage.removeItem('selectedTopic');
-              sessionStorage.removeItem('assessmentMode');
-              sessionStorage.removeItem('practiceMode');
-              router.push('/language-selection');
-            }}
-            className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 hover:from-teal-600 hover:via-blue-600 hover:to-purple-600 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg"
-          >
-            <Play className="h-6 w-6 mr-3" />
-            Start New Learning Session
-            <ChevronRight className="h-5 w-5 ml-2" />
-          </Button>
-        </motion.div>
-
         {/* Plans Grid */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -259,36 +227,34 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           ))}
         </motion.div>
 
-        {/* Action buttons */}
+        {/* Main Action Button for Registered Users - moved to bottom */}
         <motion.div
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="flex items-center justify-center mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          {/* View All Plans button (if user has more than 3 plans) */}
           <Button
-            onClick={handleViewAllPlans}
-            variant="outline"
-            className="border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-all duration-300"
+            onClick={() => {
+              // Clear any previous selections and navigate to language selection
+              sessionStorage.removeItem('selectedLanguage');
+              sessionStorage.removeItem('selectedLevel');
+              sessionStorage.removeItem('selectedTopic');
+              sessionStorage.removeItem('assessmentMode');
+              sessionStorage.removeItem('practiceMode');
+              router.push('/language-selection');
+            }}
+            className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 hover:from-teal-600 hover:via-blue-600 hover:to-purple-600 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg relative overflow-hidden"
           >
-            View All Learning Plans
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-
-          {/* Refresh button */}
-          <Button
-            onClick={handleRefresh}
-            variant="ghost"
-            disabled={refreshing}
-            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-          >
-            {refreshing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            {/* Animated gradient text effect */}
+            <span className="relative z-10 flex items-center">
+              <Play className="h-6 w-6 mr-3" />
+              <span className="animated-gradient-text">Start New Learning Session</span>
+              <ChevronRight className="h-5 w-5 ml-2" />
+            </span>
+            
+            {/* Animated background shimmer */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full animate-shimmer"></div>
           </Button>
         </motion.div>
 
