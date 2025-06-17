@@ -329,10 +329,10 @@ async def verify_email_get_redirect(token: str):
     """
     print(f"[VERIFY-GET] Redirecting to frontend verification page with token: {token[:10]}...")
     
-    # Redirect to frontend verification page
+    # Redirect to frontend verification page with a different path to avoid loop
     from fastapi.responses import RedirectResponse
     frontend_url = os.getenv("FRONTEND_URL", "https://mytacoai.com")
-    redirect_url = f"{frontend_url}/auth/verify-email?token={token}"
+    redirect_url = f"{frontend_url}/auth/email-verification?token={token}"
     
     print(f"[VERIFY-GET] Redirecting to: {redirect_url}")
     return RedirectResponse(url=redirect_url, status_code=302)
