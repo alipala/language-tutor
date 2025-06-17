@@ -196,9 +196,15 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           )}
         </motion.div>
 
-        {/* Plans Grid */}
+        {/* Plans Grid - Dynamic centering based on number of plans */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"
+          className={`gap-6 mb-12 flex ${
+            plans.length === 1 
+              ? 'justify-center' 
+              : plans.length === 2 
+                ? 'justify-center flex-wrap max-w-4xl mx-auto' 
+                : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+          }`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -209,6 +215,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 * index }}
+              className={plans.length <= 2 ? 'w-full max-w-sm' : ''}
             >
               <LearningPlanCard
                 plan={plan}
@@ -235,13 +242,11 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               sessionStorage.removeItem('practiceMode');
               router.push('/language-selection');
             }}
-            className="bg-white border-2 border-teal-500 hover:border-teal-600 text-teal-600 hover:text-teal-700 font-semibold py-4 px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg relative overflow-hidden min-w-[320px]"
+            className="bg-white border-2 border-teal-500 hover:border-teal-600 text-teal-600 hover:text-teal-700 font-semibold py-6 px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16"
           >
             {/* Animated gradient text effect */}
-            <span className="relative z-10 flex items-center">
-              <Play className="h-6 w-6 mr-3 text-teal-500" />
+            <span className="relative z-10 flex items-center justify-center">
               <span className="animated-gradient-text">Start New Learning Session</span>
-              <ChevronRight className="h-5 w-5 ml-2 text-teal-500" />
             </span>
             
             {/* Animated background shimmer */}
