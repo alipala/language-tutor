@@ -322,6 +322,170 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     return UserResponse(**updated_user)
 
 # Email verification endpoints
+@router.get("/verify-email")
+async def verify_email_get(token: str):
+    """
+    Verify email address using verification token (GET request from email link)
+    """
+    print(f"[VERIFY-BACKEND-GET] Starting email verification process via GET")
+    print(f"[VERIFY-BACKEND-GET] Token received: {token[:10]}...")
+    
+    try:
+        # Verify the token
+        print(f"[VERIFY-BACKEND-GET] Verifying token...")
+        user_id = await verify_email_token(token)
+        
+        if not user_id:
+            print(f"[VERIFY-BACKEND-GET] ❌ Token verification failed - invalid or expired token")
+            # Return HTML response for invalid token
+            from fastapi.responses import HTMLResponse
+            return HTMLResponse(content="""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Email Verification Failed</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #e74c3c; }
+                    .button { display: inline-block; background: #4ECFBF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1 class="error">❌ Verification Failed</h1>
+                    <p>Your verification link is invalid or has expired.</p>
+                    <p>Please request a new verification email.</p>
+                    <a href="https://mytacoai.com/auth/resend-verification" class="button">Request New Verification</a>
+                </div>
+                <script>
+                    // Redirect to frontend after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'https://mytacoai.com/auth/login?error=verification_failed';
+                    }, 3000);
+                </script>
+            </body>
+            </html>
+            """, status_code=400)
+        
+        print(f"[VERIFY-BACKEND-GET] ✅ Token verified successfully for user_id: {user_id}")
+        
+        # Mark user as verified
+        print(f"[VERIFY-BACKEND-GET] Marking user as verified...")
+        success = await mark_user_verified(user_id)
+        
+        if not success:
+            print(f"[VERIFY-BACKEND-GET] ❌ Failed to mark user as verified")
+            from fastapi.responses import HTMLResponse
+            return HTMLResponse(content="""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Email Verification Error</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #e74c3c; }
+                    .button { display: inline-block; background: #4ECFBF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1 class="error">❌ Verification Error</h1>
+                    <p>An error occurred while verifying your email.</p>
+                    <p>Please try again or contact support.</p>
+                    <a href="https://mytacoai.com/auth/login" class="button">Go to Login</a>
+                </div>
+            </body>
+            </html>
+            """, status_code=500)
+        
+        print(f"[VERIFY-BACKEND-GET] ✅ User marked as verified successfully")
+        
+        # Get user details for welcome email
+        user = await get_user_by_id(user_id)
+        if user:
+            print(f"[VERIFY-BACKEND-GET] User details retrieved: {user.email}")
+            # Send welcome email
+            try:
+                await send_welcome_email(user.email, user.name)
+                print(f"[VERIFY-BACKEND-GET] ✅ Welcome email sent to {user.email}")
+            except Exception as e:
+                print(f"[VERIFY-BACKEND-GET] ❌ Error sending welcome email: {str(e)}")
+                # Don't fail verification if welcome email fails
+        else:
+            print(f"[VERIFY-BACKEND-GET] ⚠️ Could not retrieve user details for user_id: {user_id}")
+        
+        print(f"[VERIFY-BACKEND-GET] ✅ Email verification completed successfully")
+        
+        # Return success HTML and redirect to login with verified parameter
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Email Verified Successfully</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+                .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .success { color: #27ae60; }
+                .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #4ECFBF; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="success">✅ Email Verified Successfully!</h1>
+                <p>Your email has been verified. You can now log in to your account.</p>
+                <div class="spinner"></div>
+                <p>Redirecting you to login page...</p>
+            </div>
+            <script>
+                // Redirect to login page with verified parameter
+                setTimeout(() => {
+                    window.location.href = 'https://mytacoai.com/auth/login?verified=true';
+                }, 2000);
+            </script>
+        </body>
+        </html>
+        """)
+        
+    except Exception as e:
+        print(f"[VERIFY-BACKEND-GET] ❌ Unexpected error verifying email: {str(e)}")
+        import traceback
+        print(f"[VERIFY-BACKEND-GET] Traceback: {traceback.format_exc()}")
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Email Verification Error</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+                .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .error { color: #e74c3c; }
+                .button { display: inline-block; background: #4ECFBF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="error">❌ Verification Error</h1>
+                <p>An unexpected error occurred while verifying your email.</p>
+                <p>Please try again or contact support.</p>
+                <a href="https://mytacoai.com/auth/login" class="button">Go to Login</a>
+            </div>
+        </body>
+        </html>
+        """, status_code=500)
+
 @router.post("/verify-email")
 async def verify_email(request: EmailVerificationConfirm):
     """
