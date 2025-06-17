@@ -322,8 +322,20 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     return UserResponse(**updated_user)
 
 # Email verification endpoints
-# Removed GET endpoint - users should go to frontend page instead
-# The frontend page provides better UX with loading states, proper redirects, and toast notifications
+@router.get("/verify-email")
+async def verify_email_get_redirect(token: str):
+    """
+    Handle GET requests from email links - redirect to frontend verification page
+    """
+    print(f"[VERIFY-GET] Redirecting to frontend verification page with token: {token[:10]}...")
+    
+    # Redirect to frontend verification page
+    from fastapi.responses import RedirectResponse
+    frontend_url = os.getenv("FRONTEND_URL", "https://mytacoai.com")
+    redirect_url = f"{frontend_url}/auth/verify-email?token={token}"
+    
+    print(f"[VERIFY-GET] Redirecting to: {redirect_url}")
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 @router.post("/verify-email")
 async def verify_email(request: EmailVerificationConfirm):
