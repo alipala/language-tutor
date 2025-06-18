@@ -106,7 +106,7 @@ export default function SpeakingAssessmentPage() {
       <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar">
         <div className="flex flex-col flex-1 items-stretch space-y-8 w-full max-w-6xl mx-auto">
           {/* Header */}
-          <div className="text-center">
+          <div className="text-center pt-8">
             <h1 className="text-5xl font-bold text-black mb-4 animate-fade-in">
               Speaking Assessment
             </h1>
