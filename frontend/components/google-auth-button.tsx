@@ -105,7 +105,7 @@ export default function GoogleAuthButton({
             
             // Store navigation intent in sessionStorage before authentication
             sessionStorage.setItem('pendingRedirect', 'true');
-            sessionStorage.setItem('redirectTarget', '/language-selection');
+            sessionStorage.setItem('redirectTarget', '/');
             sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
             
             // Call the googleLogin function from auth context
@@ -117,8 +117,8 @@ export default function GoogleAuthButton({
             }
             
             // Use the navigation service for consistent navigation
-            console.log('Google login successful, navigating to language selection');
-            navigation.navigateToLanguageSelection();
+            console.log('Google login successful, navigating to home page');
+            navigation.navigateToHome();
           } catch (error) {
             console.error('Google login error:', error);
             setError(error instanceof Error ? error.message : 'Google login failed');

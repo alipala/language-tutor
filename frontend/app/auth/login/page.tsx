@@ -61,7 +61,7 @@ export default function LoginPage() {
       
       // Store navigation intent in sessionStorage before authentication
       sessionStorage.setItem('pendingRedirect', 'true');
-      sessionStorage.setItem('redirectTarget', pendingLearningPlanId ? '/speech' : '/language-selection');
+      sessionStorage.setItem('redirectTarget', pendingLearningPlanId ? '/speech' : '/');
       sessionStorage.setItem('redirectAttemptTime', Date.now().toString());
       
       // Perform login - wait for it to complete
@@ -102,7 +102,7 @@ export default function LoginPage() {
   const handleTransitionComplete = () => {
     // Navigate to the appropriate page after transition completes
     const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
-    const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+    const redirectTarget = pendingLearningPlanId ? '/speech' : '/';
     console.log(`Transition complete, navigating to ${redirectTarget}`);
     router.push(redirectTarget);
   };
