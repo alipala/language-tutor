@@ -7,6 +7,7 @@ import NavBar from '@/components/nav-bar';
 import { TypeAnimation } from 'react-type-animation';
 import FAQSection from '@/components/faq-section';
 import LearningPlanDashboard from '@/components/dashboard/LearningPlanDashboard';
+import CustomProjectChatbot from '@/components/custom-project-chatbot';
 import './landing-sections.css';
 import { motion } from 'framer-motion';
 
@@ -126,6 +127,8 @@ export default function Home() {
       <div className="min-h-screen overflow-x-hidden w-full">
         <NavBar />
         <LearningPlanDashboard />
+        {/* Project Knowledge Chatbot - Available for authenticated users too */}
+        <CustomProjectChatbot />
       </div>
     );
   }
@@ -901,6 +904,9 @@ export default function Home() {
           </section>
         </main>
       )}
+      
+      {/* Project Knowledge Chatbot - Available on all pages */}
+      <CustomProjectChatbot />
     </div>
   );
 }
