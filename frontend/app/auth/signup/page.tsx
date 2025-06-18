@@ -66,7 +66,7 @@ export default function SignupPage() {
   const handleTransitionComplete = () => {
     // Navigate to the appropriate page after transition completes
     const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
-    const redirectTarget = pendingLearningPlanId ? '/speech' : '/language-selection';
+    const redirectTarget = pendingLearningPlanId ? '/speech' : '/';
     console.log(`Transition complete, navigating to ${redirectTarget}`);
     router.push(redirectTarget);
   };
