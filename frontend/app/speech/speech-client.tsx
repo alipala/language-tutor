@@ -982,13 +982,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }, 1000);
   };
   
-  // Browser navigation protection
+  // Set conversation start time when the first message is received (conversation actually starts)
   useEffect(() => {
-    // Set conversation start time when recording begins
-    if (isRecording && !conversationStartTime) {
+    // Set conversation start time when we have the first message and haven't set it yet
+    if (messages.length > 0 && !conversationStartTime) {
+      console.log('🕐 Setting conversation start time - first message received');
       setConversationStartTime(Date.now());
     }
-  }, [isRecording, conversationStartTime]);
+  }, [messages.length, conversationStartTime]);
   
   // Browser navigation protection
   useEffect(() => {
@@ -1249,7 +1250,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         language={language}
                         level={level}
                         topic={topic}
-                        conversationStartTime={isConversationTimerActive ? Date.now() - ((getConversationDuration(isAuthenticated()) - (conversationTimer || 0)) * 1000) : undefined}
+                        conversationStartTime={conversationStartTime || undefined}
                         className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
                       />
                     </div>
