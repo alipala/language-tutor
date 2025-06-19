@@ -49,12 +49,8 @@ export default function SpeakingAssessment({
     // Clear any error message
     setError('');
     
-    // Check if assessment was already completed
-    const assessmentCompleted = sessionStorage.getItem('assessmentCompleted');
-    if (assessmentCompleted === 'true') {
-      // Redirect to home page
-      window.location.href = '/';
-    }
+    // REMOVED: Assessment completion check that was preventing multiple assessments
+    // Users should be able to take multiple assessments to create up to 10 learning plans
   }, [language]);
   
   // No longer checking for guest time expiration

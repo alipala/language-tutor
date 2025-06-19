@@ -5,7 +5,7 @@ import './globals.css'
 import AuthProviderWrapper from '@/components/auth-provider-wrapper'
 import { NavigationProvider } from '@/lib/navigation'
 import NavBar from '@/components/nav-bar'
-import Footer from '@/components/footer'
+import ConditionalFooter from '@/components/conditional-footer'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -69,7 +69,7 @@ export default function RootLayout({
               <main id="main-content" tabIndex={-1} className="outline-none">
                 {children}
               </main>
-              <Footer />
+              <ConditionalFooter />
             </div>
           </AuthProviderWrapper>
         </NavigationProvider>

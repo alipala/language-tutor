@@ -247,8 +247,16 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
 
               {/* Continue Learning Button */}
               <Button
-                onClick={onContinueLearning}
-                className="w-full bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white font-medium py-3 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg"
+                onClick={() => {
+                  // Store plan context for speech practice
+                  sessionStorage.setItem('selectedLanguage', plan.language);
+                  sessionStorage.setItem('selectedLevel', plan.proficiency_level);
+                  sessionStorage.setItem('currentPlanId', plan.id);
+                  
+                  // Call the onContinueLearning callback
+                  onContinueLearning();
+                }}
+                className="w-full bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white font-medium py-3 rounded-xl transition-all duration-300 shadow-md hover-shadow-lg"
               >
                 <Play className="h-4 w-4 mr-2" />
                 Continue Learning
@@ -291,7 +299,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                 </div>
               )}
 
-              {/* Weekly Schedule */}
+              {/* Weekly Schedule with Progress */}
               {weeklySchedule.length > 0 && (
                 <div>
                   <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
@@ -299,29 +307,139 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                     Weekly Schedule
                   </h4>
                   <div className="space-y-3">
-                    {weeklySchedule.slice(0, 4).map((week: any, index: number) => (
-                      <div key={index} className="bg-blue-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-blue-700">Week {week.week}</span>
-                          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full truncate max-w-[200px]">
-                            {week.focus}
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          {week.activities.slice(0, 2).map((activity: string, actIndex: number) => (
-                            <div key={actIndex} className="flex items-center space-x-2">
-                              <Circle className="h-2 w-2 text-blue-500 flex-shrink-0" />
-                              <span className="text-xs text-gray-700">{activity}</span>
+                    {weeklySchedule.slice(0, 4).map((week: any, index: number) => {
+                      // Calculate week progress based on completed sessions
+                      const sessionsPerWeek = 2;
+                      
+                      // Fix: Only consider a week as current if user has actually started sessions
+                      // If completedSessions is 0, no week should be marked as current
+                      let currentWeek = 0;
+                      let sessionsInCurrentWeek = 0;
+                      
+                      if (completedSessions > 0) {
+                        currentWeek = Math.floor((completedSessions - 1) / sessionsPerWeek) + 1;
+                        sessionsInCurrentWeek = ((completedSessions - 1) % sessionsPerWeek) + 1;
+                      }
+                      
+                      // Determine week status
+                      let weekStatus = 'upcoming';
+                      let weekProgress = 0;
+                      
+                      if (completedSessions === 0) {
+                        // No sessions completed yet - all weeks are upcoming
+                        weekStatus = 'upcoming';
+                        weekProgress = 0;
+                      } else if (week.week < currentWeek) {
+                        // Week is fully completed
+                        weekStatus = 'completed';
+                        weekProgress = 100;
+                      } else if (week.week === currentWeek) {
+                        // Week is in progress
+                        weekStatus = 'current';
+                        weekProgress = (sessionsInCurrentWeek / sessionsPerWeek) * 100;
+                      } else {
+                        // Week is upcoming
+                        weekStatus = 'upcoming';
+                        weekProgress = 0;
+                      }
+                      
+                      const isCompleted = weekStatus === 'completed';
+                      const isCurrent = weekStatus === 'current';
+                      
+                      return (
+                        <div key={index} className={`rounded-lg p-3 border-2 ${
+                          isCompleted ? 'bg-green-50 border-green-200' :
+                          isCurrent ? 'bg-blue-50 border-blue-200' :
+                          'bg-gray-50 border-gray-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-sm font-medium ${
+                                isCompleted ? 'text-green-700' :
+                                isCurrent ? 'text-blue-700' :
+                                'text-gray-600'
+                              }`}>
+                                Week {week.week}
+                              </span>
+                              {isCompleted && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {isCurrent && (
+                                <div className="flex items-center space-x-1">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  <span className="text-xs text-blue-600 font-medium">Current</span>
+                                </div>
+                              )}
                             </div>
-                          ))}
-                          {week.activities.length > 2 && (
-                            <div className="text-xs text-blue-600">
-                              +{week.activities.length - 2} more activities
+                            <span className={`text-xs px-2 py-1 rounded-full truncate max-w-[200px] ${
+                              isCompleted ? 'text-green-600 bg-green-100' :
+                              isCurrent ? 'text-blue-600 bg-blue-100' :
+                              'text-gray-600 bg-gray-100'
+                            }`}>
+                              {week.focus}
+                            </span>
+                          </div>
+                          
+                          {/* Week Progress Bar */}
+                          <div className="mb-2">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className={`${
+                                isCompleted ? 'text-green-600' :
+                                isCurrent ? 'text-blue-600' :
+                                'text-gray-500'
+                              }`}>
+                                Progress
+                              </span>
+                              <span className={`${
+                                isCompleted ? 'text-green-600' :
+                                isCurrent ? 'text-blue-600' :
+                                'text-gray-500'
+                              }`}>
+                                {isCompleted ? '2/2' : isCurrent ? `${sessionsInCurrentWeek}/2` : '0/2'} sessions
+                              </span>
                             </div>
-                          )}
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all duration-500 ${
+                                  isCompleted ? 'bg-green-500' :
+                                  isCurrent ? 'bg-blue-500' :
+                                  'bg-gray-300'
+                                }`}
+                                style={{ width: `${weekProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            {week.activities.slice(0, 2).map((activity: string, actIndex: number) => (
+                              <div key={actIndex} className="flex items-center space-x-2">
+                                <Circle className={`h-2 w-2 flex-shrink-0 ${
+                                  isCompleted ? 'text-green-500' :
+                                  isCurrent ? 'text-blue-500' :
+                                  'text-gray-400'
+                                }`} />
+                                <span className={`text-xs ${
+                                  isCompleted ? 'text-green-700' :
+                                  isCurrent ? 'text-blue-700' :
+                                  'text-gray-600'
+                                }`}>
+                                  {activity}
+                                </span>
+                              </div>
+                            ))}
+                            {week.activities.length > 2 && (
+                              <div className={`text-xs ${
+                                isCompleted ? 'text-green-600' :
+                                isCurrent ? 'text-blue-600' :
+                                'text-gray-500'
+                              }`}>
+                                +{week.activities.length - 2} more activities
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {weeklySchedule.length > 4 && (
                       <div className="text-center text-sm text-gray-500">
                         +{weeklySchedule.length - 4} more weeks
