@@ -763,6 +763,64 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
   }, [messages, language, alertAnimationState, showLanguageAlert]);
   
+  // Auto-save conversation progress function
+  const saveConversationProgress = async () => {
+    if (!user || processedMessages.length === 0) {
+      console.log('Cannot save: no user or no messages');
+      return;
+    }
+
+    try {
+      // Calculate conversation duration
+      const durationMinutes = conversationStartTime 
+        ? (Date.now() - conversationStartTime) / (1000 * 60)
+        : 0;
+
+      // Prepare messages for saving
+      const messagesToSave = processedMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp || new Date().toISOString()
+      }));
+
+      console.log('[AUTO_SAVE] Saving conversation at 5 minutes:', {
+        language,
+        level,
+        topic,
+        messageCount: messagesToSave.length,
+        duration: durationMinutes
+      });
+
+      const { getApiUrl } = await import('@/lib/api-utils');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiUrl()}/api/progress/save-conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          language,
+          level,
+          topic,
+          messages: messagesToSave,
+          duration_minutes: durationMinutes
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to save conversation');
+      }
+
+      const result = await response.json();
+      console.log('[AUTO_SAVE] ✅ Conversation auto-saved successfully:', result);
+
+    } catch (error) {
+      console.error('[AUTO_SAVE] ❌ Error auto-saving conversation:', error);
+    }
+  };
+  
   // Conversation timer effect for guest users
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -783,10 +841,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             setIsConversationTimerActive(false);
             handleEndConversation();
             
-            // No longer storing expiration in session storage
-            // We allow unlimited attempts with time limitations per attempt
-            
-            // Time's up notification is now handled by the TimeUpModal component in the parent
+            // Auto-save conversation when time is up (5 minutes completed)
+            if (user && processedMessages.length > 0) {
+              console.log('🔄 Auto-saving conversation at 5 minutes...');
+              saveConversationProgress();
+            }
             
             return 0;
           }
@@ -799,7 +858,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isConversationTimerActive, conversationTimer]);
+  }, [isConversationTimerActive, conversationTimer, user, processedMessages]);
   
   // Handle recording toggle
   const handleToggleRecording = async (e: React.MouseEvent) => {
@@ -922,73 +981,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         toggleConversation();
       }
     }, 300);
-  };
-  
-  // Handle change language
-  const handleChangeLanguage = () => {
-    // Clear all selections except language which will be reselected
-    sessionStorage.removeItem('selectedLevel');
-    sessionStorage.removeItem('selectedTopic');
-    sessionStorage.removeItem('customTopicText');
-    // Clear any navigation flags
-    sessionStorage.removeItem('fromLevelSelection');
-    sessionStorage.removeItem('intentionalNavigation');
-    
-    // Set a flag to indicate we're intentionally going to language selection
-    sessionStorage.setItem('fromSpeechPage', 'true');
-    
-    console.log('Navigating to language selection from speech client');
-    window.location.href = '/language-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('speech')) {
-        console.log('Still on speech page, using fallback navigation to language selection');
-        window.location.replace('/language-selection');
-      }
-    }, 1000);
-  };
-  
-  // Handle change topic
-  const handleChangeTopic = () => {
-    // Keep language but clear topic and level
-    sessionStorage.removeItem('selectedTopic');
-    sessionStorage.removeItem('customTopicText');
-    sessionStorage.removeItem('selectedLevel');
-    // Set a flag to indicate we're intentionally going to topic selection
-    sessionStorage.setItem('fromLevelSelection', 'true');
-    // Clear any other navigation flags
-    sessionStorage.removeItem('intentionalNavigation');
-    
-    console.log('Navigating to topic selection from speech client');
-    window.location.href = '/topic-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('speech')) {
-        console.log('Still on speech page, using fallback navigation to topic selection');
-        window.location.replace('/topic-selection');
-      }
-    }, 1000);
-  };
-  
-  // Handle change level
-  const handleChangeLevel = () => {
-    // Clear level selection but keep language and topic
-    sessionStorage.removeItem('selectedLevel');
-    // Clear any navigation flags
-    sessionStorage.removeItem('intentionalNavigation');
-    
-    console.log('Navigating to level selection from speech client');
-    window.location.href = '/level-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('speech')) {
-        console.log('Still on speech page, using fallback navigation to level selection');
-        window.location.replace('/level-selection');
-      }
-    }, 1000);
   };
   
   // Set conversation start time when the first message is received (conversation actually starts)
@@ -1128,17 +1120,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           <p className="text-white/80 mt-2">
             Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
-          
-          {/* Guest User Information Banner removed as requested */}
-          
-          {/* Navigation Controls removed as requested */}
         </div>
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Redesigned for better responsiveness and alignment */}
           <div className="w-full">
-            {/* Removed the initial microphone section that was previously shown before conversation */}
-            
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
@@ -1254,14 +1240,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         </svg>
                         Conversation Transcript
                       </h3>
-                      <SaveProgressButton
-                        messages={processedMessages}
-                        language={language}
-                        level={level}
-                        topic={topic}
-                        conversationStartTime={conversationStartTime || undefined}
-                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
-                      />
                     </div>
                     <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-1 min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
@@ -1282,9 +1260,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                               
                               // Format the time for display
                               const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                              
-                              // Log message for debugging
-                              console.log(`Rendering message ${index}: ${message.role}, content: ${message.content.substring(0, 30)}..., timestamp: ${timeDisplay}`);
                               
                               return (
                                 <div 
@@ -1402,9 +1377,10 @@ function MicrophoneIcon({ isRecording, size = 20 }: { isRecording: boolean; size
       strokeLinejoin="round"
       className="text-gray-800"
     >
-      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-      <line x1="12" x2="12" y1="19" y2="22"></line>
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
     </svg>
   );
 }
