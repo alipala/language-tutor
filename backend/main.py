@@ -62,7 +62,7 @@ elif os.getenv("ENVIRONMENT") == "production":
         frontend_url,
     ]
 else:
-    # For local development - explicitly include localhost:3000
+    # For local development localhost:3000
     origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
