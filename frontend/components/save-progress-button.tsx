@@ -26,6 +26,15 @@ export default function SaveProgressButton({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [cooldownTime, setCooldownTime] = useState(0);
   const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
+  
+  // Calculate current conversation duration
+  const currentDuration = conversationStartTime 
+    ? (Date.now() - conversationStartTime) / (1000 * 60) // in minutes
+    : 0;
+  
+  // Minimum duration required to enable save button (4 minutes)
+  const MIN_DURATION_FOR_SAVE = 4;
+  const isMinimumDurationMet = currentDuration >= MIN_DURATION_FOR_SAVE;
 
   // Cooldown timer effect
   useEffect(() => {
@@ -196,13 +205,23 @@ export default function SaveProgressButton({
   };
 
   return (
-    <Button
-      onClick={handleSaveProgress}
-      disabled={saveState === 'saving' || cooldownTime > 0}
-      className={`${getButtonColor()} text-white font-medium transition-all duration-300 flex items-center ${className}`}
-      style={{ backgroundColor: saveState === 'idle' && cooldownTime === 0 ? '#4ECFBF' : undefined }}
-    >
-      {getButtonContent()}
-    </Button>
+    <div className="flex flex-col items-end">
+      {/* Duration indicator when minimum not met */}
+      {!isMinimumDurationMet && conversationStartTime && (
+        <div className="text-xs text-gray-500 mb-1 text-right">
+          {Math.floor(currentDuration)}:{((currentDuration % 1) * 60).toFixed(0).padStart(2, '0')} / 4:00 min
+        </div>
+      )}
+      
+      <Button
+        onClick={handleSaveProgress}
+        disabled={saveState === 'saving' || cooldownTime > 0 || !isMinimumDurationMet}
+        className={`${getButtonColor()} text-white font-medium transition-all duration-300 flex items-center ${className}`}
+        style={{ backgroundColor: saveState === 'idle' && cooldownTime === 0 && isMinimumDurationMet ? '#4ECFBF' : undefined }}
+        title={!isMinimumDurationMet ? 'Minimum 4 minutes required to save progress' : undefined}
+      >
+        {getButtonContent()}
+      </Button>
+    </div>
   );
 }

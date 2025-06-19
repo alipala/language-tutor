@@ -49,26 +49,35 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     if (planParam) {
       console.log('Checking plan timer validity on speech client mount:', planParam);
       
-      // Use the enhanced validation function to check if session is expired
-      const isExpired = checkAndMarkSessionExpired(planParam, isAuthenticated());
-      
-      if (isExpired) {
-        console.log('Plan session has expired, preventing conversation');
-        setConversationTimeUp(true);
-        return;
-      }
-      
-      // If not expired, calculate remaining time and set timer
-      const planCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
-      if (planCreationTime) {
-        const remainingTime = getRemainingTime(isAuthenticated(), planCreationTime);
-        if (remainingTime > 0) {
-          console.log('Setting conversation timer to remaining time:', remainingTime);
-          setConversationTimer(remainingTime);
-          setConversationTimeUp(false);
-        } else {
-          console.log('No remaining time, marking conversation as expired');
+      // For registered users with learning plans, always give full conversation duration
+      // Learning plans don't have time-based expiration for registered users
+      if (isAuthenticated()) {
+        console.log('Registered user with learning plan - setting full conversation duration');
+        const fullDuration = getConversationDuration(true); // 5 minutes for registered users
+        setConversationTimer(fullDuration);
+        setConversationTimeUp(false);
+      } else {
+        // For guest users, use the enhanced validation function to check if session is expired
+        const isExpired = checkAndMarkSessionExpired(planParam, isAuthenticated());
+        
+        if (isExpired) {
+          console.log('Guest plan session has expired, preventing conversation');
           setConversationTimeUp(true);
+          return;
+        }
+        
+        // If not expired, calculate remaining time and set timer for guest users
+        const planCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
+        if (planCreationTime) {
+          const remainingTime = getRemainingTime(isAuthenticated(), planCreationTime);
+          if (remainingTime > 0) {
+            console.log('Setting guest conversation timer to remaining time:', remainingTime);
+            setConversationTimer(remainingTime);
+            setConversationTimeUp(false);
+          } else {
+            console.log('No remaining time for guest, marking conversation as expired');
+            setConversationTimeUp(true);
+          }
         }
       }
     } else if (!isAuthenticated() && hasAssessmentData) {
