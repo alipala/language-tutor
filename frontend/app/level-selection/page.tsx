@@ -328,10 +328,10 @@ export default function LevelSelection() {
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-black mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-black mb-4">
             Select Your Level
           </h1>
-          <p className="text-gray-600 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-gray-600 text-lg mb-8">
             {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
             {selectedLanguage === 'english' && 'Choose your proficiency level in English'}
             {selectedLanguage === 'spanish' && 'Elige tu nivel de competencia en español'}
@@ -357,7 +357,7 @@ export default function LevelSelection() {
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center p-8 glass-card border border-white/20 rounded-xl shadow-lg backdrop-blur-sm max-w-md animate-fade-in">
+            <div className="text-center p-8 glass-card border border-white/20 rounded-xl shadow-lg backdrop-blur-sm max-w-md">
               <div className="relative w-20 h-20 mx-auto mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-red-500 absolute top-0 left-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -436,14 +436,13 @@ export default function LevelSelection() {
                     className={`
                       relative overflow-hidden flex flex-col items-start p-6 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl
-                      bg-white animate-fade-in h-[220px] border-2
+                      bg-white h-[220px] border-2
                       ${
                         selectedLevel === level.code
                           ? `border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50`
                           : 'border-[#4ECFBF] hover:border-[#4ECFBF]/80 shadow-lg hover:shadow-[#4ECFBF]/20'
                       }
                     `}
-                    style={{animationDelay: `${300 + parseInt(level.code.charAt(1)) * 100}ms`}}
                   >
                     {/* Level badge */}
                     <div className={`absolute -top-3 -right-3 w-16 h-16 flex items-center justify-center overflow-hidden`}>
@@ -563,7 +562,7 @@ export default function LevelSelection() {
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="white"
-                            className="w-5 h-5 animate-fade-in"
+                            className="w-5 h-5"
                           >
                             <path
                               fillRule="evenodd"

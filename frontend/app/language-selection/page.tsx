@@ -344,11 +344,11 @@ const languages: Language[] = [
             <div className="relative">
               <span className="text-gray-800 drop-shadow-sm">Choose Your Language</span>
               {/* Animated underline effect */}
-              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-[#4ECFBF] animate-pulse"></div>
+              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-[#4ECFBF]"></div>
             </div>
           </h1>
           <div className="mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
-            <p className="text-gray-600 animate-fade-in">Select a language to begin</p>
+            <p className="text-gray-600">Select a language to begin</p>
           </div>
         </div>
 
@@ -394,9 +394,9 @@ const languages: Language[] = [
                       <div className="absolute inset-0 opacity-20 overflow-hidden">
                         <div className="w-full h-full relative">
                           {/* Top left gradient blob */}
-                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-purple-500/30 rounded-full blur-xl animate-pulse"></div>
+                          <div className="absolute -top-10 -left-10 w-20 h-20 bg-purple-500/30 rounded-full blur-xl"></div>
                           {/* Bottom right gradient blob */}
-                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-indigo-500/30 rounded-full blur-xl animate-pulse delay-700"></div>
+                          <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-indigo-500/30 rounded-full blur-xl"></div>
                         </div>
                       </div>
                       
@@ -439,7 +439,7 @@ const languages: Language[] = [
                     
                     {/* Selection indicator */}
                     {selectedLanguage === language.code && (
-                      <div className="absolute top-4 right-4 animate-fade-in">
+                      <div className="absolute top-4 right-4">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: 'var(--yellow)' }}>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"

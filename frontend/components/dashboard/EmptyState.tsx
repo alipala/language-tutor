@@ -67,12 +67,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* AI Learning Plan Reminder */}
-        <motion.div
-          className="max-w-4xl mx-auto mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        >
+        <div className="max-w-4xl mx-auto mb-8">
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
             <div className="flex items-start space-x-4">
               <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -89,20 +84,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Main Action Cards */}
-        <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12 max-w-5xl mx-auto"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12 max-w-5xl mx-auto">
           {/* AI Learning Plan Card */}
-          <motion.div
-            className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-102 flex flex-col h-full"
-            whileHover={{ y: -4 }}
-          >
+          <div className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 flex flex-col h-full cursor-pointer">
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -206,13 +193,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             {/* Subtle background decoration */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full -translate-y-12 translate-x-12 opacity-50"></div>
             <div className="absolute bottom-0 left-0 w-16 h-16 bg-purple-50 rounded-full translate-y-8 -translate-x-8 opacity-30"></div>
-          </motion.div>
+          </div>
 
           {/* Quick Practice Card */}
-          <motion.div
-            className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-102 flex flex-col h-full"
-            whileHover={{ y: -4 }}
-          >
+          <div className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 flex flex-col h-full cursor-pointer">
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
@@ -316,16 +300,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             {/* Subtle background decoration */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-full -translate-y-12 translate-x-12 opacity-50"></div>
             <div className="absolute bottom-0 left-0 w-16 h-16 bg-teal-50 rounded-full translate-y-8 -translate-x-8 opacity-30"></div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Features Grid */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           <div className="text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Brain className="w-8 h-8 text-purple-600" />
@@ -355,7 +334,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
               Join thousands of learners who have improved their language skills with our platform
             </p>
           </div>
-        </motion.div>
+        </div>
 
       </div>
     </section>
