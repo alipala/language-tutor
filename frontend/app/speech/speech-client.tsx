@@ -1049,8 +1049,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         {showLanguageAlert && (
           <div 
             className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white px-6 py-3 rounded-lg border border-amber-400/20 z-50 flex items-center space-x-3 max-w-md
-              ${alertAnimationState === 'entering' ? 'animate-slide-in-top' : ''}
-              ${alertAnimationState === 'exiting' ? 'animate-slide-out-top' : ''}
             `}
             role="alert"
             aria-live="assertive"
@@ -1136,7 +1134,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
                   {/* Real-time Transcript Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]" style={{animationDelay: '200ms'}}>
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]">
                     <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -1223,7 +1221,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                     
                     {/* Error message */}
                     {localError && (
-                      <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto animate-fade-in">
+                      <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto">
                         <p>{localError}</p>
                       </div>
                     )}
@@ -1231,14 +1229,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                     {/* Warning message when content is not in target language */}
                     {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
                      !isInTargetLanguage(messages[messages.length - 1].content) && (
-                      <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center animate-fade-in">
+                      <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
                         <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
                       </div>
                     )}
                   </div>
                   
                   {/* Conversation Transcript Section */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg animate-fade-in flex flex-col h-[450px] sm:h-[500px] md:h-[550px] lg:h-[650px]" style={{animationDelay: '300ms'}}>
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col h-[450px] sm:h-[500px] md:h-[550px] lg:h-[650px]">
                     <div className="flex items-center justify-between mb-2 sm:mb-4">
                       <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#F75A5A] flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

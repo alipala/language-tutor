@@ -175,31 +175,16 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                   {/* Left Column - Content */}
                   <div className="text-left">
-                  <motion.h1 
-                    className="text-4xl md:text-5xl lg:text-6xl font-bold text-left"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6 }}
-                  >
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-left">
                     <span className="block mb-2 text-gray-800">Welcome to</span>
                     <span className="animated-gradient-text">Your Smart Language Coach</span>
-                  </motion.h1>
+                  </h1>
                   
-                  <motion.div 
-                    className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                  >
+                  <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg">
                     Your personal AI language tutor that adapts to your learning style and helps you become fluent through natural conversations.
-                  </motion.div>
+                  </div>
                   
-                  <motion.div
-                    className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                  >
+                  <div className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full">
                     <button
                       onClick={handleStartLearning}
                       className="start-button self-start"
@@ -219,14 +204,9 @@ export default function Home() {
                         </>
                       )}
                     </button>
-                  </motion.div>
+                  </div>
                   
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.8 }}
-                    className="flex flex-wrap gap-3 text-sm text-white/80"
-                  >
+                  <div className="flex flex-wrap gap-3 text-sm text-white/80">
                     <div className="flex items-center">
                       <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -245,16 +225,11 @@ export default function Home() {
                       </svg>
                       <span>Real-time corrections</span>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
                 
                 {/* Right Column - Conversation Demo */}
-                <motion.div
-                  className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-shadow duration-300"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                >
+                <div className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-shadow duration-300">
                   <div className="bg-gray-100 rounded-t-lg p-2 border-b border-gray-200 flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-[#FF5F57] mr-2"></div>
@@ -327,90 +302,47 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
                 </div>
               </div>
             </div>
             
-            <motion.div 
-              className="flex flex-col items-center justify-center mt-16 cursor-pointer group"
+            <div 
+              className="flex flex-col items-center justify-center mt-16 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
               onClick={() => scrollToSection('how-it-works')}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.2 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
             >
-              <motion.div
-                className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300"
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <motion.svg 
+              <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
+                <svg 
                   className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]" 
                   fill="none" 
                   viewBox="0 0 24 24" 
                   stroke="currentColor"
-                  animate={{ y: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </motion.svg>
-                
-                {/* Ripple effect */}
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-white/30"
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.7, 0, 0.7] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-white/20"
-                  animate={{ scale: [1, 2, 1], opacity: [0.5, 0, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                />
-              </motion.div>
+                </svg>
+              </div>
               
-              <motion.span 
-                className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300"
-                animate={{ opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
+              <span className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300">
                 Discover How It Works
-              </motion.span>
+              </span>
               
-              <motion.div
-                className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"
-                animate={{ scaleX: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-            </motion.div>
+              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
+            </div>
           </section>
 
           {/* How It Works Section */}
           <section id="how-it-works" className="landing-section landing-second">
             <div className="section-background"></div>
             <div className="section-content">
-              <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-white mb-6"
-                initial={{ opacity: 0, y: -20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-              >
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
                 How It Works
-              </motion.h2>
+              </h2>
               
               
               {/* Learning Journey Flow */}
               <div className="max-w-7xl mx-auto mb-20">
                 {/* Assessment Path */}
-                <motion.div
-                  className="mb-16"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8 }}
-                  viewport={{ once: true }}
-                >
+                <div className="mb-16">
                   <div className="text-center mb-8">
                     <h3 className="text-2xl font-bold text-gray-800 mb-3">🎯 Assessment Mode</h3>
                     <p className="text-gray-600 text-lg">Discover your current level with AI-powered speaking assessment</p>
@@ -457,16 +389,10 @@ export default function Home() {
                       <p className="text-gray-600 text-sm">Begin personalized conversations based on your assessed level</p>
                     </div>
                   </div>
-                </motion.div>
+                </div>
 
                 {/* Practice Mode Path */}
-                <motion.div
-                  className="mb-16"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.2 }}
-                  viewport={{ once: true }}
-                >
+                <div className="mb-16">
                   <div className="text-center mb-8">
                     <h3 className="text-2xl font-bold text-gray-800 mb-3">💬 Practice Mode</h3>
                     <p className="text-gray-600 text-lg">Engage in real-time conversations with your AI language tutor</p>
@@ -513,15 +439,10 @@ export default function Home() {
                       <p className="text-gray-600 text-sm">Personalized lessons that adapt to your learning pace and style</p>
                     </div>
                   </div>
-                </motion.div>
+                </div>
 
                 {/* Progress Tracking */}
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  viewport={{ once: true }}
-                >
+                <div>
                   <div className="text-center mb-8">
                     <h3 className="text-2xl font-bold text-gray-800 mb-3">📊 Progress Tracking</h3>
                     <p className="text-gray-600 text-lg">Monitor your improvement with detailed analytics and achievements</p>
@@ -570,100 +491,49 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               </div>
               
             </div>
             
-            <motion.div 
-              className="flex flex-col items-center justify-center mt-16 cursor-pointer group"
+            <div 
+              className="flex flex-col items-center justify-center mt-16 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
               onClick={() => scrollToSection('pricing')}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              viewport={{ once: true }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
             >
-              <motion.div
-                className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300"
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <motion.svg 
+              <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
+                <svg 
                   className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]" 
                   fill="none" 
                   viewBox="0 0 24 24" 
                   stroke="currentColor"
-                  animate={{ y: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </motion.svg>
-                
-                {/* Ripple effect */}
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-white/30"
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.7, 0, 0.7] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-white/20"
-                  animate={{ scale: [1, 2, 1], opacity: [0.5, 0, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                />
-              </motion.div>
+                </svg>
+              </div>
               
-              <motion.span 
-                className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300"
-                animate={{ opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
+              <span className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300">
                 Explore Our Plans
-              </motion.span>
+              </span>
               
-              <motion.div
-                className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"
-                animate={{ scaleX: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-            </motion.div>
+              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
+            </div>
           </section>
 
           {/* Pricing Section */}
           <section id="pricing" className="landing-section landing-first">
             <div className="section-background"></div>
             <div className="section-content">
-              <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-gray-800 mb-6"
-                initial={{ opacity: 0, y: -20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-              >
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
                 Choose Your Plan
-              </motion.h2>
+              </h2>
               
-              <motion.p 
-                className="text-gray-600 text-lg max-w-2xl mx-auto mb-12"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
-              >
+              <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-12">
                 Select the perfect plan for your language learning journey. All plans include unlimited AI conversations and personalized feedback.
-              </motion.p>
+              </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
                 {/* Basic Plan */}
-                <motion.div
-                  className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  viewport={{ once: true }}
-                  whileHover={{ y: -5 }}
-                >
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl hover:-translate-y-1">
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Basic</h3>
                     <div className="flex items-end mb-4">
@@ -708,17 +578,10 @@ export default function Home() {
                       Get Started
                     </button>
                   </div>
-                </motion.div>
+                </div>
                 
                 {/* Premium Plan - Most Popular */}
-                <motion.div
-                  className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-[#4ECFBF] relative transition-transform duration-300 scale-105 md:scale-110 z-10"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  viewport={{ once: true }}
-                  whileHover={{ y: -5 }}
-                >
+                <div className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-[#4ECFBF] relative transition-transform duration-300 scale-105 md:scale-110 z-10 hover:-translate-y-1">
                   <div className="absolute top-0 right-0 left-0 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white text-center py-1 font-medium text-sm">
                     MOST POPULAR
                   </div>
@@ -773,17 +636,10 @@ export default function Home() {
                       Get Started
                     </button>
                   </div>
-                </motion.div>
+                </div>
                 
                 {/* Business Plan */}
-                <motion.div
-                  className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  viewport={{ once: true }}
-                  whileHover={{ y: -5 }}
-                >
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-[#4ECFBF] transition-transform duration-300 hover:shadow-xl hover:-translate-y-1">
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#4ECFBF] mb-2">Business</h3>
                     <div className="flex items-end mb-4">
@@ -834,16 +690,10 @@ export default function Home() {
                       Contact Sales
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
               
-              <motion.div
-                className="bg-white rounded-xl p-6 border-2 border-[#4ECFBF] max-w-4xl mx-auto text-center shadow-lg"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                viewport={{ once: true }}
-              >
+              <div className="bg-white rounded-xl p-6 border-2 border-[#4ECFBF] max-w-4xl mx-auto text-center shadow-lg">
                 <h3 className="text-xl font-bold text-[#4ECFBF] mb-3">Need a custom solution?</h3>
                 <p className="text-gray-600 mb-4">Contact us for enterprise pricing and customized language training programs for larger organizations.</p>
                 <button 
@@ -855,7 +705,7 @@ export default function Home() {
                   </svg>
                   Contact Us
                 </button>
-              </motion.div>
+              </div>
             </div>
           </section>
 
@@ -866,15 +716,9 @@ export default function Home() {
               {/* FAQ Section */}
               <FAQSection />
               
-              <motion.button
-                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md flex items-center mx-auto border-2 border-white"
+              <button
+                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md flex items-center mx-auto border-2 border-white hover:scale-105 active:scale-98"
                 onClick={handleStartLearning}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                viewport={{ once: true }}
                 disabled={isLoading}
                 style={{ marginTop: '2rem' }}
               >
@@ -891,7 +735,7 @@ export default function Home() {
                     </svg>
                   </>
                 )}
-              </motion.button>
+              </button>
               
               {error && (
                 <div className="p-4 glass-card rounded-lg mt-8 border border-white/20 max-w-md mx-auto">

@@ -42,12 +42,7 @@ const HelpCenter: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white pt-32 pb-20">
         <div className="max-w-6xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
+          <div className="text-center">
             <h1 className="text-5xl font-bold mb-6">Help Center</h1>
             <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed mb-8">
               Find answers to common questions and get the most out of your language learning experience.
@@ -62,28 +57,20 @@ const HelpCenter: React.FC = () => {
                 className="w-full pl-12 pr-4 py-4 bg-white text-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50"
               />
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
       <div className="py-20">
         <div className="max-w-6xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-center mb-16"
-          >
+          <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-800 mb-6">Browse by Category</h2>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
             {categories.map((category, index) => (
-              <motion.div
+              <div
                 key={category.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
                 className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center hover:shadow-xl transition-shadow cursor-pointer"
               >
                 <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
@@ -91,15 +78,11 @@ const HelpCenter: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{category.title}</h3>
                 <p className="text-gray-600">{category.count} articles</p>
-              </motion.div>
+              </div>
             ))}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-          >
+          <div>
             <h2 className="text-4xl font-bold text-gray-800 mb-8 text-center">Frequently Asked Questions</h2>
             <div className="space-y-4">
               {faqs.map((faq, index) => (
@@ -123,17 +106,13 @@ const HelpCenter: React.FC = () => {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
       <div className="py-20 bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
+          <div>
             <h2 className="text-4xl font-bold text-gray-800 mb-6">Still Need Help?</h2>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
               Can't find what you're looking for? Our support team is here to help you succeed.
@@ -152,7 +131,7 @@ const HelpCenter: React.FC = () => {
                 Join Community
               </a>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

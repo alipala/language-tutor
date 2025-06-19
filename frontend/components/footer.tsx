@@ -128,13 +128,7 @@ const Footer: React.FC = () => {
       <div className="relative max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-12">
           {/* Company Info */}
-          <motion.div
-            className="lg:col-span-2"
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
+          <div className="lg:col-span-2">
             <div className="flex items-center mb-6">
               <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-4 border border-white/30">
                 <MessageSquare className="w-6 h-6 text-white" />
@@ -173,30 +167,24 @@ const Footer: React.FC = () => {
             {/* Social Links */}
             <div className="flex space-x-4">
               {socialLinks.map((social) => (
-                <motion.a
+                <a
                   key={social.name}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 bg-white/10 hover:bg-[#4ECFBF] rounded-lg flex items-center justify-center transition-all duration-300 group"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 bg-white/10 hover:bg-[#4ECFBF] rounded-lg flex items-center justify-center transition-all duration-300 group hover:scale-110 active:scale-95"
                 >
                   <social.icon className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
-                </motion.a>
+                </a>
               ))}
             </div>
-          </motion.div>
+          </div>
 
           {/* Footer Links */}
           {footerSections.map((section, sectionIndex) => (
-            <motion.div
+            <div
               key={section.title}
               className="lg:col-span-1"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: sectionIndex * 0.1 }}
-              viewport={{ once: true }}
             >
               <h4 className="text-lg font-semibold mb-6 text-white">
                 {section.title}
@@ -222,18 +210,12 @@ const Footer: React.FC = () => {
                   </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* Newsletter Signup */}
-        <motion.div
-          className="mt-16 p-8 bg-white rounded-2xl border border-gray-200 shadow-lg"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          viewport={{ once: true }}
-        >
+        <div className="mt-16 p-8 bg-white rounded-2xl border border-gray-200 shadow-lg">
           <div className="max-w-2xl mx-auto text-center">
             <h4 className="text-xl font-bold mb-3 text-gray-800">Stay Updated</h4>
             <p className="text-gray-600 mb-6">
@@ -251,7 +233,7 @@ const Footer: React.FC = () => {
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Bottom Bar */}
@@ -259,26 +241,14 @@ const Footer: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Copyright */}
-            <motion.div
-              className="flex items-center text-white/70"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-            >
+            <div className="flex items-center text-white/70">
               <span>© {currentYear} Language Tutor. Made with</span>
               <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
               <span>for language learners worldwide.</span>
-            </motion.div>
+            </div>
 
             {/* Legal Links */}
-            <motion.div
-              className="flex flex-wrap items-center gap-6"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
+            <div className="flex flex-wrap items-center gap-6">
               {legalLinks.map((link, index) => (
                 <a
                   key={link.name}
@@ -288,19 +258,13 @@ const Footer: React.FC = () => {
                   {link.name}
                 </a>
               ))}
-            </motion.div>
+            </div>
 
             {/* Security Badge */}
-            <motion.div
-              className="flex items-center text-white/70"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              viewport={{ once: true }}
-            >
+            <div className="flex items-center text-white/70">
               <Shield className="w-4 h-4 mr-2 text-[#4ECFBF]" />
               <span className="text-sm">SOC 2 Compliant</span>
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
@@ -308,18 +272,12 @@ const Footer: React.FC = () => {
       {/* Floating Action Button - Only visible when footer is in view */}
       <AnimatePresence>
         {showScrollButton && (
-          <motion.button
-            className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 z-50"
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0 }}
-            transition={{ duration: 0.3 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
+          <button
+            className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform duration-300 z-50"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <ChevronRight className="w-6 h-6 rotate-[-90deg]" />
-          </motion.button>
+          </button>
         )}
       </AnimatePresence>
     </footer>

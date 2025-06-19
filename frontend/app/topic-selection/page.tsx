@@ -363,10 +363,10 @@ export default function TopicSelection() {
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-black mb-4 animate-fade-in">
+          <h1 className="text-5xl font-bold text-black mb-4">
             Choose a Topic
           </h1>
-          <p className="text-gray-600 text-lg mb-8 animate-fade-in" style={{animationDelay: '100ms'}}>
+          <p className="text-gray-600 text-lg mb-8">
             {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
             {selectedLanguage === 'english' && 'Select a topic for your English conversation (optional)'}
             {selectedLanguage === 'spanish' && 'Selecciona un tema para tu conversación en español (opcional)'}
@@ -378,7 +378,7 @@ export default function TopicSelection() {
         </div>
 
         {/* Topics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in" style={{animationDelay: '300ms'}}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {topics.map((topic) => (
             <button
               key={topic.id}
@@ -413,7 +413,7 @@ export default function TopicSelection() {
         
         {/* Custom Topic Input Modal - Only show when active */}
         {isCustomTopicActive && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 animate-fade-in">
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
             <div className="bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
               {/* Background glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-50"></div>
