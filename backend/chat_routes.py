@@ -4,11 +4,27 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
+import httpx
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize OpenAI client with error handling
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Warning: OPENAI_API_KEY not found in environment variables")
+
+try:
+    client = OpenAI(api_key=api_key)
+    print("OpenAI client initialized successfully in chat_routes")
+except TypeError as e:
+    if "proxies" in str(e):
+        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+        # Alternative initialization without proxies
+        client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        print("OpenAI client initialized with alternative method in chat_routes")
+    else:
+        print(f"Error initializing OpenAI client: {str(e)}")
+        raise
 
 class ProjectKnowledgeRequest(BaseModel):
     query: str
