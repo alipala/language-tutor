@@ -85,8 +85,8 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
     sessionStorage.setItem('selectedLevel', plan.proficiency_level);
     sessionStorage.setItem('currentPlanId', plan.id);
     
-    // Navigate to speech practice
-    router.push('/speech');
+    // Navigate to speech practice with plan ID parameter
+    router.push(`/speech?plan=${plan.id}`);
   };
 
   const handleViewDetails = () => {

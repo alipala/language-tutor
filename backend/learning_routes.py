@@ -126,10 +126,167 @@ async def create_learning_plan(
         coherence_score = assessment_data.get('coherence', {}).get('score', 50)
         coherence_feedback = assessment_data.get('coherence', {}).get('feedback', '')
         
+        # Generate comprehensive weekly schedule based on duration
+        def generate_weekly_schedule(duration_months: int, areas_for_improvement: list, strengths: list, next_steps: list, language: str, level: str):
+            """Generate a comprehensive weekly schedule for the learning plan"""
+            total_weeks = duration_months * 4  # 4 weeks per month
+            weekly_schedule = []
+            
+            # Define learning themes that cycle through the plan
+            learning_themes = [
+                "Foundation Building",
+                "Skill Development", 
+                "Practical Application",
+                "Advanced Practice",
+                "Fluency Enhancement",
+                "Cultural Integration",
+                "Professional Communication",
+                "Creative Expression"
+            ]
+            
+            # Define activity templates based on proficiency level
+            level_activities = {
+                "A1": [
+                    "Learn basic vocabulary (20-30 new words)",
+                    "Practice simple sentence structures",
+                    "Listen to beginner-level audio content",
+                    "Complete pronunciation exercises",
+                    "Practice greetings and introductions"
+                ],
+                "A2": [
+                    "Expand vocabulary in specific topics",
+                    "Practice past and future tenses",
+                    "Engage in simple conversations",
+                    "Read short texts and articles",
+                    "Write simple paragraphs"
+                ],
+                "B1": [
+                    "Master intermediate grammar structures",
+                    "Practice expressing opinions and preferences",
+                    "Engage in longer conversations",
+                    "Read news articles and stories",
+                    "Write detailed descriptions"
+                ],
+                "B2": [
+                    "Refine complex grammar usage",
+                    "Practice debate and argumentation",
+                    "Analyze authentic materials",
+                    "Write formal and informal texts",
+                    "Develop presentation skills"
+                ],
+                "C1": [
+                    "Perfect advanced language structures",
+                    "Practice nuanced expression",
+                    "Analyze complex texts and media",
+                    "Write sophisticated compositions",
+                    "Develop academic/professional communication"
+                ],
+                "C2": [
+                    "Master native-like expression",
+                    "Practice subtle language nuances",
+                    "Engage with complex literature",
+                    "Write at near-native level",
+                    "Develop specialized vocabulary"
+                ]
+            }
+            
+            base_activities = level_activities.get(level, level_activities["B1"])
+            
+            for week in range(1, total_weeks + 1):
+                # Determine focus based on week progression
+                if week <= 4:
+                    # First month: Address key improvement areas
+                    focus_area = areas_for_improvement[0] if areas_for_improvement else "Building foundational skills"
+                    focus = f"Addressing key improvement areas: {focus_area}"
+                    activities = next_steps[:3] if next_steps else base_activities[:3]
+                elif week <= 8:
+                    # Second month: Build on strengths
+                    strength_area = strengths[0] if strengths else "communication skills"
+                    focus = f"Building on your strengths: {strength_area}"
+                    activities = [
+                        f"Continue working on {areas_for_improvement[0] if areas_for_improvement else 'vocabulary expansion'}",
+                        f"Practice {strength_area.lower()}",
+                        "Complete targeted exercises for your proficiency level"
+                    ]
+                else:
+                    # Subsequent months: Cycle through themes
+                    theme_index = ((week - 9) // 4) % len(learning_themes)
+                    theme = learning_themes[theme_index]
+                    focus = f"{theme}: {areas_for_improvement[(week-1) % len(areas_for_improvement)] if areas_for_improvement else 'Comprehensive skill development'}"
+                    
+                    # Generate activities based on theme and level
+                    if theme == "Foundation Building":
+                        activities = [
+                            f"Review and strengthen {areas_for_improvement[0] if areas_for_improvement else 'core skills'}",
+                            base_activities[0],
+                            base_activities[1]
+                        ]
+                    elif theme == "Skill Development":
+                        activities = [
+                            f"Advanced practice in {areas_for_improvement[1] if len(areas_for_improvement) > 1 else 'speaking fluency'}",
+                            base_activities[2],
+                            base_activities[3]
+                        ]
+                    elif theme == "Practical Application":
+                        activities = [
+                            "Apply skills in real-world scenarios",
+                            "Practice with authentic materials",
+                            "Engage in practical conversations"
+                        ]
+                    elif theme == "Advanced Practice":
+                        activities = [
+                            "Challenge yourself with complex tasks",
+                            "Practice advanced grammar structures",
+                            "Develop specialized vocabulary"
+                        ]
+                    elif theme == "Fluency Enhancement":
+                        activities = [
+                            "Focus on natural speech patterns",
+                            "Practice spontaneous conversation",
+                            "Work on rhythm and intonation"
+                        ]
+                    elif theme == "Cultural Integration":
+                        activities = [
+                            f"Learn about {language} culture and customs",
+                            "Practice culturally appropriate communication",
+                            "Explore cultural expressions and idioms"
+                        ]
+                    elif theme == "Professional Communication":
+                        activities = [
+                            "Practice business/academic language",
+                            "Develop formal writing skills",
+                            "Master professional presentations"
+                        ]
+                    else:  # Creative Expression
+                        activities = [
+                            "Express creativity through language",
+                            "Practice storytelling and narrative",
+                            "Explore artistic and literary language"
+                        ]
+                
+                weekly_schedule.append({
+                    "week": week,
+                    "focus": focus,
+                    "activities": activities,
+                    "sessions_completed": 0,
+                    "total_sessions": 2  # 2 sessions per week
+                })
+            
+            return weekly_schedule
+        
+        weekly_schedule = generate_weekly_schedule(
+            plan_request.duration_months, 
+            areas_for_improvement, 
+            strengths, 
+            next_steps,
+            plan_request.language,
+            recommended_level
+        )
+        
         # Create a personalized plan based on assessment data
         plan_content_json = {
             "title": f"{plan_request.duration_months}-Month {plan_request.language.capitalize()} Learning Plan for {recommended_level} Level",
-            "overview": f"This plan is designed based on your speaking assessment results. You demonstrated a {recommended_level} level proficiency with an overall score of {overall_score}/100.",
+            "overview": f"This comprehensive plan is designed based on your speaking assessment results. You demonstrated a {recommended_level} level proficiency with an overall score of {overall_score}/100. The plan spans {plan_request.duration_months} months with {len(weekly_schedule)} weeks of structured learning.",
             "assessment_summary": {
                 "overall_score": overall_score,
                 "recommended_level": recommended_level,
@@ -143,31 +300,27 @@ async def create_learning_plan(
                     "coherence": coherence_score
                 }
             },
-            "weekly_schedule": [
-                {
-                    "week": 1,
-                    "focus": f"Addressing key improvement areas: {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'Building foundational skills'}",
-                    "activities": next_steps[:3] if next_steps else [
-                        "Practice basic conversation skills",
-                        "Review fundamental grammar structures",
-                        "Build essential vocabulary"
-                    ]
-                },
-                {
-                    "week": 2,
-                    "focus": "Building on your strengths while addressing weaker areas",
-                    "activities": [
-                        f"Continue working on {areas_for_improvement[0] if areas_for_improvement else 'vocabulary expansion'}",
-                        f"Practice {strengths[0].lower() if strengths else 'speaking fluency'}",
-                        "Complete targeted exercises for your proficiency level"
-                    ]
-                }
+            "weekly_schedule": weekly_schedule,
+            "learning_objectives": [
+                f"Improve {areas_for_improvement[0] if areas_for_improvement else 'overall communication skills'}",
+                f"Build upon existing strengths in {strengths[0] if strengths else 'language use'}",
+                f"Achieve consistent {recommended_level} level performance",
+                "Develop confidence in real-world communication",
+                "Master advanced language structures and vocabulary"
             ],
             "resources": [
                 f"{plan_request.language.capitalize()} Grammar Guide for {recommended_level} Level",
                 f"Vocabulary Builder for {plan_request.language.capitalize()} Learners",
-                "Language Practice App with Speaking Exercises"
-            ]
+                "Language Practice App with Speaking Exercises",
+                f"Authentic {plan_request.language.capitalize()} Media Resources",
+                f"Cultural Context Guide for {plan_request.language.capitalize()} Speakers"
+            ],
+            "progress_tracking": {
+                "total_weeks": len(weekly_schedule),
+                "sessions_per_week": 2,
+                "total_sessions": len(weekly_schedule) * 2,
+                "milestone_weeks": [4, 8, 12, 24, 36, 48] if plan_request.duration_months >= 12 else [4, 8, 12]
+            }
         }
     else:
         # Use mock plan content for testing when no assessment data is available

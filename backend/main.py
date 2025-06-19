@@ -1150,6 +1150,13 @@ if frontend_build_path.exists():
             return FileResponse(file_path, media_type="text/html")
         raise HTTPException(status_code=404, detail="Speech page not found")
     
+    @app.get("/assessment/speaking")
+    async def serve_assessment_speaking():
+        file_path = frontend_build_path / "assessment" / "speaking.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Speaking assessment page not found")
+    
     @app.get("/profile")
     async def serve_profile():
         file_path = frontend_build_path / "profile.html"

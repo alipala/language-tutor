@@ -752,12 +752,12 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                                           <div className="mt-4 pt-3 border-t border-blue-200">
                                             <div className="flex items-center justify-between text-xs text-blue-700 mb-1">
                                               <span>Week Progress</span>
-                                              <span>In Progress</span>
+                                              <span>{Math.floor(((learningPlan.completed_sessions || 0) % 2) / 2 * 100)}% Complete</span>
                                             </div>
                                             <div className="w-full bg-blue-200 rounded-full h-1.5">
                                               <div 
                                                 className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                                                style={{ width: '60%' }}
+                                                style={{ width: `${Math.floor(((learningPlan.completed_sessions || 0) % 2) / 2 * 100)}%` }}
                                               ></div>
                                             </div>
                                           </div>
