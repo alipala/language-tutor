@@ -133,6 +133,9 @@ async def save_conversation(
             
             print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
             
+            # Update learning plan progress if this is a learning plan session
+            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+            
             return {
                 "success": True,
                 "session_id": str(existing_session["_id"]),
@@ -163,6 +166,9 @@ async def save_conversation(
             result = await conversation_sessions_collection.insert_one(session_dict)
             
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
+            
+            # Update learning plan progress if this is a learning plan session
+            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
             
             return {
                 "success": True,
@@ -638,3 +644,79 @@ async def calculate_streaks(user_id: str) -> tuple[int, int]:
     except Exception as e:
         print(f"[PROGRESS] ❌ Error calculating streaks: {str(e)}")
         return 0, 0
+
+async def update_learning_plan_progress(user_id: str, language: str, level: str, topic: Optional[str] = None):
+    """Update learning plan progress when a conversation is completed"""
+    try:
+        from database import database
+        learning_plans_collection = database.learning_plans
+        
+        print(f"[LEARNING_PLAN] Checking for learning plan updates for user {user_id}")
+        print(f"[LEARNING_PLAN] Session details: {language}, {level}, topic: {topic}")
+        
+        # Check if there's a specific plan ID in the current session context
+        # This should be passed from the frontend when starting a conversation with a specific plan
+        specific_plan_id = None
+        
+        # Try to get the plan ID from session storage or request context
+        # For now, we'll check if there's a plan parameter in the current request
+        # This is a temporary solution - ideally the plan ID should be passed as a parameter
+        
+        # Find learning plans for this user that match the conversation parameters
+        query = {
+            "user_id": str(user_id),
+            "language": language,
+            "proficiency_level": level
+        }
+        
+        plans_cursor = learning_plans_collection.find(query)
+        plans = await plans_cursor.to_list(length=None)
+        
+        if not plans:
+            print(f"[LEARNING_PLAN] No matching learning plans found for user {user_id}")
+            return
+        
+        print(f"[LEARNING_PLAN] Found {len(plans)} matching learning plan(s)")
+        
+        # If there are multiple plans, we need to be more selective
+        # For now, let's only update the most recently created plan to avoid updating all plans
+        if len(plans) > 1:
+            print(f"[LEARNING_PLAN] Multiple plans found - updating only the most recent one to avoid incorrect updates")
+            # Sort by created_at and take the most recent
+            plans_sorted = sorted(plans, key=lambda x: x.get('created_at', ''), reverse=True)
+            plans = [plans_sorted[0]]  # Only update the most recent plan
+            print(f"[LEARNING_PLAN] Selected most recent plan: {plans[0].get('id')}")
+        
+        # Update the selected plan(s)
+        for plan in plans:
+            plan_id = plan.get("id")
+            current_completed = plan.get("completed_sessions", 0)
+            total_sessions = plan.get("total_sessions", 1)
+            
+            # Increment completed sessions
+            new_completed = current_completed + 1
+            
+            # Don't exceed total sessions
+            if new_completed > total_sessions:
+                new_completed = total_sessions
+            
+            # Calculate new progress percentage
+            progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
+            
+            # Update the plan
+            result = await learning_plans_collection.update_one(
+                {"id": plan_id},
+                {"$set": {
+                    "completed_sessions": new_completed,
+                    "progress_percentage": progress_percentage
+                }}
+            )
+            
+            if result.modified_count > 0:
+                print(f"[LEARNING_PLAN] ✅ Updated plan {plan_id}: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+            else:
+                print(f"[LEARNING_PLAN] ⚠️ No changes made to plan {plan_id}")
+                
+    except Exception as e:
+        print(f"[LEARNING_PLAN] ❌ Error updating learning plan progress: {str(e)}")
+        # Don't raise the exception - this is a non-critical operation

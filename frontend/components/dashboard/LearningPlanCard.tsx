@@ -177,9 +177,9 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
                 <Clock className="h-4 w-4 text-blue-500" />
               </div>
               <div className="text-lg font-bold text-gray-800">
-                {Math.round((progressStats?.total_minutes || 0))}
+                {Math.round(progress)}%
               </div>
-              <div className="text-xs text-gray-600">Minutes</div>
+              <div className="text-xs text-gray-600">Complete</div>
             </div>
             
             <div className="text-center">

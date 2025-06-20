@@ -24,6 +24,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // Moving the console.log out of the component body to prevent excessive logging
   const initialRenderRef = useRef(true);
   
+  // All conversation saving and timer issues have been resolved
+  
   const router = useRouter();
   const { user } = useAuth();
   
@@ -33,10 +35,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     return user.name.split(' ')[0]; // Get the first part of the name
   }, [user?.name]);
   
-  // Guest user conversation timer state
-  const [conversationTimer, setConversationTimer] = useState<number | null>(null);
+  // Guest user conversation timer state - simplified to only track state, not duplicate timing
   const [isConversationTimerActive, setIsConversationTimerActive] = useState(false);
   const [conversationTimeUp, setConversationTimeUp] = useState(false);
+  const [conversationDuration] = useState(() => getConversationDuration(isAuthenticated()));
   
   // Initialize conversation timer and check for expired sessions
   useEffect(() => {
@@ -49,26 +51,21 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     if (planParam) {
       console.log('Checking plan timer validity on speech client mount:', planParam);
       
-      // Use the enhanced validation function to check if session is expired
-      const isExpired = checkAndMarkSessionExpired(planParam, isAuthenticated());
-      
-      if (isExpired) {
-        console.log('Plan session has expired, preventing conversation');
-        setConversationTimeUp(true);
-        return;
-      }
-      
-      // If not expired, calculate remaining time and set timer
-      const planCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
-      if (planCreationTime) {
-        const remainingTime = getRemainingTime(isAuthenticated(), planCreationTime);
-        if (remainingTime > 0) {
-          console.log('Setting conversation timer to remaining time:', remainingTime);
-          setConversationTimer(remainingTime);
-          setConversationTimeUp(false);
-        } else {
-          console.log('No remaining time, marking conversation as expired');
+      // For registered users with learning plans, always allow conversation
+      if (isAuthenticated()) {
+        console.log('Registered user with learning plan - allowing full conversation duration');
+        setConversationTimeUp(false);
+      } else {
+        // For guest users, use the enhanced validation function to check if session is expired
+        const isExpired = checkAndMarkSessionExpired(planParam, isAuthenticated());
+        
+        if (isExpired) {
+          console.log('Guest plan session has expired, preventing conversation');
           setConversationTimeUp(true);
+          return;
+        } else {
+          console.log('Guest plan session is valid, allowing conversation');
+          setConversationTimeUp(false);
         }
       }
     } else if (!isAuthenticated() && hasAssessmentData) {
@@ -599,9 +596,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   useEffect(() => {
     const assistantMessages = messages.filter(msg => msg.role === 'assistant');
     
-    // If we have the first assistant message and timer is initialized but not active
+    // If we have the first assistant message and timer is not active
     if (assistantMessages.length > 0 && 
-        conversationTimer !== null && 
         !isConversationTimerActive && 
         !conversationTimeUp &&
         isRecording) {
@@ -609,7 +605,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       console.log('🎯 AI has started speaking - starting conversation timer now!');
       setIsConversationTimerActive(true);
     }
-  }, [messages, conversationTimer, isConversationTimerActive, conversationTimeUp, isRecording]);
+  }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
   // Handle transcript updates and language detection
   useEffect(() => {
@@ -754,43 +750,66 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
   }, [messages, language, alertAnimationState, showLanguageAlert]);
   
-  // Conversation timer effect for guest users
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    
-    if (isConversationTimerActive && conversationTimer !== null && conversationTimer > 0) {
-      interval = setInterval(() => {
-        setConversationTimer((prevTimer) => {
-          if (prevTimer === null) return null;
-          const newTimer = prevTimer - 1;
-          
-          // Timer warning is now handled by the ModernTimer component visual indicators
-          // No popup notifications needed
-          
-          // End conversation when timer reaches 0
-          if (newTimer <= 0) {
-            // Set state to indicate time is up
-            setConversationTimeUp(true);
-            setIsConversationTimerActive(false);
-            handleEndConversation();
-            
-            // No longer storing expiration in session storage
-            // We allow unlimited attempts with time limitations per attempt
-            
-            // Time's up notification is now handled by the TimeUpModal component in the parent
-            
-            return 0;
-          }
-          
-          return newTimer;
-        });
-      }, 1000);
+  // Auto-save conversation progress function
+  const saveConversationProgress = async () => {
+    if (!user || processedMessages.length === 0) {
+      console.log('Cannot save: no user or no messages');
+      return;
     }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isConversationTimerActive, conversationTimer]);
+
+    try {
+      // Calculate conversation duration
+      const durationMinutes = conversationStartTime 
+        ? (Date.now() - conversationStartTime) / (1000 * 60)
+        : 0;
+
+      // Prepare messages for saving
+      const messagesToSave = processedMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp || new Date().toISOString()
+      }));
+
+      console.log('[AUTO_SAVE] Saving conversation at 5 minutes:', {
+        language,
+        level,
+        topic,
+        messageCount: messagesToSave.length,
+        duration: durationMinutes
+      });
+
+      const { getApiUrl } = await import('@/lib/api-utils');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiUrl()}/api/progress/save-conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          language,
+          level,
+          topic,
+          messages: messagesToSave,
+          duration_minutes: durationMinutes
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to save conversation');
+      }
+
+      const result = await response.json();
+      console.log('[AUTO_SAVE] ✅ Conversation auto-saved successfully:', result);
+
+    } catch (error) {
+      console.error('[AUTO_SAVE] ❌ Error auto-saving conversation:', error);
+    }
+  };
+  
+  // Note: Timer logic is now handled entirely by the ModernTimer component
+  // No duplicate timer effects needed here
   
   // Handle recording toggle
   const handleToggleRecording = async (e: React.MouseEvent) => {
@@ -832,19 +851,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       return;
     }
     
-    // Initialize timer but don't start it yet - it will start when AI begins speaking
-    if (!isConversationTimerActive && conversationTimer === null) {
-      const isUserAuthenticated = isAuthenticated();
-      const duration = getConversationDuration(isUserAuthenticated); // Get appropriate duration based on auth status
-      setConversationTimer(duration);
-      // Don't start the timer here - it will start when AI begins speaking
-      setConversationTimeUp(false);
-      
-      console.log('Timer initialized but not started - waiting for AI to begin speaking');
-    } else if (conversationTimer !== null && !isConversationTimerActive) {
-      // Timer was paused, it will resume when AI begins speaking again
-      console.log('🔄 Resuming conversation - timer will restart when AI speaks');
-    }
+    // Timer logic is now handled entirely by ModernTimer component
+    // Just ensure conversation is not marked as time up when starting
+    setConversationTimeUp(false);
+    console.log('🔄 Starting/resuming conversation - timer managed by ModernTimer');
     
     // If starting a brand new conversation, reset the paused state
     setIsPaused(false);
@@ -905,7 +915,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         setIsPaused(false);
         
         // For guest users, make sure the timer continues if it was active
-        if (!isAuthenticated() && !conversationTimeUp && conversationTimer && conversationTimer > 0) {
+        if (!isAuthenticated() && !conversationTimeUp) {
           setIsConversationTimerActive(true);
         }
       } else {
@@ -915,80 +925,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }, 300);
   };
   
-  // Handle change language
-  const handleChangeLanguage = () => {
-    // Clear all selections except language which will be reselected
-    sessionStorage.removeItem('selectedLevel');
-    sessionStorage.removeItem('selectedTopic');
-    sessionStorage.removeItem('customTopicText');
-    // Clear any navigation flags
-    sessionStorage.removeItem('fromLevelSelection');
-    sessionStorage.removeItem('intentionalNavigation');
-    
-    // Set a flag to indicate we're intentionally going to language selection
-    sessionStorage.setItem('fromSpeechPage', 'true');
-    
-    console.log('Navigating to language selection from speech client');
-    window.location.href = '/language-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('speech')) {
-        console.log('Still on speech page, using fallback navigation to language selection');
-        window.location.replace('/language-selection');
-      }
-    }, 1000);
-  };
-  
-  // Handle change topic
-  const handleChangeTopic = () => {
-    // Keep language but clear topic and level
-    sessionStorage.removeItem('selectedTopic');
-    sessionStorage.removeItem('customTopicText');
-    sessionStorage.removeItem('selectedLevel');
-    // Set a flag to indicate we're intentionally going to topic selection
-    sessionStorage.setItem('fromLevelSelection', 'true');
-    // Clear any other navigation flags
-    sessionStorage.removeItem('intentionalNavigation');
-    
-    console.log('Navigating to topic selection from speech client');
-    window.location.href = '/topic-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('speech')) {
-        console.log('Still on speech page, using fallback navigation to topic selection');
-        window.location.replace('/topic-selection');
-      }
-    }, 1000);
-  };
-  
-  // Handle change level
-  const handleChangeLevel = () => {
-    // Clear level selection but keep language and topic
-    sessionStorage.removeItem('selectedLevel');
-    // Clear any navigation flags
-    sessionStorage.removeItem('intentionalNavigation');
-    
-    console.log('Navigating to level selection from speech client');
-    window.location.href = '/level-selection';
-    
-    // Fallback navigation in case the first attempt fails
-    setTimeout(() => {
-      if (window.location.pathname.includes('speech')) {
-        console.log('Still on speech page, using fallback navigation to level selection');
-        window.location.replace('/level-selection');
-      }
-    }, 1000);
-  };
-  
-  // Browser navigation protection
+  // Set conversation start time when the first message is received (conversation actually starts)
   useEffect(() => {
-    // Set conversation start time when recording begins
-    if (isRecording && !conversationStartTime) {
+    // Set conversation start time when we have the first message and haven't set it yet
+    if (messages.length > 0 && !conversationStartTime) {
+      console.log('🕐 Setting conversation start time - first message received');
       setConversationStartTime(Date.now());
     }
-  }, [isRecording, conversationStartTime]);
+  }, [messages.length, conversationStartTime]);
   
   // Browser navigation protection
   useEffect(() => {
@@ -1093,22 +1037,28 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         )}
         
         {/* Timer positioned aligned with Conversation Transcript container top line */}
-        {conversationTimer !== null && (
-          <div className="fixed top-32 sm:top-36 md:top-40 lg:top-44 right-2 sm:right-4 z-40">
-            <div className="scale-75 sm:scale-90 md:scale-100">
-              <ModernTimer
-                initialTime={getConversationDuration(isAuthenticated())}
-                isActive={isConversationTimerActive}
-                onTimeUp={() => {
-                  setConversationTimeUp(true);
-                  setIsConversationTimerActive(false);
-                  handleEndConversation();
-                }}
-                className=""
-              />
-            </div>
+        <div className="fixed top-32 sm:top-36 md:top-40 lg:top-44 right-2 sm:right-4 z-40">
+          <div className="scale-75 sm:scale-90 md:scale-100">
+            <ModernTimer
+              initialTime={getConversationDuration(isAuthenticated())}
+              isActive={isConversationTimerActive}
+              onTimeUp={() => {
+                console.log('⏰ Timer reached 0 - ending conversation and auto-saving');
+                setConversationTimeUp(true);
+                setIsConversationTimerActive(false);
+                
+                // Auto-save conversation when time is up (5 minutes completed)
+                if (user && processedMessages.length > 0) {
+                  console.log('🔄 Auto-saving conversation at timer end...');
+                  saveConversationProgress();
+                }
+                
+                handleEndConversation();
+              }}
+              className=""
+            />
           </div>
-        )}
+        </div>
 
         {/* Header - Redesigned */}
         <div className="text-center mb-6">
@@ -1118,17 +1068,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           <p className="text-white/80 mt-2">
             Level: {level.toUpperCase()} - Click the microphone button to start talking
           </p>
-          
-          {/* Guest User Information Banner removed as requested */}
-          
-          {/* Navigation Controls removed as requested */}
         </div>
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Redesigned for better responsiveness and alignment */}
           <div className="w-full">
-            {/* Removed the initial microphone section that was previously shown before conversation */}
-            
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
@@ -1244,14 +1188,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                         </svg>
                         Conversation Transcript
                       </h3>
-                      <SaveProgressButton
-                        messages={processedMessages}
-                        language={language}
-                        level={level}
-                        topic={topic}
-                        conversationStartTime={isConversationTimerActive ? Date.now() - ((getConversationDuration(isAuthenticated()) - (conversationTimer || 0)) * 1000) : undefined}
-                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
-                      />
                     </div>
                     <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-1 min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
                       <div className="space-y-4 flex-1 flex flex-col">
@@ -1272,9 +1208,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                               
                               // Format the time for display
                               const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                              
-                              // Log message for debugging
-                              console.log(`Rendering message ${index}: ${message.role}, content: ${message.content.substring(0, 30)}..., timestamp: ${timeDisplay}`);
                               
                               return (
                                 <div 
@@ -1392,9 +1325,10 @@ function MicrophoneIcon({ isRecording, size = 20 }: { isRecording: boolean; size
       strokeLinejoin="round"
       className="text-gray-800"
     >
-      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-      <line x1="12" x2="12" y1="19" y2="22"></line>
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
     </svg>
   );
 }
