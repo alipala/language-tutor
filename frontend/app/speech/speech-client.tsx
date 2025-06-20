@@ -106,6 +106,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // Session completion modal state
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [showSavingLoader, setShowSavingLoader] = useState(false);
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -1077,9 +1078,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                 // Auto-save conversation when time is up (5 minutes completed)
                 if (user && processedMessages.length > 0) {
                   console.log('🔄 Auto-saving conversation at timer end...');
+                  
+                  // Show loading state while saving
+                  setShowSavingLoader(true);
+                  
                   await saveConversationProgress();
                   
-                  // Mark session as completed and show completion modal
+                  // Hide loading state and show completion modal
+                  setShowSavingLoader(false);
                   setSessionCompleted(true);
                   setShowCompletionModal(true);
                 } else {
@@ -1349,6 +1355,19 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         language={language}
         level={level}
       />
+
+      {/* Saving Progress Loading Modal */}
+      {showSavingLoader && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 mx-4 max-w-sm w-full text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Saving Your Progress</h3>
+            <p className="text-gray-600">Please wait while we save your conversation...</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

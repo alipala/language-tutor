@@ -304,11 +304,28 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                 <div>
                   <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
                     <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-                    Weekly Schedule
+                    Weekly Schedule Preview
                   </h4>
                   <div className="space-y-3">
-                    {weeklySchedule.slice(0, 4).map((week: any, index: number) => {
-                      // Calculate week progress based on completed sessions
+                    {(() => {
+                      // Calculate which weeks to show (current week and next week)
+                      const sessionsPerWeek = 2;
+                      let currentWeekNumber = 1;
+                      
+                      if (completedSessions > 0) {
+                        currentWeekNumber = Math.floor((completedSessions - 1) / sessionsPerWeek) + 1;
+                      }
+                      
+                      // Show current week and next week (max 2 weeks)
+                      const weeksToShow = weeklySchedule.filter((week: any) => 
+                        week.week >= currentWeekNumber && week.week <= currentWeekNumber + 1
+                      );
+                      
+                      // If no weeks match (edge case), show first 2 weeks
+                      const finalWeeksToShow = weeksToShow.length > 0 ? weeksToShow : weeklySchedule.slice(0, 2);
+                      
+                      return finalWeeksToShow.map((week: any, index: number) => {
+                        // Calculate week progress based on completed sessions
                       const sessionsPerWeek = 2;
                       
                       // Fix: Only consider a week as current if user has actually started sessions
@@ -439,10 +456,11 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                           </div>
                         </div>
                       );
-                    })}
-                    {weeklySchedule.length > 4 && (
+                      });
+                    })()}
+                    {weeklySchedule.length > 2 && (
                       <div className="text-center text-sm text-gray-500">
-                        +{weeklySchedule.length - 4} more weeks
+                        +{weeklySchedule.length - 2} more weeks in your plan
                       </div>
                     )}
                   </div>
