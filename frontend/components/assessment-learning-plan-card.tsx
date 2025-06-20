@@ -620,18 +620,30 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               {/* Detailed Plan View */}
               {showPlanDetails && (
                 <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
-                  {/* Weekly Schedule Preview with Pagination */}
+                  {/* Weekly Schedule Preview with Current + Next Week */}
                   {(() => {
                     // Use only the personalized weekly schedule from the learning plan
                     // Don't generate generic weeks - show only what was created based on assessment
                     const allWeeks = learningPlan.plan_content.weekly_schedule || [];
                     
+                    // Calculate which weeks to show (current week and next week)
+                    const sessionsPerWeek = 2;
+                    let currentWeekNumber = 1;
+                    
+                    if ((learningPlan.completed_sessions || 0) > 0) {
+                      currentWeekNumber = Math.floor(((learningPlan.completed_sessions || 0) - 1) / sessionsPerWeek) + 1;
+                    }
+                    
+                    // Show current week and next week (max 2 weeks)
+                    const weeksToShow = allWeeks.filter((week: any) => 
+                      week.week >= currentWeekNumber && week.week <= currentWeekNumber + 1
+                    );
+                    
+                    // If no weeks match (edge case), show first 2 weeks
+                    const currentWeeks = weeksToShow.length > 0 ? weeksToShow : allWeeks.slice(0, 2);
+                    
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
-                    const currentWeeks = allWeeks.slice(
-                      currentWeekPage * weeksPerPage, 
-                      (currentWeekPage + 1) * weeksPerPage
-                    );
                     
                     return allWeeks.length > 0 && (
                       <div>
@@ -639,157 +651,108 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                           <h5 className="font-semibold text-gray-800">Weekly Schedule Preview</h5>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm text-gray-500">
-                              {currentWeekPage * weeksPerPage + 1}-{Math.min((currentWeekPage + 1) * weeksPerPage, allWeeks.length)} of {allWeeks.length} weeks
+                              Showing current & next week ({currentWeeks.length} of {allWeeks.length} weeks)
                             </span>
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => setCurrentWeekPage(Math.max(0, currentWeekPage - 1))}
-                                disabled={currentWeekPage === 0}
-                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                style={{ color: '#4ECFBF' }}
-                              >
-                                <ChevronDown className="h-4 w-4 rotate-90" />
-                              </button>
-                              <button
-                                onClick={() => setCurrentWeekPage(Math.min(totalPages - 1, currentWeekPage + 1))}
-                                disabled={currentWeekPage === totalPages - 1}
-                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                style={{ color: '#4ECFBF' }}
-                              >
-                                <ChevronDown className="h-4 w-4 -rotate-90" />
-                              </button>
-                            </div>
                           </div>
                         </div>
                         
-                        {/* Horizontal Sliding Cards Container */}
-                        <div className="relative overflow-hidden">
-                          <div 
-                            className="flex transition-transform duration-500 ease-in-out space-x-4"
-                            style={{ transform: `translateX(-${currentWeekPage * 100}%)` }}
-                          >
-                            {Array.from({ length: totalPages }, (_, pageIndex) => (
-                              <div key={pageIndex} className="flex-shrink-0 w-full">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  {allWeeks.slice(pageIndex * weeksPerPage, (pageIndex + 1) * weeksPerPage).map((week, weekIndex) => {
-                                    const isCurrentWeek = week.week === Math.floor((learningPlan.completed_sessions || 0) / 2) + 1;
-                                    const isCompleted = week.week <= Math.floor((learningPlan.completed_sessions || 0) / 2);
-                                    
-                                    return (
-                                      <div 
-                                        key={week.week} 
-                                        className={`relative rounded-xl p-5 border-2 transition-all duration-300 hover:shadow-lg ${
-                                          isCurrentWeek 
-                                            ? 'border-blue-300 bg-blue-50 shadow-md' 
-                                            : isCompleted 
-                                              ? 'border-green-200 bg-green-50' 
-                                              : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                                        }`}
-                                      >
-                                        {/* Week Status Badge */}
-                                        <div className="absolute top-3 right-3">
-                                          {isCompleted ? (
-                                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                              <CheckCircle className="h-4 w-4 text-white" />
-                                            </div>
-                                          ) : isCurrentWeek ? (
-                                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                              <Clock className="h-4 w-4 text-white" />
-                                            </div>
-                                          ) : (
-                                            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                                              <span className="text-xs font-bold text-gray-600">{week.week}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                        
-                                        {/* Week Header */}
-                                        <div className="mb-4 pr-8">
-                                          <h6 className={`font-bold text-lg mb-1 ${
-                                            isCurrentWeek ? 'text-blue-800' : 
-                                            isCompleted ? 'text-green-800' : 'text-gray-800'
-                                          }`}>
-                                            Week {week.week}
-                                          </h6>
-                                          <p className={`text-sm font-medium ${
-                                            isCurrentWeek ? 'text-blue-700' : 
-                                            isCompleted ? 'text-green-700' : 'text-gray-600'
-                                          }`}>
-                                            {week.focus}
-                                          </p>
-                                        </div>
-                                        
-                                        {/* Week Activities */}
-                                        <div className="space-y-2">
-                                          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                            Activities
-                                          </div>
-                                          <ul className="space-y-2">
-                                            {week.activities.slice(0, 3).map((activity: string, actIndex: number) => (
-                                              <li key={actIndex} className="flex items-start text-sm">
-                                                <div className={`w-1.5 h-1.5 rounded-full mt-2 mr-3 flex-shrink-0 ${
-                                                  isCurrentWeek ? 'bg-blue-500' : 
-                                                  isCompleted ? 'bg-green-500' : 'bg-gray-400'
-                                                }`}></div>
-                                                <span className={`leading-relaxed ${
-                                                  isCurrentWeek ? 'text-blue-800' : 
-                                                  isCompleted ? 'text-green-800' : 'text-gray-700'
-                                                }`}>
-                                                  {activity}
-                                                </span>
-                                              </li>
-                                            ))}
-                                            {week.activities.length > 3 && (
-                                              <li className="text-xs text-gray-500 ml-5">
-                                                +{week.activities.length - 3} more activities
-                                              </li>
-                                            )}
-                                          </ul>
-                                        </div>
-                                        
-                                        {/* Progress Indicator for Current Week */}
-                                        {isCurrentWeek && (
-                                          <div className="mt-4 pt-3 border-t border-blue-200">
-                                            <div className="flex items-center justify-between text-xs text-blue-700 mb-1">
-                                              <span>Week Progress</span>
-                                              <span>{Math.floor(((learningPlan.completed_sessions || 0) % 2) / 2 * 100)}% Complete</span>
-                                            </div>
-                                            <div className="w-full bg-blue-200 rounded-full h-1.5">
-                                              <div 
-                                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                                                style={{ width: `${Math.floor(((learningPlan.completed_sessions || 0) % 2) / 2 * 100)}%` }}
-                                              ></div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        {/* Page Indicators */}
-                        {totalPages > 1 && (
-                          <div className="flex justify-center mt-4 space-x-2">
-                            {Array.from({ length: totalPages }, (_, index) => (
-                              <button
-                                key={index}
-                                onClick={() => setCurrentWeekPage(index)}
-                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                                  index === currentWeekPage 
-                                    ? 'w-6 h-2' 
-                                    : 'hover:bg-gray-400'
+                        {/* Current + Next Week Display */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {currentWeeks.map((week, weekIndex) => {
+                            const isCurrentWeek = week.week === Math.floor((learningPlan?.completed_sessions || 0) / 2) + 1;
+                            const isCompleted = week.week <= Math.floor((learningPlan?.completed_sessions || 0) / 2);
+                            
+                            return (
+                              <div 
+                                key={week.week} 
+                                className={`relative rounded-xl p-5 border-2 transition-all duration-300 hover:shadow-lg ${
+                                  isCurrentWeek 
+                                    ? 'border-blue-300 bg-blue-50 shadow-md' 
+                                    : isCompleted 
+                                      ? 'border-green-200 bg-green-50' 
+                                      : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                                 }`}
-                                style={{ 
-                                  backgroundColor: index === currentWeekPage ? '#4ECFBF' : '#D1D5DB'
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
+                              >
+                                {/* Week Status Badge */}
+                                <div className="absolute top-3 right-3">
+                                  {isCompleted ? (
+                                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                      <CheckCircle className="h-4 w-4 text-white" />
+                                    </div>
+                                  ) : isCurrentWeek ? (
+                                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                      <Clock className="h-4 w-4 text-white" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
+                                      <span className="text-xs font-bold text-gray-600">{week.week}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Week Header */}
+                                <div className="mb-4 pr-8">
+                                  <h6 className={`font-bold text-lg mb-1 ${
+                                    isCurrentWeek ? 'text-blue-800' : 
+                                    isCompleted ? 'text-green-800' : 'text-gray-800'
+                                  }`}>
+                                    Week {week.week}
+                                  </h6>
+                                  <p className={`text-sm font-medium ${
+                                    isCurrentWeek ? 'text-blue-700' : 
+                                    isCompleted ? 'text-green-700' : 'text-gray-600'
+                                  }`}>
+                                    {week.focus}
+                                  </p>
+                                </div>
+                                
+                                {/* Week Activities */}
+                                <div className="space-y-2">
+                                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                    Activities
+                                  </div>
+                                  <ul className="space-y-2">
+                                    {week.activities.slice(0, 3).map((activity: string, actIndex: number) => (
+                                      <li key={actIndex} className="flex items-start text-sm">
+                                        <div className={`w-1.5 h-1.5 rounded-full mt-2 mr-3 flex-shrink-0 ${
+                                          isCurrentWeek ? 'bg-blue-500' : 
+                                          isCompleted ? 'bg-green-500' : 'bg-gray-400'
+                                        }`}></div>
+                                        <span className={`leading-relaxed ${
+                                          isCurrentWeek ? 'text-blue-800' : 
+                                          isCompleted ? 'text-green-800' : 'text-gray-700'
+                                        }`}>
+                                          {activity}
+                                        </span>
+                                      </li>
+                                    ))}
+                                    {week.activities.length > 3 && (
+                                      <li className="text-xs text-gray-500 ml-5">
+                                        +{week.activities.length - 3} more activities
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                                
+                                {/* Progress Indicator for Current Week */}
+                                {isCurrentWeek && (
+                                  <div className="mt-4 pt-3 border-t border-blue-200">
+                                    <div className="flex items-center justify-between text-xs text-blue-700 mb-1">
+                                      <span>Week Progress</span>
+                                      <span>{Math.floor(((learningPlan?.completed_sessions || 0) % 2) / 2 * 100)}% Complete</span>
+                                    </div>
+                                    <div className="w-full bg-blue-200 rounded-full h-1.5">
+                                      <div 
+                                        className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                                        style={{ width: `${Math.floor(((learningPlan?.completed_sessions || 0) % 2) / 2 * 100)}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })()}
