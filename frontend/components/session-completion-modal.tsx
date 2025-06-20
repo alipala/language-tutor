@@ -25,34 +25,6 @@ export default function SessionCompletionModal({
   level
 }: SessionCompletionModalProps) {
   const router = useRouter();
-  const [countdown, setCountdown] = useState(10);
-  const [autoRedirect, setAutoRedirect] = useState(true);
-
-  // Auto-redirect countdown
-  useEffect(() => {
-    if (!isOpen || !autoRedirect) return;
-
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onGoHome();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isOpen, autoRedirect, onGoHome]);
-
-  // Reset countdown when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setCountdown(10);
-      setAutoRedirect(true);
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -107,24 +79,9 @@ export default function SessionCompletionModal({
                 🎉 Great job! Your progress has been saved to your learning plan.
               </p>
               <p className="text-sm text-gray-600">
-                Check your dashboard to see your updated progress and start your next session.
+                Choose what you'd like to do next:
               </p>
             </div>
-
-            {/* Auto-redirect notice */}
-            {autoRedirect && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-center">
-                <p className="text-sm text-blue-800">
-                  Redirecting to dashboard in <span className="font-bold text-blue-600">{countdown}</span> seconds
-                </p>
-                <button
-                  onClick={() => setAutoRedirect(false)}
-                  className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
-                >
-                  Cancel auto-redirect
-                </button>
-              </div>
-            )}
             
             {/* Action Buttons */}
             <div className="space-y-3">

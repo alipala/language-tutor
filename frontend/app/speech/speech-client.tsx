@@ -1067,9 +1067,12 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
               initialTime={getConversationDuration(isAuthenticated())}
               isActive={isConversationTimerActive}
               onTimeUp={async () => {
-                console.log('⏰ Timer reached 0 - ending conversation and auto-saving');
+                console.log('⏰ Timer reached 0 - immediately stopping conversation');
                 setConversationTimeUp(true);
                 setIsConversationTimerActive(false);
+                
+                // Immediately stop the conversation to prevent AI from continuing to speak
+                stopConversation();
                 
                 // Auto-save conversation when time is up (5 minutes completed)
                 if (user && processedMessages.length > 0) {
