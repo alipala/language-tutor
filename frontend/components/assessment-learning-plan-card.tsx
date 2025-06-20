@@ -152,6 +152,11 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 <h2 className="text-xl font-bold flex items-center">
                   <Award className="h-5 w-5 mr-2" />
                   Assessment & Learning Journey #{index + 1}
+                  {index === 0 && (
+                    <span className="ml-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
+                      Most Recent
+                    </span>
+                  )}
                 </h2>
                 <p className="text-white/80 text-sm mt-1 flex items-center">
                   <Calendar className="h-4 w-4 mr-1" />
