@@ -33,10 +33,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     return user.name.split(' ')[0]; // Get the first part of the name
   }, [user?.name]);
   
-  // Guest user conversation timer state
-  const [conversationTimer, setConversationTimer] = useState<number | null>(null);
+  // Guest user conversation timer state - simplified to only track state, not duplicate timing
   const [isConversationTimerActive, setIsConversationTimerActive] = useState(false);
   const [conversationTimeUp, setConversationTimeUp] = useState(false);
+  const [conversationDuration] = useState(() => getConversationDuration(isAuthenticated()));
   
   // Initialize conversation timer and check for expired sessions
   useEffect(() => {
@@ -49,12 +49,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     if (planParam) {
       console.log('Checking plan timer validity on speech client mount:', planParam);
       
-      // For registered users with learning plans, always give full conversation duration
-      // Learning plans don't have time-based expiration for registered users
+      // For registered users with learning plans, always allow conversation
       if (isAuthenticated()) {
-        console.log('Registered user with learning plan - setting full conversation duration');
-        const fullDuration = getConversationDuration(true); // 5 minutes for registered users
-        setConversationTimer(fullDuration);
+        console.log('Registered user with learning plan - allowing full conversation duration');
         setConversationTimeUp(false);
       } else {
         // For guest users, use the enhanced validation function to check if session is expired
@@ -64,20 +61,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           console.log('Guest plan session has expired, preventing conversation');
           setConversationTimeUp(true);
           return;
-        }
-        
-        // If not expired, calculate remaining time and set timer for guest users
-        const planCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
-        if (planCreationTime) {
-          const remainingTime = getRemainingTime(isAuthenticated(), planCreationTime);
-          if (remainingTime > 0) {
-            console.log('Setting guest conversation timer to remaining time:', remainingTime);
-            setConversationTimer(remainingTime);
-            setConversationTimeUp(false);
-          } else {
-            console.log('No remaining time for guest, marking conversation as expired');
-            setConversationTimeUp(true);
-          }
+        } else {
+          console.log('Guest plan session is valid, allowing conversation');
+          setConversationTimeUp(false);
         }
       }
     } else if (!isAuthenticated() && hasAssessmentData) {
@@ -608,9 +594,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   useEffect(() => {
     const assistantMessages = messages.filter(msg => msg.role === 'assistant');
     
-    // If we have the first assistant message and timer is initialized but not active
+    // If we have the first assistant message and timer is not active
     if (assistantMessages.length > 0 && 
-        conversationTimer !== null && 
         !isConversationTimerActive && 
         !conversationTimeUp &&
         isRecording) {
@@ -618,7 +603,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       console.log('🎯 AI has started speaking - starting conversation timer now!');
       setIsConversationTimerActive(true);
     }
-  }, [messages, conversationTimer, isConversationTimerActive, conversationTimeUp, isRecording]);
+  }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
   // Handle transcript updates and language detection
   useEffect(() => {
@@ -821,44 +806,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
   };
   
-  // Conversation timer effect for guest users
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    
-    if (isConversationTimerActive && conversationTimer !== null && conversationTimer > 0) {
-      interval = setInterval(() => {
-        setConversationTimer((prevTimer) => {
-          if (prevTimer === null) return null;
-          const newTimer = prevTimer - 1;
-          
-          // Timer warning is now handled by the ModernTimer component visual indicators
-          // No popup notifications needed
-          
-          // End conversation when timer reaches 0
-          if (newTimer <= 0) {
-            // Set state to indicate time is up
-            setConversationTimeUp(true);
-            setIsConversationTimerActive(false);
-            handleEndConversation();
-            
-            // Auto-save conversation when time is up (5 minutes completed)
-            if (user && processedMessages.length > 0) {
-              console.log('🔄 Auto-saving conversation at 5 minutes...');
-              saveConversationProgress();
-            }
-            
-            return 0;
-          }
-          
-          return newTimer;
-        });
-      }, 1000);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isConversationTimerActive, conversationTimer, user, processedMessages]);
+  // Note: Timer logic is now handled entirely by the ModernTimer component
+  // No duplicate timer effects needed here
   
   // Handle recording toggle
   const handleToggleRecording = async (e: React.MouseEvent) => {
@@ -900,19 +849,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       return;
     }
     
-    // Initialize timer but don't start it yet - it will start when AI begins speaking
-    if (!isConversationTimerActive && conversationTimer === null) {
-      const isUserAuthenticated = isAuthenticated();
-      const duration = getConversationDuration(isUserAuthenticated); // Get appropriate duration based on auth status
-      setConversationTimer(duration);
-      // Don't start the timer here - it will start when AI begins speaking
-      setConversationTimeUp(false);
-      
-      console.log('Timer initialized but not started - waiting for AI to begin speaking');
-    } else if (conversationTimer !== null && !isConversationTimerActive) {
-      // Timer was paused, it will resume when AI begins speaking again
-      console.log('🔄 Resuming conversation - timer will restart when AI speaks');
-    }
+    // Timer logic is now handled entirely by ModernTimer component
+    // Just ensure conversation is not marked as time up when starting
+    setConversationTimeUp(false);
+    console.log('🔄 Starting/resuming conversation - timer managed by ModernTimer');
     
     // If starting a brand new conversation, reset the paused state
     setIsPaused(false);
@@ -973,7 +913,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         setIsPaused(false);
         
         // For guest users, make sure the timer continues if it was active
-        if (!isAuthenticated() && !conversationTimeUp && conversationTimer && conversationTimer > 0) {
+        if (!isAuthenticated() && !conversationTimeUp) {
           setIsConversationTimerActive(true);
         }
       } else {
@@ -1095,22 +1035,20 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         )}
         
         {/* Timer positioned aligned with Conversation Transcript container top line */}
-        {conversationTimer !== null && (
-          <div className="fixed top-32 sm:top-36 md:top-40 lg:top-44 right-2 sm:right-4 z-40">
-            <div className="scale-75 sm:scale-90 md:scale-100">
-              <ModernTimer
-                initialTime={getConversationDuration(isAuthenticated())}
-                isActive={isConversationTimerActive}
-                onTimeUp={() => {
-                  setConversationTimeUp(true);
-                  setIsConversationTimerActive(false);
-                  handleEndConversation();
-                }}
-                className=""
-              />
-            </div>
+        <div className="fixed top-32 sm:top-36 md:top-40 lg:top-44 right-2 sm:right-4 z-40">
+          <div className="scale-75 sm:scale-90 md:scale-100">
+            <ModernTimer
+              initialTime={getConversationDuration(isAuthenticated())}
+              isActive={isConversationTimerActive}
+              onTimeUp={() => {
+                setConversationTimeUp(true);
+                setIsConversationTimerActive(false);
+                handleEndConversation();
+              }}
+              className=""
+            />
           </div>
-        )}
+        </div>
 
         {/* Header - Redesigned */}
         <div className="text-center mb-6">
