@@ -84,7 +84,7 @@ export default function ProfilePage() {
           language: plan.language,
           level: plan.proficiency_level,
           source: `${plan.language} - ${plan.proficiency_level}`,
-          expanded: assessmentLearningPairs.length === 0
+          expanded: false // Always start collapsed
         },
         learningPlan: plan
       });
