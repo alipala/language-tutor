@@ -12,6 +12,7 @@ import SentenceConstructionAssessment from '@/components/sentence-construction-a
 import ModernTimer from '@/components/modern-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
+import SessionCompletionModal from '@/components/session-completion-modal';
 
 interface SpeechClientProps {
   language: string;
@@ -101,6 +102,10 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // Leave conversation modal state
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [conversationStartTime, setConversationStartTime] = useState<number | null>(null);
+  
+  // Session completion modal state
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [sessionCompleted, setSessionCompleted] = useState(false);
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -934,11 +939,11 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
   }, [messages.length, conversationStartTime]);
   
-  // Browser navigation protection
+  // Browser navigation protection - disabled when session is completed
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show warning if there are messages and user is authenticated
-      if (user && processedMessages.length > 0) {
+      // Only show warning if there are messages, user is authenticated, and session is not completed
+      if (user && processedMessages.length > 0 && !sessionCompleted) {
         e.preventDefault();
         e.returnValue = '';
         return '';
@@ -946,8 +951,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      // Only intercept if there are messages and user is authenticated
-      if (user && processedMessages.length > 0) {
+      // Only intercept if there are messages, user is authenticated, and session is not completed
+      if (user && processedMessages.length > 0 && !sessionCompleted) {
         e.preventDefault();
         // Push the current state back to prevent navigation
         window.history.pushState(null, '', window.location.href);
@@ -960,8 +965,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
 
-    // Push a state to handle back button
-    if (user && processedMessages.length > 0) {
+    // Push a state to handle back button (only if session not completed)
+    if (user && processedMessages.length > 0 && !sessionCompleted) {
       window.history.pushState(null, '', window.location.href);
     }
 
@@ -969,7 +974,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [user, processedMessages.length]);
+  }, [user, processedMessages.length, sessionCompleted]);
   
   // Handle leave conversation
   const handleLeaveConversation = () => {
@@ -984,6 +989,25 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle session completion modal actions
+  const handleGoHome = () => {
+    console.log('🏠 Redirecting to dashboard to view progress');
+    router.push('/');
+  };
+
+  const handleStartNewSession = () => {
+    console.log('🔄 Starting new session');
+    // Reset all session states
+    setSessionCompleted(false);
+    setShowCompletionModal(false);
+    setConversationTimeUp(false);
+    setConversationStartTime(null);
+    setAnalyzedMessageIds([]);
+    
+    // Redirect to language selection to start fresh
+    router.push('/language-selection');
   };
   
   return (
@@ -1042,7 +1066,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             <ModernTimer
               initialTime={getConversationDuration(isAuthenticated())}
               isActive={isConversationTimerActive}
-              onTimeUp={() => {
+              onTimeUp={async () => {
                 console.log('⏰ Timer reached 0 - ending conversation and auto-saving');
                 setConversationTimeUp(true);
                 setIsConversationTimerActive(false);
@@ -1050,10 +1074,15 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                 // Auto-save conversation when time is up (5 minutes completed)
                 if (user && processedMessages.length > 0) {
                   console.log('🔄 Auto-saving conversation at timer end...');
-                  saveConversationProgress();
+                  await saveConversationProgress();
+                  
+                  // Mark session as completed and show completion modal
+                  setSessionCompleted(true);
+                  setShowCompletionModal(true);
+                } else {
+                  // For guests or no messages, just end normally
+                  handleEndConversation();
                 }
-                
-                handleEndConversation();
               }}
               className=""
             />
@@ -1305,6 +1334,17 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         topic={topic}
         conversationStartTime={conversationStartTime || undefined}
         practiceTime={getPracticeTime()}
+      />
+
+      {/* Session Completion Modal */}
+      <SessionCompletionModal
+        isOpen={showCompletionModal}
+        onGoHome={handleGoHome}
+        onStartNew={handleStartNewSession}
+        sessionDuration={getPracticeTime()}
+        messageCount={processedMessages.length}
+        language={language}
+        level={level}
       />
     </main>
   );
