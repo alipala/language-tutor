@@ -24,6 +24,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   // Moving the console.log out of the component body to prevent excessive logging
   const initialRenderRef = useRef(true);
   
+  // All conversation saving and timer issues have been resolved
+  
   const router = useRouter();
   const { user } = useAuth();
   
