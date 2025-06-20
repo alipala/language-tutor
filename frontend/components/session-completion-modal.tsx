@@ -15,6 +15,116 @@ interface SessionCompletionModalProps {
   level: string;
 }
 
+// Helper function to determine if we should show bilingual UI based on level
+const shouldShowBilingual = (level: string): boolean => {
+  const levelUpper = level.toUpperCase();
+  return ['A1', 'A2', 'B1'].includes(levelUpper);
+};
+
+// Helper function to get text based on language and level
+const getText = (language: string, level: string, englishText: string, translations: Record<string, string>): string => {
+  const isBilingual = shouldShowBilingual(level);
+  const targetText = translations[language.toLowerCase()] || englishText;
+  
+  if (isBilingual && language.toLowerCase() !== 'english') {
+    return `${englishText} / ${targetText}`;
+  }
+  
+  return targetText;
+};
+
+// Translation mappings
+const translations = {
+  sessionComplete: {
+    english: 'Session Complete!',
+    dutch: 'Sessie Voltooid!',
+    spanish: '¡Sesión Completada!',
+    german: 'Sitzung Abgeschlossen!',
+    french: 'Session Terminée!',
+    portuguese: 'Sessão Concluída!'
+  },
+  conversationSaved: {
+    english: 'Your conversation has been saved successfully',
+    dutch: 'Je gesprek is succesvol opgeslagen',
+    spanish: 'Tu conversación se ha guardado exitosamente',
+    german: 'Dein Gespräch wurde erfolgreich gespeichert',
+    french: 'Votre conversation a été sauvegardée avec succès',
+    portuguese: 'Sua conversa foi salva com sucesso'
+  },
+  sessionSummary: {
+    english: 'Session Summary',
+    dutch: 'Sessie Samenvatting',
+    spanish: 'Resumen de Sesión',
+    german: 'Sitzungszusammenfassung',
+    french: 'Résumé de Session',
+    portuguese: 'Resumo da Sessão'
+  },
+  duration: {
+    english: 'Duration',
+    dutch: 'Duur',
+    spanish: 'Duración',
+    german: 'Dauer',
+    french: 'Durée',
+    portuguese: 'Duração'
+  },
+  messages: {
+    english: 'Messages',
+    dutch: 'Berichten',
+    spanish: 'Mensajes',
+    german: 'Nachrichten',
+    french: 'Messages',
+    portuguese: 'Mensagens'
+  },
+  language: {
+    english: 'Language',
+    dutch: 'Taal',
+    spanish: 'Idioma',
+    german: 'Sprache',
+    french: 'Langue',
+    portuguese: 'Idioma'
+  },
+  level: {
+    english: 'Level',
+    dutch: 'Niveau',
+    spanish: 'Nivel',
+    german: 'Niveau',
+    french: 'Niveau',
+    portuguese: 'Nível'
+  },
+  greatJob: {
+    english: 'Great job! Your progress has been saved to your learning plan.',
+    dutch: 'Geweldig gedaan! Je voortgang is opgeslagen in je leerplan.',
+    spanish: '¡Excelente trabajo! Tu progreso se ha guardado en tu plan de aprendizaje.',
+    german: 'Großartige Arbeit! Dein Fortschritt wurde in deinem Lernplan gespeichert.',
+    french: 'Excellent travail! Vos progrès ont été sauvegardés dans votre plan d\'apprentissage.',
+    portuguese: 'Ótimo trabalho! Seu progresso foi salvo no seu plano de aprendizagem.'
+  },
+  chooseNext: {
+    english: 'Choose what you\'d like to do next:',
+    dutch: 'Kies wat je hierna wilt doen:',
+    spanish: 'Elige qué te gustaría hacer a continuación:',
+    german: 'Wähle, was du als nächstes tun möchtest:',
+    french: 'Choisissez ce que vous aimeriez faire ensuite:',
+    portuguese: 'Escolha o que você gostaria de fazer a seguir:'
+  },
+  viewProgress: {
+    english: 'View Progress & Dashboard',
+    dutch: 'Bekijk Voortgang & Dashboard',
+    spanish: 'Ver Progreso y Panel',
+    german: 'Fortschritt & Dashboard anzeigen',
+    french: 'Voir Progrès et Tableau de Bord',
+    portuguese: 'Ver Progresso e Painel'
+  },
+  startNew: {
+    english: 'Start New Session',
+    dutch: 'Start Nieuwe Sessie',
+    spanish: 'Iniciar Nueva Sesión',
+    german: 'Neue Sitzung starten',
+    french: 'Commencer Nouvelle Session',
+    portuguese: 'Iniciar Nova Sessão'
+  }
+};
+
 export default function SessionCompletionModal({
   isOpen,
   onGoHome,
@@ -44,31 +154,45 @@ export default function SessionCompletionModal({
             <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="h-12 w-12 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Session Complete!</h2>
-            <p className="text-green-100">Your conversation has been saved successfully</p>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {getText(language, level, 'Session Complete!', translations.sessionComplete)}
+            </h2>
+            <p className="text-green-100">
+              {getText(language, level, 'Your conversation has been saved successfully', translations.conversationSaved)}
+            </p>
           </div>
           
           {/* Content */}
           <div className="px-6 py-6">
             {/* Session Stats */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3 text-center">Session Summary</h3>
+              <h3 className="font-semibold text-gray-900 mb-3 text-center">
+                {getText(language, level, 'Session Summary', translations.sessionSummary)}
+              </h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">{sessionDuration}</div>
-                  <div className="text-gray-600">Duration</div>
+                  <div className="text-gray-600">
+                    {getText(language, level, 'Duration', translations.duration)}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">{messageCount}</div>
-                  <div className="text-gray-600">Messages</div>
+                  <div className="text-gray-600">
+                    {getText(language, level, 'Messages', translations.messages)}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-purple-600 capitalize">{language}</div>
-                  <div className="text-gray-600">Language</div>
+                  <div className="text-gray-600">
+                    {getText(language, level, 'Language', translations.language)}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-orange-600">{level.toUpperCase()}</div>
-                  <div className="text-gray-600">Level</div>
+                  <div className="text-gray-600">
+                    {getText(language, level, 'Level', translations.level)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -76,10 +200,10 @@ export default function SessionCompletionModal({
             {/* Progress Message */}
             <div className="text-center mb-6">
               <p className="text-gray-700 mb-2">
-                🎉 Great job! Your progress has been saved to your learning plan.
+                🎉 {getText(language, level, 'Great job! Your progress has been saved to your learning plan.', translations.greatJob)}
               </p>
               <p className="text-sm text-gray-600">
-                Choose what you'd like to do next:
+                {getText(language, level, 'Choose what you\'d like to do next:', translations.chooseNext)}
               </p>
             </div>
             
@@ -90,7 +214,7 @@ export default function SessionCompletionModal({
                 onClick={onGoHome}
               >
                 <Home className="h-4 w-4" />
-                View Progress & Dashboard
+                {getText(language, level, 'View Progress & Dashboard', translations.viewProgress)}
               </Button>
               
               <Button 
@@ -98,7 +222,7 @@ export default function SessionCompletionModal({
                 onClick={onStartNew}
               >
                 <RotateCcw className="h-4 w-4" />
-                Start New Session
+                {getText(language, level, 'Start New Session', translations.startNew)}
               </Button>
             </div>
           </div>

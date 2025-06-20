@@ -329,7 +329,12 @@ export default function LevelSelection() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl font-bold text-black mb-4">
-            Select Your Level
+            {selectedLanguage === 'dutch' && 'Selecteer Je Niveau / Select Your Level'}
+            {selectedLanguage === 'spanish' && 'Selecciona Tu Nivel / Select Your Level'}
+            {selectedLanguage === 'german' && 'Wähle Dein Niveau / Select Your Level'}
+            {selectedLanguage === 'french' && 'Choisissez Votre Niveau / Select Your Level'}
+            {selectedLanguage === 'portuguese' && 'Escolha Seu Nível / Select Your Level'}
+            {(selectedLanguage === 'english' || !selectedLanguage) && 'Select Your Level'}
           </h1>
           <p className="text-gray-600 text-lg mb-8">
             {selectedLanguage === 'dutch' && 'Kies je vaardigheidsniveau in het Nederlands'}
