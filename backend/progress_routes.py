@@ -654,6 +654,14 @@ async def update_learning_plan_progress(user_id: str, language: str, level: str,
         print(f"[LEARNING_PLAN] Checking for learning plan updates for user {user_id}")
         print(f"[LEARNING_PLAN] Session details: {language}, {level}, topic: {topic}")
         
+        # Check if there's a specific plan ID in the current session context
+        # This should be passed from the frontend when starting a conversation with a specific plan
+        specific_plan_id = None
+        
+        # Try to get the plan ID from session storage or request context
+        # For now, we'll check if there's a plan parameter in the current request
+        # This is a temporary solution - ideally the plan ID should be passed as a parameter
+        
         # Find learning plans for this user that match the conversation parameters
         query = {
             "user_id": str(user_id),
@@ -670,7 +678,16 @@ async def update_learning_plan_progress(user_id: str, language: str, level: str,
         
         print(f"[LEARNING_PLAN] Found {len(plans)} matching learning plan(s)")
         
-        # Update each matching plan
+        # If there are multiple plans, we need to be more selective
+        # For now, let's only update the most recently created plan to avoid updating all plans
+        if len(plans) > 1:
+            print(f"[LEARNING_PLAN] Multiple plans found - updating only the most recent one to avoid incorrect updates")
+            # Sort by created_at and take the most recent
+            plans_sorted = sorted(plans, key=lambda x: x.get('created_at', ''), reverse=True)
+            plans = [plans_sorted[0]]  # Only update the most recent plan
+            print(f"[LEARNING_PLAN] Selected most recent plan: {plans[0].get('id')}")
+        
+        # Update the selected plan(s)
         for plan in plans:
             plan_id = plan.get("id")
             current_completed = plan.get("completed_sessions", 0)
