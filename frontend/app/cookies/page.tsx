@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Cookie, Settings, BarChart3, Shield, Users, Mail, Phone, MapPin } from 'lucide-react';
+import { Cookie, Settings, Eye, Shield, ToggleLeft, Mail, Phone, MapPin } from 'lucide-react';
 
 const CookiePolicy: React.FC = () => {
   const lastUpdated = "January 15, 2025";
@@ -14,19 +14,19 @@ const CookiePolicy: React.FC = () => {
       description: "These cookies are necessary for the website to function and cannot be switched off in our systems.",
       examples: [
         "Authentication cookies to keep you logged in",
-        "Security cookies to protect against fraud",
+        "Security cookies to prevent fraud",
         "Session cookies to maintain your preferences"
       ],
       canDisable: false
     },
     {
       title: "Analytics Cookies",
-      icon: BarChart3,
+      icon: Eye,
       description: "These cookies help us understand how visitors interact with our website by collecting and reporting information anonymously.",
       examples: [
-        "Google Analytics to track page views and user behavior",
-        "Performance monitoring to identify technical issues",
-        "Usage statistics to improve our services"
+        "Google Analytics to track page views",
+        "User behavior tracking for improvements",
+        "Performance monitoring cookies"
       ],
       canDisable: true
     },
@@ -35,37 +35,22 @@ const CookiePolicy: React.FC = () => {
       icon: Settings,
       description: "These cookies enable the website to provide enhanced functionality and personalization.",
       examples: [
-        "Language preferences",
+        "Language preference cookies",
         "Learning progress tracking",
-        "User interface customizations"
+        "User interface customization"
       ],
       canDisable: true
     },
     {
       title: "Marketing Cookies",
-      icon: Users,
+      icon: ToggleLeft,
       description: "These cookies may be set through our site by our advertising partners to build a profile of your interests.",
       examples: [
         "Advertising targeting cookies",
         "Social media integration cookies",
-        "Conversion tracking pixels"
+        "Remarketing and conversion tracking"
       ],
       canDisable: true
-    }
-  ];
-
-  const sections = [
-    {
-      title: "What Are Cookies",
-      content: "Cookies are small text files that are placed on your computer or mobile device when you visit a website. They are widely used to make websites work more efficiently and to provide information to website owners about how users interact with their sites."
-    },
-    {
-      title: "How We Use Cookies",
-      content: "We use cookies to enhance your experience on our language learning platform, remember your preferences, analyze site traffic, and provide personalized content. Cookies help us understand which features are most popular and how we can improve our services."
-    },
-    {
-      title: "Third-Party Cookies",
-      content: "Some cookies on our site are set by third-party services that appear on our pages. These include analytics services like Google Analytics, social media platforms, and advertising networks. We do not control these cookies, and you should check the relevant third party's website for more information."
     }
   ];
 
@@ -85,7 +70,7 @@ const CookiePolicy: React.FC = () => {
               <h1 className="text-4xl font-bold">Cookie Policy</h1>
             </div>
             <p className="text-xl text-white/90 mb-4">
-              Learn about how we use cookies to improve your learning experience.
+              Learn about how we use cookies and similar technologies on our platform.
             </p>
             <p className="text-white/80">
               Last updated: {lastUpdated}
@@ -104,117 +89,159 @@ const CookiePolicy: React.FC = () => {
           className="mb-12"
         >
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Introduction</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">What Are Cookies?</h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              Cookies are small text files that are placed on your computer or mobile device when you visit our website. 
+              They are widely used to make websites work more efficiently and to provide information to website owners.
+            </p>
             <p className="text-gray-600 leading-relaxed">
-              This Cookie Policy explains how Language Tutor uses cookies and similar technologies when you visit our website 
-              or use our services. It explains what these technologies are, why we use them, and your rights to control our use of them.
+              We use cookies and similar technologies to enhance your experience on Language Tutor, remember your preferences, 
+              and provide personalized content and advertisements.
             </p>
           </div>
         </motion.div>
 
-        {/* General Sections */}
-        {sections.map((section, index) => (
+        {/* Cookie Types */}
+        <div className="mb-12">
           <motion.div
-            key={section.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
+            transition={{ duration: 0.6, delay: 0.3 }}
             className="mb-8"
           >
-            <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">{section.title}</h2>
-              <p className="text-gray-600 leading-relaxed">{section.content}</p>
-            </div>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Types of Cookies We Use</h2>
           </motion.div>
-        ))}
 
-        {/* Cookie Types */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="mb-12"
-        >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-8">Types of Cookies We Use</h2>
-            
-            <div className="grid gap-8">
-              {cookieTypes.map((type, index) => (
-                <div key={type.title} className="border border-gray-200 rounded-xl p-6">
-                  <div className="flex items-start mb-4">
-                    <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4 flex-shrink-0">
-                      <type.icon className="w-6 h-6 text-[#4ECFBF]" />
+          {cookieTypes.map((cookieType, index) => (
+            <motion.div
+              key={cookieType.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 * (index + 4) }}
+              className="mb-8"
+            >
+              <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
+                      <cookieType.icon className="w-6 h-6 text-[#4ECFBF]" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xl font-semibold text-gray-800">{type.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          type.canDisable 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {type.canDisable ? 'Optional' : 'Required'}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-4">{type.description}</p>
-                      
-                      <div>
-                        <h4 className="font-medium text-gray-800 mb-2">Examples:</h4>
-                        <ul className="space-y-1">
-                          {type.examples.map((example, exampleIndex) => (
-                            <li key={exampleIndex} className="text-gray-600 text-sm flex items-center">
-                              <span className="w-1.5 h-1.5 bg-[#4ECFBF] rounded-full mr-2 flex-shrink-0"></span>
-                              {example}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800">{cookieType.title}</h3>
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    cookieType.canDisable 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {cookieType.canDisable ? 'Optional' : 'Required'}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+                
+                <p className="text-gray-600 leading-relaxed mb-4">
+                  {cookieType.description}
+                </p>
+                
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3">Examples:</h4>
+                  <ul className="space-y-2">
+                    {cookieType.examples.map((example, exampleIndex) => (
+                      <li key={exampleIndex} className="flex items-start">
+                        <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                        <span className="text-gray-600">{example}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
-        {/* Cookie Management */}
+        {/* Managing Cookies */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
           className="mb-8"
         >
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Managing Your Cookie Preferences</h2>
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                <Settings className="w-6 h-6 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Managing Your Cookie Preferences</h2>
+            </div>
             
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Browser Settings</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Most web browsers allow you to control cookies through their settings preferences. You can set your browser to 
-                  refuse cookies or to alert you when cookies are being sent. However, if you disable cookies, some features of 
-                  our website may not function properly.
+                  You can control and/or delete cookies as you wish. You can delete all cookies that are already on your 
+                  computer and you can set most browsers to prevent them from being placed.
                 </p>
               </div>
               
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Cookie Consent</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  When you first visit our website, you'll see a cookie consent banner that allows you to accept or decline 
-                  non-essential cookies. You can change your preferences at any time by clicking the "Cookie Settings" link 
-                  in our footer.
+                  When you first visit our website, you'll see a cookie consent banner. You can choose which types of 
+                  cookies to accept or reject. You can change your preferences at any time through our cookie settings.
                 </p>
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Third-Party Opt-Outs</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Impact of Disabling Cookies</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  For analytics cookies, you can opt out of Google Analytics by visiting the 
-                  <a href="https://tools.google.com/dlpage/gaoptout" className="text-[#4ECFBF] hover:underline ml-1" target="_blank" rel="noopener noreferrer">
-                    Google Analytics opt-out page
-                  </a>.
+                  Please note that if you disable cookies, some features of our website may not function properly, 
+                  and your user experience may be affected.
                 </p>
               </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Third-Party Cookies */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="mb-8"
+        >
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Third-Party Cookies</h2>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600 leading-relaxed">
+                We may also use third-party services that set cookies on our website. These include:
+              </p>
+              
+              <ul className="space-y-3">
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <div>
+                    <span className="font-medium text-gray-800">Google Analytics:</span>
+                    <span className="text-gray-600 ml-2">For website analytics and performance monitoring</span>
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <div>
+                    <span className="font-medium text-gray-800">Social Media Platforms:</span>
+                    <span className="text-gray-600 ml-2">For social sharing and login functionality</span>
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <div>
+                    <span className="font-medium text-gray-800">Payment Processors:</span>
+                    <span className="text-gray-600 ml-2">For secure payment processing</span>
+                  </div>
+                </li>
+              </ul>
+              
+              <p className="text-gray-600 leading-relaxed">
+                These third parties have their own privacy policies and cookie policies, which we encourage you to review.
+              </p>
             </div>
           </div>
         </motion.div>
@@ -223,7 +250,7 @@ const CookiePolicy: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
           className="mb-8"
         >
           <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
@@ -268,13 +295,14 @@ const CookiePolicy: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
+          transition={{ duration: 0.6, delay: 1.1 }}
         >
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
             <h3 className="text-lg font-semibold text-orange-800 mb-2">Policy Updates</h3>
             <p className="text-orange-700">
-              We may update this Cookie Policy from time to time to reflect changes in our practices or for other operational, 
-              legal, or regulatory reasons. We encourage you to review this policy periodically to stay informed about our use of cookies.
+              We may update this Cookie Policy from time to time to reflect changes in our practices or for other 
+              operational, legal, or regulatory reasons. Please revisit this page regularly to stay informed about 
+              our use of cookies.
             </p>
           </div>
         </motion.div>

@@ -3,8 +3,6 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
-import jwt
-from passlib.context import CryptContext
 
 # Import existing modules
 from database import database, users_collection, conversation_sessions_collection, learning_plans_collection
@@ -13,7 +11,6 @@ from models import UserResponse
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 security = HTTPBearer()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Admin user model
 class AdminUser(BaseModel):
@@ -58,6 +55,7 @@ ADMIN_USERS = {
 
 def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT token for admin users"""
+    import jwt
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -70,6 +68,7 @@ def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = N
 
 async def get_current_admin(token: str = Depends(security)):
     """Validate admin JWT token and return admin user"""
+    import jwt
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate admin credentials",
@@ -197,15 +196,63 @@ async def get_users_admin(
     per_page: int = 25,
     sort_field: str = "created_at",
     sort_order: str = "desc",
+    q: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    is_verified: Optional[bool] = None,
+    preferred_language: Optional[str] = None,
     current_admin: AdminUser = Depends(get_current_admin)
 ):
-    """Get users with pagination for admin panel"""
+    """Get users with pagination and search for admin panel"""
     try:
         print(f"Admin users request: page={page}, per_page={per_page}, sort_field={sort_field}, sort_order={sort_order}")
+        print(f"Search filters: q={q}, is_active={is_active}, is_verified={is_verified}, preferred_language={preferred_language}")
+        print(f"🔍 DEBUG: q type={type(q)}, q repr={repr(q)}")
         
         # Calculate skip value
         skip = (page - 1) * per_page
         print(f"Skip value: {skip}")
+        
+        # Build search query
+        query = {}
+        
+        # Text search across name, email, and ID
+        if q is not None and str(q).strip():  # More robust check
+            search_term = str(q).strip()
+            print(f"🔍 APPLYING SEARCH for term: '{search_term}'")
+            
+            # Try to match ObjectId if it looks like one
+            search_conditions = [
+                {"name": {"$regex": search_term, "$options": "i"}},
+                {"email": {"$regex": search_term, "$options": "i"}}
+            ]
+            
+            # If q looks like an ObjectId, add it to search
+            if len(search_term) == 24:
+                try:
+                    from bson import ObjectId
+                    search_conditions.append({"_id": ObjectId(search_term)})
+                    print(f"Added ObjectId search for: {search_term}")
+                except:
+                    pass
+            
+            query["$or"] = search_conditions
+            print(f"🔍 SEARCH CONDITIONS: {search_conditions}")
+        else:
+            print(f"🔍 NO SEARCH APPLIED - q is: {repr(q)}")
+        
+        # Filter by active status
+        if is_active is not None:
+            query["is_active"] = is_active
+            
+        # Filter by verified status
+        if is_verified is not None:
+            query["is_verified"] = is_verified
+            
+        # Filter by preferred language
+        if preferred_language:
+            query["preferred_language"] = preferred_language
+        
+        print(f"MongoDB query: {query}")
         
         # Build sort criteria - handle different field names
         if sort_field == "id":
@@ -214,24 +261,24 @@ async def get_users_admin(
         sort_direction = -1 if sort_order.lower() == "desc" else 1
         print(f"Sort: {sort_field} {sort_direction}")
         
-        # Get users with pagination - use simpler approach
+        # Get users with pagination and search
         try:
-            cursor = users_collection.find({})
+            cursor = users_collection.find(query)
             if sort_field and sort_field in ["_id", "created_at", "email", "name"]:
                 cursor = cursor.sort(sort_field, sort_direction)
             cursor = cursor.skip(skip).limit(per_page)
             users = await cursor.to_list(length=per_page)
-            print(f"Found {len(users)} users")
+            print(f"Found {len(users)} users with search query")
         except Exception as cursor_error:
             print(f"Cursor error: {str(cursor_error)}")
-            # Fallback: get users without sorting
-            cursor = users_collection.find({}).skip(skip).limit(per_page)
+            # Fallback: get users without sorting but with search
+            cursor = users_collection.find(query).skip(skip).limit(per_page)
             users = await cursor.to_list(length=per_page)
-            print(f"Fallback: Found {len(users)} users")
+            print(f"Fallback: Found {len(users)} users with search query")
         
-        # Get total count
-        total = await users_collection.count_documents({})
-        print(f"Total users: {total}")
+        # Get total count with search filters
+        total = await users_collection.count_documents(query)
+        print(f"Total users (filtered): {total}")
         
         # Convert ObjectId to string and format response
         formatted_users = []
@@ -306,6 +353,79 @@ async def get_user_admin(
             detail="Failed to fetch user"
         )
 
+@router.post("/users")
+async def create_user_admin(
+    user_data: dict,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Create a new user"""
+    try:
+        from datetime import datetime
+        
+        # Validate required fields
+        if not user_data.get("email") or not user_data.get("name") or not user_data.get("password"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email, name, and password are required"
+            )
+        
+        # Check if user already exists
+        existing_user = await users_collection.find_one({"email": user_data["email"]})
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists"
+            )
+        
+        # Hash the password
+        hashed_password = get_password_hash(user_data["password"])
+        
+        # Prepare user document
+        new_user = {
+            "email": user_data["email"],
+            "name": user_data["name"],
+            "hashed_password": hashed_password,
+            "is_active": user_data.get("is_active", True),
+            "is_verified": user_data.get("is_verified", False),
+            "preferred_language": user_data.get("preferred_language"),
+            "preferred_level": user_data.get("preferred_level"),
+            "created_at": datetime.utcnow(),
+            "last_login": None,
+            "email_verification_token": None,
+            "password_reset_token": None,
+            "password_reset_expires": None
+        }
+        
+        # Insert user
+        result = await users_collection.insert_one(new_user)
+        
+        # Get created user
+        created_user = await users_collection.find_one({"_id": result.inserted_id})
+        
+        # Format response (exclude password hash)
+        user_dict = {
+            "id": str(created_user["_id"]),
+            "email": created_user.get("email", ""),
+            "name": created_user.get("name", ""),
+            "is_active": created_user.get("is_active", True),
+            "is_verified": created_user.get("is_verified", False),
+            "created_at": created_user.get("created_at").isoformat() if created_user.get("created_at") else None,
+            "last_login": created_user.get("last_login").isoformat() if created_user.get("last_login") else None,
+            "preferred_language": created_user.get("preferred_language"),
+            "preferred_level": created_user.get("preferred_level")
+        }
+        
+        return {"data": user_dict}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Create user error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create user: {str(e)}"
+        )
+
 @router.put("/users/{user_id}")
 async def update_user_admin(
     user_id: str,
@@ -317,7 +437,11 @@ async def update_user_admin(
         from bson import ObjectId
         
         # Remove id from update data if present
-        update_data = {k: v for k, v in user_data.items() if k != "id"}
+        update_data = {k: v for k, v in user_data.items() if k not in ["id", "password"]}
+        
+        # Handle password update separately if provided
+        if "password" in user_data and user_data["password"]:
+            update_data["hashed_password"] = get_password_hash(user_data["password"])
         
         # Update user
         result = await users_collection.update_one(
@@ -356,76 +480,6 @@ async def update_user_admin(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user"
-        )
-
-@router.get("/explore")
-async def explore_database_structure(current_admin: AdminUser = Depends(get_current_admin)):
-    """Explore database structure for admin panel development"""
-    try:
-        # Get collections info
-        collections = await database.list_collection_names()
-        
-        # Explore users
-        user_sample = await users_collection.find_one()
-        users_with_language = await users_collection.count_documents({"preferred_language": {"$ne": None}})
-        users_with_level = await users_collection.count_documents({"preferred_level": {"$ne": None}})
-        users_with_login = await users_collection.count_documents({"last_login": {"$ne": None}})
-        
-        # Explore conversations
-        conv_sample = await conversation_sessions_collection.find_one()
-        conv_count = await conversation_sessions_collection.count_documents({})
-        
-        # Explore learning plans
-        plan_sample = await learning_plans_collection.find_one()
-        plan_count = await learning_plans_collection.count_documents({})
-        
-        # Sample user activity analysis
-        sample_users = await users_collection.find({}, {"_id": 1, "email": 1}).limit(5).to_list(length=5)
-        user_activity = []
-        
-        for user in sample_users:
-            user_id = str(user["_id"])
-            email = user.get("email", "No email")
-            
-            # Check conversations and plans for this user
-            user_convs = await conversation_sessions_collection.count_documents({"user_id": user_id})
-            user_plans = await learning_plans_collection.count_documents({"user_id": user_id})
-            
-            user_activity.append({
-                "email": email,
-                "user_id": user_id,
-                "conversations": user_convs,
-                "learning_plans": user_plans
-            })
-        
-        return {
-            "collections": collections,
-            "users": {
-                "total": await users_collection.count_documents({}),
-                "with_language": users_with_language,
-                "with_level": users_with_level,
-                "with_login_history": users_with_login,
-                "sample_fields": list(user_sample.keys()) if user_sample else [],
-                "sample_data": {k: v for k, v in user_sample.items() if k != '_id'} if user_sample else {}
-            },
-            "conversations": {
-                "total": conv_count,
-                "sample_fields": list(conv_sample.keys()) if conv_sample else [],
-                "sample_data": {k: v for k, v in conv_sample.items() if k not in ['_id', 'conversation_data']} if conv_sample else {}
-            },
-            "learning_plans": {
-                "total": plan_count,
-                "sample_fields": list(plan_sample.keys()) if plan_sample else [],
-                "sample_data": {k: v for k, v in plan_sample.items() if k not in ['_id', 'plan_content']} if plan_sample else {}
-            },
-            "user_activity_sample": user_activity
-        }
-        
-    except Exception as e:
-        print(f"Database exploration error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to explore database: {str(e)}"
         )
 
 @router.get("/conversation_sessions")
@@ -586,116 +640,7 @@ async def get_learning_plans_admin(
             detail=f"Failed to fetch learning plans: {str(e)}"
         )
 
-@router.get("/learning_plans/{plan_id}")
-async def get_learning_plan_admin(
-    plan_id: str,
-    current_admin: AdminUser = Depends(get_current_admin)
-):
-    """Get single learning plan details"""
-    try:
-        # Find learning plan by id field (not _id)
-        plan = await learning_plans_collection.find_one({"id": plan_id})
-        if not plan:
-            # Try with _id as fallback
-            from bson import ObjectId
-            try:
-                plan = await learning_plans_collection.find_one({"_id": ObjectId(plan_id)})
-            except:
-                pass
-        
-        if not plan:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Learning plan not found"
-            )
-        
-        # Format response
-        plan_dict = {
-            "id": plan.get("id", str(plan["_id"])),
-            "user_id": plan.get("user_id"),
-            "language": plan.get("language"),
-            "proficiency_level": plan.get("proficiency_level"),
-            "goals": plan.get("goals", []),
-            "duration_months": plan.get("duration_months", 0),
-            "custom_goal": plan.get("custom_goal"),
-            "total_sessions": plan.get("total_sessions", 0),
-            "completed_sessions": plan.get("completed_sessions", 0),
-            "progress_percentage": plan.get("progress_percentage", 0),
-            "assessment_data": plan.get("assessment_data"),
-            "plan_content": plan.get("plan_content"),
-            "created_at": plan.get("created_at").isoformat() if plan.get("created_at") else None
-        }
-        
-        return {"data": plan_dict}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Get learning plan error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch learning plan"
-        )
-
-@router.get("/speaking_assessments")
-async def get_speaking_assessments_admin(
-    page: int = 1,
-    per_page: int = 25,
-    sort_field: str = "created_at",
-    sort_order: str = "desc",
-    current_admin: AdminUser = Depends(get_current_admin)
-):
-    """Get speaking assessments with pagination for admin panel"""
-    try:
-        speaking_assessments_collection = database.speaking_assessments
-        
-        # Calculate skip value
-        skip = (page - 1) * per_page
-        
-        # Build sort criteria
-        if sort_field == "id":
-            sort_field = "_id"
-        
-        sort_direction = -1 if sort_order.lower() == "desc" else 1
-        
-        # Get assessments with pagination
-        cursor = speaking_assessments_collection.find({})
-        if sort_field and sort_field in ["_id", "created_at", "user_id", "language", "overall_score"]:
-            cursor = cursor.sort(sort_field, sort_direction)
-        cursor = cursor.skip(skip).limit(per_page)
-        assessments = await cursor.to_list(length=per_page)
-        
-        # Get total count
-        total = await speaking_assessments_collection.count_documents({})
-        
-        # Format assessments
-        formatted_assessments = []
-        for assessment in assessments:
-            assessment_dict = {
-                "id": str(assessment["_id"]),
-                "user_id": assessment.get("user_id"),
-                "language": assessment.get("language"),
-                "overall_score": assessment.get("overall_score", 0),
-                "pronunciation_score": assessment.get("pronunciation", {}).get("score", 0),
-                "grammar_score": assessment.get("grammar", {}).get("score", 0),
-                "vocabulary_score": assessment.get("vocabulary", {}).get("score", 0),
-                "fluency_score": assessment.get("fluency", {}).get("score", 0),
-                "coherence_score": assessment.get("coherence", {}).get("score", 0),
-                "recommended_level": assessment.get("recommended_level"),
-                "confidence": assessment.get("confidence", 0),
-                "created_at": assessment.get("created_at").isoformat() if assessment.get("created_at") else None
-            }
-            formatted_assessments.append(assessment_dict)
-        
-        return {"data": formatted_assessments, "total": total}
-        
-    except Exception as e:
-        print(f"Get speaking assessments error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch speaking assessments: {str(e)}"
-        )
-
+# Mock endpoints for collections that don't exist yet
 @router.get("/user_stats")
 async def get_user_stats_admin(
     page: int = 1,
@@ -807,59 +752,6 @@ async def get_badges_admin(
             detail=f"Failed to fetch badges: {str(e)}"
         )
 
-@router.get("/activities")
-async def get_activities_admin(
-    page: int = 1,
-    per_page: int = 25,
-    sort_field: str = "created_at",
-    sort_order: str = "desc",
-    current_admin: AdminUser = Depends(get_current_admin)
-):
-    """Get user activities with pagination for admin panel"""
-    try:
-        activities_collection = database.activities
-        
-        # Calculate skip value
-        skip = (page - 1) * per_page
-        
-        # Build sort criteria
-        if sort_field == "id":
-            sort_field = "_id"
-        
-        sort_direction = -1 if sort_order.lower() == "desc" else 1
-        
-        # Get activities with pagination
-        cursor = activities_collection.find({})
-        if sort_field and sort_field in ["_id", "created_at", "user_id", "activity_type"]:
-            cursor = cursor.sort(sort_field, sort_direction)
-        cursor = cursor.skip(skip).limit(per_page)
-        activities = await cursor.to_list(length=per_page)
-        
-        # Get total count
-        total = await activities_collection.count_documents({})
-        
-        # Format activities
-        formatted_activities = []
-        for activity in activities:
-            activity_dict = {
-                "id": str(activity["_id"]),
-                "user_id": activity.get("user_id"),
-                "activity_type": activity.get("activity_type"),
-                "description": activity.get("description"),
-                "metadata": activity.get("metadata"),
-                "created_at": activity.get("created_at").isoformat() if activity.get("created_at") else None
-            }
-            formatted_activities.append(activity_dict)
-        
-        return {"data": formatted_activities, "total": total}
-        
-    except Exception as e:
-        print(f"Get activities error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch activities: {str(e)}"
-        )
-
 @router.get("/assessment_history")
 async def get_assessment_history_admin(
     page: int = 1,
@@ -917,35 +809,6 @@ async def get_assessment_history_admin(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch assessment history: {str(e)}"
-        )
-
-@router.get("/collections/explore")
-async def explore_additional_collections(current_admin: AdminUser = Depends(get_current_admin)):
-    """Explore additional collections for data availability"""
-    try:
-        collections_data = {}
-        
-        # Check each collection for data
-        collection_names = ["speaking_assessments", "user_stats", "badges", "activities", "assessment_history"]
-        
-        for collection_name in collection_names:
-            collection = database[collection_name]
-            count = await collection.count_documents({})
-            sample = await collection.find_one() if count > 0 else None
-            
-            collections_data[collection_name] = {
-                "count": count,
-                "fields": list(sample.keys()) if sample else [],
-                "sample_data": {k: v for k, v in sample.items() if k != '_id'} if sample else {}
-            }
-        
-        return collections_data
-        
-    except Exception as e:
-        print(f"Collection exploration error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to explore collections: {str(e)}"
         )
 
 @router.get("/health")
