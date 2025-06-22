@@ -1118,6 +1118,35 @@ if frontend_build_path.exists():
             return FileResponse(status_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Status page not found")
     
+    # Add admin panel route
+    @app.get("/_admin")
+    async def serve_admin_panel():
+        admin_file = frontend_build_path / "_admin" / "index.html"
+        if admin_file.exists():
+            return FileResponse(admin_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Admin panel not found")
+    
+    @app.get("/_admin/{path:path}")
+    async def serve_admin_assets(path: str):
+        admin_asset = frontend_build_path / "_admin" / path
+        if admin_asset.exists():
+            # Determine media type based on file extension
+            if path.endswith('.js'):
+                media_type = "application/javascript"
+            elif path.endswith('.css'):
+                media_type = "text/css"
+            elif path.endswith('.html'):
+                media_type = "text/html"
+            elif path.endswith('.ico'):
+                media_type = "image/x-icon"
+            elif path.endswith('.json'):
+                media_type = "application/json"
+            else:
+                media_type = "application/octet-stream"
+            
+            return FileResponse(admin_asset, media_type=media_type)
+        raise HTTPException(status_code=404, detail="Admin asset not found")
+    
     # Add explicit handlers for auth routes
     @app.get("/auth/login")
     async def serve_auth_login():
