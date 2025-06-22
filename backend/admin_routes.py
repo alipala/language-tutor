@@ -201,43 +201,68 @@ async def get_users_admin(
 ):
     """Get users with pagination for admin panel"""
     try:
+        print(f"Admin users request: page={page}, per_page={per_page}, sort_field={sort_field}, sort_order={sort_order}")
+        
         # Calculate skip value
         skip = (page - 1) * per_page
+        print(f"Skip value: {skip}")
         
-        # Build sort criteria
+        # Build sort criteria - handle different field names
+        if sort_field == "id":
+            sort_field = "_id"
+        
         sort_direction = -1 if sort_order.lower() == "desc" else 1
-        sort_criteria = [(sort_field, sort_direction)]
+        print(f"Sort: {sort_field} {sort_direction}")
         
-        # Get users with pagination
-        cursor = users_collection.find({}).sort(sort_criteria).skip(skip).limit(per_page)
-        users = await cursor.to_list(length=per_page)
+        # Get users with pagination - use simpler approach
+        try:
+            cursor = users_collection.find({})
+            if sort_field and sort_field in ["_id", "created_at", "email", "name"]:
+                cursor = cursor.sort(sort_field, sort_direction)
+            cursor = cursor.skip(skip).limit(per_page)
+            users = await cursor.to_list(length=per_page)
+            print(f"Found {len(users)} users")
+        except Exception as cursor_error:
+            print(f"Cursor error: {str(cursor_error)}")
+            # Fallback: get users without sorting
+            cursor = users_collection.find({}).skip(skip).limit(per_page)
+            users = await cursor.to_list(length=per_page)
+            print(f"Fallback: Found {len(users)} users")
         
         # Get total count
         total = await users_collection.count_documents({})
+        print(f"Total users: {total}")
         
         # Convert ObjectId to string and format response
         formatted_users = []
         for user in users:
-            user_dict = {
-                "id": str(user["_id"]),
-                "email": user.get("email", ""),
-                "name": user.get("name", ""),
-                "is_active": user.get("is_active", True),
-                "is_verified": user.get("is_verified", False),
-                "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
-                "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
-                "preferred_language": user.get("preferred_language"),
-                "preferred_level": user.get("preferred_level")
-            }
-            formatted_users.append(user_dict)
+            try:
+                user_dict = {
+                    "id": str(user["_id"]),
+                    "email": user.get("email", ""),
+                    "name": user.get("name", ""),
+                    "is_active": user.get("is_active", True),
+                    "is_verified": user.get("is_verified", False),
+                    "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
+                    "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
+                    "preferred_language": user.get("preferred_language"),
+                    "preferred_level": user.get("preferred_level")
+                }
+                formatted_users.append(user_dict)
+            except Exception as format_error:
+                print(f"Error formatting user {user.get('_id')}: {str(format_error)}")
+                continue
         
+        print(f"Returning {len(formatted_users)} formatted users")
         return UserListResponse(data=formatted_users, total=total)
         
     except Exception as e:
         print(f"Get users error: {str(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch users"
+            detail=f"Failed to fetch users: {str(e)}"
         )
 
 @router.get("/users/{user_id}")
