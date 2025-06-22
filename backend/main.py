@@ -101,6 +101,10 @@ app.include_router(export_router)
 from chat_routes import router as chat_router
 app.include_router(chat_router)
 
+# Include admin routes
+from admin_routes import router as admin_router
+app.include_router(admin_router)
+
 # Initialize MongoDB on startup
 @app.on_event("startup")
 async def startup_db_client():
