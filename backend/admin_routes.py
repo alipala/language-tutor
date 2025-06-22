@@ -637,6 +637,317 @@ async def get_learning_plan_admin(
             detail="Failed to fetch learning plan"
         )
 
+@router.get("/speaking_assessments")
+async def get_speaking_assessments_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get speaking assessments with pagination for admin panel"""
+    try:
+        speaking_assessments_collection = database.speaking_assessments
+        
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get assessments with pagination
+        cursor = speaking_assessments_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "language", "overall_score"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        assessments = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await speaking_assessments_collection.count_documents({})
+        
+        # Format assessments
+        formatted_assessments = []
+        for assessment in assessments:
+            assessment_dict = {
+                "id": str(assessment["_id"]),
+                "user_id": assessment.get("user_id"),
+                "language": assessment.get("language"),
+                "overall_score": assessment.get("overall_score", 0),
+                "pronunciation_score": assessment.get("pronunciation", {}).get("score", 0),
+                "grammar_score": assessment.get("grammar", {}).get("score", 0),
+                "vocabulary_score": assessment.get("vocabulary", {}).get("score", 0),
+                "fluency_score": assessment.get("fluency", {}).get("score", 0),
+                "coherence_score": assessment.get("coherence", {}).get("score", 0),
+                "recommended_level": assessment.get("recommended_level"),
+                "confidence": assessment.get("confidence", 0),
+                "created_at": assessment.get("created_at").isoformat() if assessment.get("created_at") else None
+            }
+            formatted_assessments.append(assessment_dict)
+        
+        return {"data": formatted_assessments, "total": total}
+        
+    except Exception as e:
+        print(f"Get speaking assessments error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch speaking assessments: {str(e)}"
+        )
+
+@router.get("/user_stats")
+async def get_user_stats_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get user statistics with pagination for admin panel"""
+    try:
+        user_stats_collection = database.user_stats
+        
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get user stats with pagination
+        cursor = user_stats_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "total_sessions"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        stats = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await user_stats_collection.count_documents({})
+        
+        # Format user stats
+        formatted_stats = []
+        for stat in stats:
+            stat_dict = {
+                "id": str(stat["_id"]),
+                "user_id": stat.get("user_id"),
+                "total_sessions": stat.get("total_sessions", 0),
+                "total_minutes": stat.get("total_minutes", 0),
+                "current_streak": stat.get("current_streak", 0),
+                "longest_streak": stat.get("longest_streak", 0),
+                "last_activity": stat.get("last_activity").isoformat() if stat.get("last_activity") else None,
+                "created_at": stat.get("created_at").isoformat() if stat.get("created_at") else None,
+                "updated_at": stat.get("updated_at").isoformat() if stat.get("updated_at") else None
+            }
+            formatted_stats.append(stat_dict)
+        
+        return {"data": formatted_stats, "total": total}
+        
+    except Exception as e:
+        print(f"Get user stats error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user stats: {str(e)}"
+        )
+
+@router.get("/badges")
+async def get_badges_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get badges with pagination for admin panel"""
+    try:
+        badges_collection = database.badges
+        
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get badges with pagination
+        cursor = badges_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "badge_type"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        badges = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await badges_collection.count_documents({})
+        
+        # Format badges
+        formatted_badges = []
+        for badge in badges:
+            badge_dict = {
+                "id": str(badge["_id"]),
+                "user_id": badge.get("user_id"),
+                "badge_type": badge.get("badge_type"),
+                "badge_name": badge.get("badge_name"),
+                "description": badge.get("description"),
+                "earned_at": badge.get("earned_at").isoformat() if badge.get("earned_at") else None,
+                "criteria_met": badge.get("criteria_met"),
+                "created_at": badge.get("created_at").isoformat() if badge.get("created_at") else None
+            }
+            formatted_badges.append(badge_dict)
+        
+        return {"data": formatted_badges, "total": total}
+        
+    except Exception as e:
+        print(f"Get badges error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch badges: {str(e)}"
+        )
+
+@router.get("/activities")
+async def get_activities_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get user activities with pagination for admin panel"""
+    try:
+        activities_collection = database.activities
+        
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get activities with pagination
+        cursor = activities_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "activity_type"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        activities = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await activities_collection.count_documents({})
+        
+        # Format activities
+        formatted_activities = []
+        for activity in activities:
+            activity_dict = {
+                "id": str(activity["_id"]),
+                "user_id": activity.get("user_id"),
+                "activity_type": activity.get("activity_type"),
+                "description": activity.get("description"),
+                "metadata": activity.get("metadata"),
+                "created_at": activity.get("created_at").isoformat() if activity.get("created_at") else None
+            }
+            formatted_activities.append(activity_dict)
+        
+        return {"data": formatted_activities, "total": total}
+        
+    except Exception as e:
+        print(f"Get activities error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch activities: {str(e)}"
+        )
+
+@router.get("/assessment_history")
+async def get_assessment_history_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get assessment history with pagination for admin panel"""
+    try:
+        assessment_history_collection = database.assessment_history
+        
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get assessment history with pagination
+        cursor = assessment_history_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "assessment_type"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        history = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await assessment_history_collection.count_documents({})
+        
+        # Format assessment history
+        formatted_history = []
+        for record in history:
+            record_dict = {
+                "id": record.get("id", str(record["_id"])),
+                "user_id": record.get("user_id"),
+                "language": record.get("language"),
+                "level": record.get("level"),
+                "overall_score": record.get("overall_score", 0),
+                "skill_scores": record.get("skill_scores", {}),
+                "strengths": record.get("strengths", []),
+                "areas_for_improvement": record.get("areas_for_improvement", []),
+                "recommendations": record.get("recommendations", []),
+                "feedback": record.get("feedback"),
+                "recognized_text": record.get("recognized_text"),
+                "created_at": record.get("created_at") if isinstance(record.get("created_at"), str) else record.get("created_at").isoformat() if record.get("created_at") else None
+            }
+            formatted_history.append(record_dict)
+        
+        return {"data": formatted_history, "total": total}
+        
+    except Exception as e:
+        print(f"Get assessment history error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch assessment history: {str(e)}"
+        )
+
+@router.get("/collections/explore")
+async def explore_additional_collections(current_admin: AdminUser = Depends(get_current_admin)):
+    """Explore additional collections for data availability"""
+    try:
+        collections_data = {}
+        
+        # Check each collection for data
+        collection_names = ["speaking_assessments", "user_stats", "badges", "activities", "assessment_history"]
+        
+        for collection_name in collection_names:
+            collection = database[collection_name]
+            count = await collection.count_documents({})
+            sample = await collection.find_one() if count > 0 else None
+            
+            collections_data[collection_name] = {
+                "count": count,
+                "fields": list(sample.keys()) if sample else [],
+                "sample_data": {k: v for k, v in sample.items() if k != '_id'} if sample else {}
+            }
+        
+        return collections_data
+        
+    except Exception as e:
+        print(f"Collection exploration error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to explore collections: {str(e)}"
+        )
+
 @router.get("/health")
 async def admin_health_check():
     """Admin health check endpoint"""
