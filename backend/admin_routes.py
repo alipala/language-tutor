@@ -573,7 +573,7 @@ async def get_learning_plans_admin(
                 "completed_sessions": plan.get("completed_sessions", 0),
                 "progress_percentage": plan.get("progress_percentage", 0),
                 "assessment_data": plan.get("assessment_data"),
-                "created_at": plan.get("created_at").isoformat() if plan.get("created_at") else None
+                "created_at": plan.get("created_at") if isinstance(plan.get("created_at"), str) else plan.get("created_at").isoformat() if plan.get("created_at") else None
             }
             formatted_plans.append(plan_dict)
         
