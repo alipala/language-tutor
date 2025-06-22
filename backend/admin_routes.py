@@ -358,6 +358,285 @@ async def update_user_admin(
             detail="Failed to update user"
         )
 
+@router.get("/explore")
+async def explore_database_structure(current_admin: AdminUser = Depends(get_current_admin)):
+    """Explore database structure for admin panel development"""
+    try:
+        # Get collections info
+        collections = await database.list_collection_names()
+        
+        # Explore users
+        user_sample = await users_collection.find_one()
+        users_with_language = await users_collection.count_documents({"preferred_language": {"$ne": None}})
+        users_with_level = await users_collection.count_documents({"preferred_level": {"$ne": None}})
+        users_with_login = await users_collection.count_documents({"last_login": {"$ne": None}})
+        
+        # Explore conversations
+        conv_sample = await conversation_sessions_collection.find_one()
+        conv_count = await conversation_sessions_collection.count_documents({})
+        
+        # Explore learning plans
+        plan_sample = await learning_plans_collection.find_one()
+        plan_count = await learning_plans_collection.count_documents({})
+        
+        # Sample user activity analysis
+        sample_users = await users_collection.find({}, {"_id": 1, "email": 1}).limit(5).to_list(length=5)
+        user_activity = []
+        
+        for user in sample_users:
+            user_id = str(user["_id"])
+            email = user.get("email", "No email")
+            
+            # Check conversations and plans for this user
+            user_convs = await conversation_sessions_collection.count_documents({"user_id": user_id})
+            user_plans = await learning_plans_collection.count_documents({"user_id": user_id})
+            
+            user_activity.append({
+                "email": email,
+                "user_id": user_id,
+                "conversations": user_convs,
+                "learning_plans": user_plans
+            })
+        
+        return {
+            "collections": collections,
+            "users": {
+                "total": await users_collection.count_documents({}),
+                "with_language": users_with_language,
+                "with_level": users_with_level,
+                "with_login_history": users_with_login,
+                "sample_fields": list(user_sample.keys()) if user_sample else [],
+                "sample_data": {k: v for k, v in user_sample.items() if k != '_id'} if user_sample else {}
+            },
+            "conversations": {
+                "total": conv_count,
+                "sample_fields": list(conv_sample.keys()) if conv_sample else [],
+                "sample_data": {k: v for k, v in conv_sample.items() if k not in ['_id', 'conversation_data']} if conv_sample else {}
+            },
+            "learning_plans": {
+                "total": plan_count,
+                "sample_fields": list(plan_sample.keys()) if plan_sample else [],
+                "sample_data": {k: v for k, v in plan_sample.items() if k not in ['_id', 'plan_content']} if plan_sample else {}
+            },
+            "user_activity_sample": user_activity
+        }
+        
+    except Exception as e:
+        print(f"Database exploration error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to explore database: {str(e)}"
+        )
+
+@router.get("/conversation_sessions")
+async def get_conversations_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get conversation sessions with pagination for admin panel"""
+    try:
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get conversations with pagination
+        cursor = conversation_sessions_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "language", "level"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        conversations = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await conversation_sessions_collection.count_documents({})
+        
+        # Format conversations
+        formatted_conversations = []
+        for conv in conversations:
+            conv_dict = {
+                "id": str(conv["_id"]),
+                "user_id": conv.get("user_id"),
+                "language": conv.get("language"),
+                "level": conv.get("level"),
+                "topic": conv.get("topic"),
+                "message_count": conv.get("message_count", 0),
+                "duration_minutes": conv.get("duration_minutes", 0),
+                "summary": conv.get("summary", ""),
+                "enhanced_analysis": conv.get("enhanced_analysis"),
+                "created_at": conv.get("created_at").isoformat() if conv.get("created_at") else None,
+                "updated_at": conv.get("updated_at").isoformat() if conv.get("updated_at") else None,
+                "messages": conv.get("messages", [])
+            }
+            formatted_conversations.append(conv_dict)
+        
+        return {"data": formatted_conversations, "total": total}
+        
+    except Exception as e:
+        print(f"Get conversations error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch conversations: {str(e)}"
+        )
+
+@router.get("/conversation_sessions/{conversation_id}")
+async def get_conversation_admin(
+    conversation_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get single conversation details"""
+    try:
+        from bson import ObjectId
+        
+        # Find conversation
+        conversation = await conversation_sessions_collection.find_one({"_id": ObjectId(conversation_id)})
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        
+        # Format response
+        conv_dict = {
+            "id": str(conversation["_id"]),
+            "user_id": conversation.get("user_id"),
+            "language": conversation.get("language"),
+            "level": conversation.get("level"),
+            "topic": conversation.get("topic"),
+            "message_count": conversation.get("message_count", 0),
+            "duration_minutes": conversation.get("duration_minutes", 0),
+            "summary": conversation.get("summary", ""),
+            "enhanced_analysis": conversation.get("enhanced_analysis"),
+            "created_at": conversation.get("created_at").isoformat() if conversation.get("created_at") else None,
+            "updated_at": conversation.get("updated_at").isoformat() if conversation.get("updated_at") else None,
+            "messages": conversation.get("messages", [])
+        }
+        
+        return {"data": conv_dict}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get conversation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch conversation"
+        )
+
+@router.get("/learning_plans")
+async def get_learning_plans_admin(
+    page: int = 1,
+    per_page: int = 25,
+    sort_field: str = "created_at",
+    sort_order: str = "desc",
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get learning plans with pagination for admin panel"""
+    try:
+        # Calculate skip value
+        skip = (page - 1) * per_page
+        
+        # Build sort criteria
+        if sort_field == "id":
+            sort_field = "_id"
+        
+        sort_direction = -1 if sort_order.lower() == "desc" else 1
+        
+        # Get learning plans with pagination
+        cursor = learning_plans_collection.find({})
+        if sort_field and sort_field in ["_id", "created_at", "user_id", "language", "proficiency_level"]:
+            cursor = cursor.sort(sort_field, sort_direction)
+        cursor = cursor.skip(skip).limit(per_page)
+        plans = await cursor.to_list(length=per_page)
+        
+        # Get total count
+        total = await learning_plans_collection.count_documents({})
+        
+        # Format learning plans
+        formatted_plans = []
+        for plan in plans:
+            plan_dict = {
+                "id": plan.get("id", str(plan["_id"])),
+                "user_id": plan.get("user_id"),
+                "language": plan.get("language"),
+                "proficiency_level": plan.get("proficiency_level"),
+                "goals": plan.get("goals", []),
+                "duration_months": plan.get("duration_months", 0),
+                "custom_goal": plan.get("custom_goal"),
+                "total_sessions": plan.get("total_sessions", 0),
+                "completed_sessions": plan.get("completed_sessions", 0),
+                "progress_percentage": plan.get("progress_percentage", 0),
+                "assessment_data": plan.get("assessment_data"),
+                "created_at": plan.get("created_at").isoformat() if plan.get("created_at") else None
+            }
+            formatted_plans.append(plan_dict)
+        
+        return {"data": formatted_plans, "total": total}
+        
+    except Exception as e:
+        print(f"Get learning plans error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch learning plans: {str(e)}"
+        )
+
+@router.get("/learning_plans/{plan_id}")
+async def get_learning_plan_admin(
+    plan_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get single learning plan details"""
+    try:
+        # Find learning plan by id field (not _id)
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        if not plan:
+            # Try with _id as fallback
+            from bson import ObjectId
+            try:
+                plan = await learning_plans_collection.find_one({"_id": ObjectId(plan_id)})
+            except:
+                pass
+        
+        if not plan:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning plan not found"
+            )
+        
+        # Format response
+        plan_dict = {
+            "id": plan.get("id", str(plan["_id"])),
+            "user_id": plan.get("user_id"),
+            "language": plan.get("language"),
+            "proficiency_level": plan.get("proficiency_level"),
+            "goals": plan.get("goals", []),
+            "duration_months": plan.get("duration_months", 0),
+            "custom_goal": plan.get("custom_goal"),
+            "total_sessions": plan.get("total_sessions", 0),
+            "completed_sessions": plan.get("completed_sessions", 0),
+            "progress_percentage": plan.get("progress_percentage", 0),
+            "assessment_data": plan.get("assessment_data"),
+            "plan_content": plan.get("plan_content"),
+            "created_at": plan.get("created_at").isoformat() if plan.get("created_at") else None
+        }
+        
+        return {"data": plan_dict}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get learning plan error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch learning plan"
+        )
+
 @router.get("/health")
 async def admin_health_check():
     """Admin health check endpoint"""
