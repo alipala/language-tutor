@@ -364,7 +364,12 @@ export default function TopicSelection() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl font-bold text-black mb-4">
-            Choose a Topic
+            {selectedLanguage === 'dutch' && 'Kies een Onderwerp / Choose a Topic'}
+            {selectedLanguage === 'spanish' && 'Elige un Tema / Choose a Topic'}
+            {selectedLanguage === 'german' && 'Wähle ein Thema / Choose a Topic'}
+            {selectedLanguage === 'french' && 'Choisissez un Sujet / Choose a Topic'}
+            {selectedLanguage === 'portuguese' && 'Escolha um Tópico / Choose a Topic'}
+            {(selectedLanguage === 'english' || !selectedLanguage) && 'Choose a Topic'}
           </h1>
           <p className="text-gray-600 text-lg mb-8">
             {selectedLanguage === 'dutch' && 'Selecteer een onderwerp voor je Nederlandse conversatie (optioneel)'}
@@ -421,13 +426,12 @@ export default function TopicSelection() {
               {/* Header */}
               <div className="relative z-10 text-center mb-6">
                 <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
-                  {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp'}
-                  {selectedLanguage === 'english' && 'Create Your Custom Topic'}
-                  {selectedLanguage === 'spanish' && 'Crea tu tema personalizado'}
-                  {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema'}
-                  {selectedLanguage === 'french' && 'Créez votre sujet personnalisé'}
-                  {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado'}
-                  {!selectedLanguage && 'Create Your Custom Topic'}
+                  {selectedLanguage === 'dutch' && 'Maak je eigen onderwerp / Create Your Custom Topic'}
+                  {selectedLanguage === 'spanish' && 'Crea tu tema personalizado / Create Your Custom Topic'}
+                  {selectedLanguage === 'german' && 'Erstelle dein eigenes Thema / Create Your Custom Topic'}
+                  {selectedLanguage === 'french' && 'Créez votre sujet personnalisé / Create Your Custom Topic'}
+                  {selectedLanguage === 'portuguese' && 'Crie seu tópico personalizado / Create Your Custom Topic'}
+                  {(selectedLanguage === 'english' || !selectedLanguage) && 'Create Your Custom Topic'}
                 </h3>
                 <p className="text-gray-600 text-sm md:text-base">
                   {selectedLanguage === 'dutch' && 'Waarover wil je praten in je Nederlandse conversatie?'}
