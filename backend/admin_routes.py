@@ -204,13 +204,8 @@ async def get_users_admin(
 ):
     """Get users with pagination and search for admin panel"""
     try:
-        print(f"Admin users request: page={page}, per_page={per_page}, sort_field={sort_field}, sort_order={sort_order}")
-        print(f"Search filters: q={q}, is_active={is_active}, is_verified={is_verified}, preferred_language={preferred_language}")
-        print(f"🔍 DEBUG: q type={type(q)}, q repr={repr(q)}")
-        
         # Calculate skip value
         skip = (page - 1) * per_page
-        print(f"Skip value: {skip}")
         
         # Build search query
         query = {}
@@ -218,7 +213,6 @@ async def get_users_admin(
         # Text search across name, email, and ID
         if q is not None and str(q).strip():  # More robust check
             search_term = str(q).strip()
-            print(f"🔍 APPLYING SEARCH for term: '{search_term}'")
             
             # Try to match ObjectId if it looks like one
             search_conditions = [
@@ -231,14 +225,10 @@ async def get_users_admin(
                 try:
                     from bson import ObjectId
                     search_conditions.append({"_id": ObjectId(search_term)})
-                    print(f"Added ObjectId search for: {search_term}")
                 except:
                     pass
             
             query["$or"] = search_conditions
-            print(f"🔍 SEARCH CONDITIONS: {search_conditions}")
-        else:
-            print(f"🔍 NO SEARCH APPLIED - q is: {repr(q)}")
         
         # Filter by active status
         if is_active is not None:
@@ -252,14 +242,11 @@ async def get_users_admin(
         if preferred_language:
             query["preferred_language"] = preferred_language
         
-        print(f"MongoDB query: {query}")
-        
         # Build sort criteria - handle different field names
         if sort_field == "id":
             sort_field = "_id"
         
         sort_direction = -1 if sort_order.lower() == "desc" else 1
-        print(f"Sort: {sort_field} {sort_direction}")
         
         # Get users with pagination and search
         try:
@@ -268,18 +255,27 @@ async def get_users_admin(
                 cursor = cursor.sort(sort_field, sort_direction)
             cursor = cursor.skip(skip).limit(per_page)
             users = await cursor.to_list(length=per_page)
-            print(f"Found {len(users)} users with search query")
         except Exception as cursor_error:
-            print(f"Cursor error: {str(cursor_error)}")
             # Fallback: get users without sorting but with search
             cursor = users_collection.find(query).skip(skip).limit(per_page)
             users = await cursor.to_list(length=per_page)
-            print(f"Fallback: Found {len(users)} users with search query")
         
         # Get total count with search filters
         total = await users_collection.count_documents(query)
-        print(f"Total users (filtered): {total}")
         
+        # Helper function to safely format dates
+        def safe_isoformat(date_value):
+            if date_value is None:
+                return None
+            if isinstance(date_value, str):
+                # If it's already a string, check if it looks like an ISO date
+                if 'T' in str(date_value) or '-' in str(date_value):
+                    return date_value  # Already formatted
+                return str(date_value)
+            if hasattr(date_value, 'isoformat'):
+                return date_value.isoformat()
+            return str(date_value)
+
         # Convert ObjectId to string and format response
         formatted_users = []
         for user in users:
@@ -290,23 +286,22 @@ async def get_users_admin(
                     "name": user.get("name", ""),
                     "is_active": user.get("is_active", True),
                     "is_verified": user.get("is_verified", False),
-                    "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
-                    "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
+                    "created_at": safe_isoformat(user.get("created_at")),
+                    "last_login": safe_isoformat(user.get("last_login")),
                     "preferred_language": user.get("preferred_language"),
                     "preferred_level": user.get("preferred_level")
                 }
                 formatted_users.append(user_dict)
             except Exception as format_error:
-                print(f"Error formatting user {user.get('_id')}: {str(format_error)}")
+                # Log error but continue processing other users
                 continue
         
-        print(f"Returning {len(formatted_users)} formatted users")
         return UserListResponse(data=formatted_users, total=total)
         
     except Exception as e:
-        print(f"Get users error: {str(e)}")
+        # Log error for debugging but don't expose internal details
         import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
+        print(f"Get users error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch users: {str(e)}"
@@ -329,6 +324,16 @@ async def get_user_admin(
                 detail="User not found"
             )
         
+        # Helper function to safely format dates
+        def safe_isoformat(date_value):
+            if date_value is None:
+                return None
+            if isinstance(date_value, str):
+                return date_value
+            if hasattr(date_value, 'isoformat'):
+                return date_value.isoformat()
+            return str(date_value)
+
         # Format response
         user_dict = {
             "id": str(user["_id"]),
@@ -336,8 +341,8 @@ async def get_user_admin(
             "name": user.get("name", ""),
             "is_active": user.get("is_active", True),
             "is_verified": user.get("is_verified", False),
-            "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
-            "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
+            "created_at": safe_isoformat(user.get("created_at")),
+            "last_login": safe_isoformat(user.get("last_login")),
             "preferred_language": user.get("preferred_language"),
             "preferred_level": user.get("preferred_level")
         }
@@ -435,6 +440,7 @@ async def update_user_admin(
     """Update user details"""
     try:
         from bson import ObjectId
+        from datetime import datetime
         
         # Remove id from update data if present
         update_data = {k: v for k, v in user_data.items() if k not in ["id", "password"]}
@@ -442,6 +448,9 @@ async def update_user_admin(
         # Handle password update separately if provided
         if "password" in user_data and user_data["password"]:
             update_data["hashed_password"] = get_password_hash(user_data["password"])
+        
+        # Add updated_at timestamp
+        update_data["updated_at"] = datetime.utcnow()
         
         # Update user
         result = await users_collection.update_one(
@@ -458,6 +467,16 @@ async def update_user_admin(
         # Get updated user
         updated_user = await users_collection.find_one({"_id": ObjectId(user_id)})
         
+        # Helper function to safely format dates
+        def safe_isoformat(date_value):
+            if date_value is None:
+                return None
+            if isinstance(date_value, str):
+                return date_value
+            if hasattr(date_value, 'isoformat'):
+                return date_value.isoformat()
+            return str(date_value)
+        
         # Format response
         user_dict = {
             "id": str(updated_user["_id"]),
@@ -465,8 +484,8 @@ async def update_user_admin(
             "name": updated_user.get("name", ""),
             "is_active": updated_user.get("is_active", True),
             "is_verified": updated_user.get("is_verified", False),
-            "created_at": updated_user.get("created_at").isoformat() if updated_user.get("created_at") else None,
-            "last_login": updated_user.get("last_login").isoformat() if updated_user.get("last_login") else None,
+            "created_at": safe_isoformat(updated_user.get("created_at")),
+            "last_login": safe_isoformat(updated_user.get("last_login")),
             "preferred_language": updated_user.get("preferred_language"),
             "preferred_level": updated_user.get("preferred_level")
         }
