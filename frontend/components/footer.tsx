@@ -22,6 +22,7 @@ import {
   Star,
   TrendingUp
 } from 'lucide-react';
+import { Logo } from './logo';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -62,7 +63,6 @@ const Footer: React.FC = () => {
       title: "Company",
       links: [
         { name: "About Us", href: "/about", icon: Users },
-        { name: "Careers", href: "/careers", icon: Award, badge: "We're hiring!" },
         { name: "Press Kit", href: "/press", icon: Star },
         { name: "Blog", href: "/blog", icon: BookOpen },
         { name: "Research", href: "/research", icon: Zap }
@@ -129,14 +129,9 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-12">
           {/* Company Info */}
           <div className="lg:col-span-2">
-            <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-4 border border-white/30">
-                <MessageSquare className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold">Language Tutor</h3>
-                <p className="text-white/90 text-sm font-medium">Your Smart Language Coach</p>
-              </div>
+            <div className="mb-6">
+              <Logo variant="full" className="scale-75 origin-left" />
+              <p className="text-white/90 text-sm font-medium mt-2">AI Language Coach</p>
             </div>
             
             <p className="text-white/70 mb-6 leading-relaxed">
@@ -148,19 +143,19 @@ const Footer: React.FC = () => {
             <div className="space-y-3 mb-8">
               <div className="flex items-center text-white/70 hover:text-white transition-colors">
                 <Mail className="w-5 h-5 mr-3 text-white/90" />
-                <a href="mailto:support@languagetutor.ai" className="hover:underline">
-                  support@languagetutor.ai
+                <a href="mailto:hello@mytacoai.com" className="hover:underline">
+                  hello@mytacoai.com
                 </a>
               </div>
               <div className="flex items-center text-white/70 hover:text-white transition-colors">
                 <Phone className="w-5 h-5 mr-3 text-white/90" />
-                <a href="tel:+1-555-0123" className="hover:underline">
-                  +1 (555) 012-3456
+                <a href="tel:+31657126162" className="hover:underline">
+                  +31(6)57 126 162
                 </a>
               </div>
               <div className="flex items-center text-white/70">
                 <MapPin className="w-5 h-5 mr-3 text-white/90" />
-                <span>San Francisco, CA</span>
+                <span>Amsterdam, NL</span>
               </div>
             </div>
 
@@ -200,11 +195,6 @@ const Footer: React.FC = () => {
                       <span className="group-hover:translate-x-1 transition-transform duration-300">
                         {link.name}
                       </span>
-                      {link.badge && (
-                        <span className="ml-2 px-2 py-0.5 bg-[#4ECFBF] text-white text-xs rounded-full font-medium">
-                          {link.badge}
-                        </span>
-                      )}
                       <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                   </li>
@@ -242,7 +232,7 @@ const Footer: React.FC = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Copyright */}
             <div className="flex items-center text-white/70">
-              <span>© {currentYear} Language Tutor. Made with</span>
+              <span>© {currentYear} My Taco. Made with</span>
               <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
               <span>for language learners worldwide.</span>
             </div>

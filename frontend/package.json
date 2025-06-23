@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-favicons": "node scripts/generate-favicons.js"
   },
   "dependencies": {
     "@heroui/accordion": "^2.2.14",
@@ -27,6 +28,7 @@
     "react-chatbotify": "^2.1.0",
     "react-dom": "^18.2.0",
     "react-type-animation": "^3.2.0",
+    "sharp": "^0.33.5",
     "tailwind-merge": "^2.1.0",
     "tailwindcss-animate": "^1.0.7"
   },
