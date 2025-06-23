@@ -1,0 +1,44 @@
+{
+  "folders": [
+    {
+      "name": "Main App (language-tutor)",
+      "path": "."
+    },
+    {
+      "name": "Admin Panel",
+      "path": "../language-tutor-admin"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.git": true,
+      "**/.DS_Store": true,
+      "**/venv": true,
+      "**/venv_py311": true,
+      "**/__pycache__": true,
+      "**/build": true,
+      "**/dist": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/venv": true,
+      "**/venv_py311": true,
+      "**/build": true
+    },
+    "git.repositories": [
+      "./",
+      "../language-tutor-admin"
+    ],
+    "python.defaultInterpreterPath": "./venv/bin/python"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-vscode.vscode-typescript-next",
+      "bradlc.vscode-tailwindcss",
+      "ms-vscode.vscode-json",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}

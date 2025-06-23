@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Eye, Database, Users, Mail, Phone, MapPin } from 'lucide-react';
+import { Shield, Lock, Eye, Users, FileText, Mail, Phone, MapPin } from 'lucide-react';
 
 const PrivacyPolicy: React.FC = () => {
   const lastUpdated = "January 15, 2025";
@@ -10,55 +10,55 @@ const PrivacyPolicy: React.FC = () => {
   const sections = [
     {
       title: "Information We Collect",
-      icon: Database,
+      icon: FileText,
       content: [
         {
           subtitle: "Personal Information",
-          text: "We collect information you provide directly to us, such as when you create an account, use our services, or contact us. This may include your name, email address, and language learning preferences."
+          text: "We collect information you provide directly to us, such as when you create an account, use our language learning services, or contact us for support. This includes your name, email address, and learning preferences."
         },
         {
-          subtitle: "Usage Information",
-          text: "We automatically collect information about your use of our services, including conversation transcripts, assessment results, learning progress, and interaction patterns to improve your learning experience."
+          subtitle: "Learning Data",
+          text: "To provide personalized learning experiences, we collect data about your progress, conversation transcripts, assessment results, and usage patterns within our platform."
         },
         {
-          subtitle: "Audio Data",
-          text: "When you use our speaking assessment features, we temporarily process audio recordings to provide feedback. Audio data is processed securely and is not stored permanently unless you explicitly save your progress."
+          subtitle: "Technical Information",
+          text: "We automatically collect certain technical information, including your device type, browser information, IP address, and how you interact with our services."
         }
       ]
     },
     {
       title: "How We Use Your Information",
-      icon: Eye,
+      icon: Users,
       content: [
         {
           subtitle: "Service Provision",
-          text: "We use your information to provide, maintain, and improve our language learning services, including personalized feedback, progress tracking, and adaptive learning experiences."
+          text: "We use your information to provide, maintain, and improve our language learning services, including personalizing your learning experience and tracking your progress."
         },
         {
           subtitle: "Communication",
-          text: "We may use your contact information to send you service-related communications, updates about new features, and educational content that may interest you."
+          text: "We may use your contact information to send you important updates about our services, respond to your inquiries, and provide customer support."
         },
         {
           subtitle: "Analytics and Improvement",
-          text: "We analyze usage patterns and learning outcomes to enhance our AI models, improve user experience, and develop new features that better serve our learning community."
+          text: "We analyze usage patterns and feedback to improve our platform, develop new features, and enhance the overall learning experience."
         }
       ]
     },
     {
       title: "Information Sharing",
-      icon: Users,
+      icon: Eye,
       content: [
         {
-          subtitle: "No Sale of Personal Data",
-          text: "We do not sell, rent, or trade your personal information to third parties for their commercial purposes."
+          subtitle: "No Sale of Data",
+          text: "We do not sell, trade, or otherwise transfer your personal information to third parties for commercial purposes."
         },
         {
           subtitle: "Service Providers",
-          text: "We may share information with trusted service providers who assist us in operating our platform, such as cloud hosting services, analytics providers, and customer support tools."
+          text: "We may share information with trusted third-party service providers who assist us in operating our platform, conducting our business, or serving our users."
         },
         {
           subtitle: "Legal Requirements",
-          text: "We may disclose information when required by law, to protect our rights, or to ensure the safety and security of our users and services."
+          text: "We may disclose your information when required by law, court order, or other legal process, or when we believe disclosure is necessary to protect our rights or the safety of others."
         }
       ]
     },
@@ -67,34 +67,16 @@ const PrivacyPolicy: React.FC = () => {
       icon: Lock,
       content: [
         {
+          subtitle: "Security Measures",
+          text: "We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction."
+        },
+        {
           subtitle: "Encryption",
-          text: "All data transmission is encrypted using industry-standard TLS protocols. Personal information is encrypted at rest using AES-256 encryption."
+          text: "We use industry-standard encryption to protect sensitive data both in transit and at rest on our servers."
         },
         {
           subtitle: "Access Controls",
-          text: "We implement strict access controls and authentication mechanisms to ensure only authorized personnel can access user data, and only when necessary for service provision."
-        },
-        {
-          subtitle: "Regular Audits",
-          text: "Our security practices are regularly audited and updated to meet industry standards and regulatory requirements."
-        }
-      ]
-    },
-    {
-      title: "Your Rights and Choices",
-      icon: Shield,
-      content: [
-        {
-          subtitle: "Access and Correction",
-          text: "You have the right to access, update, or correct your personal information at any time through your account settings or by contacting us."
-        },
-        {
-          subtitle: "Data Deletion",
-          text: "You may request deletion of your account and associated data. Some information may be retained for legal or legitimate business purposes as outlined in our retention policy."
-        },
-        {
-          subtitle: "Communication Preferences",
-          text: "You can opt out of non-essential communications at any time by updating your preferences or using the unsubscribe link in our emails."
+          text: "We maintain strict access controls and regularly review our security practices to ensure your data remains protected."
         }
       ]
     }
@@ -103,7 +85,7 @@ const PrivacyPolicy: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white pt-32 pb-16">
+      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-16">
         <div className="max-w-4xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -116,7 +98,7 @@ const PrivacyPolicy: React.FC = () => {
               <h1 className="text-4xl font-bold">Privacy Policy</h1>
             </div>
             <p className="text-xl text-white/90 mb-4">
-              Your privacy is important to us. This policy explains how we collect, use, and protect your information.
+              Your privacy is important to us. Learn how we collect, use, and protect your information.
             </p>
             <p className="text-white/80">
               Last updated: {lastUpdated}
@@ -137,8 +119,9 @@ const PrivacyPolicy: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Introduction</h2>
             <p className="text-gray-600 leading-relaxed">
-              Language Tutor ("we," "our," or "us") is committed to protecting your privacy and ensuring the security of your personal information. 
-              This Privacy Policy describes how we collect, use, disclose, and safeguard your information when you use our language learning platform and services.
+              Language Tutor ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy 
+              explains how we collect, use, disclose, and safeguard your information when you use our language 
+              learning platform and related services.
             </p>
           </div>
         </motion.div>
@@ -172,6 +155,48 @@ const PrivacyPolicy: React.FC = () => {
           </motion.div>
         ))}
 
+        {/* Your Rights */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="mb-8"
+        >
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Your Rights</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600 leading-relaxed">
+                You have the right to access, update, or delete your personal information. You may also opt out of 
+                certain communications from us. To exercise these rights, please contact us using the information below.
+              </p>
+              <ul className="space-y-2 text-gray-600">
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Access and review your personal data</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Request corrections to inaccurate information</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Delete your account and associated data</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Opt out of marketing communications</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Contact Information */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -182,7 +207,7 @@ const PrivacyPolicy: React.FC = () => {
           <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Us</h2>
             <p className="text-gray-600 mb-6">
-              If you have any questions about this Privacy Policy or our data practices, please contact us:
+              If you have any questions about this Privacy Policy or our privacy practices, please contact us:
             </p>
             
             <div className="grid md:grid-cols-3 gap-6">
@@ -217,17 +242,17 @@ const PrivacyPolicy: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Updates Notice */}
+        {/* Changes Notice */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.9 }}
         >
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-amber-800 mb-2">Policy Updates</h3>
-            <p className="text-amber-700">
-              We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new policy on this page 
-              and updating the "Last updated" date. We encourage you to review this policy periodically.
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6">
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">Policy Updates</h3>
+            <p className="text-yellow-700">
+              We may update this Privacy Policy from time to time. We will notify you of any material changes by 
+              posting the new Privacy Policy on this page and updating the "Last updated" date above.
             </p>
           </div>
         </motion.div>

@@ -3,8 +3,14 @@ import sys
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables - prioritize .env.local for development
+import os
+if os.path.exists('.env.local'):
+    load_dotenv('.env.local')
+    print("Loaded .env.local for local development")
+else:
+    load_dotenv()
+    print("Loaded .env for production")
 
 # Debug Railway environment
 if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":

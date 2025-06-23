@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, Download, Trash2, Edit, Lock, Users, Mail, Phone, MapPin } from 'lucide-react';
+import { Shield, FileText, Eye, Lock, Users, CheckCircle, Mail, Phone, MapPin } from 'lucide-react';
 
 const GDPRCompliance: React.FC = () => {
   const lastUpdated = "January 15, 2025";
@@ -10,90 +10,52 @@ const GDPRCompliance: React.FC = () => {
   const rights = [
     {
       title: "Right to Information",
-      icon: Eye,
-      description: "You have the right to know what personal data we collect, how we use it, and who we share it with.",
-      actions: [
-        "View our Privacy Policy for detailed information",
-        "Contact us for specific questions about data processing",
-        "Request a summary of your data processing activities"
-      ]
+      icon: FileText,
+      description: "You have the right to be informed about how we collect and use your personal data."
     },
     {
       title: "Right of Access",
-      icon: Download,
-      description: "You have the right to access your personal data and receive a copy of it.",
-      actions: [
-        "Download your data through your account settings",
-        "Request a complete data export via email",
-        "Access your learning history and progress data"
-      ]
+      icon: Eye,
+      description: "You can request copies of your personal data and information about how we process it."
     },
     {
       title: "Right to Rectification",
-      icon: Edit,
-      description: "You have the right to correct inaccurate or incomplete personal data.",
-      actions: [
-        "Update your profile information directly",
-        "Contact us to correct data you cannot edit yourself",
-        "Request verification of corrected information"
-      ]
+      icon: CheckCircle,
+      description: "You can request that we correct any inaccurate or incomplete personal data."
     },
     {
       title: "Right to Erasure",
-      icon: Trash2,
-      description: "You have the right to request deletion of your personal data under certain circumstances.",
-      actions: [
-        "Delete your account through account settings",
-        "Request specific data deletion via email",
-        "Understand data retention requirements"
-      ]
+      icon: Shield,
+      description: "You can request that we delete your personal data under certain circumstances."
+    },
+    {
+      title: "Right to Restrict Processing",
+      icon: Lock,
+      description: "You can request that we limit how we process your personal data in certain situations."
     },
     {
       title: "Right to Data Portability",
-      icon: Download,
-      description: "You have the right to receive your data in a structured, machine-readable format.",
-      actions: [
-        "Export your data in JSON or CSV format",
-        "Transfer your learning progress to another service",
-        "Receive your conversation history and assessments"
-      ]
-    },
-    {
-      title: "Right to Object",
-      icon: Shield,
-      description: "You have the right to object to certain types of data processing.",
-      actions: [
-        "Opt out of marketing communications",
-        "Object to automated decision-making",
-        "Withdraw consent for optional data processing"
-      ]
+      icon: Users,
+      description: "You can request that we transfer your data to another organization or provide it in a machine-readable format."
     }
   ];
 
-  const principles = [
+  const lawfulBases = [
     {
-      title: "Lawfulness, Fairness, and Transparency",
-      description: "We process personal data lawfully, fairly, and in a transparent manner. We clearly explain our data practices and obtain appropriate consent."
+      title: "Consent",
+      description: "We process your data when you have given clear consent for us to do so for specific purposes."
     },
     {
-      title: "Purpose Limitation",
-      description: "We collect personal data for specified, explicit, and legitimate purposes and do not process it in ways incompatible with those purposes."
+      title: "Contract",
+      description: "We process your data when it's necessary for the performance of a contract with you."
     },
     {
-      title: "Data Minimization",
-      description: "We only collect and process personal data that is adequate, relevant, and limited to what is necessary for our purposes."
+      title: "Legal Obligation",
+      description: "We process your data when we need to comply with a legal obligation."
     },
     {
-      title: "Accuracy",
-      description: "We take reasonable steps to ensure that personal data is accurate and, where necessary, kept up to date."
-    },
-    {
-      title: "Storage Limitation",
-      description: "We keep personal data in a form that permits identification only for as long as necessary for our legitimate purposes."
-    },
-    {
-      title: "Integrity and Confidentiality",
-      description: "We process personal data securely using appropriate technical and organizational measures to protect against unauthorized access, loss, or damage."
+      title: "Legitimate Interest",
+      description: "We process your data when it's necessary for our legitimate interests, provided your rights are protected."
     }
   ];
 
@@ -134,36 +96,13 @@ const GDPRCompliance: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Our Commitment to GDPR</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              Language Tutor is committed to protecting your personal data and respecting your privacy rights under the 
-              General Data Protection Regulation (GDPR). This page explains your rights under GDPR and how we ensure compliance 
-              with these important data protection standards.
+              Language Tutor is committed to protecting your personal data and respecting your privacy rights. 
+              We comply with the General Data Protection Regulation (GDPR) and other applicable data protection laws.
             </p>
             <p className="text-gray-600 leading-relaxed">
-              The GDPR gives individuals in the European Union comprehensive rights over their personal data and imposes 
-              strict obligations on organizations that process such data. We take these responsibilities seriously and have 
-              implemented robust measures to ensure full compliance.
+              This page explains your rights under GDPR and how we ensure compliance with these important regulations 
+              that protect your personal information.
             </p>
-          </div>
-        </motion.div>
-
-        {/* GDPR Principles */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mb-12"
-        >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-8">GDPR Principles We Follow</h2>
-            
-            <div className="space-y-6">
-              {principles.map((principle, index) => (
-                <div key={principle.title} className="border-l-4 border-[#4ECFBF] pl-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{principle.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{principle.description}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </motion.div>
 
@@ -171,36 +110,50 @@ const GDPRCompliance: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mb-12"
+        >
+          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Your Data Protection Rights</h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            {rights.map((right, index) => (
+              <motion.div
+                key={right.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 * (index + 4) }}
+              >
+                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200 h-full">
+                  <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
+                      <right.icon className="w-6 h-6 text-[#4ECFBF]" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">{right.title}</h3>
+                  </div>
+                  <p className="text-gray-600 leading-relaxed">{right.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Lawful Basis */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
           className="mb-12"
         >
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-8">Your GDPR Rights</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Lawful Basis for Processing</h2>
+            <p className="text-gray-600 leading-relaxed mb-6">
+              Under GDPR, we must have a lawful basis for processing your personal data. We rely on the following lawful bases:
+            </p>
             
-            <div className="grid gap-8">
-              {rights.map((right, index) => (
-                <div key={right.title} className="border border-gray-200 rounded-xl p-6">
-                  <div className="flex items-start mb-4">
-                    <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4 flex-shrink-0">
-                      <right.icon className="w-6 h-6 text-[#4ECFBF]" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-800 mb-2">{right.title}</h3>
-                      <p className="text-gray-600 mb-4">{right.description}</p>
-                      
-                      <div>
-                        <h4 className="font-medium text-gray-800 mb-2">How to exercise this right:</h4>
-                        <ul className="space-y-1">
-                          {right.actions.map((action, actionIndex) => (
-                            <li key={actionIndex} className="text-gray-600 text-sm flex items-center">
-                              <span className="w-1.5 h-1.5 bg-[#4ECFBF] rounded-full mr-2 flex-shrink-0"></span>
-                              {action}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {lawfulBases.map((basis, index) => (
+                <div key={basis.title} className="border border-gray-200 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{basis.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{basis.description}</p>
                 </div>
               ))}
             </div>
@@ -211,43 +164,84 @@ const GDPRCompliance: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="mb-8"
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className="mb-12"
         >
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Legal Basis for Data Processing</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">How We Process Your Data</h2>
             
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Consent</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Collection</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  We process your personal data based on your explicit consent for marketing communications, 
-                  optional features, and analytics that improve your learning experience.
+                  We collect personal data only when necessary for providing our language learning services. 
+                  This includes account information, learning progress, and usage analytics.
                 </p>
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Contract Performance</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Storage</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  We process your data to provide our language learning services, manage your account, 
-                  and fulfill our contractual obligations to you.
+                  Your data is stored securely using industry-standard encryption and security measures. 
+                  We retain data only for as long as necessary to provide our services or as required by law.
                 </p>
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Legitimate Interest</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Sharing</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  We may process your data for our legitimate business interests, such as improving our services, 
-                  preventing fraud, and ensuring the security of our platform.
+                  We do not sell your personal data. We may share data with trusted service providers who help us 
+                  operate our platform, but only under strict contractual obligations to protect your privacy.
                 </p>
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Legal Obligation</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">International Transfers</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  We process certain data to comply with legal obligations, such as tax requirements, 
-                  regulatory compliance, and law enforcement requests.
+                  If we transfer your data outside the EU, we ensure appropriate safeguards are in place, 
+                  such as adequacy decisions or standard contractual clauses.
                 </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Exercising Your Rights */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="mb-12"
+        >
+          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">How to Exercise Your Rights</h2>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600 leading-relaxed">
+                To exercise any of your GDPR rights, please contact us using the information below. We will respond 
+                to your request within one month, or sooner when possible.
+              </p>
+              
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">What to Include in Your Request</h3>
+                <ul className="space-y-2 text-gray-600">
+                  <li className="flex items-start">
+                    <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                    <span>Your full name and email address associated with your account</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                    <span>Clear description of the right you wish to exercise</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                    <span>Any specific information or data you're referring to</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                    <span>Proof of identity (to protect your data from unauthorized access)</span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
@@ -257,14 +251,33 @@ const GDPRCompliance: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
+          className="mb-12"
+        >
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Data Protection Officer</h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              We have appointed a Data Protection Officer (DPO) to oversee our data protection practices and 
+              ensure compliance with GDPR requirements.
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              You can contact our DPO directly for any data protection concerns or questions about how we 
+              handle your personal information.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Contact Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 1.1 }}
           className="mb-8"
         >
-          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Our Data Protection Officer</h2>
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Us</h2>
             <p className="text-gray-600 mb-6">
-              If you have any questions about your GDPR rights or our data protection practices, you can contact our 
-              Data Protection Officer (DPO):
+              For any GDPR-related questions or to exercise your rights, please contact us:
             </p>
             
             <div className="grid md:grid-cols-3 gap-6">
@@ -299,39 +312,18 @@ const GDPRCompliance: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Supervisory Authority */}
+        {/* Complaints */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="mb-8"
-        >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Right to Lodge a Complaint</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              If you believe that our processing of your personal data violates GDPR, you have the right to lodge a complaint 
-              with a supervisory authority. You can contact the supervisory authority in your EU member state or the authority 
-              where the alleged violation occurred.
-            </p>
-            <p className="text-gray-600 leading-relaxed">
-              We encourage you to contact us first so we can address your concerns directly. However, you have the right to 
-              contact a supervisory authority at any time without first contacting us.
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Response Times */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: 1.2 }}
         >
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">Response Times</h3>
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">Right to Lodge a Complaint</h3>
             <p className="text-blue-700">
-              We will respond to your GDPR requests within one month of receiving your request. In complex cases, 
-              we may extend this period by up to two additional months, and we will inform you of any such extension 
-              within the first month along with the reasons for the delay.
+              If you believe we have not handled your personal data in accordance with GDPR, you have the right to 
+              lodge a complaint with your local data protection authority. However, we encourage you to contact us 
+              first so we can try to resolve any concerns directly.
             </p>
           </div>
         </motion.div>
