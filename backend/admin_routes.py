@@ -55,7 +55,7 @@ ADMIN_USERS = {
 
 def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT token for admin users"""
-    import jwt
+    from jose import jwt
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -68,7 +68,7 @@ def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = N
 
 async def get_current_admin(token: str = Depends(security)):
     """Validate admin JWT token and return admin user"""
-    import jwt
+    from jose import jwt
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate admin credentials",
