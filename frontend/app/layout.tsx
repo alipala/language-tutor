@@ -14,8 +14,15 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Taco - Your Smart Language Coach',
-  description: 'A modern, responsive web UI for voice and text input',
+  title: 'My Taco - AI Language Coach',
+  description: 'Learn languages through conversation with your personal AI coach',
+  icons: {
+    icon: [
+      { url: '/logos/my-taco-favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '32x32' }
+    ],
+    apple: '/apple-touch-icon.png'
+  }
 }
 
 

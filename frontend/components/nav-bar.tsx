@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
+import { Logo } from './logo';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -91,16 +92,16 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   }, []);
 
-  // Keep the navbar fixed with appropriate styling
+  // Keep the navbar fixed with appropriate styling - compact height with large logo
   let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/90 shadow-lg' : 'bg-[#4ECFBF]/80'} ${activeSection ? 'navbar-section1' : ''}`;
-  navbarClass += isScrolled ? ' py-2' : ' py-4';
+  navbarClass += isScrolled ? ' py-1' : ' py-2';
   
   return (
     <nav className={navbarClass}>
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
-        <div 
-          className="flex items-center cursor-pointer"
+        <Logo 
+          variant="full"
           onClick={() => {
             // Clear navigation state before navigating to home
             // This prevents automatic redirection to level-selection
@@ -111,11 +112,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             // Navigate to home page
             navigation.navigateToHome();
           }}
-        >
-          <h1 className="text-xl font-bold text-white">
-            Your Smart Language Coach
-          </h1>
-        </div>
+        />
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
