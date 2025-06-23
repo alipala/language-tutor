@@ -482,6 +482,72 @@ async def update_user_admin(
             detail="Failed to update user"
         )
 
+@router.delete("/users/{user_id}")
+async def delete_user_admin(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Delete a user (admin only)"""
+    try:
+        from bson import ObjectId
+        
+        print(f"Admin {current_admin.email} attempting to delete user {user_id}")
+        
+        # Check if user exists first
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        user_email = user.get("email", "unknown")
+        user_name = user.get("name", "unknown")
+        
+        # Delete related data first (conversations, learning plans, etc.)
+        print(f"Deleting related data for user {user_email}")
+        
+        # Delete user's conversations
+        conv_result = await conversation_sessions_collection.delete_many({"user_id": user_id})
+        print(f"Deleted {conv_result.deleted_count} conversations for user {user_email}")
+        
+        # Delete user's learning plans
+        plans_result = await learning_plans_collection.delete_many({"user_id": user_id})
+        print(f"Deleted {plans_result.deleted_count} learning plans for user {user_email}")
+        
+        # Delete the user
+        result = await users_collection.delete_one({"_id": ObjectId(user_id)})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        print(f"Successfully deleted user {user_email} ({user_name}) and all related data")
+        
+        return {
+            "message": f"User {user_email} and all related data deleted successfully",
+            "deleted_user": {
+                "id": user_id,
+                "email": user_email,
+                "name": user_name
+            },
+            "deleted_conversations": conv_result.deleted_count,
+            "deleted_learning_plans": plans_result.deleted_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete user error: {str(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete user: {str(e)}"
+        )
+
 @router.get("/conversation_sessions")
 async def get_conversations_admin(
     page: int = 1,
