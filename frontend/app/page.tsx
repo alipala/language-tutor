@@ -180,7 +180,7 @@ export default function Home() {
                     <span className="animated-gradient-text">Your Smart Language Coach</span>
                   </h1>
                   
-                  <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg">
+                  <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg font-medium">
                     Your personal AI language tutor that adapts to your learning style and helps you become fluent through natural conversations.
                   </div>
                   

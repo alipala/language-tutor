@@ -306,82 +306,31 @@
 
 /* Removed problematic navbar color-changing logic that was causing scrolling issues */
 
-/* Animated gradient text for main heading */
+/* Simplified gradient text for better performance */
 .animated-gradient-text {
   background: linear-gradient(
     45deg,
-    #ff6b6b,
     #4ecdc4,
     #45b7d1,
-    #96ceb4,
-    #feca57,
-    #ff9ff3,
-    #54a0ff,
-    #5f27cd,
-    #00d2d3,
-    #ff9f43,
-    #10ac84,
-    #ee5a24
+    #4ecdc4
   );
-  background-size: 400% 400%;
+  background-size: 200% 200%;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradientShift 32s ease-in-out infinite;
+  animation: gradientShift 8s ease-in-out infinite;
   font-weight: 800;
   text-shadow: none;
-  position: relative;
+  will-change: background-position;
 }
 
 @keyframes gradientShift {
-  0% {
+  0%, 100% {
     background-position: 0% 50%;
-  }
-  25% {
-    background-position: 100% 50%;
   }
   50% {
-    background-position: 100% 100%;
+    background-position: 100% 50%;
   }
-  75% {
-    background-position: 0% 100%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Add a subtle glow effect */
-.animated-gradient-text::before {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    45deg,
-    #ff6b6b,
-    #4ecdc4,
-    #45b7d1,
-    #96ceb4,
-    #feca57,
-    #ff9ff3,
-    #54a0ff,
-    #5f27cd,
-    #00d2d3,
-    #ff9f43,
-    #10ac84,
-    #ee5a24
-  );
-  background-size: 400% 400%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientShift 32s ease-in-out infinite;
-  filter: blur(2px);
-  opacity: 0.3;
-  z-index: -1;
 }
 
 /* Responsive adjustments for animated text */
