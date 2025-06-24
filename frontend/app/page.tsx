@@ -712,7 +712,7 @@ export default function Home() {
                 <p className="text-gray-600 mb-4">Contact us for enterprise pricing and customized language training programs for larger organizations.</p>
                 <button 
                   className="px-6 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors inline-flex items-center shadow-md"
-                  onClick={() => window.location.href = "mailto:contact@yoursmartlanguagecoach.com"}
+                  onClick={() => window.location.href = "mailto:hello@mytacoai.com"}
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
