@@ -185,35 +185,39 @@ export default function Home() {
                   </div>
                   
                   <div className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full">
+                    {/* PRIMARY BUTTON - New Vertical Carousel Flow with Original Design */}
                     <button
-                      onClick={handleStartLearning}
-                      className="start-button self-start"
+                      onClick={() => window.location.href = '/flow'}
+                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2 self-start"
                       disabled={isLoading}
                     >
                       {isLoading ? (
                         <>
-                          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          <div className="animate-spin h-5 w-5 border-2 border-[#4ECFBF] border-t-transparent rounded-full mr-2"></div>
                           <span>Loading...</span>
                         </>
                       ) : (
                         <>
                           <span>Start Your Journey</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                           </svg>
                         </>
                       )}
                     </button>
                     
+                    {/* TEMPORARILY HIDDEN - Classic Multi-page Flow (can be restored quickly if needed) */}
+                    {/*
                     <button
-                      onClick={() => window.location.href = '/flow'}
+                      onClick={handleStartLearning}
                       className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
                     >
-                      <span>Try New Flow</span>
+                      <span>Use Classic Flow</span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
+                    */}
                   </div>
                   
                   <div className="flex flex-wrap gap-3 text-sm text-gray-600">
