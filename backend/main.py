@@ -792,13 +792,14 @@ async def research_custom_topic(request: CustomTopicRequest):
         print(f"🔍 [RESEARCH] Starting REAL web search for custom topic: '{request.user_prompt}'")
         print(f"🔍 [RESEARCH] Language: {request.language}, Level: {request.level}")
         
-        # Use gpt-4o-search-preview model with proper web search prompt
-        search_response = client.chat.completions.create(
-            model="gpt-4o-search-preview",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": f"""You are a research assistant with web search capabilities. You MUST search the web for current, accurate information about the topic provided.
+        # Try gpt-4o-search-preview first, fallback to gpt-4o if not available
+        try:
+            search_response = client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": f"""You are a research assistant with web search capabilities. You MUST search the web for current, accurate information about the topic provided.
 
 CRITICAL: Use your web search capabilities to find the most recent and accurate information available online about the topic.
 
@@ -816,14 +817,52 @@ Format your response for {request.level} level {request.language} language learn
 - Cultural or political context if relevant
 
 IMPORTANT: Always search for the most current information available online. Do not rely solely on training data."""
-                },
-                {
-                    "role": "user", 
-                    "content": f"Search the web for current information about: {request.user_prompt}. Find the latest news, official announcements, dates, locations, and any recent developments. This is for {request.language} language learning at {request.level} level."
-                }
-            ],
-            max_tokens=1500  # Removed temperature parameter for gpt-4o-search-preview
-        )
+                    },
+                    {
+                        "role": "user", 
+                        "content": f"Search the web for current information about: {request.user_prompt}. Find the latest news, official announcements, dates, locations, and any recent developments. This is for {request.language} language learning at {request.level} level."
+                    }
+                ],
+                max_tokens=1500
+            )
+            print(f"✅ [RESEARCH] Successfully used gpt-4o-search-preview model")
+            
+        except Exception as search_error:
+            print(f"⚠️ [RESEARCH] gpt-4o-search-preview failed: {str(search_error)}")
+            print(f"🔄 [RESEARCH] Falling back to gpt-4o model for research")
+            
+            # Fallback to regular gpt-4o model
+            search_response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": f"""You are a knowledgeable research assistant helping with language learning. Provide comprehensive information about the topic for educational discussion.
+
+Your research should include:
+1. Key facts and background information about the topic
+2. Important details like dates, locations, participants, and outcomes (if known)
+3. Important vocabulary and terminology related to the topic
+4. Historical context and significance
+5. Discussion points and questions for language practice
+
+Format your response for {request.level} level {request.language} language learners with:
+- Clear, factual information suitable for educational discussion
+- Important vocabulary highlighted
+- Discussion points and questions
+- Cultural or political context if relevant
+
+Note: Provide the best information available from your training data, and acknowledge any limitations about current events."""
+                    },
+                    {
+                        "role": "user", 
+                        "content": f"Provide comprehensive information about: {request.user_prompt}. Include background, key facts, important vocabulary, and discussion points. This is for {request.language} language learning at {request.level} level."
+                    }
+                ],
+                temperature=0.3,
+                max_tokens=1500
+            )
+            print(f"✅ [RESEARCH] Successfully used fallback gpt-4o model")
         
         if not search_response or not search_response.choices:
             raise HTTPException(status_code=500, detail="Failed to get research results from OpenAI")
