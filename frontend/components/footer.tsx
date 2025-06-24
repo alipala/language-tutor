@@ -75,6 +75,12 @@ const Footer: React.FC = () => {
         ? 'https://taco.up.railway.app' 
         : 'http://localhost:8000';
       
+      console.log('🔄 Newsletter subscription attempt:', {
+        email: email.trim(),
+        apiUrl,
+        timestamp: new Date().toISOString()
+      });
+      
       const response = await fetch(`${apiUrl}/api/subscribe`, {
         method: 'POST',
         headers: {
@@ -83,7 +89,14 @@ const Footer: React.FC = () => {
         body: JSON.stringify({ email: email.trim() }),
       });
 
+      console.log('📡 API Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       const data = await response.json();
+      console.log('📊 Response data:', data);
 
       if (response.ok && data.success) {
         if (data.already_subscribed) {
