@@ -74,8 +74,8 @@ export function Logo({ variant = 'full', className = '', onClick }: LogoProps) {
           <circle cx="130" cy="54" r="6.75" fill="#F75A5A" className="blinking-dot"/>
         </g>
         {/* Typography - Inter font, bigger and more recognizable */}
-        <text x="225" y="130" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="#F75A5A" opacity="0.95">My</text>
-        <text x="315" y="130" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="#F75A5A">Taco</text>
+        <text x="225" y="140" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="white" opacity="0.95">My</text>
+        <text x="315" y="140" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="white">TaCo</text>
       </svg>
     </div>
   )
