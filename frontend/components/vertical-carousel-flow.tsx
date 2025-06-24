@@ -465,10 +465,143 @@ export default function VerticalCarouselFlow() {
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+      {/* Step Progress Indicator */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {/* Step indicators */}
+            <div className="flex items-center space-x-4">
+              {/* Language Step */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  completedSteps.has(FlowStep.LANGUAGE) 
+                    ? 'bg-[#4ECFBF] text-white shadow-md' 
+                    : currentStep === FlowStep.LANGUAGE 
+                      ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                      : 'bg-gray-200 text-gray-400'
+                }`}>
+                  {completedSteps.has(FlowStep.LANGUAGE) ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-semibold">1</span>
+                  )}
+                </div>
+                <span className={`text-sm font-medium transition-colors duration-300 ${
+                  completedSteps.has(FlowStep.LANGUAGE) || currentStep === FlowStep.LANGUAGE 
+                    ? 'text-gray-800' 
+                    : 'text-gray-400'
+                }`}>
+                  Language
+                </span>
+              </div>
+
+              {/* Connector */}
+              <div className={`h-0.5 w-8 transition-colors duration-300 ${
+                completedSteps.has(FlowStep.LANGUAGE) ? 'bg-[#4ECFBF]' : 'bg-gray-200'
+              }`} />
+
+              {/* Choice Step (only show if not skipping) */}
+              {!skipChoiceStep && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      completedSteps.has(FlowStep.CHOICE) 
+                        ? 'bg-[#4ECFBF] text-white shadow-md' 
+                        : currentStep === FlowStep.CHOICE && isStepAvailable(FlowStep.CHOICE)
+                          ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                          : 'bg-gray-200 text-gray-400'
+                    }`}>
+                      {completedSteps.has(FlowStep.CHOICE) ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <span className="text-sm font-semibold">2</span>
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium transition-colors duration-300 ${
+                      completedSteps.has(FlowStep.CHOICE) || (currentStep === FlowStep.CHOICE && isStepAvailable(FlowStep.CHOICE))
+                        ? 'text-gray-800' 
+                        : 'text-gray-400'
+                    }`}>
+                      Choice
+                    </span>
+                  </div>
+                  
+                  {/* Connector */}
+                  <div className={`h-0.5 w-8 transition-colors duration-300 ${
+                    completedSteps.has(FlowStep.CHOICE) ? 'bg-[#4ECFBF]' : 'bg-gray-200'
+                  }`} />
+                </>
+              )}
+
+              {/* Topic Step */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  completedSteps.has(FlowStep.TOPIC) 
+                    ? 'bg-[#4ECFBF] text-white shadow-md' 
+                    : currentStep === FlowStep.TOPIC && isStepAvailable(FlowStep.TOPIC)
+                      ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                      : 'bg-gray-200 text-gray-400'
+                }`}>
+                  {completedSteps.has(FlowStep.TOPIC) ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-semibold">{skipChoiceStep ? '2' : '3'}</span>
+                  )}
+                </div>
+                <span className={`text-sm font-medium transition-colors duration-300 ${
+                  completedSteps.has(FlowStep.TOPIC) || (currentStep === FlowStep.TOPIC && isStepAvailable(FlowStep.TOPIC))
+                    ? 'text-gray-800' 
+                    : 'text-gray-400'
+                }`}>
+                  Topic
+                </span>
+              </div>
+
+              {/* Connector */}
+              <div className={`h-0.5 w-8 transition-colors duration-300 ${
+                completedSteps.has(FlowStep.TOPIC) ? 'bg-[#4ECFBF]' : 'bg-gray-200'
+              }`} />
+
+              {/* Level Step */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  completedSteps.has(FlowStep.LEVEL) 
+                    ? 'bg-[#4ECFBF] text-white shadow-md' 
+                    : currentStep === FlowStep.LEVEL && isStepAvailable(FlowStep.LEVEL)
+                      ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                      : 'bg-gray-200 text-gray-400'
+                }`}>
+                  {completedSteps.has(FlowStep.LEVEL) ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-semibold">{skipChoiceStep ? '3' : '4'}</span>
+                  )}
+                </div>
+                <span className={`text-sm font-medium transition-colors duration-300 ${
+                  completedSteps.has(FlowStep.LEVEL) || (currentStep === FlowStep.LEVEL && isStepAvailable(FlowStep.LEVEL))
+                    ? 'text-gray-800' 
+                    : 'text-gray-400'
+                }`}>
+                  Level
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Vertical Carousel Container */}
       <div 
         ref={containerRef}
-        className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth"
+        className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth pt-20"
         style={{ scrollSnapType: 'y mandatory' }}
       >
         {/* Step 1: Language Selection */}
@@ -542,7 +675,9 @@ export default function VerticalCarouselFlow() {
 
         {/* Step 2: Assessment or Practice Choice - Only show if no mode is preselected */}
         {!skipChoiceStep && (
-        <div className="min-h-screen snap-start flex flex-col justify-center items-center p-8">
+        <div className={`min-h-screen snap-start flex flex-col justify-center items-center p-8 ${
+          !isStepAvailable(FlowStep.CHOICE) ? 'pointer-events-none opacity-50' : ''
+        }`}>
           <div className="w-full max-w-4xl mx-auto">
             <div className="text-center mb-12 animate-fade-in">
               <h1 className="text-5xl font-bold tracking-tight text-gray-800 mb-4">
@@ -642,7 +777,9 @@ export default function VerticalCarouselFlow() {
         )}
 
         {/* Step 3: Topic Selection */}
-        <div className="min-h-screen snap-start flex flex-col justify-center items-center p-8">
+        <div className={`min-h-screen snap-start flex flex-col justify-center items-center p-8 ${
+          !isStepAvailable(FlowStep.TOPIC) ? 'pointer-events-none opacity-50' : ''
+        }`}>
           <div className="w-full max-w-4xl mx-auto">
             <div className="text-center mb-12 animate-fade-in">
               <h1 className="text-5xl font-bold tracking-tight text-gray-800 mb-4">
@@ -685,7 +822,9 @@ export default function VerticalCarouselFlow() {
         </div>
 
         {/* Step 4: Level Selection */}
-        <div className="min-h-screen snap-start flex flex-col justify-center items-center p-8">
+        <div className={`min-h-screen snap-start flex flex-col justify-center items-center p-8 ${
+          !isStepAvailable(FlowStep.LEVEL) ? 'pointer-events-none opacity-50' : ''
+        }`}>
           <div className="w-full max-w-4xl mx-auto">
             <div className="text-center mb-12 animate-fade-in">
               <h1 className="text-5xl font-bold tracking-tight text-gray-800 mb-4">
