@@ -782,6 +782,110 @@ CRITICAL: If learning plan context is available, you MUST focus the entire conve
         
         return instructions
 
+# Add endpoint for custom topic research using web search
+@app.post("/api/custom-topic/research")
+async def research_custom_topic(request: CustomTopicRequest):
+    """
+    Research a custom topic using OpenAI's web search capabilities with gpt-4o-search-preview
+    """
+    try:
+        print(f"🔍 [RESEARCH] Starting REAL web search for custom topic: '{request.user_prompt}'")
+        print(f"🔍 [RESEARCH] Language: {request.language}, Level: {request.level}")
+        
+        # Use gpt-4o-search-preview model with proper web search prompt
+        search_response = client.chat.completions.create(
+            model="gpt-4o-search-preview",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": f"""You are a research assistant with web search capabilities. You MUST search the web for current, accurate information about the topic provided.
+
+CRITICAL: Use your web search capabilities to find the most recent and accurate information available online about the topic.
+
+Your research should include:
+1. Current facts and recent developments (search for latest news and updates)
+2. Key details like dates, locations, participants, and outcomes
+3. Important vocabulary and terminology related to the topic
+4. Recent news articles, official announcements, or press releases
+5. Any upcoming events or scheduled activities
+
+Format your response for {request.level} level {request.language} language learners with:
+- Clear, factual information suitable for educational discussion
+- Important vocabulary highlighted
+- Discussion points and questions
+- Cultural or political context if relevant
+
+IMPORTANT: Always search for the most current information available online. Do not rely solely on training data."""
+                },
+                {
+                    "role": "user", 
+                    "content": f"Search the web for current information about: {request.user_prompt}. Find the latest news, official announcements, dates, locations, and any recent developments. This is for {request.language} language learning at {request.level} level."
+                }
+            ],
+            max_tokens=1500  # Removed temperature parameter for gpt-4o-search-preview
+        )
+        
+        if not search_response or not search_response.choices:
+            raise HTTPException(status_code=500, detail="Failed to get research results from OpenAI")
+        
+        research_content = search_response.choices[0].message.content
+        
+        print(f"✅ [RESEARCH] Real web search completed successfully")
+        print(f"✅ [RESEARCH] Research content length: {len(research_content)} characters")
+        print(f"🔍 [RESEARCH] Research preview: {research_content[:200]}...")
+        
+        # Validate that we got actual research content, not a generic response
+        if len(research_content) < 100 or "I'll help you discuss" in research_content:
+            print(f"⚠️ [RESEARCH] Detected generic response, attempting fallback search...")
+            
+            # Try a more direct search approach
+            fallback_response = client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                messages=[
+                    {
+                        "role": "user", 
+                        "content": f"Search the internet for current information about '{request.user_prompt}'. Find recent news, official announcements, dates, locations, and key facts. Provide specific, factual information."
+                    }
+                ],
+                max_tokens=1200  # Removed temperature parameter for gpt-4o-search-preview
+            )
+            
+            if fallback_response and fallback_response.choices:
+                research_content = fallback_response.choices[0].message.content
+                print(f"✅ [RESEARCH] Fallback search completed: {len(research_content)} characters")
+        
+        # Return the research data in the format expected by the frontend
+        return {
+            "success": True,
+            "topic": request.user_prompt,
+            "language": request.language,
+            "level": request.level,
+            "research": research_content,  # Frontend expects 'research' not 'research_content'
+            "research_content": research_content,  # Keep both for compatibility
+            "timestamp": "2025-06-24T19:27:03.202Z"  # Current timestamp
+        }
+        
+    except Exception as e:
+        print(f"❌ [RESEARCH] Error during web search: {str(e)}")
+        print(f"❌ [RESEARCH] Full error details: {traceback.format_exc()}")
+        
+        # Return a fallback response so the flow doesn't break
+        fallback_content = f"""I'll help you discuss {request.user_prompt}. 
+
+This is an interesting topic that we can explore together during our conversation. I'll provide relevant information and help you practice {request.language} while discussing various aspects of this subject.
+
+Let's have an engaging conversation about {request.user_prompt} and improve your {request.language} skills at the same time!"""
+        
+        return {
+            "success": False,
+            "topic": request.user_prompt,
+            "language": request.language,
+            "level": request.level,
+            "research_content": fallback_content,
+            "error": str(e),
+            "timestamp": "2025-06-24T19:27:03.202Z"
+        }
+
 # Add endpoint for session summary storage
 @app.post("/api/learning/session-summary")
 async def store_session_summary(

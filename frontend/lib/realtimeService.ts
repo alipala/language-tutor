@@ -735,13 +735,23 @@ export class RealtimeService {
         if (storedResearchData) {
           try {
             const parsedResearch = JSON.parse(storedResearchData);
-            if (parsedResearch.success && parsedResearch.research) {
+            console.log('🔍 [REALTIME_SERVICE] Parsed research data structure:', parsedResearch);
+            
+            // Check for research data in multiple possible fields
+            if (parsedResearch.research) {
               researchData = parsedResearch.research;
-              console.log('🔍 [REALTIME_SERVICE] Retrieved research data for token request:', researchData.length, 'characters');
+              console.log('✅ [REALTIME_SERVICE] Retrieved research data from "research" field:', researchData.length, 'characters');
+            } else if (parsedResearch.research_content) {
+              researchData = parsedResearch.research_content;
+              console.log('✅ [REALTIME_SERVICE] Retrieved research data from "research_content" field:', researchData.length, 'characters');
+            } else {
+              console.log('⚠️ [REALTIME_SERVICE] No research data found in expected fields. Available fields:', Object.keys(parsedResearch));
             }
           } catch (error) {
             console.error('❌ [REALTIME_SERVICE] Error parsing research data:', error);
           }
+        } else {
+          console.log('⚠️ [REALTIME_SERVICE] No research data found in session storage for custom topic');
         }
       }
       
