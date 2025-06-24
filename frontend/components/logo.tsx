@@ -75,7 +75,7 @@ export function Logo({ variant = 'full', className = '', onClick }: LogoProps) {
         </g>
         {/* Typography - Inter font, bigger and more recognizable */}
         <text x="225" y="140" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="white" opacity="0.95">My</text>
-        <text x="315" y="140" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="white">TaCo</text>
+        <text x="340" y="140" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize="64" fontWeight="800" fill="white">TaCo</text>
       </svg>
     </div>
   )

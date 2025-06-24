@@ -232,7 +232,7 @@ const Footer: React.FC = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Copyright */}
             <div className="flex items-center text-white/70">
-              <span>© {currentYear} My Taco. Made with</span>
+              <span>© {currentYear} My TaCo. Made with</span>
               <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
               <span>for language learners worldwide.</span>
             </div>
