@@ -27,6 +27,10 @@ import { Logo } from './logo';
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [subscriptionMessage, setSubscriptionMessage] = useState('');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -46,6 +50,64 @@ const Footer: React.FC = () => {
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Handle newsletter subscription
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      setSubscriptionMessage('Please enter your email address');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setSubscriptionMessage('Please enter a valid email address');
+      return;
+    }
+
+    setIsSubscribing(true);
+    
+    try {
+      // Get the API URL based on environment
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://taco.up.railway.app' 
+        : 'http://localhost:8000';
+      
+      const response = await fetch(`${apiUrl}/api/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        if (data.already_subscribed) {
+          setSubscriptionMessage('You are already subscribed to our newsletter!');
+        } else {
+          setSubscriptionMessage('Successfully subscribed! Thank you for joining our newsletter.');
+        }
+        setEmail(''); // Clear the email input
+        setShowSuccessModal(true);
+        
+        // Auto-hide modal after 5 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+        }, 5000);
+      } else {
+        setSubscriptionMessage(data.detail || 'Failed to subscribe. Please try again.');
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      setSubscriptionMessage('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   const footerSections = [
     {
@@ -211,17 +273,34 @@ const Footer: React.FC = () => {
             <p className="text-gray-600 mb-6">
               Get the latest language learning tips, feature updates, and exclusive content delivered to your inbox.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubscribing}
+                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                required
               />
-              <button className="px-6 py-3 bg-white border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] text-[#4ECFBF] hover:text-white font-medium rounded-lg transition-all duration-300 flex items-center justify-center">
-                Subscribe
-                <ChevronRight className="w-4 h-4 ml-2" />
+              <button 
+                type="submit"
+                disabled={isSubscribing}
+                className="px-6 py-3 bg-white border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] text-[#4ECFBF] hover:text-white font-medium rounded-lg transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubscribing ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-[#4ECFBF] border-t-transparent rounded-full mr-2"></div>
+                    Subscribing...
+                  </>
+                ) : (
+                  <>
+                    Subscribe
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
@@ -268,6 +347,44 @@ const Footer: React.FC = () => {
           >
             <ChevronRight className="w-6 h-6 rotate-[-90deg]" />
           </button>
+        )}
+      </AnimatePresence>
+
+      {/* Success Modal */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4"
+            onClick={() => setShowSuccessModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Success!</h3>
+                <p className="text-gray-600 mb-6">{subscriptionMessage}</p>
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="px-6 py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors duration-300"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </footer>

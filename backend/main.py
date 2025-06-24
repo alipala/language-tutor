@@ -925,6 +925,74 @@ Let's have an engaging conversation about {request.user_prompt} and improve your
             "timestamp": "2025-06-24T19:27:03.202Z"
         }
 
+# Subscription model
+class SubscriptionRequest(BaseModel):
+    email: str
+
+# Add endpoint for newsletter subscription
+@app.post("/api/subscribe")
+async def subscribe_to_newsletter(request: SubscriptionRequest):
+    """
+    Subscribe user to newsletter - stores email in MongoDB
+    """
+    try:
+        from database import database
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, request.email):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email format"
+            )
+        
+        # Check if email already exists
+        subscriptions_collection = database["newsletter_subscriptions"]
+        existing_subscription = await subscriptions_collection.find_one({"email": request.email})
+        
+        if existing_subscription:
+            return {
+                "success": True,
+                "message": "Email already subscribed",
+                "already_subscribed": True
+            }
+        
+        # Create subscription document
+        from datetime import datetime, timezone
+        subscription_doc = {
+            "email": request.email,
+            "subscribed_at": datetime.now(timezone.utc),
+            "status": "active",
+            "source": "landing_page"
+        }
+        
+        # Insert into database
+        result = await subscriptions_collection.insert_one(subscription_doc)
+        
+        if result.inserted_id:
+            print(f"✅ New newsletter subscription: {request.email}")
+            return {
+                "success": True,
+                "message": "Successfully subscribed to newsletter",
+                "already_subscribed": False
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to save subscription"
+            )
+            
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        print(f"❌ Error in newsletter subscription: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing subscription: {str(e)}"
+        )
+
 # Add endpoint for session summary storage
 @app.post("/api/learning/session-summary")
 async def store_session_summary(
