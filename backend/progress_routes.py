@@ -47,6 +47,26 @@ async def save_conversation(
         print(f"[PROGRESS] Duration: {request.duration_minutes} minutes")
         print(f"[PROGRESS] Messages count: {len(request.messages)}")
         
+        # Check if this is a learning plan conversation
+        learning_plan_id = getattr(request, 'learning_plan_id', None)
+        conversation_type = getattr(request, 'conversation_type', 'practice')
+        
+        print(f"[PROGRESS] Learning Plan ID: {learning_plan_id}")
+        print(f"[PROGRESS] Conversation Type: {conversation_type}")
+        
+        # If this has a learning plan ID or is not explicitly marked as practice, skip saving to conversation history
+        if learning_plan_id is not None or conversation_type != 'practice':
+            print(f"[PROGRESS] ⚠️ Skipping conversation save - this is a learning plan session")
+            print(f"[PROGRESS] Learning plan conversations should not appear in conversation history")
+            return {
+                "success": True,
+                "session_id": "skipped",
+                "message": "Learning plan conversation - not saved to history",
+                "is_streak_eligible": False,
+                "summary": "Learning plan session",
+                "action": "skipped"
+            }
+        
         # Convert messages to ConversationMessage objects
         conversation_messages = []
         for msg in request.messages:

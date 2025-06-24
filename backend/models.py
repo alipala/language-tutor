@@ -174,6 +174,8 @@ class SaveConversationRequest(BaseModel):
     topic: Optional[str] = None
     messages: List[Dict[str, Any]]
     duration_minutes: float
+    learning_plan_id: Optional[str] = None
+    conversation_type: Optional[str] = 'practice'
 
 class ConversationStats(BaseModel):
     total_sessions: int

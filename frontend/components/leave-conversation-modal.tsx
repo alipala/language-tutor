@@ -66,6 +66,18 @@ export default function LeaveConversationModal({
       return;
     }
 
+    // Check if this is a learning plan conversation
+    const urlParams = new URLSearchParams(window.location.search);
+    const planParam = urlParams.get('plan');
+    
+    // If this is a learning plan conversation, don't save to conversation history
+    if (planParam) {
+      console.log('[LEAVE_MODAL] ⚠️ Skipping conversation save - this is a learning plan session:', planParam);
+      console.log('[LEAVE_MODAL] Learning plan conversations should not appear in conversation history');
+      onLeave();
+      return;
+    }
+
     setIsSaving(true);
     
     try {
@@ -81,12 +93,13 @@ export default function LeaveConversationModal({
         timestamp: msg.timestamp || new Date().toISOString()
       }));
 
-      console.log('[LEAVE_MODAL] Saving conversation before leaving:', {
+      console.log('[LEAVE_MODAL] Saving PRACTICE MODE conversation before leaving:', {
         language,
         level,
         topic,
         messageCount: messagesToSave.length,
-        duration: durationMinutes
+        duration: durationMinutes,
+        isPracticeMode: true
       });
 
       const token = localStorage.getItem('token');
@@ -101,12 +114,14 @@ export default function LeaveConversationModal({
           level,
           topic,
           messages: messagesToSave,
-          duration_minutes: durationMinutes
+          duration_minutes: durationMinutes,
+          learning_plan_id: null, // Explicitly mark as practice mode
+          conversation_type: 'practice'
         })
       });
 
       if (response.ok) {
-        console.log('[LEAVE_MODAL] ✅ Conversation saved successfully before leaving');
+        console.log('[LEAVE_MODAL] ✅ Practice mode conversation saved successfully before leaving');
       } else {
         console.error('[LEAVE_MODAL] ❌ Failed to save conversation before leaving');
       }

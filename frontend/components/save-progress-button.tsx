@@ -63,6 +63,27 @@ export default function SaveProgressButton({
   }
 
   const handleSaveProgress = async () => {
+    // Check if this is a learning plan conversation
+    const urlParams = new URLSearchParams(window.location.search);
+    const planParam = urlParams.get('plan');
+    
+    // If this is a learning plan conversation, don't save to conversation history
+    if (planParam) {
+      console.log('[SAVE_PROGRESS] ⚠️ Skipping conversation save - this is a learning plan session:', planParam);
+      console.log('[SAVE_PROGRESS] Learning plan conversations should not appear in conversation history');
+      setSaveState('saved');
+      setLastSaveTime(Date.now());
+      setCooldownTime(60);
+      
+      // Show "saved" state briefly to provide user feedback
+      setTimeout(() => {
+        if (cooldownTime === 0) {
+          setSaveState('idle');
+        }
+      }, 3000);
+      return;
+    }
+
     // Prevent spam clicking with 1-minute cooldown for meaningful summaries
     const now = Date.now();
     if (lastSaveTime && (now - lastSaveTime) < 60000) {
@@ -86,12 +107,13 @@ export default function SaveProgressButton({
         timestamp: msg.timestamp || new Date().toISOString()
       }));
 
-      console.log('[SAVE_PROGRESS] Saving conversation:', {
+      console.log('[SAVE_PROGRESS] Saving PRACTICE MODE conversation:', {
         language,
         level,
         topic,
         messageCount: messagesToSave.length,
-        duration: durationMinutes
+        duration: durationMinutes,
+        isPracticeMode: true
       });
 
       const token = localStorage.getItem('token');
@@ -106,7 +128,9 @@ export default function SaveProgressButton({
           level,
           topic,
           messages: messagesToSave,
-          duration_minutes: durationMinutes
+          duration_minutes: durationMinutes,
+          learning_plan_id: null, // Explicitly mark as practice mode
+          conversation_type: 'practice'
         })
       });
 
@@ -116,7 +140,7 @@ export default function SaveProgressButton({
       }
 
       const result = await response.json();
-      console.log('[SAVE_PROGRESS] ✅ Conversation saved successfully:', result);
+      console.log('[SAVE_PROGRESS] ✅ Practice mode conversation saved successfully:', result);
 
       setSaveState('saved');
       setLastSaveTime(now);

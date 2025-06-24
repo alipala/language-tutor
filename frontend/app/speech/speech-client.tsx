@@ -765,6 +765,17 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
     }
 
     try {
+      // Check if this is a learning plan conversation
+      const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
+      
+      // If this is a learning plan conversation, don't save to conversation history
+      if (planParam) {
+        console.log('[AUTO_SAVE] ⚠️ Skipping conversation save - this is a learning plan session:', planParam);
+        console.log('[AUTO_SAVE] Learning plan conversations should not appear in conversation history');
+        return;
+      }
+
       // Calculate conversation duration
       const durationMinutes = conversationStartTime 
         ? (Date.now() - conversationStartTime) / (1000 * 60)
@@ -777,12 +788,13 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         timestamp: msg.timestamp || new Date().toISOString()
       }));
 
-      console.log('[AUTO_SAVE] Saving conversation at 5 minutes:', {
+      console.log('[AUTO_SAVE] Saving PRACTICE MODE conversation at 5 minutes:', {
         language,
         level,
         topic,
         messageCount: messagesToSave.length,
-        duration: durationMinutes
+        duration: durationMinutes,
+        isPracticeMode: true
       });
 
       const { getApiUrl } = await import('@/lib/api-utils');
@@ -798,7 +810,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           level,
           topic,
           messages: messagesToSave,
-          duration_minutes: durationMinutes
+          duration_minutes: durationMinutes,
+          learning_plan_id: null, // Explicitly mark as practice mode
+          conversation_type: 'practice'
         })
       });
 
@@ -808,7 +822,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       }
 
       const result = await response.json();
-      console.log('[AUTO_SAVE] ✅ Conversation auto-saved successfully:', result);
+      console.log('[AUTO_SAVE] ✅ Practice mode conversation auto-saved successfully:', result);
 
     } catch (error) {
       console.error('[AUTO_SAVE] ❌ Error auto-saving conversation:', error);
