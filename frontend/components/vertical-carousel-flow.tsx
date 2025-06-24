@@ -467,7 +467,7 @@ export default function VerticalCarouselFlow() {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
       {/* Step Progress Indicator */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
+      <div className="fixed top-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Step indicators */}
@@ -602,7 +602,7 @@ export default function VerticalCarouselFlow() {
       {/* Vertical Carousel Container */}
       <div 
         ref={containerRef}
-        className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth pt-20"
+        className="h-full overflow-y-auto snap-y snap-mandatory scroll-smooth pt-32"
         style={{ scrollSnapType: 'y mandatory' }}
       >
         {/* Step 1: Language Selection */}
