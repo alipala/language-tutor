@@ -1369,6 +1369,13 @@ if frontend_build_path.exists():
             return FileResponse(file_path, media_type="text/html")
         raise HTTPException(status_code=404, detail="Loading modal demo page not found")
     
+    @app.get("/flow")
+    async def serve_flow():
+        file_path = frontend_build_path / "flow.html"
+        if file_path.exists():
+            return FileResponse(file_path, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Flow page not found")
+    
     print("✅ Added explicit route handlers for static pages, auth routes, and main application routes")
     
     # Still mount StaticFiles for other assets like _next, images, etc.
