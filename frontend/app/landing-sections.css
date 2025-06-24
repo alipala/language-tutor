@@ -10,7 +10,6 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  scroll-snap-align: start;
 }
 
 .section-background {
@@ -35,12 +34,11 @@
 
 /* First Section Styles */
 .landing-first {
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .landing-first .section-background {
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
-  opacity: 0.5;
+  background: transparent;
 }
 
 .landing-first h1 {
@@ -122,11 +120,11 @@
 
 /* Second Section Styles */
 .landing-second {
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .landing-second .section-background {
-  background-image: url("data:image/svg+xml,%3Csvg width='84' height='48' viewBox='0 0 84 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h12v6H0V0zm28 8h12v6H28V8zm14-8h12v6H42V0zm14 0h12v6H56V0zm0 8h12v6H56V8zM42 8h12v6H42V8zm0 16h12v6H42v-6zm14-8h12v6H56v-6zm14 0h12v6H70v-6zm0-16h12v6H70V0zM28 32h12v6H28v-6zM14 16h12v6H14v-6zM0 24h12v6H0v-6zm0 8h12v6H0v-6zm14 0h12v6H14v-6zm14 8h12v6H28v-6zm-14 0h12v6H14v-6zm28 0h12v6H42v-6zm14-8h12v6H56v-6zm0-8h12v6H56v-6zm14 8h12v6H70v-6zm0 8h12v6H70v-6zM14 24h12v6H14v-6zm14-8h12v6H28v-6zM14 8h12v6H14V8zM0 8h12v6H0V8z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background: transparent;
 }
 
 /* Custom button for second section */
@@ -203,14 +201,14 @@
 
 /* Third Section Styles */
 .landing-third {
-  background-color: #f8fafc;
+  background-color: #ffffff;
   color: #1f2937;
   position: relative;
   overflow: hidden;
 }
 
 .landing-third .section-background {
-  background-image: url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M81.28 88H68.413l19.298 19.298L81.28 88zm2.107 0h13.226L90 107.838 83.387 88zm15.334 0h12.866l-19.298 19.298L98.72 88zm-32.927-2.207L73.586 78h32.827l.5.5 7.294 7.293L115.414 87l-24.707 24.707-.707.707L64.586 87l1.207-1.207zm2.62.207L74 80.414 79.586 86H68.414L74 80.414zm16 0L90 80.414 95.586 86H84.414L90 80.414zm16 0L106 80.414 111.586 86h-11.172L106 80.414zM87.414 91.414L92 96.586 97.414 91.414 92 86.828 87.414 91.414z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background: transparent;
 }
 
 /* FAQ Section Styles */
@@ -296,97 +294,17 @@
   }
 }
 
-/* Scroll Snap Container */
+/* Scroll Container - Simplified for better performance */
 .start-screen {
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal overflow */
-  scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
   width: 100%;
   position: relative;
 }
 
-/* Navbar styles */
-.navbar-fixed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.navbar-section1 {
-  background-color: var(--turquoise);
-  box-shadow: 0 2px 15px rgba(0, 127, 143, 0.3);
-}
-.navbar-section1 nav h1,
-.navbar-section1 nav a {
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.navbar-section2 {
-  background-color: var(--yellow);
-  box-shadow: 0 2px 15px rgba(255, 194, 41, 0.3);
-}
-.navbar-section2 nav h1,
-.navbar-section2 nav a {
-  color: var(--text-dark);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-}
-
-.navbar-section3 {
-  background-color: var(--coral);
-  box-shadow: 0 2px 15px rgba(255, 111, 97, 0.3);
-}
-.navbar-section3 nav h1,
-.navbar-section3 nav a {
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-/* Navbar button styles based on section */
-.navbar-section1 .login-button {
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.navbar-section1 .login-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
-
-.navbar-section2 .login-button {
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--text-dark);
-  transition: all 0.3s ease;
-}
-
-.navbar-section2 .login-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
-.navbar-section3 .login-button {
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.navbar-section3 .login-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
+/* Removed problematic navbar color-changing logic that was causing scrolling issues */
 
 /* Animated gradient text for main heading */
 .animated-gradient-text {

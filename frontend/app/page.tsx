@@ -139,13 +139,13 @@ export default function Home() {
       <NavBar />
       
       {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-[var(--turquoise)]">
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <div className="text-center">
             <div className="animate-pulse flex flex-col items-center">
-              <div className="rounded-full h-16 w-16 bg-white/20 mb-4 flex items-center justify-center">
+              <div className="rounded-full h-16 w-16 bg-gray-200 mb-4 flex items-center justify-center">
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
-                  className="h-8 w-8 text-white animate-pulse" 
+                  className="h-8 w-8 text-gray-600 animate-pulse" 
                   viewBox="0 0 24 24" 
                   fill="none" 
                   stroke="currentColor" 
@@ -158,8 +158,8 @@ export default function Home() {
                   <line x1="12" x2="12" y1="19" y2="22"></line>
                 </svg>
               </div>
-              <p className="text-white text-xl font-medium">Loading...</p>
-              <p className="text-white/70 text-sm mt-2">
+              <p className="text-gray-800 text-xl font-medium">Loading...</p>
+              <p className="text-gray-600 text-sm mt-2">
                 Preparing your language learning experience
               </p>
             </div>
@@ -171,7 +171,7 @@ export default function Home() {
           <section id="features" className="landing-section landing-first">
             <div className="section-background"></div>
             <div className="section-content">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-10 border-2 border-white/30 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] w-[125%] max-w-none -mx-[12.5%] py-16">
+              <div className="bg-white rounded-xl p-10 border-2 border-gray-200 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] w-[125%] max-w-none -mx-[12.5%] py-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                   {/* Left Column - Content */}
                   <div className="text-left">
@@ -180,7 +180,7 @@ export default function Home() {
                     <span className="animated-gradient-text">Your Smart Language Coach</span>
                   </h1>
                   
-                  <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg">
+                  <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg font-medium">
                     Your personal AI language tutor that adapts to your learning style and helps you become fluent through natural conversations.
                   </div>
                   
@@ -206,21 +206,21 @@ export default function Home() {
                     </button>
                   </div>
                   
-                  <div className="flex flex-wrap gap-3 text-sm text-white/80">
+                  <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4 mr-1 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span>Personalized feedback</span>
                     </div>
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4 mr-1 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span>6 languages available</span>
                     </div>
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4 mr-1 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span>Real-time corrections</span>

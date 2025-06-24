@@ -38,6 +38,25 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Voice input language learning application" />
         <meta name="theme-color" content="#f8f9fb" />
+        
+        {/* Preload critical fonts for better LCP */}
+        <link
+          rel="preload"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          as="style"
+        />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          />
+        </noscript>
+        
+        {/* Preconnect to external domains */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://accounts.google.com" />
+        
         <Script
           src="https://accounts.google.com/gsi/client"
           strategy="afterInteractive"
@@ -71,7 +90,7 @@ export default function RootLayout({
       <body className={`${inter.className} font-sans antialiased overflow-x-hidden`}>
         <NavigationProvider>
           <AuthProviderWrapper>
-            <div className="app-background min-h-screen w-full bg-[var(--turquoise)]">
+            <div className="app-background min-h-screen w-full bg-white">
               <NavBar />
               <main id="main-content" tabIndex={-1} className="outline-none">
                 {children}

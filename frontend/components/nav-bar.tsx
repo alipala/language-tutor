@@ -93,7 +93,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, []);
 
   // Keep the navbar fixed with appropriate styling - compact height with large logo
-  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/90 shadow-lg' : 'bg-[#4ECFBF]/80'} ${activeSection ? 'navbar-section1' : ''}`;
+  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90'} ${activeSection ? 'navbar-section1' : ''}`;
   navbarClass += isScrolled ? ' py-1' : ' py-2';
   
   return (
@@ -121,25 +121,25 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <div className="flex items-center space-x-6 mr-4">
               <button 
                 onClick={() => scrollToSection('features')}
-                className="text-white/90 hover:text-white transition-colors font-medium"
+                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
               >
                 Features
               </button>
               <button 
                 onClick={() => scrollToSection('how-it-works')}
-                className="text-white/90 hover:text-white transition-colors font-medium"
+                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
               >
                 How It Works
               </button>
               <button 
                 onClick={() => scrollToSection('pricing')}
-                className="text-white/90 hover:text-white transition-colors font-medium"
+                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
               >
                 Pricing
               </button>
               <button 
                 onClick={() => scrollToSection('faq')}
-                className="text-white/90 hover:text-white transition-colors font-medium"
+                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
               >
                 FAQ
               </button>
@@ -219,29 +219,29 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <>
               <button
                 onClick={() => scrollToSection('features')}
-                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('how-it-works')}
-                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 How It Works
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 Pricing
               </button>
               <button
                 onClick={() => scrollToSection('faq')}
-                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 FAQ
               </button>
-              <div className="border-t border-white/10"></div>
+              <div className="border-t border-white/10 mx-2 my-2"></div>
             </>
           )}
           
@@ -252,13 +252,13 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   navigateTo('/profile');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 Your Profile
               </button>
               <button
                 onClick={() => setShowLogoutConfirm(true)}
-                className="block w-full text-left py-4 px-4 text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-red-300 hover:text-red-200 hover:bg-red-500/10 hover:border hover:border-red-400/50 transition-all duration-300 touch-target"
               >
                 Sign Out
               </button>
@@ -270,7 +270,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   navigateTo('/auth/login');
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-4 px-4 text-white/80 hover:text-white hover:bg-white/10 transition-colors touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 Login
               </button>
