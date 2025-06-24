@@ -373,6 +373,7 @@ export default function VerticalCarouselFlow() {
       setIsLoading(true);
       window.location.href = '/assessment/speaking';
     } else if (option === 'practice') {
+      markStepCompleted(FlowStep.CHOICE);
       setTimeout(() => {
         transitionToNextStep();
       }, 300);
@@ -733,6 +734,7 @@ export default function VerticalCarouselFlow() {
               {/* Practice Option */}
               <button
                 onClick={() => {
+                  markStepCompleted(FlowStep.CHOICE);
                   setTimeout(() => {
                     transitionToNextStep();
                   }, 300);
