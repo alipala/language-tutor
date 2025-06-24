@@ -408,7 +408,12 @@ export default function VerticalCarouselFlow() {
     setIsExtendingKnowledge(true);
     
     try {
-      const response = await fetch('http://localhost:8000/api/custom-topic/research', {
+      // Use dynamic backend URL that works in both development and production
+      const backendUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://taco.up.railway.app' 
+        : 'http://localhost:8000';
+      
+      const response = await fetch(`${backendUrl}/api/custom-topic/research`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
