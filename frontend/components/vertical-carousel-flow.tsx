@@ -50,6 +50,7 @@ export default function VerticalCarouselFlow() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<Set<FlowStep>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCustomTopicActive, setIsCustomTopicActive] = useState(false);
@@ -68,6 +69,29 @@ export default function VerticalCarouselFlow() {
       setPreselectedMode(mode);
     }
   }, [searchParams]);
+
+  // Helper function to check if a step is available
+  const isStepAvailable = (step: FlowStep): boolean => {
+    if (step === FlowStep.LANGUAGE) return true;
+    
+    if (skipChoiceStep) {
+      // When skipping choice step, adjust step requirements
+      if (step === FlowStep.TOPIC) return selectedLanguage !== null;
+      if (step === FlowStep.LEVEL) return selectedLanguage !== null && selectedTopic !== null;
+    } else {
+      // Normal flow
+      if (step === FlowStep.CHOICE) return selectedLanguage !== null;
+      if (step === FlowStep.TOPIC) return selectedLanguage !== null && completedSteps.has(FlowStep.CHOICE);
+      if (step === FlowStep.LEVEL) return selectedLanguage !== null && selectedTopic !== null;
+    }
+    
+    return false;
+  };
+
+  // Helper function to mark step as completed
+  const markStepCompleted = (step: FlowStep) => {
+    setCompletedSteps(prev => new Set([...Array.from(prev), step]));
+  };
 
   // Flag components
   const FlagComponents: Record<string, React.ReactNode> = {
@@ -322,6 +346,7 @@ export default function VerticalCarouselFlow() {
   const handleLanguageSelect = (languageCode: string) => {
     setSelectedLanguage(languageCode);
     navigation.setSelectedLanguage(languageCode);
+    markStepCompleted(FlowStep.LANGUAGE);
     
     setTimeout(() => {
       if (skipChoiceStep && preselectedMode) {
