@@ -533,7 +533,7 @@ class ExportService:
         
         # Conversation Sessions Table
         if conversations:
-            sessions_header = [['🗣️ Conversation Sessions Overview']]
+            sessions_header = [['Conversation Sessions Overview']]
             sessions_header_table = Table(sessions_header, colWidths=[7*inch])
             sessions_header_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, -1), success_color),
@@ -554,8 +554,13 @@ class ExportService:
                 created_at = 'N/A'
                 if conversation.get('created_at'):
                     try:
-                        created_at = datetime.fromisoformat(conversation['created_at'].replace('Z', '+00:00')).strftime('%m/%d/%Y')
-                    except:
+                        # Handle both string and datetime objects
+                        if isinstance(conversation['created_at'], str):
+                            created_at = datetime.fromisoformat(conversation['created_at'].replace('Z', '+00:00')).strftime('%m/%d/%Y')
+                        else:
+                            created_at = conversation['created_at'].strftime('%m/%d/%Y')
+                    except Exception as e:
+                        print(f"Date parsing error: {e}")
                         created_at = 'N/A'
                 
                 # Use text instead of emoji for better PDF compatibility
