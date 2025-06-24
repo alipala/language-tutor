@@ -41,18 +41,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   const router = useRouter();
 
   const handleCreatePlan = () => {
-    // Navigate to language selection to start creating a plan
-    router.push('/language-selection');
+    // Navigate to new vertical flow for seamless experience
+    router.push('/flow');
   };
 
   const handleTakeAssessment = () => {
-    // Navigate to language selection first (same as practice)
-    router.push('/language-selection');
+    // Navigate directly to assessment flow (skip choice step)
+    router.push('/flow?mode=assessment');
   };
 
   const handleExploreLanguages = () => {
-    // Navigate to language selection
-    router.push('/language-selection');
+    // Navigate directly to practice flow (skip choice step)
+    router.push('/flow?mode=practice');
   };
 
   return (

@@ -234,7 +234,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
         >
           <button
             onClick={() => {
-              // Clear any previous selections and navigate to language selection
+              // Clear any previous selections and navigate to new vertical flow
               sessionStorage.removeItem('selectedLanguage');
               sessionStorage.removeItem('selectedLevel');
               sessionStorage.removeItem('selectedTopic');
@@ -242,7 +242,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
               sessionStorage.removeItem('practiceMode');
               // CRITICAL FIX: Clear assessment completion flag to allow multiple assessments
               sessionStorage.removeItem('assessmentCompleted');
-              router.push('/language-selection');
+              router.push('/flow?mode=practice');
             }}
             className="bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16 flex items-center justify-center"
           >

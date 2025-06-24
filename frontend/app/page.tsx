@@ -204,6 +204,16 @@ export default function Home() {
                         </>
                       )}
                     </button>
+                    
+                    <button
+                      onClick={() => window.location.href = '/flow'}
+                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
+                    >
+                      <span>Try New Flow</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </button>
                   </div>
                   
                   <div className="flex flex-wrap gap-3 text-sm text-gray-600">
