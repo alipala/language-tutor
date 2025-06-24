@@ -470,8 +470,7 @@
 
 /* Consistent app background */
 .app-background {
-  background-color: #4ECFBF;
-  background-image: linear-gradient(to bottom, #4ECFBF, #3a9e92);
+  background-color: #ffffff;
   min-height: 100vh;
   width: 100%;
 }

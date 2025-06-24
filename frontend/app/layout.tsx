@@ -90,7 +90,7 @@ export default function RootLayout({
       <body className={`${inter.className} font-sans antialiased overflow-x-hidden`}>
         <NavigationProvider>
           <AuthProviderWrapper>
-            <div className="app-background min-h-screen w-full bg-[var(--turquoise)]">
+            <div className="app-background min-h-screen w-full bg-white">
               <NavBar />
               <main id="main-content" tabIndex={-1} className="outline-none">
                 {children}
