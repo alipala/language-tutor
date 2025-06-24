@@ -112,6 +112,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   useEffect(() => {
     if (initialRenderRef.current) {
       console.log('SpeechClient initializing with language:', language, 'level:', level, 'topic:', topic, 'at:', new Date().toISOString());
+      console.log('🎯 USER SELECTION SUMMARY - Language:', language, 'Level:', level, 'Topic:', topic, 'UserPrompt:', userPrompt);
       if (topic === 'custom' && userPrompt) {
         console.log('Custom topic prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
       }
@@ -1109,7 +1110,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         </div>
 
         {/* User Selection Summary */}
-        <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 mb-6 mx-auto max-w-4xl">
+        <div className="bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-xl p-6 mb-6 mx-auto max-w-4xl relative z-10 shadow-lg">
           <div className="flex flex-wrap items-center justify-center gap-4 text-white">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
