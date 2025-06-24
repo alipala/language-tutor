@@ -93,7 +93,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, []);
 
   // Keep the navbar fixed with appropriate styling - compact height with large logo
-  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/90 shadow-lg' : 'bg-[#4ECFBF]/80'} ${activeSection ? 'navbar-section1' : ''}`;
+  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90'} ${activeSection ? 'navbar-section1' : ''}`;
   navbarClass += isScrolled ? ' py-1' : ' py-2';
   
   return (

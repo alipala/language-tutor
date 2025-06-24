@@ -173,8 +173,7 @@
     -webkit-touch-callout: none; /* Prevent callout to copy image, etc when tap to hold */
     -webkit-user-select: none; /* Prevent text selection when tapping quickly */
     user-select: none;
-    background: linear-gradient(135deg, hsl(var(--background)), hsl(var(--background-end)));
-    background-attachment: fixed;
+    background: #ffffff;
     min-height: 100vh;
   }
 }

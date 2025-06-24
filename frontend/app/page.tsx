@@ -139,13 +139,13 @@ export default function Home() {
       <NavBar />
       
       {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-[var(--turquoise)]">
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <div className="text-center">
             <div className="animate-pulse flex flex-col items-center">
-              <div className="rounded-full h-16 w-16 bg-white/20 mb-4 flex items-center justify-center">
+              <div className="rounded-full h-16 w-16 bg-gray-200 mb-4 flex items-center justify-center">
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
-                  className="h-8 w-8 text-white animate-pulse" 
+                  className="h-8 w-8 text-gray-600 animate-pulse" 
                   viewBox="0 0 24 24" 
                   fill="none" 
                   stroke="currentColor" 
@@ -158,8 +158,8 @@ export default function Home() {
                   <line x1="12" x2="12" y1="19" y2="22"></line>
                 </svg>
               </div>
-              <p className="text-white text-xl font-medium">Loading...</p>
-              <p className="text-white/70 text-sm mt-2">
+              <p className="text-gray-800 text-xl font-medium">Loading...</p>
+              <p className="text-gray-600 text-sm mt-2">
                 Preparing your language learning experience
               </p>
             </div>
