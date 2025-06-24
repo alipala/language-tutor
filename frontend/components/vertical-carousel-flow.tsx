@@ -394,6 +394,7 @@ export default function VerticalCarouselFlow() {
     
     setSelectedTopic(topicId);
     sessionStorage.setItem('selectedTopic', topicId);
+    markStepCompleted(FlowStep.TOPIC);
     
     setTimeout(() => {
       transitionToNextStep();
@@ -429,6 +430,7 @@ export default function VerticalCarouselFlow() {
       sessionStorage.setItem('customTopicText', customTopicText);
       setSelectedTopic('custom');
       setIsCustomTopicActive(false);
+      markStepCompleted(FlowStep.TOPIC);
       
       setTimeout(() => {
         setIsExtendingKnowledge(false);
@@ -468,10 +470,10 @@ export default function VerticalCarouselFlow() {
     <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
       {/* Step Progress Indicator */}
       <div className="fixed top-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-center">
             {/* Step indicators */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 overflow-x-auto">
               {/* Language Step */}
               <div className="flex items-center space-x-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
