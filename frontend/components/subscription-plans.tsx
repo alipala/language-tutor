@@ -293,6 +293,13 @@ export default function SubscriptionPlans() {
                     ))}
                   </ul>
 
+                  {/* Note - Move above button for Team Mastery */}
+                  {plan.note && (
+                    <p className="text-xs text-gray-500 mb-4 text-center">
+                      {plan.note}
+                    </p>
+                  )}
+
                   {/* CTA Button - This will be pushed to the bottom */}
                   <div className="mt-auto">
                     <button
@@ -307,13 +314,6 @@ export default function SubscriptionPlans() {
                     >
                       {plan.ctaButton}
                     </button>
-
-                    {/* Note */}
-                    {plan.note && (
-                      <p className="text-xs text-gray-500 mt-4 text-center">
-                        {plan.note}
-                      </p>
-                    )}
                   </div>
                 </div>
               </motion.div>
