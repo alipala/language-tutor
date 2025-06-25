@@ -33,59 +33,91 @@ class ProjectKnowledgeResponse(BaseModel):
     response: str
     sources: List[str] = []
 
-# Knowledge base from documentation - chunked by topic
+# User Experience Knowledge Base - focused on helping users navigate and use the app
 KNOWLEDGE_BASE = {
-    "speech_recognition": {
-        "title": "Speech Recognition System",
-        "keywords": ["speech", "recognition", "audio", "recording", "microphone", "webrtc", "whisper", "transcription", "voice"],
+    "getting_started": {
+        "title": "How to Get Started with My Taco AI",
+        "keywords": ["start", "begin", "first", "new", "how", "setup", "tutorial", "guide", "onboarding", "get started"],
         "content": """
-The Language Tutor application implements a sophisticated speech recognition and real-time conversation system using a combination of browser-based APIs and OpenAI's advanced language models.
+🌮 Welcome to My Taco AI! Here's your complete getting started guide:
 
-Architecture:
-- Frontend WebRTC Client: Handles audio capture and streaming
-- Backend Token Service: Generates secure ephemeral tokens
-- OpenAI Realtime API: Processes audio and generates responses
+🎯 STEP 1: Choose Your Language
+• Look for the colorful language flags on the homepage
+• Click any flag: English 🇺🇸, Dutch 🇳🇱, Spanish 🇪🇸, French 🇫🇷, German 🇩🇪, Portuguese 🇵🇹
+• Don't worry - you can change this anytime later!
 
-Key Features:
-- Audio capture using MediaRecorder API
-- WebRTC implementation for real-time communication
-- Multi-language support with appropriate language codes
-- Secure token management with ephemeral keys
-- Error handling and reliability features
+🎤 STEP 2: Take Your Speaking Assessment
+• Click the big "Take Assessment" button
+• Allow microphone permission when asked
+• Speak clearly for 15 seconds (guests) or 60 seconds (registered users)
+• Talk about anything - describe your day, hobbies, or goals
+• Our AI will tell you your level: A1 (beginner) to C2 (advanced)
 
-The system uses the browser's MediaRecorder API to capture audio from the user's microphone, creates a stream of audio data that's collected in chunks and later combined into a single audio blob. For real-time conversation, the application establishes a WebRTC connection with peer connection to OpenAI's servers, data channel for control messages and text responses, and audio track handling for the AI's voice responses.
+💬 STEP 3: Start Your First Conversation
+• After assessment, click "Start Conversation"
+• Talk naturally with our AI tutor
+• Discuss interesting topics like travel, food, or culture
+• Get instant feedback and corrections
+• Practice for 1 minute (guests) or 5 minutes (registered users)
 
-Browser Compatibility:
-- Chrome 55+
-- Firefox 44+
-- Safari 11+
-- Edge 79+
+📊 STEP 4: Save Your Progress (Optional but Recommended!)
+• Click "Sign Up" to create a free account
+• Save all your conversations and track improvement
+• View your progress in the "Overview" tab
+• Earn achievements and maintain learning streaks
 
-For older browsers, the application implements a fallback to a text-only interface.
+✨ Pro Tips for Success:
+• Use headphones or earbuds for better audio quality
+• Find a quiet room without background noise
+• Speak at normal volume - don't whisper or shout
+• Don't worry about making mistakes - that's how you learn!
+• Practice a little bit every day for best results
+
+🚀 Ready to start? Just click any language flag on the homepage!
 """
     },
-    "authentication": {
-        "title": "Authentication System",
-        "keywords": ["auth", "login", "signup", "register", "jwt", "google", "oauth", "password", "security", "token"],
+    "account_help": {
+        "title": "Account & Login Help",
+        "keywords": ["auth", "login", "signup", "register", "account", "password", "google", "forgot", "reset", "profile"],
         "content": """
-The Language Tutor application implements a comprehensive authentication system that supports multiple authentication methods, secure session management, and role-based access control.
+Need help with your account? Here's everything you need to know:
 
-Authentication Methods:
-- JWT-based Authentication: Primary authentication method using JSON Web Tokens
-- Google OAuth Integration: Social login option for streamlined user experience
-- Password Reset Flow: Secure password recovery mechanism
-- Guest Access System: Limited functionality for unauthenticated users
+Creating an Account:
+- Click "Sign Up" in the top right corner
+- Enter your name, email, and password
+- Or use "Continue with Google" for quick signup
+- Verify your email to unlock all features
 
-Security Features:
-- Password hashing with bcrypt
-- JWT token authentication with expiration
-- HTTPS enforcement in production
-- Environment variable protection for sensitive data
-- Rate limiting for sensitive endpoints
+Signing In:
+- Click "Login" and enter your credentials
+- Use Google Sign-In if you registered with Google
+- Check "Remember me" to stay logged in
 
-The login process validates user credentials, generates a JWT token, updates the last login timestamp, and returns the token with basic user information. Google OAuth flow verifies the token with Google's authentication service, creates a new user or updates an existing one, automatically marks Google-authenticated users as verified, and issues a JWT token for the authenticated session.
+Forgot Your Password?
+- Click "Forgot Password?" on the login page
+- Enter your email address
+- Check your email for a reset link
+- Create a new password when prompted
 
-Password reset includes secure token generation, 1-hour token expiration, email delivery of reset links, and secure password update process.
+Account Benefits:
+- 60-second assessments (vs 15 seconds for guests)
+- 5-minute conversations (vs 1 minute for guests)
+- Save your conversation history
+- Track your learning progress
+- Earn achievements and maintain streaks
+- Export your learning data
+
+Profile Management:
+- Update your name and email in settings
+- Change your preferred language and level
+- View your learning statistics
+- Download your conversation history
+
+Troubleshooting:
+- Clear your browser cache if login issues persist
+- Make sure cookies are enabled
+- Try incognito/private mode
+- Contact support if problems continue
 """
     },
     "guest_experience": {
@@ -315,57 +347,323 @@ Technical Implementation:
 The application automatically detects mobile devices and adjusts the interface accordingly, providing larger touch targets, simplified navigation, and optimized layouts for smaller screens.
 """
     },
-    "learning_features": {
-        "title": "Learning Features and Assessment",
-        "keywords": ["learning", "assessment", "cefr", "levels", "pronunciation", "grammar", "vocabulary", "fluency", "feedback"],
+    "assessment_guide": {
+        "title": "How to Take Your Speaking Assessment",
+        "keywords": ["assessment", "test", "level", "speaking", "cefr", "pronunciation", "grammar", "vocabulary", "fluency", "evaluate"],
         "content": """
-Language Tutor provides comprehensive language learning features with AI-powered assessment and personalized feedback.
+🎯 Complete Guide to Taking Your Speaking Assessment:
 
-Assessment System:
-- CEFR Level Evaluation: Determines user level from A1 (beginner) to C2 (native-like)
-- Speaking Assessment: 15-60 second recordings analyzed for multiple skills
-- Real-time Feedback: Immediate corrections and suggestions during conversations
-- Pronunciation Analysis: Detailed feedback on pronunciation accuracy
-- Grammar Evaluation: Assessment of grammatical structures and usage
-- Vocabulary Assessment: Analysis of vocabulary range and appropriateness
-- Fluency Measurement: Evaluation of speaking pace and hesitation patterns
-- Coherence Analysis: Assessment of logical flow and organization
+🎤 HOW TO START YOUR ASSESSMENT:
+• Click the "Take Assessment" button on any language page
+• Allow microphone permission when your browser asks
+• You'll see a timer: 15 seconds (guests) or 60 seconds (registered users)
+• Click "Start Recording" when you're ready
 
-Skill Scoring:
-Each skill is scored on a 0-100 scale with detailed feedback:
-- Pronunciation: Accuracy of sounds, stress, and intonation
-- Grammar: Correct use of tenses, structures, and syntax
-- Vocabulary: Range, accuracy, and appropriateness of word choice
-- Fluency: Natural pace, minimal hesitation, smooth delivery
-- Coherence: Logical organization and clear communication
+🗣️ WHAT TO TALK ABOUT:
+• Describe your daily routine or hobbies
+• Talk about your goals for learning this language
+• Describe your hometown or favorite place to visit
+• Share what you enjoy doing in your free time
+• Discuss your work or studies
+• Talk about your family or friends
 
-Learning Levels:
-- A1 (Beginner): Basic phrases and simple interactions
-- A2 (Elementary): Simple conversations on familiar topics
-- B1 (Intermediate): Clear communication on familiar subjects
-- B2 (Upper-Intermediate): Complex topics and abstract concepts
-- C1 (Advanced): Fluent and spontaneous expression
-- C2 (Proficiency): Native-like fluency and precision
+💡 TIPS FOR A GREAT ASSESSMENT:
+• Speak naturally - don't try to be perfect!
+• Use complete sentences when possible
+• If you make a mistake, just keep going
+• Try to speak for the full time available
+• Use headphones for better audio quality
+• Find a quiet room without background noise
 
-Personalized Learning:
-- Custom learning plans based on assessment results
-- Adaptive difficulty based on user performance
-- Targeted practice for specific skill areas
-- Progress tracking with detailed analytics
-- Achievement system to motivate continued learning
+📊 WHAT YOU'LL GET:
+After your assessment, you'll receive:
+• Your CEFR level (A1-C2)
+• Pronunciation score and feedback
+• Grammar assessment and tips
+• Vocabulary evaluation
+• Fluency analysis
+• Overall speaking score
 
-Conversation Topics:
-- Travel & Tourism
-- Food & Cooking
-- Hobbies & Interests
-- Culture & Traditions
-- Movies & TV Shows
-- Music and Entertainment
-- Technology and Innovation
-- Environment & Nature
-- Custom topics based on user interests
+🎯 UNDERSTANDING YOUR LEVEL:
+• A1 (Beginner): Just starting to learn
+• A2 (Elementary): Can handle basic conversations
+• B1 (Intermediate): Comfortable with familiar topics
+• B2 (Upper-Intermediate): Can discuss complex ideas
+• C1 (Advanced): Very fluent and natural
+• C2 (Proficiency): Near-native level
 
-The system provides immediate feedback during conversations, helping users improve in real-time while maintaining natural conversation flow.
+🚀 AFTER YOUR ASSESSMENT:
+• Click "Start Conversation" to practice with our AI tutor
+• Your conversation topics will match your level
+• You'll get real-time feedback as you speak
+• Sign up to save your results and track improvement!
+"""
+    },
+    "practice_guide": {
+        "title": "How to Practice Conversations",
+        "keywords": ["practice", "conversation", "talk", "speak", "chat", "tutor", "ai", "feedback", "topics"],
+        "content": """
+💬 Complete Guide to Practicing Conversations:
+
+🚀 HOW TO START PRACTICING:
+• After your assessment, click "Start Conversation"
+• Or go to any language page and click "Start Conversation"
+• Allow microphone permission if asked
+• You'll see a timer: 1 minute (guests) or 5 minutes (registered users)
+
+🎯 WHAT HAPPENS DURING PRACTICE:
+• Our AI tutor will greet you and suggest a topic
+• Talk naturally about the suggested topic
+• The AI will respond and ask follow-up questions
+• You'll see your conversation appear as text on screen
+• Get instant corrections and suggestions
+
+🗣️ GREAT CONVERSATION TOPICS:
+• Travel: Describe places you've visited or want to visit
+• Food: Talk about your favorite dishes or cooking
+• Hobbies: Share what you enjoy doing in free time
+• Culture: Discuss traditions from your country
+• Movies/TV: Talk about shows you like
+• Work/Study: Describe your job or education
+• Future Plans: Share your goals and dreams
+
+💡 TIPS FOR BETTER CONVERSATIONS:
+• Speak clearly and at normal speed
+• Don't worry about making mistakes - that's how you learn!
+• Ask questions back to the AI tutor
+• Try to give detailed answers, not just yes/no
+• Use the vocabulary you know
+• If you don't understand, ask the AI to repeat or explain
+
+🎤 TECHNICAL TIPS:
+• Use headphones or earbuds for best audio quality
+• Speak 6-8 inches from your microphone
+• Find a quiet room without background noise
+• Make sure your internet connection is stable
+• If audio cuts out, refresh the page and try again
+
+📈 GETTING FEEDBACK:
+• Real-time corrections appear during conversation
+• After 5+ minutes, you can get detailed AI analysis
+• See your pronunciation, grammar, and fluency scores
+• Get personalized recommendations for improvement
+
+🏆 MAKING PROGRESS:
+• Practice regularly - even 5 minutes daily helps!
+• Try different topics to expand vocabulary
+• Challenge yourself with slightly harder topics
+• Sign up to track your improvement over time
+"""
+    },
+    "save_progress_guide": {
+        "title": "How to Save Your Progress",
+        "keywords": ["save", "progress", "history", "track", "account", "sessions", "improvement", "data"],
+        "content": """
+💾 Complete Guide to Saving Your Progress:
+
+🔐 CREATE AN ACCOUNT FIRST:
+• Click "Sign Up" in the top right corner
+• Enter your name, email, and password
+• Or use "Continue with Google" for quick signup
+• Verify your email to unlock all features
+
+💾 SAVING DURING CONVERSATIONS:
+• Look for the "Save Progress" button during practice
+• Click it anytime during your conversation
+• You'll see a confirmation when it's saved
+• The button has a 1-minute cooldown to encourage longer practice
+
+📊 WHAT GETS SAVED:
+• Complete conversation transcripts
+• Your speaking assessment results
+• Practice session duration and date
+• AI feedback and corrections
+• Your CEFR level progression
+• Achievement progress
+
+📈 VIEWING YOUR PROGRESS:
+• Click "Overview" tab to see all your data
+• View conversation history with dates
+• See total practice time and session count
+• Track your learning streaks
+• Monitor your level improvements
+
+🏆 ACHIEVEMENTS YOU CAN EARN:
+• First Steps 🎯: Complete your first conversation
+• Chatterbox 💬: Complete 5 conversations
+• Dedicated Learner 📚: Practice for 30 minutes total
+• Consistency King 👑: Maintain a 3-day streak
+• Week Warrior 🔥: Maintain a 7-day streak
+• Marathon Master 🏃: Practice for 60 minutes total
+• Conversation Pro ⭐: Complete 10 conversations
+• Monthly Master 🏆: Maintain a 30-day streak
+
+📊 TRACKING YOUR STREAKS:
+• Practice at least 5 minutes daily to maintain streaks
+• Streaks reset if you miss a day
+• Your longest streak is saved forever
+• Streaks motivate consistent practice
+
+💡 PROGRESS TIPS:
+• Save every conversation to track improvement
+• Review your conversation history regularly
+• Notice patterns in your mistakes
+• Celebrate your achievements!
+• Set daily practice goals
+
+🔄 AUTOMATIC SAVING:
+• Conversations over 5 minutes are automatically saved
+• Assessment results are always saved
+• Your account syncs across all devices
+• Data is securely stored and backed up
+"""
+    },
+    "learning_plans_guide": {
+        "title": "Understanding Learning Plans",
+        "keywords": ["learning", "plan", "goals", "personalized", "curriculum", "study", "improvement", "recommendations"],
+        "content": """
+📚 Complete Guide to Learning Plans:
+
+🎯 WHAT ARE LEARNING PLANS:
+• Personalized study programs based on your assessment
+• Custom goals tailored to your level and interests
+• Step-by-step recommendations for improvement
+• Adaptive plans that evolve with your progress
+
+📋 HOW TO GET YOUR LEARNING PLAN:
+• Take your speaking assessment first
+• Your plan is automatically generated based on results
+• View it in the "Learning Plan" section
+• Plans update as you practice and improve
+
+🎯 WHAT'S IN YOUR LEARNING PLAN:
+• Your current CEFR level and target level
+• Specific skills to focus on (pronunciation, grammar, etc.)
+• Recommended practice topics
+• Weekly and monthly goals
+• Estimated time to reach next level
+
+📈 TYPES OF GOALS IN YOUR PLAN:
+• Pronunciation Goals: Specific sounds to practice
+• Grammar Goals: Tenses and structures to master
+• Vocabulary Goals: Word categories to expand
+• Fluency Goals: Speaking pace and confidence targets
+• Conversation Goals: Topics and situations to practice
+
+🎯 FOLLOWING YOUR LEARNING PLAN:
+• Practice the recommended topics during conversations
+• Focus on your weak areas identified in assessments
+• Try to meet your weekly practice time goals
+• Take regular assessments to track progress
+
+📊 TRACKING PLAN PROGRESS:
+• See completion percentage for each goal
+• Monitor time spent on recommended topics
+• Track skill improvements over time
+• Get updated recommendations based on progress
+
+💡 TIPS FOR SUCCESS:
+• Follow your plan consistently for best results
+• Don't skip the areas you find difficult
+• Practice a little bit every day rather than long sessions
+• Ask the AI tutor to focus on your plan topics
+• Celebrate when you complete goals!
+
+🔄 PLAN UPDATES:
+• Plans automatically update based on new assessments
+• Goals adjust as you improve
+• New recommendations appear as you progress
+• Plans become more challenging as you advance
+
+🎯 CUSTOMIZING YOUR PLAN:
+• Focus on specific skills you want to improve
+• Choose topics that interest you most
+• Set your own practice time goals
+• Adjust difficulty based on your schedule
+"""
+    },
+    "export_data_guide": {
+        "title": "How to Export Your Learning Data",
+        "keywords": ["export", "download", "data", "progress", "report", "pdf", "csv", "history", "backup"],
+        "content": """
+📊 Complete Guide to Exporting Your Learning Data:
+
+📥 HOW TO EXPORT YOUR DATA:
+• Go to your "Overview" or "Profile" section
+• Look for "Export Data" or "Download Report" button
+• Choose your preferred format (PDF, CSV, or ZIP)
+• Click download and save the file to your device
+
+📄 AVAILABLE EXPORT FORMATS:
+
+🔸 PDF REPORTS:
+• Professional conversation history report
+• Learning plans and assessment report
+• Includes your profile, statistics, and progress
+• Perfect for sharing with teachers or institutions
+
+🔸 CSV FILES:
+• Spreadsheet format for detailed analysis
+• Conversation history with dates and topics
+• Learning plan data with scores and goals
+• Easy to open in Excel or Google Sheets
+
+🔸 ZIP PACKAGE:
+• Complete data export with all formats
+• Includes PDFs, CSVs, and JSON data
+• Perfect for complete backup of your progress
+
+📊 WHAT'S INCLUDED IN YOUR EXPORT:
+
+🔸 STUDENT PROFILE:
+• Your name and email
+• Report generation date
+• Total practice sessions
+• Current language levels
+
+🔸 CONVERSATION HISTORY:
+• All your practice sessions with dates
+• Conversation topics and duration
+• Message counts and AI analysis
+• Detailed feedback and corrections
+
+🔸 ASSESSMENT DATA:
+• All your speaking assessment results
+• Skill scores (pronunciation, grammar, etc.)
+• CEFR level progression over time
+• Detailed feedback for each assessment
+
+🔸 LEARNING STATISTICS:
+• Total practice time
+• Learning streaks and achievements
+• Session frequency and patterns
+• Progress trends and improvements
+
+💡 WHEN TO EXPORT YOUR DATA:
+• Before important meetings with teachers
+• To track long-term progress
+• For backup before changing devices
+• To share achievements with others
+• For personal motivation and review
+
+🎯 USING YOUR EXPORTED DATA:
+• Share PDF reports with language teachers
+• Analyze patterns in CSV files
+• Keep backups of your learning journey
+• Track improvement over months/years
+• Include in language learning portfolios
+
+🔒 DATA PRIVACY:
+• Only you can export your data
+• Exports include only your personal information
+• Data is securely generated and downloaded
+• No data is shared with third parties
+
+📱 MOBILE EXPORT:
+• Export works on mobile devices too
+• Files download to your phone/tablet
+• Share directly from mobile apps
+• View PDFs on any device
 """
     }
 }
@@ -395,37 +693,46 @@ def search_knowledge_base(query: str) -> List[Dict[str, Any]]:
         content_matches = sum(1 for word in query_words if word in content_lower)
         score += content_matches
         
-        # Add specific topic scoring
-        if any(topic in query_lower for topic in ["speech", "voice", "audio", "recording"]):
-            if chunk_id == "speech_recognition":
-                score += 15
+        # Add specific topic scoring for user guides
+        if any(topic in query_lower for topic in ["start", "begin", "getting started", "how to start", "first time", "new user"]):
+            if chunk_id == "getting_started":
+                score += 20
         
-        if any(topic in query_lower for topic in ["auth", "login", "signup", "password"]):
-            if chunk_id == "authentication":
-                score += 15
+        if any(topic in query_lower for topic in ["assessment", "test", "level", "speaking test", "evaluate", "take assessment"]):
+            if chunk_id == "assessment_guide":
+                score += 20
         
+        if any(topic in query_lower for topic in ["practice", "conversation", "talk", "speak", "chat", "tutor"]):
+            if chunk_id == "practice_guide":
+                score += 20
+        
+        if any(topic in query_lower for topic in ["save", "progress", "track", "history", "improvement", "save progress"]):
+            if chunk_id == "save_progress_guide":
+                score += 20
+        
+        if any(topic in query_lower for topic in ["learning plan", "goals", "curriculum", "study plan", "personalized"]):
+            if chunk_id == "learning_plans_guide":
+                score += 20
+        
+        if any(topic in query_lower for topic in ["export", "download", "data", "report", "pdf", "csv", "backup"]):
+            if chunk_id == "export_data_guide":
+                score += 20
+        
+        if any(topic in query_lower for topic in ["auth", "login", "signup", "password", "account", "register"]):
+            if chunk_id == "account_help":
+                score += 20
+        
+        if any(topic in query_lower for topic in ["mobile", "ios", "android", "phone", "tablet", "mobile tips"]):
+            if chunk_id == "mobile_support":
+                score += 20
+        
+        # Legacy scoring for backward compatibility
         if any(topic in query_lower for topic in ["guest", "trial", "free", "limitation"]):
             if chunk_id == "guest_experience":
                 score += 15
         
-        if any(topic in query_lower for topic in ["progress", "tracking", "history", "achievement"]):
-            if chunk_id == "progress_tracking":
-                score += 15
-        
-        if any(topic in query_lower for topic in ["mobile", "ios", "android", "phone"]):
-            if chunk_id == "mobile_support":
-                score += 15
-        
-        if any(topic in query_lower for topic in ["assessment", "cefr", "level", "pronunciation", "grammar"]):
-            if chunk_id == "learning_features":
-                score += 15
-        
-        if any(topic in query_lower for topic in ["frontend", "react", "nextjs", "component"]):
-            if chunk_id == "frontend_architecture":
-                score += 15
-        
-        if any(topic in query_lower for topic in ["backend", "api", "fastapi", "python", "mongodb"]):
-            if chunk_id == "backend_architecture":
+        if any(topic in query_lower for topic in ["analysis", "feedback", "ai insights", "enhanced"]):
+            if chunk_id == "enhanced_analysis":
                 score += 15
         
         if score > 0:
@@ -463,19 +770,22 @@ async def get_project_knowledge(request: ProjectKnowledgeRequest):
             for chunk in relevant_chunks
         ])
         
-        # Create system prompt for GPT-4o-mini
-        system_prompt = """You are a helpful assistant for the Language Tutor application. Answer user questions based on the provided documentation context. 
+        # Create system prompt for GPT-4o-mini focused on user experience
+        system_prompt = """You are a friendly and helpful assistant for My Taco AI language learning app. Your goal is to help users who feel stuck, confused, or need guidance on how to use the app effectively.
 
 Guidelines:
-- Use the provided context to answer questions accurately
-- Be conversational and helpful
-- If the context doesn't contain enough information, say so politely
-- Focus on practical, actionable information
-- Use emojis sparingly but appropriately
-- Keep responses concise but informative
-- Mention specific features, benefits, and technical details when relevant
+- Be warm, encouraging, and supportive
+- Focus on practical step-by-step guidance rather than technical details
+- Use simple, clear language that anyone can understand
+- Include helpful emojis to make responses friendly
+- Provide specific actionable steps users can take right now
+- If users seem frustrated, acknowledge their feelings and offer solutions
+- Always end with an offer to help further or ask follow-up questions
+- Avoid technical jargon - focus on what users need to DO, not how it works
 
-Context from Language Tutor documentation:
+Your role: Help users navigate the app, solve problems, and have a great learning experience.
+
+Context from My Taco AI user guides:
 """
 
         # Generate response using GPT-4o-mini

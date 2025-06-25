@@ -7,7 +7,7 @@ import NavBar from '@/components/nav-bar';
 import { TypeAnimation } from 'react-type-animation';
 import FAQSection from '@/components/faq-section';
 import LearningPlanDashboard from '@/components/dashboard/LearningPlanDashboard';
-import CustomProjectChatbot from '@/components/custom-project-chatbot';
+import ProjectKnowledgeChatbot from '@/components/project-knowledge-chatbot';
 import './landing-sections.css';
 import { motion } from 'framer-motion';
 
@@ -128,7 +128,7 @@ export default function Home() {
         <NavBar />
         <LearningPlanDashboard />
         {/* Project Knowledge Chatbot - Available for authenticated users too */}
-        <CustomProjectChatbot />
+        <ProjectKnowledgeChatbot />
       </div>
     );
   }
@@ -764,7 +764,7 @@ export default function Home() {
       )}
       
       {/* Project Knowledge Chatbot - Available on all pages */}
-      <CustomProjectChatbot />
+      <ProjectKnowledgeChatbot />
     </div>
   );
 }
