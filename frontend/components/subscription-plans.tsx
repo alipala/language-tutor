@@ -219,7 +219,7 @@ export default function SubscriptionPlans() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={`relative bg-white rounded-2xl shadow-xl border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
+                className={`relative bg-white rounded-2xl shadow-xl border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full ${
                   plan.popular 
                     ? 'border-[#4ECFBF] ring-4 ring-[#4ECFBF]/20 scale-105' 
                     : 'border-gray-200 hover:border-[#4ECFBF]/50'
@@ -234,7 +234,7 @@ export default function SubscriptionPlans() {
                   </div>
                 )}
 
-                <div className="p-8">
+                <div className="p-8 flex flex-col h-full">
                   {/* Plan Header */}
                   <div className="text-center mb-8">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
@@ -268,7 +268,7 @@ export default function SubscriptionPlans() {
                   </div>
 
                   {/* Features */}
-                  <ul className="space-y-4 mb-8">
+                  <ul className="space-y-4 mb-8 flex-grow">
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-start">
                         <svg
@@ -293,26 +293,28 @@ export default function SubscriptionPlans() {
                     ))}
                   </ul>
 
-                  {/* CTA Button */}
-                  <button
-                    onClick={() => handleCTAClick(plan)}
-                    className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
-                      plan.popular
-                        ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] focus:ring-[#4ECFBF] shadow-lg'
-                        : plan.name === "Try & Learn"
-                        ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
-                        : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
-                    }`}
-                  >
-                    {plan.ctaButton}
-                  </button>
+                  {/* CTA Button - This will be pushed to the bottom */}
+                  <div className="mt-auto">
+                    <button
+                      onClick={() => handleCTAClick(plan)}
+                      className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
+                        plan.popular
+                          ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] focus:ring-[#4ECFBF] shadow-lg'
+                          : plan.name === "Try & Learn"
+                          ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
+                          : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
+                      }`}
+                    >
+                      {plan.ctaButton}
+                    </button>
 
-                  {/* Note */}
-                  {plan.note && (
-                    <p className="text-xs text-gray-500 mt-4 text-center">
-                      {plan.note}
-                    </p>
-                  )}
+                    {/* Note */}
+                    {plan.note && (
+                      <p className="text-xs text-gray-500 mt-4 text-center">
+                        {plan.note}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ))}
