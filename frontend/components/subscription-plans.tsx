@@ -32,11 +32,10 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "",
     description: "Perfect for exploring AI language learning",
     features: [
-      { text: "3 practice sessions monthly", included: true },
+      { text: "3 practice sessions (5 minutes each) monthly", included: true },
       { text: "1 speaking assessment monthly", included: true },
-      { text: "Basic learning plan generation", included: true },
-      { text: "Core conversation topics only", included: true },
       { text: "Basic progress tracking", included: true },
+      { text: "Core conversation topics only", included: true },
       { text: "Mobile app access", included: true },
       { text: "Community support", included: true }
     ],
@@ -49,13 +48,13 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month",
     description: "Ideal for serious language learners",
     features: [
-      { text: "30 practice sessions monthly", included: true },
-      { text: "4 speaking assessments monthly", included: true },
-      { text: "All 6 language options", included: true },
+      { text: "30 practice sessions (5 minutes each) monthly", included: true },
+      { text: "2 speaking assessments monthly", included: true },
+      { text: "Advanced progress tracking", included: true },
+      { text: "Learning plan progression", included: true },
+      { text: "Achievement badges", included: true },
       { text: "All conversation topics + custom topics", included: true },
-      { text: "Detailed custom learning plans", included: true },
-      { text: "Enhanced progress tracking & analytics", included: true },
-      { text: "Conversation history & achievements", included: true },
+      { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
     ctaButton: "Get Started",
@@ -67,18 +66,18 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month per user",
     description: "For teams and organizations",
     features: [
-      { text: "Unlimited practice sessions*", included: true },
+      { text: "Unlimited practice sessions", included: true },
       { text: "Unlimited assessments", included: true },
-      { text: "All Premium features", included: true },
-      { text: "Advanced team analytics dashboard", included: true },
-      { text: "Custom business conversation scenarios", included: true },
+      { text: "Premium learning plans", included: true },
+      { text: "Advanced analytics", included: true },
+      { text: "Priority support", included: true },
+      { text: "Team collaboration features", included: true },
       { text: "API access & LMS integrations", included: true },
-      { text: "Dedicated account manager", included: true },
       { text: "SSO & admin controls", included: true }
     ],
     ctaButton: "Contact Sales",
     popular: false,
-    note: "Minimum 5 users • *Fair use: 3 hours daily per user"
+    note: "Minimum 5 users"
   }
 ];
 
@@ -89,11 +88,10 @@ const annualPlans: PricingCard[] = [
     priceNote: "",
     description: "Perfect for exploring AI language learning",
     features: [
-      { text: "3 practice sessions monthly", included: true },
+      { text: "3 practice sessions (5 minutes each) monthly", included: true },
       { text: "1 speaking assessment monthly", included: true },
-      { text: "Basic learning plan generation", included: true },
-      { text: "Core conversation topics only", included: true },
       { text: "Basic progress tracking", included: true },
+      { text: "Core conversation topics only", included: true },
       { text: "Mobile app access", included: true },
       { text: "Community support", included: true }
     ],
@@ -109,13 +107,13 @@ const annualPlans: PricingCard[] = [
     monthlyEquivalent: "Only $16.67/month",
     description: "Ideal for serious language learners",
     features: [
-      { text: "30 practice sessions monthly", included: true },
-      { text: "4 speaking assessments monthly", included: true },
-      { text: "All 6 language options", included: true },
+      { text: "360 practice sessions (5 minutes each) annually", included: true },
+      { text: "24 speaking assessments annually", included: true },
+      { text: "Advanced progress tracking", included: true },
+      { text: "Learning plan progression", included: true },
+      { text: "Achievement badges", included: true },
       { text: "All conversation topics + custom topics", included: true },
-      { text: "Detailed custom learning plans", included: true },
-      { text: "Enhanced progress tracking & analytics", included: true },
-      { text: "Conversation history & achievements", included: true },
+      { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
     ctaButton: "Get Started",
@@ -130,18 +128,18 @@ const annualPlans: PricingCard[] = [
     monthlyEquivalent: "Only $33.33/month per user",
     description: "For teams and organizations",
     features: [
-      { text: "Unlimited practice sessions*", included: true },
+      { text: "Unlimited practice sessions", included: true },
       { text: "Unlimited assessments", included: true },
-      { text: "All Premium features", included: true },
-      { text: "Advanced team analytics dashboard", included: true },
-      { text: "Custom business conversation scenarios", included: true },
+      { text: "Premium learning plans", included: true },
+      { text: "Advanced analytics", included: true },
+      { text: "Priority support", included: true },
+      { text: "Team collaboration features", included: true },
       { text: "API access & LMS integrations", included: true },
-      { text: "Dedicated account manager", included: true },
       { text: "SSO & admin controls", included: true }
     ],
     ctaButton: "Contact Sales",
     popular: false,
-    note: "Minimum 5 users • *Fair use: 3 hours daily per user"
+    note: "Minimum 5 users"
   }
 ];
 

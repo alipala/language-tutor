@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
 import { Logo } from './logo';
+import { Crown, Star, Zap } from 'lucide-react';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -14,6 +15,10 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  
+  // Subscription status state
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   // Check if we're on the landing page
   useEffect(() => {
@@ -32,6 +37,68 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   }, []);
   
+  // Fetch subscription status when user is available
+  useEffect(() => {
+    if (user) {
+      fetchSubscriptionStatus();
+    }
+  }, [user]);
+
+  // Fetch subscription status
+  const fetchSubscriptionStatus = async () => {
+    if (!user) return;
+    
+    setSubscriptionLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setSubscriptionLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/stripe/subscription-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionStatus(data);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  // Helper function to get plan display info
+  const getPlanDisplayInfo = () => {
+    if (!subscriptionStatus) return { name: 'Try & Learn', icon: '⚡', color: '#9CA3AF' };
+    
+    switch (subscriptionStatus.plan) {
+      case 'fluency_builder':
+        return { 
+          name: 'Fluency Builder', 
+          icon: '⭐',
+          color: '#FFD63A'
+        };
+      case 'team_mastery':
+        return { 
+          name: 'Team Mastery', 
+          icon: '👑',
+          color: '#FFA955'
+        };
+      default:
+        return { name: 'Try & Learn', icon: '⚡', color: '#9CA3AF' };
+    }
+  };
+
+  const planInfo = getPlanDisplayInfo();
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -151,9 +218,20 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <div className="relative user-menu-container">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center space-x-2 text-white/80 hover:text-white"
+                className="flex items-center space-x-3 text-white/80 hover:text-white"
               >
-                <span>{user.name}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-lg">{user.name}</span>
+                  {!subscriptionLoading && (
+                    <div 
+                      className="flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-bold text-white shadow-sm"
+                      style={{ backgroundColor: planInfo.color }}
+                    >
+                      <span className="text-sm">{planInfo.icon}</span>
+                      <span className="hidden sm:inline">{planInfo.name}</span>
+                    </div>
+                  )}
+                </div>
                 <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>

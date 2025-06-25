@@ -25,6 +25,7 @@ import {
 import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 import ExportModal from '@/components/export-modal';
 import SubscriptionManagement from './subscription-management';
+import MembershipBadge, { UsageIndicator } from '@/components/membership-badge';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -224,6 +225,10 @@ export default function ProfilePage() {
     }
   };
 
+  // Subscription status state
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
   // Mock user stats for display (will be replaced with real data)
   const userStats = {
     totalXP: progressStats?.total_sessions ? progressStats.total_sessions * 250 : 1500,
@@ -232,6 +237,63 @@ export default function ProfilePage() {
     currentStreak: progressStats?.current_streak || 0,
     longestStreak: progressStats?.longest_streak || 0
   };
+
+  // Fetch subscription status
+  const fetchSubscriptionStatus = async () => {
+    if (!user) return;
+    
+    setSubscriptionLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setSubscriptionLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/stripe/subscription-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionStatus(data);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  // Helper function to get plan display info
+  const getPlanDisplayInfo = () => {
+    if (!subscriptionStatus) return { name: 'Free', color: '#9CA3AF', icon: '⚡' };
+    
+    switch (subscriptionStatus.plan) {
+      case 'fluency_builder':
+        return { 
+          name: 'Fluency Builder', 
+          color: '#4ECFBF', 
+          icon: '⭐',
+          period: subscriptionStatus.period === 'annual' ? 'Annual' : 'Monthly'
+        };
+      case 'team_mastery':
+        return { 
+          name: 'Team Mastery', 
+          color: '#FFD63A', 
+          icon: '👑',
+          period: subscriptionStatus.period === 'annual' ? 'Annual' : 'Monthly'
+        };
+      default:
+        return { name: 'Try & Learn', color: '#9CA3AF', icon: '⚡' };
+    }
+  };
+
+  const planInfo = getPlanDisplayInfo();
 
   // Load user data when component mounts
   useEffect(() => {
@@ -244,6 +306,7 @@ export default function ProfilePage() {
       // Fetch user's learning plans and progress data
       fetchUserLearningPlans();
       fetchProgressData();
+      fetchSubscriptionStatus();
     }
   }, [user]);
 
@@ -436,7 +499,7 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <NavBar />
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
           {/* Profile Hero Section */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
             <div className="bg-teal-400 p-6 text-white relative overflow-hidden" style={{ backgroundColor: '#4ECFBF' }}>
@@ -468,27 +531,76 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-yellow-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#FFD63A' }}>
-                    <Zap className="h-5 w-5 mx-auto mb-1 text-white" />
-                    <div className="text-lg font-bold text-white">{userStats.totalXP.toLocaleString()}</div>
-                    <div className="text-white text-xs">Total XP</div>
+                {/* Subscription & Stats Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Subscription Status Card */}
+                  <div className="bg-black/30 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-3xl">{planInfo.icon}</div>
+                        <div>
+                          <div className="text-white font-bold text-xl tracking-tight">{planInfo.name}</div>
+                          {planInfo.period && (
+                            <div className="text-white/90 text-base font-medium">{planInfo.period}</div>
+                          )}
+                        </div>
+                      </div>
+                      {subscriptionStatus?.status === 'active' && (
+                        <div className="flex items-center text-white text-base font-medium">
+                          <div className="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                          Active
+                        </div>
+                      )}
+                    </div>
+                    
+                    {!subscriptionLoading && subscriptionStatus?.limits && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-white text-base">
+                          <span className="font-medium">Practice Sessions</span>
+                          <span className="font-bold text-lg">
+                            {subscriptionStatus.limits.is_unlimited ? '∞' : 
+                             `${subscriptionStatus.limits.sessions_remaining}/${subscriptionStatus.limits.sessions_limit}`}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-white text-base">
+                          <span className="font-medium">Assessments</span>
+                          <span className="font-bold text-lg">
+                            {subscriptionStatus.limits.is_unlimited ? '∞' : 
+                             `${subscriptionStatus.limits.assessments_remaining}/${subscriptionStatus.limits.assessments_limit}`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {subscriptionLoading && (
+                      <div className="flex items-center justify-center py-3">
+                        <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-red-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#F75A5A' }}>
-                    <Flame className="h-5 w-5 mx-auto mb-1 text-white" />
-                    <div className="text-lg font-bold text-white">{userStats.currentStreak}</div>
-                    <div className="text-white text-xs">Day Streak</div>
-                  </div>
-                  <div className="bg-orange-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#FFA955' }}>
-                    <BookOpen className="h-5 w-5 mx-auto mb-1 text-white" />
-                    <div className="text-lg font-bold text-white">{learningPlans.length}</div>
-                    <div className="text-white text-xs">Languages</div>
-                  </div>
-                  <div className="bg-teal-400 border-2 border-white/30 rounded-lg p-3 text-center" style={{ backgroundColor: '#4ECFBF' }}>
-                    <Award className="h-5 w-5 mx-auto mb-1 text-white" />
-                    <div className="text-lg font-bold text-white">{achievements.filter(a => a.earned).length}</div>
-                    <div className="text-white text-xs">Achievements</div>
+                  
+                  {/* Learning Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-yellow-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#FFD63A' }}>
+                      <Flame className="h-5 w-5 mx-auto mb-1 text-white" />
+                      <div className="text-lg font-bold text-white">{userStats.currentStreak}</div>
+                      <div className="text-white text-xs">Day Streak</div>
+                    </div>
+                    <div className="bg-red-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#F75A5A' }}>
+                      <BookOpen className="h-5 w-5 mx-auto mb-1 text-white" />
+                      <div className="text-lg font-bold text-white">{learningPlans.length}</div>
+                      <div className="text-white text-xs">Languages</div>
+                    </div>
+                    <div className="bg-orange-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#FFA955' }}>
+                      <Award className="h-5 w-5 mx-auto mb-1 text-white" />
+                      <div className="text-lg font-bold text-white">{achievements.filter(a => a.earned).length}</div>
+                      <div className="text-white text-xs">Achievements</div>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-lg p-3 text-center">
+                      <Zap className="h-5 w-5 mx-auto mb-1 text-white" />
+                      <div className="text-lg font-bold text-white">{userStats.totalXP.toLocaleString()}</div>
+                      <div className="text-white text-xs">Total XP</div>
+                    </div>
                   </div>
                 </div>
               </div>

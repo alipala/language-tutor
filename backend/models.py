@@ -43,10 +43,23 @@ class UserInDB(UserBase):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     hashed_password: str
     stripe_customer_id: Optional[str] = None
-    subscription_status: Optional[str] = None  # active, canceled, past_due
-    subscription_plan: Optional[str] = None    # fluency_builder, team_mastery
+    subscription_status: Optional[str] = None  # active, canceled, past_due, expired
+    subscription_plan: Optional[str] = None    # try_learn, fluency_builder, team_mastery
     subscription_period: Optional[str] = None  # monthly, annual
     subscription_price_id: Optional[str] = None # Track exact price subscribed to
+    subscription_expires_at: Optional[datetime] = None  # When subscription expires
+    subscription_started_at: Optional[datetime] = None  # When subscription started
+    
+    # Usage tracking for current billing period
+    current_period_start: Optional[datetime] = None
+    current_period_end: Optional[datetime] = None
+    practice_sessions_used: int = 0  # Sessions used in current period
+    assessments_used: int = 0  # Assessments used in current period
+    
+    # Learning plan preservation
+    learning_plan_preserved: bool = False  # True if plan is in preservation mode
+    learning_plan_data: Optional[Dict[str, Any]] = None  # Preserved learning plan data
+    learning_plan_progress: Optional[Dict[str, Any]] = None  # Progress milestones
     
     class Config:
         populate_by_name = True
@@ -204,3 +217,56 @@ class ConversationHistoryResponse(BaseModel):
     sessions: List[ConversationSession]
     total_count: int
     stats: ConversationStats
+
+# Subscription models
+class SubscriptionPlan(BaseModel):
+    plan_id: str  # try_learn, fluency_builder, team_mastery
+    name: str
+    monthly_price: float
+    annual_price: float
+    monthly_sessions: int  # -1 for unlimited
+    annual_sessions: int   # -1 for unlimited
+    monthly_assessments: int  # -1 for unlimited
+    annual_assessments: int   # -1 for unlimited
+    features: List[str]
+    is_free: bool = False
+
+class SubscriptionLimits(BaseModel):
+    plan: str
+    period: str  # monthly, annual
+    sessions_limit: int  # -1 for unlimited
+    assessments_limit: int  # -1 for unlimited
+    sessions_used: int
+    assessments_used: int
+    sessions_remaining: int  # -1 for unlimited
+    assessments_remaining: int  # -1 for unlimited
+    period_start: datetime
+    period_end: datetime
+    is_unlimited: bool = False
+
+class SubscriptionStatus(BaseModel):
+    status: Optional[str] = None  # active, expired, canceled, past_due
+    plan: Optional[str] = None
+    period: Optional[str] = None
+    price_id: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    limits: Optional[SubscriptionLimits] = None
+    is_preserved: bool = False
+    preservation_message: Optional[str] = None
+    days_until_expiry: Optional[int] = None
+
+class UsageTrackingRequest(BaseModel):
+    user_id: str
+    usage_type: str  # 'practice_session' or 'assessment'
+    duration_minutes: Optional[float] = None
+
+class LearningPlanPreservation(BaseModel):
+    user_id: str
+    plan_data: Dict[str, Any]
+    progress_data: Dict[str, Any]
+    weeks_completed: int
+    current_week: int
+    achievements: List[str]
+    vocabulary_learned: List[str]
+    grammar_improvements: List[str]
+    preserved_at: datetime = Field(default_factory=datetime.utcnow)

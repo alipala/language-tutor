@@ -4,8 +4,9 @@ from typing import Optional
 import stripe
 import os
 from auth import get_current_user
-from models import UserResponse
+from models import UserResponse, UsageTrackingRequest
 from database import database
+from subscription_service import SubscriptionService
 import logging
 
 # Set up logging
@@ -107,73 +108,107 @@ async def create_customer_portal_session(
 async def get_subscription_status(
     current_user: UserResponse = Depends(get_current_user)
 ):
+    """Get comprehensive subscription status using SubscriptionService"""
     try:
-        # Check if user has a Stripe customer ID
-        customer_id = getattr(current_user, 'stripe_customer_id', None)
-        if not customer_id:
-            return {
-                "status": None,
-                "plan": None,
-                "period": None,
-                "price_id": None
-            }
-
-        # Get customer's active subscriptions first
-        active_subscriptions = stripe.Subscription.list(
-            customer=customer_id,
-            status="active",
-            expand=["data.default_payment_method"],
-            limit=1
-        )
-        
-        logger.info(f"Active subscriptions found: {len(active_subscriptions.data)}")
-
-        # If no active subscriptions, check for any subscription
-        if not active_subscriptions.data:
-            all_subscriptions = stripe.Subscription.list(
-                customer=customer_id,
-                status="all",
-                expand=["data.default_payment_method"],
-                limit=1
-            )
-            
-            if not all_subscriptions.data:
-                return {
-                    "status": None,
-                    "plan": None,
-                    "period": None,
-                    "price_id": None
-                }
-            
-            subscription = all_subscriptions.data[0]
-        else:
-            subscription = active_subscriptions.data[0]
-
-        logger.info(f"Subscription object type: {type(subscription)}")
-        
-        # Access subscription items correctly - it's an attribute, not a method
-        subscription_items = subscription['items']['data'][0]
-        price = subscription_items['price']
-        
-        logger.info(f"Price retrieved: {price['id']}")
-        
-        product = stripe.Product.retrieve(price['product'])
-        logger.info(f"Product retrieved: {product.name}")
-
-        # Determine if monthly or annual
-        period = "monthly" if price['recurring']['interval'] == "month" else "annual"
-
-        return {
-            "status": subscription['status'],
-            "plan": product.name.lower().replace(" ", "_").replace("-", "_"),
-            "period": period,
-            "price_id": price['id']
-        }
-    except stripe.error.StripeError as e:
-        logger.error(f"Stripe error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        status = await SubscriptionService.get_user_subscription_status(current_user.id)
+        return status.dict()
     except Exception as e:
         logger.error(f"Error getting subscription status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/subscription-limits")
+async def get_subscription_limits(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get user's subscription limits and current usage"""
+    try:
+        status = await SubscriptionService.get_user_subscription_status(current_user.id)
+        if status.limits:
+            return status.limits.dict()
+        else:
+            return {"error": "No subscription limits found"}
+    except Exception as e:
+        logger.error(f"Error getting subscription limits: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/track-usage")
+async def track_usage(
+    request: UsageTrackingRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Track usage of practice sessions or assessments"""
+    try:
+        # Ensure the request is for the current user
+        request.user_id = current_user.id
+        
+        success = await SubscriptionService.track_usage(request)
+        if success:
+            return {"success": True, "message": "Usage tracked successfully"}
+        else:
+            return {"success": False, "message": "Usage limit exceeded"}
+    except Exception as e:
+        logger.error(f"Error tracking usage: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/can-access/{feature_type}")
+async def can_access_feature(
+    feature_type: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Check if user can access a specific feature"""
+    try:
+        can_access, message = await SubscriptionService.can_access_feature(current_user.id, feature_type)
+        return {
+            "can_access": can_access,
+            "message": message,
+            "feature_type": feature_type
+        }
+    except Exception as e:
+        logger.error(f"Error checking feature access: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/plans")
+async def get_subscription_plans():
+    """Get all available subscription plans"""
+    try:
+        plans = SubscriptionService.get_all_plans()
+        return {"plans": {plan_id: plan.dict() for plan_id, plan in plans.items()}}
+    except Exception as e:
+        logger.error(f"Error getting subscription plans: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/plan/{plan_id}")
+async def get_plan_details(plan_id: str):
+    """Get details for a specific subscription plan"""
+    try:
+        plan = SubscriptionService.get_plan_details(plan_id)
+        if plan:
+            return plan.dict()
+        else:
+            raise HTTPException(status_code=404, detail="Plan not found")
+    except Exception as e:
+        logger.error(f"Error getting plan details: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/expiry-warning")
+async def get_expiry_warning(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get expiry warning message if applicable"""
+    try:
+        status = await SubscriptionService.get_user_subscription_status(current_user.id)
+        
+        if status.days_until_expiry is not None:
+            warning_message = SubscriptionService.get_expiry_warning_message(status.days_until_expiry)
+            return {
+                "has_warning": warning_message is not None,
+                "message": warning_message,
+                "days_until_expiry": status.days_until_expiry
+            }
+        
+        return {"has_warning": False, "message": None, "days_until_expiry": None}
+    except Exception as e:
+        logger.error(f"Error getting expiry warning: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/webhook")
