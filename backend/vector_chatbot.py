@@ -11,17 +11,27 @@ import pickle
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-# Initialize OpenAI client
+# Initialize OpenAI client with Railway-compatible method
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
+    print("Warning: OPENAI_API_KEY not found in environment variables for vector chatbot")
 
+client = None
 try:
     client = OpenAI(api_key=api_key)
     print("OpenAI client initialized successfully for vector chatbot")
 except Exception as e:
-    print(f"Error initializing OpenAI client: {str(e)}")
-    client = None
+    print(f"Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+    try:
+        # Alternative initialization method for Railway environment
+        client = OpenAI(
+            api_key=api_key,
+            http_client=httpx.Client()
+        )
+        print("OpenAI client initialized with alternative method for vector chatbot")
+    except Exception as e2:
+        print(f"Error initializing OpenAI client with alternative method: {str(e2)}")
+        client = None
 
 class VectorChatRequest(BaseModel):
     query: str
