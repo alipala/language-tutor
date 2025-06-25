@@ -42,6 +42,11 @@ class UserCreate(UserBase):
 class UserInDB(UserBase):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     hashed_password: str
+    stripe_customer_id: Optional[str] = None
+    subscription_status: Optional[str] = None  # active, canceled, past_due
+    subscription_plan: Optional[str] = None    # fluency_builder, team_mastery
+    subscription_period: Optional[str] = None  # monthly, annual
+    subscription_price_id: Optional[str] = None # Track exact price subscribed to
     
     class Config:
         populate_by_name = True
@@ -50,6 +55,11 @@ class UserInDB(UserBase):
         
 class UserResponse(UserBase):
     id: str = Field(..., alias="_id")
+    stripe_customer_id: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_plan: Optional[str] = None
+    subscription_period: Optional[str] = None
+    subscription_price_id: Optional[str] = None
     
     class Config:
         populate_by_name = True
@@ -62,6 +72,11 @@ class UserUpdate(BaseModel):
     preferred_language: Optional[str] = None
     preferred_level: Optional[str] = None
     last_assessment_data: Optional[Dict[str, Any]] = None
+    stripe_customer_id: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_plan: Optional[str] = None
+    subscription_period: Optional[str] = None
+    subscription_price_id: Optional[str] = None
     
     class Config:
         populate_by_name = True

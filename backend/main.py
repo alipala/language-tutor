@@ -107,6 +107,10 @@ app.include_router(vector_chat_router)
 from admin_routes import router as admin_router
 app.include_router(admin_router)
 
+# Include stripe routes
+from stripe_routes import router as stripe_router
+app.include_router(stripe_router)
+
 
 # Initialize MongoDB on startup
 @app.on_event("startup")

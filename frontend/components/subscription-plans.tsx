@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../lib/auth';
+import { LoadingSpinner } from './ui/loading-spinner';
 
 interface PricingFeature {
   text: string;
@@ -142,17 +145,76 @@ const annualPlans: PricingCard[] = [
   }
 ];
 
+// Stripe price IDs
+const STRIPE_PRICES = {
+  monthly: {
+    fluency_builder: "price_1Re01yJcquSiYwWNJRg7nyce",
+    team_mastery: "price_1Re09WJcquSiYwWNddEyeuxq"
+  },
+  annual: {
+    fluency_builder: "price_1Re06kJcquSiYwWN89Ra57wC",
+    team_mastery: "price_1Re0LdJcquSiYwWNmF516G2p"
+  }
+};
+
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const currentPlans = isAnnual ? annualPlans : monthlyPlans;
+  const router = useRouter();
+  const { user } = useAuth();
 
-  const handleCTAClick = (plan: PricingCard) => {
+  const createCheckoutSession = async (priceId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          price_id: priceId,
+          success_url: `${window.location.origin}/profile?checkout=success`,
+          cancel_url: `${window.location.origin}/profile?checkout=canceled`,
+        }),
+      });
+
+      const { url } = await response.json();
+      
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleCTAClick = async (plan: PricingCard) => {
     if (plan.ctaButton === "Start Free") {
       // Navigate to sign up flow
-      window.location.href = '/auth/signup';
+      router.push('/auth/signup');
     } else if (plan.ctaButton === "Get Started") {
-      // Navigate to subscription flow
-      window.location.href = '/auth/signup';
+      if (!user) {
+        // If not logged in, redirect to sign up
+        router.push('/auth/signup?redirect=subscription');
+        return;
+      }
+
+      // Determine which price ID to use
+      let priceId = '';
+      if (plan.name === "Fluency Builder") {
+        priceId = isAnnual 
+          ? STRIPE_PRICES.annual.fluency_builder 
+          : STRIPE_PRICES.monthly.fluency_builder;
+      } else if (plan.name === "Team Mastery") {
+        priceId = isAnnual 
+          ? STRIPE_PRICES.annual.team_mastery 
+          : STRIPE_PRICES.monthly.team_mastery;
+      }
+
+      if (priceId) {
+        await createCheckoutSession(priceId);
+      }
     } else if (plan.ctaButton === "Contact Sales") {
       // Open contact form or email
       window.location.href = 'mailto:sales@mytacoai.com?subject=Team Mastery Plan Inquiry';
@@ -304,15 +366,23 @@ export default function SubscriptionPlans() {
                   <div className="mt-auto">
                     <button
                       onClick={() => handleCTAClick(plan)}
+                      disabled={isLoading}
                       className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
                         plan.popular
                           ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] focus:ring-[#4ECFBF] shadow-lg'
                           : plan.name === "Try & Learn"
                           ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
                           : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
-                      }`}
+                      } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                      {plan.ctaButton}
+                      {isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          <span>Processing...</span>
+                        </div>
+                      ) : (
+                        plan.ctaButton
+                      )}
                     </button>
                   </div>
                 </div>

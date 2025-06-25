@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 import ExportModal from '@/components/export-modal';
+import SubscriptionManagement from './subscription-management';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -1180,6 +1181,9 @@ export default function ProfilePage() {
                 </form>
               </div>
 
+              {/* Subscription Management */}
+              <SubscriptionManagement />
+              
               {/* Account Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-red-100">
                 <h3 className="text-xl font-bold text-red-600 mb-6 flex items-center">
