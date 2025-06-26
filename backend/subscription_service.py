@@ -15,6 +15,13 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 logger = logging.getLogger(__name__)
 
+def get_user_query(user_id: str):
+    """Helper function to handle both UUID and ObjectId formats"""
+    try:
+        return {"_id": ObjectId(user_id)}
+    except:
+        return {"_id": user_id}
+
 class SubscriptionService:
     """Comprehensive subscription business logic service"""
     
@@ -77,7 +84,7 @@ class SubscriptionService:
     async def get_user_subscription_status(cls, user_id: str) -> SubscriptionStatus:
         """Get comprehensive subscription status for a user"""
         try:
-            user = await database["users"].find_one({"_id": ObjectId(user_id)})
+            user = await database["users"].find_one(get_user_query(user_id))
             if not user:
                 return SubscriptionStatus()
             
@@ -111,7 +118,7 @@ class SubscriptionService:
                 subscription_status = "expired"
                 # Update user status in database
                 await database["users"].update_one(
-                    {"_id": ObjectId(user_id)},
+                    get_user_query(user_id),
                     {"$set": {"subscription_status": "expired"}}
                 )
             
@@ -191,7 +198,7 @@ class SubscriptionService:
             
             # Update user with calculated periods
             await database["users"].update_one(
-                {"_id": ObjectId(user_id)},
+                get_user_query(user_id),
                 {"$set": {
                     "current_period_start": period_start,
                     "current_period_end": period_end
@@ -244,7 +251,7 @@ class SubscriptionService:
             update_field = "practice_sessions_used" if usage_type == "practice_session" else "assessments_used"
             
             await database["users"].update_one(
-                {"_id": ObjectId(user_id)},
+                get_user_query(user_id),
                 {"$inc": {update_field: 1}}
             )
             
@@ -317,7 +324,7 @@ class SubscriptionService:
                 
                 # Update user with preservation data
                 await database["users"].update_one(
-                    {"_id": ObjectId(user_id)},
+                    get_user_query(user_id),
                     {"$set": {
                         "learning_plan_preserved": True,
                         "learning_plan_data": preservation_data.plan_data,
@@ -388,7 +395,7 @@ Resubscribe to unlock:
                 next_month = next_month.replace(month=now.month + 1)
             
             await database["users"].update_one(
-                {"_id": ObjectId(user_id)},
+                get_user_query(user_id),
                 {"$set": {
                     "practice_sessions_used": 0,
                     "assessments_used": 0,
