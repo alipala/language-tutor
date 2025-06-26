@@ -45,10 +45,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-// Configure the API route to accept raw body
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
