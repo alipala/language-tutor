@@ -20,6 +20,19 @@ stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
+def map_stripe_product_to_plan_id(product_name: str) -> str:
+    """Map Stripe product names to internal plan IDs"""
+    plan_name = product_name.lower()
+    if "fluency builder" in plan_name:
+        return "fluency_builder"
+    elif "team mastery" in plan_name:
+        return "team_mastery"
+    elif "try learn" in plan_name:
+        return "try_learn"
+    else:
+        # Fallback to the old method
+        return product_name.lower().replace(" ", "_").replace("-", "")
+
 @router.post("/create-guest-checkout-session")
 async def create_guest_checkout_session(request: Request):
     """Create a checkout session for guest users (no authentication required)"""
@@ -403,7 +416,7 @@ async def link_guest_subscription(
                     
                     # Get product details
                     product = stripe.Product.retrieve(price.product)
-                    update_data["subscription_plan"] = product.name.lower().replace(" ", "_")
+                    update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
                     
                     # Determine if monthly or annual
                     if price.recurring and price.recurring.interval:
@@ -503,7 +516,7 @@ async def handle_subscription_created(subscription):
                 
                 # Get product details
                 product = stripe.Product.retrieve(price.get("product"))
-                update_data["subscription_plan"] = product.name.lower().replace(" ", "_")
+                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
                 
                 # Determine if monthly or annual
                 if price.get("recurring") and price.get("recurring").get("interval"):
@@ -546,7 +559,7 @@ async def handle_subscription_updated(subscription):
                 
                 # Get product details
                 product = stripe.Product.retrieve(price.get("product"))
-                update_data["subscription_plan"] = product.name.lower().replace(" ", "_")
+                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
                 
                 # Determine if monthly or annual
                 if price.get("recurring") and price.get("recurring").get("interval"):
