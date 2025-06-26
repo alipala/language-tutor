@@ -2,9 +2,9 @@
 const nextConfig = {
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
-  // Temporarily disable static export for development and testing
-  // output: 'export', // Use static export for Railway deployment
-  // distDir: 'out', // Output to 'out' directory for static files
+  // Enable static export for Railway deployment
+  output: 'export', // Use static export for Railway deployment
+  distDir: 'out', // Output to 'out' directory for static files
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',

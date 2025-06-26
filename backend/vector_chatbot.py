@@ -46,8 +46,16 @@ class VectorChatbot:
         self.documents = []
         self.embeddings = []
         self.document_metadata = []
-        self.embeddings_file = "backend/chatbot_embeddings.pkl"
-        self.documents_file = "backend/chatbot_documents.json"
+        
+        # Handle file paths for different environments
+        if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production":
+            # In production/Railway, use /tmp for writable files
+            self.embeddings_file = "/tmp/chatbot_embeddings.pkl"
+            self.documents_file = "/tmp/chatbot_documents.json"
+        else:
+            # In development, use relative paths
+            self.embeddings_file = "chatbot_embeddings.pkl"
+            self.documents_file = "chatbot_documents.json"
         
         # Load or create embeddings
         self.load_or_create_embeddings()
