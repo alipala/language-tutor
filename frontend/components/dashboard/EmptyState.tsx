@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { 
   BookOpen, 
@@ -28,8 +28,10 @@ import {
   Headphones,
   Rocket,
   MapPin,
-  Compass
+  Compass,
+  X
 } from 'lucide-react';
+import UpgradePrompt from '@/components/upgrade-prompt';
 
 interface EmptyStateProps {
   className?: string;
@@ -39,6 +41,36 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   className = "" 
 }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+
+  // Check for checkout success
+  useEffect(() => {
+    const checkoutSuccess = searchParams.get('checkout');
+    if (checkoutSuccess === 'success') {
+      setShowSuccessNotification(true);
+      // Clear the URL parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      window.history.replaceState({}, '', url.toString());
+      
+      // Clear the stored return URL
+      sessionStorage.removeItem('checkoutReturnUrl');
+      
+      // Force page refresh to get updated subscription status
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000); // Wait 3 seconds for webhook processing, then refresh
+      
+      // Auto-hide notification after 8 seconds
+      const hideTimer = setTimeout(() => {
+        setShowSuccessNotification(false);
+      }, 8000);
+      
+      // Cleanup timer on unmount
+      return () => clearTimeout(hideTimer);
+    }
+  }, [searchParams]);
 
   const handleCreatePlan = () => {
     // Navigate to new vertical flow for seamless experience
@@ -65,6 +97,37 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Success Notification */}
+        {showSuccessNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-2xl p-6 border border-green-400">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1">🎉 Subscription Activated!</h3>
+                    <p className="text-green-100 text-sm">
+                      Welcome to premium! Your subscription is now active and you have access to all features.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSuccessNotification(false)}
+                  className="text-white/80 hover:text-white transition-colors ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* AI Learning Plan Reminder */}
         <div className="max-w-4xl mx-auto mb-8">
@@ -84,6 +147,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Upgrade Prompt for Free Users */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <UpgradePrompt />
         </div>
 
         {/* Main Action Cards */}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { Logo } from './logo';
 import { Crown, Star, Zap } from 'lucide-react';
 
@@ -16,9 +17,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
-  // Subscription status state
-  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  // Use shared subscription status hook
+  const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
 
   // Check if we're on the landing page
   useEffect(() => {
@@ -37,43 +37,6 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   }, []);
   
-  // Fetch subscription status when user is available
-  useEffect(() => {
-    if (user) {
-      fetchSubscriptionStatus();
-    }
-  }, [user]);
-
-  // Fetch subscription status
-  const fetchSubscriptionStatus = async () => {
-    if (!user) return;
-    
-    setSubscriptionLoading(true);
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setSubscriptionLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionStatus(data);
-      }
-    } catch (error) {
-      console.error('Error fetching subscription status:', error);
-    } finally {
-      setSubscriptionLoading(false);
-    }
-  };
 
   // Helper function to get plan display info
   const getPlanDisplayInfo = () => {
@@ -212,6 +175,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
               </button>
             </div>
           )}
+          
           
           {/* User Menu (when logged in) */}
           {user ? (

@@ -4,6 +4,9 @@ import { getApiUrl } from '@/lib/api-utils';
 
 const API_URL = getApiUrl();
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 
 export async function POST(req: NextRequest) {
   try {

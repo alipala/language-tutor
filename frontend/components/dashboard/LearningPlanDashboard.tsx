@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { LearningPlanCard } from './LearningPlanCard';
 import { EmptyState } from './EmptyState';
 import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { 
   ChevronRight, 
   Loader2, 
@@ -18,8 +19,11 @@ import {
   Calendar,
   Mic,
   Target,
-  Play
+  Play,
+  CheckCircle,
+  X
 } from 'lucide-react';
+import UpgradePrompt from '@/components/upgrade-prompt';
 
 interface ProgressStats {
   total_sessions: number;
@@ -68,12 +72,17 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
 }) => {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [plans, setPlans] = useState<LearningPlan[]>([]);
   const [progressStats, setProgressStats] = useState<ProgressStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  
+  // Use shared subscription status hook
+  const { refreshSubscriptionStatus } = useSubscriptionStatus();
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -111,6 +120,35 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
       setRefreshing(false);
     }
   };
+
+  // Check for checkout success
+  useEffect(() => {
+    const checkoutSuccess = searchParams.get('checkout');
+    if (checkoutSuccess === 'success') {
+      setShowSuccessNotification(true);
+      // Clear the URL parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      window.history.replaceState({}, '', url.toString());
+      
+      // Clear the stored return URL
+      sessionStorage.removeItem('checkoutReturnUrl');
+      
+      // Force refresh dashboard data and subscription status
+      setTimeout(() => {
+        fetchDashboardData();
+        refreshSubscriptionStatus(); // Refresh subscription status across all components
+      }, 2000); // Wait 2 seconds for webhook processing
+      
+      // Auto-hide notification after 8 seconds
+      const hideTimer = setTimeout(() => {
+        setShowSuccessNotification(false);
+      }, 8000);
+      
+      // Cleanup timer on unmount
+      return () => clearTimeout(hideTimer);
+    }
+  }, [searchParams]);
 
   // Initial data fetch
   useEffect(() => {
@@ -169,6 +207,37 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   return (
     <section className={`pt-24 pb-12 bg-gradient-to-br from-gray-50 to-white ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Success Notification */}
+        {showSuccessNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-2xl p-6 border border-green-400">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1">🎉 Subscription Activated!</h3>
+                    <p className="text-green-100 text-sm">
+                      Welcome to premium! Your subscription is now active and you have access to all features.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSuccessNotification(false)}
+                  className="text-white/80 hover:text-white transition-colors ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
         {/* Header */}
         <motion.div
           className="text-center mb-8"
@@ -195,6 +264,9 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
             </div>
           )}
         </motion.div>
+
+        {/* Upgrade Prompt for Free Users */}
+        <UpgradePrompt className="mb-8" />
 
         {/* Plans Grid - Dynamic centering based on number of plans */}
         <motion.div

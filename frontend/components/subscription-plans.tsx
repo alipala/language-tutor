@@ -75,7 +75,7 @@ const monthlyPlans: PricingCard[] = [
       { text: "API access & LMS integrations", included: true },
       { text: "SSO & admin controls", included: true }
     ],
-    ctaButton: "Contact Sales",
+    ctaButton: "Get Started",
     popular: false,
     note: "Minimum 5 users"
   }
@@ -137,7 +137,7 @@ const annualPlans: PricingCard[] = [
       { text: "API access & LMS integrations", included: true },
       { text: "SSO & admin controls", included: true }
     ],
-    ctaButton: "Contact Sales",
+    ctaButton: "Get Started",
     popular: false,
     note: "Minimum 5 users"
   }
@@ -192,26 +192,18 @@ export default function SubscriptionPlans() {
       // Navigate to sign up flow
       router.push('/auth/signup');
     } else if (plan.ctaButton === "Get Started") {
-      if (!user) {
-        // If not logged in, redirect to sign up
-        router.push('/auth/signup?redirect=subscription');
-        return;
-      }
-
-      // Determine which price ID to use
-      let priceId = '';
+      // Determine plan ID for checkout
+      let planId = '';
       if (plan.name === "Fluency Builder") {
-        priceId = isAnnual 
-          ? STRIPE_PRICES.annual.fluency_builder 
-          : STRIPE_PRICES.monthly.fluency_builder;
+        planId = 'fluency_builder';
       } else if (plan.name === "Team Mastery") {
-        priceId = isAnnual 
-          ? STRIPE_PRICES.annual.team_mastery 
-          : STRIPE_PRICES.monthly.team_mastery;
+        planId = 'team_mastery';
       }
 
-      if (priceId) {
-        await createCheckoutSession(priceId);
+      if (planId) {
+        // Navigate to checkout page with plan and period parameters
+        const period = isAnnual ? 'annual' : 'monthly';
+        router.push(`/checkout?plan=${planId}&period=${period}`);
       }
     } else if (plan.ctaButton === "Contact Sales") {
       // Open contact form or email

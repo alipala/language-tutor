@@ -20,6 +20,45 @@ stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
+@router.post("/create-guest-checkout-session")
+async def create_guest_checkout_session(request: Request):
+    """Create a checkout session for guest users (no authentication required)"""
+    try:
+        data = await request.json()
+        price_id = data.get("price_id")
+        success_url = data.get("success_url", "http://localhost:3000/auth/signup?checkout=success")
+        cancel_url = data.get("cancel_url", "http://localhost:3000/#pricing")
+
+        if not price_id:
+            raise HTTPException(status_code=400, detail="Price ID is required")
+
+        # Create checkout session without a customer (guest checkout)
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                },
+            ],
+            mode="subscription",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            # Store the price_id in metadata for later linking to user account
+            metadata={
+                "price_id": price_id,
+                "guest_checkout": "true"
+            }
+        )
+
+        return {"url": checkout_session.url}
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating guest checkout session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/create-checkout-session")
 async def create_checkout_session(
     request: Request,
@@ -315,6 +354,88 @@ async def reactivate_subscription(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error reactivating subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/link-guest-subscription")
+async def link_guest_subscription(
+    request: Request,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Link a guest subscription to the user account after signup"""
+    try:
+        data = await request.json()
+        customer_email = data.get("customer_email", current_user.email)
+        
+        # Find Stripe customer by email
+        customers = stripe.Customer.list(email=customer_email, limit=1)
+        
+        if not customers.data:
+            raise HTTPException(status_code=404, detail="No Stripe customer found with this email")
+        
+        customer = customers.data[0]
+        customer_id = customer.id
+        
+        # Get active subscriptions for this customer
+        subscriptions = stripe.Subscription.list(
+            customer=customer_id,
+            status="active",
+            limit=1
+        )
+        
+        if not subscriptions.data:
+            raise HTTPException(status_code=404, detail="No active subscription found for this customer")
+        
+        subscription = subscriptions.data[0]
+        
+        # Prepare update data
+        update_data = {
+            "stripe_customer_id": customer_id,
+            "subscription_status": subscription.status,
+            "subscription_id": subscription.id
+        }
+        
+        # Get the plan details
+        try:
+            if subscription.items and len(subscription.items.data) > 0:
+                price = subscription.items.data[0].price
+                if price:
+                    update_data["subscription_price_id"] = price.id
+                    
+                    # Get product details
+                    product = stripe.Product.retrieve(price.product)
+                    update_data["subscription_plan"] = product.name.lower().replace(" ", "_")
+                    
+                    # Determine if monthly or annual
+                    if price.recurring and price.recurring.interval:
+                        update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
+        except Exception as e:
+            logger.error(f"Error processing subscription items: {str(e)}")
+            # Continue without plan details
+        
+        # Update user in MongoDB
+        from bson import ObjectId
+        result = await database["users"].update_one(
+            {"_id": ObjectId(current_user.id)},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count > 0:
+            logger.info(f"Successfully linked subscription {subscription.id} to user {current_user.id}")
+            return {
+                "success": True,
+                "message": "Subscription linked successfully",
+                "subscription_id": subscription.id,
+                "plan": update_data.get("subscription_plan"),
+                "status": subscription.status
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update user subscription")
+            
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error linking subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error linking guest subscription: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/webhook")
