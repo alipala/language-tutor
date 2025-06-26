@@ -2,9 +2,9 @@
 const nextConfig = {
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
-  // Disable static export due to API routes with dynamic exports
-  // output: 'export', // Cannot use with API routes that have dynamic exports
-  // distDir: 'out', // Use default .next directory
+  // Enable static export now that dynamic exports are removed
+  output: 'export', // Use static export for Railway deployment
+  distDir: 'out', // Output to 'out' directory for static files
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',
