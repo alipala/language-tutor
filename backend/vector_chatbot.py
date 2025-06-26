@@ -504,6 +504,109 @@ Having specific mobile issues? Try these steps or contact support!
 
 Need help with exports? Contact support at hello@mytacoai.com!
 """
+            },
+            {
+                "id": "pricing_plans",
+                "title": "Pricing Plans & Subscription Options",
+                "category": "Pricing & Plans",
+                "content": """
+💰 Complete Pricing Guide for My Taco AI:
+
+🆓 FREE PLAN (Guest Access):
+• 15-second speaking assessments
+• 1-minute conversation practice sessions
+• Basic language level detection
+• Access to all 6 languages (English, Dutch, Spanish, French, German, Portuguese)
+• No account required - start immediately
+• Perfect for trying out the platform
+
+📚 TRY & LEARN PLAN - $9.99/month:
+✅ EVERYTHING IN FREE PLUS:
+• 60-second speaking assessments (4x longer)
+• 5-minute conversation practice sessions (5x longer)
+• Save unlimited conversation history
+• Track learning progress and streaks
+• Earn achievements and badges
+• Detailed AI analysis and feedback
+• Export learning data as PDF/CSV
+• Email support
+
+🚀 FLUENCY BUILDER PLAN - $19.99/month:
+✅ EVERYTHING IN TRY & LEARN PLUS:
+• Personalized learning plans based on assessment
+• Advanced conversation topics and scenarios
+• Priority customer support
+• Weekly progress reports
+• Custom learning goals and milestones
+• Advanced pronunciation analysis
+• Grammar correction with explanations
+
+👥 TEAM MASTERY PLAN - $39.99/month:
+✅ EVERYTHING IN FLUENCY BUILDER PLUS:
+• Team management dashboard
+• Multiple user accounts (up to 5 users)
+• Team progress tracking and analytics
+• Bulk user management
+• Dedicated account manager
+• Custom branding options
+• API access for integrations
+
+💡 ANNUAL PRICING (Save 20%):
+• Try & Learn: $95.90/year (save $23.98)
+• Fluency Builder: $191.90/year (save $47.98)
+• Team Mastery: $383.90/year (save $95.98)
+
+🎯 WHICH PLAN IS RIGHT FOR YOU?
+
+🔸 CHOOSE FREE if you want to:
+• Try the platform before committing
+• Practice occasionally
+• Test basic features
+
+🔸 CHOOSE TRY & LEARN if you want to:
+• Practice regularly and track progress
+• Save your conversation history
+• Get detailed feedback and analysis
+• Learn at your own pace
+
+🔸 CHOOSE FLUENCY BUILDER if you want to:
+• Follow a structured learning plan
+• Get advanced feedback and corrections
+• Achieve specific language goals
+• Access premium features
+
+🔸 CHOOSE TEAM MASTERY if you want to:
+• Manage language learning for a team
+• Track multiple users' progress
+• Get dedicated support
+• Integrate with other systems
+
+🔄 SUBSCRIPTION MANAGEMENT:
+• Cancel anytime - no long-term contracts
+• Pause subscription for up to 3 months
+• Upgrade or downgrade plans instantly
+• Prorated billing for plan changes
+• 7-day free trial for all paid plans
+
+💳 PAYMENT OPTIONS:
+• All major credit cards accepted
+• PayPal supported
+• Secure payment processing via Stripe
+• Automatic billing with email receipts
+• Update payment methods anytime
+
+🎁 SPECIAL OFFERS:
+• 7-day free trial for new subscribers
+• Student discounts available (contact support)
+• Corporate bulk pricing for 10+ users
+• Seasonal promotions and discounts
+
+📞 NEED HELP CHOOSING?
+Contact our support team at hello@mytacoai.com or use the chat feature. We'll help you find the perfect plan for your language learning goals!
+
+🚀 READY TO UPGRADE?
+Click "Upgrade" in your profile or visit the pricing page to start your free trial today!
+"""
             }
         ]
     
