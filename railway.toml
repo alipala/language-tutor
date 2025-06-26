@@ -1,5 +1,6 @@
 [build]
 builder = "nixpacks"
+# Force rebuild with static export enabled
 buildCommand = "pip install -r backend/requirements.txt && npm --prefix frontend install && npm --prefix frontend run build"
 
 [deploy]
