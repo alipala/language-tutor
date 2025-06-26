@@ -136,6 +136,24 @@ export default function MembershipBadge({ className = "", showDetails = true }: 
       );
     }
 
+    if (status === 'canceling') {
+      return (
+        <div className="flex items-center text-orange-600 text-xs">
+          <div className="w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
+          <span>Canceling</span>
+        </div>
+      );
+    }
+
+    if (status === 'canceled') {
+      return (
+        <div className="flex items-center text-red-600 text-xs">
+          <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+          <span>Canceled</span>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -210,6 +228,14 @@ export default function MembershipBadge({ className = "", showDetails = true }: 
           <div className="mt-2 text-xs text-amber-700 bg-amber-50 rounded p-2 border border-amber-200">
             <div className="font-medium">Learning Plan Preserved</div>
             <div>Your progress is safely stored. Resubscribe to continue!</div>
+          </div>
+        )}
+
+        {/* Canceling warning */}
+        {subscriptionStatus.status === 'canceling' && showDetails && (
+          <div className="mt-2 text-xs text-orange-700 bg-orange-50 rounded p-2 border border-orange-200">
+            <div className="font-medium">Subscription Canceling</div>
+            <div>You can reactivate anytime before your billing period ends!</div>
           </div>
         )}
 

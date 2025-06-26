@@ -1,12 +1,17 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import logging
+import stripe
+import os
 from database import database
 from models import (
     SubscriptionPlan, SubscriptionLimits, SubscriptionStatus, 
     UsageTrackingRequest, LearningPlanPreservation
 )
 from bson import ObjectId
+
+# Initialize Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +86,26 @@ class SubscriptionService:
             subscription_status = user.get("subscription_status")
             expires_at = user.get("subscription_expires_at")
             
+            # Check Stripe for cancellation status if user has active subscription
+            stripe_customer_id = user.get("stripe_customer_id")
+            if subscription_status == "active" and stripe_customer_id:
+                try:
+                    # Get active subscription from Stripe
+                    subscriptions = stripe.Subscription.list(
+                        customer=stripe_customer_id,
+                        status="active",
+                        limit=1
+                    )
+                    
+                    if subscriptions.data:
+                        stripe_subscription = subscriptions.data[0]
+                        # Check if subscription is scheduled for cancellation
+                        if stripe_subscription.cancel_at_period_end:
+                            subscription_status = "canceling"  # New status for scheduled cancellation
+                            logger.info(f"User {user_id} subscription is scheduled for cancellation")
+                except Exception as stripe_error:
+                    logger.warning(f"Could not check Stripe cancellation status for user {user_id}: {str(stripe_error)}")
+            
             # Determine actual status
             if expires_at and now > expires_at:
                 subscription_status = "expired"
@@ -109,7 +134,7 @@ class SubscriptionService:
             
             # Calculate days until expiry
             days_until_expiry = None
-            if expires_at and subscription_status == "active":
+            if expires_at and subscription_status in ["active", "canceling"]:
                 days_until_expiry = (expires_at - now).days
             
             return SubscriptionStatus(

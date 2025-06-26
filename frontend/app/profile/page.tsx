@@ -247,10 +247,12 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        console.log('[PROFILE] No token found for subscription status fetch');
         setSubscriptionLoading(false);
         return;
       }
 
+      console.log('[PROFILE] Fetching subscription status...');
       const response = await fetch('/api/stripe/subscription-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -258,12 +260,18 @@ export default function ProfilePage() {
         },
       });
 
+      console.log('[PROFILE] Subscription status response:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[PROFILE] Subscription status data:', data);
         setSubscriptionStatus(data);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[PROFILE] Subscription status error:', errorData);
       }
     } catch (error) {
-      console.error('Error fetching subscription status:', error);
+      console.error('[PROFILE] Error fetching subscription status:', error);
     } finally {
       setSubscriptionLoading(false);
     }
@@ -499,7 +507,7 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <NavBar />
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+        <div className="container mx-auto px-4 pt-24 pb-8">
           {/* Profile Hero Section */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
             <div className="bg-teal-400 p-6 text-white relative overflow-hidden" style={{ backgroundColor: '#4ECFBF' }}>
@@ -534,7 +542,7 @@ export default function ProfilePage() {
                 {/* Subscription & Stats Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Subscription Status Card */}
-                  <div className="bg-black/30 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-lg">
+                  <div className="bg-white/30 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/40">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="text-3xl">{planInfo.icon}</div>

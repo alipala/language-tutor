@@ -7,9 +7,9 @@ const API_URL = getApiUrl();
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    console.log('[SUBSCRIPTION-STATUS] Starting subscription status fetch...');
+    console.log('[CANCEL-SUBSCRIPTION] Starting subscription cancellation...');
     
     // Get the token from the cookies or request headers
     const cookieStore = cookies();
@@ -22,28 +22,28 @@ export async function GET(req: NextRequest) {
       token = tokenCookie ? tokenCookie.value : null;
     }
     
-    console.log('[SUBSCRIPTION-STATUS] Token found:', !!token);
+    console.log('[CANCEL-SUBSCRIPTION] Token found:', !!token);
     
     if (!token) {
-      console.log('[SUBSCRIPTION-STATUS] No token found, returning 401');
+      console.log('[CANCEL-SUBSCRIPTION] No token found, returning 401');
       return NextResponse.json(
-        { error: 'You must be logged in to check subscription status' },
+        { error: 'You must be logged in to cancel your subscription' },
         { status: 401 }
       );
     }
 
-    console.log('[SUBSCRIPTION-STATUS] Calling backend API:', `${API_URL}/api/stripe/subscription-status`);
+    console.log('[CANCEL-SUBSCRIPTION] Calling backend API:', `${API_URL}/api/stripe/cancel-subscription`);
 
-    // Get the subscription status by calling the backend API
-    const response = await fetch(`${API_URL}/api/stripe/subscription-status`, {
-      method: 'GET',
+    // Cancel the subscription by calling the backend API
+    const response = await fetch(`${API_URL}/api/stripe/cancel-subscription`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       }
     });
 
-    console.log('[SUBSCRIPTION-STATUS] Backend response status:', response.status);
+    console.log('[CANCEL-SUBSCRIPTION] Backend response status:', response.status);
 
     if (!response.ok) {
       let errorData;
@@ -53,22 +53,22 @@ export async function GET(req: NextRequest) {
         errorData = { detail: 'Failed to parse error response' };
       }
       
-      console.log('[SUBSCRIPTION-STATUS] Backend error:', errorData);
+      console.log('[CANCEL-SUBSCRIPTION] Backend error:', errorData);
       
       return NextResponse.json(
-        { error: errorData.detail || 'Failed to fetch subscription status' },
+        { error: errorData.detail || 'Failed to cancel subscription' },
         { status: response.status }
       );
     }
 
     const data = await response.json();
-    console.log('[SUBSCRIPTION-STATUS] Success, returning data');
+    console.log('[CANCEL-SUBSCRIPTION] Success');
     
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[SUBSCRIPTION-STATUS] Error fetching subscription status:', error);
+    console.error('[CANCEL-SUBSCRIPTION] Error canceling subscription:', error);
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: 'An unexpected error occurred while canceling the subscription' },
       { status: 500 }
     );
   }

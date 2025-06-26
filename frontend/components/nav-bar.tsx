@@ -218,23 +218,29 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <div className="relative user-menu-container">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center space-x-3 text-white/80 hover:text-white"
+                className="text-white/80 hover:text-white transition-all duration-300"
               >
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-lg">{user.name}</span>
-                  {!subscriptionLoading && (
-                    <div 
-                      className="flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-bold text-white shadow-sm"
-                      style={{ backgroundColor: planInfo.color }}
-                    >
-                      <span className="text-sm">{planInfo.icon}</span>
-                      <span className="hidden sm:inline">{planInfo.name}</span>
+                {!subscriptionLoading && planInfo.name !== 'Try & Learn' ? (
+                  <div 
+                    className="flex items-center justify-between px-3 py-2 rounded-md font-medium border border-white/50 hover:bg-white/10 transition-all duration-300"
+                    style={{ backgroundColor: planInfo.color }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-bold text-white drop-shadow-sm">{planInfo.icon}</span>
+                      <span className="text-base">{user.name}</span>
                     </div>
-                  )}
-                </div>
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ml-2 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                    <span className="font-medium text-lg">{user.name}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                )}
               </button>
               
               {/* Dropdown Menu */}

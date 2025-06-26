@@ -211,6 +211,112 @@ async def get_expiry_warning(
         logger.error(f"Error getting expiry warning: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/cancel-subscription")
+async def cancel_subscription(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Cancel user's active subscription"""
+    try:
+        # Check if user has a Stripe customer ID
+        customer_id = getattr(current_user, 'stripe_customer_id', None)
+        if not customer_id:
+            raise HTTPException(status_code=400, detail="No subscription found for this user")
+
+        # Get user's active subscription
+        subscriptions = stripe.Subscription.list(
+            customer=customer_id,
+            status="active",
+            limit=1
+        )
+
+        if not subscriptions.data:
+            raise HTTPException(status_code=400, detail="No active subscription found")
+
+        subscription = subscriptions.data[0]
+
+        # Cancel the subscription at period end
+        updated_subscription = stripe.Subscription.modify(
+            subscription.id,
+            cancel_at_period_end=True
+        )
+
+        # Update user's subscription status in MongoDB
+        await database["users"].update_one(
+            {"_id": current_user.id},
+            {"$set": {"subscription_status": "canceled"}}
+        )
+
+        logger.info(f"Subscription canceled for user {current_user.id}")
+        
+        return {
+            "success": True,
+            "message": "Subscription canceled successfully. Access will continue until the end of your billing period.",
+            "subscription_id": subscription.id,
+            "cancel_at_period_end": updated_subscription.cancel_at_period_end,
+            "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+        }
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error canceling subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error canceling subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/reactivate-subscription")
+async def reactivate_subscription(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Reactivate user's canceled subscription"""
+    try:
+        # Check if user has a Stripe customer ID
+        customer_id = getattr(current_user, 'stripe_customer_id', None)
+        if not customer_id:
+            raise HTTPException(status_code=400, detail="No subscription found for this user")
+
+        # Get user's canceled subscription
+        subscriptions = stripe.Subscription.list(
+            customer=customer_id,
+            status="active",
+            limit=1
+        )
+
+        if not subscriptions.data:
+            raise HTTPException(status_code=400, detail="No subscription found to reactivate")
+
+        subscription = subscriptions.data[0]
+
+        # Check if subscription is set to cancel at period end
+        if not subscription.cancel_at_period_end:
+            raise HTTPException(status_code=400, detail="Subscription is not scheduled for cancellation")
+
+        # Reactivate the subscription by removing cancel_at_period_end
+        updated_subscription = stripe.Subscription.modify(
+            subscription.id,
+            cancel_at_period_end=False
+        )
+
+        # Update user's subscription status in MongoDB
+        await database["users"].update_one(
+            {"_id": current_user.id},
+            {"$set": {"subscription_status": "active"}}
+        )
+
+        logger.info(f"Subscription reactivated for user {current_user.id}")
+        
+        return {
+            "success": True,
+            "message": "Subscription reactivated successfully.",
+            "subscription_id": subscription.id,
+            "cancel_at_period_end": updated_subscription.cancel_at_period_end,
+            "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+        }
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error reactivating subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error reactivating subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,
