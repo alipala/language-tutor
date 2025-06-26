@@ -1202,7 +1202,7 @@ print("="*80)
 # In Docker, we're running from /app/backend, so frontend/out is at /app/frontend/out
 if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production":
     # In production (Railway), use absolute path from app root
-    frontend_build_path = Path("/app/frontend/out")
+    frontend_build_path = Path("/app/frontend/.next")
     print("🚀 PRODUCTION MODE DETECTED")
 else:
     # In development, use relative path
