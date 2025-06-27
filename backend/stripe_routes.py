@@ -500,10 +500,9 @@ async def handle_subscription_created(subscription):
             logger.warning("No customer ID in subscription created event")
             return
 
-        # Find user by Stripe customer ID
-        user = await database["users"].find_one({"stripe_customer_id": customer_id})
+        # Find user by multiple methods
+        user = await find_user_by_customer_id(customer_id)
         if not user:
-            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
             return
 
         # Prepare update data
@@ -544,10 +543,9 @@ async def handle_subscription_updated(subscription):
             logger.warning("No customer ID in subscription updated event")
             return
 
-        # Find user by Stripe customer ID
-        user = await database["users"].find_one({"stripe_customer_id": customer_id})
+        # Find user by multiple methods
+        user = await find_user_by_customer_id(customer_id)
         if not user:
-            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
             return
 
         # Prepare update data
@@ -688,6 +686,53 @@ async def handle_invoice_payment_succeeded(invoice):
     except Exception as e:
         logger.error(f"Error handling invoice payment succeeded: {str(e)}")
 
+async def find_user_by_customer_id(customer_id: str):
+    """Find user by multiple methods: stripe_customer_id, email, or metadata"""
+    # Method 1: Try by stripe_customer_id (existing users)
+    user = await database["users"].find_one({"stripe_customer_id": customer_id})
+    if user:
+        logger.info(f"Found user by stripe_customer_id: {user['_id']}")
+        return user
+    
+    # Method 2: Get customer from Stripe and try by email (new users)
+    try:
+        customer = stripe.Customer.retrieve(customer_id)
+        if customer.email:
+            user = await database["users"].find_one({"email": customer.email})
+            if user:
+                logger.info(f"Found user by email {customer.email}: {user['_id']}")
+                # Update user with stripe_customer_id for future lookups
+                await database["users"].update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"stripe_customer_id": customer_id}}
+                )
+                logger.info(f"Updated user {user['_id']} with stripe_customer_id: {customer_id}")
+                return user
+    except Exception as e:
+        logger.error(f"Error retrieving customer {customer_id}: {str(e)}")
+    
+    # Method 3: Try by customer metadata user_id
+    try:
+        customer = stripe.Customer.retrieve(customer_id)
+        if customer.metadata and customer.metadata.get("user_id"):
+            from bson import ObjectId
+            user_id = customer.metadata.get("user_id")
+            user = await database["users"].find_one({"_id": ObjectId(user_id)})
+            if user:
+                logger.info(f"Found user by metadata user_id: {user['_id']}")
+                # Update user with stripe_customer_id for future lookups
+                await database["users"].update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"stripe_customer_id": customer_id}}
+                )
+                logger.info(f"Updated user {user['_id']} with stripe_customer_id: {customer_id}")
+                return user
+    except Exception as e:
+        logger.error(f"Error checking customer metadata for {customer_id}: {str(e)}")
+    
+    logger.warning(f"No user found for Stripe customer ID: {customer_id}")
+    return None
+
 async def handle_invoice_payment_paid(invoice_payment):
     """Handle invoice_payment.paid event"""
     try:
@@ -706,10 +751,9 @@ async def handle_invoice_payment_paid(invoice_payment):
             logger.warning("Missing customer ID or subscription ID in invoice")
             return
 
-        # Find user by Stripe customer ID
-        user = await database["users"].find_one({"stripe_customer_id": customer_id})
+        # Find user by multiple methods
+        user = await find_user_by_customer_id(customer_id)
         if not user:
-            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
             return
 
         # Get subscription details from Stripe
