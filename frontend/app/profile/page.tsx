@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,12 +26,14 @@ import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 import ExportModal from '@/components/export-modal';
 import SubscriptionManagement from './subscription-management';
 import MembershipBadge, { UsageIndicator } from '@/components/membership-badge';
+import PaymentProcessingModal from '@/components/payment-processing-modal';
 
 // API base URL
 const API_URL = getApiUrl();
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, logout } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -160,6 +162,12 @@ export default function ProfilePage() {
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
+  
+  // Payment processing modal state
+  const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
+  
+  // Check if user came from successful checkout
+  const checkoutSuccess = searchParams.get('checkout') === 'success';
   
   // Export loading states
   const [exportLoading, setExportLoading] = useState<Record<string, boolean>>({});
@@ -317,6 +325,14 @@ export default function ProfilePage() {
       fetchSubscriptionStatus();
     }
   }, [user]);
+
+  // Handle checkout success flow
+  useEffect(() => {
+    if (checkoutSuccess && user) {
+      console.log('[PROFILE] Checkout success detected, showing payment processing modal');
+      setShowPaymentProcessing(true);
+    }
+  }, [checkoutSuccess, user]);
 
   // Fetch progress data from API
   const fetchProgressData = async () => {
@@ -500,6 +516,20 @@ export default function ProfilePage() {
     } finally {
       setAnalysisLoading(false);
     }
+  };
+
+  // Handle payment processing completion
+  const handlePaymentProcessingComplete = () => {
+    console.log('[PROFILE] Payment processing complete, refreshing subscription status');
+    setShowPaymentProcessing(false);
+    
+    // Refresh subscription status to get updated data
+    fetchSubscriptionStatus();
+    
+    // Remove checkout parameter from URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    window.history.replaceState({}, '', url.toString());
   };
 
   return (
@@ -1379,6 +1409,14 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Payment Processing Modal */}
+      <PaymentProcessingModal
+        isOpen={showPaymentProcessing}
+        onComplete={handlePaymentProcessingComplete}
+        planName={planInfo.name}
+        userEmail={user?.email}
+      />
     </ProtectedRoute>
   );
 }
