@@ -498,6 +498,8 @@ async def stripe_webhook(
             await handle_invoice_payment_succeeded(event["data"]["object"])
         elif event["type"] == "invoice_payment.paid":
             await handle_invoice_payment_paid(event["data"]["object"])
+        elif event["type"] == "payment_intent.succeeded":
+            await handle_payment_intent_succeeded(event["data"]["object"])
 
         return {"status": "success"}
     except Exception as e:
@@ -800,3 +802,84 @@ async def handle_invoice_payment_paid(invoice_payment):
         logger.info(f"Invoice payment paid - updated subscription for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling invoice_payment.paid: {str(e)}")
+
+async def handle_payment_intent_succeeded(payment_intent):
+    """Handle payment_intent.succeeded event - helps catch subscription status updates"""
+    try:
+        # Check if this payment intent is for a subscription
+        if not payment_intent.get("invoice"):
+            return
+        
+        invoice_id = payment_intent.get("invoice")
+        logger.info(f"[PAYMENT_INTENT] Processing payment intent for invoice: {invoice_id}")
+        
+        # Get invoice details from Stripe
+        invoice = stripe.Invoice.retrieve(invoice_id)
+        customer_id = invoice.customer
+        subscription_id = invoice.subscription
+        
+        if not customer_id or not subscription_id:
+            logger.warning(f"[PAYMENT_INTENT] Missing customer ID or subscription ID in invoice {invoice_id}")
+            return
+
+        # Find user by multiple methods
+        user = await find_user_by_customer_id(customer_id)
+        if not user:
+            logger.warning(f"[PAYMENT_INTENT] No user found for customer {customer_id}")
+            return
+
+        # Get subscription details from Stripe
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        logger.info(f"[PAYMENT_INTENT] Found subscription {subscription_id} with status: {subscription.status}")
+        
+        # Check if user's subscription status needs updating
+        current_status = user.get("subscription_status")
+        if current_status != subscription.status:
+            logger.info(f"[PAYMENT_INTENT] Updating user {user['_id']} status from '{current_status}' to '{subscription.status}'")
+            
+            # Prepare update data
+            update_data = {
+                "subscription_status": subscription.status,
+                "subscription_id": subscription.id
+            }
+            
+            # Add period dates if missing
+            from datetime import datetime, timezone
+            if hasattr(subscription, 'current_period_start') and subscription.current_period_start:
+                update_data["current_period_start"] = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
+            
+            if hasattr(subscription, 'current_period_end') and subscription.current_period_end:
+                update_data["current_period_end"] = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+            
+            # Reset usage counters if they don't exist
+            if "practice_sessions_used" not in user:
+                update_data["practice_sessions_used"] = 0
+            if "assessments_used" not in user:
+                update_data["assessments_used"] = 0
+            
+            # Get the plan details if missing
+            if not user.get("subscription_plan") and subscription.items and len(subscription.items.data) > 0:
+                price = subscription.items.data[0].price
+                if price:
+                    update_data["subscription_price_id"] = price.id
+                    
+                    # Get product details
+                    product = stripe.Product.retrieve(price.product)
+                    update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
+                    
+                    # Determine if monthly or annual
+                    if price.recurring and price.recurring.interval:
+                        update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
+
+            # Update user in MongoDB
+            await database["users"].update_one(
+                {"_id": user["_id"]},
+                {"$set": update_data}
+            )
+            
+            logger.info(f"[PAYMENT_INTENT] Successfully updated subscription status for user {user['_id']}")
+        else:
+            logger.info(f"[PAYMENT_INTENT] User {user['_id']} already has correct status: {current_status}")
+        
+    except Exception as e:
+        logger.error(f"[PAYMENT_INTENT] Error handling payment_intent.succeeded: {str(e)}")
