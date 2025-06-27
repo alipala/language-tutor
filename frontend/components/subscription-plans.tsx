@@ -1,7 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../lib/auth';
+import { LoadingSpinner } from './ui/loading-spinner';
+import AuthRequiredModal from './auth-required-modal';
 
 interface PricingFeature {
   text: string;
@@ -29,11 +33,10 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "",
     description: "Perfect for exploring AI language learning",
     features: [
-      { text: "3 practice sessions monthly", included: true },
+      { text: "3 practice sessions (5 minutes each) monthly", included: true },
       { text: "1 speaking assessment monthly", included: true },
-      { text: "Basic learning plan generation", included: true },
-      { text: "Core conversation topics only", included: true },
       { text: "Basic progress tracking", included: true },
+      { text: "Core conversation topics only", included: true },
       { text: "Mobile app access", included: true },
       { text: "Community support", included: true }
     ],
@@ -46,13 +49,13 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month",
     description: "Ideal for serious language learners",
     features: [
-      { text: "30 practice sessions monthly", included: true },
-      { text: "4 speaking assessments monthly", included: true },
-      { text: "All 6 language options", included: true },
+      { text: "30 practice sessions (5 minutes each) monthly", included: true },
+      { text: "2 speaking assessments monthly", included: true },
+      { text: "Advanced progress tracking", included: true },
+      { text: "Learning plan progression", included: true },
+      { text: "Achievement badges", included: true },
       { text: "All conversation topics + custom topics", included: true },
-      { text: "Detailed custom learning plans", included: true },
-      { text: "Enhanced progress tracking & analytics", included: true },
-      { text: "Conversation history & achievements", included: true },
+      { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
     ctaButton: "Get Started",
@@ -64,18 +67,18 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month per user",
     description: "For teams and organizations",
     features: [
-      { text: "Unlimited practice sessions*", included: true },
+      { text: "Unlimited practice sessions", included: true },
       { text: "Unlimited assessments", included: true },
-      { text: "All Premium features", included: true },
-      { text: "Advanced team analytics dashboard", included: true },
-      { text: "Custom business conversation scenarios", included: true },
+      { text: "Premium learning plans", included: true },
+      { text: "Advanced analytics", included: true },
+      { text: "Priority support", included: true },
+      { text: "Team collaboration features", included: true },
       { text: "API access & LMS integrations", included: true },
-      { text: "Dedicated account manager", included: true },
       { text: "SSO & admin controls", included: true }
     ],
-    ctaButton: "Contact Sales",
+    ctaButton: "Get Started",
     popular: false,
-    note: "Minimum 5 users • *Fair use: 3 hours daily per user"
+    note: "Minimum 5 users"
   }
 ];
 
@@ -86,11 +89,10 @@ const annualPlans: PricingCard[] = [
     priceNote: "",
     description: "Perfect for exploring AI language learning",
     features: [
-      { text: "3 practice sessions monthly", included: true },
+      { text: "3 practice sessions (5 minutes each) monthly", included: true },
       { text: "1 speaking assessment monthly", included: true },
-      { text: "Basic learning plan generation", included: true },
-      { text: "Core conversation topics only", included: true },
       { text: "Basic progress tracking", included: true },
+      { text: "Core conversation topics only", included: true },
       { text: "Mobile app access", included: true },
       { text: "Community support", included: true }
     ],
@@ -106,13 +108,13 @@ const annualPlans: PricingCard[] = [
     monthlyEquivalent: "Only $16.67/month",
     description: "Ideal for serious language learners",
     features: [
-      { text: "30 practice sessions monthly", included: true },
-      { text: "4 speaking assessments monthly", included: true },
-      { text: "All 6 language options", included: true },
+      { text: "360 practice sessions (5 minutes each) annually", included: true },
+      { text: "24 speaking assessments annually", included: true },
+      { text: "Advanced progress tracking", included: true },
+      { text: "Learning plan progression", included: true },
+      { text: "Achievement badges", included: true },
       { text: "All conversation topics + custom topics", included: true },
-      { text: "Detailed custom learning plans", included: true },
-      { text: "Enhanced progress tracking & analytics", included: true },
-      { text: "Conversation history & achievements", included: true },
+      { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
     ctaButton: "Get Started",
@@ -127,32 +129,97 @@ const annualPlans: PricingCard[] = [
     monthlyEquivalent: "Only $33.33/month per user",
     description: "For teams and organizations",
     features: [
-      { text: "Unlimited practice sessions*", included: true },
+      { text: "Unlimited practice sessions", included: true },
       { text: "Unlimited assessments", included: true },
-      { text: "All Premium features", included: true },
-      { text: "Advanced team analytics dashboard", included: true },
-      { text: "Custom business conversation scenarios", included: true },
+      { text: "Premium learning plans", included: true },
+      { text: "Advanced analytics", included: true },
+      { text: "Priority support", included: true },
+      { text: "Team collaboration features", included: true },
       { text: "API access & LMS integrations", included: true },
-      { text: "Dedicated account manager", included: true },
       { text: "SSO & admin controls", included: true }
     ],
-    ctaButton: "Contact Sales",
+    ctaButton: "Get Started",
     popular: false,
-    note: "Minimum 5 users • *Fair use: 3 hours daily per user"
+    note: "Minimum 5 users"
   }
 ];
 
+// Stripe price IDs
+const STRIPE_PRICES = {
+  monthly: {
+    fluency_builder: "price_1Re01yJcquSiYwWNJRg7nyce",
+    team_mastery: "price_1Re09WJcquSiYwWNddEyeuxq"
+  },
+  annual: {
+    fluency_builder: "price_1Re06kJcquSiYwWN89Ra57wC",
+    team_mastery: "price_1Re0LdJcquSiYwWNmF516G2p"
+  }
+};
+
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PricingCard | null>(null);
   const currentPlans = isAnnual ? annualPlans : monthlyPlans;
+  const router = useRouter();
+  const { user } = useAuth();
 
-  const handleCTAClick = (plan: PricingCard) => {
+  const createCheckoutSession = async (priceId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          price_id: priceId,
+          success_url: `${window.location.origin}/profile?checkout=success`,
+          cancel_url: `${window.location.origin}/profile?checkout=canceled`,
+        }),
+      });
+
+      const { url } = await response.json();
+      
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleCTAClick = async (plan: PricingCard) => {
     if (plan.ctaButton === "Start Free") {
       // Navigate to sign up flow
-      window.location.href = '/auth/signup';
+      router.push('/auth/signup');
     } else if (plan.ctaButton === "Get Started") {
-      // Navigate to subscription flow
-      window.location.href = '/auth/signup';
+      // Check if user is authenticated
+      if (!user) {
+        // Show auth modal for guest users
+        setSelectedPlan(plan);
+        setShowAuthModal(true);
+        return;
+      }
+
+      // User is authenticated - proceed with checkout
+      let planId = '';
+      if (plan.name === "Fluency Builder") {
+        planId = 'fluency_builder';
+      } else if (plan.name === "Team Mastery") {
+        planId = 'team_mastery';
+      }
+
+      if (planId) {
+        // Get the appropriate price ID
+        const period = isAnnual ? 'annual' : 'monthly';
+        const priceId = STRIPE_PRICES[period][planId as keyof typeof STRIPE_PRICES.monthly];
+        
+        if (priceId) {
+          await createCheckoutSession(priceId);
+        }
+      }
     } else if (plan.ctaButton === "Contact Sales") {
       // Open contact form or email
       window.location.href = 'mailto:sales@mytacoai.com?subject=Team Mastery Plan Inquiry';
@@ -304,15 +371,23 @@ export default function SubscriptionPlans() {
                   <div className="mt-auto">
                     <button
                       onClick={() => handleCTAClick(plan)}
+                      disabled={isLoading}
                       className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
                         plan.popular
                           ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] focus:ring-[#4ECFBF] shadow-lg'
                           : plan.name === "Try & Learn"
                           ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
                           : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
-                      }`}
+                      } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                      {plan.ctaButton}
+                      {isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          <span>Processing...</span>
+                        </div>
+                      ) : (
+                        plan.ctaButton
+                      )}
                     </button>
                   </div>
                 </div>
@@ -343,6 +418,20 @@ export default function SubscriptionPlans() {
           </div>
         </div>
       </div>
+
+      {/* Auth Required Modal */}
+      {selectedPlan && (
+        <AuthRequiredModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            setSelectedPlan(null);
+          }}
+          planName={selectedPlan.name}
+          planPrice={selectedPlan.price}
+          planPeriod={isAnnual ? 'year' : 'month'}
+        />
+      )}
     </section>
   );
 }
