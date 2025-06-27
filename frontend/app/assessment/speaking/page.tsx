@@ -103,14 +103,14 @@ export default function SpeakingAssessmentPage() {
   return (
     <div className="min-h-screen flex flex-col text-white bg-[var(--turquoise)]">
       <NavBar />
-      <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar">
-        <div className="flex flex-col flex-1 items-stretch space-y-8 w-full max-w-6xl mx-auto">
+      <main className="flex-grow flex flex-col p-4 md:p-8 pt-32 md:pt-40">
+        <div className="flex flex-col flex-1 items-stretch w-full max-w-6xl mx-auto">
           {/* Header */}
-          <div className="text-center pt-8">
-            <h1 className="text-5xl font-bold text-black mb-4">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 animated-gradient-text">
               Speaking Assessment
             </h1>
-            <p className="text-gray-600 text-lg mb-8">
+            <p className="text-gray-700 text-lg">
               {selectedLanguage === 'dutch' && 'Beoordeel je spreekvaardigheid in het Nederlands'}
               {selectedLanguage === 'english' && 'Assess your speaking proficiency in English'}
               {selectedLanguage === 'spanish' && 'Evalúa tu habilidad para hablar en español'}
@@ -152,17 +152,6 @@ export default function SpeakingAssessmentPage() {
                 onComplete={handleAssessmentComplete}
                 onSelectLevel={handleSelectLevel}
               />
-              
-              {/* Alternative Option */}
-              <div className="text-center mt-8 pt-6 border-t border-gray-700">
-                <p className="text-gray-400 mb-4">Prefer to select your level manually?</p>
-                <button 
-                  onClick={handleManualSelection}
-                  className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white"
-                >
-                  Go to Manual Level Selection
-                </button>
-              </div>
             </>
           )}
         </div>
