@@ -482,6 +482,10 @@ async def stripe_webhook(
             await handle_subscription_deleted(event["data"]["object"])
         elif event["type"] == "checkout.session.completed":
             await handle_checkout_completed(event["data"]["object"])
+        elif event["type"] == "invoice.payment_succeeded":
+            await handle_invoice_payment_succeeded(event["data"]["object"])
+        elif event["type"] == "invoice_payment.paid":
+            await handle_invoice_payment_paid(event["data"]["object"])
 
         return {"status": "success"}
     except Exception as e:
@@ -634,3 +638,109 @@ async def handle_checkout_completed(checkout_session):
             logger.info(f"Updated Stripe customer ID for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling checkout completed: {str(e)}")
+
+async def handle_invoice_payment_succeeded(invoice):
+    """Handle invoice payment succeeded event"""
+    try:
+        customer_id = invoice.get("customer")
+        subscription_id = invoice.get("subscription")
+        
+        if not customer_id or not subscription_id:
+            logger.warning("Missing customer ID or subscription ID in invoice payment succeeded event")
+            return
+
+        # Find user by Stripe customer ID
+        user = await database["users"].find_one({"stripe_customer_id": customer_id})
+        if not user:
+            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
+            return
+
+        # Get subscription details from Stripe
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        
+        # Prepare update data
+        update_data = {
+            "subscription_status": subscription.status,
+            "subscription_id": subscription.id
+        }
+        
+        # Get the plan details
+        if subscription.items and len(subscription.items.data) > 0:
+            price = subscription.items.data[0].price
+            if price:
+                update_data["subscription_price_id"] = price.id
+                
+                # Get product details
+                product = stripe.Product.retrieve(price.product)
+                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
+                
+                # Determine if monthly or annual
+                if price.recurring and price.recurring.interval:
+                    update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
+
+        # Update user in MongoDB
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+        
+        logger.info(f"Invoice payment succeeded - updated subscription for user {user['_id']}")
+    except Exception as e:
+        logger.error(f"Error handling invoice payment succeeded: {str(e)}")
+
+async def handle_invoice_payment_paid(invoice_payment):
+    """Handle invoice_payment.paid event"""
+    try:
+        invoice_id = invoice_payment.get("invoice")
+        
+        if not invoice_id:
+            logger.warning("No invoice ID in invoice_payment.paid event")
+            return
+
+        # Get invoice details from Stripe
+        invoice = stripe.Invoice.retrieve(invoice_id)
+        customer_id = invoice.customer
+        subscription_id = invoice.subscription
+        
+        if not customer_id or not subscription_id:
+            logger.warning("Missing customer ID or subscription ID in invoice")
+            return
+
+        # Find user by Stripe customer ID
+        user = await database["users"].find_one({"stripe_customer_id": customer_id})
+        if not user:
+            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
+            return
+
+        # Get subscription details from Stripe
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        
+        # Prepare update data
+        update_data = {
+            "subscription_status": subscription.status,
+            "subscription_id": subscription.id
+        }
+        
+        # Get the plan details
+        if subscription.items and len(subscription.items.data) > 0:
+            price = subscription.items.data[0].price
+            if price:
+                update_data["subscription_price_id"] = price.id
+                
+                # Get product details
+                product = stripe.Product.retrieve(price.product)
+                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
+                
+                # Determine if monthly or annual
+                if price.recurring and price.recurring.interval:
+                    update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
+
+        # Update user in MongoDB
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+        
+        logger.info(f"Invoice payment paid - updated subscription for user {user['_id']}")
+    except Exception as e:
+        logger.error(f"Error handling invoice_payment.paid: {str(e)}")
