@@ -95,7 +95,22 @@ export default function SignupPage() {
 
   // Handle Google signup success
   const handleGoogleSignupSuccess = async () => {
-    console.log('Google signup successful, showing transition');
+    console.log('Google signup successful, checking for selected plan...');
+    
+    // Check if user came from pricing page
+    const selectedPlan = sessionStorage.getItem('selectedPlan');
+    if (selectedPlan) {
+      console.log('Found selected plan, redirecting to checkout...');
+      const plan = JSON.parse(selectedPlan);
+      sessionStorage.removeItem('selectedPlan'); // Clean up
+      
+      // Redirect to checkout with plan details
+      const planId = plan.name === 'Fluency Builder' ? 'fluency_builder' : 'team_mastery';
+      const period = plan.period === 'year' ? 'annual' : 'monthly';
+      router.push(`/checkout?plan=${planId}&period=${period}`);
+      return;
+    }
+    
     setShowSuccessTransition(true);
   };
 
@@ -106,6 +121,19 @@ export default function SignupPage() {
   };
 
   const handleTransitionComplete = () => {
+    // Check if user came from pricing page
+    const selectedPlan = sessionStorage.getItem('selectedPlan');
+    if (selectedPlan) {
+      const plan = JSON.parse(selectedPlan);
+      sessionStorage.removeItem('selectedPlan'); // Clean up
+      
+      // Redirect to checkout with plan details
+      const planId = plan.name === 'Fluency Builder' ? 'fluency_builder' : 'team_mastery';
+      const period = plan.period === 'year' ? 'annual' : 'monthly';
+      router.push(`/checkout?plan=${planId}&period=${period}`);
+      return;
+    }
+    
     // Navigate to the appropriate page after transition completes
     const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
     const redirectTarget = pendingLearningPlanId ? '/speech' : '/';

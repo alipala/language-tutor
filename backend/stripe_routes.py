@@ -33,44 +33,6 @@ def map_stripe_product_to_plan_id(product_name: str) -> str:
         # Fallback to the old method
         return product_name.lower().replace(" ", "_").replace("-", "")
 
-@router.post("/create-guest-checkout-session")
-async def create_guest_checkout_session(request: Request):
-    """Create a checkout session for guest users (no authentication required)"""
-    try:
-        data = await request.json()
-        price_id = data.get("price_id")
-        success_url = data.get("success_url", "http://localhost:3000/auth/signup?checkout=success")
-        cancel_url = data.get("cancel_url", "http://localhost:3000/#pricing")
-
-        if not price_id:
-            raise HTTPException(status_code=400, detail="Price ID is required")
-
-        # Create checkout session without a customer (guest checkout)
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[
-                {
-                    "price": price_id,
-                    "quantity": 1,
-                },
-            ],
-            mode="subscription",
-            success_url=success_url,
-            cancel_url=cancel_url,
-            # Store the price_id in metadata for later linking to user account
-            metadata={
-                "price_id": price_id,
-                "guest_checkout": "true"
-            }
-        )
-
-        return {"url": checkout_session.url}
-    except stripe.error.StripeError as e:
-        logger.error(f"Stripe error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error creating guest checkout session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create-checkout-session")
 async def create_checkout_session(
