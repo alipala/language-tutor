@@ -378,27 +378,53 @@ async def link_guest_subscription(
     try:
         data = await request.json()
         customer_email = data.get("customer_email", current_user.email)
+        session_id = data.get("session_id")
         
-        # Find Stripe customer by email
-        customers = stripe.Customer.list(email=customer_email, limit=1)
+        logger.info(f"[LINK-GUEST] Attempting to link subscription for user {current_user.id}, email: {customer_email}")
         
-        if not customers.data:
-            raise HTTPException(status_code=404, detail="No Stripe customer found with this email")
+        # Method 1: Try to find customer by session_id if provided
+        customer_id = None
+        if session_id:
+            try:
+                logger.info(f"[LINK-GUEST] Looking up checkout session: {session_id}")
+                checkout_session = stripe.checkout.Session.retrieve(session_id)
+                if checkout_session.customer:
+                    customer_id = checkout_session.customer
+                    logger.info(f"[LINK-GUEST] Found customer from session: {customer_id}")
+            except Exception as e:
+                logger.warning(f"[LINK-GUEST] Could not retrieve session {session_id}: {str(e)}")
         
-        customer = customers.data[0]
-        customer_id = customer.id
+        # Method 2: Find Stripe customer by email if session method failed
+        if not customer_id:
+            logger.info(f"[LINK-GUEST] Looking up customer by email: {customer_email}")
+            customers = stripe.Customer.list(email=customer_email, limit=5)
+            
+            if not customers.data:
+                raise HTTPException(status_code=404, detail="No Stripe customer found with this email")
+            
+            # Get the most recent customer (in case there are multiple)
+            customer = customers.data[0]
+            customer_id = customer.id
+            logger.info(f"[LINK-GUEST] Found customer by email: {customer_id}")
         
         # Get active subscriptions for this customer
+        logger.info(f"[LINK-GUEST] Looking for active subscriptions for customer: {customer_id}")
         subscriptions = stripe.Subscription.list(
             customer=customer_id,
             status="active",
-            limit=1
+            limit=5
         )
         
         if not subscriptions.data:
+            # Try all subscriptions if no active ones found
+            all_subscriptions = stripe.Subscription.list(customer=customer_id, limit=10)
+            logger.warning(f"[LINK-GUEST] No active subscriptions found. Total subscriptions: {len(all_subscriptions.data)}")
+            for sub in all_subscriptions.data:
+                logger.info(f"[LINK-GUEST] Found subscription {sub.id} with status: {sub.status}")
             raise HTTPException(status_code=404, detail="No active subscription found for this customer")
         
         subscription = subscriptions.data[0]
+        logger.info(f"[LINK-GUEST] Found active subscription: {subscription.id}")
         
         # Prepare update data
         update_data = {
@@ -406,6 +432,18 @@ async def link_guest_subscription(
             "subscription_status": subscription.status,
             "subscription_id": subscription.id
         }
+        
+        # Add period dates
+        from datetime import datetime, timezone
+        if hasattr(subscription, 'current_period_start') and subscription.current_period_start:
+            update_data["current_period_start"] = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
+        
+        if hasattr(subscription, 'current_period_end') and subscription.current_period_end:
+            update_data["current_period_end"] = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+        
+        # Reset usage counters for new subscription
+        update_data["practice_sessions_used"] = 0
+        update_data["assessments_used"] = 0
         
         # Get the plan details
         try:
@@ -421,34 +459,46 @@ async def link_guest_subscription(
                     # Determine if monthly or annual
                     if price.recurring and price.recurring.interval:
                         update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
+                    
+                    logger.info(f"[LINK-GUEST] Plan details: {update_data['subscription_plan']} ({update_data.get('subscription_period', 'unknown')})")
         except Exception as e:
-            logger.error(f"Error processing subscription items: {str(e)}")
+            logger.error(f"[LINK-GUEST] Error processing subscription items: {str(e)}")
             # Continue without plan details
         
         # Update user in MongoDB
         from bson import ObjectId
+        logger.info(f"[LINK-GUEST] Updating user {current_user.id} with subscription data")
         result = await database["users"].update_one(
             {"_id": ObjectId(current_user.id)},
             {"$set": update_data}
         )
         
         if result.modified_count > 0:
-            logger.info(f"Successfully linked subscription {subscription.id} to user {current_user.id}")
+            logger.info(f"[LINK-GUEST] Successfully linked subscription {subscription.id} to user {current_user.id}")
             return {
                 "success": True,
                 "message": "Subscription linked successfully",
                 "subscription_id": subscription.id,
                 "plan": update_data.get("subscription_plan"),
-                "status": subscription.status
+                "status": subscription.status,
+                "customer_id": customer_id
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to update user subscription")
+            logger.warning(f"[LINK-GUEST] No changes made to user {current_user.id} - subscription may already be linked")
+            return {
+                "success": True,
+                "message": "Subscription already linked",
+                "subscription_id": subscription.id,
+                "plan": update_data.get("subscription_plan"),
+                "status": subscription.status,
+                "customer_id": customer_id
+            }
             
     except stripe.error.StripeError as e:
-        logger.error(f"Stripe error linking subscription: {str(e)}")
+        logger.error(f"[LINK-GUEST] Stripe error linking subscription: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error linking guest subscription: {str(e)}")
+        logger.error(f"[LINK-GUEST] Error linking guest subscription: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/webhook")

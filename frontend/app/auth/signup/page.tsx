@@ -43,6 +43,43 @@ export default function SignupPage() {
       // Perform signup - wait for it to complete
       await signup(name, email, password);
       
+      // If this is a guest checkout success, try to link the subscription
+      if (checkoutSuccess && sessionId) {
+        console.log('[SIGNUP] Guest checkout detected, attempting to link subscription...');
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            const response = await fetch('/api/stripe/link-guest-subscription', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                customer_email: email,
+                session_id: sessionId
+              }),
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              console.log('[SIGNUP] Successfully linked guest subscription:', result);
+              
+              // Redirect to profile with checkout success to show payment processing modal
+              router.push('/profile?checkout=success');
+              return;
+            } else {
+              const errorData = await response.json();
+              console.error('[SIGNUP] Failed to link guest subscription:', errorData);
+              // Continue with normal flow even if linking fails
+            }
+          }
+        } catch (linkError) {
+          console.error('[SIGNUP] Error linking guest subscription:', linkError);
+          // Continue with normal flow even if linking fails
+        }
+      }
+      
       // Store email for verification message
       setSignupEmail(email);
       
