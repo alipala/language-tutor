@@ -102,7 +102,45 @@ export default function SpeakingAssessment({
     const isUserAuthenticated = isAuthenticated();
     const assessmentDuration = getAssessmentDuration(isUserAuthenticated); // Get duration from utility function
     
-    // No longer blocking guest users from taking assessments
+    // Check subscription limits for authenticated users before starting assessment
+    if (isUserAuthenticated) {
+      try {
+        console.log('[SUBSCRIPTION] Checking speaking assessment access before starting...');
+        const { getApiUrl } = await import('@/lib/api-utils');
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${getApiUrl()}/api/stripe/can-access/assessment`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (!result.can_access) {
+            console.log('[SUBSCRIPTION] ❌ Speaking assessment access denied:', result.message);
+            
+            // Show subscription limit error
+            setError(`Assessment Limit Reached: ${result.message}`);
+            
+            // Show notification with upgrade option
+            if (showNotification) {
+              showNotification(result.message, 'error');
+            }
+            
+            return; // Don't start the assessment
+          } else {
+            console.log('[SUBSCRIPTION] ✅ Speaking assessment access granted');
+          }
+        } else {
+          console.warn('[SUBSCRIPTION] ⚠️ Could not check subscription limits, allowing assessment');
+        }
+      } catch (error) {
+        console.error('[SUBSCRIPTION] ❌ Error checking subscription limits:', error);
+        // Allow assessment to continue if check fails
+      }
+    }
     
     try {
       // Reset state
@@ -202,6 +240,35 @@ export default function SpeakingAssessment({
         } catch (saveErr) {
           console.error('Error saving assessment data:', saveErr);
           // Don't show this error to the user as it's not critical
+        }
+
+        // Track usage for subscription limits
+        try {
+          console.log('[SUBSCRIPTION] Tracking speaking assessment usage for subscription limits');
+          const { getApiUrl } = await import('@/lib/api-utils');
+          const token = localStorage.getItem('token');
+          
+          const usageResponse = await fetch(`${getApiUrl()}/api/stripe/track-usage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              usage_type: 'assessment',
+              duration_minutes: (initialDuration - timer) / 60 // Convert seconds to minutes
+            })
+          });
+
+          if (usageResponse.ok) {
+            const usageResult = await usageResponse.json();
+            console.log('[SUBSCRIPTION] ✅ Speaking assessment usage tracked:', usageResult);
+          } else {
+            const usageError = await usageResponse.json();
+            console.warn('[SUBSCRIPTION] ⚠️ Failed to track assessment usage:', usageError);
+          }
+        } catch (usageError) {
+          console.error('[SUBSCRIPTION] ❌ Error tracking assessment usage:', usageError);
         }
       }
     } catch (err: any) {
