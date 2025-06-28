@@ -30,7 +30,8 @@ export default function SpeakingAssessment({
   const [timer, setTimer] = useState(60);
   const [initialDuration, setInitialDuration] = useState(60); // Track initial duration for progress calculation
   const [isTimerActive, setIsTimerActive] = useState(false);
-  // No longer tracking guest time expiration
+  const [canStopRecording, setCanStopRecording] = useState(false); // New state for stop button logic
+  const [showOptimalNotification, setShowOptimalNotification] = useState(false); // New state for bottom-right notification
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcription, setTranscription] = useState('');
@@ -55,13 +56,25 @@ export default function SpeakingAssessment({
   
   // No longer checking for guest time expiration
 
-  // Timer effect
+  // Timer effect with stop button logic and notification
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isTimerActive && timer > 0) {
       interval = setInterval(() => {
         setTimer((prevTimer) => {
           const newTimer = prevTimer - 1;
+          const elapsed = initialDuration - newTimer;
+          
+          // Enable stop button after 45 seconds for registered users
+          if (isAuthenticated() && elapsed >= 45 && !canStopRecording) {
+            setCanStopRecording(true);
+            setShowOptimalNotification(true);
+            
+            // Auto-hide notification after 3 seconds
+            setTimeout(() => {
+              setShowOptimalNotification(false);
+            }, 3000);
+          }
           
           return newTimer;
         });
@@ -73,7 +86,7 @@ export default function SpeakingAssessment({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isTimerActive, timer, initialDuration]);
+  }, [isTimerActive, timer, initialDuration, canStopRecording]);
 
   // Clean up audio URL when component unmounts
   useEffect(() => {
@@ -218,6 +231,8 @@ export default function SpeakingAssessment({
     setStatus('idle');
     setTimer(60);
     setInitialDuration(60); // Reset initial duration
+    setCanStopRecording(false); // Reset stop button state
+    setShowOptimalNotification(false); // Reset notification state
     setAudioBlob(null);
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
@@ -475,23 +490,23 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Recording State*/}
+      {/* Recording State - Animated Transition from Microphone */}
       {status === 'recording' && (
-        <div className="bg-gradient-to-br from-[#FFF8F8] to-[#FFF0F0] p-8 rounded-xl shadow-lg">
+        <div className="bg-white rounded-2xl shadow-xl border border-[#4ECFBF]/20 p-8 animate-in fade-in duration-500">
           <div className="flex flex-col md:flex-row items-center justify-between mb-8">
             <div className="flex items-center mb-6 md:mb-0">
               <div className="relative">
                 <div className="absolute inset-0 bg-[#F75A5A]/30 rounded-full blur-lg animate-pulse"></div>
-                <div className="relative w-24 h-24 flex items-center justify-center bg-[#F75A5A] rounded-full shadow-lg">
-                  <Mic className="h-10 w-10 text-white" />
+                <div className="relative w-16 h-16 flex items-center justify-center bg-[#F75A5A] rounded-full shadow-lg">
+                  <Mic className="h-8 w-8 text-white" />
                 </div>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md">
-                  <div className="w-3 h-3 rounded-full bg-[#F75A5A] animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-md">
+                  <div className="w-2 h-2 rounded-full bg-[#F75A5A] animate-pulse"></div>
                 </div>
               </div>
               <div className="ml-6">
                 <h3 className="text-xl font-bold text-[#333333]">Recording...</h3>
-                <p className="text-[#555555]">{isAuthenticated() ? 'Speak naturally' : 'Make every second count!'}</p>
+                <p className="text-[#555555]">Speak naturally</p>
               </div>
             </div>
             
@@ -510,19 +525,32 @@ export default function SpeakingAssessment({
             </div>
             <Progress 
               value={(initialDuration - timer) / initialDuration * 100} 
-              className="h-4 bg-white rounded-full" 
+              className="h-4 bg-gray-100 rounded-full" 
               indicatorClassName="bg-gradient-to-r from-[#F75A5A] to-[#FF8A8A] rounded-full" 
             />
           </div>
           
           <div className="flex justify-center mt-4">
-            <Button 
-              onClick={stopRecording}
-              className="bg-white hover:bg-gray-100 text-[#F75A5A] font-medium px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition-all duration-300 border border-[#F75A5A]/30"
-            >
-              <Square className="h-5 w-5" />
-              <span>Stop Recording</span>
-            </Button>
+            {isAuthenticated() ? (
+              <Button 
+                onClick={stopRecording}
+                disabled={!canStopRecording}
+                className={`font-medium px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition-all duration-300 ${
+                  canStopRecording 
+                    ? 'bg-white hover:bg-gray-100 text-[#F75A5A] border border-[#F75A5A]/30' 
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300'
+                }`}
+              >
+                <Square className="h-5 w-5" />
+                <span>{canStopRecording ? 'Stop Recording' : 'Recording...'}</span>
+              </Button>
+            ) : (
+              <div className="bg-[#4ECFBF]/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-[#4ECFBF]/30 inline-block">
+                <p className="text-[#555555] text-sm">
+                  🎯 Recording will automatically stop at {formatTime(0)}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -906,6 +934,29 @@ export default function SpeakingAssessment({
       
       {/* Manual Level Selection button removed*/}
       
+      {/* Bottom-right notification for optimal recording duration */}
+      {showOptimalNotification && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-right duration-300">
+          <div className="bg-white border-l-4 border-[#4ECFBF] rounded-lg shadow-xl p-4 max-w-sm">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-[#4ECFBF] rounded-full flex items-center justify-center">
+                  <Check className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900">
+                  Speaking duration is optimal!
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  You can now stop recording for analysis
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Learning Plan Modal*/}
       {assessment && (
         <LearningPlanModal 
