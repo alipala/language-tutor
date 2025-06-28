@@ -1000,10 +1000,16 @@ async def fix_subscription_dates(
         
         # Get subscription details
         price = None
-        if subscription.items and subscription.items.data:
-            price = subscription.items.data[0].price
+        period_type = "monthly"  # default
         
-        period_type = "annual" if price and price.recurring and price.recurring.interval == "year" else "monthly"
+        try:
+            if hasattr(subscription, 'items') and subscription.items and hasattr(subscription.items, 'data') and subscription.items.data:
+                price = subscription.items.data[0].price
+                if price and hasattr(price, 'recurring') and price.recurring and hasattr(price.recurring, 'interval'):
+                    period_type = "annual" if price.recurring.interval == "year" else "monthly"
+        except Exception as price_error:
+            print(f"Error getting price details: {str(price_error)}")
+            # Continue with default monthly
         
         # Update user in database
         update_data = {
