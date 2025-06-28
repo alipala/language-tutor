@@ -344,7 +344,22 @@ async def get_user_admin(
             "created_at": safe_isoformat(user.get("created_at")),
             "last_login": safe_isoformat(user.get("last_login")),
             "preferred_language": user.get("preferred_language"),
-            "preferred_level": user.get("preferred_level")
+            "preferred_level": user.get("preferred_level"),
+            # Subscription fields
+            "stripe_customer_id": user.get("stripe_customer_id"),
+            "subscription_status": user.get("subscription_status"),
+            "subscription_plan": user.get("subscription_plan"),
+            "subscription_period": user.get("subscription_period"),
+            "subscription_price_id": user.get("subscription_price_id"),
+            "subscription_expires_at": safe_isoformat(user.get("subscription_expires_at")),
+            "subscription_started_at": safe_isoformat(user.get("subscription_started_at")),
+            "current_period_start": safe_isoformat(user.get("current_period_start")),
+            "current_period_end": safe_isoformat(user.get("current_period_end")),
+            "practice_sessions_used": user.get("practice_sessions_used", 0),
+            "assessments_used": user.get("assessments_used", 0),
+            "learning_plan_preserved": user.get("learning_plan_preserved", False),
+            "learning_plan_data": user.get("learning_plan_data"),
+            "learning_plan_progress": user.get("learning_plan_progress")
         }
         
         return {"data": user_dict}
@@ -407,6 +422,16 @@ async def create_user_admin(
         # Get created user
         created_user = await users_collection.find_one({"_id": result.inserted_id})
         
+        # Helper function to safely format dates
+        def safe_isoformat(date_value):
+            if date_value is None:
+                return None
+            if isinstance(date_value, str):
+                return date_value
+            if hasattr(date_value, 'isoformat'):
+                return date_value.isoformat()
+            return str(date_value)
+
         # Format response (exclude password hash)
         user_dict = {
             "id": str(created_user["_id"]),
@@ -414,10 +439,25 @@ async def create_user_admin(
             "name": created_user.get("name", ""),
             "is_active": created_user.get("is_active", True),
             "is_verified": created_user.get("is_verified", False),
-            "created_at": created_user.get("created_at").isoformat() if created_user.get("created_at") else None,
-            "last_login": created_user.get("last_login").isoformat() if created_user.get("last_login") else None,
+            "created_at": safe_isoformat(created_user.get("created_at")),
+            "last_login": safe_isoformat(created_user.get("last_login")),
             "preferred_language": created_user.get("preferred_language"),
-            "preferred_level": created_user.get("preferred_level")
+            "preferred_level": created_user.get("preferred_level"),
+            # Subscription fields
+            "stripe_customer_id": created_user.get("stripe_customer_id"),
+            "subscription_status": created_user.get("subscription_status"),
+            "subscription_plan": created_user.get("subscription_plan"),
+            "subscription_period": created_user.get("subscription_period"),
+            "subscription_price_id": created_user.get("subscription_price_id"),
+            "subscription_expires_at": safe_isoformat(created_user.get("subscription_expires_at")),
+            "subscription_started_at": safe_isoformat(created_user.get("subscription_started_at")),
+            "current_period_start": safe_isoformat(created_user.get("current_period_start")),
+            "current_period_end": safe_isoformat(created_user.get("current_period_end")),
+            "practice_sessions_used": created_user.get("practice_sessions_used", 0),
+            "assessments_used": created_user.get("assessments_used", 0),
+            "learning_plan_preserved": created_user.get("learning_plan_preserved", False),
+            "learning_plan_data": created_user.get("learning_plan_data"),
+            "learning_plan_progress": created_user.get("learning_plan_progress")
         }
         
         return {"data": user_dict}
