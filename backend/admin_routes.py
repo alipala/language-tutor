@@ -949,6 +949,115 @@ async def get_assessment_history_admin(
             detail=f"Failed to fetch assessment history: {str(e)}"
         )
 
+@router.post("/fix-subscription-dates/{user_id}")
+async def fix_subscription_dates(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Fix subscription dates by syncing from Stripe"""
+    try:
+        from bson import ObjectId
+        import stripe
+        import os
+        from datetime import datetime, timezone
+        
+        # Initialize Stripe
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+        
+        # Find user
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        stripe_customer_id = user.get("stripe_customer_id")
+        if not stripe_customer_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User has no Stripe customer ID"
+            )
+        
+        # Get active subscriptions from Stripe
+        subscriptions = stripe.Subscription.list(
+            customer=stripe_customer_id,
+            status="active",
+            limit=5
+        )
+        
+        if not subscriptions.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active subscriptions found in Stripe"
+            )
+        
+        subscription = subscriptions.data[0]
+        
+        # Convert timestamps to datetime
+        period_start = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
+        period_end = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+        
+        # Get subscription details
+        price = None
+        if subscription.items and subscription.items.data:
+            price = subscription.items.data[0].price
+        
+        period_type = "annual" if price and price.recurring and price.recurring.interval == "year" else "monthly"
+        
+        # Update user in database
+        update_data = {
+            "current_period_start": period_start,
+            "current_period_end": period_end,
+            "subscription_period": period_type,
+            "subscription_status": subscription.status,
+            "subscription_id": subscription.id
+        }
+        
+        # Add subscription_started_at if not exists
+        if not user.get("subscription_started_at"):
+            update_data["subscription_started_at"] = period_start
+        
+        # Add subscription_expires_at for compatibility
+        update_data["subscription_expires_at"] = period_end
+        
+        result = await users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count > 0:
+            return {
+                "success": True,
+                "message": "Subscription dates fixed successfully",
+                "user_id": user_id,
+                "stripe_subscription_id": subscription.id,
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
+                "period_type": period_type,
+                "status": subscription.status
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No changes were made",
+                "user_id": user_id
+            }
+            
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Stripe error: {str(e)}"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Fix subscription dates error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fix subscription dates: {str(e)}"
+        )
+
 @router.get("/health")
 async def admin_health_check():
     """Admin health check endpoint"""
