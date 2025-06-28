@@ -799,6 +799,8 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
 
       const { getApiUrl } = await import('@/lib/api-utils');
       const token = localStorage.getItem('token');
+      
+      // First save the conversation
       const response = await fetch(`${getApiUrl()}/api/progress/save-conversation`, {
         method: 'POST',
         headers: {
@@ -823,6 +825,34 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
 
       const result = await response.json();
       console.log('[AUTO_SAVE] ✅ Practice mode conversation auto-saved successfully:', result);
+
+      // Track usage for subscription limits (only for practice sessions >= 5 minutes)
+      if (durationMinutes >= 5) {
+        try {
+          console.log('[SUBSCRIPTION] Tracking practice session usage for subscription limits');
+          const usageResponse = await fetch(`${getApiUrl()}/api/stripe/track-usage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              usage_type: 'practice_session',
+              duration_minutes: durationMinutes
+            })
+          });
+
+          if (usageResponse.ok) {
+            const usageResult = await usageResponse.json();
+            console.log('[SUBSCRIPTION] ✅ Practice session usage tracked:', usageResult);
+          } else {
+            const usageError = await usageResponse.json();
+            console.warn('[SUBSCRIPTION] ⚠️ Failed to track usage:', usageError);
+          }
+        } catch (usageError) {
+          console.error('[SUBSCRIPTION] ❌ Error tracking usage:', usageError);
+        }
+      }
 
     } catch (error) {
       console.error('[AUTO_SAVE] ❌ Error auto-saving conversation:', error);
@@ -870,6 +900,63 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       setIsConversationTimerActive(false);
       handleEndConversation();
       return;
+    }
+
+    // Check subscription limits for authenticated users before starting a new session
+    if (user && !conversationStartTime) { // Only check when starting a new session
+      try {
+        console.log('[SUBSCRIPTION] Checking practice session access before starting...');
+        const { getApiUrl } = await import('@/lib/api-utils');
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${getApiUrl()}/api/stripe/can-access/practice_session`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (!result.can_access) {
+            console.log('[SUBSCRIPTION] ❌ Practice session access denied:', result.message);
+            
+            // Show subscription limit modal/notification
+            const limitNotification = document.createElement('div');
+            limitNotification.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md';
+            limitNotification.innerHTML = `
+              <div class="text-center">
+                <div class="flex items-center justify-center mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 class="font-bold">Practice Limit Reached</h3>
+                </div>
+                <p class="text-sm mb-3">${result.message}</p>
+                <a href="/profile" class="inline-block bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors">
+                  View Subscription
+                </a>
+              </div>
+            `;
+            document.body.appendChild(limitNotification);
+            
+            setTimeout(() => {
+              if (document.body.contains(limitNotification)) {
+                document.body.removeChild(limitNotification);
+              }
+            }, 8000);
+            
+            return; // Don't start the session
+          } else {
+            console.log('[SUBSCRIPTION] ✅ Practice session access granted');
+          }
+        } else {
+          console.warn('[SUBSCRIPTION] ⚠️ Could not check subscription limits, allowing session');
+        }
+      } catch (error) {
+        console.error('[SUBSCRIPTION] ❌ Error checking subscription limits:', error);
+        // Allow session to continue if check fails
+      }
     }
     
     // Timer logic is now handled entirely by ModernTimer component

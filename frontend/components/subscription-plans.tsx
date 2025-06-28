@@ -181,7 +181,7 @@ export default function SubscriptionPlans() {
       });
 
       const { url } = await response.json();
-      
+
       // Redirect to Stripe Checkout
       window.location.href = url;
     } catch (error) {
@@ -215,7 +215,7 @@ export default function SubscriptionPlans() {
         // Get the appropriate price ID
         const period = isAnnual ? 'annual' : 'monthly';
         const priceId = STRIPE_PRICES[period][planId as keyof typeof STRIPE_PRICES.monthly];
-        
+
         if (priceId) {
           await createCheckoutSession(priceId);
         }
@@ -235,7 +235,7 @@ export default function SubscriptionPlans() {
             Choose Your Plan
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12">
-            Start your language learning journey with our AI-powered tutor. 
+            Start your language learning journey with our AI-powered tutor.
             Choose the plan that fits your learning goals and budget.
           </p>
 
@@ -250,9 +250,8 @@ export default function SubscriptionPlans() {
               style={{ backgroundColor: isAnnual ? '#4ECFBF' : '#e5e7eb' }}
             >
               <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
-                  isAnnual ? 'translate-x-7' : 'translate-x-1'
-                }`}
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${isAnnual ? 'translate-x-7' : 'translate-x-1'
+                  }`}
               />
             </button>
             <span className={`text-lg font-medium transition-colors duration-300 ${isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
@@ -286,11 +285,10 @@ export default function SubscriptionPlans() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={`relative bg-white rounded-2xl shadow-xl border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full ${
-                  plan.popular 
-                    ? 'border-[#4ECFBF] ring-4 ring-[#4ECFBF]/20 scale-105' 
+                className={`relative bg-white rounded-2xl shadow-xl border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full ${plan.popular
+                    ? 'border-[#4ECFBF] ring-4 ring-[#4ECFBF]/20 scale-105'
                     : 'border-gray-200 hover:border-[#4ECFBF]/50'
-                }`}
+                  }`}
               >
                 {/* Popular Badge */}
                 {plan.popular && (
@@ -305,7 +303,7 @@ export default function SubscriptionPlans() {
                   {/* Plan Header */}
                   <div className="text-center mb-8">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                    
+
                     {/* Pricing */}
                     <div className="mb-4">
                       {plan.originalPrice && (
@@ -339,9 +337,8 @@ export default function SubscriptionPlans() {
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-start">
                         <svg
-                          className={`w-5 h-5 mt-0.5 mr-3 flex-shrink-0 ${
-                            feature.included ? 'text-[#4ECFBF]' : 'text-gray-300'
-                          }`}
+                          className={`w-5 h-5 mt-0.5 mr-3 flex-shrink-0 ${feature.included ? 'text-[#4ECFBF]' : 'text-gray-300'
+                            }`}
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -372,13 +369,12 @@ export default function SubscriptionPlans() {
                     <button
                       onClick={() => handleCTAClick(plan)}
                       disabled={isLoading}
-                      className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
-                        plan.popular
+                      className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${plan.popular
                           ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] focus:ring-[#4ECFBF] shadow-lg'
                           : plan.name === "Try & Learn"
-                          ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
-                          : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
-                      } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
+                            : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
+                        } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center">
@@ -403,7 +399,7 @@ export default function SubscriptionPlans() {
               Need a custom solution?
             </h3>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Contact us for enterprise pricing and customized language training programs 
+              Contact us for enterprise pricing and customized language training programs
               for larger organizations with specific requirements.
             </p>
             <button
