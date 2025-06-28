@@ -289,7 +289,20 @@ async def get_users_admin(
                     "created_at": safe_isoformat(user.get("created_at")),
                     "last_login": safe_isoformat(user.get("last_login")),
                     "preferred_language": user.get("preferred_language"),
-                    "preferred_level": user.get("preferred_level")
+                    "preferred_level": user.get("preferred_level"),
+                    # Add subscription fields for list view
+                    "stripe_customer_id": user.get("stripe_customer_id"),
+                    "subscription_status": user.get("subscription_status"),
+                    "subscription_plan": user.get("subscription_plan"),
+                    "subscription_period": user.get("subscription_period"),
+                    "subscription_price_id": user.get("subscription_price_id"),
+                    "subscription_expires_at": safe_isoformat(user.get("subscription_expires_at")),
+                    "subscription_started_at": safe_isoformat(user.get("subscription_started_at")),
+                    "current_period_start": safe_isoformat(user.get("current_period_start")),
+                    "current_period_end": safe_isoformat(user.get("current_period_end")),
+                    "practice_sessions_used": user.get("practice_sessions_used", 0),
+                    "assessments_used": user.get("assessments_used", 0),
+                    "learning_plan_preserved": user.get("learning_plan_preserved", False)
                 }
                 formatted_users.append(user_dict)
             except Exception as format_error:
