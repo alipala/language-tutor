@@ -187,14 +187,32 @@ class SubscriptionService:
         # If no period set, calculate based on subscription start or current month
         if not period_start or not period_end:
             now = datetime.utcnow()
+            subscription_started = user_data.get("subscription_started_at")
+            
             if period == "annual":
-                period_start = user_data.get("subscription_started_at", now.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-                period_end = period_start + timedelta(days=365)
+                # For annual subscriptions, use the actual subscription start date
+                if subscription_started:
+                    period_start = subscription_started
+                    # Calculate exactly 1 year from start date
+                    try:
+                        period_end = period_start.replace(year=period_start.year + 1)
+                    except ValueError:
+                        # Handle leap year edge case (Feb 29)
+                        period_end = period_start.replace(year=period_start.year + 1, month=2, day=28)
+                else:
+                    # Fallback if no start date
+                    period_start = now
+                    try:
+                        period_end = period_start.replace(year=period_start.year + 1)
+                    except ValueError:
+                        period_end = period_start.replace(year=period_start.year + 1, month=2, day=28)
             else:
-                # Monthly period
+                # Monthly period - use current month boundaries
                 period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                next_month = period_start.replace(month=period_start.month + 1) if period_start.month < 12 else period_start.replace(year=period_start.year + 1, month=1)
-                period_end = next_month
+                if period_start.month == 12:
+                    period_end = period_start.replace(year=period_start.year + 1, month=1)
+                else:
+                    period_end = period_start.replace(month=period_start.month + 1)
             
             # Update user with calculated periods
             await database["users"].update_one(
