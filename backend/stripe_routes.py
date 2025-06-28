@@ -525,6 +525,16 @@ async def handle_subscription_created(subscription):
             "subscription_id": subscription.get("id")
         }
         
+        # Add period dates from Stripe
+        from datetime import datetime, timezone
+        if subscription.get("current_period_start"):
+            update_data["current_period_start"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
+            update_data["subscription_started_at"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
+        
+        if subscription.get("current_period_end"):
+            update_data["current_period_end"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
+            update_data["subscription_expires_at"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
+        
         # Get the plan details
         if subscription.get("items") and subscription.get("items").get("data"):
             price = subscription.get("items").get("data")[0].get("price")
@@ -566,6 +576,16 @@ async def handle_subscription_updated(subscription):
         update_data = {
             "subscription_status": subscription.get("status")
         }
+        
+        # Add period dates from Stripe
+        from datetime import datetime, timezone
+        if subscription.get("current_period_start"):
+            update_data["current_period_start"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
+            update_data["subscription_started_at"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
+        
+        if subscription.get("current_period_end"):
+            update_data["current_period_end"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
+            update_data["subscription_expires_at"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
         
         # Get the plan details
         if subscription.get("items") and subscription.get("items").get("data"):
