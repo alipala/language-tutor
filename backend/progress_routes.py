@@ -54,17 +54,21 @@ async def save_conversation(
         print(f"[PROGRESS] Learning Plan ID: {learning_plan_id}")
         print(f"[PROGRESS] Conversation Type: {conversation_type}")
         
-        # If this has a learning plan ID or is not explicitly marked as practice, skip saving to conversation history
+        # If this has a learning plan ID or is not explicitly marked as practice, handle learning plan progress
         if learning_plan_id is not None or conversation_type != 'practice':
-            print(f"[PROGRESS] ⚠️ Skipping conversation save - this is a learning plan session")
+            print(f"[PROGRESS] 📚 This is a learning plan session - updating learning plan progress")
             print(f"[PROGRESS] Learning plan conversations should not appear in conversation history")
+            
+            # Update learning plan progress for learning plan sessions
+            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+            
             return {
                 "success": True,
-                "session_id": "skipped",
-                "message": "Learning plan conversation - not saved to history",
+                "session_id": "learning_plan_session",
+                "message": "Learning plan progress updated successfully",
                 "is_streak_eligible": False,
-                "summary": "Learning plan session",
-                "action": "skipped"
+                "summary": "Learning plan session progress updated",
+                "action": "learning_plan_updated"
             }
         
         # Convert messages to ConversationMessage objects
