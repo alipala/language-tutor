@@ -768,13 +768,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       // Check if this is a learning plan conversation
       const urlParams = new URLSearchParams(window.location.search);
       const planParam = urlParams.get('plan');
-      
-      // If this is a learning plan conversation, don't save to conversation history
-      if (planParam) {
-        console.log('[AUTO_SAVE] ⚠️ Skipping conversation save - this is a learning plan session:', planParam);
-        console.log('[AUTO_SAVE] Learning plan conversations should not appear in conversation history');
-        return;
-      }
 
       // Calculate conversation duration
       const durationMinutes = conversationStartTime 
@@ -788,19 +781,48 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
         timestamp: msg.timestamp || new Date().toISOString()
       }));
 
-      console.log('[AUTO_SAVE] Saving PRACTICE MODE conversation at 5 minutes:', {
+      console.log('[AUTO_SAVE] Saving conversation:', {
         language,
         level,
         topic,
         messageCount: messagesToSave.length,
         duration: durationMinutes,
-        isPracticeMode: true
+        isLearningPlan: !!planParam,
+        planId: planParam
       });
 
       const { getApiUrl } = await import('@/lib/api-utils');
       const token = localStorage.getItem('token');
       
-      // First save the conversation
+      // If this is a learning plan session, use the session summary endpoint
+      if (planParam) {
+        console.log('[AUTO_SAVE] 📚 This is a learning plan session - using session summary endpoint');
+        
+        // Generate a session summary for the learning plan
+        const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
+        
+        // Save session summary to learning plan using the correct endpoint
+        const summaryResponse = await fetch(`${getApiUrl()}/api/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!summaryResponse.ok) {
+          const errorData = await summaryResponse.json();
+          throw new Error(errorData.detail || 'Failed to save learning plan session');
+        }
+
+        const summaryResult = await summaryResponse.json();
+        console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
+        return;
+      }
+
+      // This is a practice mode conversation - save to conversation history
+      console.log('[AUTO_SAVE] 💬 This is a practice session - saving to conversation history');
+      
       const response = await fetch(`${getApiUrl()}/api/progress/save-conversation`, {
         method: 'POST',
         headers: {
@@ -824,7 +846,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       }
 
       const result = await response.json();
-      console.log('[AUTO_SAVE] ✅ Practice mode conversation auto-saved successfully:', result);
+      console.log('[AUTO_SAVE] ✅ Practice conversation saved successfully:', result);
 
       // Track usage for subscription limits (only for practice sessions >= 5 minutes)
       if (durationMinutes >= 5) {
@@ -1184,7 +1206,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   // Show loading state while saving
                   setShowSavingLoader(true);
                   
-                  await saveConversationProgress();
+                  const saveResult = await saveConversationProgress();
                   
                   // Hide loading state and show completion modal
                   setShowSavingLoader(false);

@@ -1002,13 +1002,24 @@ async def subscribe_to_newsletter(request: SubscriptionRequest):
 # Add endpoint for session summary storage
 @app.post("/api/learning/session-summary")
 async def store_session_summary(
-    plan_id: str,
-    session_summary: str,
+    request: Request,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Store conversation analysis summary for a learning plan session
     """
+    # Get parameters from query string
+    plan_id = request.query_params.get('plan_id')
+    session_summary = request.query_params.get('session_summary')
+    
+    if not plan_id or not session_summary:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required parameters: plan_id and session_summary"
+        )
+    
+    print(f"[SESSION_SUMMARY] Storing session summary for plan {plan_id}")
+    print(f"[SESSION_SUMMARY] Summary: {session_summary[:100]}...")
     try:
         from learning_routes import learning_plans_collection
         
