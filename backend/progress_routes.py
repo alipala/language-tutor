@@ -672,116 +672,113 @@ async def calculate_streaks(user_id: str) -> tuple[int, int]:
 async def update_learning_plan_progress(user_id: str, language: str, level: str, topic: Optional[str] = None):
     """Update learning plan progress when a conversation is completed"""
     try:
-        from database import database
-        learning_plans_collection = database.learning_plans
-        
         print(f"[LEARNING_PLAN] Checking for learning plan updates for user {user_id}")
         print(f"[LEARNING_PLAN] Session details: {language}, {level}, topic: {topic}")
         
-        # Find learning plans for this user that match the conversation parameters
-        query = {
-            "user_id": str(user_id),
-            "language": language,
-            "proficiency_level": level
-        }
+        # Find user with learning plan data
+        user = await users_collection.find_one({"_id": user_id})
         
-        plans_cursor = learning_plans_collection.find(query)
-        plans = await plans_cursor.to_list(length=None)
-        
-        if not plans:
-            print(f"[LEARNING_PLAN] No matching learning plans found for user {user_id}")
+        if not user:
+            print(f"[LEARNING_PLAN] User {user_id} not found")
             return
         
-        print(f"[LEARNING_PLAN] Found {len(plans)} matching learning plan(s)")
+        # Check if user has learning plan data
+        if not user.get("plan_content"):
+            print(f"[LEARNING_PLAN] No learning plan found for user {user_id}")
+            return
         
-        # If there are multiple plans, only update the most recently created plan
-        if len(plans) > 1:
-            print(f"[LEARNING_PLAN] Multiple plans found - updating only the most recent one")
-            plans_sorted = sorted(plans, key=lambda x: x.get('created_at', ''), reverse=True)
-            plans = [plans_sorted[0]]
-            print(f"[LEARNING_PLAN] Selected most recent plan: {plans[0].get('id')}")
+        print(f"[LEARNING_PLAN] Found learning plan for user {user_id}")
         
-        # Update the selected plan(s) with proper week-based logic
-        for plan in plans:
-            plan_id = plan.get("id")
-            current_completed = plan.get("completed_sessions", 0)
-            total_sessions = plan.get("total_sessions", 24)  # Default 6 months * 4 weeks * 1 week = 24 sessions
-            
-            # Get today's sessions count for this plan
-            today = datetime.utcnow().date()
-            today_start = datetime.combine(today, datetime.min.time())
-            today_end = datetime.combine(today, datetime.max.time())
-            
-            # Count sessions for this plan today
-            today_sessions = await conversation_sessions_collection.count_documents({
-                "user_id": user_id,
-                "language": language,
-                "level": level,
-                "created_at": {
-                    "$gte": today_start,
-                    "$lte": today_end
-                }
-            })
-            
-            print(f"[LEARNING_PLAN] User has {today_sessions} session(s) today")
-            
-            # Calculate sessions per week (2 sessions per week)
-            sessions_per_week = 2
-            
-            # Calculate current week based on completed sessions
-            current_week = (current_completed // sessions_per_week) + 1
-            sessions_in_current_week = current_completed % sessions_per_week
-            
-            print(f"[LEARNING_PLAN] Current progress: Week {current_week}, {sessions_in_current_week}/{sessions_per_week} sessions in week")
-            
-            # Only increment if this is the first or second session of the day
-            # and the week is not already completed
-            should_increment = False
-            
-            if sessions_in_current_week < sessions_per_week:
-                # Week is not completed yet
-                if today_sessions == 1:
-                    # This is the first session today, increment
-                    should_increment = True
-                    print(f"[LEARNING_PLAN] First session today - incrementing progress")
-                elif today_sessions == 2 and sessions_in_current_week == 0:
-                    # This is the second session today and we haven't incremented for the first one yet
-                    should_increment = True
-                    print(f"[LEARNING_PLAN] Second session today, first increment - incrementing progress")
-                else:
-                    print(f"[LEARNING_PLAN] Not incrementing - either multiple sessions today or week already progressed")
+        # Get current progress
+        current_completed = user.get("completed_sessions", 0)
+        total_sessions = user.get("total_sessions", 16)  # Default from the user data
+        
+        # Get today's sessions count for this user
+        today = datetime.utcnow().date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+        
+        # Count sessions for this user today
+        today_sessions = await conversation_sessions_collection.count_documents({
+            "user_id": user_id,
+            "created_at": {
+                "$gte": today_start,
+                "$lte": today_end
+            }
+        })
+        
+        print(f"[LEARNING_PLAN] User has {today_sessions} session(s) today")
+        
+        # Calculate sessions per week (2 sessions per week based on the plan data)
+        sessions_per_week = 2
+        
+        # Calculate current week based on completed sessions
+        current_week = (current_completed // sessions_per_week) + 1
+        sessions_in_current_week = current_completed % sessions_per_week
+        
+        print(f"[LEARNING_PLAN] Current progress: Week {current_week}, {sessions_in_current_week}/{sessions_per_week} sessions in week")
+        
+        # Only increment if this is the first session of the day
+        should_increment = False
+        
+        if sessions_in_current_week < sessions_per_week:
+            # Week is not completed yet
+            if today_sessions == 1:
+                # This is the first session today, increment
+                should_increment = True
+                print(f"[LEARNING_PLAN] First session today - incrementing progress")
             else:
-                print(f"[LEARNING_PLAN] Week {current_week} already completed - not incrementing")
+                print(f"[LEARNING_PLAN] Not incrementing - multiple sessions today or week already progressed")
+        else:
+            print(f"[LEARNING_PLAN] Week {current_week} already completed - not incrementing")
+        
+        if should_increment:
+            # Increment completed sessions
+            new_completed = current_completed + 1
             
-            if should_increment:
-                # Increment completed sessions
-                new_completed = current_completed + 1
-                
-                # Don't exceed total sessions
-                if new_completed > total_sessions:
-                    new_completed = total_sessions
-                
-                # Calculate new progress percentage
-                progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
-                
-                # Update the plan
-                result = await learning_plans_collection.update_one(
-                    {"id": plan_id},
-                    {"$set": {
-                        "completed_sessions": new_completed,
-                        "progress_percentage": progress_percentage
-                    }}
-                )
-                
-                if result.modified_count > 0:
-                    new_week = (new_completed // sessions_per_week) + 1
-                    new_sessions_in_week = new_completed % sessions_per_week
-                    print(f"[LEARNING_PLAN] ✅ Updated plan {plan_id}: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
-                    print(f"[LEARNING_PLAN] ✅ Now in Week {new_week}, {new_sessions_in_week}/{sessions_per_week} sessions completed")
-                else:
-                    print(f"[LEARNING_PLAN] ⚠️ No changes made to plan {plan_id}")
+            # Don't exceed total sessions
+            if new_completed > total_sessions:
+                new_completed = total_sessions
+            
+            # Calculate new progress percentage
+            progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
+            
+            # Update weekly schedule progress
+            weekly_schedule = user.get("plan_content", {}).get("weekly_schedule", [])
+            if weekly_schedule:
+                # Update the sessions_completed for the current week
+                week_index = current_week - 1  # Convert to 0-based index
+                if week_index < len(weekly_schedule):
+                    weekly_schedule[week_index]["sessions_completed"] = min(
+                        (new_completed % sessions_per_week) if new_completed % sessions_per_week != 0 else sessions_per_week,
+                        weekly_schedule[week_index].get("total_sessions", 2)
+                    )
+                    print(f"[LEARNING_PLAN] Updated week {current_week} sessions_completed to {weekly_schedule[week_index]['sessions_completed']}")
+            
+            # Update the user document
+            update_data = {
+                "completed_sessions": new_completed,
+                "progress_percentage": progress_percentage
+            }
+            
+            # Update weekly schedule if modified
+            if weekly_schedule:
+                update_data["plan_content.weekly_schedule"] = weekly_schedule
+            
+            result = await users_collection.update_one(
+                {"_id": user_id},
+                {"$set": update_data}
+            )
+            
+            if result.modified_count > 0:
+                new_week = (new_completed // sessions_per_week) + 1
+                new_sessions_in_week = new_completed % sessions_per_week
+                print(f"[LEARNING_PLAN] ✅ Updated user {user_id}: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+                print(f"[LEARNING_PLAN] ✅ Now in Week {new_week}, {new_sessions_in_week}/{sessions_per_week} sessions completed")
             else:
-                print(f"[LEARNING_PLAN] ℹ️ No increment needed for plan {plan_id}")
+                print(f"[LEARNING_PLAN] ⚠️ No changes made to user {user_id}")
+        else:
+            print(f"[LEARNING_PLAN] ℹ️ No increment needed for user {user_id}")
                 
     except Exception as e:
         print(f"[LEARNING_PLAN] ❌ Error updating learning plan progress: {str(e)}")
