@@ -122,6 +122,38 @@ const translations = {
     german: 'Neue Sitzung starten',
     french: 'Commencer Nouvelle Session',
     portuguese: 'Iniciar Nova Sessão'
+  },
+  learningPlanProgress: {
+    english: 'Your learning plan progress has been updated successfully',
+    dutch: 'Je leerplan voortgang is succesvol bijgewerkt',
+    spanish: 'Tu progreso del plan de aprendizaje se ha actualizado exitosamente',
+    german: 'Dein Lernplan-Fortschritt wurde erfolgreich aktualisiert',
+    french: 'Vos progrès du plan d\'apprentissage ont été mis à jour avec succès',
+    portuguese: 'Seu progresso do plano de aprendizagem foi atualizado com sucesso'
+  },
+  practiceConversationSaved: {
+    english: 'Your practice conversation has been saved to your history',
+    dutch: 'Je oefengesprek is opgeslagen in je geschiedenis',
+    spanish: 'Tu conversación de práctica se ha guardado en tu historial',
+    german: 'Dein Übungsgespräch wurde in deiner Historie gespeichert',
+    french: 'Votre conversation de pratique a été sauvegardée dans votre historique',
+    portuguese: 'Sua conversa de prática foi salva no seu histórico'
+  },
+  learningPlanGreatJob: {
+    english: 'Excellent work! Your learning plan progress has been updated.',
+    dutch: 'Uitstekend werk! Je leerplan voortgang is bijgewerkt.',
+    spanish: '¡Excelente trabajo! Tu progreso del plan de aprendizaje ha sido actualizado.',
+    german: 'Ausgezeichnete Arbeit! Dein Lernplan-Fortschritt wurde aktualisiert.',
+    french: 'Excellent travail! Vos progrès du plan d\'apprentissage ont été mis à jour.',
+    portuguese: 'Excelente trabalho! Seu progresso do plano de aprendizagem foi atualizado.'
+  },
+  practiceGreatJob: {
+    english: 'Great job! Your conversation has been saved to your practice history.',
+    dutch: 'Geweldig gedaan! Je gesprek is opgeslagen in je oefengeschiedenis.',
+    spanish: '¡Excelente trabajo! Tu conversación se ha guardado en tu historial de práctica.',
+    german: 'Großartige Arbeit! Dein Gespräch wurde in deiner Übungshistorie gespeichert.',
+    french: 'Excellent travail! Votre conversation a été sauvegardée dans votre historique de pratique.',
+    portuguese: 'Ótimo trabalho! Sua conversa foi salva no seu histórico de prática.'
   }
 };
 
