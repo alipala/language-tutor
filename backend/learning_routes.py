@@ -427,6 +427,18 @@ async def create_learning_plan(
                 }}
             )
             print(f"Updated user profile with assessment data for user {current_user.id} (language: {plan_request.language}, level: {plan_request.proficiency_level})")
+            
+            # IMPORTANT: Track assessment usage for subscription limits
+            # This was the missing piece causing the bug!
+            try:
+                await users_collection.update_one(
+                    {"_id": current_user.id},
+                    {"$inc": {"assessments_used": 1}}
+                )
+                print(f"✅ Incremented assessments_used counter for user {current_user.id}")
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
+                # Don't fail the entire operation if usage tracking fails
         
         # Save the plan to the database
         result = await learning_plans_collection.insert_one(new_plan)
@@ -868,6 +880,18 @@ async def save_assessment_data(
         
         # Log the update
         print(f"Updated user profile with assessment data for user {user_id} (modified count: {result.modified_count})")
+        
+        # IMPORTANT: Track assessment usage for subscription limits
+        # This ensures the assessment counter is properly updated
+        try:
+            usage_result = await users_collection.update_one(
+                {"_id": user_id},
+                {"$inc": {"assessments_used": 1}}
+            )
+            print(f"✅ Incremented assessments_used counter for user {user_id} (modified count: {usage_result.modified_count})")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
+            # Don't fail the entire operation if usage tracking fails
         
         # Get the updated user data
         updated_user = await users_collection.find_one({"_id": user_id})
