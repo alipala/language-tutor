@@ -659,26 +659,26 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                             <span className="text-sm text-gray-500">
                               Showing weeks {startIndex + 1}-{Math.min(endIndex, allWeeks.length)} of {allWeeks.length}
                             </span>
-                            {/* Navigation buttons */}
-                            <div className="flex items-center space-x-1">
+                            {/* Navigation buttons - Made more visible */}
+                            <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => setCurrentWeekPage(Math.max(0, currentWeekPage - 1))}
                                 disabled={currentWeekPage === 0}
-                                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
                                 title="Previous weeks"
                               >
-                                <ChevronRight className="h-4 w-4 rotate-180" />
+                                <ChevronRight className="h-4 w-4 rotate-180 text-gray-600" />
                               </button>
-                              <span className="text-xs text-gray-400 px-2">
+                              <span className="text-sm text-gray-600 px-3 py-1 bg-white rounded-md border border-gray-200 font-medium min-w-[50px] text-center">
                                 {currentWeekPage + 1}/{totalPages}
                               </span>
                               <button
                                 onClick={() => setCurrentWeekPage(Math.min(totalPages - 1, currentWeekPage + 1))}
                                 disabled={currentWeekPage >= totalPages - 1}
-                                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
                                 title="Next weeks"
                               >
-                                <ChevronRight className="h-4 w-4" />
+                                <ChevronRight className="h-4 w-4 text-gray-600" />
                               </button>
                             </div>
                           </div>
