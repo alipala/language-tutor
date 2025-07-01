@@ -61,6 +61,7 @@ export default function VerticalCarouselFlow() {
   // State for leave confirmation modal
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+  const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   
   // Refs for smooth scrolling
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,14 +78,11 @@ export default function VerticalCarouselFlow() {
 
   // Handle back button navigation with confirmation modal
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-      return '';
-    };
-
     const handlePopState = (e: PopStateEvent) => {
-      console.log('[VerticalCarouselFlow] Back button pressed, preventing navigation');
+      console.log('[VerticalCarouselFlow] Back button pressed, showing custom modal');
+      
+      // Set flag to prevent any level selection
+      setIsBackButtonPressed(true);
       
       // Prevent the navigation completely
       e.preventDefault();
@@ -97,16 +95,12 @@ export default function VerticalCarouselFlow() {
       setPendingNavigationUrl('/');
     };
 
-    // Add beforeunload to catch any navigation attempts
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
     // Push a state to handle back button
     window.history.pushState(null, '', window.location.href);
     
     window.addEventListener('popstate', handlePopState);
     
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
@@ -514,8 +508,9 @@ export default function VerticalCarouselFlow() {
   // Handle level selection
   const handleLevelSelect = (level: string) => {
     // Check if this is triggered by back navigation
-    if (showLeaveWarning) {
-      return; // Don't proceed if modal is showing
+    if (showLeaveWarning || isBackButtonPressed) {
+      console.log('[VerticalCarouselFlow] Level selection blocked - back button was pressed');
+      return; // Don't proceed if modal is showing or back button was pressed
     }
     
     setSelectedLevel(level);
