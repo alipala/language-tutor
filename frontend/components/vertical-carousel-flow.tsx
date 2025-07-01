@@ -112,10 +112,8 @@ export default function VerticalCarouselFlow() {
   };
 
   const handleConfirmNavigation = () => {
-    if (pendingNavigationUrl) {
-      // Navigate to the pending URL
-      router.push(pendingNavigationUrl);
-    }
+    // Always navigate to home page when user confirms leaving
+    router.push('/');
     setShowLeaveWarning(false);
   };
 
