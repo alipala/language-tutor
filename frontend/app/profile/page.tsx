@@ -27,6 +27,7 @@ import ExportModal from '@/components/export-modal';
 import SubscriptionManagement from './subscription-management';
 import MembershipBadge, { UsageIndicator } from '@/components/membership-badge';
 import PaymentProcessingModal from '@/components/payment-processing-modal';
+import SoundWaveLoader from '@/components/sound-wave-loader';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -748,7 +749,12 @@ export default function ProfilePage() {
                 
                 {statsLoading ? (
                   <div className="flex justify-center items-center py-8">
-                    <div className="animate-spin h-6 w-6 border-2 border-teal-500 border-t-transparent rounded-full"></div>
+                    <SoundWaveLoader 
+                      size="md"
+                      color="#4ECFBF"
+                      text="Loading conversations..."
+                      subtext="Fetching your practice history"
+                    />
                   </div>
                 ) : conversationHistory.length === 0 ? (
                   <div className="text-center py-8">
@@ -899,7 +905,12 @@ export default function ProfilePage() {
 
               {plansLoading ? (
                 <div className="bg-white rounded-2xl shadow-lg p-8 flex justify-center items-center">
-                  <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+                  <SoundWaveLoader 
+                    size="lg"
+                    color="#6366F1"
+                    text="Loading learning plans..."
+                    subtext="Fetching your personalized journey"
+                  />
                 </div>
               ) : plansError ? (
                 <div className="bg-white rounded-2xl shadow-lg p-6 bg-red-50 border border-red-200 text-red-600 text-sm flex items-center">
