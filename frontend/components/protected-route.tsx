@@ -3,6 +3,7 @@
 import { useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import SoundWaveLoader from '@/components/sound-wave-loader';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -29,8 +30,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <SoundWaveLoader 
+          size="lg"
+          color="#4ECFBF"
+          text="Authenticating..."
+          subtext="Verifying your account access"
+        />
       </div>
     );
   }
