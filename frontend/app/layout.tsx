@@ -7,7 +7,6 @@ import AuthProviderWrapper from '@/components/auth-provider-wrapper'
 import { NavigationProvider } from '@/lib/navigation'
 import NavBar from '@/components/nav-bar'
 import ConditionalFooter from '@/components/conditional-footer'
-import PageTransition from '@/components/page-transition'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -170,9 +169,7 @@ export default function RootLayout({
             <div className="app-background min-h-screen w-full bg-white">
               <NavBar />
               <main id="main-content" tabIndex={-1} className="outline-none">
-                <PageTransition>
-                  {children}
-                </PageTransition>
+                {children}
               </main>
               <ConditionalFooter />
             </div>

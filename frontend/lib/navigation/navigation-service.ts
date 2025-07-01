@@ -207,70 +207,23 @@ class NavigationService {
   }
 
   /**
-   * Navigate with smooth transition effect
-   */
-  navigateWithTransition(route: string, options: {
-    replace?: boolean;
-    state?: Record<string, any>;
-    preserveQueryParams?: boolean;
-  } = {}): void {
-    // Add a brief loading state for immediate feedback
-    const loadingElement = document.createElement('div');
-    loadingElement.className = 'fixed inset-0 z-50 bg-white/60 backdrop-blur-sm pointer-events-none transition-opacity duration-200';
-    loadingElement.style.opacity = '0';
-    loadingElement.innerHTML = `
-      <div class="flex items-center justify-center h-full">
-        <div class="flex flex-col items-center">
-          <div class="relative w-12 h-12 mb-4">
-            <div class="absolute inset-0 rounded-full border-4 border-[#4ECFBF]/20"></div>
-            <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-[#4ECFBF] animate-spin"></div>
-          </div>
-          <p class="text-gray-600 text-sm">Loading...</p>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(loadingElement);
-
-    // Fade in loading overlay
-    requestAnimationFrame(() => {
-      loadingElement.style.opacity = '1';
-    });
-
-    // Navigate after brief delay for smooth transition
-    setTimeout(() => {
-      this.navigate(route, options);
-      
-      // Clean up loading element after navigation
-      setTimeout(() => {
-        if (loadingElement.parentNode) {
-          loadingElement.parentNode.removeChild(loadingElement);
-        }
-      }, 100);
-    }, 150);
-  }
-
-  /**
-   * Navigate to the login page with smooth transition
+   * Navigate to the login page
    */
   navigateToLogin(redirectAfterAuth?: string): void {
     if (redirectAfterAuth) {
       this.setRedirectAfterAuth(redirectAfterAuth);
     }
-    
-    // Add smooth transition effect
-    this.navigateWithTransition('/auth/login', { replace: true });
+    this.navigate('/auth/login', { replace: true });
   }
 
   /**
-   * Navigate to the signup page with smooth transition
+   * Navigate to the signup page
    */
   navigateToSignup(redirectAfterAuth?: string): void {
     if (redirectAfterAuth) {
       this.setRedirectAfterAuth(redirectAfterAuth);
     }
-    
-    // Add smooth transition effect
-    this.navigateWithTransition('/auth/signup', { replace: true });
+    this.navigate('/auth/signup', { replace: true });
   }
 
   /**
