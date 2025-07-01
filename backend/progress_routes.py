@@ -679,6 +679,7 @@ async def track_subscription_usage(user_id: str, usage_type: str):
     """Track subscription usage for learning plan sessions"""
     try:
         from database import database
+        from bson import ObjectId
         users_collection = database.users
         
         print(f"[SUBSCRIPTION] Tracking {usage_type} usage for user {user_id}")
@@ -686,8 +687,16 @@ async def track_subscription_usage(user_id: str, usage_type: str):
         # Update usage counter
         update_field = "practice_sessions_used" if usage_type == "practice_session" else "assessments_used"
         
+        # Convert user_id to ObjectId for MongoDB query
+        try:
+            user_object_id = ObjectId(user_id)
+            query = {"_id": user_object_id}
+        except Exception:
+            # Fallback to string ID if ObjectId conversion fails
+            query = {"_id": user_id}
+        
         result = await users_collection.update_one(
-            {"_id": user_id},
+            query,
             {"$inc": {update_field: 1}}
         )
         
@@ -695,6 +704,19 @@ async def track_subscription_usage(user_id: str, usage_type: str):
             print(f"[SUBSCRIPTION] ✅ Tracked {usage_type} usage for user {user_id}")
         else:
             print(f"[SUBSCRIPTION] ⚠️ No changes made when tracking {usage_type} usage for user {user_id}")
+            # Try alternative query format
+            try:
+                alt_query = {"_id": user_id} if query.get("_id") != user_id else {"_id": ObjectId(user_id)}
+                alt_result = await users_collection.update_one(
+                    alt_query,
+                    {"$inc": {update_field: 1}}
+                )
+                if alt_result.modified_count > 0:
+                    print(f"[SUBSCRIPTION] ✅ Tracked {usage_type} usage with alternative query for user {user_id}")
+                else:
+                    print(f"[SUBSCRIPTION] ❌ Failed to track usage with both query formats for user {user_id}")
+            except Exception as alt_e:
+                print(f"[SUBSCRIPTION] ❌ Alternative query also failed: {str(alt_e)}")
             
     except Exception as e:
         print(f"[SUBSCRIPTION] ❌ Error tracking subscription usage: {str(e)}")
