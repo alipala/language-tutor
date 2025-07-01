@@ -1138,17 +1138,27 @@ async def generate_comprehensive_session_summary(plan, conversation_data, basic_
         current_week_data = weekly_schedule[current_week - 1] if current_week <= len(weekly_schedule) else None
         week_focus = current_week_data.get("focus", "General language practice") if current_week_data else "General language practice"
         
+        print(f"[SESSION_SUMMARY] Generating summary for session {completed_sessions}, week {current_week}")
+        print(f"[SESSION_SUMMARY] Week focus: {week_focus}")
+        print(f"[SESSION_SUMMARY] Basic summary: {basic_summary}")
+        print(f"[SESSION_SUMMARY] Conversation data available: {conversation_data is not None}")
+        
         # Extract conversation content if available
         conversation_content = ""
         if conversation_data and "messages" in conversation_data:
             messages = conversation_data["messages"]
+            print(f"[SESSION_SUMMARY] Found {len(messages)} messages in conversation data")
             for msg in messages[-10:]:  # Last 10 messages for context
                 role = "Student" if msg.get("role") == "user" else "Tutor"
                 content = msg.get("content", "")
                 conversation_content += f"{role}: {content}\n"
+        else:
+            print(f"[SESSION_SUMMARY] No conversation messages found, using basic summary only")
         
-        # Generate comprehensive summary using OpenAI
-        prompt = f"""Analyze this {language} language learning session and create a comprehensive summary.
+        # Always generate a comprehensive summary, even without conversation data
+        if conversation_content:
+            # Full analysis with conversation data
+            prompt = f"""Analyze this {language} language learning session and create a comprehensive summary.
 
 STUDENT PROFILE:
 - Language: {language}
@@ -1157,7 +1167,7 @@ STUDENT PROFILE:
 - Current Week Focus: {week_focus}
 
 CONVERSATION EXCERPT:
-{conversation_content if conversation_content else "No conversation data available"}
+{conversation_content}
 
 BASIC SESSION INFO:
 {basic_summary if basic_summary else "5-minute conversation session completed"}
@@ -1166,34 +1176,99 @@ Create a comprehensive summary that includes:
 1. Session overview (duration, topics covered)
 2. Language skills demonstrated (pronunciation, grammar, vocabulary, fluency)
 3. Progress towards weekly learning objectives
-4. Key achievements and improvements
+4. Key achievements and improvements observed
 5. Areas for continued focus
-6. Specific examples from the conversation (if available)
+6. Specific examples from the conversation
 
 Format as a detailed but concise summary suitable for tracking learning progress."""
+        else:
+            # Generate comprehensive summary based on basic info and learning objectives
+            prompt = f"""Create a comprehensive learning session summary based on the available information.
 
+STUDENT PROFILE:
+- Language: {language}
+- Level: {level}
+- Session: {completed_sessions}
+- Current Week Focus: {week_focus}
+
+SESSION INFORMATION:
+{basic_summary if basic_summary else "5-minute conversation session completed"}
+
+Even without detailed conversation data, create a comprehensive summary that includes:
+1. Session overview based on available information
+2. Expected language skills practice for {level} level {language}
+3. Progress towards weekly learning objectives: "{week_focus}"
+4. Likely achievements and improvements for this session type
+5. Areas for continued focus based on the weekly objectives
+6. Encouragement and next steps
+
+Make it detailed and educational, focusing on the learning objectives and expected outcomes for a {level} level {language} student working on: {week_focus}."""
+
+        print(f"[SESSION_SUMMARY] Sending prompt to OpenAI (length: {len(prompt)} chars)")
+        
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are an expert language learning analyst. Create detailed, insightful summaries of student progress."},
+                {"role": "system", "content": "You are an expert language learning analyst. Create detailed, insightful summaries of student progress that are educational and encouraging."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=500,
+            max_tokens=600,  # Increased for more comprehensive summaries
             temperature=0.3
         )
         
         if response and response.choices:
             comprehensive_summary = response.choices[0].message.content.strip()
-            print(f"[SESSION_SUMMARY] Generated comprehensive summary: {len(comprehensive_summary)} characters")
+            print(f"[SESSION_SUMMARY] ✅ Generated comprehensive summary: {len(comprehensive_summary)} characters")
             return comprehensive_summary
         else:
-            # Fallback to enhanced basic summary
-            return f"Session {completed_sessions} completed: {basic_summary if basic_summary else 'Conversation practice session'}. Focus: {week_focus}. Continued progress in {language} at {level} level."
+            print(f"[SESSION_SUMMARY] ❌ No response from OpenAI")
+            # Enhanced fallback summary
+            return f"""**Session {completed_sessions} Summary**
+
+**Session Overview:**
+Completed a {basic_summary if basic_summary else '5-minute conversation session'} focusing on {language} language practice at {level} level.
+
+**Weekly Learning Focus:**
+This session addressed the current week's objective: {week_focus}
+
+**Progress Made:**
+- Continued development of {language} communication skills
+- Practice aligned with {level} proficiency level expectations
+- Engagement with weekly learning objectives
+
+**Areas for Continued Focus:**
+- Further practice with {week_focus.lower()}
+- Continued application of {level} level language structures
+- Building confidence in {language} communication
+
+**Next Steps:**
+Continue practicing the weekly focus areas and maintain consistent engagement with the learning plan objectives."""
             
     except Exception as e:
-        print(f"[SESSION_SUMMARY] Error generating comprehensive summary: {str(e)}")
-        # Fallback to enhanced basic summary
-        return f"Session {completed_sessions} completed: {basic_summary if basic_summary else 'Conversation practice session'}. Focus: {week_focus}. Continued progress in {language} at {level} level."
+        print(f"[SESSION_SUMMARY] ❌ Error generating comprehensive summary: {str(e)}")
+        import traceback
+        print(f"[SESSION_SUMMARY] Full traceback: {traceback.format_exc()}")
+        
+        # Enhanced fallback summary with error handling
+        return f"""**Session {completed_sessions} Summary**
+
+**Session Overview:**
+Completed a {basic_summary if basic_summary else 'conversation session'} in {language} at {level} level.
+
+**Weekly Learning Focus:**
+{week_focus}
+
+**Progress Made:**
+- Continued {language} language practice
+- Engagement with {level} level content
+- Progress towards weekly learning objectives
+
+**Areas for Continued Focus:**
+- {week_focus.lower()}
+- Consistent practice and application
+- Building fluency and confidence
+
+This session contributed to the overall learning journey and weekly objectives."""
 
 # Add endpoint for sentence construction assessment
 @app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
