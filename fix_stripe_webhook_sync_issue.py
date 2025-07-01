@@ -11,7 +11,10 @@ async def fix_stripe_webhook_sync_issue():
     """
     
     # Set up Stripe
-    stripe.api_key = "sk_test_51Mzx41JcquSiYwWNGndzlyBDtf249jC4H0bjboX2GxHJS2SHb2SXxlZmbt8ObCruGg5KKSTnHgnthxnZknF5F4R300MGsRy0aK"
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe.api_key:
+        print("❌ STRIPE_SECRET_KEY not found in environment")
+        return
     
     # Connect to production MongoDB
     mongodb_url = "mongodb://mongo:rdJVDcRfesCmdVXgYuJPNJlDzkFzxIoT@crossover.proxy.rlwy.net:44437/language_tutor?authSource=admin"

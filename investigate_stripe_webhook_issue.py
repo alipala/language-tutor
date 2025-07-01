@@ -11,10 +11,10 @@ async def investigate_stripe_webhook_issue():
     and fix the Stripe webhook synchronization issue.
     """
     
-    # Set up Stripe using Railway environment variables
-    stripe.api_key = "sk_test_51Mzx41JcquSiYwWNGndzlyBDtf249jC4H0bjboX2GxHJS2SHb2SXxlZmbt8ObCruGg5KKSTnHgnthxnZknF5F4R300MGsRy0aK"
+    # Set up Stripe using environment variables
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
     if not stripe.api_key:
-        print("❌ STRIPE_SECRET_KEY not found")
+        print("❌ STRIPE_SECRET_KEY not found in environment")
         return
     
     # Connect to production MongoDB
