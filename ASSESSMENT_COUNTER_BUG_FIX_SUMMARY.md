@@ -96,3 +96,44 @@ The investigation found 11 other users with the same bug who may need their coun
 - And 8 other users with mailslurp.biz test emails
 
 These can be fixed using the `fix_assessment_counter_bug.py` script if needed.
+
+## 🚨 CRITICAL DISCOVERY: Stripe Webhook Sync Issue
+
+### Additional Root Cause Found
+During investigation, we discovered a **critical Stripe webhook synchronization issue**:
+
+- **Database Status**: `"subscription_status": "incomplete"`
+- **Stripe Status**: `"active"` (confirmed via Stripe API)
+- **Impact**: Subscription limits calculation failed due to status mismatch
+- **Result**: Assessment counter showed wrong values
+
+### Webhook Sync Problem
+The user's subscription was successfully created in Stripe and payment was processed, but the webhook that should have updated the subscription status from "incomplete" to "active" either:
+1. Failed to be delivered to our endpoint
+2. Failed to process correctly
+3. Encountered a race condition
+4. Had signature verification issues
+
+### Immediate Fix Applied
+✅ **Fixed subscription status in production database**
+- Updated user 686424d66c72bbc0837f8a58 from "incomplete" to "active"
+- Assessment counter now correctly shows 23/24
+- User can now access all subscription features
+
+### Webhook Enhancement Recommendations
+1. **Enhanced Logging**: Add detailed webhook event logging with event IDs
+2. **Error Handling**: Improve error handling to prevent silent failures
+3. **Monitoring**: Add webhook health monitoring and alerts
+4. **Sync Verification**: Implement periodic sync jobs to catch missed webhooks
+5. **Manual Sync**: Add admin endpoint for manual subscription sync
+
+### Files Created for Investigation
+- `fix_subscription_status_production.py` - Fixed the immediate issue
+- `enhance_webhook_logging.py` - Webhook improvement recommendations
+- Investigation scripts with Stripe API integration
+
+### Prevention Strategy
+- Monitor webhook delivery logs in Stripe dashboard
+- Implement webhook retry mechanism
+- Add periodic sync job to verify Stripe vs DB consistency
+- Enhance webhook logging for better debugging
