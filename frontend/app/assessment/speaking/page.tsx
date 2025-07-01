@@ -3,18 +3,49 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNavigation } from '@/lib/navigation';
+import { useAuth } from '@/lib/auth';
 import NavBar from '@/components/nav-bar';
 import SpeakingAssessment from '@/components/speaking-assessment';
+import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 import { SpeakingAssessmentResult } from '@/lib/speaking-assessment-api';
 import { verifyBackendConnectivity } from '@/lib/healthCheck';
 
 export default function SpeakingAssessmentPage() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { user } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
+  
+  // State for leave confirmation modal
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+
+  // Handle back button navigation with confirmation modal
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      console.log('[SpeakingAssessment] Back button pressed, showing custom modal');
+      
+      // Prevent the navigation completely
+      e.preventDefault();
+      
+      // Push the current state back to prevent actual navigation
+      window.history.pushState(null, '', window.location.href);
+      
+      // Show our custom modal
+      setShowLeaveWarning(true);
+    };
+
+    // Push a state to handle back button
+    window.history.pushState(null, '', window.location.href);
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   useEffect(() => {
     console.log('Speaking assessment page initialized at:', new Date().toISOString());
@@ -100,6 +131,17 @@ export default function SpeakingAssessmentPage() {
     navigation.navigateToLevelSelection();
   };
 
+  // Handle leave confirmation modal actions
+  const handleCancelNavigation = () => {
+    setShowLeaveWarning(false);
+  };
+
+  const handleConfirmNavigation = () => {
+    // Navigate to flow page with assessment mode
+    router.push('/flow?mode=assessment');
+    setShowLeaveWarning(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col text-white bg-[var(--turquoise)]">
       <NavBar />
@@ -156,6 +198,14 @@ export default function SpeakingAssessmentPage() {
           )}
         </div>
       </main>
+
+      {/* Leave Confirmation Modal */}
+      <LeaveConfirmationModal
+        isOpen={showLeaveWarning}
+        onStay={handleCancelNavigation}
+        onLeave={handleConfirmNavigation}
+        userType={user ? 'authenticated' : 'guest'}
+      />
     </div>
   );
 }
