@@ -412,16 +412,21 @@ async def create_learning_plan(
         # If user is authenticated and assessment data is provided, update user profile
         if current_user and plan_request.assessment_data:
             from database import users_collection
-            # Update the user's profile with the assessment data
+            # Update the user's profile with the latest assessment data only
+            # Don't overwrite preferred_language and preferred_level as users can have multiple languages
             await users_collection.update_one(
                 {"_id": current_user.id},
                 {"$set": {
                     "last_assessment_data": plan_request.assessment_data,
-                    "preferred_language": plan_request.language,
-                    "preferred_level": plan_request.proficiency_level
+                    "assessment_history": {
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "data": plan_request.assessment_data,
+                        "language": plan_request.language,
+                        "level": plan_request.proficiency_level
+                    }
                 }}
             )
-            print(f"Updated user profile with assessment data for user {current_user.id}")
+            print(f"Updated user profile with assessment data for user {current_user.id} (language: {plan_request.language}, level: {plan_request.proficiency_level})")
         
         # Save the plan to the database
         result = await learning_plans_collection.insert_one(new_plan)
