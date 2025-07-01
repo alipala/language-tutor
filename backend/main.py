@@ -1,4 +1,4 @@
-import os
+#import os
 import json
 import traceback
 from pathlib import Path
@@ -1006,22 +1006,34 @@ async def store_session_summary(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Store conversation analysis summary for a learning plan session
+    Store comprehensive conversation analysis summary for a learning plan session
     """
-    # Get parameters from query string
+    # Get parameters from query string and request body
     plan_id = request.query_params.get('plan_id')
-    session_summary = request.query_params.get('session_summary')
+    basic_summary = request.query_params.get('session_summary')
     
-    if not plan_id or not session_summary:
+    # Try to get conversation data from request body for comprehensive analysis
+    conversation_data = None
+    try:
+        body = await request.body()
+        if body:
+            conversation_data = json.loads(body)
+    except:
+        conversation_data = None
+    
+    if not plan_id:
         raise HTTPException(
             status_code=400,
-            detail="Missing required parameters: plan_id and session_summary"
+            detail="Missing required parameter: plan_id"
         )
     
-    print(f"[SESSION_SUMMARY] Storing session summary for plan {plan_id}")
-    print(f"[SESSION_SUMMARY] Summary: {session_summary[:100]}...")
+    print(f"[SESSION_SUMMARY] Processing session summary for plan {plan_id}")
+    print(f"[SESSION_SUMMARY] Basic summary: {basic_summary[:100] if basic_summary else 'None'}...")
+    print(f"[SESSION_SUMMARY] Conversation data available: {conversation_data is not None}")
+    
     try:
-        from learning_routes import learning_plans_collection
+        from database import database
+        learning_plans_collection = database.learning_plans
         
         # Find the plan
         plan = await learning_plans_collection.find_one({"id": plan_id})
@@ -1039,25 +1051,49 @@ async def store_session_summary(
                 detail="You don't have permission to update this learning plan"
             )
         
+        # Generate comprehensive session summary
+        comprehensive_summary = await generate_comprehensive_session_summary(
+            plan, conversation_data, basic_summary, current_user.id
+        )
+        
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
         
-        # Add new session summary
-        session_summaries.append(session_summary)
+        # Add new comprehensive session summary
+        session_summaries.append(comprehensive_summary)
         
-        # Update completed sessions count
+        # Update completed sessions count and weekly schedule
         completed_sessions = plan.get("completed_sessions", 0) + 1
-        total_sessions = plan.get("total_sessions", 8)
+        total_sessions = plan.get("total_sessions", 48)
         progress_percentage = min((completed_sessions / total_sessions) * 100, 100.0)
         
+        # Calculate which week this session belongs to
+        sessions_per_week = 2
+        new_week = ((completed_sessions - 1) // sessions_per_week) + 1
+        sessions_in_week = ((completed_sessions - 1) % sessions_per_week) + 1
+        
+        # Update weekly schedule progress
+        weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
+        if weekly_schedule:
+            week_index = new_week - 1  # Convert to 0-based index
+            if week_index < len(weekly_schedule):
+                weekly_schedule[week_index]["sessions_completed"] = sessions_in_week
+                print(f"[SESSION_SUMMARY] Updated week {new_week} sessions_completed to {sessions_in_week}")
+        
         # Update the plan
+        update_data = {
+            "session_summaries": session_summaries,
+            "completed_sessions": completed_sessions,
+            "progress_percentage": progress_percentage
+        }
+        
+        # Update weekly schedule if modified
+        if weekly_schedule:
+            update_data["plan_content.weekly_schedule"] = weekly_schedule
+        
         result = await learning_plans_collection.update_one(
             {"id": plan_id},
-            {"$set": {
-                "session_summaries": session_summaries,
-                "completed_sessions": completed_sessions,
-                "progress_percentage": progress_percentage
-            }}
+            {"$set": update_data}
         )
         
         if result.modified_count == 0:
@@ -1066,13 +1102,18 @@ async def store_session_summary(
                 detail="Failed to update learning plan with session summary"
             )
         
-        print(f"✅ Session summary stored for plan {plan_id}, session {completed_sessions}")
+        print(f"✅ Comprehensive session summary stored for plan {plan_id}")
+        print(f"✅ Session {completed_sessions}/{total_sessions} completed ({progress_percentage:.1f}%)")
+        print(f"✅ Week {new_week}, session {sessions_in_week} of {sessions_per_week}")
         
         return {
             "success": True,
             "completed_sessions": completed_sessions,
             "progress_percentage": progress_percentage,
-            "total_summaries": len(session_summaries)
+            "total_summaries": len(session_summaries),
+            "current_week": new_week,
+            "sessions_in_week": sessions_in_week,
+            "comprehensive_summary": comprehensive_summary
         }
         
     except Exception as e:
@@ -1081,6 +1122,78 @@ async def store_session_summary(
             status_code=500,
             detail=f"Error storing session summary: {str(e)}"
         )
+
+async def generate_comprehensive_session_summary(plan, conversation_data, basic_summary, user_id):
+    """Generate a comprehensive session summary with AI analysis"""
+    try:
+        # Get plan details
+        language = plan.get("language", "english")
+        level = plan.get("proficiency_level", "B1")
+        completed_sessions = plan.get("completed_sessions", 0) + 1
+        
+        # Get current week focus
+        sessions_per_week = 2
+        current_week = ((completed_sessions - 1) // sessions_per_week) + 1
+        weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
+        current_week_data = weekly_schedule[current_week - 1] if current_week <= len(weekly_schedule) else None
+        week_focus = current_week_data.get("focus", "General language practice") if current_week_data else "General language practice"
+        
+        # Extract conversation content if available
+        conversation_content = ""
+        if conversation_data and "messages" in conversation_data:
+            messages = conversation_data["messages"]
+            for msg in messages[-10:]:  # Last 10 messages for context
+                role = "Student" if msg.get("role") == "user" else "Tutor"
+                content = msg.get("content", "")
+                conversation_content += f"{role}: {content}\n"
+        
+        # Generate comprehensive summary using OpenAI
+        prompt = f"""Analyze this {language} language learning session and create a comprehensive summary.
+
+STUDENT PROFILE:
+- Language: {language}
+- Level: {level}
+- Session: {completed_sessions}
+- Current Week Focus: {week_focus}
+
+CONVERSATION EXCERPT:
+{conversation_content if conversation_content else "No conversation data available"}
+
+BASIC SESSION INFO:
+{basic_summary if basic_summary else "5-minute conversation session completed"}
+
+Create a comprehensive summary that includes:
+1. Session overview (duration, topics covered)
+2. Language skills demonstrated (pronunciation, grammar, vocabulary, fluency)
+3. Progress towards weekly learning objectives
+4. Key achievements and improvements
+5. Areas for continued focus
+6. Specific examples from the conversation (if available)
+
+Format as a detailed but concise summary suitable for tracking learning progress."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert language learning analyst. Create detailed, insightful summaries of student progress."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.3
+        )
+        
+        if response and response.choices:
+            comprehensive_summary = response.choices[0].message.content.strip()
+            print(f"[SESSION_SUMMARY] Generated comprehensive summary: {len(comprehensive_summary)} characters")
+            return comprehensive_summary
+        else:
+            # Fallback to enhanced basic summary
+            return f"Session {completed_sessions} completed: {basic_summary if basic_summary else 'Conversation practice session'}. Focus: {week_focus}. Continued progress in {language} at {level} level."
+            
+    except Exception as e:
+        print(f"[SESSION_SUMMARY] Error generating comprehensive summary: {str(e)}")
+        # Fallback to enhanced basic summary
+        return f"Session {completed_sessions} completed: {basic_summary if basic_summary else 'Conversation practice session'}. Focus: {week_focus}. Continued progress in {language} at {level} level."
 
 # Add endpoint for sentence construction assessment
 @app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
