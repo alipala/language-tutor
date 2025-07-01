@@ -9,6 +9,7 @@ import { isAuthenticated } from '@/lib/auth-utils';
 import { isPlanValid, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 import TimeUpModal from '@/components/time-up-modal';
+import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -214,21 +215,47 @@ export default function SpeechPage() {
     };
   }, [user]);
   
-  // Show warning before leaving the conversation
+  // Override browser's default "Leave site?" modal with custom modal
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!allowBackNavigation) {
-        // Standard way to show a confirmation dialog
+      // Check if we're in a conversation and should show custom modal
+      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
+      
+      if (isInConversation && !allowBackNavigation) {
+        // Prevent the default browser modal
         e.preventDefault();
-        // Chrome requires returnValue to be set
         e.returnValue = '';
+        
+        // Show our custom modal instead
+        setShowLeaveWarning(true);
+        setPendingNavigationUrl(window.location.pathname);
+        
         return '';
       }
     };
 
+    // Handle browser back/forward navigation
+    const handlePopState = (e: PopStateEvent) => {
+      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
+      
+      if (isInConversation && !allowBackNavigation) {
+        // Prevent navigation and show custom modal
+        e.preventDefault();
+        window.history.pushState(null, '', window.location.href);
+        setShowLeaveWarning(true);
+        setPendingNavigationUrl('/language-selection'); // Default back navigation
+      }
+    };
+
+    // Push a state to handle back button
+    window.history.pushState(null, '', window.location.href);
+    
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, [allowBackNavigation]);
   
@@ -333,36 +360,13 @@ export default function SpeechPage() {
       {user && <PendingLearningPlanHandler />}
       <NavBar activeSection="section1" />
       
-      {/* Warning Modal for conversation interruption */}
-      {showLeaveWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card rounded-lg shadow-xl max-w-md w-full p-6 border border-white/20">
-            <div className="flex items-center text-amber-500 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <h3 className="text-lg font-medium">End current conversation?</h3>
-            </div>
-            <p className="text-white/80 mb-6">You're currently in a conversation. Leaving this page will end your current session.</p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-              <button
-                type="button"
-                className="primary-button px-4 py-2 rounded-lg"
-                onClick={handleCancelNavigation}
-              >
-                Continue Conversation
-              </button>
-              <button
-                type="button"
-                className="primary-button px-4 py-2 rounded-lg"
-                onClick={handleConfirmNavigation}
-              >
-                End Conversation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Enhanced Leave Confirmation Modal */}
+      <LeaveConfirmationModal
+        isOpen={showLeaveWarning}
+        onStay={handleCancelNavigation}
+        onLeave={handleConfirmNavigation}
+        userType={user ? 'authenticated' : 'guest'}
+      />
       
       {/* Main Content */}
       <div className="flex-grow">
