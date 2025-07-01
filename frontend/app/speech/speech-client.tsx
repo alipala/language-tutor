@@ -807,7 +807,14 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
-          }
+          },
+          body: JSON.stringify({
+            messages: messagesToSave,
+            duration_minutes: durationMinutes,
+            language: language,
+            level: level,
+            topic: topic
+          })
         });
 
         if (!summaryResponse.ok) {
