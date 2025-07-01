@@ -62,6 +62,9 @@ async def save_conversation(
             # Update learning plan progress for learning plan sessions
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
             
+            # Track subscription usage for learning plan sessions
+            await track_subscription_usage(current_user.id, "practice_session")
+            
             return {
                 "success": True,
                 "session_id": "learning_plan_session",
@@ -668,6 +671,31 @@ async def calculate_streaks(user_id: str) -> tuple[int, int]:
     except Exception as e:
         print(f"[PROGRESS] ❌ Error calculating streaks: {str(e)}")
         return 0, 0
+
+async def track_subscription_usage(user_id: str, usage_type: str):
+    """Track subscription usage for learning plan sessions"""
+    try:
+        from database import database
+        users_collection = database.users
+        
+        print(f"[SUBSCRIPTION] Tracking {usage_type} usage for user {user_id}")
+        
+        # Update usage counter
+        update_field = "practice_sessions_used" if usage_type == "practice_session" else "assessments_used"
+        
+        result = await users_collection.update_one(
+            {"_id": user_id},
+            {"$inc": {update_field: 1}}
+        )
+        
+        if result.modified_count > 0:
+            print(f"[SUBSCRIPTION] ✅ Tracked {usage_type} usage for user {user_id}")
+        else:
+            print(f"[SUBSCRIPTION] ⚠️ No changes made when tracking {usage_type} usage for user {user_id}")
+            
+    except Exception as e:
+        print(f"[SUBSCRIPTION] ❌ Error tracking subscription usage: {str(e)}")
+        # Don't raise the exception - this is a non-critical operation
 
 async def update_learning_plan_progress(user_id: str, language: str, level: str, topic: Optional[str] = None):
     """Update learning plan progress when a conversation is completed"""
