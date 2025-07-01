@@ -77,10 +77,16 @@ export default function VerticalCarouselFlow() {
 
   // Handle back button navigation with confirmation modal
   useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+
     const handlePopState = (e: PopStateEvent) => {
-      console.log('[VerticalCarouselFlow] Back button pressed, showing confirmation modal');
+      console.log('[VerticalCarouselFlow] Back button pressed, preventing navigation');
       
-      // Prevent the navigation
+      // Prevent the navigation completely
       e.preventDefault();
       
       // Push the current state back to prevent actual navigation
@@ -91,12 +97,16 @@ export default function VerticalCarouselFlow() {
       setPendingNavigationUrl('/');
     };
 
+    // Add beforeunload to catch any navigation attempts
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     // Push a state to handle back button
     window.history.pushState(null, '', window.location.href);
     
     window.addEventListener('popstate', handlePopState);
     
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
@@ -503,6 +513,11 @@ export default function VerticalCarouselFlow() {
 
   // Handle level selection
   const handleLevelSelect = (level: string) => {
+    // Check if this is triggered by back navigation
+    if (showLeaveWarning) {
+      return; // Don't proceed if modal is showing
+    }
+    
     setSelectedLevel(level);
     sessionStorage.setItem('selectedLevel', level);
     
