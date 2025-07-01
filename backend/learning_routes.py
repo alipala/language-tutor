@@ -706,6 +706,117 @@ async def update_session_progress(
             detail=f"Error updating session progress: {str(e)}"
         )
 
+@router.post("/session-summary")
+async def save_session_summary(
+    plan_id: str,
+    session_summary: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Save a session summary to the correct week in the learning plan structure
+    """
+    try:
+        # Find the learning plan
+        learning_plan = await learning_plans_collection.find_one({"id": plan_id})
+        
+        if not learning_plan:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning plan not found"
+            )
+        
+        # Check if the plan belongs to the current user
+        if learning_plan.get("user_id") and learning_plan.get("user_id") != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to update this learning plan"
+            )
+        
+        # Get current progress
+        current_completed = learning_plan.get("completed_sessions", 0)
+        total_sessions = learning_plan.get("total_sessions", 96)
+        sessions_per_week = 2
+        
+        # Calculate which week and session this belongs to
+        session_number = current_completed + 1  # Next session to be completed
+        week_index = (session_number - 1) // sessions_per_week  # 0-based week index
+        session_in_week = ((session_number - 1) % sessions_per_week) + 1  # 1-based session in week
+        
+        print(f"[SESSION_SUMMARY] Saving session {session_number} to Week {week_index + 1}, Session {session_in_week}")
+        
+        # Get the weekly schedule
+        weekly_schedule = learning_plan.get("plan_content", {}).get("weekly_schedule", [])
+        
+        if week_index >= len(weekly_schedule):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Session {session_number} exceeds available weeks in the plan"
+            )
+        
+        # Update the specific week with session details
+        week = weekly_schedule[week_index]
+        
+        # Initialize session_details if it doesn't exist
+        if 'session_details' not in week:
+            week['session_details'] = []
+        
+        # Create session detail object
+        session_detail = {
+            "session_number": session_in_week,
+            "global_session_number": session_number,
+            "summary": session_summary,
+            "completed_at": datetime.utcnow().isoformat(),
+            "status": "completed"
+        }
+        
+        # Add to session_details
+        week['session_details'].append(session_detail)
+        
+        # Update sessions_completed for this week
+        week['sessions_completed'] = len(week['session_details'])
+        
+        # Calculate new progress
+        new_completed = session_number
+        progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
+        
+        # Update the learning plan
+        result = await learning_plans_collection.update_one(
+            {"_id": learning_plan["_id"]},
+            {
+                "$set": {
+                    "plan_content.weekly_schedule": weekly_schedule,
+                    "completed_sessions": new_completed,
+                    "progress_percentage": progress_percentage,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            }
+        )
+        
+        if result.modified_count > 0:
+            print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
+            print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+            
+            return {
+                "success": True,
+                "message": "Session summary saved successfully",
+                "session_number": session_number,
+                "week": week_index + 1,
+                "session_in_week": session_in_week,
+                "progress_percentage": progress_percentage
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save session summary"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error saving session summary: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving session summary: {str(e)}"
+        )
+
 @router.post("/save-assessment", response_model=UserResponse)
 async def save_assessment_data(
     assessment: SpeakingAssessmentData,

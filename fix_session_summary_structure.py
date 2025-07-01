@@ -1,147 +1,153 @@
 #!/usr/bin/env python3
 """
-Script to fix session summary structure and improve data organization
+Fix Session Summary Structure
+
+This script fixes the session summary storage structure to store summaries
+within the weekly_schedule structure instead of a separate session_summaries array.
+
+For the user Selimiye (686400809bb1effaa5448dcc), we need to move the session
+summary from the root-level session_summaries array into the proper week 1
+session_details structure.
 """
 
 import os
-import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime
+import sys
+from datetime import datetime, timezone
+from pymongo import MongoClient
 from bson import ObjectId
 
-# MongoDB connection for Railway
-MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("DATABASE_URL")
+def get_mongo_client():
+    """Get MongoDB client"""
+    try:
+        mongo_url = os.getenv('MONGODB_URL')
+        if not mongo_url:
+            print("❌ MONGODB_URL environment variable not set!")
+            return None
+            
+        client = MongoClient(mongo_url)
+        print(f"✅ Connected to Railway Production MongoDB")
+        
+        # Test the connection
+        client.admin.command('ping')
+        print(f"✅ Database connection verified")
+        return client
+        
+    except Exception as e:
+        print(f"❌ Failed to connect to MongoDB: {e}")
+        return None
 
-async def fix_session_summary_structure():
-    """Fix session summary structure to store summaries within weekly schedule"""
-    
-    if not MONGODB_URL:
-        print("❌ MONGODB_URL not found in environment variables")
-        return
+def fix_session_summary_structure():
+    """Fix session summary structure for Selimiye user"""
+    client = get_mongo_client()
+    if not client:
+        return False
     
     try:
-        # Connect to MongoDB
-        client = AsyncIOMotorClient(MONGODB_URL)
-        db = client.language_tutor
-        learning_plans_collection = db.learning_plans
+        db = client['language_tutor']
+        selimiye_user_id = "686400809bb1effaa5448dcc"
         
-        print("🔗 Connected to Railway MongoDB")
+        print(f"🎯 Fixing session summary structure for Selimiye: {selimiye_user_id}")
         
-        # Find Kamile's learning plan
-        user_id_str = "6863ba8450b8c0aa0d78de51"
-        plan_id = "c9a0b7e9-1938-4353-95d0-c91c6b339769"
-        
-        learning_plan = await learning_plans_collection.find_one({"id": plan_id})
-        
+        # Get Selimiye's learning plan
+        learning_plan = db.learning_plans.find_one({"user_id": selimiye_user_id})
         if not learning_plan:
-            print(f"❌ Learning plan {plan_id} not found")
-            return
+            print(f"❌ Learning plan not found!")
+            return False
         
-        print(f"✅ Found learning plan: {learning_plan.get('id')}")
-        print(f"📋 Language: {learning_plan.get('language')}")
-        print(f"📋 Level: {learning_plan.get('proficiency_level')}")
-        print(f"📋 Completed Sessions: {learning_plan.get('completed_sessions', 0)}")
+        print(f"\n📚 Learning Plan: {learning_plan.get('id')}")
+        print(f"📊 Current completed sessions: {learning_plan.get('completed_sessions', 0)}")
+        print(f"📋 Current session_summaries count: {len(learning_plan.get('session_summaries', []))}")
         
-        # Get current session summaries
-        session_summaries = learning_plan.get("session_summaries", [])
-        print(f"📊 Current session summaries count: {len(session_summaries)}")
+        # Get the session summaries from the root level
+        session_summaries = learning_plan.get('session_summaries', [])
+        weekly_schedule = learning_plan.get('plan_content', {}).get('weekly_schedule', [])
         
-        # Get weekly schedule
-        weekly_schedule = learning_plan.get("plan_content", {}).get("weekly_schedule", [])
-        print(f"📅 Weekly schedule weeks: {len(weekly_schedule)}")
+        if not session_summaries:
+            print("ℹ️ No session summaries to move")
+            return True
         
-        # Restructure data to include session summaries in weekly schedule
+        if not weekly_schedule:
+            print("❌ No weekly schedule found")
+            return False
+        
+        print(f"\n🔄 Moving {len(session_summaries)} session summaries to weekly structure...")
+        
+        # Process each session summary and place it in the correct week
         sessions_per_week = 2
+        updated_weekly_schedule = weekly_schedule.copy()
         
-        for week_index, week in enumerate(weekly_schedule):
-            week_number = week_index + 1
-            sessions_completed = week.get("sessions_completed", 0)
+        for session_index, summary in enumerate(session_summaries):
+            # Calculate which week this session belongs to (0-based)
+            week_index = session_index // sessions_per_week
+            session_in_week = (session_index % sessions_per_week) + 1  # 1-based session number in week
             
-            print(f"\n📅 Processing Week {week_number}:")
-            print(f"  Sessions completed: {sessions_completed}")
-            
-            # Initialize session_details array if not exists
-            if "session_details" not in week:
-                week["session_details"] = []
-            
-            # Add session summaries to this week
-            for session_in_week in range(1, sessions_completed + 1):
-                # Calculate global session number
-                global_session_number = (week_number - 1) * sessions_per_week + session_in_week
+            if week_index < len(updated_weekly_schedule):
+                week = updated_weekly_schedule[week_index]
                 
-                # Get the corresponding session summary
-                if global_session_number <= len(session_summaries):
-                    session_summary = session_summaries[global_session_number - 1]
-                    
-                    # Create session detail object
-                    session_detail = {
-                        "session_number": session_in_week,
-                        "global_session_number": global_session_number,
-                        "summary": session_summary,
-                        "completed_at": datetime.utcnow().isoformat(),
-                        "status": "completed"
-                    }
-                    
-                    # Check if this session detail already exists
-                    existing_session = next(
-                        (s for s in week["session_details"] if s.get("session_number") == session_in_week),
-                        None
-                    )
-                    
-                    if existing_session:
-                        # Update existing session
-                        existing_session.update(session_detail)
-                        print(f"  ✅ Updated session {session_in_week} (global #{global_session_number})")
-                    else:
-                        # Add new session
-                        week["session_details"].append(session_detail)
-                        print(f"  ✅ Added session {session_in_week} (global #{global_session_number})")
-                    
-                    print(f"    Summary preview: {session_summary[:100]}...")
+                # Initialize session_details if it doesn't exist
+                if 'session_details' not in week:
+                    week['session_details'] = []
+                
+                # Create session detail object
+                session_detail = {
+                    "session_number": session_in_week,
+                    "global_session_number": session_index + 1,
+                    "summary": summary,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "status": "completed"
+                }
+                
+                # Add to session_details
+                week['session_details'].append(session_detail)
+                
+                print(f"✅ Moved session {session_index + 1} to Week {week_index + 1}, Session {session_in_week}")
+            else:
+                print(f"⚠️ Session {session_index + 1} exceeds available weeks")
         
-        # Update the learning plan with restructured data
-        update_data = {
-            "plan_content.weekly_schedule": weekly_schedule,
-            "updated_at": datetime.utcnow().isoformat(),
-            # Keep the original session_summaries for backward compatibility
-            "session_summaries": session_summaries
-        }
-        
-        result = await learning_plans_collection.update_one(
-            {"id": plan_id},
-            {"$set": update_data}
+        # Update the learning plan with the new structure
+        result = db.learning_plans.update_one(
+            {"_id": learning_plan["_id"]},
+            {
+                "$set": {"plan_content.weekly_schedule": updated_weekly_schedule},
+                "$unset": {"session_summaries": ""}  # Remove the old session_summaries array
+            }
         )
         
         if result.modified_count > 0:
-            print(f"\n✅ Successfully restructured session summary data!")
-            print(f"📊 Updated weekly schedule with session details")
-            print(f"🔄 Maintained backward compatibility with session_summaries array")
+            print(f"\n✅ Successfully updated learning plan structure!")
+            print(f"✅ Moved {len(session_summaries)} session summaries to weekly structure")
+            print(f"✅ Removed old session_summaries array")
             
             # Verify the update
-            updated_plan = await learning_plans_collection.find_one({"id": plan_id})
-            updated_weekly_schedule = updated_plan.get("plan_content", {}).get("weekly_schedule", [])
+            updated_plan = db.learning_plans.find_one({"_id": learning_plan["_id"]})
+            updated_weekly_schedule = updated_plan.get('plan_content', {}).get('weekly_schedule', [])
             
-            print(f"\n📋 VERIFICATION:")
-            for week_index, week in enumerate(updated_weekly_schedule[:3]):  # Show first 3 weeks
-                week_number = week_index + 1
-                session_details = week.get("session_details", [])
-                print(f"  Week {week_number}: {len(session_details)} session details")
-                for session in session_details:
-                    session_num = session.get("session_number")
-                    global_num = session.get("global_session_number")
-                    summary_preview = session.get("summary", "")[:50]
-                    print(f"    Session {session_num} (#{global_num}): {summary_preview}...")
+            # Count sessions in weekly structure
+            total_sessions_in_weeks = 0
+            for week in updated_weekly_schedule:
+                session_details = week.get('session_details', [])
+                total_sessions_in_weeks += len(session_details)
+            
+            print(f"\n📊 Verification:")
+            print(f"   Sessions now in weekly structure: {total_sessions_in_weeks}")
+            print(f"   Old session_summaries array: {'REMOVED' if 'session_summaries' not in updated_plan else 'STILL EXISTS'}")
+            
+            return True
         else:
-            print("⚠️ No changes were made to the learning plan")
-        
-        if client:
-            client.close()
-        print("\n🎉 Session summary structure fix completed!")
-        
+            print(f"❌ Failed to update learning plan structure")
+            return False
+            
     except Exception as e:
         print(f"❌ Error fixing session summary structure: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
+        return False
+    finally:
+        client.close()
 
 if __name__ == "__main__":
-    asyncio.run(fix_session_summary_structure())
+    print("🔧 Starting session summary structure fix...")
+    success = fix_session_summary_structure()
+    if success:
+        print("✅ Session summary structure fix completed successfully!")
+    else:
+        print("❌ Session summary structure fix failed!")
+    sys.exit(0 if success else 1)

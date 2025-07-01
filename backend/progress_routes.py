@@ -59,8 +59,11 @@ async def save_conversation(
             print(f"[PROGRESS] 📚 This is a learning plan session - updating learning plan progress")
             print(f"[PROGRESS] Learning plan conversations should not appear in conversation history")
             
-            # Update learning plan progress for learning plan sessions
-            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+            # Generate session summary for learning plan
+            session_summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
+            
+            # Save session summary to learning plan using the new endpoint structure
+            await save_learning_plan_session_summary(current_user.id, learning_plan_id, session_summary, request.duration_minutes, conversation_messages)
             
             # Track subscription usage for learning plan sessions
             await track_subscription_usage(current_user.id, "practice_session")
@@ -68,10 +71,10 @@ async def save_conversation(
             return {
                 "success": True,
                 "session_id": "learning_plan_session",
-                "message": "Learning plan progress updated successfully",
+                "message": "Learning plan session saved successfully",
                 "is_streak_eligible": False,
-                "summary": "Learning plan session progress updated",
-                "action": "learning_plan_updated"
+                "summary": session_summary,
+                "action": "learning_plan_session_saved"
             }
         
         # Convert messages to ConversationMessage objects
@@ -695,6 +698,100 @@ async def track_subscription_usage(user_id: str, usage_type: str):
             
     except Exception as e:
         print(f"[SUBSCRIPTION] ❌ Error tracking subscription usage: {str(e)}")
+        # Don't raise the exception - this is a non-critical operation
+
+async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Optional[str], session_summary: str, duration_minutes: float, conversation_messages: List[ConversationMessage]):
+    """Save session summary to learning plan using the new weekly structure"""
+    try:
+        from database import database
+        learning_plans_collection = database.learning_plans
+        
+        print(f"[SESSION_SUMMARY] Saving session summary for user {user_id}, plan: {learning_plan_id}")
+        
+        # Find the learning plan - if no plan_id provided, find by user
+        if learning_plan_id:
+            learning_plan = await learning_plans_collection.find_one({"id": learning_plan_id})
+        else:
+            # Find the most recent learning plan for this user
+            learning_plan = await learning_plans_collection.find_one(
+                {"user_id": user_id},
+                sort=[("created_at", -1)]
+            )
+        
+        if not learning_plan:
+            print(f"[SESSION_SUMMARY] No learning plan found for user {user_id}")
+            return
+        
+        print(f"[SESSION_SUMMARY] Found learning plan {learning_plan.get('id')} for user {user_id}")
+        
+        # Get current progress
+        current_completed = learning_plan.get("completed_sessions", 0)
+        total_sessions = learning_plan.get("total_sessions", 96)
+        sessions_per_week = 2
+        
+        # Calculate which week and session this belongs to
+        session_number = current_completed + 1  # Next session to be completed
+        week_index = (session_number - 1) // sessions_per_week  # 0-based week index
+        session_in_week = ((session_number - 1) % sessions_per_week) + 1  # 1-based session in week
+        
+        print(f"[SESSION_SUMMARY] Saving session {session_number} to Week {week_index + 1}, Session {session_in_week}")
+        
+        # Get the weekly schedule
+        weekly_schedule = learning_plan.get("plan_content", {}).get("weekly_schedule", [])
+        
+        if week_index >= len(weekly_schedule):
+            print(f"[SESSION_SUMMARY] ⚠️ Session {session_number} exceeds available weeks in the plan")
+            return
+        
+        # Update the specific week with session details
+        week = weekly_schedule[week_index]
+        
+        # Initialize session_details if it doesn't exist
+        if 'session_details' not in week:
+            week['session_details'] = []
+        
+        # Create session detail object
+        session_detail = {
+            "session_number": session_in_week,
+            "global_session_number": session_number,
+            "summary": session_summary,
+            "completed_at": datetime.utcnow().isoformat(),
+            "status": "completed",
+            "duration_minutes": duration_minutes,
+            "message_count": len(conversation_messages)
+        }
+        
+        # Add to session_details
+        week['session_details'].append(session_detail)
+        
+        # Update sessions_completed for this week
+        week['sessions_completed'] = len(week['session_details'])
+        
+        # Calculate new progress
+        new_completed = session_number
+        progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
+        
+        # Update the learning plan
+        result = await learning_plans_collection.update_one(
+            {"_id": learning_plan["_id"]},
+            {
+                "$set": {
+                    "plan_content.weekly_schedule": weekly_schedule,
+                    "completed_sessions": new_completed,
+                    "progress_percentage": progress_percentage,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            }
+        )
+        
+        if result.modified_count > 0:
+            print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
+            print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+        else:
+            print(f"[SESSION_SUMMARY] ❌ Failed to save session summary")
+            
+    except Exception as e:
+        print(f"[SESSION_SUMMARY] ❌ Error saving session summary: {str(e)}")
         # Don't raise the exception - this is a non-critical operation
 
 async def update_learning_plan_progress(user_id: str, language: str, level: str, topic: Optional[str] = None):
