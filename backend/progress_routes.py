@@ -745,11 +745,18 @@ async def update_learning_plan_progress(user_id: str, language: str, level: str,
                     # Set the sessions_completed to the number of sessions completed in this week
                     weekly_schedule[week_index]["sessions_completed"] = sessions_in_week
                     print(f"[LEARNING_PLAN] Updated week {new_week} sessions_completed to {sessions_in_week}")
+                    
+                    # Also ensure previous weeks are marked as complete if needed
+                    for prev_week_idx in range(week_index):
+                        if weekly_schedule[prev_week_idx]["sessions_completed"] < sessions_per_week:
+                            weekly_schedule[prev_week_idx]["sessions_completed"] = sessions_per_week
+                            print(f"[LEARNING_PLAN] Marked week {prev_week_idx + 1} as complete with {sessions_per_week} sessions")
             
             # Update the learning plan document
             update_data = {
                 "completed_sessions": new_completed,
-                "progress_percentage": progress_percentage
+                "progress_percentage": progress_percentage,
+                "updated_at": datetime.utcnow()
             }
             
             # Update weekly schedule if modified
