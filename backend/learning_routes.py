@@ -412,16 +412,33 @@ async def create_learning_plan(
         # If user is authenticated and assessment data is provided, update user profile
         if current_user and plan_request.assessment_data:
             from database import users_collection
-            # Update the user's profile with the assessment data
+            # Update the user's profile with the latest assessment data only
+            # Don't overwrite preferred_language and preferred_level as users can have multiple languages
             await users_collection.update_one(
                 {"_id": current_user.id},
                 {"$set": {
                     "last_assessment_data": plan_request.assessment_data,
-                    "preferred_language": plan_request.language,
-                    "preferred_level": plan_request.proficiency_level
+                    "assessment_history": {
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "data": plan_request.assessment_data,
+                        "language": plan_request.language,
+                        "level": plan_request.proficiency_level
+                    }
                 }}
             )
-            print(f"Updated user profile with assessment data for user {current_user.id}")
+            print(f"Updated user profile with assessment data for user {current_user.id} (language: {plan_request.language}, level: {plan_request.proficiency_level})")
+            
+            # IMPORTANT: Track assessment usage for subscription limits
+            # This was the missing piece causing the bug!
+            try:
+                await users_collection.update_one(
+                    {"_id": current_user.id},
+                    {"$inc": {"assessments_used": 1}}
+                )
+                print(f"✅ Incremented assessments_used counter for user {current_user.id}")
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
+                # Don't fail the entire operation if usage tracking fails
         
         # Save the plan to the database
         result = await learning_plans_collection.insert_one(new_plan)
@@ -706,6 +723,140 @@ async def update_session_progress(
             detail=f"Error updating session progress: {str(e)}"
         )
 
+@router.post("/session-summary")
+async def save_session_summary(
+    plan_id: str,
+    session_summary: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Save a session summary to the correct week in the learning plan structure
+    """
+    try:
+        # Find the learning plan
+        learning_plan = await learning_plans_collection.find_one({"id": plan_id})
+        
+        if not learning_plan:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning plan not found"
+            )
+        
+        # Check if the plan belongs to the current user
+        if learning_plan.get("user_id") and learning_plan.get("user_id") != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to update this learning plan"
+            )
+        
+        # Get current progress
+        current_completed = learning_plan.get("completed_sessions", 0)
+        total_sessions = learning_plan.get("total_sessions", 96)
+        sessions_per_week = 2
+        
+        # Calculate which week and session this belongs to
+        session_number = current_completed + 1  # Next session to be completed
+        week_index = (session_number - 1) // sessions_per_week  # 0-based week index
+        session_in_week = ((session_number - 1) % sessions_per_week) + 1  # 1-based session in week
+        
+        print(f"[SESSION_SUMMARY] Saving session {session_number} to Week {week_index + 1}, Session {session_in_week}")
+        
+        # Get the weekly schedule
+        weekly_schedule = learning_plan.get("plan_content", {}).get("weekly_schedule", [])
+        
+        if week_index >= len(weekly_schedule):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Session {session_number} exceeds available weeks in the plan"
+            )
+        
+        # Update the specific week with session details
+        week = weekly_schedule[week_index]
+        
+        # Initialize session_details if it doesn't exist
+        if 'session_details' not in week:
+            week['session_details'] = []
+        
+        # Create session detail object
+        session_detail = {
+            "session_number": session_in_week,
+            "global_session_number": session_number,
+            "summary": session_summary,
+            "completed_at": datetime.utcnow().isoformat(),
+            "status": "completed"
+        }
+        
+        # Add to session_details
+        week['session_details'].append(session_detail)
+        
+        # Update sessions_completed for this week
+        week['sessions_completed'] = len(week['session_details'])
+        
+        # Calculate new progress
+        new_completed = session_number
+        progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
+        
+        # Update the learning plan
+        result = await learning_plans_collection.update_one(
+            {"_id": learning_plan["_id"]},
+            {
+                "$set": {
+                    "plan_content.weekly_schedule": weekly_schedule,
+                    "completed_sessions": new_completed,
+                    "progress_percentage": progress_percentage,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            }
+        )
+        
+        if result.modified_count > 0:
+            print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
+            print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+            
+            # CRITICAL FIX: Track subscription usage for practice sessions
+            # This was the missing piece causing the "30/30" display issue!
+            try:
+                from subscription_service import SubscriptionService
+                from models import UsageTrackingRequest
+                
+                usage_request = UsageTrackingRequest(
+                    user_id=str(current_user.id),
+                    usage_type="practice_session"
+                )
+                
+                usage_tracked = await SubscriptionService.track_usage(usage_request)
+                if usage_tracked:
+                    print(f"[SESSION_SUMMARY] ✅ Tracked practice session usage for user {current_user.id}")
+                    print(f"[SESSION_SUMMARY] ✅ Subscription usage counter incremented")
+                else:
+                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track practice session usage (may have exceeded limit)")
+                    
+            except Exception as usage_error:
+                print(f"[SESSION_SUMMARY] ⚠️ Warning: Failed to track subscription usage: {str(usage_error)}")
+                # Don't fail the entire operation if usage tracking fails
+                # The session summary is still saved successfully
+            
+            return {
+                "success": True,
+                "message": "Session summary saved successfully",
+                "session_number": session_number,
+                "week": week_index + 1,
+                "session_in_week": session_in_week,
+                "progress_percentage": progress_percentage
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save session summary"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error saving session summary: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving session summary: {str(e)}"
+        )
+
 @router.post("/save-assessment", response_model=UserResponse)
 async def save_assessment_data(
     assessment: SpeakingAssessmentData,
@@ -752,6 +903,18 @@ async def save_assessment_data(
         
         # Log the update
         print(f"Updated user profile with assessment data for user {user_id} (modified count: {result.modified_count})")
+        
+        # IMPORTANT: Track assessment usage for subscription limits
+        # This ensures the assessment counter is properly updated
+        try:
+            usage_result = await users_collection.update_one(
+                {"_id": user_id},
+                {"$inc": {"assessments_used": 1}}
+            )
+            print(f"✅ Incremented assessments_used counter for user {user_id} (modified count: {usage_result.modified_count})")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
+            # Don't fail the entire operation if usage tracking fails
         
         # Get the updated user data
         updated_user = await users_collection.find_one({"_id": user_id})

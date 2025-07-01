@@ -24,6 +24,7 @@ import {
   X
 } from 'lucide-react';
 import UpgradePrompt from '@/components/upgrade-prompt';
+import SessionModeModal from '@/components/session-mode-modal';
 
 interface ProgressStats {
   total_sessions: number;
@@ -80,6 +81,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showSessionModeModal, setShowSessionModeModal] = useState(false);
   
   // Use shared subscription status hook
   const { refreshSubscriptionStatus } = useSubscriptionStatus();
@@ -166,6 +168,25 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   // Handle view all plans
   const handleViewAllPlans = () => {
     router.push('/profile');
+  };
+
+  // Handle session mode selection
+  const handleSessionModeSelect = (mode: 'practice' | 'assessment') => {
+    setShowSessionModeModal(false);
+    
+    // Clear any previous selections
+    sessionStorage.removeItem('selectedLanguage');
+    sessionStorage.removeItem('selectedLevel');
+    sessionStorage.removeItem('selectedTopic');
+    sessionStorage.removeItem('assessmentMode');
+    sessionStorage.removeItem('practiceMode');
+    sessionStorage.removeItem('assessmentCompleted');
+    
+    if (mode === 'practice') {
+      router.push('/flow?mode=practice');
+    } else if (mode === 'assessment') {
+      router.push('/flow?mode=assessment');
+    }
   };
 
   // Loading state
@@ -305,17 +326,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           transition={{ duration: 0.6, delay: 0.4 }}
         >
           <button
-            onClick={() => {
-              // Clear any previous selections and navigate to new vertical flow
-              sessionStorage.removeItem('selectedLanguage');
-              sessionStorage.removeItem('selectedLevel');
-              sessionStorage.removeItem('selectedTopic');
-              sessionStorage.removeItem('assessmentMode');
-              sessionStorage.removeItem('practiceMode');
-              // CRITICAL FIX: Clear assessment completion flag to allow multiple assessments
-              sessionStorage.removeItem('assessmentCompleted');
-              router.push('/flow?mode=practice');
-            }}
+            onClick={() => setShowSessionModeModal(true)}
             className="bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16 flex items-center justify-center"
           >
             {/* Animated gradient text effect */}
@@ -347,6 +358,13 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           </motion.div>
         )}
       </div>
+
+      {/* Session Mode Modal */}
+      <SessionModeModal
+        isOpen={showSessionModeModal}
+        onClose={() => setShowSessionModeModal(false)}
+        onSelectMode={handleSessionModeSelect}
+      />
     </section>
   );
 };
