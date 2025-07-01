@@ -185,9 +185,6 @@ export default function SpeechPage() {
     console.log('[SpeechPage] Initializing speech page for user (authenticated: ' + (user !== null) + ')');
     navigationHandledRef.current = true;
     
-    // IMPORTANT: Completely disable automatic redirects to fix back button navigation
-    // We'll only handle the initialization of speech parameters
-    
     // Clear any navigation flags that might cause issues
     sessionStorage.removeItem('intentionalNavigation');
     sessionStorage.removeItem('backButtonNavigation');
@@ -197,57 +194,45 @@ export default function SpeechPage() {
     // Reset the refresh count to prevent false loop detection
     sessionStorage.setItem(refreshCountKey, '0');
     
-    // Set up a simple listener for back button that doesn't interfere with navigation
-    const handlePopState = (event: PopStateEvent) => {
-      console.log('[SpeechPage] Detected browser back button navigation');
-      // Don't prevent default navigation
-    };
-    
-    // Add the event listener for back button
-    window.addEventListener('popstate', handlePopState);
-    
     // Initialize the page with parameters
     initializePage();
-    
-    // Clean up the event listener when the component unmounts
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
   }, [user]);
   
   // Override browser's default "Leave site?" modal with custom modal
   useEffect(() => {
+    // Only set up navigation protection after the page has fully loaded
+    if (isLoading || authLoading) {
+      return;
+    }
+
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Check if we're in a conversation and should show custom modal
-      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
-      
-      if (isInConversation && !allowBackNavigation) {
-        // Prevent the default browser modal
+      // Always show custom modal for page refresh/close when on speech page
+      if (!allowBackNavigation) {
         e.preventDefault();
         e.returnValue = '';
-        
-        // Show our custom modal instead
-        setShowLeaveWarning(true);
-        setPendingNavigationUrl(window.location.pathname);
-        
         return '';
       }
     };
 
     // Handle browser back/forward navigation
     const handlePopState = (e: PopStateEvent) => {
-      const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
+      console.log('[SpeechPage] Back button pressed, showing confirmation modal');
       
-      if (isInConversation && !allowBackNavigation) {
-        // Prevent navigation and show custom modal
+      // Always show modal for back navigation unless explicitly allowed
+      if (!allowBackNavigation) {
+        // Prevent the navigation
         e.preventDefault();
+        
+        // Push the current state back to prevent actual navigation
         window.history.pushState(null, '', window.location.href);
+        
+        // Show our custom modal
         setShowLeaveWarning(true);
-        setPendingNavigationUrl('/language-selection'); // Default back navigation
+        setPendingNavigationUrl('/language-selection');
       }
     };
 
-    // Push a state to handle back button
+    // Push a state to handle back button - only after page is loaded
     window.history.pushState(null, '', window.location.href);
     
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -257,7 +242,7 @@ export default function SpeechPage() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [allowBackNavigation]);
+  }, [allowBackNavigation, isLoading, authLoading]);
   
   // Effect to periodically check plan validity
   useEffect(() => {
