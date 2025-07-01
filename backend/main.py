@@ -18,6 +18,7 @@ from database import init_db, client, database, DATABASE_NAME
 from auth import get_current_user
 from models import UserResponse
 from auth_routes import router as auth_router
+from bson import ObjectId
 
 # Import sentence assessment functionality
 from sentence_assessment import SentenceAssessmentRequest, SentenceAssessmentResponse, GrammarIssue, \
@@ -1079,6 +1080,24 @@ async def store_session_summary(
             if week_index < len(weekly_schedule):
                 weekly_schedule[week_index]["sessions_completed"] = sessions_in_week
                 print(f"[SESSION_SUMMARY] Updated week {new_week} sessions_completed to {sessions_in_week}")
+        
+        # 🔥 CRITICAL FIX: Track subscription usage when session is completed
+        # This ensures subscription counter stays synchronized with learning plan progress
+        try:
+            users_collection = database.users
+            user_result = await users_collection.update_one(
+                {"_id": ObjectId(current_user.id)},
+                {"$inc": {"practice_sessions_used": 1}}
+            )
+            
+            if user_result.modified_count > 0:
+                print(f"[SESSION_SUMMARY] ✅ Incremented subscription usage for user {current_user.id}")
+            else:
+                print(f"[SESSION_SUMMARY] ⚠️ Failed to increment subscription usage for user {current_user.id}")
+        except Exception as subscription_error:
+            print(f"[SESSION_SUMMARY] ❌ Error tracking subscription usage: {str(subscription_error)}")
+            # Don't fail the session saving if subscription tracking fails
+            pass
         
         # Update the plan
         update_data = {
