@@ -813,6 +813,29 @@ async def save_session_summary(
             print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
             print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
             
+            # CRITICAL FIX: Track subscription usage for practice sessions
+            # This was the missing piece causing the "30/30" display issue!
+            try:
+                from subscription_service import SubscriptionService
+                from models import UsageTrackingRequest
+                
+                usage_request = UsageTrackingRequest(
+                    user_id=str(current_user.id),
+                    usage_type="practice_session"
+                )
+                
+                usage_tracked = await SubscriptionService.track_usage(usage_request)
+                if usage_tracked:
+                    print(f"[SESSION_SUMMARY] ✅ Tracked practice session usage for user {current_user.id}")
+                    print(f"[SESSION_SUMMARY] ✅ Subscription usage counter incremented")
+                else:
+                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track practice session usage (may have exceeded limit)")
+                    
+            except Exception as usage_error:
+                print(f"[SESSION_SUMMARY] ⚠️ Warning: Failed to track subscription usage: {str(usage_error)}")
+                # Don't fail the entire operation if usage tracking fails
+                # The session summary is still saved successfully
+            
             return {
                 "success": True,
                 "message": "Session summary saved successfully",
