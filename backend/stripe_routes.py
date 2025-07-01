@@ -767,6 +767,7 @@ async def find_user_by_customer_id(customer_id: str):
     logger.warning(f"No user found for Stripe customer ID: {customer_id}")
     return None
 
+
 async def handle_invoice_payment_paid(invoice_payment):
     """Handle invoice_payment.paid event"""
     try:
@@ -775,6 +776,8 @@ async def handle_invoice_payment_paid(invoice_payment):
         if not invoice_id:
             logger.warning("No invoice ID in invoice_payment.paid event")
             return
+
+        logger.info(f"[INVOICE_PAYMENT] Processing invoice payment for invoice: {invoice_id}")
 
         # Get invoice details from Stripe
         invoice = stripe.Invoice.retrieve(invoice_id)
@@ -799,8 +802,16 @@ async def handle_invoice_payment_paid(invoice_payment):
             "subscription_id": subscription.id
         }
         
-        # Get the plan details
-        if subscription.items and len(subscription.items.data) > 0:
+        # Add period dates if missing
+        from datetime import datetime, timezone
+        if hasattr(subscription, 'current_period_start') and subscription.current_period_start:
+            update_data["current_period_start"] = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
+        
+        if hasattr(subscription, 'current_period_end') and subscription.current_period_end:
+            update_data["current_period_end"] = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+        
+        # Get the plan details if missing
+        if not user.get("subscription_plan") and subscription.items and len(subscription.items.data) > 0:
             price = subscription.items.data[0].price
             if price:
                 update_data["subscription_price_id"] = price.id
@@ -819,7 +830,7 @@ async def handle_invoice_payment_paid(invoice_payment):
             {"$set": update_data}
         )
         
-        logger.info(f"Invoice payment paid - updated subscription for user {user['_id']}")
+        logger.info(f"[INVOICE_PAYMENT] Successfully updated subscription for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling invoice_payment.paid: {str(e)}")
 
