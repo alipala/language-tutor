@@ -206,11 +206,20 @@ export default function SpeechPage() {
     }
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Check if navigation is explicitly allowed (e.g., when navigating to profile)
+      const allowNavigation = sessionStorage.getItem('allowNavigation') === 'true';
+      
       // Always show custom modal for page refresh/close when on speech page
-      if (!allowBackNavigation) {
+      // unless navigation is explicitly allowed
+      if (!allowBackNavigation && !allowNavigation) {
         e.preventDefault();
         e.returnValue = '';
         return '';
+      }
+      
+      // Clear the allowNavigation flag after use
+      if (allowNavigation) {
+        sessionStorage.removeItem('allowNavigation');
       }
     };
 
