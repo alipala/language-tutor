@@ -625,13 +625,13 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               {/* Detailed Plan View */}
               {showPlanDetails && (
                 <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
-                  {/* Weekly Schedule Preview with Current + Next Week */}
+                  {/* Weekly Schedule Preview with Slider for All Weeks */}
                   {(() => {
                     // Use only the personalized weekly schedule from the learning plan
                     // Don't generate generic weeks - show only what was created based on assessment
                     const allWeeks = learningPlan.plan_content.weekly_schedule || [];
                     
-                    // Calculate which weeks to show (current week and next week)
+                    // Calculate current week for highlighting
                     const sessionsPerWeek = 2;
                     let currentWeekNumber = 1;
                     
@@ -639,16 +639,13 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                       currentWeekNumber = Math.floor(((learningPlan.completed_sessions || 0) - 1) / sessionsPerWeek) + 1;
                     }
                     
-                    // Show current week and next week (max 2 weeks)
-                    const weeksToShow = allWeeks.filter((week: any) => 
-                      week.week >= currentWeekNumber && week.week <= currentWeekNumber + 1
-                    );
-                    
-                    // If no weeks match (edge case), show first 2 weeks
-                    const currentWeeks = weeksToShow.length > 0 ? weeksToShow : allWeeks.slice(0, 2);
-                    
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
+                    
+                    // Get weeks for current page
+                    const startIndex = currentWeekPage * weeksPerPage;
+                    const endIndex = startIndex + weeksPerPage;
+                    const currentWeeks = allWeeks.slice(startIndex, endIndex);
                     
                     return allWeeks.length > 0 && (
                       <div>
@@ -656,12 +653,34 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                           <h5 className="font-semibold text-gray-800">Weekly Schedule Preview</h5>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm text-gray-500">
-                              Showing current & next week ({currentWeeks.length} of {allWeeks.length} weeks)
+                              Showing weeks {startIndex + 1}-{Math.min(endIndex, allWeeks.length)} of {allWeeks.length}
                             </span>
+                            {/* Navigation buttons */}
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => setCurrentWeekPage(Math.max(0, currentWeekPage - 1))}
+                                disabled={currentWeekPage === 0}
+                                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Previous weeks"
+                              >
+                                <ChevronRight className="h-4 w-4 rotate-180" />
+                              </button>
+                              <span className="text-xs text-gray-400 px-2">
+                                {currentWeekPage + 1}/{totalPages}
+                              </span>
+                              <button
+                                onClick={() => setCurrentWeekPage(Math.min(totalPages - 1, currentWeekPage + 1))}
+                                disabled={currentWeekPage >= totalPages - 1}
+                                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Next weeks"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                         
-                        {/* Current + Next Week Display */}
+                        {/* Week Cards Display */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {currentWeeks.map((week, weekIndex) => {
                             const isCurrentWeek = week.week === Math.floor((learningPlan?.completed_sessions || 0) / 2) + 1;
