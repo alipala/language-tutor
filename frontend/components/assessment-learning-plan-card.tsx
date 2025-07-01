@@ -642,8 +642,12 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
                     
+                    // Set default page to show previous completed week + current week
+                    const defaultPage = Math.max(0, Math.floor((currentWeekNumber - 2) / weeksPerPage));
+                    const actualCurrentPage = currentWeekPage === 0 && allWeeks.length > 0 ? defaultPage : currentWeekPage;
+                    
                     // Get weeks for current page
-                    const startIndex = currentWeekPage * weeksPerPage;
+                    const startIndex = actualCurrentPage * weeksPerPage;
                     const endIndex = startIndex + weeksPerPage;
                     const currentWeeks = allWeeks.slice(startIndex, endIndex);
                     
@@ -681,10 +685,10 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                         </div>
                         
                         {/* Week Cards Display */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           {currentWeeks.map((week, weekIndex) => {
-                            const isCurrentWeek = week.week === Math.floor((learningPlan?.completed_sessions || 0) / 2) + 1;
-                            const isCompleted = week.week <= Math.floor((learningPlan?.completed_sessions || 0) / 2);
+                            const isCurrentWeek = week.week === currentWeekNumber;
+                            const isCompleted = week.week < currentWeekNumber;
                             
                             return (
                               <div 
@@ -777,6 +781,24 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                             );
                           })}
                         </div>
+                        
+                        {/* Circle Navigation Dots */}
+                        {totalPages > 1 && (
+                          <div className="flex justify-center space-x-2 mt-4">
+                            {Array.from({ length: totalPages }, (_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setCurrentWeekPage(i)}
+                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                  i === currentWeekPage 
+                                    ? 'bg-blue-500 w-6' 
+                                    : 'bg-gray-300 hover:bg-gray-400'
+                                }`}
+                                title={`Go to weeks ${i * weeksPerPage + 1}-${Math.min((i + 1) * weeksPerPage, allWeeks.length)}`}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}

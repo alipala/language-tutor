@@ -1,132 +1,149 @@
 #!/usr/bin/env python3
 """
-Script to fix Kamile's subscription usage data to reflect actual sessions completed
+Fix Kamile's Subscription Usage Counter
+
+This script fixes Kamile's subscription usage by properly counting the learning plan sessions
+that are stored within the learning plan document structure.
 """
 
 import os
-import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime
+import sys
+from datetime import datetime, timezone
+from pymongo import MongoClient
+from bson import ObjectId
 
-# MongoDB connection for Railway
-MONGODB_URL = os.getenv("MONGODB_URL") or os.getenv("DATABASE_URL")
+def get_mongo_client():
+    """Get MongoDB client"""
+    try:
+        mongo_url = os.getenv('MONGODB_URL')
+        if not mongo_url:
+            print("❌ MONGODB_URL environment variable not set!")
+            return None
+            
+        client = MongoClient(mongo_url)
+        print(f"✅ Connected to Railway Production MongoDB")
+        
+        # Test the connection
+        client.admin.command('ping')
+        print(f"✅ Database connection verified")
+        return client
+        
+    except Exception as e:
+        print(f"❌ Failed to connect to MongoDB: {e}")
+        return None
 
-async def fix_kamile_subscription_usage():
-    """Fix Kamile's subscription usage to reflect actual sessions and assessments completed"""
-    
-    if not MONGODB_URL:
-        print("❌ MONGODB_URL not found in environment variables")
-        print("Please set MONGODB_URL environment variable")
-        return
+def fix_kamile_subscription_usage():
+    """Fix Kamile's subscription usage counter"""
+    client = get_mongo_client()
+    if not client:
+        return False
     
     try:
-        # Connect to MongoDB
-        client = AsyncIOMotorClient(MONGODB_URL)
-        db = client.language_tutor
-        users_collection = db.users
-        learning_plans_collection = db.learning_plans
+        db = client['language_tutor']
+        kamile_user_id = "6863ba8450b8c0aa0d78de51"
         
-        print("🔗 Connected to Railway MongoDB")
+        print(f"🎯 Fixing subscription usage for Kamile: {kamile_user_id}")
         
-        # Find Kamile's user record
-        from bson import ObjectId
-        user_id_str = "6863ba8450b8c0aa0d78de51"
-        user_id = ObjectId(user_id_str)
-        
-        user = await users_collection.find_one({"_id": user_id})
-        
+        # Get Kamile's user document
+        user = db.users.find_one({"_id": ObjectId(kamile_user_id)})
         if not user:
-            print(f"❌ User {user_id} not found")
-            return
+            print(f"❌ User not found!")
+            return False
         
-        print(f"✅ Found user: {user.get('name', 'Unknown')}")
-        print(f"📧 Email: {user.get('email', 'Unknown')}")
-        print(f"📋 Subscription Plan: {user.get('subscription_plan', 'Unknown')}")
-        
-        # Get current usage data
-        current_practice_sessions = user.get("practice_sessions_used", 0)
-        current_assessments = user.get("assessments_used", 0)
-        
-        print(f"\n📊 CURRENT USAGE DATA:")
-        print(f"  Practice Sessions Used: {current_practice_sessions}")
-        print(f"  Assessments Used: {current_assessments}")
-        
-        # Find Kamile's learning plan to get actual completed sessions
-        # Try both ObjectId and string formats
-        learning_plan = await learning_plans_collection.find_one({"user_id": user_id})
+        # Get Kamile's learning plan
+        learning_plan = db.learning_plans.find_one({"user_id": kamile_user_id})
         if not learning_plan:
-            learning_plan = await learning_plans_collection.find_one({"user_id": user_id_str})
+            print(f"❌ Learning plan not found!")
+            return False
         
-        if learning_plan:
-            completed_sessions = learning_plan.get("completed_sessions", 0)
-            print(f"  Learning Plan Sessions Completed: {completed_sessions}")
+        print(f"\n👤 User: {user.get('name')} ({user.get('email')})")
+        print(f"📊 Current subscription status: {user.get('subscription_status')}")
+        print(f"📈 Current practice_sessions_used: {user.get('practice_sessions_used', 0)}")
+        print(f"📚 Learning plan completed_sessions: {learning_plan.get('completed_sessions', 0)}")
+        
+        # Count actual sessions from learning plan
+        total_actual_sessions = 0
+        weekly_schedule = learning_plan.get('plan_content', {}).get('weekly_schedule', [])
+        
+        for week in weekly_schedule:
+            session_details = week.get('session_details', [])
+            completed_sessions = len([s for s in session_details if s.get('status') == 'completed'])
+            total_actual_sessions += completed_sessions
             
-            # Check if user has assessment data (they completed 1 assessment)
-            has_assessment = bool(user.get("last_assessment_data") or user.get("assessment_history"))
-            assessments_completed = 1 if has_assessment else 0
+            if completed_sessions > 0:
+                print(f"   Week {week.get('week')}: {completed_sessions} completed sessions")
+        
+        print(f"\n🔢 Total actual completed sessions: {total_actual_sessions}")
+        
+        # Update user's practice_sessions_used to match actual sessions
+        if total_actual_sessions != user.get('practice_sessions_used', 0):
+            print(f"⚠️  Discrepancy found! Updating practice_sessions_used from {user.get('practice_sessions_used', 0)} to {total_actual_sessions}")
             
-            print(f"  Assessments Completed: {assessments_completed}")
-            
-            # Calculate correct usage
-            correct_practice_sessions = completed_sessions  # 3 sessions completed
-            correct_assessments = assessments_completed     # 1 assessment completed
-            
-            print(f"\n🎯 CORRECT USAGE DATA:")
-            print(f"  Practice Sessions Should Be: {correct_practice_sessions}")
-            print(f"  Assessments Should Be: {correct_assessments}")
-            
-            # Update user record
-            update_data = {
-                "practice_sessions_used": correct_practice_sessions,
-                "assessments_used": correct_assessments,
-                "updated_at": datetime.utcnow()
-            }
-            
-            result = await users_collection.update_one(
-                {"_id": user_id},
-                {"$set": update_data}
+            # Update user document
+            result = db.users.update_one(
+                {"_id": ObjectId(kamile_user_id)},
+                {
+                    "$set": {
+                        "practice_sessions_used": total_actual_sessions,
+                        "subscription_usage": total_actual_sessions,  # Also set subscription_usage
+                        "updated_at": datetime.now(timezone.utc)
+                    }
+                }
             )
             
             if result.modified_count > 0:
-                print("✅ Successfully updated subscription usage!")
+                print(f"✅ Successfully updated subscription usage")
                 
-                # Calculate remaining for Fluency Builder (30 sessions, 2 assessments per month)
-                sessions_limit = 30
-                assessments_limit = 2
+                # Also verify learning plan progress is correct
+                total_sessions = learning_plan.get('total_sessions', 48)
+                expected_progress = (total_actual_sessions / total_sessions) * 100 if total_sessions > 0 else 0
+                current_progress = learning_plan.get('progress_percentage', 0)
                 
-                sessions_remaining = sessions_limit - correct_practice_sessions
-                assessments_remaining = assessments_limit - correct_assessments
-                
-                print(f"\n📈 UPDATED SUBSCRIPTION STATUS:")
-                print(f"  Practice Sessions: {correct_practice_sessions}/{sessions_limit} used")
-                print(f"  Sessions Remaining: {sessions_remaining}")
-                print(f"  Assessments: {correct_assessments}/{assessments_limit} used") 
-                print(f"  Assessments Remaining: {assessments_remaining}")
-                
-                print(f"\n🎯 PROFILE DISPLAY SHOULD NOW SHOW:")
-                print(f"  Practice Sessions: {sessions_remaining}/{sessions_limit}")
-                print(f"  Assessments: {assessments_remaining}/{assessments_limit}")
+                if abs(expected_progress - current_progress) > 0.1:  # Allow small floating point differences
+                    print(f"📊 Updating learning plan progress: {current_progress:.1f}% → {expected_progress:.1f}%")
+                    
+                    db.learning_plans.update_one(
+                        {"user_id": kamile_user_id},
+                        {
+                            "$set": {
+                                "completed_sessions": total_actual_sessions,
+                                "progress_percentage": expected_progress,
+                                "updated_at": datetime.now(timezone.utc)
+                            }
+                        }
+                    )
+                    print(f"✅ Learning plan progress updated")
+                else:
+                    print(f"✅ Learning plan progress is already correct: {current_progress:.1f}%")
                 
             else:
-                print("⚠️ No changes were made to the user record")
+                print(f"❌ Failed to update subscription usage")
         else:
-            print("❌ No learning plan found for user")
+            print(f"✅ Subscription usage is already correct")
         
-        # Verify the update
-        updated_user = await users_collection.find_one({"_id": user_id})
-        if updated_user:
-            print(f"\n📋 VERIFICATION:")
-            print(f"  practice_sessions_used: {updated_user.get('practice_sessions_used')}")
-            print(f"  assessments_used: {updated_user.get('assessments_used')}")
+        # Show final status
+        updated_user = db.users.find_one({"_id": ObjectId(kamile_user_id)})
+        updated_plan = db.learning_plans.find_one({"user_id": kamile_user_id})
         
-        if client:
-            client.close()
-        print("\n🎉 Subscription usage fix completed!")
+        print(f"\n📋 Final Status:")
+        print(f"   practice_sessions_used: {updated_user.get('practice_sessions_used', 0)}")
+        print(f"   subscription_usage: {updated_user.get('subscription_usage', 0)}")
+        print(f"   learning_plan completed_sessions: {updated_plan.get('completed_sessions', 0)}")
+        print(f"   learning_plan progress_percentage: {updated_plan.get('progress_percentage', 0):.1f}%")
+        
+        return True
         
     except Exception as e:
-        print(f"❌ Error fixing subscription usage: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
+        print(f"❌ Error fixing subscription usage: {e}")
+        return False
+    finally:
+        client.close()
 
 if __name__ == "__main__":
-    asyncio.run(fix_kamile_subscription_usage())
+    print("🔧 Starting Kamile's subscription usage fix...")
+    
+    if fix_kamile_subscription_usage():
+        print("✅ Kamile's subscription usage fixed successfully!")
+    else:
+        print("❌ Fix failed!")
+        sys.exit(1)
