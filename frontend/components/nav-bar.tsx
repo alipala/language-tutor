@@ -13,7 +13,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   // Determine if we're on the landing page
   const [isLandingPage, setIsLandingPage] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -218,8 +218,17 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
           )}
           
           
-          {/* User Menu (when logged in) */}
-          {user ? (
+          {/* User Menu (when logged in) or Loading State */}
+          {authLoading ? (
+            <div className="flex items-center">
+              {/* Loading skeleton that matches the user menu size */}
+              <div className="flex items-center space-x-2 px-3 py-2 rounded-md border border-white/30 bg-white/10">
+                <div className="w-6 h-6 bg-white/20 rounded-full animate-pulse"></div>
+                <div className="w-16 h-4 bg-white/20 rounded animate-pulse"></div>
+                <div className="w-4 h-4 bg-white/20 rounded animate-pulse"></div>
+              </div>
+            </div>
+          ) : user ? (
             <div className="relative user-menu-container">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -334,7 +343,14 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             </>
           )}
           
-          {user ? (
+          {authLoading ? (
+            <>
+              {/* Loading skeleton for mobile menu */}
+              <div className="py-4 px-4 mx-2 my-1 rounded-md">
+                <div className="w-24 h-4 bg-white/20 rounded animate-pulse"></div>
+              </div>
+            </>
+          ) : user ? (
             <>
               <button
                 onClick={() => {
