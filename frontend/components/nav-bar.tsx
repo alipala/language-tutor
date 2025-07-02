@@ -7,6 +7,7 @@ import { useNavigation } from '@/lib/navigation';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { Logo } from './logo';
 import { Crown, Star, Zap } from 'lucide-react';
+import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -16,6 +17,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
@@ -87,6 +89,45 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     window.location.href = '/';
   };
 
+  // Handle profile navigation with confirmation if on speech page
+  const handleProfileNavigation = () => {
+    // Check if we're on a speech page or in a conversation
+    const currentPath = window.location.pathname;
+    const isOnSpeechPage = currentPath.includes('/speech') || currentPath.includes('/assessment');
+    const isInConversation = sessionStorage.getItem('isInConversation') === 'true';
+    
+    if (isOnSpeechPage || isInConversation) {
+      // Show confirmation modal
+      setShowLeaveConfirm(true);
+    } else {
+      // Navigate directly
+      navigation.navigateToProfile();
+    }
+    
+    // Close the menu
+    setIsMenuOpen(false);
+  };
+
+  // Handle leave confirmation
+  const handleLeaveConfirm = () => {
+    // Set flag to allow navigation
+    sessionStorage.setItem('allowNavigation', 'true');
+    sessionStorage.setItem('intentionalNavigation', 'true');
+    
+    // Clear conversation flag
+    sessionStorage.removeItem('isInConversation');
+    
+    // Navigate to profile
+    navigation.navigateToProfile();
+    
+    setShowLeaveConfirm(false);
+  };
+
+  // Handle stay on current page
+  const handleStayOnPage = () => {
+    setShowLeaveConfirm(false);
+  };
+
   const navigateTo = (path: string) => {
     // Use navigation service for consistent navigation
     switch(path) {
@@ -97,8 +138,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         navigation.navigateToLanguageSelection();
         break;
       case '/profile':
-        navigation.navigateToProfile();
-        break;
+        handleProfileNavigation();
+        return; // Don't call navigation.navigateToProfile() directly
       case '/auth/login':
         navigation.navigateToLogin();
         break;
@@ -327,6 +368,14 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         </div>
       )}
       
+      {/* Leave Confirmation Modal */}
+      <LeaveConfirmationModal
+        isOpen={showLeaveConfirm}
+        onStay={handleStayOnPage}
+        onLeave={handleLeaveConfirm}
+        userType={user ? 'authenticated' : 'guest'}
+      />
+
       {/* Logout Confirmation Dialog */}
       {showLogoutConfirm && (
         <>

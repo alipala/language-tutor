@@ -9,6 +9,7 @@ import { isAuthenticated } from '@/lib/auth-utils';
 import { isPlanValid, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 import TimeUpModal from '@/components/time-up-modal';
+import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -184,9 +185,6 @@ export default function SpeechPage() {
     console.log('[SpeechPage] Initializing speech page for user (authenticated: ' + (user !== null) + ')');
     navigationHandledRef.current = true;
     
-    // IMPORTANT: Completely disable automatic redirects to fix back button navigation
-    // We'll only handle the initialization of speech parameters
-    
     // Clear any navigation flags that might cause issues
     sessionStorage.removeItem('intentionalNavigation');
     sessionStorage.removeItem('backButtonNavigation');
@@ -196,41 +194,64 @@ export default function SpeechPage() {
     // Reset the refresh count to prevent false loop detection
     sessionStorage.setItem(refreshCountKey, '0');
     
-    // Set up a simple listener for back button that doesn't interfere with navigation
-    const handlePopState = (event: PopStateEvent) => {
-      console.log('[SpeechPage] Detected browser back button navigation');
-      // Don't prevent default navigation
-    };
-    
-    // Add the event listener for back button
-    window.addEventListener('popstate', handlePopState);
-    
     // Initialize the page with parameters
     initializePage();
-    
-    // Clean up the event listener when the component unmounts
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
   }, [user]);
   
-  // Show warning before leaving the conversation
+  // Override browser's default "Leave site?" modal with custom modal
   useEffect(() => {
+    // Only set up navigation protection after the page has fully loaded
+    if (isLoading || authLoading) {
+      return;
+    }
+
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!allowBackNavigation) {
-        // Standard way to show a confirmation dialog
+      // Check if navigation is explicitly allowed (e.g., when navigating to profile)
+      const allowNavigation = sessionStorage.getItem('allowNavigation') === 'true';
+      
+      // Always show custom modal for page refresh/close when on speech page
+      // unless navigation is explicitly allowed
+      if (!allowBackNavigation && !allowNavigation) {
         e.preventDefault();
-        // Chrome requires returnValue to be set
         e.returnValue = '';
         return '';
       }
+      
+      // Clear the allowNavigation flag after use
+      if (allowNavigation) {
+        sessionStorage.removeItem('allowNavigation');
+      }
     };
 
+    // Handle browser back/forward navigation
+    const handlePopState = (e: PopStateEvent) => {
+      console.log('[SpeechPage] Back button pressed, showing confirmation modal');
+      
+      // Always show modal for back navigation unless explicitly allowed
+      if (!allowBackNavigation) {
+        // Prevent the navigation
+        e.preventDefault();
+        
+        // Push the current state back to prevent actual navigation
+        window.history.pushState(null, '', window.location.href);
+        
+        // Show our custom modal
+        setShowLeaveWarning(true);
+        setPendingNavigationUrl('/language-selection');
+      }
+    };
+
+    // Push a state to handle back button - only after page is loaded
+    window.history.pushState(null, '', window.location.href);
+    
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
     };
-  }, [allowBackNavigation]);
+  }, [allowBackNavigation, isLoading, authLoading]);
   
   // Effect to periodically check plan validity
   useEffect(() => {
@@ -333,36 +354,13 @@ export default function SpeechPage() {
       {user && <PendingLearningPlanHandler />}
       <NavBar activeSection="section1" />
       
-      {/* Warning Modal for conversation interruption */}
-      {showLeaveWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card rounded-lg shadow-xl max-w-md w-full p-6 border border-white/20">
-            <div className="flex items-center text-amber-500 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <h3 className="text-lg font-medium">End current conversation?</h3>
-            </div>
-            <p className="text-white/80 mb-6">You're currently in a conversation. Leaving this page will end your current session.</p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-              <button
-                type="button"
-                className="primary-button px-4 py-2 rounded-lg"
-                onClick={handleCancelNavigation}
-              >
-                Continue Conversation
-              </button>
-              <button
-                type="button"
-                className="primary-button px-4 py-2 rounded-lg"
-                onClick={handleConfirmNavigation}
-              >
-                End Conversation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Enhanced Leave Confirmation Modal */}
+      <LeaveConfirmationModal
+        isOpen={showLeaveWarning}
+        onStay={handleCancelNavigation}
+        onLeave={handleConfirmNavigation}
+        userType={user ? 'authenticated' : 'guest'}
+      />
       
       {/* Main Content */}
       <div className="flex-grow">

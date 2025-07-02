@@ -230,6 +230,13 @@ class NavigationService {
    * Navigate to the profile page
    */
   navigateToProfile(): void {
+    // Clear any beforeunload listeners that might show browser confirmation dialogs
+    // This is especially important when navigating from speech pages
+    sessionStorage.setItem('allowNavigation', 'true');
+    
+    // Set a flag to indicate this is an intentional navigation
+    sessionStorage.setItem('intentionalNavigation', 'true');
+    
     this.navigate('/profile', { replace: true });
   }
 

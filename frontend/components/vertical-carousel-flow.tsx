@@ -6,6 +6,7 @@ import { useNavigation } from '@/lib/navigation';
 import { useAuth } from '@/lib/auth';
 import LanguageOptionsModal from '@/components/language-options-modal';
 import LoadingModal from '@/components/loading-modal';
+import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 import NavBar from '@/components/nav-bar';
 
 // Types
@@ -57,6 +58,11 @@ export default function VerticalCarouselFlow() {
   const [customTopicText, setCustomTopicText] = useState('');
   const [isExtendingKnowledge, setIsExtendingKnowledge] = useState(false);
   
+  // State for leave confirmation modal
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+  const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
+  
   // Refs for smooth scrolling
   const containerRef = useRef<HTMLDivElement>(null);
   const customInputRef = useRef<HTMLTextAreaElement>(null);
@@ -69,6 +75,47 @@ export default function VerticalCarouselFlow() {
       setPreselectedMode(mode);
     }
   }, [searchParams]);
+
+  // Handle back button navigation with confirmation modal
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      console.log('[VerticalCarouselFlow] Back button pressed, showing custom modal');
+      
+      // Set flag to prevent any level selection
+      setIsBackButtonPressed(true);
+      
+      // Prevent the navigation completely
+      e.preventDefault();
+      
+      // Push the current state back to prevent actual navigation
+      window.history.pushState(null, '', window.location.href);
+      
+      // Show our custom modal
+      setShowLeaveWarning(true);
+      setPendingNavigationUrl('/');
+    };
+
+    // Push a state to handle back button
+    window.history.pushState(null, '', window.location.href);
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Handle leave confirmation modal actions
+  const handleCancelNavigation = () => {
+    setPendingNavigationUrl(null);
+    setShowLeaveWarning(false);
+  };
+
+  const handleConfirmNavigation = () => {
+    // Always navigate to home page when user confirms leaving
+    router.push('/');
+    setShowLeaveWarning(false);
+  };
 
   // Helper function to check if a step is available
   const isStepAvailable = (step: FlowStep): boolean => {
@@ -458,6 +505,12 @@ export default function VerticalCarouselFlow() {
 
   // Handle level selection
   const handleLevelSelect = (level: string) => {
+    // Check if this is triggered by back navigation
+    if (showLeaveWarning || isBackButtonPressed) {
+      console.log('[VerticalCarouselFlow] Level selection blocked - back button was pressed');
+      return; // Don't proceed if modal is showing or back button was pressed
+    }
+    
     setSelectedLevel(level);
     sessionStorage.setItem('selectedLevel', level);
     
@@ -1102,6 +1155,14 @@ export default function VerticalCarouselFlow() {
           </div>
         </div>
       )}
+
+      {/* Leave Confirmation Modal */}
+      <LeaveConfirmationModal
+        isOpen={showLeaveWarning}
+        onStay={handleCancelNavigation}
+        onLeave={handleConfirmNavigation}
+        userType={user ? 'authenticated' : 'guest'}
+      />
     </div>
   );
 }
