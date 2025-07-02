@@ -47,8 +47,13 @@ export default function LeaveConfirmationModal({
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-all duration-300">
       <div 
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300"
+        className="absolute left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300"
         onClick={(e) => e.stopPropagation()}
+        style={{ 
+          top: '50%', 
+          transform: 'translate(-50%, -50%)',
+          marginTop: '40px' // Account for navbar height
+        }}
       >
         {/* Header with Icon */}
         <div className="px-6 pt-6 pb-4">
