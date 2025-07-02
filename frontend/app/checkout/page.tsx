@@ -206,6 +206,21 @@ export default function CheckoutPage() {
                 {currentPlan && currentPricing && (
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <h3 className="font-semibold text-gray-800 mb-2">{currentPlan.name}</h3>
+                    
+                    {/* 7-day trial banner for monthly plans */}
+                    {period === 'monthly' && planId !== 'try_learn' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center justify-center">
+                          <span className="text-blue-800 text-sm font-medium">
+                            🎉 7-day free trial included
+                          </span>
+                        </div>
+                        <div className="text-xs text-blue-600 text-center mt-1">
+                          Cancel anytime during trial - no charges applied
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="text-2xl font-bold text-[#4ECFBF]">
                       {currentPricing.price}
                       <span className="text-sm text-gray-600 ml-1">{currentPricing.priceNote}</span>
