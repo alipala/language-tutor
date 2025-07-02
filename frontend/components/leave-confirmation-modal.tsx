@@ -45,10 +45,11 @@ export default function LeaveConfirmationModal({
   const content = getModalContent();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300">
       <div 
-        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300"
+        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300 relative"
         onClick={(e) => e.stopPropagation()}
+        style={{ marginTop: '0', transform: 'translateY(0)' }}
       >
         {/* Header with Icon */}
         <div className="px-6 pt-6 pb-4">
