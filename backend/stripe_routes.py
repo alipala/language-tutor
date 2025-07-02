@@ -66,7 +66,7 @@ async def create_checkout_session(
                 {"$set": {"stripe_customer_id": customer_id}}
             )
 
-        # Create checkout session
+        # Create checkout session with 7-day free trial
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
@@ -77,6 +77,13 @@ async def create_checkout_session(
                 },
             ],
             mode="subscription",
+            subscription_data={
+                "trial_period_days": 7,
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "has_trial": "true"
+                }
+            },
             success_url=success_url,
             cancel_url=cancel_url,
             client_reference_id=str(current_user.id),
@@ -229,46 +236,71 @@ async def get_expiry_warning(
 async def cancel_subscription(
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Cancel user's active subscription"""
+    """Cancel user's active subscription or trial"""
     try:
         # Check if user has a Stripe customer ID
         customer_id = getattr(current_user, 'stripe_customer_id', None)
         if not customer_id:
             raise HTTPException(status_code=400, detail="No subscription found for this user")
 
-        # Get user's active subscription
+        # Get user's subscription (active or trialing)
         subscriptions = stripe.Subscription.list(
             customer=customer_id,
-            status="active",
             limit=1
         )
 
         if not subscriptions.data:
-            raise HTTPException(status_code=400, detail="No active subscription found")
+            raise HTTPException(status_code=400, detail="No subscription found")
 
         subscription = subscriptions.data[0]
 
-        # Cancel the subscription at period end
-        updated_subscription = stripe.Subscription.modify(
-            subscription.id,
-            cancel_at_period_end=True
-        )
+        # Handle trial cancellation differently
+        if subscription.status == "trialing":
+            # Cancel trial immediately
+            canceled_subscription = stripe.Subscription.cancel(subscription.id)
+            
+            # Update user's subscription status in MongoDB
+            await database["users"].update_one(
+                {"_id": current_user.id},
+                {"$set": {
+                    "subscription_status": "canceled",
+                    "is_in_trial": False,
+                    "trial_end_date": None,
+                    "subscription_plan": "try_learn"  # Revert to free plan
+                }}
+            )
 
-        # Update user's subscription status in MongoDB
-        await database["users"].update_one(
-            {"_id": current_user.id},
-            {"$set": {"subscription_status": "canceled"}}
-        )
+            logger.info(f"Trial canceled immediately for user {current_user.id}")
+            
+            return {
+                "success": True,
+                "message": "Trial canceled successfully. No charges have been applied.",
+                "subscription_id": subscription.id,
+                "was_trial": True
+            }
+        else:
+            # Cancel regular subscription at period end
+            updated_subscription = stripe.Subscription.modify(
+                subscription.id,
+                cancel_at_period_end=True
+            )
 
-        logger.info(f"Subscription canceled for user {current_user.id}")
-        
-        return {
-            "success": True,
-            "message": "Subscription canceled successfully. Access will continue until the end of your billing period.",
-            "subscription_id": subscription.id,
-            "cancel_at_period_end": updated_subscription.cancel_at_period_end,
-            "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
-        }
+            # Update user's subscription status in MongoDB
+            await database["users"].update_one(
+                {"_id": current_user.id},
+                {"$set": {"subscription_status": "canceled"}}
+            )
+
+            logger.info(f"Subscription canceled for user {current_user.id}")
+            
+            return {
+                "success": True,
+                "message": "Subscription canceled successfully. Access will continue until the end of your billing period.",
+                "subscription_id": subscription.id,
+                "cancel_at_period_end": updated_subscription.cancel_at_period_end,
+                "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None,
+                "was_trial": False
+            }
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error canceling subscription: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))

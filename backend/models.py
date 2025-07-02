@@ -43,12 +43,17 @@ class UserInDB(UserBase):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     hashed_password: str
     stripe_customer_id: Optional[str] = None
-    subscription_status: Optional[str] = None  # active, canceled, past_due, expired
+    subscription_status: Optional[str] = None  # active, canceled, past_due, expired, trialing
     subscription_plan: Optional[str] = None    # try_learn, fluency_builder, team_mastery
     subscription_period: Optional[str] = None  # monthly, annual
     subscription_price_id: Optional[str] = None # Track exact price subscribed to
     subscription_expires_at: Optional[datetime] = None  # When subscription expires
     subscription_started_at: Optional[datetime] = None  # When subscription started
+    
+    # Trial tracking
+    trial_start_date: Optional[datetime] = None
+    trial_end_date: Optional[datetime] = None
+    is_in_trial: bool = False
     
     # Usage tracking for current billing period
     current_period_start: Optional[datetime] = None
@@ -245,7 +250,7 @@ class SubscriptionLimits(BaseModel):
     is_unlimited: bool = False
 
 class SubscriptionStatus(BaseModel):
-    status: Optional[str] = None  # active, expired, canceled, past_due
+    status: Optional[str] = None  # active, expired, canceled, past_due, trialing
     plan: Optional[str] = None
     period: Optional[str] = None
     price_id: Optional[str] = None
@@ -254,6 +259,10 @@ class SubscriptionStatus(BaseModel):
     is_preserved: bool = False
     preservation_message: Optional[str] = None
     days_until_expiry: Optional[int] = None
+    # Trial information
+    is_in_trial: bool = False
+    trial_end_date: Optional[datetime] = None
+    trial_days_remaining: Optional[int] = None
 
 class UsageTrackingRequest(BaseModel):
     user_id: str

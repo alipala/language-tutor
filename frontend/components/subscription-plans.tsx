@@ -49,6 +49,7 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month",
     description: "Ideal for serious language learners",
     features: [
+      { text: "🎉 7-day free trial included", included: true },
       { text: "30 practice sessions (5 minutes each) monthly", included: true },
       { text: "2 speaking assessments monthly", included: true },
       { text: "Advanced progress tracking", included: true },
@@ -58,7 +59,7 @@ const monthlyPlans: PricingCard[] = [
       { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
-    ctaButton: "Get Started",
+    ctaButton: "Start Free Trial",
     popular: true
   },
   {
@@ -67,6 +68,7 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month per user",
     description: "For teams and organizations",
     features: [
+      { text: "🎉 7-day free trial included", included: true },
       { text: "Unlimited practice sessions", included: true },
       { text: "Unlimited assessments", included: true },
       { text: "Premium learning plans", included: true },
@@ -76,7 +78,7 @@ const monthlyPlans: PricingCard[] = [
       { text: "API access & LMS integrations", included: true },
       { text: "SSO & admin controls", included: true }
     ],
-    ctaButton: "Get Started",
+    ctaButton: "Start Free Trial",
     popular: false,
     note: "Minimum 5 users"
   }
@@ -194,7 +196,7 @@ export default function SubscriptionPlans() {
     if (plan.ctaButton === "Start Free") {
       // Navigate to sign up flow
       router.push('/auth/signup');
-    } else if (plan.ctaButton === "Get Started") {
+    } else if (plan.ctaButton === "Get Started" || plan.ctaButton === "Start Free Trial") {
       // Check if user is authenticated
       if (!user) {
         // Show auth modal for guest users

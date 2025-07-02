@@ -10,6 +10,9 @@ interface SubscriptionStatus {
   plan: string | null;
   period: string | null;
   price_id: string | null;
+  is_in_trial: boolean;
+  trial_end_date: string | null;
+  trial_days_remaining: number | null;
 }
 
 export default function SubscriptionManagement() {
@@ -157,6 +160,8 @@ export default function SubscriptionManagement() {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800';
+      case 'trialing':
+        return 'bg-blue-100 text-blue-800';
       case 'canceling':
         return 'bg-orange-100 text-orange-800';
       case 'canceled':
@@ -165,6 +170,25 @@ export default function SubscriptionManagement() {
         return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusDisplayText = (status: string | null) => {
+    if (!status) return 'Unknown';
+    
+    switch (status) {
+      case 'trialing':
+        return 'Free Trial';
+      case 'active':
+        return 'Active';
+      case 'canceling':
+        return 'Canceling';
+      case 'canceled':
+        return 'Canceled';
+      case 'past_due':
+        return 'Past Due';
+      default:
+        return status;
     }
   };
 
@@ -213,11 +237,50 @@ export default function SubscriptionManagement() {
         
         {subscription && subscription.status ? (
         <div className="space-y-6">
+          {/* Trial Banner */}
+          {subscription.is_in_trial && subscription.trial_days_remaining !== null && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-medium text-blue-800">
+                    🎉 Free Trial Active
+                  </h3>
+                  <div className="mt-1 text-sm text-blue-700">
+                    <p>
+                      <strong>{subscription.trial_days_remaining} days remaining</strong> in your free trial.
+                      {subscription.trial_end_date && (
+                        <span className="block mt-1">
+                          Trial ends on {new Date(subscription.trial_end_date).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-2 text-xs">
+                      Cancel anytime during trial - no charges will be applied.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Current Plan</h3>
               <p className="mt-1 text-lg font-semibold text-gray-800">
                 {formatPlanName(subscription.plan)} {formatPeriod(subscription.period)}
+                {subscription.is_in_trial && (
+                  <span className="ml-2 text-sm font-normal text-blue-600">(Free Trial)</span>
+                )}
               </p>
             </div>
             
@@ -225,11 +288,7 @@ export default function SubscriptionManagement() {
               <h3 className="text-sm font-medium text-gray-500">Status</h3>
               <div className="mt-1">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(subscription.status)}`}>
-                  {subscription.status === 'active' ? 'Active' : 
-                   subscription.status === 'canceling' ? 'Canceling' : 
-                   subscription.status === 'canceled' ? 'Canceled' : 
-                   subscription.status === 'past_due' ? 'Past Due' : 
-                   subscription.status}
+                  {getStatusDisplayText(subscription.status)}
                 </span>
               </div>
             </div>
@@ -237,7 +296,7 @@ export default function SubscriptionManagement() {
           
           <div className="border-t border-gray-200 pt-4">
             <div className="flex flex-wrap gap-3">
-              {subscription.status === 'active' && (
+              {(subscription.status === 'active' || subscription.status === 'trialing') && (
                 <button
                   onClick={handleCancelClick}
                   disabled={isLoading}
@@ -249,7 +308,7 @@ export default function SubscriptionManagement() {
                       Processing...
                     </>
                   ) : (
-                    'Cancel Subscription'
+                    subscription.is_in_trial ? 'Cancel Trial' : 'Cancel Subscription'
                   )}
                 </button>
               )}
@@ -359,10 +418,14 @@ export default function SubscriptionManagement() {
         isOpen={showCancelModal}
         onClose={() => setShowCancelModal(false)}
         onConfirm={handleCancelConfirm}
-        title="Cancel Subscription"
-        message="Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period."
-        confirmText="Yes, Cancel Subscription"
-        cancelText="Keep Subscription"
+        title={subscription?.is_in_trial ? "Cancel Trial" : "Cancel Subscription"}
+        message={
+          subscription?.is_in_trial 
+            ? "Are you sure you want to cancel your free trial? You will immediately lose access to premium features and no charges will be applied."
+            : "Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period."
+        }
+        confirmText={subscription?.is_in_trial ? "Yes, Cancel Trial" : "Yes, Cancel Subscription"}
+        cancelText={subscription?.is_in_trial ? "Keep Trial" : "Keep Subscription"}
         type="danger"
         isLoading={isLoading}
       />

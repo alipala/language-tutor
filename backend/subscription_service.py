@@ -93,28 +93,71 @@ class SubscriptionService:
             subscription_status = user.get("subscription_status")
             expires_at = user.get("subscription_expires_at")
             
-            # Check Stripe for cancellation status if user has active subscription
+            # Trial information
+            trial_end_date = user.get("trial_end_date")
+            is_in_trial = user.get("is_in_trial", False)
+            trial_days_remaining = None
+            
+            # Check Stripe for trial and cancellation status
             stripe_customer_id = user.get("stripe_customer_id")
-            if subscription_status == "active" and stripe_customer_id:
+            if stripe_customer_id:
                 try:
-                    # Get active subscription from Stripe
+                    # Get subscription from Stripe to check trial status
                     subscriptions = stripe.Subscription.list(
                         customer=stripe_customer_id,
-                        status="active",
                         limit=1
                     )
                     
                     if subscriptions.data:
                         stripe_subscription = subscriptions.data[0]
-                        # Check if subscription is scheduled for cancellation
-                        if stripe_subscription.cancel_at_period_end:
-                            subscription_status = "canceling"  # New status for scheduled cancellation
-                            logger.info(f"User {user_id} subscription is scheduled for cancellation")
+                        
+                        # Update trial information from Stripe
+                        if stripe_subscription.status == "trialing":
+                            subscription_status = "trialing"
+                            is_in_trial = True
+                            if stripe_subscription.trial_end:
+                                trial_end_date = datetime.fromtimestamp(stripe_subscription.trial_end)
+                                trial_days_remaining = max(0, (trial_end_date - now).days)
+                                
+                                # Update user with trial info
+                                await database["users"].update_one(
+                                    get_user_query(user_id),
+                                    {"$set": {
+                                        "is_in_trial": True,
+                                        "trial_end_date": trial_end_date,
+                                        "subscription_status": "trialing"
+                                    }}
+                                )
+                        elif stripe_subscription.status == "active":
+                            # Check if subscription is scheduled for cancellation
+                            if stripe_subscription.cancel_at_period_end:
+                                subscription_status = "canceling"
+                                logger.info(f"User {user_id} subscription is scheduled for cancellation")
+                            else:
+                                subscription_status = "active"
+                            
+                            # Clear trial status if subscription is now active
+                            if is_in_trial:
+                                await database["users"].update_one(
+                                    get_user_query(user_id),
+                                    {"$set": {
+                                        "is_in_trial": False,
+                                        "trial_end_date": None,
+                                        "subscription_status": subscription_status
+                                    }}
+                                )
+                                is_in_trial = False
+                                trial_end_date = None
+                                
                 except Exception as stripe_error:
-                    logger.warning(f"Could not check Stripe cancellation status for user {user_id}: {str(stripe_error)}")
+                    logger.warning(f"Could not check Stripe status for user {user_id}: {str(stripe_error)}")
+            
+            # Calculate trial days remaining if in trial
+            if is_in_trial and trial_end_date:
+                trial_days_remaining = max(0, (trial_end_date - now).days)
             
             # Determine actual status
-            if expires_at and now > expires_at:
+            if expires_at and now > expires_at and not is_in_trial:
                 subscription_status = "expired"
                 # Update user status in database
                 await database["users"].update_one(
@@ -139,9 +182,9 @@ class SubscriptionService:
                 is_preserved = True
                 preservation_message = cls._get_preservation_message(user)
             
-            # Calculate days until expiry
+            # Calculate days until expiry (for non-trial subscriptions)
             days_until_expiry = None
-            if expires_at and subscription_status in ["active", "canceling"]:
+            if expires_at and subscription_status in ["active", "canceling"] and not is_in_trial:
                 days_until_expiry = (expires_at - now).days
             
             return SubscriptionStatus(
@@ -153,7 +196,10 @@ class SubscriptionService:
                 limits=limits,
                 is_preserved=is_preserved,
                 preservation_message=preservation_message,
-                days_until_expiry=days_until_expiry
+                days_until_expiry=days_until_expiry,
+                is_in_trial=is_in_trial,
+                trial_end_date=trial_end_date,
+                trial_days_remaining=trial_days_remaining
             )
             
         except Exception as e:
