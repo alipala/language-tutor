@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import asyncio
 
-from database import database
+from database import database, notifications_collection, user_notifications_collection, users_collection
 from auth import get_current_user
 from models import (
     UserInDB, NotificationCreate, NotificationInDB, NotificationResponse,
@@ -69,7 +69,7 @@ async def create_notification(
     print(f"DEBUG: Created notification doc: {notification_doc.dict()}")
     
     # Insert into database
-    result = await database.notifications.insert_one(notification_doc.dict(by_alias=True))
+    result = await notifications_collection.insert_one(notification_doc.dict(by_alias=True))
     notification_doc.id = str(result.inserted_id)
     
     print(f"DEBUG: Inserted notification with ID: {notification_doc.id}")
@@ -102,10 +102,10 @@ async def list_notifications_admin(
     sort_direction = -1 if sort_order.lower() == "desc" else 1
     
     # Get total count
-    total_count = await database.notifications.count_documents({})
+    total_count = await notifications_collection.count_documents({})
     
     # Get notifications with pagination
-    cursor = database.notifications.find().sort(sort_field, sort_direction).skip(skip).limit(per_page)
+    cursor = notifications_collection.find().sort(sort_field, sort_direction).skip(skip).limit(per_page)
     notifications = []
     
     async for doc in cursor:
@@ -144,22 +144,22 @@ async def get_notification_admin(
         print(f"DEBUG: Converted to ObjectId: {object_id}")
         
         # Find notification
-        notification = await database.notifications.find_one({"_id": object_id})
+        notification = await notifications_collection.find_one({"_id": object_id})
         print(f"DEBUG: Database query result: {notification is not None}")
         
         if not notification:
             # Let's also try to find any notification to see what's in the database
             all_notifications = []
-            async for doc in database.notifications.find().limit(5):
+            async for doc in notifications_collection.find().limit(5):
                 all_notifications.append(str(doc["_id"]))
             print(f"DEBUG: Available notification IDs: {all_notifications}")
             
             # Also try to find by string ID in case there's a storage issue
-            string_result = await database.notifications.find_one({"_id": notification_id})
+            string_result = await notifications_collection.find_one({"_id": notification_id})
             print(f"DEBUG: String ID query result: {string_result is not None}")
             
             # Try to find any document with this ID in any format
-            any_result = await database.notifications.find_one({
+            any_result = await notifications_collection.find_one({
                 "$or": [
                     {"_id": object_id},
                     {"_id": notification_id},
@@ -206,7 +206,7 @@ async def update_notification_admin(
     
     try:
         # Check if notification exists
-        existing = await database.notifications.find_one({"_id": ObjectId(notification_id)})
+        existing = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
         if not existing:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -218,7 +218,7 @@ async def update_notification_admin(
         update_data["updated_at"] = datetime.utcnow()
         
         # Update the notification
-        result = await database.notifications.update_one(
+        result = await notifications_collection.update_one(
             {"_id": ObjectId(notification_id)},
             {"$set": update_data}
         )
@@ -230,7 +230,7 @@ async def update_notification_admin(
             )
         
         # Get updated notification
-        updated_notification = await database.notifications.find_one({"_id": ObjectId(notification_id)})
+        updated_notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
         updated_notification["id"] = str(updated_notification["_id"])
         
         return {"data": updated_notification}
@@ -250,7 +250,7 @@ async def delete_notification_admin(
     from bson import ObjectId
     
     try:
-        result = await database.notifications.delete_one({"_id": ObjectId(notification_id)})
+        result = await notifications_collection.delete_one({"_id": ObjectId(notification_id)})
         if result.deleted_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -258,7 +258,7 @@ async def delete_notification_admin(
             )
         
         # Also delete all user notifications for this notification
-        await database.user_notifications.delete_many({"notification_id": notification_id})
+        await user_notifications_collection.delete_many({"notification_id": notification_id})
         
         return {"data": {"id": notification_id, "message": "Notification deleted successfully"}}
     except Exception as e:
@@ -298,7 +298,7 @@ async def get_user_notifications(
         {"$limit": limit}
     ]
     
-    cursor = database.user_notifications.aggregate(pipeline)
+    cursor = user_notifications_collection.aggregate(pipeline)
     notifications = []
     
     async for doc in cursor:
@@ -314,8 +314,8 @@ async def get_user_notifications(
         notifications.append(notification_data)
     
     # Get counts
-    total_count = await database.user_notifications.count_documents({"user_id": current_user.id})
-    unread_count = await database.user_notifications.count_documents({
+    total_count = await user_notifications_collection.count_documents({"user_id": current_user.id})
+    unread_count = await user_notifications_collection.count_documents({
         "user_id": current_user.id,
         "is_read": False
     })
@@ -332,7 +332,7 @@ async def get_unread_count(
 ):
     """Get count of unread notifications for the current user"""
     
-    count = await database.user_notifications.count_documents({
+    count = await user_notifications_collection.count_documents({
         "user_id": current_user.id,
         "is_read": False
     })
@@ -346,7 +346,7 @@ async def mark_notification_read(
 ):
     """Mark a notification as read"""
     
-    result = await database.user_notifications.update_one(
+    result = await user_notifications_collection.update_one(
         {
             "user_id": current_user.id,
             "notification_id": request.notification_id,
@@ -374,7 +374,7 @@ async def mark_all_notifications_read(
 ):
     """Mark all notifications as read for the current user"""
     
-    result = await database.user_notifications.update_many(
+    result = await user_notifications_collection.update_many(
         {
             "user_id": current_user.id,
             "is_read": False
@@ -393,60 +393,68 @@ async def mark_all_notifications_read(
 async def process_notification(notification_id: str):
     """Process and send notification to users"""
     from bson import ObjectId
+    from database import notifications_collection, user_notifications_collection, users_collection
     
     print(f"DEBUG: Processing notification {notification_id}")
     
-    # Get notification
-    notification = await database.notifications.find_one({"_id": ObjectId(notification_id)})
-    if not notification:
-        print(f"DEBUG: Notification {notification_id} not found")
-        return
-    
-    print(f"DEBUG: Found notification: {notification.get('title')}")
-    
-    # Get target users
-    if notification.get("target_user_ids"):
-        # Send to specific users
-        target_users = notification["target_user_ids"]
-        print(f"DEBUG: Sending to specific users: {target_users}")
-    else:
-        # Send to all active users
-        cursor = database.users.find({"is_active": True}, {"_id": 1})
-        target_users = [str(doc["_id"]) async for doc in cursor]  # Convert ObjectId to string
-        print(f"DEBUG: Sending to all active users: {len(target_users)} users")
-    
-    # Create user notifications
-    user_notifications = []
-    for user_id in target_users:
-        user_notification = UserNotificationInDB(
-            user_id=str(user_id),  # Ensure string format
-            notification_id=notification_id
-        )
-        user_notifications.append(user_notification.dict(by_alias=True))
-    
-    print(f"DEBUG: Creating {len(user_notifications)} user notifications")
-    
-    if user_notifications:
-        result = await database.user_notifications.insert_many(user_notifications)
-        print(f"DEBUG: Inserted {len(result.inserted_ids)} user notifications")
-    
-    # Mark notification as sent
-    update_result = await database.notifications.update_one(
-        {"_id": ObjectId(notification_id)},
-        {
-            "$set": {
-                "is_sent": True,
-                "sent_at": datetime.utcnow()
+    try:
+        # Get notification
+        notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+        if not notification:
+            print(f"DEBUG: Notification {notification_id} not found")
+            return
+        
+        print(f"DEBUG: Found notification: {notification.get('title')}")
+        
+        # Get target users
+        if notification.get("target_user_ids"):
+            # Send to specific users
+            target_users = notification["target_user_ids"]
+            print(f"DEBUG: Sending to specific users: {target_users}")
+        else:
+            # Send to all active users
+            cursor = users_collection.find({"is_active": True}, {"_id": 1})
+            target_users = [str(doc["_id"]) async for doc in cursor]  # Convert ObjectId to string
+            print(f"DEBUG: Sending to all active users: {len(target_users)} users")
+        
+        # Create user notifications
+        user_notifications = []
+        for user_id in target_users:
+            user_notification = UserNotificationInDB(
+                user_id=str(user_id),  # Ensure string format
+                notification_id=notification_id
+            )
+            user_notifications.append(user_notification.dict(by_alias=True))
+        
+        print(f"DEBUG: Creating {len(user_notifications)} user notifications")
+        
+        if user_notifications:
+            result = await user_notifications_collection.insert_many(user_notifications)
+            print(f"DEBUG: Inserted {len(result.inserted_ids)} user notifications")
+        
+        # Mark notification as sent
+        update_result = await notifications_collection.update_one(
+            {"_id": ObjectId(notification_id)},
+            {
+                "$set": {
+                    "is_sent": True,
+                    "sent_at": datetime.utcnow()
+                }
             }
-        }
-    )
-    print(f"DEBUG: Marked notification as sent: {update_result.modified_count} documents updated")
+        )
+        print(f"DEBUG: Marked notification as sent: {update_result.modified_count} documents updated")
+        
+    except Exception as e:
+        print(f"ERROR: Failed to process notification {notification_id}: {str(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
 
 async def schedule_notification(notification_id: str):
     """Schedule notification for later sending"""
+    from bson import ObjectId
     
     # Get notification
-    notification = await database.notifications.find_one({"_id": notification_id})
+    notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
     if not notification or notification.get("is_sent"):
         return
     
@@ -467,7 +475,7 @@ async def schedule_notification(notification_id: str):
     await asyncio.sleep(delay_seconds)
     
     # Check if notification still exists and hasn't been sent
-    notification = await database.notifications.find_one({"_id": notification_id})
+    notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
     if notification and not notification.get("is_sent"):
         await process_notification(notification_id)
 
@@ -478,7 +486,7 @@ async def get_users_for_notifications(
 ):
     """Get list of users for notification targeting (Admin only)"""
     
-    cursor = database.users.find(
+    cursor = users_collection.find(
         {"is_active": True},
         {"_id": 1, "name": 1, "email": 1, "created_at": 1}
     ).sort("name", 1)
