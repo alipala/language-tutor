@@ -291,8 +291,8 @@ export default function NotificationBell({ className = '' }: NotificationBellPro
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    // Navigate to profile page where full notifications are shown
-                    window.location.href = '/profile';
+                    // Navigate to profile page notifications tab
+                    window.location.href = '/profile?tab=notifications';
                   }}
                   className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >

@@ -49,6 +49,14 @@ export default function ProfilePage() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Check for tab parameter in URL
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['overview', 'progress', 'achievements', 'notifications', 'export', 'settings'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   
