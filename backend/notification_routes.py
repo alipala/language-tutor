@@ -84,7 +84,7 @@ async def create_notification(
     print("DEBUG: Notification created successfully")
     return NotificationResponse(**notification_doc.dict())
 
-@router.get("/admin/notifications", response_model=List[NotificationResponse])
+@router.get("/admin/notifications")
 async def list_notifications_admin(
     page: int = 1,
     per_page: int = 25,
@@ -93,6 +93,7 @@ async def list_notifications_admin(
     current_admin = Depends(get_current_admin)
 ):
     """List all notifications (Admin only)"""
+    from bson import ObjectId
     
     # Calculate skip value for pagination
     skip = (page - 1) * per_page
@@ -100,13 +101,22 @@ async def list_notifications_admin(
     # Set sort direction
     sort_direction = -1 if sort_order.lower() == "desc" else 1
     
+    # Get total count
+    total_count = await database.notifications.count_documents({})
+    
+    # Get notifications with pagination
     cursor = database.notifications.find().sort(sort_field, sort_direction).skip(skip).limit(per_page)
     notifications = []
     
     async for doc in cursor:
-        notifications.append(NotificationResponse(**doc))
+        # Convert ObjectId to string for frontend
+        doc["id"] = str(doc["_id"])
+        notifications.append(doc)
     
-    return notifications
+    return {
+        "data": notifications,
+        "total": total_count
+    }
 
 @router.get("/admin/notifications/{notification_id}", response_model=NotificationResponse)
 async def get_notification_admin(
