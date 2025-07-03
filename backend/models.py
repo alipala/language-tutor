@@ -299,8 +299,17 @@ class NotificationBase(BaseModel):
         populate_by_name = True
         arbitrary_types_allowed = True
 
-class NotificationCreate(NotificationBase):
-    pass
+class NotificationCreate(BaseModel):
+    title: str
+    content: str  # Rich text content
+    notification_type: str  # NotificationType
+    target_user_ids: Optional[List[str]] = None  # None means all users
+    send_immediately: bool = True
+    scheduled_send_time: Optional[datetime] = None
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
 
 class NotificationInDB(NotificationBase):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
