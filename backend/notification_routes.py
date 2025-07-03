@@ -118,21 +118,78 @@ async def list_notifications_admin(
         "total": total_count
     }
 
-@router.get("/admin/notifications/{notification_id}", response_model=NotificationResponse)
+@router.get("/admin/notifications/{notification_id}")
 async def get_notification_admin(
     notification_id: str,
     current_admin = Depends(get_current_admin)
 ):
     """Get a specific notification (Admin only)"""
+    from bson import ObjectId
     
-    notification = await database.notifications.find_one({"_id": notification_id})
-    if not notification:
+    try:
+        notification = await database.notifications.find_one({"_id": ObjectId(notification_id)})
+        if not notification:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Notification not found"
+            )
+        
+        # Convert ObjectId to string for frontend
+        notification["id"] = str(notification["_id"])
+        
+        return {"data": notification}
+    except Exception as e:
+        print(f"Error getting notification {notification_id}: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get notification: {str(e)}"
         )
+
+@router.put("/admin/notifications/{notification_id}")
+async def update_notification_admin(
+    notification_id: str,
+    notification_data: NotificationCreate,
+    current_admin = Depends(get_current_admin)
+):
+    """Update a notification (Admin only)"""
+    from bson import ObjectId
     
-    return NotificationResponse(**notification)
+    try:
+        # Check if notification exists
+        existing = await database.notifications.find_one({"_id": ObjectId(notification_id)})
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Notification not found"
+            )
+        
+        # Prepare update data
+        update_data = notification_data.dict()
+        update_data["updated_at"] = datetime.utcnow()
+        
+        # Update the notification
+        result = await database.notifications.update_one(
+            {"_id": ObjectId(notification_id)},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No changes made to notification"
+            )
+        
+        # Get updated notification
+        updated_notification = await database.notifications.find_one({"_id": ObjectId(notification_id)})
+        updated_notification["id"] = str(updated_notification["_id"])
+        
+        return {"data": updated_notification}
+    except Exception as e:
+        print(f"Error updating notification {notification_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update notification: {str(e)}"
+        )
 
 @router.delete("/admin/notifications/{notification_id}")
 async def delete_notification_admin(
@@ -140,18 +197,26 @@ async def delete_notification_admin(
     current_admin = Depends(get_current_admin)
 ):
     """Delete a notification (Admin only)"""
+    from bson import ObjectId
     
-    result = await database.notifications.delete_one({"_id": notification_id})
-    if result.deleted_count == 0:
+    try:
+        result = await database.notifications.delete_one({"_id": ObjectId(notification_id)})
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Notification not found"
+            )
+        
+        # Also delete all user notifications for this notification
+        await database.user_notifications.delete_many({"notification_id": notification_id})
+        
+        return {"data": {"id": notification_id, "message": "Notification deleted successfully"}}
+    except Exception as e:
+        print(f"Error deleting notification {notification_id}: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete notification: {str(e)}"
         )
-    
-    # Also delete all user notifications for this notification
-    await database.user_notifications.delete_many({"notification_id": notification_id})
-    
-    return {"message": "Notification deleted successfully"}
 
 # User endpoints for viewing notifications
 @router.get("/", response_model=NotificationListResponse)
