@@ -384,8 +384,11 @@ async def process_notification(notification_id: str):
     print(f"DEBUG: Processing notification {notification_id}")
     
     try:
-        # Get notification
-        notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+        # Get notification - try string ID first, then ObjectId
+        notification = await notifications_collection.find_one({"_id": notification_id})
+        if not notification and ObjectId.is_valid(notification_id):
+            notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+        
         if not notification:
             print(f"DEBUG: Notification {notification_id} not found")
             return
@@ -418,9 +421,9 @@ async def process_notification(notification_id: str):
             result = await user_notifications_collection.insert_many(user_notifications)
             print(f"DEBUG: Inserted {len(result.inserted_ids)} user notifications")
         
-        # Mark notification as sent
+        # Mark notification as sent - use the same ID format as found
         update_result = await notifications_collection.update_one(
-            {"_id": ObjectId(notification_id)},
+            {"_id": notification["_id"]},
             {
                 "$set": {
                     "is_sent": True,
@@ -439,8 +442,11 @@ async def schedule_notification(notification_id: str):
     """Schedule notification for later sending"""
     from bson import ObjectId
     
-    # Get notification
-    notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+    # Get notification - try string ID first, then ObjectId
+    notification = await notifications_collection.find_one({"_id": notification_id})
+    if not notification and ObjectId.is_valid(notification_id):
+        notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+    
     if not notification or notification.get("is_sent"):
         return
     
@@ -460,8 +466,11 @@ async def schedule_notification(notification_id: str):
     # Wait until scheduled time
     await asyncio.sleep(delay_seconds)
     
-    # Check if notification still exists and hasn't been sent
-    notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+    # Check if notification still exists and hasn't been sent - use same ID handling
+    notification = await notifications_collection.find_one({"_id": notification_id})
+    if not notification and ObjectId.is_valid(notification_id):
+        notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+    
     if notification and not notification.get("is_sent"):
         await process_notification(notification_id)
 
