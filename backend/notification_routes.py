@@ -32,8 +32,9 @@ async def create_notification(
     print(f"DEBUG: Notification type received: '{notification_data.notification_type}' (type: {type(notification_data.notification_type)})")
     
     # Validate notification type
-    valid_types = [NotificationType.MAINTENANCE, NotificationType.SPECIAL_OFFER, NotificationType.INFORMATION]
+    valid_types = ["Maintenance", "Special Offer", "Information"]
     print(f"DEBUG: Valid types: {valid_types}")
+    print(f"DEBUG: Received type: '{notification_data.notification_type}' (type: {type(notification_data.notification_type)})")
     
     if notification_data.notification_type not in valid_types:
         print(f"DEBUG: Validation failed - '{notification_data.notification_type}' not in {valid_types}")
