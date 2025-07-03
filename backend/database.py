@@ -68,6 +68,8 @@ try:
     email_verification_collection = database.email_verifications
     conversation_sessions_collection = database.conversation_sessions
     learning_plans_collection = database.learning_plans
+    notifications_collection = database.notifications
+    user_notifications_collection = database.user_notifications
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
