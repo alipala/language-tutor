@@ -131,49 +131,34 @@ async def get_notification_admin(
     print(f"DEBUG: ID type: {type(notification_id)}, length: {len(notification_id)}")
     
     try:
-        # Validate ObjectId format
-        if not ObjectId.is_valid(notification_id):
-            print(f"DEBUG: Invalid ObjectId format: {notification_id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid notification ID format: {notification_id}"
-            )
+        # Try to find notification by string ID first (since our notifications are stored as strings)
+        notification = await notifications_collection.find_one({"_id": notification_id})
+        print(f"DEBUG: String ID query result: {notification is not None}")
         
-        # Convert to ObjectId
-        object_id = ObjectId(notification_id)
-        print(f"DEBUG: Converted to ObjectId: {object_id}")
-        
-        # Find notification
-        notification = await notifications_collection.find_one({"_id": object_id})
-        print(f"DEBUG: Database query result: {notification is not None}")
+        # If not found by string, try ObjectId conversion
+        if not notification and ObjectId.is_valid(notification_id):
+            object_id = ObjectId(notification_id)
+            print(f"DEBUG: Trying ObjectId: {object_id}")
+            notification = await notifications_collection.find_one({"_id": object_id})
+            print(f"DEBUG: ObjectId query result: {notification is not None}")
         
         if not notification:
-            # Let's also try to find any notification to see what's in the database
+            # Debug: show available notification IDs
             all_notifications = []
             async for doc in notifications_collection.find().limit(5):
-                all_notifications.append(str(doc["_id"]))
-            print(f"DEBUG: Available notification IDs: {all_notifications}")
-            
-            # Also try to find by string ID in case there's a storage issue
-            string_result = await notifications_collection.find_one({"_id": notification_id})
-            print(f"DEBUG: String ID query result: {string_result is not None}")
-            
-            # Try to find any document with this ID in any format
-            any_result = await notifications_collection.find_one({
-                "$or": [
-                    {"_id": object_id},
-                    {"_id": notification_id},
-                    {"id": notification_id}
-                ]
-            })
-            print(f"DEBUG: Any format query result: {any_result is not None}")
+                all_notifications.append({
+                    "id": str(doc["_id"]),
+                    "type": type(doc["_id"]).__name__,
+                    "title": doc.get("title", "No title")
+                })
+            print(f"DEBUG: Available notifications: {all_notifications}")
             
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Notification not found with ID: {notification_id}"
             )
         
-        # Convert ObjectId to string for frontend
+        # Ensure the notification has an 'id' field for the frontend
         notification["id"] = str(notification["_id"])
         print(f"DEBUG: Successfully found notification: {notification.get('title', 'No title')}")
         
@@ -182,12 +167,6 @@ async def get_notification_admin(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except InvalidId as e:
-        print(f"DEBUG: Invalid ObjectId: {notification_id} - {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid ObjectId format: {notification_id}"
-        )
     except Exception as e:
         print(f"DEBUG: Unexpected error getting notification {notification_id}: {str(e)}")
         raise HTTPException(
@@ -205,8 +184,11 @@ async def update_notification_admin(
     from bson import ObjectId
     
     try:
-        # Check if notification exists
-        existing = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+        # Check if notification exists (try string ID first, then ObjectId)
+        existing = await notifications_collection.find_one({"_id": notification_id})
+        if not existing and ObjectId.is_valid(notification_id):
+            existing = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+        
         if not existing:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -217,9 +199,9 @@ async def update_notification_admin(
         update_data = notification_data.dict()
         update_data["updated_at"] = datetime.utcnow()
         
-        # Update the notification
+        # Update the notification using the same ID format as found
         result = await notifications_collection.update_one(
-            {"_id": ObjectId(notification_id)},
+            {"_id": existing["_id"]},
             {"$set": update_data}
         )
         
@@ -230,7 +212,7 @@ async def update_notification_admin(
             )
         
         # Get updated notification
-        updated_notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
+        updated_notification = await notifications_collection.find_one({"_id": existing["_id"]})
         updated_notification["id"] = str(updated_notification["_id"])
         
         return {"data": updated_notification}
@@ -250,7 +232,11 @@ async def delete_notification_admin(
     from bson import ObjectId
     
     try:
-        result = await notifications_collection.delete_one({"_id": ObjectId(notification_id)})
+        # Try string ID first, then ObjectId
+        result = await notifications_collection.delete_one({"_id": notification_id})
+        if result.deleted_count == 0 and ObjectId.is_valid(notification_id):
+            result = await notifications_collection.delete_one({"_id": ObjectId(notification_id)})
+        
         if result.deleted_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
