@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run build:admin && NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "build:admin": "cd ../../language-tutor-admin && npm ci --legacy-peer-deps && npm run build && cp -r dist/* ../language-tutor/frontend/public/_admin/",
+    "build:admin": "echo 'Admin panel already built and included in repository'",
     "start": "next start",
     "lint": "next lint",
     "generate-favicons": "node scripts/generate-favicons.js"
