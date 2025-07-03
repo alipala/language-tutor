@@ -154,6 +154,20 @@ async def get_notification_admin(
                 all_notifications.append(str(doc["_id"]))
             print(f"DEBUG: Available notification IDs: {all_notifications}")
             
+            # Also try to find by string ID in case there's a storage issue
+            string_result = await database.notifications.find_one({"_id": notification_id})
+            print(f"DEBUG: String ID query result: {string_result is not None}")
+            
+            # Try to find any document with this ID in any format
+            any_result = await database.notifications.find_one({
+                "$or": [
+                    {"_id": object_id},
+                    {"_id": notification_id},
+                    {"id": notification_id}
+                ]
+            })
+            print(f"DEBUG: Any format query result: {any_result is not None}")
+            
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Notification not found with ID: {notification_id}"
