@@ -91,7 +91,7 @@ export default function NotificationsTab() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/api/notifications/`, {
+      const response = await fetch(`${API_URL}/api/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ export default function NotificationsTab() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/api/notifications/mark-read`, {
+      const response = await fetch(`${API_URL}/api/mark-read`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -167,7 +167,7 @@ export default function NotificationsTab() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
+      const response = await fetch(`${API_URL}/api/mark-all-read`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
