@@ -267,36 +267,47 @@ async def mark_all_notifications_read(
 # Background task functions
 async def process_notification(notification_id: str):
     """Process and send notification to users"""
+    from bson import ObjectId
+    
+    print(f"DEBUG: Processing notification {notification_id}")
     
     # Get notification
-    notification = await database.notifications.find_one({"_id": notification_id})
+    notification = await database.notifications.find_one({"_id": ObjectId(notification_id)})
     if not notification:
+        print(f"DEBUG: Notification {notification_id} not found")
         return
+    
+    print(f"DEBUG: Found notification: {notification.get('title')}")
     
     # Get target users
     if notification.get("target_user_ids"):
         # Send to specific users
         target_users = notification["target_user_ids"]
+        print(f"DEBUG: Sending to specific users: {target_users}")
     else:
         # Send to all active users
         cursor = database.users.find({"is_active": True}, {"_id": 1})
-        target_users = [doc["_id"] async for doc in cursor]
+        target_users = [str(doc["_id"]) async for doc in cursor]  # Convert ObjectId to string
+        print(f"DEBUG: Sending to all active users: {len(target_users)} users")
     
     # Create user notifications
     user_notifications = []
     for user_id in target_users:
         user_notification = UserNotificationInDB(
-            user_id=user_id,
+            user_id=str(user_id),  # Ensure string format
             notification_id=notification_id
         )
         user_notifications.append(user_notification.dict(by_alias=True))
     
+    print(f"DEBUG: Creating {len(user_notifications)} user notifications")
+    
     if user_notifications:
-        await database.user_notifications.insert_many(user_notifications)
+        result = await database.user_notifications.insert_many(user_notifications)
+        print(f"DEBUG: Inserted {len(result.inserted_ids)} user notifications")
     
     # Mark notification as sent
-    await database.notifications.update_one(
-        {"_id": notification_id},
+    update_result = await database.notifications.update_one(
+        {"_id": ObjectId(notification_id)},
         {
             "$set": {
                 "is_sent": True,
@@ -304,6 +315,7 @@ async def process_notification(notification_id: str):
             }
         }
     )
+    print(f"DEBUG: Marked notification as sent: {update_result.modified_count} documents updated")
 
 async def schedule_notification(notification_id: str):
     """Schedule notification for later sending"""
