@@ -114,7 +114,7 @@ app.include_router(stripe_router)
 
 # Include notification routes
 from notification_routes import router as notification_router
-app.include_router(notification_router, prefix="/api/notifications")
+app.include_router(notification_router, prefix="/api")
 
 
 # Initialize MongoDB on startup
