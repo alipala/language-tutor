@@ -112,6 +112,10 @@ app.include_router(admin_router)
 from stripe_routes import router as stripe_router
 app.include_router(stripe_router)
 
+# Include notification routes
+from notification_routes import router as notification_router
+app.include_router(notification_router, prefix="/api")
+
 
 # Initialize MongoDB on startup
 @app.on_event("startup")

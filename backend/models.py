@@ -279,3 +279,92 @@ class LearningPlanPreservation(BaseModel):
     vocabulary_learned: List[str]
     grammar_improvements: List[str]
     preserved_at: datetime = Field(default_factory=datetime.utcnow)
+
+# Notification models
+class NotificationType(str):
+    MAINTENANCE = "Maintenance"
+    SPECIAL_OFFER = "Special Offer"
+    INFORMATION = "Information"
+
+class NotificationBase(BaseModel):
+    title: str
+    content: str  # Rich text content
+    notification_type: str  # NotificationType
+    target_user_ids: Optional[List[str]] = None  # None means all users
+    send_immediately: bool = True
+    scheduled_send_time: Optional[datetime] = None
+    created_by: str  # Admin user ID who created the notification
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class NotificationCreate(BaseModel):
+    title: str
+    content: str  # Rich text content
+    notification_type: str  # NotificationType
+    target_user_ids: Optional[List[str]] = None  # None means all users
+    send_immediately: bool = True
+    scheduled_send_time: Optional[datetime] = None
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class NotificationInDB(NotificationBase):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    sent_at: Optional[datetime] = None
+    is_sent: bool = False
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class NotificationResponse(NotificationBase):
+    id: str = Field(..., alias="_id")
+    created_at: datetime
+    sent_at: Optional[datetime] = None
+    is_sent: bool = False
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+# User notification tracking
+class UserNotificationBase(BaseModel):
+    user_id: str
+    notification_id: str
+    is_read: bool = False
+    read_at: Optional[datetime] = None
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class UserNotificationInDB(UserNotificationBase):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class UserNotificationResponse(UserNotificationBase):
+    id: str = Field(..., alias="_id")
+    notification: NotificationResponse
+    created_at: datetime
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class NotificationMarkReadRequest(BaseModel):
+    notification_id: str
+
+class NotificationListResponse(BaseModel):
+    notifications: List[UserNotificationResponse]
+    unread_count: int
+    total_count: int

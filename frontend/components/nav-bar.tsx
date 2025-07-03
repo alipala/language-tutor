@@ -8,6 +8,7 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { Logo } from './logo';
 import { Crown, Star, Zap } from 'lucide-react';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
+import NotificationBell from '@/components/notification-bell';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -229,33 +230,37 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
               </div>
             </div>
           ) : user ? (
-            <div className="relative user-menu-container">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-white/80 hover:text-white transition-all duration-300"
-              >
-                {!subscriptionLoading && planInfo.name !== 'Try & Learn' ? (
-                  <div 
-                    className="flex items-center justify-between px-3 py-2 rounded-md font-medium border border-white/50 hover:bg-white/10 transition-all duration-300"
-                    style={{ backgroundColor: planInfo.color }}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg font-bold text-white drop-shadow-sm">{planInfo.icon}</span>
-                      <span className="text-base">{user.name}</span>
+            <div className="flex items-center space-x-2">
+              {/* Notification Bell */}
+              <NotificationBell />
+              
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="text-white/80 hover:text-white transition-all duration-300"
+                >
+                  {!subscriptionLoading && planInfo.name !== 'Try & Learn' ? (
+                    <div 
+                      className="flex items-center justify-between px-3 py-2 rounded-md font-medium border border-white/50 hover:bg-white/10 transition-all duration-300"
+                      style={{ backgroundColor: planInfo.color }}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg font-bold text-white drop-shadow-sm">{planInfo.icon}</span>
+                        <span className="text-base">{user.name}</span>
+                      </div>
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ml-2 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ml-2 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
-                    <span className="font-medium text-lg">{user.name}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                )}
-              </button>
+                  ) : (
+                    <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                      <span className="font-medium text-lg">{user.name}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
               
               {/* Dropdown Menu */}
               {isMenuOpen && (
@@ -277,6 +282,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   </button>
                 </div>
               )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center">

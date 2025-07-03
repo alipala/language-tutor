@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "build": "npm run build:admin && NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "build:admin": "echo 'Admin panel already built and included in repository'",
     "start": "next start",
     "lint": "next lint",
     "generate-favicons": "node scripts/generate-favicons.js"

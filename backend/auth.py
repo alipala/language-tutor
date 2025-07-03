@@ -392,3 +392,43 @@ async def mark_existing_users_verified():
     except Exception as e:
         print(f"❌ Error marking existing users as verified: {str(e)}")
         return 0
+
+# Admin authentication
+async def get_current_admin_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
+    """Get current user and verify admin privileges"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    admin_exception = HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Admin privileges required"
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        token_data = TokenData(user_id=user_id)
+    except JWTError:
+        raise credentials_exception
+    
+    user = await get_user_by_id(token_data.user_id)
+    if user is None:
+        raise credentials_exception
+    
+    # Check if user is admin (for now, we'll use email-based admin check)
+    # In production, you might want to add an is_admin field to the user model
+    admin_emails = [
+        "admin@mytaco.ai",
+        "ali@mytaco.ai",
+        "support@mytaco.ai"
+    ]
+    
+    if user.email not in admin_emails:
+        raise admin_exception
+    
+    return user

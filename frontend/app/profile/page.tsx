@@ -20,7 +20,8 @@ import {
   Download, Trash2, Settings, Edit3, Crown,
   TrendingUp, Award, BookOpen, Clock, Zap,
   ChevronRight, ChevronDown, Share2, Lock,
-  Gem, Heart, Volume2, Mic, CheckCircle, Brain
+  Gem, Heart, Volume2, Mic, CheckCircle, Brain,
+  Bell
 } from 'lucide-react';
 import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 import ExportModal from '@/components/export-modal';
@@ -28,6 +29,7 @@ import SubscriptionManagement from './subscription-management';
 import MembershipBadge, { UsageIndicator } from '@/components/membership-badge';
 import PaymentProcessingModal from '@/components/payment-processing-modal';
 import SoundWaveLoader from '@/components/sound-wave-loader';
+import NotificationsTab from '@/components/notifications-tab';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -47,6 +49,14 @@ export default function ProfilePage() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Check for tab parameter in URL
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['overview', 'progress', 'achievements', 'notifications', 'export', 'settings'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   
@@ -654,6 +664,7 @@ export default function ProfilePage() {
                   { id: 'overview', label: 'Overview', icon: TrendingUp },
                   { id: 'progress', label: 'Learning Progress', icon: Target },
                   { id: 'achievements', label: 'Achievements', icon: Trophy },
+                  { id: 'notifications', label: 'Notifications', icon: Bell },
                   { id: 'export', label: 'Export Data', icon: Download },
                   { id: 'settings', label: 'Settings', icon: Settings }
                 ].map(tab => (
@@ -935,6 +946,11 @@ export default function ProfilePage() {
                 </div>
               ) : null}
             </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === 'notifications' && (
+            <NotificationsTab />
           )}
 
           {/* Achievements Tab */}
