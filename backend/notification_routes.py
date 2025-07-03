@@ -125,21 +125,57 @@ async def get_notification_admin(
 ):
     """Get a specific notification (Admin only)"""
     from bson import ObjectId
+    from bson.errors import InvalidId
+    
+    print(f"DEBUG: Getting notification with ID: {notification_id}")
+    print(f"DEBUG: ID type: {type(notification_id)}, length: {len(notification_id)}")
     
     try:
-        notification = await database.notifications.find_one({"_id": ObjectId(notification_id)})
+        # Validate ObjectId format
+        if not ObjectId.is_valid(notification_id):
+            print(f"DEBUG: Invalid ObjectId format: {notification_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid notification ID format: {notification_id}"
+            )
+        
+        # Convert to ObjectId
+        object_id = ObjectId(notification_id)
+        print(f"DEBUG: Converted to ObjectId: {object_id}")
+        
+        # Find notification
+        notification = await database.notifications.find_one({"_id": object_id})
+        print(f"DEBUG: Database query result: {notification is not None}")
+        
         if not notification:
+            # Let's also try to find any notification to see what's in the database
+            all_notifications = []
+            async for doc in database.notifications.find().limit(5):
+                all_notifications.append(str(doc["_id"]))
+            print(f"DEBUG: Available notification IDs: {all_notifications}")
+            
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Notification not found"
+                detail=f"Notification not found with ID: {notification_id}"
             )
         
         # Convert ObjectId to string for frontend
         notification["id"] = str(notification["_id"])
+        print(f"DEBUG: Successfully found notification: {notification.get('title', 'No title')}")
         
         return {"data": notification}
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except InvalidId as e:
+        print(f"DEBUG: Invalid ObjectId: {notification_id} - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid ObjectId format: {notification_id}"
+        )
     except Exception as e:
-        print(f"Error getting notification {notification_id}: {str(e)}")
+        print(f"DEBUG: Unexpected error getting notification {notification_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get notification: {str(e)}"
