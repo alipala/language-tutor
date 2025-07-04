@@ -120,6 +120,10 @@ app.include_router(notification_router, prefix="/api")
 from share_routes import router as share_router
 app.include_router(share_router)
 
+# Include URL redirect routes
+from url_redirect_routes import router as url_redirect_router
+app.include_router(url_redirect_router)
+
 
 # Initialize MongoDB on startup
 @app.on_event("startup")

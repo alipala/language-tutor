@@ -4,7 +4,7 @@ import base64
 import httpx
 from datetime import datetime
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from pydantic import BaseModel
 from openai import OpenAI
 
@@ -36,6 +36,7 @@ class ShareProgressRequest(BaseModel):
     learning_plan_id: Optional[str] = None
     share_type: str = "progress"  # "progress", "achievement", "milestone"
     platform: str = "instagram"  # "instagram", "whatsapp", "general"
+    week_number: Optional[int] = None
     custom_message: Optional[str] = None
 
 class ShareProgressResponse(BaseModel):
@@ -59,7 +60,7 @@ async def generate_progress_image(
         print(f"[SHARE] Request: {request.dict()}")
         
         # Get user's progress data
-        progress_data = await get_user_progress_data(current_user.id, request.assessment_id, request.learning_plan_id)
+        progress_data = await get_user_progress_data(current_user.id, request.assessment_id, request.learning_plan_id, request.week_number)
         
         if not progress_data:
             raise HTTPException(
@@ -68,7 +69,7 @@ async def generate_progress_image(
             )
         
         # Generate the image prompt
-        image_prompt = create_image_prompt(progress_data, request.share_type, request.platform)
+        image_prompt = create_image_prompt(progress_data, request.share_type, request.platform, request.week_number)
         
         print(f"[SHARE] Generated prompt: {image_prompt[:200]}...")
         
@@ -98,19 +99,56 @@ async def generate_progress_image(
                 detail=f"Failed to generate image: {str(openai_error)}"
             )
         
-        # Download image and convert to base64 for frontend
+        # Download image IMMEDIATELY and convert to base64 (OpenAI URLs expire quickly!)
         image_base64 = None
         try:
-            async with httpx.AsyncClient() as http_client:
-                img_response = await http_client.get(image_url)
+            print(f"[SHARE] 🔄 Downloading image immediately from: {image_url}")
+            
+            # Create a clean HTTP client with proper headers
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'image/png,image/jpeg,image/*;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
+            
+            # Create client with follow_redirects and proper URL handling
+            async with httpx.AsyncClient(
+                timeout=30.0, 
+                headers=headers, 
+                follow_redirects=True,
+                trust_env=False
+            ) as http_client:
+                print(f"[SHARE] 🔄 Making request to: {image_url}")
+                
+                # CRITICAL FIX: Use httpx.URL to prevent re-encoding
+                from httpx import URL
+                parsed_url = URL(image_url)
+                img_response = await http_client.get(parsed_url)
+                print(f"[SHARE] Download response status: {img_response.status_code}")
+                
                 if img_response.status_code == 200:
                     image_base64 = base64.b64encode(img_response.content).decode('utf-8')
-                    print(f"[SHARE] ✅ Image converted to base64")
+                    print(f"[SHARE] ✅ Image converted to base64 ({len(image_base64)} chars)")
+                else:
+                    print(f"[SHARE] ❌ Failed to download image: HTTP {img_response.status_code}")
+                    print(f"[SHARE] Response headers: {img_response.headers}")
+                    # Try to get error details
+                    try:
+                        error_text = img_response.text
+                        print(f"[SHARE] Error response: {error_text}")
+                    except:
+                        pass
         except Exception as download_error:
-            print(f"[SHARE] ⚠️ Failed to download image for base64: {str(download_error)}")
+            print(f"[SHARE] ❌ Exception downloading image: {str(download_error)}")
+            import traceback
+            print(f"[SHARE] Traceback: {traceback.format_exc()}")
         
         # Generate share text
-        share_text = create_share_text(progress_data, request.platform, request.custom_message)
+        share_text = create_share_text(progress_data, request.platform, request.custom_message, request.week_number)
         
         # Store sharing activity
         await track_sharing_activity(current_user.id, request.share_type, request.platform, progress_data)
@@ -133,7 +171,7 @@ async def generate_progress_image(
             detail=f"Failed to generate progress image: {str(e)}"
         )
 
-async def get_user_progress_data(user_id: str, assessment_id: Optional[str], learning_plan_id: Optional[str]) -> Dict[str, Any]:
+async def get_user_progress_data(user_id: str, assessment_id: Optional[str], learning_plan_id: Optional[str], week_number: Optional[int] = None) -> Dict[str, Any]:
     """
     Retrieve user's progress data for sharing
     """
@@ -236,9 +274,9 @@ async def get_user_progress_data(user_id: str, assessment_id: Optional[str], lea
         print(f"[SHARE] ❌ Error retrieving progress data: {str(e)}")
         return None
 
-def create_image_prompt(progress_data: Dict[str, Any], share_type: str, platform: str) -> str:
+def create_image_prompt(progress_data: Dict[str, Any], share_type: str, platform: str, week_number: Optional[int] = None) -> str:
     """
-    Create a detailed prompt for DALL-E 3 image generation
+    Create a simple, achievement badge-style prompt for DALL-E 3 image generation
     """
     # Brand colors
     turquoise = "#4ECFBF"
@@ -255,131 +293,50 @@ def create_image_prompt(progress_data: Dict[str, Any], share_type: str, platform
     if learning_plan:
         language = learning_plan.get("language", "English")
         level = learning_plan.get("level", "B1")
-        progress_percentage = learning_plan.get("progress_percentage", 0)
         completed_sessions = learning_plan.get("completed_sessions", 0)
-        weeks_completed = learning_plan.get("weeks_completed", 0)
     elif assessment:
         language = assessment.get("language", "English")
         level = assessment.get("level", "B1")
-        progress_percentage = assessment.get("overall_score", 0)
         completed_sessions = 1
-        weeks_completed = 1
     else:
         language = "English"
         level = "B1"
-        progress_percentage = 50
         completed_sessions = 5
-        weeks_completed = 2
     
-    # Create platform-specific prompt
-    if platform == "instagram":
-        base_prompt = f"""Create a vibrant, Instagram-worthy progress sharing image for a language learning app called '{app_name}'. 
+    # Add week-specific content if provided
+    week_text = f"Week {week_number}" if week_number else "Learning"
+    
+    # Create simple achievement badge prompt - MUCH SIMPLER
+    base_prompt = f"""Create a clean, minimal achievement badge for language learning.
 
 DESIGN REQUIREMENTS:
-- Square format (1024x1024) perfect for Instagram posts
-- Modern, clean, and visually appealing design
-- Use these exact brand colors: turquoise {turquoise}, bright yellow {yellow}, coral {coral}, and orange {orange}
-- Include a subtle taco emoji 🌮 as the app logo
-- Professional yet fun and engaging aesthetic
+- Square format (1024x1024)
+- Simple circular badge design
+- Use turquoise {turquoise} and yellow {yellow} colors
+- Clean, readable typography
+- NO food symbols, NO taco symbols, NO complex graphics
 
-CONTENT TO INCLUDE:
-- Large, bold text: "Learning {language}!"
-- Prominent display: "{level} Level"
-- Progress indicator: "{progress_percentage}% Complete" or "{completed_sessions} Sessions Completed"
-- App branding: "{app_name}" with taco emoji
-- Motivational element: "Keep going!" or "Great progress!"
-
-VISUAL STYLE:
-- Gradient backgrounds using the brand colors
-- Modern typography with good contrast
-- Progress bars or circular progress indicators
-- Celebratory elements like stars, checkmarks, or achievement badges
-- Clean layout with proper spacing
-- Instagram-optimized visual hierarchy
-
-MOOD: Celebratory, motivational, professional, and shareable"""
-
-    elif platform == "whatsapp":
-        base_prompt = f"""Create a friendly, personal progress sharing image for WhatsApp sharing for a language learning app called '{app_name}'.
-
-DESIGN REQUIREMENTS:
-- Square format optimized for WhatsApp sharing
-- Warm, friendly, and personal design
-- Use these brand colors: turquoise {turquoise}, yellow {yellow}, coral {coral}, orange {orange}
-- Include taco emoji 🌮 as app logo
-- Conversational and approachable style
-
-CONTENT TO INCLUDE:
-- Friendly text: "I'm learning {language} with {app_name}!"
-- Progress: "{progress_percentage}% complete" or "{completed_sessions} sessions done"
-- Level: "{level} level"
-- Call to action: "Join me!"
-- App name with taco emoji
+CONTENT (keep minimal):
+- Main text: "{week_text} Complete!"
+- Subtitle: "Learning {language}"
+- Level: "{level}"
+- App: "{app_name}"
 
 VISUAL STYLE:
-- Soft gradients and rounded corners
-- Friendly, readable fonts
-- Personal achievement feel
-- WhatsApp-friendly color scheme
-- Encouraging and motivational
+- Simple circular badge with clean border
+- Gradient background using turquoise and yellow
+- Bold, readable fonts
+- Minimal decorative elements (maybe 1-2 stars)
+- Professional achievement look
+- Clean white text on colored background
 
-MOOD: Personal, encouraging, friendly, and inviting"""
-
-    else:  # general
-        base_prompt = f"""Create a versatile progress sharing image for a language learning app called '{app_name}'.
-
-DESIGN REQUIREMENTS:
-- Square format suitable for multiple social platforms
-- Professional yet engaging design
-- Brand colors: turquoise {turquoise}, yellow {yellow}, coral {coral}, orange {orange}
-- Taco emoji 🌮 as app logo
-- Universal appeal
-
-CONTENT TO INCLUDE:
-- Main text: "Learning {language} with {app_name}"
-- Progress: "{progress_percentage}% Complete"
-- Level: "{level} Level"
-- Sessions: "{completed_sessions} Sessions"
-- App branding with taco emoji
-
-VISUAL STYLE:
-- Clean, modern design
-- Good contrast and readability
-- Professional color usage
-- Achievement-focused layout
-- Social media optimized
-
-MOOD: Professional, motivational, and achievement-focused"""
-
-    # Add specific elements based on share type
-    if share_type == "milestone":
-        base_prompt += f"\n\nSPECIAL MILESTONE ELEMENTS:\n- Add celebration elements like confetti, stars, or trophy icons\n- Emphasize the achievement with 'Milestone Reached!' text\n- Make it extra celebratory and exciting"
-    
-    elif share_type == "achievement":
-        base_prompt += f"\n\nACHIEVEMENT ELEMENTS:\n- Include achievement badge or medal icon\n- Add 'Achievement Unlocked!' text\n- Use gold accents or achievement-style design elements"
-    
-    # Ensure brand consistency
-    base_prompt += f"""
-
-CRITICAL BRAND REQUIREMENTS:
-- MUST include '{app_name}' text prominently
-- MUST include taco emoji 🌮 
-- MUST use the specified brand colors
-- MUST be visually appealing and shareable
-- MUST look professional and trustworthy
-- MUST encourage others to try the app
-
-TECHNICAL REQUIREMENTS:
-- High quality, crisp design
-- Good contrast for text readability
-- Optimized for social media sharing
-- Eye-catching and scroll-stopping design"""
+CRITICAL: Keep it extremely simple and professional. NO food imagery whatsoever."""
 
     return base_prompt
 
-def create_share_text(progress_data: Dict[str, Any], platform: str, custom_message: Optional[str] = None) -> str:
+def create_share_text(progress_data: Dict[str, Any], platform: str, custom_message: Optional[str] = None, week_number: Optional[int] = None) -> str:
     """
-    Create platform-appropriate share text
+    Create platform-appropriate share text (no percentages)
     """
     assessment = progress_data.get("assessment", {})
     learning_plan = progress_data.get("learning_plan", {})
@@ -389,30 +346,30 @@ def create_share_text(progress_data: Dict[str, Any], platform: str, custom_messa
     if learning_plan:
         language = learning_plan.get("language", "English")
         level = learning_plan.get("level", "B1")
-        progress = learning_plan.get("progress_percentage", 0)
         sessions = learning_plan.get("completed_sessions", 0)
     elif assessment:
         language = assessment.get("language", "English")
         level = assessment.get("level", "B1")
-        progress = assessment.get("overall_score", 0)
         sessions = 1
     else:
         language = "English"
         level = "B1"
-        progress = 50
         sessions = 5
+    
+    # Add week-specific content
+    week_text = f"Week {week_number} completed! 🎉" if week_number else ""
     
     if custom_message:
         base_text = custom_message
     else:
         if platform == "instagram":
-            base_text = f"🌮 Learning {language} with {app_name}! \n\n📈 {level} Level • {progress}% Complete\n💪 {sessions} Sessions Completed\n\n#LanguageLearning #{language}Learning #Progress #TacoAI #LanguageGoals #StudyMotivation"
+            base_text = f"🎓 Learning {language} with {app_name}! \n\n{week_text}\n📚 {level} Level\n💪 {sessions} Sessions Completed\n\n#LanguageLearning #{language}Learning #Progress #TacoAI #LanguageGoals #StudyMotivation"
         
         elif platform == "whatsapp":
-            base_text = f"🌮 I'm learning {language} with {app_name}! \n\nJust reached {progress}% completion at {level} level 📈\n\nCompleted {sessions} sessions so far 💪\n\nWant to join me? Check out {app_name}! 🚀"
+            base_text = f"🎓 I'm learning {language} with {app_name}! \n\n{week_text}\nCurrently at {level} level 📚\n\nCompleted {sessions} sessions so far 💪\n\nWant to join me? Check out {app_name}! 🚀"
         
         else:  # general
-            base_text = f"🌮 Learning {language} with {app_name}!\n\n📈 Progress: {progress}% complete\n🎯 Level: {level}\n💪 Sessions: {sessions}\n\n#LanguageLearning #{language}"
+            base_text = f"� Learning {language} with {app_name}!\n\n{week_text}\n🎯 Level: {level}\n💪 Sessions: {sessions}\n\n#LanguageLearning #{language}"
     
     return base_text
 
@@ -438,6 +395,205 @@ async def track_sharing_activity(user_id: str, share_type: str, platform: str, p
     except Exception as e:
         print(f"[SHARE] ⚠️ Failed to track sharing activity: {str(e)}")
         # Don't raise exception - this is non-critical
+
+class DownloadImageRequest(BaseModel):
+    image_url: str
+
+@router.get("/proxy-image/{image_url:path}")
+async def proxy_image(image_url: str):
+    """
+    Proxy route to download images from external URLs (like OpenAI)
+    This avoids CORS issues and authentication problems
+    """
+    try:
+        # Decode the URL
+        from urllib.parse import unquote
+        decoded_url = unquote(image_url)
+        
+        print(f"[SHARE] Proxying image from: {decoded_url}")
+        
+        # Create headers that work with OpenAI URLs
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0, headers=headers, follow_redirects=True) as http_client:
+            # CRITICAL FIX: Use httpx.URL to prevent re-encoding
+            from httpx import URL
+            parsed_url = URL(decoded_url)
+            response = await http_client.get(parsed_url)
+            
+            print(f"[SHARE] Proxy response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"[SHARE] Proxy failed with status: {response.status_code}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to fetch image: HTTP {response.status_code}"
+                )
+            
+            print(f"[SHARE] Successfully proxied {len(response.content)} bytes")
+            
+            # Return the image with proper headers
+            return Response(
+                content=response.content,
+                media_type="image/png",
+                headers={
+                    "Content-Disposition": "attachment; filename=tacoai-progress.png",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
+            
+    except Exception as e:
+        print(f"[SHARE] ❌ Error proxying image: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to proxy image: {str(e)}"
+        )
+
+@router.post("/download-image")
+async def download_image(
+    request: DownloadImageRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Download image from OpenAI URL to avoid CORS issues
+    DEPRECATED: Use proxy-image route instead
+    """
+    try:
+        print(f"[SHARE] Downloading image from: {request.image_url}")
+        
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.get(request.image_url)
+            
+            print(f"[SHARE] Download response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"[SHARE] Download failed with status: {response.status_code}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to download image: HTTP {response.status_code}"
+                )
+            
+            print(f"[SHARE] Successfully downloaded {len(response.content)} bytes")
+            
+            return Response(
+                content=response.content,
+                media_type="image/png",
+                headers={
+                    "Content-Disposition": "attachment; filename=tacoai-progress.png"
+                }
+            )
+            
+    except httpx.HTTPError as e:
+        print(f"[SHARE] ❌ HTTP Error downloading image: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Network error downloading image: {str(e)}"
+        )
+    except Exception as e:
+        print(f"[SHARE] ❌ Error downloading image: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download image: {str(e)}"
+        )
+
+@router.get("/user-weeks")
+async def get_user_weeks(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Get user's completed weeks for sharing
+    """
+    try:
+        # Get latest learning plan
+        learning_plans_collection = database.learning_plans
+        latest_plan = await learning_plans_collection.find_one(
+            {"user_id": current_user.id},
+            sort=[("created_at", -1)]
+        )
+        
+        if not latest_plan:
+            return {"completed_weeks": [], "total_weeks": 0}
+        
+        completed_sessions = latest_plan.get("completed_sessions", 0)
+        sessions_per_week = 2
+        completed_weeks_count = completed_sessions // sessions_per_week
+        total_weeks = latest_plan.get("duration_months", 6) * 4
+        
+        # Create weeks array
+        weeks = []
+        for i in range(1, completed_weeks_count + 1):
+            weeks.append({
+                "week_number": i,
+                "sessions_completed": sessions_per_week,
+                "total_sessions": sessions_per_week,
+                "is_completed": True
+            })
+        
+        return {
+            "completed_weeks": weeks,
+            "total_weeks": total_weeks,
+            "completed_sessions": completed_sessions
+        }
+        
+    except Exception as e:
+        print(f"[SHARE] ❌ Error getting user weeks: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get user weeks: {str(e)}"
+        )
+
+@router.post("/shorten-url")
+async def shorten_url(
+    request: dict,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Create a shortened URL for sharing (simple implementation)
+    """
+    try:
+        original_url = request.get("url")
+        if not original_url:
+            raise HTTPException(status_code=400, detail="URL is required")
+        
+        # Simple URL shortener using a hash of the URL
+        import hashlib
+        url_hash = hashlib.md5(original_url.encode()).hexdigest()[:8]
+        
+        # Store in database for tracking
+        url_collection = database.shortened_urls
+        
+        # Check if already exists
+        existing = await url_collection.find_one({"hash": url_hash})
+        if existing:
+            short_url = f"https://mytacoai.com/s/{url_hash}"
+            return {"short_url": short_url, "original_url": original_url}
+        
+        # Create new shortened URL
+        url_doc = {
+            "hash": url_hash,
+            "original_url": original_url,
+            "user_id": current_user.id,
+            "created_at": datetime.utcnow(),
+            "clicks": 0
+        }
+        
+        await url_collection.insert_one(url_doc)
+        
+        short_url = f"https://mytacoai.com/s/{url_hash}"
+        return {"short_url": short_url, "original_url": original_url}
+        
+    except Exception as e:
+        print(f"[SHARE] ❌ Error shortening URL: {str(e)}")
+        # Return original URL if shortening fails
+        return {"short_url": request.get("url", ""), "original_url": request.get("url", "")}
 
 @router.get("/sharing-stats")
 async def get_sharing_stats(current_user: UserResponse = Depends(get_current_user)):
