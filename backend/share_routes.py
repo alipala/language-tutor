@@ -104,7 +104,9 @@ async def generate_progress_image(
         try:
             print(f"[SHARE] 🔄 Downloading image immediately from: {image_url}")
             
-            # Create a clean HTTP client with proper headers
+            # CRITICAL FIX: Use requests instead of httpx to avoid URL encoding issues
+            import requests
+            
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'image/png,image/jpeg,image/*;q=0.9,*/*;q=0.8',
@@ -115,33 +117,24 @@ async def generate_progress_image(
                 'Upgrade-Insecure-Requests': '1'
             }
             
-            # Create client with follow_redirects and proper URL handling
-            async with httpx.AsyncClient(
-                timeout=30.0, 
-                headers=headers, 
-                follow_redirects=True,
-                trust_env=False
-            ) as http_client:
-                print(f"[SHARE] 🔄 Making request to: {image_url}")
-                
-                # CRITICAL FIX: Use httpx.URL to prevent re-encoding
-                from httpx import URL
-                parsed_url = URL(image_url)
-                img_response = await http_client.get(parsed_url)
-                print(f"[SHARE] Download response status: {img_response.status_code}")
-                
-                if img_response.status_code == 200:
-                    image_base64 = base64.b64encode(img_response.content).decode('utf-8')
-                    print(f"[SHARE] ✅ Image converted to base64 ({len(image_base64)} chars)")
-                else:
-                    print(f"[SHARE] ❌ Failed to download image: HTTP {img_response.status_code}")
-                    print(f"[SHARE] Response headers: {img_response.headers}")
-                    # Try to get error details
-                    try:
-                        error_text = img_response.text
-                        print(f"[SHARE] Error response: {error_text}")
-                    except:
-                        pass
+            print(f"[SHARE] 🔄 Making request to: {image_url}")
+            
+            # Use requests which handles URLs properly
+            img_response = requests.get(image_url, headers=headers, timeout=30, allow_redirects=True)
+            print(f"[SHARE] Download response status: {img_response.status_code}")
+            
+            if img_response.status_code == 200:
+                image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+                print(f"[SHARE] ✅ Image converted to base64 ({len(image_base64)} chars)")
+            else:
+                print(f"[SHARE] ❌ Failed to download image: HTTP {img_response.status_code}")
+                print(f"[SHARE] Response headers: {img_response.headers}")
+                # Try to get error details
+                try:
+                    error_text = img_response.text
+                    print(f"[SHARE] Error response: {error_text}")
+                except:
+                    pass
         except Exception as download_error:
             print(f"[SHARE] ❌ Exception downloading image: {str(download_error)}")
             import traceback
@@ -424,10 +417,8 @@ async def proxy_image(image_url: str):
         }
         
         async with httpx.AsyncClient(timeout=30.0, headers=headers, follow_redirects=True) as http_client:
-            # CRITICAL FIX: Use httpx.URL to prevent re-encoding
-            from httpx import URL
-            parsed_url = URL(decoded_url)
-            response = await http_client.get(parsed_url)
+            # CRITICAL FIX: Use raw string to prevent any URL encoding by httpx
+            response = await http_client.get(decoded_url, follow_redirects=True)
             
             print(f"[SHARE] Proxy response status: {response.status_code}")
             

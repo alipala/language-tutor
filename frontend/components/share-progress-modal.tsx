@@ -12,10 +12,12 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  Smartphone,
-  Monitor,
-  QrCode,
-  ExternalLink
+  Sparkles,
+  Trophy,
+  Star,
+  Zap,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 
 interface ShareProgressModalProps {
@@ -36,6 +38,32 @@ interface ShareResponse {
   qr_code?: string;
 }
 
+interface WeekData {
+  week_number: number;
+  sessions_completed: number;
+  total_sessions: number;
+  is_completed: boolean;
+}
+
+// Soundwave animation component
+const SoundwaveLoader = () => {
+  return (
+    <div className="flex items-center justify-center space-x-2">
+      {[...Array(7)].map((_, i) => (
+        <div
+          key={i}
+          className="w-2 bg-[#4ECFBF] rounded-full animate-pulse"
+          style={{
+            height: `${Math.random() * 60 + 30}px`,
+            animationDelay: `${i * 0.15}s`,
+            animationDuration: '1.2s'
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
   isOpen,
   onClose,
@@ -44,37 +72,92 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
   assessmentId,
   learningPlanId
 }) => {
+  const [step, setStep] = useState<'selection' | 'generation' | 'sharing'>('selection');
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareData, setShareData] = useState<ShareResponse | null>(null);
-  const [selectedPlatform, setSelectedPlatform] = useState<'instagram' | 'whatsapp' | 'general'>('instagram');
-  const [shareType, setShareType] = useState<'progress' | 'achievement' | 'milestone'>('progress');
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [availableWeeks, setAvailableWeeks] = useState<WeekData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
-  const [customMessage, setCustomMessage] = useState('');
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
+      setStep('selection');
       setShareData(null);
       setError(null);
       setCopySuccess(null);
-      setCustomMessage('');
+      setSelectedWeek(null);
+      loadAvailableWeeks();
     }
   }, [isOpen]);
 
-  // Auto-generate image when modal opens
-  useEffect(() => {
-    if (isOpen && !shareData && !isGenerating) {
-      generateProgressImage();
-    }
-  }, [isOpen, selectedPlatform, shareType]);
+  const loadAvailableWeeks = async () => {
+    try {
+      // Get real user weeks data from backend
+      const response = await fetch('http://localhost:8000/api/share/user-weeks', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
 
-  const generateProgressImage = async () => {
+      if (response.ok) {
+        const data = await response.json();
+        const completedWeeks = data.completed_weeks || [];
+        const totalWeeks = data.total_weeks || 24; // 6 months * 4 weeks
+        
+        // Create array with all weeks (completed and not completed)
+        const allWeeks = [];
+        for (let i = 1; i <= Math.max(totalWeeks, 12); i++) {
+          const completedWeek = completedWeeks.find((w: WeekData) => w.week_number === i);
+          allWeeks.push({
+            week_number: i,
+            sessions_completed: completedWeek?.sessions_completed || 0,
+            total_sessions: 2,
+            is_completed: !!completedWeek
+          });
+        }
+        
+        setAvailableWeeks(allWeeks);
+      } else {
+        // Fallback: show weeks 1-12 with only week 1 completed
+        const fallbackWeeks = [];
+        for (let i = 1; i <= 12; i++) {
+          fallbackWeeks.push({
+            week_number: i,
+            sessions_completed: i === 1 ? 2 : 0,
+            total_sessions: 2,
+            is_completed: i === 1
+          });
+        }
+        setAvailableWeeks(fallbackWeeks);
+      }
+    } catch (error) {
+      console.error('Error loading weeks:', error);
+      // Fallback
+      const fallbackWeeks = [];
+      for (let i = 1; i <= 12; i++) {
+        fallbackWeeks.push({
+          week_number: i,
+          sessions_completed: i === 1 ? 2 : 0,
+          total_sessions: 2,
+          is_completed: i === 1
+        });
+      }
+      setAvailableWeeks(fallbackWeeks);
+    }
+  };
+
+  const handleWeekSelect = async (week: WeekData) => {
+    if (!week.is_completed) return; // Don't allow selection of incomplete weeks
+    
+    setSelectedWeek(week.week_number);
+    setStep('generation');
     setIsGenerating(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/share/generate-progress-image', {
+      const response = await fetch('http://localhost:8000/api/share/generate-progress-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,9 +166,9 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
         body: JSON.stringify({
           assessment_id: assessmentId,
           learning_plan_id: learningPlanId,
-          share_type: shareType,
-          platform: selectedPlatform,
-          custom_message: customMessage || undefined
+          share_type: 'progress',
+          platform: 'instagram',
+          week_number: week.week_number
         })
       });
 
@@ -96,66 +179,63 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
 
       const data: ShareResponse = await response.json();
       setShareData(data);
+      setStep('sharing');
     } catch (err) {
       console.error('Error generating progress image:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate progress image');
+      setStep('selection');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handlePlatformChange = (platform: 'instagram' | 'whatsapp' | 'general') => {
-    setSelectedPlatform(platform);
-    setShareData(null); // Reset to regenerate with new platform
-  };
-
-  const handleShareTypeChange = (type: 'progress' | 'achievement' | 'milestone') => {
-    setShareType(type);
-    setShareData(null); // Reset to regenerate with new type
-  };
-
   const downloadImage = async () => {
-    if (!shareData?.image_url) return;
+    if (!shareData) {
+      setError('No image data available for download');
+      return;
+    }
 
     try {
-      const response = await fetch(shareData.image_url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tacoai-progress-${selectedPlatform}-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // ALWAYS try base64 first if available (this should work since we fixed the backend)
+      if (shareData.image_base64) {
+        console.log('Using base64 download method');
+        // Convert base64 to blob and download
+        const byteCharacters = atob(shareData.image_base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/png' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tacoai-week${selectedWeek}-progress-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        setCopySuccess('Image downloaded successfully!');
+        setTimeout(() => setCopySuccess(null), 3000);
+        return;
+      }
+      
+      // If no base64, show error message suggesting right-click
+      console.log('No base64 data available, suggesting right-click download');
+      setError('Image download not available. Please right-click the image above and select "Save image as..." to download.');
+      
     } catch (err) {
       console.error('Error downloading image:', err);
-      setError('Failed to download image');
+      setError('Failed to download image. Try right-clicking the image and selecting "Save image as..."');
     }
   };
 
-  const copyToClipboard = async (text: string, type: 'text' | 'image' = 'text') => {
+  const copyToClipboard = async (text: string) => {
     try {
-      if (type === 'image' && shareData?.image_base64) {
-        // Copy image to clipboard (modern browsers)
-        if (navigator.clipboard && window.ClipboardItem) {
-          const response = await fetch(shareData.image_url);
-          const blob = await response.blob();
-          await navigator.clipboard.write([
-            new ClipboardItem({ [blob.type]: blob })
-          ]);
-          setCopySuccess('Image copied to clipboard!');
-        } else {
-          // Fallback: copy image URL
-          await navigator.clipboard.writeText(shareData.image_url);
-          setCopySuccess('Image URL copied to clipboard!');
-        }
-      } else {
-        // Copy text
-        await navigator.clipboard.writeText(text);
-        setCopySuccess('Text copied to clipboard!');
-      }
-      
+      await navigator.clipboard.writeText(text);
+      setCopySuccess('Text copied to clipboard!');
       setTimeout(() => setCopySuccess(null), 3000);
     } catch (err) {
       console.error('Error copying to clipboard:', err);
@@ -163,283 +243,233 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
     }
   };
 
-  const shareViaWebAPI = async () => {
-    if (!shareData || !navigator.share) {
-      setError('Web Share API not supported on this device');
-      return;
-    }
-
-    try {
-      // Fetch the image as a blob
-      const response = await fetch(shareData.image_url);
-      const blob = await response.blob();
-      const file = new File([blob], 'tacoai-progress.png', { type: blob.type });
-
-      await navigator.share({
-        title: 'My Language Learning Progress',
-        text: shareData.share_text,
-        files: [file]
-      });
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error('Error sharing via Web API:', err);
-        setError('Failed to share via Web Share API');
-      }
-    }
-  };
-
-  const openInstagramWeb = () => {
-    // Instagram doesn't support direct posting from web, but we can guide users
-    const instagramUrl = 'https://www.instagram.com/';
-    window.open(instagramUrl, '_blank');
-    setCopySuccess('Download the image and upload it to Instagram!');
-  };
-
-  const openWhatsAppWeb = () => {
+  const openWhatsAppWeb = async () => {
     if (shareData) {
-      const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareData.share_text)}`;
+      const messageWithImage = `${shareData.share_text}\n\n📸 View my progress image: ${shareData.image_url}`;
+      const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
       window.open(whatsappUrl, '_blank');
-      setCopySuccess('Image copied! Paste it in WhatsApp Web.');
+      setCopySuccess('WhatsApp opened with image URL included!');
+      setTimeout(() => setCopySuccess(null), 5000);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
+        
+        {/* Full Screen Soundwave Overlay */}
+        {step === 'generation' && (
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="text-center space-y-8">
+              <SoundwaveLoader />
+              <div>
+                <div className="text-2xl font-bold text-gray-800 mb-2">
+                  Creating your achievement badge...
+                </div>
+                <p className="text-gray-600">Week {selectedWeek} progress image</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center">
-            <Share2 className="h-6 w-6 mr-3" style={{ color: '#4ECFBF' }} />
-            <h2 className="text-xl font-bold text-gray-800">Share Your Progress</h2>
+        <div className="bg-[#4ECFBF] p-6 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-white rounded-2xl">
+              <Sparkles className="h-6 w-6 text-[#4ECFBF]" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">
+                Share Your Achievement
+              </h2>
+              <p className="text-white/80 text-sm">Celebrate your learning journey</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6">
-          {/* Platform Selection */}
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Choose Platform</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => handlePlatformChange('instagram')}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  selectedPlatform === 'instagram'
-                    ? 'border-pink-500 bg-pink-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Instagram className="h-6 w-6 mx-auto mb-2 text-pink-500" />
-                <div className="text-sm font-medium">Instagram</div>
-              </button>
-              <button
-                onClick={() => handlePlatformChange('whatsapp')}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  selectedPlatform === 'whatsapp'
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <MessageCircle className="h-6 w-6 mx-auto mb-2 text-green-500" />
-                <div className="text-sm font-medium">WhatsApp</div>
-              </button>
-              <button
-                onClick={() => handlePlatformChange('general')}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  selectedPlatform === 'general'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Share2 className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                <div className="text-sm font-medium">General</div>
-              </button>
-            </div>
-          </div>
-
-          {/* Share Type Selection */}
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Share Type</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => handleShareTypeChange('progress')}
-                className={`p-3 rounded-lg border-2 transition-all text-sm ${
-                  shareType === 'progress'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                Progress Update
-              </button>
-              <button
-                onClick={() => handleShareTypeChange('achievement')}
-                className={`p-3 rounded-lg border-2 transition-all text-sm ${
-                  shareType === 'achievement'
-                    ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                Achievement
-              </button>
-              <button
-                onClick={() => handleShareTypeChange('milestone')}
-                className={`p-3 rounded-lg border-2 transition-all text-sm ${
-                  shareType === 'milestone'
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                Milestone
-              </button>
-            </div>
-          </div>
-
-          {/* Generated Image Preview */}
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Preview</h3>
-            <div className="bg-gray-50 rounded-xl p-4 min-h-[300px] flex items-center justify-center">
-              {isGenerating ? (
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3" style={{ color: '#4ECFBF' }} />
-                  <p className="text-gray-600">Generating your progress image...</p>
+        {/* Step 1: Week Selection */}
+        {step === 'selection' && (
+          <div className="flex-1 p-8">
+            <div className="max-w-2xl mx-auto">
+              
+              {/* Week Selection Header */}
+              <div className="text-center mb-8">
+                <div className="flex items-center justify-center space-x-3 mb-4">
+                  <Trophy className="h-8 w-8 text-[#FFD63A]" />
+                  <h3 className="text-2xl font-bold text-gray-800">Choose Your Achievement</h3>
                 </div>
-              ) : error ? (
-                <div className="text-center">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-3 text-red-500" />
-                  <p className="text-red-600 mb-3">{error}</p>
+                <p className="text-gray-600">Select which completed week you'd like to share</p>
+              </div>
+              
+              {/* Week Grid */}
+              {availableWeeks.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
+                  {availableWeeks.map((week) => (
+                    <button
+                      key={week.week_number}
+                      onClick={() => handleWeekSelect(week)}
+                      disabled={!week.is_completed}
+                      className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
+                        week.is_completed
+                          ? 'border-gray-200 bg-white text-gray-700 hover:border-[#4ECFBF] hover:shadow-md cursor-pointer'
+                          : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-xl font-bold mb-2">
+                          Week {week.week_number}
+                        </div>
+                        <div className="flex items-center justify-center">
+                          <Star className="h-4 w-4 mr-1" />
+                          <span className="text-sm">
+                            {week.is_completed ? 'Complete' : 'Locked'}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+                  <p className="text-lg">No weeks found</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Sharing */}
+        {step === 'sharing' && shareData && (
+          <div className="flex-1 overflow-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+              
+              {/* Left Column - Image Preview */}
+              <div className="flex flex-col">
+                <div className="bg-gray-50 rounded-2xl p-6 flex flex-col">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Share2 className="h-5 w-5 text-[#FFD63A]" />
+                    <h3 className="text-lg font-semibold text-gray-800">Your Achievement Badge</h3>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="w-full max-w-xs mx-auto">
+                      {shareData.image_base64 ? (
+                        <img
+                          src={`data:image/png;base64,${shareData.image_base64}`}
+                          alt={`Week ${selectedWeek} progress sharing image`}
+                          className="w-full rounded-2xl shadow-lg"
+                        />
+                      ) : (
+                        <img
+                          src={shareData.image_url}
+                          alt={`Week ${selectedWeek} progress sharing image`}
+                          className="w-full rounded-2xl shadow-lg"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Back Button */}
+                <div className="mt-4">
                   <Button
-                    onClick={generateProgressImage}
+                    onClick={() => setStep('selection')}
                     variant="outline"
-                    size="sm"
+                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
                   >
-                    Try Again
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Choose Different Week
                   </Button>
                 </div>
-              ) : shareData ? (
-                <div className="w-full">
-                  <img
-                    src={shareData.image_url}
-                    alt="Progress sharing image"
-                    className="w-full max-w-md mx-auto rounded-lg shadow-lg"
-                  />
+              </div>
+
+              {/* Right Column - Share Options */}
+              <div className="space-y-4 flex flex-col">
+                
+                {/* Share Text */}
+                <div className="bg-gray-50 rounded-2xl p-4">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <Zap className="h-5 w-5 text-[#4ECFBF]" />
+                    <h3 className="text-lg font-semibold text-gray-800">Share Your Success</h3>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl p-3 mb-3 border border-gray-200">
+                    <p className="text-gray-700 text-sm whitespace-pre-line leading-relaxed">{shareData.share_text}</p>
+                    <button
+                      onClick={() => copyToClipboard(shareData.share_text)}
+                      className="mt-2 text-xs text-[#4ECFBF] hover:text-[#4ECFBF]/80 flex items-center transition-colors"
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy text
+                    </button>
+                  </div>
                 </div>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Share Text Preview */}
-          {shareData && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Share Text</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-700 whitespace-pre-line">{shareData.share_text}</p>
-                <button
-                  onClick={() => copyToClipboard(shareData.share_text)}
-                  className="mt-2 text-xs text-blue-600 hover:text-blue-700 flex items-center"
-                >
-                  <Copy className="h-3 w-3 mr-1" />
-                  Copy text
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Success/Error Messages */}
-          {copySuccess && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center">
-              <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-              <span className="text-sm text-green-700">{copySuccess}</span>
-            </div>
-          )}
-
-          {/* Desktop Sharing Instructions */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start">
-              <Monitor className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-semibold text-blue-800 mb-1">Desktop Sharing Tips</h4>
-                <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• Download the image and upload it manually to your social media</li>
-                  <li>• Copy the text and paste it as your caption</li>
-                  <li>• Use the Web Share API if your browser supports it</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          {shareData && (
-            <div className="space-y-3">
-              {/* Primary sharing options */}
-              <div className="grid grid-cols-2 gap-3">
-                {typeof navigator !== 'undefined' && navigator.share && (
+                
+                {/* Action Buttons */}
+                <div className="space-y-3">
                   <Button
-                    onClick={shareViaWebAPI}
-                    className="flex items-center justify-center"
-                    style={{ backgroundColor: '#4ECFBF' }}
+                    onClick={downloadImage}
+                    className="w-full bg-[#E4405F] hover:bg-[#E4405F]/90 text-white font-medium py-3 rounded-xl"
                   >
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share via System
+                    <Instagram className="h-5 w-5 mr-3" />
+                    Download for Instagram
                   </Button>
-                )}
-                <Button
-                  onClick={downloadImage}
-                  variant="outline"
-                  className="flex items-center justify-center"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Image
-                </Button>
-              </div>
-
-              {/* Platform-specific actions */}
-              <div className="grid grid-cols-2 gap-3">
-                {selectedPlatform === 'instagram' && (
-                  <Button
-                    onClick={openInstagramWeb}
-                    variant="outline"
-                    className="flex items-center justify-center border-pink-200 text-pink-600 hover:bg-pink-50"
-                  >
-                    <Instagram className="h-4 w-4 mr-2" />
-                    Open Instagram
-                  </Button>
-                )}
-                {selectedPlatform === 'whatsapp' && (
+                  
                   <Button
                     onClick={openWhatsAppWeb}
-                    variant="outline"
-                    className="flex items-center justify-center border-green-200 text-green-600 hover:bg-green-50"
+                    className="w-full bg-[#25D366] hover:bg-[#25D366]/90 text-white font-medium py-3 rounded-xl"
                   >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Open WhatsApp Web
+                    <svg className="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                    </svg>
+                    Share on WhatsApp
                   </Button>
-                )}
-                <Button
-                  onClick={() => copyToClipboard('', 'image')}
-                  variant="outline"
-                  className="flex items-center justify-center"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Image
-                </Button>
-              </div>
-
-              {/* Mobile QR Code option (future enhancement) */}
-              <div className="pt-3 border-t border-gray-200">
-                <div className="flex items-center justify-center text-xs text-gray-500">
-                  <Smartphone className="h-3 w-3 mr-1" />
-                  For easier mobile sharing, scan with your phone camera
                 </div>
+
+                {/* Tips */}
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Sparkles className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="text-gray-800 font-semibold mb-2">Sharing Tips</h4>
+                      <ul className="text-gray-600 text-sm space-y-1">
+                        <li>• Download and upload to your favorite social platform</li>
+                        <li>• Copy the text for your caption</li>
+                        <li>• Share your learning journey with friends</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Success/Error Messages */}
+                {copySuccess && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center">
+                    <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
+                    <span className="text-green-700 font-medium text-sm">{copySuccess}</span>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
+                    <span className="text-red-700 font-medium text-sm">{error}</span>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
