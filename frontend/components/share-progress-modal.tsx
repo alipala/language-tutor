@@ -360,7 +360,7 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
                     <h3 className="text-lg font-semibold text-gray-800">Your Achievement Badge</h3>
                   </div>
                   
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center mb-4">
                     <div className="w-full max-w-xs mx-auto">
                       {shareData.image_base64 ? (
                         <img
@@ -377,18 +377,17 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
                       )}
                     </div>
                   </div>
-                </div>
 
-                {/* Back Button */}
-                <div className="mt-4">
-                  <Button
-                    onClick={() => setStep('selection')}
-                    variant="outline"
-                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Choose Different Week
-                  </Button>
+                  {/* Back Button - Centered below image */}
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={() => setStep('selection')}
+                      className="bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white transition-colors px-6 py-2 rounded-xl font-medium"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Choose Different Week
+                    </Button>
+                  </div>
                 </div>
               </div>
 
