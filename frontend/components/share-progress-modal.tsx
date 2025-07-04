@@ -245,11 +245,38 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
 
   const openWhatsAppWeb = async () => {
     if (shareData) {
-      const messageWithImage = `${shareData.share_text}\n\n📸 View my progress image: ${shareData.image_url}`;
-      const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
-      window.open(whatsappUrl, '_blank');
-      setCopySuccess('WhatsApp opened with image URL included!');
-      setTimeout(() => setCopySuccess(null), 5000);
+      try {
+        console.log('[WHATSAPP] Starting WhatsApp share with URL shortening...');
+        
+        // Import the shortener function
+        const { shortenImageUrl } = await import('@/lib/image-utils');
+        
+        // Shorten the image URL for WhatsApp
+        const shortImageUrl = await shortenImageUrl(shareData.image_url);
+        console.log('[WHATSAPP] Original URL length:', shareData.image_url.length);
+        console.log('[WHATSAPP] Shortened URL length:', shortImageUrl.length);
+        console.log('[WHATSAPP] Shortened URL:', shortImageUrl);
+        
+        // Create message with shortened URL
+        const messageWithImage = `${shareData.share_text}\n\n📸 View my progress image: ${shortImageUrl}`;
+        const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+        
+        console.log('[WHATSAPP] Final message length:', messageWithImage.length);
+        console.log('[WHATSAPP] Opening WhatsApp with shortened URL...');
+        
+        window.open(whatsappUrl, '_blank');
+        setCopySuccess(`WhatsApp opened with shortened URL! (${shortImageUrl.length} chars vs ${shareData.image_url.length} chars)`);
+        setTimeout(() => setCopySuccess(null), 5000);
+      } catch (error) {
+        console.error('[WHATSAPP] Error shortening URL:', error);
+        
+        // Fallback to original URL if shortening fails
+        const messageWithImage = `${shareData.share_text}\n\n📸 View my progress image: ${shareData.image_url}`;
+        const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+        window.open(whatsappUrl, '_blank');
+        setCopySuccess('WhatsApp opened (URL shortening failed, using original URL)');
+        setTimeout(() => setCopySuccess(null), 5000);
+      }
     }
   };
 
