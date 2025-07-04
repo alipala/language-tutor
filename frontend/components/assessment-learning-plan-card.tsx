@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useRouter } from 'next/navigation';
+import ShareProgressModal from './share-progress-modal';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -19,7 +20,13 @@ import {
   Heart,
   GraduationCap,
   Timer,
-  BarChart3
+  BarChart3,
+  Download,
+  Instagram,
+  MessageCircle,
+  Copy,
+  X,
+  Loader2
 } from 'lucide-react';
 
 interface SkillData {
@@ -129,6 +136,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
   const router = useRouter();
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [currentWeekPage, setCurrentWeekPage] = useState(0);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   const formattedDate = assessment.date ? formatDate(new Date(assessment.date)) : 'N/A';
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
@@ -934,6 +942,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                   Continue Learning
                 </Button>
                 <Button 
+                  onClick={() => setShowShareModal(true)}
                   variant="outline"
                   className="flex-1 border-2 py-3 px-6 rounded-xl font-medium hover:bg-opacity-10 transition-all flex items-center justify-center" 
                   style={{ borderColor: '#4ECFBF', color: '#4ECFBF' }}
@@ -964,6 +973,16 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           )}
         </div>
       )}
+      
+      {/* Share Progress Modal */}
+      <ShareProgressModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        assessmentData={assessment}
+        learningPlanData={learningPlan}
+        assessmentId={assessment.date} // Using date as ID since we don't have a proper assessment ID
+        learningPlanId={learningPlan?.id}
+      />
     </div>
   );
 };

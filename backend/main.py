@@ -116,6 +116,10 @@ app.include_router(stripe_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include share routes
+from share_routes import router as share_router
+app.include_router(share_router)
+
 
 # Initialize MongoDB on startup
 @app.on_event("startup")
