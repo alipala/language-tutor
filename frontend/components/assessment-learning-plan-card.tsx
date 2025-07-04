@@ -528,7 +528,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                         let completedWeeks = 0;
                         let currentWeek = 1;
                         
-                        // Count completed weeks based on individual week sessions_completed
+                        // Find the current week (next week after last completed week)
                         for (let i = 0; i < weeklySchedule.length; i++) {
                           const week = weeklySchedule[i];
                           const weekSessionsCompleted = week.sessions_completed || 0;
@@ -536,15 +536,19 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                           
                           if (weekSessionsCompleted >= weekTotalSessions) {
                             completedWeeks++;
-                          } else if (weekSessionsCompleted > 0) {
-                            // This is the current week (in progress)
-                            currentWeek = week.week;
-                            break;
+                            // Current week is the next week after this completed one
+                            currentWeek = week.week + 1;
                           } else {
-                            // This is the first upcoming week
+                            // If this week has some sessions but not completed, it's current
+                            // If this week has no sessions, it's still current (next to work on)
                             currentWeek = week.week;
                             break;
                           }
+                        }
+                        
+                        // Ensure currentWeek doesn't exceed available weeks
+                        if (currentWeek > weeklySchedule.length) {
+                          currentWeek = weeklySchedule.length;
                         }
                         
                         const weekProgress = (completedWeeks / totalWeeks) * 100;
@@ -656,25 +660,57 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                     // Don't generate generic weeks - show only what was created based on assessment
                     const allWeeks = learningPlan.plan_content.weekly_schedule || [];
                     
-                    // Calculate current week for highlighting
+                    // Find the current week and most recently completed week
                     const sessionsPerWeek = 2;
                     let currentWeekNumber = 1;
+                    let lastCompletedWeekNumber = 0;
                     
-                    if ((learningPlan.completed_sessions || 0) > 0) {
-                      currentWeekNumber = Math.floor(((learningPlan.completed_sessions || 0) - 1) / sessionsPerWeek) + 1;
+                    // Find current week based on individual week completion status
+                    for (let i = 0; i < allWeeks.length; i++) {
+                      const week = allWeeks[i];
+                      const weekSessionsCompleted = week.sessions_completed || 0;
+                      const weekTotalSessions = week.total_sessions || sessionsPerWeek;
+                      
+                      if (weekSessionsCompleted >= weekTotalSessions) {
+                        lastCompletedWeekNumber = week.week;
+                        currentWeekNumber = week.week + 1; // Next week after completed
+                      } else {
+                        // This is the current week (either in progress or upcoming)
+                        currentWeekNumber = week.week;
+                        break;
+                      }
+                    }
+                    
+                    // Ensure currentWeek doesn't exceed available weeks
+                    if (currentWeekNumber > allWeeks.length) {
+                      currentWeekNumber = allWeeks.length;
                     }
                     
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
                     
-                    // Set default page to show previous completed week + current week
-                    const defaultPage = Math.max(0, Math.floor((currentWeekNumber - 2) / weeksPerPage));
-                    const actualCurrentPage = currentWeekPage === 0 && allWeeks.length > 0 ? defaultPage : currentWeekPage;
+                    // Show most recently completed week + current week
+                    let weeksToShow = [];
+                    if (lastCompletedWeekNumber > 0) {
+                      // Show last completed week + current week
+                      weeksToShow = allWeeks.filter(week => 
+                        week.week === lastCompletedWeekNumber || week.week === currentWeekNumber
+                      );
+                    } else {
+                      // No completed weeks yet, show first two weeks
+                      weeksToShow = allWeeks.slice(0, 2);
+                    }
                     
-                    // Get weeks for current page
-                    const startIndex = actualCurrentPage * weeksPerPage;
-                    const endIndex = startIndex + weeksPerPage;
-                    const currentWeeks = allWeeks.slice(startIndex, endIndex);
+                    // If user is navigating manually, use pagination
+                    let currentWeeks;
+                    if (currentWeekPage > 0) {
+                      const startIndex = currentWeekPage * weeksPerPage;
+                      const endIndex = startIndex + weeksPerPage;
+                      currentWeeks = allWeeks.slice(startIndex, endIndex);
+                    } else {
+                      // Default view: show relevant weeks
+                      currentWeeks = weeksToShow;
+                    }
                     
                     return allWeeks.length > 0 && (
                       <div>
@@ -682,7 +718,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                           <h5 className="font-semibold text-gray-800">Weekly Schedule Preview</h5>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm text-gray-500">
-                              Showing weeks {startIndex + 1}-{Math.min(endIndex, allWeeks.length)} of {allWeeks.length}
+                              Showing weeks {currentWeekPage * weeksPerPage + 1}-{Math.min((currentWeekPage + 1) * weeksPerPage, allWeeks.length)} of {allWeeks.length}
                             </span>
                             {/* Navigation buttons - Made more visible */}
                             <div className="flex items-center space-x-2">
@@ -717,7 +753,28 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                             const weekTotalSessions = week.total_sessions || 2;
                             
                             const isCompleted = weekSessionsCompleted >= weekTotalSessions;
-                            const isCurrentWeek = weekSessionsCompleted > 0 && weekSessionsCompleted < weekTotalSessions;
+                            
+                            // Determine if this is the current week (next week to work on)
+                            let isCurrentWeek = false;
+                            
+                            // Find the current week by checking if this is the next week after the last completed week
+                            if (weekSessionsCompleted > 0 && weekSessionsCompleted < weekTotalSessions) {
+                              // Week is in progress
+                              isCurrentWeek = true;
+                            } else if (weekSessionsCompleted === 0) {
+                              // Check if this is the next week after the last completed week
+                              const previousWeek = allWeeks.find(w => w.week === week.week - 1);
+                              if (!previousWeek) {
+                                // This is week 1 and no previous week exists
+                                isCurrentWeek = true;
+                              } else {
+                                // Check if previous week is completed
+                                const prevWeekCompleted = (previousWeek.sessions_completed || 0) >= (previousWeek.total_sessions || 2);
+                                if (prevWeekCompleted) {
+                                  isCurrentWeek = true;
+                                }
+                              }
+                            }
                             
                             return (
                               <div 
