@@ -343,9 +343,23 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                           weekStatus = 'current';
                           weekProgress = (weekSessionsCompleted / weekTotalSessions) * 100;
                         } else {
-                          // Week is upcoming
-                          weekStatus = 'upcoming';
-                          weekProgress = 0;
+                          // Check if this is the next week after the last completed week
+                          const previousWeek = weeklySchedule.find(w => w.week === week.week - 1);
+                          if (!previousWeek) {
+                            // This is week 1 and no previous week exists
+                            weekStatus = 'current';
+                            weekProgress = 0;
+                          } else {
+                            // Check if previous week is completed
+                            const prevWeekCompleted = (previousWeek.sessions_completed || 0) >= (previousWeek.total_sessions || 2);
+                            if (prevWeekCompleted) {
+                              weekStatus = 'current';
+                              weekProgress = 0;
+                            } else {
+                              weekStatus = 'upcoming';
+                              weekProgress = 0;
+                            }
+                          }
                         }
                         
                         const isCompleted = weekStatus === 'completed';
