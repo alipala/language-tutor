@@ -31,6 +31,8 @@ export interface LearningPlan {
       focus: string;
       activities: string[];
       resources?: string[];
+      sessions_completed?: number;
+      total_sessions?: number;
     }[];
     resources?: {
       apps: string[];

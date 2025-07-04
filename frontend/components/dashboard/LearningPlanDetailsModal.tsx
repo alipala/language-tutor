@@ -325,43 +325,31 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                       const finalWeeksToShow = weeksToShow.length > 0 ? weeksToShow : weeklySchedule.slice(0, 2);
                       
                       return finalWeeksToShow.map((week: any, index: number) => {
-                        // Calculate week progress based on completed sessions
-                      const sessionsPerWeek = 2;
-                      
-                      // Fix: Only consider a week as current if user has actually started sessions
-                      // If completedSessions is 0, no week should be marked as current
-                      let currentWeek = 0;
-                      let sessionsInCurrentWeek = 0;
-                      
-                      if (completedSessions > 0) {
-                        currentWeek = Math.floor((completedSessions - 1) / sessionsPerWeek) + 1;
-                        sessionsInCurrentWeek = ((completedSessions - 1) % sessionsPerWeek) + 1;
-                      }
-                      
-                      // Determine week status
-                      let weekStatus = 'upcoming';
-                      let weekProgress = 0;
-                      
-                      if (completedSessions === 0) {
-                        // No sessions completed yet - all weeks are upcoming
-                        weekStatus = 'upcoming';
-                        weekProgress = 0;
-                      } else if (week.week < currentWeek) {
-                        // Week is fully completed
-                        weekStatus = 'completed';
-                        weekProgress = 100;
-                      } else if (week.week === currentWeek) {
-                        // Week is in progress
-                        weekStatus = 'current';
-                        weekProgress = (sessionsInCurrentWeek / sessionsPerWeek) * 100;
-                      } else {
-                        // Week is upcoming
-                        weekStatus = 'upcoming';
-                        weekProgress = 0;
-                      }
-                      
-                      const isCompleted = weekStatus === 'completed';
-                      const isCurrent = weekStatus === 'current';
+                        // Calculate week progress based on individual week's sessions_completed
+                        const sessionsPerWeek = 2;
+                        const weekSessionsCompleted = week.sessions_completed || 0;
+                        const weekTotalSessions = week.total_sessions || sessionsPerWeek;
+                        
+                        // Determine week status based on individual week data
+                        let weekStatus = 'upcoming';
+                        let weekProgress = 0;
+                        
+                        if (weekSessionsCompleted >= weekTotalSessions) {
+                          // Week is fully completed
+                          weekStatus = 'completed';
+                          weekProgress = 100;
+                        } else if (weekSessionsCompleted > 0) {
+                          // Week is in progress
+                          weekStatus = 'current';
+                          weekProgress = (weekSessionsCompleted / weekTotalSessions) * 100;
+                        } else {
+                          // Week is upcoming
+                          weekStatus = 'upcoming';
+                          weekProgress = 0;
+                        }
+                        
+                        const isCompleted = weekStatus === 'completed';
+                        const isCurrent = weekStatus === 'current';
                       
                       return (
                         <div key={index} className={`rounded-lg p-3 border-2 ${
@@ -412,7 +400,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                                 isCurrent ? 'text-blue-600' :
                                 'text-gray-500'
                               }`}>
-                                {isCompleted ? '2/2' : isCurrent ? `${sessionsInCurrentWeek}/2` : '0/2'} sessions
+                                {isCompleted ? `${weekTotalSessions}/${weekTotalSessions}` : isCurrent ? `${weekSessionsCompleted}/${weekTotalSessions}` : `0/${weekTotalSessions}`} sessions
                               </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">

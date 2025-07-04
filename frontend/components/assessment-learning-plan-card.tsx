@@ -62,6 +62,8 @@ interface LearningPlan {
       focus: string;
       activities: string[];
       resources?: string[];
+      sessions_completed?: number;
+      total_sessions?: number;
     }[];
     resources?: any;
     milestones?: any[];
@@ -520,8 +522,31 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                       {(() => {
                         const totalWeeks = learningPlan.duration_months * 4; // 4 weeks per month
                         const sessionsPerWeek = 2; // Assuming 2 sessions per week
-                        const completedWeeks = Math.floor((learningPlan.completed_sessions || 0) / sessionsPerWeek);
-                        const currentWeek = Math.min(completedWeeks + 1, totalWeeks);
+                        
+                        // Calculate progress based on individual week completion
+                        const weeklySchedule = learningPlan.plan_content.weekly_schedule || [];
+                        let completedWeeks = 0;
+                        let currentWeek = 1;
+                        
+                        // Count completed weeks based on individual week sessions_completed
+                        for (let i = 0; i < weeklySchedule.length; i++) {
+                          const week = weeklySchedule[i];
+                          const weekSessionsCompleted = week.sessions_completed || 0;
+                          const weekTotalSessions = week.total_sessions || sessionsPerWeek;
+                          
+                          if (weekSessionsCompleted >= weekTotalSessions) {
+                            completedWeeks++;
+                          } else if (weekSessionsCompleted > 0) {
+                            // This is the current week (in progress)
+                            currentWeek = week.week;
+                            break;
+                          } else {
+                            // This is the first upcoming week
+                            currentWeek = week.week;
+                            break;
+                          }
+                        }
+                        
                         const weekProgress = (completedWeeks / totalWeeks) * 100;
                         
                         return (
@@ -687,8 +712,12 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                         {/* Week Cards Display */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           {currentWeeks.map((week, weekIndex) => {
-                            const isCurrentWeek = week.week === currentWeekNumber;
-                            const isCompleted = week.week < currentWeekNumber;
+                            // Use individual week's sessions_completed to determine status
+                            const weekSessionsCompleted = week.sessions_completed || 0;
+                            const weekTotalSessions = week.total_sessions || 2;
+                            
+                            const isCompleted = weekSessionsCompleted >= weekTotalSessions;
+                            const isCurrentWeek = weekSessionsCompleted > 0 && weekSessionsCompleted < weekTotalSessions;
                             
                             return (
                               <div 
