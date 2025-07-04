@@ -95,7 +95,11 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
   const loadAvailableWeeks = async () => {
     try {
       // Get real user weeks data from backend
-      const response = await fetch('http://localhost:8000/api/share/user-weeks', {
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://mytacoai.com' 
+        : 'http://localhost:8000';
+      
+      const response = await fetch(`${apiUrl}/api/share/user-weeks`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -157,7 +161,11 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/share/generate-progress-image', {
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://mytacoai.com' 
+        : 'http://localhost:8000';
+      
+      const response = await fetch(`${apiUrl}/api/share/generate-progress-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
