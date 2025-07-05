@@ -42,9 +42,15 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState('');
   const [preferredLevel, setPreferredLevel] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [learningPlans, setLearningPlans] = useState<LearningPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
@@ -479,6 +485,69 @@ export default function ProfilePage() {
       setError(err.message || 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPasswordLoading(true);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All password fields are required');
+      setIsPasswordLoading(false);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      setIsPasswordLoading(false);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      setIsPasswordLoading(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_URL}/auth/update-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to update password');
+      }
+
+      // Clear password fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Password update error:', err);
+      setPasswordError(err.message || 'Failed to update password. Please try again.');
+    } finally {
+      setIsPasswordLoading(false);
     }
   };
 
@@ -1243,22 +1312,13 @@ export default function ProfilePage() {
           {activeTab === 'settings' && (
             <div className="space-y-8">
               {/* Account Settings */}
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                {/* Header Section */}
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                      <User className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold">Account Settings</h3>
-                      <p className="text-indigo-100 text-sm">Manage your personal information and preferences</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <User className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+                  Account Settings
+                </h3>
 
-                {/* Content Section */}
-                <div className="p-6">
+                <div>
                   {error && (
                     <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
                       <div className="flex items-center">
@@ -1297,7 +1357,7 @@ export default function ProfilePage() {
                         <h4 className="text-lg font-semibold text-gray-800">Personal Information</h4>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Full Name Field */}
                         <div className="group">
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -1339,9 +1399,134 @@ export default function ProfilePage() {
                             <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                             </svg>
-                            Email address cannot be changed for security reasons
+                            Email cannot be changed
                           </p>
                         </div>
+
+                        {/* Password Update Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Lock className="h-4 w-4 mr-1 text-gray-400" />
+                            Password Update
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Toggle password update form visibility
+                              const passwordForm = document.getElementById('password-update-form');
+                              if (passwordForm) {
+                                passwordForm.style.display = passwordForm.style.display === 'none' ? 'block' : 'none';
+                              }
+                            }}
+                            className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-gray-300 transition-all duration-200 bg-white text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>Update Password</span>
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </button>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Click to change your password
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Password Update Form (Hidden by default) */}
+                      <div id="password-update-form" style={{ display: 'none' }} className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <h5 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                          <Lock className="h-5 w-5 mr-2 text-gray-600" />
+                          Update Password
+                        </h5>
+
+                        {passwordError && (
+                          <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+                            <p className="text-sm text-red-700">{passwordError}</p>
+                          </div>
+                        )}
+
+                        {passwordSuccess && (
+                          <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                            <p className="text-sm text-green-700">Password updated successfully!</p>
+                          </div>
+                        )}
+
+                        <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Current Password
+                            </label>
+                            <Input
+                              type="password"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              placeholder="Enter your current password"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                New Password
+                              </label>
+                              <Input
+                                type="password"
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter new password"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Confirm New Password
+                              </label>
+                              <Input
+                                type="password"
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Confirm new password"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentPassword('');
+                                setNewPassword('');
+                                setConfirmPassword('');
+                                setPasswordError(null);
+                                setPasswordSuccess(false);
+                                document.getElementById('password-update-form')!.style.display = 'none';
+                              }}
+                              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                            >
+                              Cancel
+                            </button>
+
+                            <button
+                              type="submit"
+                              disabled={isPasswordLoading}
+                              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isPasswordLoading ? (
+                                <>
+                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Updating...
+                                </>
+                              ) : (
+                                'Update Password'
+                              )}
+                            </button>
+                          </div>
+                        </form>
                       </div>
                     </div>
 
