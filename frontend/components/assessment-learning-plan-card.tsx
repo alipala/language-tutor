@@ -205,7 +205,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               }}
             >
               <Heart className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#4ECFBF' }} />
-              <div className="text-sm font-bold text-gray-800">{assessment.language || 'Language'}</div>
+              <div className="text-sm font-bold text-gray-800">{assessment.language ? assessment.language.charAt(0).toUpperCase() + assessment.language.slice(1) : 'Language'}</div>
               <div className="text-gray-600 text-xs">Language</div>
             </div>
             
@@ -244,10 +244,10 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 <Target className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#3B82F6' }} />
                 <div className="text-xs font-bold text-gray-800 leading-tight">
                   {learningPlan.goals.slice(0, 2).map((goal, index) => (
-                    <div key={index} className="truncate">{goal}</div>
+                    <div key={index} className="truncate">{goal.charAt(0).toUpperCase() + goal.slice(1)}</div>
                   ))}
                   {learningPlan.custom_goal && (
-                    <div className="truncate">{learningPlan.custom_goal}</div>
+                    <div className="truncate">{learningPlan.custom_goal.charAt(0).toUpperCase() + learningPlan.custom_goal.slice(1)}</div>
                   )}
                   {learningPlan.goals.length > 2 && (
                     <div className="text-gray-500">+{learningPlan.goals.length - 2} more</div>
