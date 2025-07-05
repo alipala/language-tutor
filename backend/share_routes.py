@@ -166,13 +166,12 @@ async def generate_progress_image(
 
 async def get_user_progress_data(user_id: str, assessment_id: Optional[str], learning_plan_id: Optional[str], week_number: Optional[int] = None) -> Dict[str, Any]:
     """
-    Retrieve user's progress data for sharing
+    Retrieve user's progress data with enhanced assessment information for sharing
     """
     try:
         progress_data = {
             "user_id": user_id,
-            "app_name": "TacoAI",
-            "app_logo": "🌮",
+            "app_name": "MyTacoAI",
             "brand_colors": {
                 "turquoise": "#4ECFBF",
                 "yellow": "#FFD63A", 
@@ -181,21 +180,7 @@ async def get_user_progress_data(user_id: str, assessment_id: Optional[str], lea
             }
         }
         
-        # Get assessment data if specified
-        if assessment_id:
-            assessments_collection = database.assessments
-            assessment = await assessments_collection.find_one({"_id": assessment_id, "user_id": user_id})
-            if assessment:
-                progress_data["assessment"] = {
-                    "overall_score": assessment.get("overall_score", 0),
-                    "language": assessment.get("language", "English"),
-                    "level": assessment.get("recommended_level", "B1"),
-                    "confidence": assessment.get("confidence", 0),
-                    "strengths": assessment.get("strengths", []),
-                    "date": assessment.get("date", datetime.now().isoformat())
-                }
-        
-        # Get learning plan data if specified
+        # Get learning plan data if specified (includes plan_content with assessment_summary)
         if learning_plan_id:
             learning_plans_collection = database.learning_plans
             learning_plan = await learning_plans_collection.find_one({"id": learning_plan_id, "user_id": user_id})
@@ -220,8 +205,27 @@ async def get_user_progress_data(user_id: str, assessment_id: Optional[str], lea
                     "duration_months": learning_plan.get("duration_months", 6),
                     "goals": learning_plan.get("goals", [])
                 }
+                
+                # Include the rich plan_content data
+                plan_content = learning_plan.get("plan_content", {})
+                if plan_content:
+                    progress_data["plan_content"] = plan_content
         
-        # If no specific data requested, get general progress
+        # Get assessment data if specified
+        if assessment_id:
+            assessments_collection = database.assessments
+            assessment = await assessments_collection.find_one({"_id": assessment_id, "user_id": user_id})
+            if assessment:
+                progress_data["assessment"] = {
+                    "overall_score": assessment.get("overall_score", 0),
+                    "language": assessment.get("language", "English"),
+                    "level": assessment.get("recommended_level", "B1"),
+                    "confidence": assessment.get("confidence", 0),
+                    "strengths": assessment.get("strengths", []),
+                    "date": assessment.get("date", datetime.now().isoformat())
+                }
+        
+        # If no specific data requested, get latest
         if not assessment_id and not learning_plan_id:
             # Get latest assessment
             assessments_collection = database.assessments
@@ -259,73 +263,50 @@ async def get_user_progress_data(user_id: str, assessment_id: Optional[str], lea
                     "progress_percentage": progress_percentage,
                     "duration_months": latest_plan.get("duration_months", 6)
                 }
+                
+                # Include plan_content if available
+                plan_content = latest_plan.get("plan_content", {})
+                if plan_content:
+                    progress_data["plan_content"] = plan_content
         
-        print(f"[SHARE] Retrieved progress data: {json.dumps(progress_data, indent=2, default=str)}")
+        print(f"[SHARE] Retrieved enhanced progress data: {json.dumps(progress_data, indent=2, default=str)}")
         return progress_data
         
     except Exception as e:
-        print(f"[SHARE] ❌ Error retrieving progress data: {str(e)}")
+        print(f"[SHARE] ❌ Error retrieving enhanced progress data: {str(e)}")
         return None
 
 def create_image_prompt(progress_data: Dict[str, Any], share_type: str, platform: str, week_number: Optional[int] = None) -> str:
     """
-    Create a simple, achievement badge-style prompt for DALL-E 3 image generation
+    Create a SIMPLE, clean badge prompt that avoids complexity and gibberish text
     """
     # Brand colors
     turquoise = "#4ECFBF"
     yellow = "#FFD63A"
-    coral = "#F75A5A"
-    orange = "#FFA955"
     
-    # Extract data
-    assessment = progress_data.get("assessment", {})
+    # Extract basic data
     learning_plan = progress_data.get("learning_plan", {})
-    app_name = progress_data.get("app_name", "TacoAI")
+    language = learning_plan.get("language", "English").title()
+    level = learning_plan.get("level", "B1").upper()
+    app_name = progress_data.get("app_name", "MyTacoAI")
     
-    # Determine main metrics to highlight
-    if learning_plan:
-        language = learning_plan.get("language", "English")
-        level = learning_plan.get("level", "B1")
-        completed_sessions = learning_plan.get("completed_sessions", 0)
-    elif assessment:
-        language = assessment.get("language", "English")
-        level = assessment.get("level", "B1")
-        completed_sessions = 1
-    else:
-        language = "English"
-        level = "B1"
-        completed_sessions = 5
-    
-    # Add week-specific content if provided
-    week_text = f"Week {week_number}" if week_number else "Learning"
-    
-    # Create simple achievement badge prompt - MUCH SIMPLER
-    base_prompt = f"""Create a clean, minimal achievement badge for language learning.
+    prompt = f"""Create a SIMPLE circular achievement badge with minimal text.
 
-DESIGN REQUIREMENTS:
-- Square format (1024x1024)
-- Simple circular badge design
-- Use turquoise {turquoise} and yellow {yellow} colors
-- Clean, readable typography
-- NO food symbols, NO taco symbols, NO complex graphics
+EXACT TEXT ONLY:
+- Center: "WEEK {week_number} COMPLETE!"
+- Top: "{level} {language}"  
+- Bottom: "{app_name}"
 
-CONTENT (keep minimal):
-- Main text: "{week_text} Complete!"
-- Subtitle: "Learning {language}"
-- Level: "{level}"
-- App: "{app_name}"
+DESIGN:
+- Clean circle, 1024x1024
+- Turquoise {turquoise} to yellow {yellow} gradient
+- White bold text
+- 2-3 small stars for decoration
+- NO other text or letters anywhere
 
-VISUAL STYLE:
-- Simple circular badge with clean border
-- Gradient background using turquoise and yellow
-- Bold, readable fonts
-- Minimal decorative elements (maybe 1-2 stars)
-- Professional achievement look
-- Clean white text on colored background
+Keep it SIMPLE and CLEAN. Focus on the achievement."""
 
-CRITICAL: Keep it extremely simple and professional. NO food imagery whatsoever."""
-
-    return base_prompt
+    return prompt
 
 def create_share_text(progress_data: Dict[str, Any], platform: str, custom_message: Optional[str] = None, week_number: Optional[int] = None) -> str:
     """
@@ -356,13 +337,13 @@ def create_share_text(progress_data: Dict[str, Any], platform: str, custom_messa
         base_text = custom_message
     else:
         if platform == "instagram":
-            base_text = f"🎓 Learning {language} with {app_name}! \n\n{week_text}\n📚 {level} Level\n💪 {sessions} Sessions Completed\n\n#LanguageLearning #{language}Learning #Progress #TacoAI #LanguageGoals #StudyMotivation"
+            base_text = f"🎓 Learning {language} with {app_name}! \n\n{week_text}\n📚 {level} Level\n💪 {sessions} Sessions Completed\n\n#LanguageLearning #{language}Learning #Progress #MyTacoAI #LanguageGoals #StudyMotivation"
         
         elif platform == "whatsapp":
             base_text = f"🎓 I'm learning {language} with {app_name}! \n\n{week_text}\nCurrently at {level} level 📚\n\nCompleted {sessions} sessions so far 💪\n\nWant to join me? Check out {app_name}! 🚀"
         
         else:  # general
-            base_text = f"� Learning {language} with {app_name}!\n\n{week_text}\n🎯 Level: {level}\n💪 Sessions: {sessions}\n\n#LanguageLearning #{language}"
+            base_text = f"🎓 Learning {language} with {app_name}!\n\n{week_text}\n🎯 Level: {level}\n💪 Sessions: {sessions}\n\n#LanguageLearning #{language}"
     
     return base_text
 
