@@ -161,7 +161,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               <div>
                 <h2 className="text-xl font-bold flex items-center text-gray-800">
                   <Award className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
-                  Assessment & Learning Journey #{index + 1}
+                  Your Personalized Learning Plan #{index + 1}
                   {index === 0 && (
                     <span className="ml-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
                       Most Recent
@@ -191,7 +191,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           
           {/* Quick Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Confidence */}
+            {/* Language */}
             <div 
               className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
               style={{ borderColor: '#4ECFBF' }}
@@ -205,8 +205,8 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               }}
             >
               <Heart className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#4ECFBF' }} />
-              <div className="text-sm font-bold text-gray-800">{assessment.confidence}%</div>
-              <div className="text-gray-600 text-xs">Confidence</div>
+              <div className="text-sm font-bold text-gray-800">{assessment.language || 'Language'}</div>
+              <div className="text-gray-600 text-xs">Language</div>
             </div>
             
             {/* CEFR Level */}
@@ -387,12 +387,6 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {/* Learning Plan Section */}
           {learningPlan ? (
             <div className="border-t pt-6">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
-                  Your Personalized Learning Plan
-                </h3>
-              </div>
               
               {/* Plan Overview */}
               <div className="bg-teal-50 rounded-xl p-4 mb-4" style={{ backgroundColor: '#F0FDFA' }}>
