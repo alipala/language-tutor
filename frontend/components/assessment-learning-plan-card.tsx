@@ -192,33 +192,33 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {/* Quick Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Confidence */}
-            <div className="bg-gradient-to-br from-pink-400 to-rose-500 rounded-lg p-3 text-center text-white shadow-md">
-              <Heart className="h-4 w-4 mx-auto mb-1 opacity-90" />
-              <div className="text-sm font-bold">{assessment.confidence}%</div>
-              <div className="text-white/90 text-xs">Confidence</div>
+            <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
+              <Heart className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+              <div className="text-sm font-bold text-gray-800">{assessment.confidence}%</div>
+              <div className="text-gray-600 text-xs">Confidence</div>
             </div>
             
             {/* CEFR Level */}
-            <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg p-3 text-center text-white shadow-md">
-              <GraduationCap className="h-4 w-4 mx-auto mb-1 opacity-90" />
-              <div className="text-sm font-bold">{assessment.recommended_level || "B1"}</div>
-              <div className="text-white/90 text-xs">CEFR Level</div>
+            <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
+              <GraduationCap className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+              <div className="text-sm font-bold text-gray-800">{assessment.recommended_level || "B1"}</div>
+              <div className="text-gray-600 text-xs">CEFR Level</div>
             </div>
             
             {learningPlan && (
               <>
                 {/* Plan Duration */}
-                <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg p-3 text-center text-white shadow-md">
-                  <Timer className="h-4 w-4 mx-auto mb-1 opacity-90" />
-                  <div className="text-sm font-bold">{learningPlan.duration_months}m</div>
-                  <div className="text-white/90 text-xs">Plan Duration</div>
+                <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
+                  <Timer className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+                  <div className="text-sm font-bold text-gray-800">{learningPlan.duration_months}m</div>
+                  <div className="text-gray-600 text-xs">Plan Duration</div>
                 </div>
                 
                 {/* Progress */}
-                <div className="bg-gradient-to-br from-emerald-400 to-green-500 rounded-lg p-3 text-center text-white shadow-md">
-                  <BarChart3 className="h-4 w-4 mx-auto mb-1 opacity-90" />
-                  <div className="text-sm font-bold">{Math.round(learningPlan.progress_percentage || 0)}%</div>
-                  <div className="text-white/90 text-xs">Progress</div>
+                <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
+                  <BarChart3 className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+                  <div className="text-sm font-bold text-gray-800">{Math.round(learningPlan.progress_percentage || 0)}%</div>
+                  <div className="text-gray-600 text-xs">Progress</div>
                 </div>
               </>
             )}
