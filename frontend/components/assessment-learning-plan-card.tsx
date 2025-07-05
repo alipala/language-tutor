@@ -145,8 +145,8 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
     <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
       {/* Header - Always visible */}
       <div 
-        className="p-6 text-white relative overflow-hidden cursor-pointer"
-        style={{ backgroundColor: '#4ECFBF' }}
+        className="p-6 relative overflow-hidden cursor-pointer"
+        style={{ backgroundColor: 'white' }}
         onClick={onToggle}
       >
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
@@ -156,11 +156,11 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center">
               <div className={`transition-transform mr-3 ${isExpanded ? 'rotate-90' : ''}`}>
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-5 w-5" style={{ color: '#4ECFBF' }} />
               </div>
               <div>
-                <h2 className="text-xl font-bold flex items-center">
-                  <Award className="h-5 w-5 mr-2" />
+                <h2 className="text-xl font-bold flex items-center text-gray-800">
+                  <Award className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
                   Assessment & Learning Journey #{index + 1}
                   {index === 0 && (
                     <span className="ml-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
@@ -168,21 +168,21 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                     </span>
                   )}
                 </h2>
-                <p className="text-white/80 text-sm mt-1 flex items-center">
-                  <Calendar className="h-4 w-4 mr-1" />
+                <p className="text-gray-600 text-sm mt-1 flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" style={{ color: '#4ECFBF' }} />
                   {formattedDate} • {assessment.language || 'Language'} - {assessment.recommended_level || assessment.level || "B1"}
                 </p>
               </div>
             </div>
             
             <div className="text-right">
-              <div className="flex items-center bg-white/20 rounded-full px-3 py-1.5 mb-2">
-                <span className="text-sm font-medium mr-1">Score:</span>
-                <span className="text-lg font-bold">{assessment.overall_score}/100</span>
+              <div className="flex items-center bg-gray-100 rounded-full px-3 py-1.5 mb-2">
+                <span className="text-sm font-medium mr-1 text-gray-700">Score:</span>
+                <span className="text-lg font-bold text-gray-800">{assessment.overall_score}/100</span>
               </div>
               {learningPlan && (
-                <div className="flex items-center text-white/80 text-xs">
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                <div className="flex items-center text-gray-600 text-xs">
+                  <CheckCircle className="h-3 w-3 mr-1" style={{ color: '#4ECFBF' }} />
                   Learning Plan Created
                 </div>
               )}
