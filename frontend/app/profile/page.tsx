@@ -442,8 +442,11 @@ export default function ProfilePage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setIsPasswordLoading(true);
     setError(null);
+    setPasswordError(null);
     setIsSaved(false);
+    setPasswordSuccess(false);
 
     try {
       const token = localStorage.getItem('token');
@@ -451,7 +454,8 @@ export default function ProfilePage() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/auth/update-profile`, {
+      // Update profile information
+      const profileResponse = await fetch(`${API_URL}/auth/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -464,8 +468,8 @@ export default function ProfilePage() {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json();
         throw new Error(errorData.detail || 'Failed to update profile');
       }
 
@@ -478,13 +482,62 @@ export default function ProfilePage() {
         sessionStorage.setItem('selectedLevel', preferredLevel);
       }
 
+      // Handle password update if fields are provided
+      if (currentPassword && newPassword && confirmPassword) {
+        // Validation
+        if (newPassword !== confirmPassword) {
+          setPasswordError('New passwords do not match');
+          setIsLoading(false);
+          setIsPasswordLoading(false);
+          return;
+        }
+
+        if (newPassword.length < 6) {
+          setPasswordError('New password must be at least 6 characters long');
+          setIsLoading(false);
+          setIsPasswordLoading(false);
+          return;
+        }
+
+        const passwordResponse = await fetch(`${API_URL}/auth/update-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword
+          })
+        });
+
+        if (!passwordResponse.ok) {
+          const errorData = await passwordResponse.json();
+          throw new Error(errorData.detail || 'Failed to update password');
+        }
+
+        // Clear password fields
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordSuccess(true);
+      }
+
       setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3000);
+      setTimeout(() => {
+        setIsSaved(false);
+        setPasswordSuccess(false);
+      }, 3000);
     } catch (err: any) {
-      console.error('Profile update error:', err);
-      setError(err.message || 'Failed to update profile. Please try again.');
+      console.error('Update error:', err);
+      if (err.message.includes('password')) {
+        setPasswordError(err.message || 'Failed to update password. Please try again.');
+      } else {
+        setError(err.message || 'Failed to update profile. Please try again.');
+      }
     } finally {
       setIsLoading(false);
+      setIsPasswordLoading(false);
     }
   };
 
@@ -1426,133 +1479,95 @@ export default function ProfilePage() {
                         </div>
                       )}
 
-                      <form onSubmit={handlePasswordUpdate} className="space-y-4">
-                        <div className="grid grid-cols-1 gap-4">
-                          {/* Current Password */}
+                      <div className="space-y-4">
+                        {/* All Password Fields in One Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="group">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Current Password
                             </label>
                             <Input
                               type="password"
-                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
                               value={currentPassword}
                               onChange={(e) => setCurrentPassword(e.target.value)}
-                              placeholder="Enter your current password"
+                              placeholder="Current password"
                             />
                           </div>
 
-                          {/* New Password Fields */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="group">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                New Password
-                              </label>
-                              <Input
-                                type="password"
-                                className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Enter new password"
-                              />
-                            </div>
+                          <div className="group">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              New Password
+                            </label>
+                            <Input
+                              type="password"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="New password"
+                            />
+                          </div>
 
-                            <div className="group">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Confirm New Password
-                              </label>
-                              <Input
-                                type="password"
-                                className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Confirm new password"
-                              />
-                            </div>
+                          <div className="group">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Confirm New Password
+                            </label>
+                            <Input
+                              type="password"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirm password"
+                            />
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                          <div className="text-sm text-gray-500">
-                            Password must be at least 6 characters long
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={isPasswordLoading}
-                            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isPasswordLoading ? (
-                              <>
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Updating Password...
-                              </>
-                            ) : (
-                              'Update Password'
-                            )}
-                          </button>
+                        <div className="text-xs text-gray-500">
+                          Password must be at least 6 characters long. Leave blank to keep current password.
                         </div>
-                      </form>
+                      </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Single Action Button */}
                     <div className="flex items-center justify-between pt-6 border-t border-gray-200">
                       <div className="text-sm text-gray-500">
-                        Changes will be saved to your profile
+                        Save your profile changes and update password if provided
                       </div>
                       
-                      <div className="flex space-x-3">
-                        <button
-                          type="button"
-                          className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                          onClick={() => {
-                            setName(user?.name || '');
-                            setPreferredLanguage(user?.preferred_language || '');
-                            setPreferredLevel(user?.preferred_level || '');
-                            setError(null);
-                          }}
-                        >
-                          Reset Changes
-                        </button>
+                      <button
+                        type="submit"
+                        disabled={isLoading || isPasswordLoading}
+                        className="relative px-8 py-3 bg-white border-2 rounded-xl font-medium text-white overflow-hidden transition-all duration-300 hover:shadow-lg focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ 
+                          borderColor: '#4ECFBF',
+                          backgroundColor: (isLoading || isPasswordLoading) ? '#9CA3AF' : '#4ECFBF'
+                        }}
+                      >
+                        <div className="relative z-10 flex items-center">
+                          {(isLoading || isPasswordLoading) ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Saving Changes...
+                            </>
+                          ) : (isSaved || passwordSuccess) ? (
+                            <>
+                              <CheckCircle className="h-5 w-5 mr-2" />
+                              Changes Saved!
+                            </>
+                          ) : (
+                            <>
+                              <Settings className="h-5 w-5 mr-2" />
+                              Save Changes
+                            </>
+                          )}
+                        </div>
                         
-                        <button
-                          type="submit"
-                          disabled={isLoading}
-                          className="relative px-8 py-3 bg-white border-2 rounded-xl font-medium text-white overflow-hidden transition-all duration-300 hover:shadow-lg focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          style={{ 
-                            borderColor: '#4ECFBF',
-                            backgroundColor: isLoading ? '#9CA3AF' : '#4ECFBF'
-                          }}
-                        >
-                          <div className="relative z-10 flex items-center">
-                            {isLoading ? (
-                              <>
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Saving Changes...
-                              </>
-                            ) : isSaved ? (
-                              <>
-                                <CheckCircle className="h-5 w-5 mr-2" />
-                                Changes Saved!
-                              </>
-                            ) : (
-                              <>
-                                <Settings className="h-5 w-5 mr-2" />
-                                Save Changes
-                              </>
-                            )}
-                          </div>
-                          
-                          {/* Animated background effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                        </button>
-                      </div>
+                        {/* Animated background effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                      </button>
                     </div>
                   </form>
                 </div>
