@@ -1175,77 +1175,112 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">What would you like to talk about? (Optional)</p>
             </div>
 
-            {/* Enhanced Grid Layout for 24 Topics with Mobile Optimization */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
-              {topics.map((topic, index) => {
-                // Special styling for Custom Topic
-                const isCustomTopic = topic.id === 'custom';
+            {/* Custom Topic Section - Prominent at Top */}
+            <div className="mb-8">
+              {(() => {
+                const customTopic = topics.find(topic => topic.id === 'custom');
+                if (!customTopic) return null;
                 
                 return (
-                  <button
-                    key={topic.id}
-                    onClick={() => handleTopicSelect(topic.id)}
-                    disabled={isLoading || isExtendingKnowledge}
-                    className={`
-                      group relative overflow-hidden rounded-xl transition-all duration-300 
-                      flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44
-                      transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20
-                      animate-slide-up touch-target
-                      ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                      ${isCustomTopicActive && isCustomTopic ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''}
-                      ${isCustomTopic 
-                        ? 'bg-gradient-to-br from-[#4ECFBF]/10 via-white to-[#4ECFBF]/5 border-2 border-[#4ECFBF] shadow-[#4ECFBF]/10' 
-                        : 'bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60'
-                      }
-                    `}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    {/* Hover Effect Background */}
-                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                      isCustomTopic 
-                        ? 'bg-gradient-to-br from-[#4ECFBF]/15 to-[#4ECFBF]/5' 
-                        : 'bg-[#4ECFBF]/5'
-                    }`}></div>
-                    
-                    {/* Special Badge for Custom Topic */}
-                    {isCustomTopic && (
-                      <div className="absolute top-2 right-2 bg-[#4ECFBF] text-white text-xs px-2 py-1 rounded-full font-medium shadow-sm">
-                        Popular
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => handleTopicSelect('custom')}
+                      disabled={isLoading || isExtendingKnowledge}
+                      className={`
+                        group relative overflow-hidden rounded-2xl transition-all duration-300 
+                        flex flex-col items-center justify-center p-8 text-center
+                        w-full max-w-md mx-auto min-h-[200px]
+                        transform hover:translate-y-[-4px] shadow-xl hover:shadow-2xl hover:shadow-[#4ECFBF]/30
+                        animate-slide-up touch-target
+                        ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
+                        ${isCustomTopicActive ? 'ring-4 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
+                        bg-gradient-to-br from-[#4ECFBF]/15 via-white to-[#4ECFBF]/10 border-3 border-[#4ECFBF] shadow-[#4ECFBF]/20
+                      `}
+                    >
+                      {/* Animated Background */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/20 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      
+                      {/* Sparkle Effects */}
+                      <div className="absolute top-4 right-4 text-[#4ECFBF] animate-pulse">✨</div>
+                      <div className="absolute top-6 left-6 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '0.5s' }}>⭐</div>
+                      <div className="absolute bottom-6 right-8 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '1s' }}>💫</div>
+                      
+                      {/* Popular Badge */}
+                      <div className="absolute top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-sm px-4 py-1 rounded-full font-bold shadow-lg">
+                        Most Popular
                       </div>
-                    )}
-                    
-                    {/* Icon */}
-                    <div className={`text-3xl sm:text-4xl mb-3 sm:mb-4 ${isCustomTopic ? 'filter drop-shadow-sm' : ''}`}>
-                      {topic.icon}
-                    </div>
-                    
-                    {/* Title */}
-                    <h3 className={`text-lg sm:text-xl font-semibold mb-2 transition-colors duration-300 ${
-                      isCustomTopic 
-                        ? 'text-[#4ECFBF] group-hover:text-[#4ECFBF]/80' 
-                        : 'text-gray-800 group-hover:text-[#4ECFBF]'
-                    }`}>
-                      {topic.name}
-                    </h3>
-                    
-                    {/* Description */}
-                    <p className={`text-xs sm:text-sm transition-colors duration-300 line-clamp-3 ${
-                      isCustomTopic 
-                        ? 'text-gray-700 group-hover:text-gray-800' 
-                        : 'text-gray-600 group-hover:text-gray-700'
-                    }`}>
-                      {topic.description}
-                    </p>
-                    
-                    {/* Bottom Accent Line */}
-                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${
-                      isCustomTopic 
-                        ? 'bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full' 
-                        : 'bg-[#4ECFBF] w-0 group-hover:w-full'
-                    }`}></div>
-                  </button>
+                      
+                      {/* Icon */}
+                      <div className="text-6xl mb-4 filter drop-shadow-lg">
+                        {customTopic.icon}
+                      </div>
+                      
+                      {/* Title */}
+                      <h3 className="text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-3">
+                        {customTopic.name}
+                      </h3>
+                      
+                      {/* Description */}
+                      <p className="text-gray-700 group-hover:text-gray-800 transition-colors duration-300 text-base leading-relaxed">
+                        {customTopic.description}
+                      </p>
+                      
+                      {/* Bottom Accent Line */}
+                      <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full rounded-b-2xl"></div>
+                    </button>
+                  </div>
                 );
-              })}
+              })()}
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              <div className="px-6 py-2 bg-white border-2 border-gray-200 rounded-full shadow-sm">
+                <span className="text-gray-500 font-medium text-lg">OR</span>
+              </div>
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+            </div>
+
+            {/* Regular Topics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
+              {topics.filter(topic => topic.id !== 'custom').map((topic, index) => (
+                <button
+                  key={topic.id}
+                  onClick={() => handleTopicSelect(topic.id)}
+                  disabled={isLoading || isExtendingKnowledge}
+                  className={`
+                    group relative overflow-hidden rounded-xl transition-all duration-300 
+                    flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44
+                    transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20
+                    animate-slide-up touch-target
+                    ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
+                    bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                  `}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Hover Effect Background */}
+                  <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {/* Icon */}
+                  <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">
+                    {topic.icon}
+                  </div>
+                  
+                  {/* Title */}
+                  <h3 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                    {topic.name}
+                  </h3>
+                  
+                  {/* Description */}
+                  <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3">
+                    {topic.description}
+                  </p>
+                  
+                  {/* Bottom Accent Line */}
+                  <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+                </button>
+              ))}
             </div>
             
             {/* Topic Count Indicator */}
