@@ -1357,7 +1357,7 @@ export default function ProfilePage() {
                         <h4 className="text-lg font-semibold text-gray-800">Personal Information</h4>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Full Name Field */}
                         <div className="group">
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -1397,191 +1397,105 @@ export default function ProfilePage() {
                           </div>
                           <p className="text-xs text-gray-500 mt-2 flex items-center">
                             <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 00-1-1H9z" clipRule="evenodd" />
                             </svg>
                             Email cannot be changed
                           </p>
                         </div>
+                      </div>
+                    </div>
 
-                        {/* Password Update Field */}
-                        <div className="group">
-                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <Lock className="h-4 w-4 mr-1 text-gray-400" />
-                            Password Update
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Toggle password update form visibility
-                              const passwordForm = document.getElementById('password-update-form');
-                              if (passwordForm) {
-                                passwordForm.style.display = passwordForm.style.display === 'none' ? 'block' : 'none';
-                              }
-                            }}
-                            className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-gray-300 transition-all duration-200 bg-white text-left text-gray-700 hover:bg-gray-50"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span>Update Password</span>
-                              <ChevronRight className="h-4 w-4 text-gray-400" />
-                            </div>
-                          </button>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Click to change your password
-                          </p>
+                    {/* Password Update Section */}
+                    <div>
+                      <div className="flex items-center space-x-2 mb-4">
+                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                          <Lock className="h-4 w-4 text-red-600" />
                         </div>
+                        <h4 className="text-lg font-semibold text-gray-800">Password & Security</h4>
                       </div>
 
-                      {/* Password Update Form (Hidden by default) */}
-                      <div id="password-update-form" style={{ display: 'none' }} className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                        <h5 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                          <Lock className="h-5 w-5 mr-2 text-gray-600" />
-                          Update Password
-                        </h5>
+                      {passwordError && (
+                        <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+                          <p className="text-sm text-red-700">{passwordError}</p>
+                        </div>
+                      )}
 
-                        {passwordError && (
-                          <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
-                            <p className="text-sm text-red-700">{passwordError}</p>
-                          </div>
-                        )}
+                      {passwordSuccess && (
+                        <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                          <p className="text-sm text-green-700">Password updated successfully!</p>
+                        </div>
+                      )}
 
-                        {passwordSuccess && (
-                          <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
-                            <p className="text-sm text-green-700">Password updated successfully!</p>
-                          </div>
-                        )}
-
-                        <form onSubmit={handlePasswordUpdate} className="space-y-4">
-                          <div>
+                      <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
+                          {/* Current Password */}
+                          <div className="group">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Current Password
                             </label>
                             <Input
                               type="password"
-                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
                               value={currentPassword}
                               onChange={(e) => setCurrentPassword(e.target.value)}
                               placeholder="Enter your current password"
                             />
                           </div>
 
+                          {/* New Password Fields */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            <div className="group">
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 New Password
                               </label>
                               <Input
                                 type="password"
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 placeholder="Enter new password"
                               />
                             </div>
 
-                            <div>
+                            <div className="group">
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Confirm New Password
                               </label>
                               <Input
                                 type="password"
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 placeholder="Confirm new password"
                               />
                             </div>
                           </div>
-
-                          <div className="flex items-center justify-between pt-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentPassword('');
-                                setNewPassword('');
-                                setConfirmPassword('');
-                                setPasswordError(null);
-                                setPasswordSuccess(false);
-                                document.getElementById('password-update-form')!.style.display = 'none';
-                              }}
-                              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                            >
-                              Cancel
-                            </button>
-
-                            <button
-                              type="submit"
-                              disabled={isPasswordLoading}
-                              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isPasswordLoading ? (
-                                <>
-                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                  Updating...
-                                </>
-                              ) : (
-                                'Update Password'
-                              )}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-
-                    {/* Learning Preferences Section */}
-                    <div>
-                      <div className="flex items-center space-x-2 mb-4">
-                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <BookOpen className="h-4 w-4 text-purple-600" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-800">Learning Preferences</h4>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Preferred Language Field */}
-                        <div className="group">
-                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <Volume2 className="h-4 w-4 mr-1 text-gray-400" />
-                            Preferred Language
-                          </label>
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white hover:border-gray-300 group-hover:shadow-sm"
-                              value={preferredLanguage}
-                              onChange={(e) => setPreferredLanguage(e.target.value)}
-                              placeholder="e.g. Spanish, French, German"
-                            />
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                              <div className="w-2 h-2 bg-purple-400 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">The language you want to learn or practice</p>
                         </div>
 
-                        {/* Proficiency Level Field */}
-                        <div className="group">
-                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <Target className="h-4 w-4 mr-1 text-gray-400" />
-                            Proficiency Level
-                          </label>
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white hover:border-gray-300 group-hover:shadow-sm"
-                              value={preferredLevel}
-                              onChange={(e) => setPreferredLevel(e.target.value)}
-                              placeholder="e.g. Beginner, Intermediate, Advanced"
-                            />
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                              <div className="w-2 h-2 bg-purple-400 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-                            </div>
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                          <div className="text-sm text-gray-500">
+                            Password must be at least 6 characters long
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">Your current skill level in the language</p>
+
+                          <button
+                            type="submit"
+                            disabled={isPasswordLoading}
+                            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isPasswordLoading ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Updating Password...
+                              </>
+                            ) : (
+                              'Update Password'
+                            )}
+                          </button>
                         </div>
-                      </div>
+                      </form>
                     </div>
 
                     {/* Action Buttons */}
