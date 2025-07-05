@@ -837,14 +837,35 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
     # Handle regular topics
     elif request.topic and request.topic != "custom":
         topic_map = {
+            # Core Topics
             "travel": "Travel & Tourism",
             "food": "Food & Cooking", 
-            "hobbies": "Hobbies & Interests",
-            "culture": "Culture & Traditions",
+            "work": "Work & Career",
+            "education": "Education & Learning",
+            
+            # Daily Life Topics
+            "daily-routine": "Daily Routines",
+            "family": "Family & Relationships",
+            "health": "Health & Fitness",
+            "shopping": "Shopping & Money",
+            
+            # Entertainment & Culture
             "movies": "Movies & TV Shows",
-            "music": "Music",
-            "technology": "Technology",
-            "environment": "Environment & Nature"
+            "music": "Music & Arts",
+            "sports": "Sports & Games",
+            "hobbies": "Hobbies & Interests",
+            
+            # Modern Life Topics
+            "technology": "Technology & Digital Life",
+            "news": "News & Current Events",
+            "weather": "Weather & Seasons",
+            "transportation": "Transportation & Travel",
+            
+            # Lifestyle & Personal Topics
+            "culture": "Culture & Traditions",
+            "environment": "Environment & Nature",
+            "home": "Home & Living",
+            "pets": "Pets & Animals"
         }
         
         topic_name = topic_map.get(request.topic, request.topic.title())
