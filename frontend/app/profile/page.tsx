@@ -645,7 +645,7 @@ export default function ProfilePage() {
                       <div className="text-lg font-bold text-white">{achievements.filter(a => a.earned).length}</div>
                       <div className="text-white text-xs">Achievements</div>
                     </div>
-                    <div className="bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-lg p-3 text-center">
+                    <div className="bg-blue-500 rounded-lg p-3 text-center">
                       <Zap className="h-5 w-5 mx-auto mb-1 text-white" />
                       <div className="text-lg font-bold text-white">{userStats.totalXP.toLocaleString()}</div>
                       <div className="text-white text-xs">Total XP</div>
