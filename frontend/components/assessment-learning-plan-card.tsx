@@ -227,6 +227,26 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               <div className="text-gray-600 text-xs">CEFR Level</div>
             </div>
             
+            {/* Learning Goals */}
+            {learningPlan && (
+              <div 
+                className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                style={{ borderColor: '#3B82F6' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#2563EB';
+                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#3B82F6';
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                <Target className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#3B82F6' }} />
+                <div className="text-sm font-bold text-gray-800">{learningPlan.goals.length + (learningPlan.custom_goal ? 1 : 0)}</div>
+                <div className="text-gray-600 text-xs">Goals</div>
+              </div>
+            )}
+            
             {learningPlan && (
               <>
                 {/* Plan Duration */}
@@ -635,41 +655,8 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 )}
               </div>
               
-              {/* Learning Goals */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-800 flex items-center">
-                    <Target className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
-                    Learning Goals
-                  </h4>
-                  <button
-                    onClick={() => setShowPlanDetails(!showPlanDetails)}
-                    className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                    style={{ color: '#4ECFBF' }}
-                  >
-                    {showPlanDetails ? 'Show less' : 'Show details'}
-                    <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
-                      showPlanDetails ? 'rotate-180' : ''
-                    }`} />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {learningPlan.goals.map((goal, index) => (
-                    <Badge key={index} variant="secondary" className="bg-teal-100 text-teal-700">
-                      {goal}
-                    </Badge>
-                  ))}
-                  {learningPlan.custom_goal && (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                      {learningPlan.custom_goal}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              {/* Detailed Plan View */}
-              {showPlanDetails && (
-                <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
+              {/* Detailed Plan View - Always Visible */}
+              <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
                   {/* Weekly Schedule Preview with Slider for All Weeks */}
                   {(() => {
                     // Use only the personalized weekly schedule from the learning plan
@@ -937,7 +924,6 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                     </div>
                   )}
                 </div>
-              )}
               
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
