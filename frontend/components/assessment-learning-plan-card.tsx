@@ -190,7 +190,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           </div>
           
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             {/* Language */}
             <div 
               className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
@@ -230,7 +230,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
             {/* Learning Goals */}
             {learningPlan && (
               <div 
-                className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                className="bg-white rounded-lg p-2 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
                 style={{ borderColor: '#3B82F6' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = '#2563EB';
@@ -242,7 +242,17 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 }}
               >
                 <Target className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#3B82F6' }} />
-                <div className="text-sm font-bold text-gray-800">{learningPlan.goals.length + (learningPlan.custom_goal ? 1 : 0)}</div>
+                <div className="text-xs font-bold text-gray-800 leading-tight">
+                  {learningPlan.goals.slice(0, 2).map((goal, index) => (
+                    <div key={index} className="truncate">{goal}</div>
+                  ))}
+                  {learningPlan.custom_goal && (
+                    <div className="truncate">{learningPlan.custom_goal}</div>
+                  )}
+                  {learningPlan.goals.length > 2 && (
+                    <div className="text-gray-500">+{learningPlan.goals.length - 2} more</div>
+                  )}
+                </div>
                 <div className="text-gray-600 text-xs">Goals</div>
               </div>
             )}
