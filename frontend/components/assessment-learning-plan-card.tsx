@@ -142,7 +142,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
   
   return (
-    <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+    <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border-2" style={{ borderColor: '#4ECFBF' }}>
       {/* Header - Always visible */}
       <div 
         className="p-6 relative overflow-hidden cursor-pointer"
