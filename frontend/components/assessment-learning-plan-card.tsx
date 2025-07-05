@@ -388,36 +388,6 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {learningPlan ? (
             <div className="border-t pt-6">
               
-              {/* Plan Overview */}
-              <div className="bg-teal-50 rounded-xl p-4 mb-4" style={{ backgroundColor: '#F0FDFA' }}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>
-                      {learningPlan.language}
-                    </div>
-                    <div className="text-sm text-gray-600">Target Language</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>
-                      {learningPlan.proficiency_level}
-                    </div>
-                    <div className="text-sm text-gray-600">Target Level</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>
-                      {learningPlan.duration_months}m
-                    </div>
-                    <div className="text-sm text-gray-600">Duration</div>
-                  </div>
-                </div>
-                
-                {planDate && (
-                  <div className="text-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 inline mr-1" />
-                    Plan created on {planDate}
-                  </div>
-                )}
-              </div>
 
               {/* Progress Tracking Section - Modern Card Design */}
               <div className="mb-6">
