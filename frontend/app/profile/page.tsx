@@ -42,9 +42,15 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState('');
   const [preferredLevel, setPreferredLevel] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [learningPlans, setLearningPlans] = useState<LearningPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
@@ -58,6 +64,8 @@ export default function ProfilePage() {
     }
   }, [searchParams]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   
   // Create assessment-learning plan pairs
@@ -436,8 +444,11 @@ export default function ProfilePage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setIsPasswordLoading(true);
     setError(null);
+    setPasswordError(null);
     setIsSaved(false);
+    setPasswordSuccess(false);
 
     try {
       const token = localStorage.getItem('token');
@@ -445,7 +456,8 @@ export default function ProfilePage() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/auth/update-profile`, {
+      // Update profile information
+      const profileResponse = await fetch(`${API_URL}/auth/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -458,8 +470,8 @@ export default function ProfilePage() {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json();
         throw new Error(errorData.detail || 'Failed to update profile');
       }
 
@@ -472,13 +484,125 @@ export default function ProfilePage() {
         sessionStorage.setItem('selectedLevel', preferredLevel);
       }
 
+      // Handle password update if fields are provided
+      if (currentPassword && newPassword && confirmPassword) {
+        // Validation
+        if (newPassword !== confirmPassword) {
+          setPasswordError('New passwords do not match');
+          setIsLoading(false);
+          setIsPasswordLoading(false);
+          return;
+        }
+
+        if (newPassword.length < 6) {
+          setPasswordError('New password must be at least 6 characters long');
+          setIsLoading(false);
+          setIsPasswordLoading(false);
+          return;
+        }
+
+        const passwordResponse = await fetch(`${API_URL}/auth/update-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword
+          })
+        });
+
+        if (!passwordResponse.ok) {
+          const errorData = await passwordResponse.json();
+          throw new Error(errorData.detail || 'Failed to update password');
+        }
+
+        // Clear password fields
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordSuccess(true);
+      }
+
       setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3000);
+      setTimeout(() => {
+        setIsSaved(false);
+        setPasswordSuccess(false);
+      }, 3000);
     } catch (err: any) {
-      console.error('Profile update error:', err);
-      setError(err.message || 'Failed to update profile. Please try again.');
+      console.error('Update error:', err);
+      if (err.message.includes('password')) {
+        setPasswordError(err.message || 'Failed to update password. Please try again.');
+      } else {
+        setError(err.message || 'Failed to update profile. Please try again.');
+      }
     } finally {
       setIsLoading(false);
+      setIsPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPasswordLoading(true);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All password fields are required');
+      setIsPasswordLoading(false);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      setIsPasswordLoading(false);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      setIsPasswordLoading(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_URL}/auth/update-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to update password');
+      }
+
+      // Clear password fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Password update error:', err);
+      setPasswordError(err.message || 'Failed to update password. Please try again.');
+    } finally {
+      setIsPasswordLoading(false);
     }
   };
 
@@ -489,6 +613,44 @@ export default function ProfilePage() {
   const handleLogoutConfirm = async () => {
     await logout();
     window.location.href = '/';
+  };
+
+  const handleDeleteAccount = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteAccountConfirm = async () => {
+    setIsDeleting(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_URL}/auth/deactivate-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete account');
+      }
+
+      // Account deactivated successfully, logout and redirect
+      await logout();
+      window.location.href = '/';
+    } catch (err: any) {
+      console.error('Account deletion error:', err);
+      setError(err.message || 'Failed to delete account. Please try again.');
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Function to fetch and show enhanced analysis
@@ -645,7 +807,7 @@ export default function ProfilePage() {
                       <div className="text-lg font-bold text-white">{achievements.filter(a => a.earned).length}</div>
                       <div className="text-white text-xs">Achievements</div>
                     </div>
-                    <div className="bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-lg p-3 text-center">
+                    <div className="bg-blue-500 rounded-lg p-3 text-center">
                       <Zap className="h-5 w-5 mx-auto mb-1 text-white" />
                       <div className="text-lg font-bold text-white">{userStats.totalXP.toLocaleString()}</div>
                       <div className="text-white text-xs">Total XP</div>
@@ -713,35 +875,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Recent Achievements */}
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                    <Trophy className="h-6 w-6 mr-2" style={{ color: '#FFD63A' }} />
-                    Recent Achievements
-                  </h3>
-                  <button 
-                    onClick={() => setActiveTab('achievements')}
-                    className="text-sm font-medium flex items-center hover:opacity-80 transition-opacity"
-                    style={{ color: '#4ECFBF' }}
-                  >
-                    View all <ChevronRight className="h-4 w-4 ml-1" />
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {achievements.filter(a => a.earned).slice(0, 4).map((achievement, index) => (
-                    <div key={index} className="border rounded-xl p-4 flex items-center space-x-3" style={{ backgroundColor: '#FFFBF0', borderColor: 'rgba(255, 214, 58, 0.2)' }}>
-                      <div className="text-2xl">{achievement.icon}</div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">{achievement.name}</h4>
-                        <p className="text-sm text-gray-600">{achievement.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">{achievement.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Conversation History */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -1274,113 +1407,233 @@ export default function ProfilePage() {
               {/* Account Settings */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <User className="h-6 w-6 mr-2 text-purple-500" />
+                  <User className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
                   Account Settings
                 </h3>
-                
-                {error && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {error}
-                  </div>
-                )}
-                
-                <form onSubmit={handleSaveProfile} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                      <Input 
-                        type="text" 
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
+
+                <div>
+                  {error && (
+                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-red-700 font-medium">{error}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                      <Input 
-                        type="email" 
-                        className="w-full p-3 border border-gray-300 rounded-xl bg-gray-50 cursor-not-allowed"
-                        value={email}
-                        disabled
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                  )}
+
+                  {isSaved && (
+                    <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <CheckCircle className="h-5 w-5 text-green-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-green-700 font-medium">Settings saved successfully!</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <form onSubmit={handleSaveProfile} className="space-y-8">
+                    {/* Personal Information Section */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Language</label>
-                      <Input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        value={preferredLanguage}
-                        onChange={(e) => setPreferredLanguage(e.target.value)}
-                        placeholder="e.g. Spanish, French, German"
-                      />
+                      <div className="flex items-center space-x-2 mb-4">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <User className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-800">Personal Information</h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Full Name Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Edit3 className="h-4 w-4 mr-1 text-gray-400" />
+                            Full Name
+                          </label>
+                          <div className="relative">
+                            <Input 
+                              type="text" 
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white hover:border-gray-300 group-hover:shadow-sm"
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              placeholder="Enter your full name"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <div className="w-2 h-2 bg-green-400 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Email Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Lock className="h-4 w-4 mr-1 text-gray-400" />
+                            Email Address
+                          </label>
+                          <div className="relative">
+                            <Input 
+                              type="email" 
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl bg-gray-50 cursor-not-allowed text-gray-500"
+                              value={email}
+                              disabled
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <Lock className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2 flex items-center">
+                            <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            Email cannot be changed
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Password Update Section */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Proficiency Level</label>
-                      <Input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        value={preferredLevel}
-                        onChange={(e) => setPreferredLevel(e.target.value)}
-                        placeholder="e.g. Beginner, Intermediate, Advanced"
-                      />
+                      <div className="flex items-center space-x-2 mb-4">
+                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                          <Lock className="h-4 w-4 text-red-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-800">Password & Security</h4>
+                      </div>
+
+                      {passwordError && (
+                        <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+                          <p className="text-sm text-red-700">{passwordError}</p>
+                        </div>
+                      )}
+
+                      {passwordSuccess && (
+                        <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                          <p className="text-sm text-green-700">Password updated successfully!</p>
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        {/* All Password Fields in One Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="group">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Current Password
+                            </label>
+                            <Input
+                              type="password"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              placeholder="Current password"
+                            />
+                          </div>
+
+                          <div className="group">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              New Password
+                            </label>
+                            <Input
+                              type="password"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="New password"
+                            />
+                          </div>
+
+                          <div className="group">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Confirm New Password
+                            </label>
+                            <Input
+                              type="password"
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirm password"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-gray-500">
+                          Password must be at least 6 characters long. Leave blank to keep current password.
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <Button 
-                    type="submit"
-                    className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 px-6 rounded-xl font-medium hover:shadow-lg transition-all"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </>
-                    ) : isSaved ? (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Saved!
-                      </>
-                    ) : 'Save Changes'}
-                  </Button>
-                </form>
+
+                    {/* Single Action Button */}
+                    <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                      <div className="text-sm text-gray-500">
+                        Save your profile changes and update password if provided
+                      </div>
+                      
+                      <button
+                        type="submit"
+                        disabled={isLoading || isPasswordLoading}
+                        className="relative px-8 py-3 bg-white border-2 rounded-xl font-medium text-white overflow-hidden transition-all duration-300 hover:shadow-lg focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ 
+                          borderColor: '#4ECFBF',
+                          backgroundColor: (isLoading || isPasswordLoading) ? '#9CA3AF' : '#4ECFBF'
+                        }}
+                      >
+                        <div className="relative z-10 flex items-center">
+                          {(isLoading || isPasswordLoading) ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Saving Changes...
+                            </>
+                          ) : (isSaved || passwordSuccess) ? (
+                            <>
+                              <CheckCircle className="h-5 w-5 mr-2" />
+                              Changes Saved!
+                            </>
+                          ) : (
+                            <>
+                              <Settings className="h-5 w-5 mr-2" />
+                              Save Changes
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Animated background effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
 
               {/* Subscription Management */}
               <SubscriptionManagement />
               
-              {/* Account Actions */}
+              {/* Dangerous Area */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-red-100">
                 <h3 className="text-xl font-bold text-red-600 mb-6 flex items-center">
                   <Trash2 className="h-6 w-6 mr-2" />
-                  Account Actions
+                  Dangerous Area
                 </h3>
                 
-                <div className="space-y-4">
-                  <div className="bg-red-50 rounded-xl p-4">
-                    <h4 className="font-medium text-red-800 mb-2">Sign Out</h4>
-                    <p className="text-sm text-red-600 mb-4">
-                      Sign out of your account. You can sign back in anytime.
-                    </p>
-                    <button 
-                      onClick={handleLogout}
-                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
+                <div className="bg-red-100 rounded-xl p-4 border border-red-200">
+                  <h4 className="font-medium text-red-800 mb-2">Delete Account</h4>
+                  <p className="text-sm text-red-600 mb-4">
+                    Permanently delete your account and all associated data. This action cannot be undone.
+                  </p>
+                  <button 
+                    onClick={handleDeleteAccount}
+                    className="bg-red-700 hover:bg-red-800 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
+                  >
+                    Delete Account
+                  </button>
                 </div>
               </div>
             </div>
@@ -1430,6 +1683,56 @@ export default function ProfilePage() {
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-medium transition-all"
                 >
                   Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your learning data, progress, and subscription information.
+              </p>
+              
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+                <p className="text-sm text-red-700 font-medium">
+                  ⚠️ This will permanently deactivate your account and you will lose access to all your data.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccountConfirm}
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Account'
+                  )}
                 </button>
               </div>
             </div>

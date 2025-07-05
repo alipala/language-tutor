@@ -142,11 +142,11 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
   
   return (
-    <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+    <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border-2" style={{ borderColor: '#4ECFBF' }}>
       {/* Header - Always visible */}
       <div 
-        className="p-6 text-white relative overflow-hidden cursor-pointer"
-        style={{ backgroundColor: '#4ECFBF' }}
+        className="p-6 relative overflow-hidden cursor-pointer"
+        style={{ backgroundColor: 'white' }}
         onClick={onToggle}
       >
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
@@ -156,33 +156,33 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center">
               <div className={`transition-transform mr-3 ${isExpanded ? 'rotate-90' : ''}`}>
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-5 w-5" style={{ color: '#4ECFBF' }} />
               </div>
               <div>
-                <h2 className="text-xl font-bold flex items-center">
-                  <Award className="h-5 w-5 mr-2" />
-                  Assessment & Learning Journey #{index + 1}
+                <h2 className="text-xl font-bold flex items-center text-gray-800">
+                  <Award className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
+                  Your Personalized Learning Plan #{index + 1}
                   {index === 0 && (
                     <span className="ml-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
                       Most Recent
                     </span>
                   )}
                 </h2>
-                <p className="text-white/80 text-sm mt-1 flex items-center">
-                  <Calendar className="h-4 w-4 mr-1" />
+                <p className="text-gray-600 text-sm mt-1 flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" style={{ color: '#4ECFBF' }} />
                   {formattedDate} • {assessment.language || 'Language'} - {assessment.recommended_level || assessment.level || "B1"}
                 </p>
               </div>
             </div>
             
             <div className="text-right">
-              <div className="flex items-center bg-white/20 rounded-full px-3 py-1.5 mb-2">
-                <span className="text-sm font-medium mr-1">Score:</span>
-                <span className="text-lg font-bold">{assessment.overall_score}/100</span>
+              <div className="flex items-center bg-gray-100 rounded-full px-3 py-1.5 mb-2">
+                <span className="text-sm font-medium mr-1 text-gray-700">Score:</span>
+                <span className="text-lg font-bold text-gray-800">{assessment.overall_score}/100</span>
               </div>
               {learningPlan && (
-                <div className="flex items-center text-white/80 text-xs">
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                <div className="flex items-center text-gray-600 text-xs">
+                  <CheckCircle className="h-3 w-3 mr-1" style={{ color: '#4ECFBF' }} />
                   Learning Plan Created
                 </div>
               )}
@@ -190,35 +190,109 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           </div>
           
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Confidence */}
-            <div className="bg-gradient-to-br from-pink-400 to-rose-500 rounded-lg p-3 text-center text-white shadow-md">
-              <Heart className="h-4 w-4 mx-auto mb-1 opacity-90" />
-              <div className="text-sm font-bold">{assessment.confidence}%</div>
-              <div className="text-white/90 text-xs">Confidence</div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {/* Language */}
+            <div 
+              className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+              style={{ borderColor: '#4ECFBF' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#5CCFC0';
+                e.currentTarget.style.backgroundColor = '#F0FDFA';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#4ECFBF';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <Heart className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#4ECFBF' }} />
+              <div className="text-sm font-bold text-gray-800">{assessment.language ? assessment.language.charAt(0).toUpperCase() + assessment.language.slice(1) : 'Language'}</div>
+              <div className="text-gray-600 text-xs">Language</div>
             </div>
             
             {/* CEFR Level */}
-            <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg p-3 text-center text-white shadow-md">
-              <GraduationCap className="h-4 w-4 mx-auto mb-1 opacity-90" />
-              <div className="text-sm font-bold">{assessment.recommended_level || "B1"}</div>
-              <div className="text-white/90 text-xs">CEFR Level</div>
+            <div 
+              className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+              style={{ borderColor: '#FFD63A' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#ECC235';
+                e.currentTarget.style.backgroundColor = '#FFFBEB';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#FFD63A';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <GraduationCap className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#FFD63A' }} />
+              <div className="text-sm font-bold text-gray-800">{assessment.recommended_level || "B1"}</div>
+              <div className="text-gray-600 text-xs">CEFR Level</div>
             </div>
+            
+            {/* Learning Goals */}
+            {learningPlan && (
+              <div 
+                className="bg-white rounded-lg p-2 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                style={{ borderColor: '#3B82F6' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#2563EB';
+                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#3B82F6';
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                <Target className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#3B82F6' }} />
+                <div className="text-xs font-bold text-gray-800 leading-tight">
+                  {learningPlan.goals.slice(0, 2).map((goal, index) => (
+                    <div key={index} className="truncate">{goal.charAt(0).toUpperCase() + goal.slice(1)}</div>
+                  ))}
+                  {learningPlan.custom_goal && (
+                    <div className="truncate">{learningPlan.custom_goal.charAt(0).toUpperCase() + learningPlan.custom_goal.slice(1)}</div>
+                  )}
+                  {learningPlan.goals.length > 2 && (
+                    <div className="text-gray-500">+{learningPlan.goals.length - 2} more</div>
+                  )}
+                </div>
+                <div className="text-gray-600 text-xs">Goals</div>
+              </div>
+            )}
             
             {learningPlan && (
               <>
                 {/* Plan Duration */}
-                <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg p-3 text-center text-white shadow-md">
-                  <Timer className="h-4 w-4 mx-auto mb-1 opacity-90" />
-                  <div className="text-sm font-bold">{learningPlan.duration_months}m</div>
-                  <div className="text-white/90 text-xs">Plan Duration</div>
+                <div 
+                  className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                  style={{ borderColor: '#FFA955' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#FF9A42';
+                    e.currentTarget.style.backgroundColor = '#FFF7ED';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#FFA955';
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  <Timer className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#FFA955' }} />
+                  <div className="text-sm font-bold text-gray-800">{learningPlan.duration_months} {learningPlan.duration_months === 1 ? 'Month' : 'Months'}</div>
+                  <div className="text-gray-600 text-xs">Plan Duration</div>
                 </div>
                 
                 {/* Progress */}
-                <div className="bg-gradient-to-br from-emerald-400 to-green-500 rounded-lg p-3 text-center text-white shadow-md">
-                  <BarChart3 className="h-4 w-4 mx-auto mb-1 opacity-90" />
-                  <div className="text-sm font-bold">{Math.round(learningPlan.progress_percentage || 0)}%</div>
-                  <div className="text-white/90 text-xs">Progress</div>
+                <div 
+                  className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                  style={{ borderColor: '#F75A5A' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#E55252';
+                    e.currentTarget.style.backgroundColor = '#FEF2F2';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#F75A5A';
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  <BarChart3 className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#F75A5A' }} />
+                  <div className="text-sm font-bold text-gray-800">{Math.round(learningPlan.progress_percentage || 0)}%</div>
+                  <div className="text-gray-600 text-xs">Progress</div>
                 </div>
               </>
             )}
@@ -343,43 +417,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {/* Learning Plan Section */}
           {learningPlan ? (
             <div className="border-t pt-6">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2" style={{ color: '#4ECFBF' }} />
-                  Your Personalized Learning Plan
-                </h3>
-              </div>
               
-              {/* Plan Overview */}
-              <div className="bg-teal-50 rounded-xl p-4 mb-4" style={{ backgroundColor: '#F0FDFA' }}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>
-                      {learningPlan.language}
-                    </div>
-                    <div className="text-sm text-gray-600">Target Language</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>
-                      {learningPlan.proficiency_level}
-                    </div>
-                    <div className="text-sm text-gray-600">Target Level</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold" style={{ color: '#4ECFBF' }}>
-                      {learningPlan.duration_months}m
-                    </div>
-                    <div className="text-sm text-gray-600">Duration</div>
-                  </div>
-                </div>
-                
-                {planDate && (
-                  <div className="text-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 inline mr-1" />
-                    Plan created on {planDate}
-                  </div>
-                )}
-              </div>
 
               {/* Progress Tracking Section - Modern Card Design */}
               <div className="mb-6">
@@ -627,41 +665,8 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                 )}
               </div>
               
-              {/* Learning Goals */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-800 flex items-center">
-                    <Target className="h-4 w-4 mr-2" style={{ color: '#4ECFBF' }} />
-                    Learning Goals
-                  </h4>
-                  <button
-                    onClick={() => setShowPlanDetails(!showPlanDetails)}
-                    className="flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                    style={{ color: '#4ECFBF' }}
-                  >
-                    {showPlanDetails ? 'Show less' : 'Show details'}
-                    <ChevronDown className={`h-4 w-4 ml-1 transform transition-transform ${
-                      showPlanDetails ? 'rotate-180' : ''
-                    }`} />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {learningPlan.goals.map((goal, index) => (
-                    <Badge key={index} variant="secondary" className="bg-teal-100 text-teal-700">
-                      {goal}
-                    </Badge>
-                  ))}
-                  {learningPlan.custom_goal && (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                      {learningPlan.custom_goal}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              {/* Detailed Plan View */}
-              {showPlanDetails && (
-                <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
+              {/* Detailed Plan View - Always Visible */}
+              <div className="space-y-4 mt-6 pt-4 border-t border-gray-200">
                   {/* Weekly Schedule Preview with Slider for All Weeks */}
                   {(() => {
                     // Use only the personalized weekly schedule from the learning plan
@@ -929,7 +934,6 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                     </div>
                   )}
                 </div>
-              )}
               
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mt-6">

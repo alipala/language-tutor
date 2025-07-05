@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import httpx
 import os
+from pydantic import BaseModel
 
 # Import Google Auth libraries
 from google.oauth2 import id_token
@@ -23,6 +24,12 @@ from models import (
     EmailVerificationConfirm,
     ResendVerificationRequest
 )
+
+# Add password update model
+class PasswordUpdateRequest(BaseModel):
+    current_password: str
+    new_password: str
+
 from auth import (
     authenticate_user, 
     create_access_token, 
@@ -36,7 +43,9 @@ from auth import (
     mark_user_verified,
     resend_verification_email,
     mark_existing_users_verified,
-    get_user_by_id
+    get_user_by_id,
+    verify_password,
+    get_password_hash
 )
 from email_service import send_welcome_email
 from database import users_collection
@@ -321,6 +330,84 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     del updated_user["_id"]
     
     return UserResponse(**updated_user)
+
+@router.post("/update-password", status_code=status.HTTP_204_NO_CONTENT)
+async def update_password(request: PasswordUpdateRequest, current_user: UserResponse = Depends(get_current_user)):
+    """
+    Update user password
+    """
+    # Get the current user from database to verify current password
+    user = await get_user_by_id(str(current_user.id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Check if user is a Google OAuth user
+    if user.hashed_password == "GOOGLE_OAUTH":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update password for Google OAuth users"
+        )
+    
+    # Verify current password
+    if not verify_password(request.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    # Hash the new password
+    new_hashed_password = get_password_hash(request.new_password)
+    
+    # Update the password in database
+    result = await users_collection.update_one(
+        {"_id": user.id},
+        {"$set": {"hashed_password": new_hashed_password}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update password"
+        )
+    
+    return None
+
+@router.post("/deactivate-account", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate_account(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Deactivate user account by setting is_active to false
+    """
+    # Get the current user from database
+    user = await get_user_by_id(str(current_user.id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Check if account is already deactivated
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account is already deactivated"
+        )
+    
+    # Deactivate the account by setting is_active to false
+    result = await users_collection.update_one(
+        {"_id": user.id},
+        {"$set": {"is_active": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to deactivate account"
+        )
+    
+    return None
 
 # Email verification endpoints
 @router.get("/verify-email")
