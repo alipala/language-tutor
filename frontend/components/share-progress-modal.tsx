@@ -79,6 +79,7 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
   const [availableWeeks, setAvailableWeeks] = useState<WeekData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [isLoadingWeeks, setIsLoadingWeeks] = useState(false);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -88,11 +89,13 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
       setError(null);
       setCopySuccess(null);
       setSelectedWeek(null);
+      setIsLoadingWeeks(true);
       loadAvailableWeeks();
     }
   }, [isOpen]);
 
   const loadAvailableWeeks = async () => {
+    setIsLoadingWeeks(true);
     try {
       // Get real user weeks data from backend
       const apiUrl = process.env.NODE_ENV === 'production' 
@@ -149,6 +152,8 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
         });
       }
       setAvailableWeeks(fallbackWeeks);
+    } finally {
+      setIsLoadingWeeks(false);
     }
   };
 
@@ -267,22 +272,71 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
         
         // Create message with shortened URL
         const messageWithImage = `${shareData.share_text}\n\n📸 View my progress image: ${shortImageUrl}`;
-        const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+        
+        // Detect mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        let whatsappUrl;
+        if (isMobile) {
+          // For mobile devices, use the app protocol to open the WhatsApp app directly
+          whatsappUrl = `whatsapp://send?text=${encodeURIComponent(messageWithImage)}`;
+          console.log('[WHATSAPP] Mobile detected - using app protocol:', whatsappUrl);
+        } else {
+          // For desktop, use web.whatsapp.com
+          whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+          console.log('[WHATSAPP] Desktop detected - using web WhatsApp:', whatsappUrl);
+        }
         
         console.log('[WHATSAPP] Final message length:', messageWithImage.length);
-        console.log('[WHATSAPP] Opening WhatsApp with shortened URL...');
+        console.log('[WHATSAPP] Opening WhatsApp...');
         
-        window.open(whatsappUrl, '_blank');
-        setCopySuccess(`WhatsApp opened with shortened URL! (${shortImageUrl.length} chars vs ${shareData.image_url.length} chars)`);
+        // Try to open WhatsApp
+        if (isMobile) {
+          // For mobile, try app first, fallback to web if app not installed
+          const link = document.createElement('a');
+          link.href = whatsappUrl;
+          link.click();
+          
+          // Fallback to web WhatsApp after a short delay if app doesn't open
+          setTimeout(() => {
+            const webUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+            window.open(webUrl, '_blank');
+          }, 2000);
+          
+          setCopySuccess('Opening WhatsApp app... (fallback to web if app not available)');
+        } else {
+          window.open(whatsappUrl, '_blank');
+          setCopySuccess(`WhatsApp web opened with shortened URL! (${shortImageUrl.length} chars vs ${shareData.image_url.length} chars)`);
+        }
+        
         setTimeout(() => setCopySuccess(null), 5000);
       } catch (error) {
         console.error('[WHATSAPP] Error shortening URL:', error);
         
         // Fallback to original URL if shortening fails
         const messageWithImage = `${shareData.share_text}\n\n📸 View my progress image: ${shareData.image_url}`;
-        const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
-        window.open(whatsappUrl, '_blank');
-        setCopySuccess('WhatsApp opened (URL shortening failed, using original URL)');
+        
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(messageWithImage)}`;
+          const link = document.createElement('a');
+          link.href = whatsappUrl;
+          link.click();
+          
+          // Fallback to web
+          setTimeout(() => {
+            const webUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+            window.open(webUrl, '_blank');
+          }, 2000);
+          
+          setCopySuccess('WhatsApp opened (URL shortening failed, using original URL)');
+        } else {
+          const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageWithImage)}`;
+          window.open(whatsappUrl, '_blank');
+          setCopySuccess('WhatsApp opened (URL shortening failed, using original URL)');
+        }
+        
         setTimeout(() => setCopySuccess(null), 5000);
       }
     }
@@ -345,7 +399,17 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
               </div>
               
               {/* Week Grid */}
-              {availableWeeks.length > 0 ? (
+              {isLoadingWeeks ? (
+                <div className="text-center py-12">
+                  <SoundwaveLoader />
+                  <div className="mt-6">
+                    <div className="text-xl font-bold text-gray-800 mb-2">
+                      Loading your achievements...
+                    </div>
+                    <p className="text-gray-600">Finding your completed weeks</p>
+                  </div>
+                </div>
+              ) : availableWeeks.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
                   {availableWeeks.map((week) => (
                     <button
