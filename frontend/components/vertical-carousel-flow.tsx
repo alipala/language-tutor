@@ -223,7 +223,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'food', name: 'Food & Cooking', icon: '🍲',
+        id: 'food',
+        names: {
+          english: 'Food & Cooking',
+          dutch: 'Eten & Koken',
+          spanish: 'Comida y Cocina',
+          german: 'Essen & Kochen',
+          french: 'Nourriture & Cuisine',
+          portuguese: 'Comida & Culinária'
+        },
+        icon: '🍲',
         descriptions: {
           english: 'Talk about cuisines, recipes, restaurants, and cooking techniques.',
           dutch: 'Praat over keukens, recepten, restaurants en kooktechnieken.',
@@ -234,7 +243,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'work', name: 'Work & Career', icon: '💼',
+        id: 'work',
+        names: {
+          english: 'Work & Career',
+          dutch: 'Werk & Carrière',
+          spanish: 'Trabajo y Carrera',
+          german: 'Arbeit & Karriere',
+          french: 'Travail & Carrière',
+          portuguese: 'Trabalho & Carreira'
+        },
+        icon: '💼',
         descriptions: {
           english: 'Discuss jobs, career goals, workplace situations, and professional development.',
           dutch: 'Bespreek banen, carrièredoelen, werksituaties en professionele ontwikkeling.',
@@ -245,7 +263,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'education', name: 'Education & Learning', icon: '📚',
+        id: 'education',
+        names: {
+          english: 'Education & Learning',
+          dutch: 'Onderwijs & Leren',
+          spanish: 'Educación y Aprendizaje',
+          german: 'Bildung & Lernen',
+          french: 'Éducation & Apprentissage',
+          portuguese: 'Educação & Aprendizagem'
+        },
+        icon: '📚',
         descriptions: {
           english: 'Talk about school, university, learning experiences, and educational goals.',
           dutch: 'Praat over school, universiteit, leerervaringen en educatieve doelen.',
@@ -258,7 +285,16 @@ export default function VerticalCarouselFlow() {
       
       // Daily Life Topics (8 new)
       {
-        id: 'daily-routine', name: 'Daily Routines', icon: '⏰',
+        id: 'daily-routine',
+        names: {
+          english: 'Daily Routines',
+          dutch: 'Dagelijkse Routines',
+          spanish: 'Rutinas Diarias',
+          german: 'Tägliche Routinen',
+          french: 'Routines Quotidiennes',
+          portuguese: 'Rotinas Diárias'
+        },
+        icon: '⏰',
         descriptions: {
           english: 'Share your daily schedule, morning routines, and everyday activities.',
           dutch: 'Deel je dagelijkse schema, ochtendroutines en alledaagse activiteiten.',
@@ -269,7 +305,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'family', name: 'Family & Relationships', icon: '👨‍👩‍👧‍👦',
+        id: 'family',
+        names: {
+          english: 'Family & Relationships',
+          dutch: 'Familie & Relaties',
+          spanish: 'Familia y Relaciones',
+          german: 'Familie & Beziehungen',
+          french: 'Famille & Relations',
+          portuguese: 'Família & Relacionamentos'
+        },
+        icon: '👨‍👩‍👧‍👦',
         descriptions: {
           english: 'Discuss family members, relationships, friendships, and social connections.',
           dutch: 'Bespreek familieleden, relaties, vriendschappen en sociale verbindingen.',
@@ -280,7 +325,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'health', name: 'Health & Fitness', icon: '🏃‍♂️',
+        id: 'health',
+        names: {
+          english: 'Health & Fitness',
+          dutch: 'Gezondheid & Fitness',
+          spanish: 'Salud y Fitness',
+          german: 'Gesundheit & Fitness',
+          french: 'Santé & Fitness',
+          portuguese: 'Saúde & Fitness'
+        },
+        icon: '🏃‍♂️',
         descriptions: {
           english: 'Talk about exercise, healthy habits, medical topics, and wellness.',
           dutch: 'Praat over beweging, gezonde gewoonten, medische onderwerpen en welzijn.',
@@ -291,7 +345,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'shopping', name: 'Shopping & Money', icon: '🛍️',
+        id: 'shopping',
+        names: {
+          english: 'Shopping & Money',
+          dutch: 'Winkelen & Geld',
+          spanish: 'Compras y Dinero',
+          german: 'Einkaufen & Geld',
+          french: 'Shopping & Argent',
+          portuguese: 'Compras & Dinheiro'
+        },
+        icon: '🛍️',
         descriptions: {
           english: 'Discuss shopping experiences, prices, budgeting, and financial topics.',
           dutch: 'Bespreek winkelervaringen, prijzen, budgetteren en financiële onderwerpen.',
@@ -304,7 +367,16 @@ export default function VerticalCarouselFlow() {
       
       // Entertainment & Culture (4 enhanced + 4 new)
       {
-        id: 'movies', name: 'Movies & TV Shows', icon: '🎬',
+        id: 'movies',
+        names: {
+          english: 'Movies & TV Shows',
+          dutch: 'Films & TV-shows',
+          spanish: 'Películas y Series',
+          german: 'Filme & TV-Serien',
+          french: 'Films & Séries TV',
+          portuguese: 'Filmes & Séries'
+        },
+        icon: '🎬',
         descriptions: {
           english: 'Discuss films, series, actors, directors, and entertainment.',
           dutch: 'Bespreek films, series, acteurs, regisseurs en entertainment.',
@@ -315,7 +387,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'music', name: 'Music & Arts', icon: '🎵',
+        id: 'music',
+        names: {
+          english: 'Music & Arts',
+          dutch: 'Muziek & Kunst',
+          spanish: 'Música y Artes',
+          german: 'Musik & Kunst',
+          french: 'Musique & Arts',
+          portuguese: 'Música & Artes'
+        },
+        icon: '🎵',
         descriptions: {
           english: 'Talk about music genres, artists, concerts, and creative arts.',
           dutch: 'Praat over muziekgenres, artiesten, concerten en creatieve kunsten.',
@@ -326,7 +407,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'sports', name: 'Sports & Games', icon: '⚽',
+        id: 'sports',
+        names: {
+          english: 'Sports & Games',
+          dutch: 'Sport & Spellen',
+          spanish: 'Deportes y Juegos',
+          german: 'Sport & Spiele',
+          french: 'Sports & Jeux',
+          portuguese: 'Esportes & Jogos'
+        },
+        icon: '⚽',
         descriptions: {
           english: 'Discuss sports, games, competitions, and physical activities.',
           dutch: 'Bespreek sporten, spellen, competities en fysieke activiteiten.',
@@ -337,7 +427,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'hobbies', name: 'Hobbies & Interests', icon: '🎨',
+        id: 'hobbies',
+        names: {
+          english: 'Hobbies & Interests',
+          dutch: 'Hobbys & Interesses',
+          spanish: 'Aficiones e Intereses',
+          german: 'Hobbys & Interessen',
+          french: 'Loisirs & Intérêts',
+          portuguese: 'Hobbies & Interesses'
+        },
+        icon: '🎨',
         descriptions: {
           english: 'Share your favorite activities, creative pursuits, and personal interests.',
           dutch: 'Deel je favoriete activiteiten, creatieve bezigheden en persoonlijke interesses.',
@@ -350,7 +449,16 @@ export default function VerticalCarouselFlow() {
       
       // Modern Life Topics (4 new)
       {
-        id: 'technology', name: 'Technology & Digital Life', icon: '💻',
+        id: 'technology',
+        names: {
+          english: 'Technology & Digital Life',
+          dutch: 'Technologie & Digitaal Leven',
+          spanish: 'Tecnología y Vida Digital',
+          german: 'Technologie & Digitales Leben',
+          french: 'Technologie & Vie Numérique',
+          portuguese: 'Tecnologia & Vida Digital'
+        },
+        icon: '💻',
         descriptions: {
           english: 'Discuss gadgets, apps, social media, and digital trends.',
           dutch: 'Bespreek gadgets, apps, sociale media en digitale trends.',
@@ -361,7 +469,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'news', name: 'News & Current Events', icon: '📰',
+        id: 'news',
+        names: {
+          english: 'News & Current Events',
+          dutch: 'Nieuws & Actualiteiten',
+          spanish: 'Noticias y Eventos Actuales',
+          german: 'Nachrichten & Aktuelles',
+          french: 'Actualités & Événements',
+          portuguese: 'Notícias & Eventos Atuais'
+        },
+        icon: '📰',
         descriptions: {
           english: 'Talk about current events, news stories, and global happenings.',
           dutch: 'Praat over actuele gebeurtenissen, nieuwsverhalen en wereldwijde gebeurtenissen.',
@@ -372,7 +489,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'weather', name: 'Weather & Seasons', icon: '🌤️',
+        id: 'weather',
+        names: {
+          english: 'Weather & Seasons',
+          dutch: 'Weer & Seizoenen',
+          spanish: 'Clima y Estaciones',
+          german: 'Wetter & Jahreszeiten',
+          french: 'Météo & Saisons',
+          portuguese: 'Clima & Estações'
+        },
+        icon: '🌤️',
         descriptions: {
           english: 'Discuss weather conditions, seasons, climate, and outdoor activities.',
           dutch: 'Bespreek weersomstandigheden, seizoenen, klimaat en buitenactiviteiten.',
@@ -383,7 +509,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'transportation', name: 'Transportation & Travel', icon: '🚗',
+        id: 'transportation',
+        names: {
+          english: 'Transportation & Travel',
+          dutch: 'Vervoer & Reizen',
+          spanish: 'Transporte y Viajes',
+          german: 'Transport & Reisen',
+          french: 'Transport & Voyage',
+          portuguese: 'Transporte & Viagem'
+        },
+        icon: '🚗',
         descriptions: {
           english: 'Talk about vehicles, public transport, commuting, and getting around.',
           dutch: 'Praat over voertuigen, openbaar vervoer, woon-werkverkeer en verplaatsingen.',
@@ -396,7 +531,16 @@ export default function VerticalCarouselFlow() {
       
       // Lifestyle & Personal Topics (4 new)
       {
-        id: 'culture', name: 'Culture & Traditions', icon: '🏛️',
+        id: 'culture',
+        names: {
+          english: 'Culture & Traditions',
+          dutch: 'Cultuur & Tradities',
+          spanish: 'Cultura y Tradiciones',
+          german: 'Kultur & Traditionen',
+          french: 'Culture & Traditions',
+          portuguese: 'Cultura & Tradições'
+        },
+        icon: '🏛️',
         descriptions: {
           english: 'Explore cultural aspects, traditions, festivals, and customs.',
           dutch: 'Verken culturele aspecten, tradities, festivals en gebruiken.',
@@ -407,7 +551,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'environment', name: 'Environment & Nature', icon: '🌳',
+        id: 'environment',
+        names: {
+          english: 'Environment & Nature',
+          dutch: 'Milieu & Natuur',
+          spanish: 'Medio Ambiente y Naturaleza',
+          german: 'Umwelt & Natur',
+          french: 'Environnement & Nature',
+          portuguese: 'Meio Ambiente & Natureza'
+        },
+        icon: '🌳',
         descriptions: {
           english: 'Explore environmental issues, sustainability, and the natural world.',
           dutch: 'Verken milieukwesties, duurzaamheid en de natuurlijke wereld.',
@@ -418,7 +571,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'home', name: 'Home & Living', icon: '🏠',
+        id: 'home',
+        names: {
+          english: 'Home & Living',
+          dutch: 'Thuis & Wonen',
+          spanish: 'Hogar y Vida',
+          german: 'Zuhause & Wohnen',
+          french: 'Maison & Vie',
+          portuguese: 'Casa & Vida'
+        },
+        icon: '🏠',
         descriptions: {
           english: 'Discuss housing, home decoration, household tasks, and living spaces.',
           dutch: 'Bespreek huisvesting, woninginrichting, huishoudelijke taken en woonruimtes.',
@@ -429,7 +591,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'pets', name: 'Pets & Animals', icon: '🐕',
+        id: 'pets',
+        names: {
+          english: 'Pets & Animals',
+          dutch: 'Huisdieren & Dieren',
+          spanish: 'Mascotas y Animales',
+          german: 'Haustiere & Tiere',
+          french: 'Animaux & Compagnie',
+          portuguese: 'Animais & Pets'
+        },
+        icon: '🐕',
         descriptions: {
           english: 'Talk about pets, animals, wildlife, and animal care.',
           dutch: 'Praat over huisdieren, dieren, wilde dieren en dierenverzorging.',
@@ -1219,7 +1390,7 @@ export default function VerticalCarouselFlow() {
                           {!selectedLanguage && 'Conversation'}
                         </span>
                       )}
-                      {(level.code.startsWith('B') || level.code.startsWith('C')) && (
+                      {level.code.startsWith('B') && (
                         <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm">
                           {selectedLanguage === 'dutch' && 'Complexe Onderwerpen'}
                           {selectedLanguage === 'english' && 'Complex Topics'}
