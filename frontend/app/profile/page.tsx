@@ -713,35 +713,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Recent Achievements */}
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                    <Trophy className="h-6 w-6 mr-2" style={{ color: '#FFD63A' }} />
-                    Recent Achievements
-                  </h3>
-                  <button 
-                    onClick={() => setActiveTab('achievements')}
-                    className="text-sm font-medium flex items-center hover:opacity-80 transition-opacity"
-                    style={{ color: '#4ECFBF' }}
-                  >
-                    View all <ChevronRight className="h-4 w-4 ml-1" />
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {achievements.filter(a => a.earned).slice(0, 4).map((achievement, index) => (
-                    <div key={index} className="border rounded-xl p-4 flex items-center space-x-3" style={{ backgroundColor: '#FFFBF0', borderColor: 'rgba(255, 214, 58, 0.2)' }}>
-                      <div className="text-2xl">{achievement.icon}</div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">{achievement.name}</h4>
-                        <p className="text-sm text-gray-600">{achievement.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">{achievement.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Conversation History */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -1272,90 +1243,220 @@ export default function ProfilePage() {
           {activeTab === 'settings' && (
             <div className="space-y-8">
               {/* Account Settings */}
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <User className="h-6 w-6 mr-2 text-purple-500" />
-                  Account Settings
-                </h3>
-                
-                {error && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {error}
-                  </div>
-                )}
-                
-                <form onSubmit={handleSaveProfile} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                      <Input 
-                        type="text" 
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                {/* Header Section */}
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                      <User className="h-6 w-6" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                      <Input 
-                        type="email" 
-                        className="w-full p-3 border border-gray-300 rounded-xl bg-gray-50 cursor-not-allowed"
-                        value={email}
-                        disabled
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                      <h3 className="text-xl font-bold">Account Settings</h3>
+                      <p className="text-indigo-100 text-sm">Manage your personal information and preferences</p>
                     </div>
                   </div>
+                </div>
+
+                {/* Content Section */}
+                <div className="p-6">
+                  {error && (
+                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-red-700 font-medium">{error}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isSaved && (
+                    <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <CheckCircle className="h-5 w-5 text-green-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-green-700 font-medium">Settings saved successfully!</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <form onSubmit={handleSaveProfile} className="space-y-8">
+                    {/* Personal Information Section */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Language</label>
-                      <Input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        value={preferredLanguage}
-                        onChange={(e) => setPreferredLanguage(e.target.value)}
-                        placeholder="e.g. Spanish, French, German"
-                      />
+                      <div className="flex items-center space-x-2 mb-4">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <User className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-800">Personal Information</h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Full Name Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Edit3 className="h-4 w-4 mr-1 text-gray-400" />
+                            Full Name
+                          </label>
+                          <div className="relative">
+                            <Input 
+                              type="text" 
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white hover:border-gray-300 group-hover:shadow-sm"
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              placeholder="Enter your full name"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <div className="w-2 h-2 bg-green-400 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Email Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Lock className="h-4 w-4 mr-1 text-gray-400" />
+                            Email Address
+                          </label>
+                          <div className="relative">
+                            <Input 
+                              type="email" 
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl bg-gray-50 cursor-not-allowed text-gray-500"
+                              value={email}
+                              disabled
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <Lock className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2 flex items-center">
+                            <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            Email address cannot be changed for security reasons
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Learning Preferences Section */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Proficiency Level</label>
-                      <Input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        value={preferredLevel}
-                        onChange={(e) => setPreferredLevel(e.target.value)}
-                        placeholder="e.g. Beginner, Intermediate, Advanced"
-                      />
+                      <div className="flex items-center space-x-2 mb-4">
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-800">Learning Preferences</h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Preferred Language Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Volume2 className="h-4 w-4 mr-1 text-gray-400" />
+                            Preferred Language
+                          </label>
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white hover:border-gray-300 group-hover:shadow-sm"
+                              value={preferredLanguage}
+                              onChange={(e) => setPreferredLanguage(e.target.value)}
+                              placeholder="e.g. Spanish, French, German"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <div className="w-2 h-2 bg-purple-400 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">The language you want to learn or practice</p>
+                        </div>
+
+                        {/* Proficiency Level Field */}
+                        <div className="group">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Target className="h-4 w-4 mr-1 text-gray-400" />
+                            Proficiency Level
+                          </label>
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white hover:border-gray-300 group-hover:shadow-sm"
+                              value={preferredLevel}
+                              onChange={(e) => setPreferredLevel(e.target.value)}
+                              placeholder="e.g. Beginner, Intermediate, Advanced"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <div className="w-2 h-2 bg-purple-400 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Your current skill level in the language</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <Button 
-                    type="submit"
-                    className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 px-6 rounded-xl font-medium hover:shadow-lg transition-all"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </>
-                    ) : isSaved ? (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Saved!
-                      </>
-                    ) : 'Save Changes'}
-                  </Button>
-                </form>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                      <div className="text-sm text-gray-500">
+                        Changes will be saved to your profile
+                      </div>
+                      
+                      <div className="flex space-x-3">
+                        <button
+                          type="button"
+                          className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                          onClick={() => {
+                            setName(user?.name || '');
+                            setPreferredLanguage(user?.preferred_language || '');
+                            setPreferredLevel(user?.preferred_level || '');
+                            setError(null);
+                          }}
+                        >
+                          Reset Changes
+                        </button>
+                        
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="relative px-8 py-3 bg-white border-2 rounded-xl font-medium text-white overflow-hidden transition-all duration-300 hover:shadow-lg focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ 
+                            borderColor: '#4ECFBF',
+                            backgroundColor: isLoading ? '#9CA3AF' : '#4ECFBF'
+                          }}
+                        >
+                          <div className="relative z-10 flex items-center">
+                            {isLoading ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Saving Changes...
+                              </>
+                            ) : isSaved ? (
+                              <>
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                Changes Saved!
+                              </>
+                            ) : (
+                              <>
+                                <Settings className="h-5 w-5 mr-2" />
+                                Save Changes
+                              </>
+                            )}
+                          </div>
+                          
+                          {/* Animated background effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
               </div>
 
               {/* Subscription Management */}
