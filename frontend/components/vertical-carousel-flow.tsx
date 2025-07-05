@@ -203,7 +203,16 @@ export default function VerticalCarouselFlow() {
     const baseTopics = [
       // Core Topics (8 original + enhanced)
       {
-        id: 'travel', name: 'Travel & Tourism', icon: '✈️',
+        id: 'travel',
+        names: {
+          english: 'Travel & Tourism',
+          dutch: 'Reizen & Toerisme',
+          spanish: 'Viajes y Turismo',
+          german: 'Reisen & Tourismus',
+          french: 'Voyage & Tourisme',
+          portuguese: 'Viagem & Turismo'
+        },
+        icon: '✈️',
         descriptions: {
           english: 'Discuss travel destinations, experiences, and planning trips.',
           dutch: 'Bespreek reisbestemmingen, ervaringen en het plannen van reizen.',
@@ -447,7 +456,9 @@ export default function VerticalCarouselFlow() {
     
     return baseTopics.map(topic => ({
       id: topic.id,
-      name: topic.name,
+      name: topic.names 
+        ? (topic.names[lang as keyof typeof topic.names] || topic.names.english)
+        : topic.name || 'Unknown Topic',
       description: topic.descriptions[lang as keyof typeof topic.descriptions] || topic.descriptions.english,
       icon: topic.icon
     }));
@@ -1087,7 +1098,7 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">Choose your proficiency level</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {levels.map((level, index) => {
                 const getLevelColors = (code: string) => {
                   if (code.startsWith('A')) return {
@@ -1114,9 +1125,9 @@ export default function VerticalCarouselFlow() {
                     key={level.code}
                     onClick={() => handleLevelSelect(level.code)}
                     className={`
-                      relative overflow-hidden flex flex-col items-start p-6 rounded-xl text-left
+                      relative overflow-hidden flex flex-col items-start p-4 md:p-5 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:-translate-y-2
-                      bg-white h-[220px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
+                      bg-white h-[180px] md:h-[200px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
                       shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up
                       ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
                     `}

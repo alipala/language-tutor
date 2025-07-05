@@ -36,7 +36,14 @@ export default function TopicSelection() {
       // Core Topics (8 original + enhanced)
       {
         id: 'travel',
-        name: 'Travel & Tourism',
+        names: {
+          english: 'Travel & Tourism',
+          dutch: 'Reizen & Toerisme',
+          spanish: 'Viajes y Turismo',
+          german: 'Reisen & Tourismus',
+          french: 'Voyage & Tourisme',
+          portuguese: 'Viagem & Turismo'
+        },
         icon: '✈️',
         descriptions: {
           english: 'Discuss travel destinations, experiences, and planning trips.',
@@ -49,7 +56,14 @@ export default function TopicSelection() {
       },
       {
         id: 'food',
-        name: 'Food & Cooking',
+        names: {
+          english: 'Food & Cooking',
+          dutch: 'Eten & Koken',
+          spanish: 'Comida y Cocina',
+          german: 'Essen & Kochen',
+          french: 'Nourriture & Cuisine',
+          portuguese: 'Comida & Culinária'
+        },
         icon: '🍲',
         descriptions: {
           english: 'Talk about cuisines, recipes, restaurants, and cooking techniques.',
@@ -62,7 +76,14 @@ export default function TopicSelection() {
       },
       {
         id: 'work',
-        name: 'Work & Career',
+        names: {
+          english: 'Work & Career',
+          dutch: 'Werk & Carrière',
+          spanish: 'Trabajo y Carrera',
+          german: 'Arbeit & Karriere',
+          french: 'Travail & Carrière',
+          portuguese: 'Trabalho & Carreira'
+        },
         icon: '💼',
         descriptions: {
           english: 'Discuss jobs, career goals, workplace situations, and professional development.',
@@ -75,7 +96,14 @@ export default function TopicSelection() {
       },
       {
         id: 'education',
-        name: 'Education & Learning',
+        names: {
+          english: 'Education & Learning',
+          dutch: 'Onderwijs & Leren',
+          spanish: 'Educación y Aprendizaje',
+          german: 'Bildung & Lernen',
+          french: 'Éducation & Apprentissage',
+          portuguese: 'Educação & Aprendizagem'
+        },
         icon: '📚',
         descriptions: {
           english: 'Talk about school, university, learning experiences, and educational goals.',
@@ -90,7 +118,14 @@ export default function TopicSelection() {
       // Daily Life Topics (8 new)
       {
         id: 'daily-routine',
-        name: 'Daily Routines',
+        names: {
+          english: 'Daily Routines',
+          dutch: 'Dagelijkse Routines',
+          spanish: 'Rutinas Diarias',
+          german: 'Tägliche Routinen',
+          french: 'Routines Quotidiennes',
+          portuguese: 'Rotinas Diárias'
+        },
         icon: '⏰',
         descriptions: {
           english: 'Share your daily schedule, morning routines, and everyday activities.',
@@ -103,7 +138,14 @@ export default function TopicSelection() {
       },
       {
         id: 'family',
-        name: 'Family & Relationships',
+        names: {
+          english: 'Family & Relationships',
+          dutch: 'Familie & Relaties',
+          spanish: 'Familia y Relaciones',
+          german: 'Familie & Beziehungen',
+          french: 'Famille & Relations',
+          portuguese: 'Família & Relacionamentos'
+        },
         icon: '👨‍👩‍👧‍👦',
         descriptions: {
           english: 'Discuss family members, relationships, friendships, and social connections.',
@@ -116,7 +158,14 @@ export default function TopicSelection() {
       },
       {
         id: 'health',
-        name: 'Health & Fitness',
+        names: {
+          english: 'Health & Fitness',
+          dutch: 'Gezondheid & Fitness',
+          spanish: 'Salud y Fitness',
+          german: 'Gesundheit & Fitness',
+          french: 'Santé & Fitness',
+          portuguese: 'Saúde & Fitness'
+        },
         icon: '🏃‍♂️',
         descriptions: {
           english: 'Talk about exercise, healthy habits, medical topics, and wellness.',
@@ -129,7 +178,14 @@ export default function TopicSelection() {
       },
       {
         id: 'shopping',
-        name: 'Shopping & Money',
+        names: {
+          english: 'Shopping & Money',
+          dutch: 'Winkelen & Geld',
+          spanish: 'Compras y Dinero',
+          german: 'Einkaufen & Geld',
+          french: 'Shopping & Argent',
+          portuguese: 'Compras & Dinheiro'
+        },
         icon: '🛍️',
         descriptions: {
           english: 'Discuss shopping experiences, prices, budgeting, and financial topics.',
@@ -144,7 +200,14 @@ export default function TopicSelection() {
       // Entertainment & Culture (4 enhanced + 4 new)
       {
         id: 'movies',
-        name: 'Movies & TV Shows',
+        names: {
+          english: 'Movies & TV Shows',
+          dutch: 'Films & TV-shows',
+          spanish: 'Películas y Series',
+          german: 'Filme & TV-Serien',
+          french: 'Films & Séries TV',
+          portuguese: 'Filmes & Séries'
+        },
         icon: '🎬',
         descriptions: {
           english: 'Discuss films, series, actors, directors, and entertainment.',
@@ -157,7 +220,14 @@ export default function TopicSelection() {
       },
       {
         id: 'music',
-        name: 'Music & Arts',
+        names: {
+          english: 'Music & Arts',
+          dutch: 'Muziek & Kunst',
+          spanish: 'Música y Artes',
+          german: 'Musik & Kunst',
+          french: 'Musique & Arts',
+          portuguese: 'Música & Artes'
+        },
         icon: '🎵',
         descriptions: {
           english: 'Talk about music genres, artists, concerts, and creative arts.',
@@ -170,7 +240,14 @@ export default function TopicSelection() {
       },
       {
         id: 'sports',
-        name: 'Sports & Games',
+        names: {
+          english: 'Sports & Games',
+          dutch: 'Sport & Spellen',
+          spanish: 'Deportes y Juegos',
+          german: 'Sport & Spiele',
+          french: 'Sports & Jeux',
+          portuguese: 'Esportes & Jogos'
+        },
         icon: '⚽',
         descriptions: {
           english: 'Discuss sports, games, competitions, and physical activities.',
@@ -183,7 +260,14 @@ export default function TopicSelection() {
       },
       {
         id: 'hobbies',
-        name: 'Hobbies & Interests',
+        names: {
+          english: 'Hobbies & Interests',
+          dutch: 'Hobbys & Interesses',
+          spanish: 'Aficiones e Intereses',
+          german: 'Hobbys & Interessen',
+          french: 'Loisirs & Intérêts',
+          portuguese: 'Hobbies & Interesses'
+        },
         icon: '🎨',
         descriptions: {
           english: 'Share your favorite activities, creative pursuits, and personal interests.',
@@ -198,7 +282,14 @@ export default function TopicSelection() {
       // Modern Life Topics (4 new)
       {
         id: 'technology',
-        name: 'Technology & Digital Life',
+        names: {
+          english: 'Technology & Digital Life',
+          dutch: 'Technologie & Digitaal Leven',
+          spanish: 'Tecnología y Vida Digital',
+          german: 'Technologie & Digitales Leben',
+          french: 'Technologie & Vie Numérique',
+          portuguese: 'Tecnologia & Vida Digital'
+        },
         icon: '💻',
         descriptions: {
           english: 'Discuss gadgets, apps, social media, and digital trends.',
@@ -211,7 +302,14 @@ export default function TopicSelection() {
       },
       {
         id: 'news',
-        name: 'News & Current Events',
+        names: {
+          english: 'News & Current Events',
+          dutch: 'Nieuws & Actualiteiten',
+          spanish: 'Noticias y Eventos Actuales',
+          german: 'Nachrichten & Aktuelles',
+          french: 'Actualités & Événements',
+          portuguese: 'Notícias & Eventos Atuais'
+        },
         icon: '📰',
         descriptions: {
           english: 'Talk about current events, news stories, and global happenings.',
@@ -224,7 +322,14 @@ export default function TopicSelection() {
       },
       {
         id: 'weather',
-        name: 'Weather & Seasons',
+        names: {
+          english: 'Weather & Seasons',
+          dutch: 'Weer & Seizoenen',
+          spanish: 'Clima y Estaciones',
+          german: 'Wetter & Jahreszeiten',
+          french: 'Météo & Saisons',
+          portuguese: 'Clima & Estações'
+        },
         icon: '🌤️',
         descriptions: {
           english: 'Discuss weather conditions, seasons, climate, and outdoor activities.',
@@ -237,7 +342,14 @@ export default function TopicSelection() {
       },
       {
         id: 'transportation',
-        name: 'Transportation & Travel',
+        names: {
+          english: 'Transportation & Travel',
+          dutch: 'Vervoer & Reizen',
+          spanish: 'Transporte y Viajes',
+          german: 'Transport & Reisen',
+          french: 'Transport & Voyage',
+          portuguese: 'Transporte & Viagem'
+        },
         icon: '🚗',
         descriptions: {
           english: 'Talk about vehicles, public transport, commuting, and getting around.',
@@ -252,7 +364,14 @@ export default function TopicSelection() {
       // Lifestyle & Personal Topics (4 new)
       {
         id: 'culture',
-        name: 'Culture & Traditions',
+        names: {
+          english: 'Culture & Traditions',
+          dutch: 'Cultuur & Tradities',
+          spanish: 'Cultura y Tradiciones',
+          german: 'Kultur & Traditionen',
+          french: 'Culture & Traditions',
+          portuguese: 'Cultura & Tradições'
+        },
         icon: '🏛️',
         descriptions: {
           english: 'Explore cultural aspects, traditions, festivals, and customs.',
@@ -265,7 +384,14 @@ export default function TopicSelection() {
       },
       {
         id: 'environment',
-        name: 'Environment & Nature',
+        names: {
+          english: 'Environment & Nature',
+          dutch: 'Milieu & Natuur',
+          spanish: 'Medio Ambiente y Naturaleza',
+          german: 'Umwelt & Natur',
+          french: 'Environnement & Nature',
+          portuguese: 'Meio Ambiente & Natureza'
+        },
         icon: '🌳',
         descriptions: {
           english: 'Explore environmental issues, sustainability, and the natural world.',
@@ -278,7 +404,14 @@ export default function TopicSelection() {
       },
       {
         id: 'home',
-        name: 'Home & Living',
+        names: {
+          english: 'Home & Living',
+          dutch: 'Thuis & Wonen',
+          spanish: 'Hogar y Vida',
+          german: 'Zuhause & Wohnen',
+          french: 'Maison & Vie',
+          portuguese: 'Casa & Vida'
+        },
         icon: '🏠',
         descriptions: {
           english: 'Discuss housing, home decoration, household tasks, and living spaces.',
@@ -291,7 +424,14 @@ export default function TopicSelection() {
       },
       {
         id: 'pets',
-        name: 'Pets & Animals',
+        names: {
+          english: 'Pets & Animals',
+          dutch: 'Huisdieren & Dieren',
+          spanish: 'Mascotas y Animales',
+          german: 'Haustiere & Tiere',
+          french: 'Animaux & Compagnie',
+          portuguese: 'Animais & Pets'
+        },
         icon: '🐕',
         descriptions: {
           english: 'Talk about pets, animals, wildlife, and animal care.',
@@ -319,10 +459,12 @@ export default function TopicSelection() {
       }
     ];
     
-    // Map to the expected Topic format with the correct language description
+    // Map to the expected Topic format with the correct language description and name
     return baseTopics.map(topic => ({
       id: topic.id,
-      name: topic.name,
+      name: topic.names 
+        ? (topic.names[lang as keyof typeof topic.names] || topic.names.english)
+        : topic.name || 'Unknown Topic',
       description: topic.descriptions[lang as keyof typeof topic.descriptions] || topic.descriptions.english,
       icon: topic.icon
     }));
@@ -554,77 +696,96 @@ export default function TopicSelection() {
           </p>
         </div>
 
-        {/* Enhanced Topics Grid for 24 Topics with Mobile Optimization */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
-          {topics.map((topic, index) => {
-            // Special styling for Custom Topic
-            const isCustomTopic = topic.id === 'custom';
+        {/* Enhanced Topics Grid for 23 Regular Topics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
+          {topics.filter(topic => topic.id !== 'custom').map((topic, index) => (
+            <button
+              key={topic.id}
+              onClick={() => handleTopicSelect(topic.id)}
+              disabled={isLoading || isExtendingKnowledge}
+              className="group relative overflow-hidden rounded-xl transition-all duration-300 bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44 transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up touch-target cursor-pointer hover:scale-105"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              {/* Hover Effect Background */}
+              <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Icon */}
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">
+                {topic.icon}
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 group-hover:text-[#4ECFBF] mb-2 transition-colors duration-300">
+                {topic.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3">
+                {topic.description}
+              </p>
+              
+              {/* Bottom Accent Line */}
+              <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Topic Card - Centered at Bottom with Bigger Size */}
+        <div className="flex justify-center mt-8">
+          {(() => {
+            const customTopic = topics.find(topic => topic.id === 'custom');
+            if (!customTopic) return null;
             
             return (
               <button
-                key={topic.id}
-                onClick={() => handleTopicSelect(topic.id)}
+                onClick={() => handleTopicSelect('custom')}
                 disabled={isLoading || isExtendingKnowledge}
                 className={`
                   group relative overflow-hidden rounded-xl transition-all duration-300 
-                  flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44
-                  transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20
-                  animate-slide-up touch-target
-                  ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                  ${isCustomTopicActive && isCustomTopic ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''}
-                  ${isCustomTopic 
-                    ? 'bg-gradient-to-br from-[#4ECFBF]/10 via-white to-[#4ECFBF]/5 border-2 border-[#4ECFBF] shadow-[#4ECFBF]/10' 
-                    : 'bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60'
-                  }
+                  bg-gradient-to-br from-[#4ECFBF]/10 via-white to-[#4ECFBF]/5 
+                  border-2 border-[#4ECFBF] shadow-[#4ECFBF]/10
+                  flex flex-col p-6 md:p-8 text-center
+                  w-full max-w-md h-48 md:h-56
+                  transform hover:translate-y-[-4px] shadow-lg hover:shadow-[#4ECFBF]/30
+                  animate-slide-up touch-target cursor-pointer hover:scale-105
+                  ${isCustomTopicActive ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''}
+                  ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
-                style={{ animationDelay: `${index * 50}ms` }}
+                style={{ animationDelay: '1200ms' }}
               >
-                {/* Hover Effect Background */}
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                  isCustomTopic 
-                    ? 'bg-gradient-to-br from-[#4ECFBF]/15 to-[#4ECFBF]/5' 
-                    : 'bg-[#4ECFBF]/5'
-                }`}></div>
+                {/* Enhanced Hover Effect Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/15 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
-                {/* Special Badge for Custom Topic */}
-                {isCustomTopic && (
-                  <div className="absolute top-2 right-2 bg-[#4ECFBF] text-white text-xs px-2 py-1 rounded-full font-medium shadow-sm">
-                    Popular
-                  </div>
-                )}
+                {/* Special Badge */}
+                <div className="absolute top-3 right-3 bg-[#4ECFBF] text-white text-xs px-3 py-1 rounded-full font-medium shadow-md">
+                  Popular
+                </div>
                 
                 {/* Icon */}
-                <div className={`text-3xl sm:text-4xl mb-3 sm:mb-4 ${isCustomTopic ? 'filter drop-shadow-sm' : ''}`}>
-                  {topic.icon}
+                <div className="text-5xl md:text-6xl mb-4 filter drop-shadow-sm">
+                  {customTopic.icon}
                 </div>
                 
                 {/* Title */}
-                <h3 className={`text-lg sm:text-xl font-semibold mb-2 transition-colors duration-300 ${
-                  isCustomTopic 
-                    ? 'text-[#4ECFBF] group-hover:text-[#4ECFBF]/80' 
-                    : 'text-gray-800 group-hover:text-[#4ECFBF]'
-                }`}>
-                  {topic.name}
+                <h3 className="text-xl md:text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/80 mb-3 transition-colors duration-300">
+                  {customTopic.name}
                 </h3>
                 
                 {/* Description */}
-                <p className={`text-xs sm:text-sm transition-colors duration-300 line-clamp-3 ${
-                  isCustomTopic 
-                    ? 'text-gray-700 group-hover:text-gray-800' 
-                    : 'text-gray-600 group-hover:text-gray-700'
-                }`}>
-                  {topic.description}
+                <p className="text-sm md:text-base text-gray-700 group-hover:text-gray-800 transition-colors duration-300 line-clamp-2">
+                  {customTopic.description}
                 </p>
                 
-                {/* Bottom Accent Line */}
-                <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${
-                  isCustomTopic 
-                    ? 'bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full' 
-                    : 'bg-[#4ECFBF] w-0 group-hover:w-full'
-                }`}></div>
+                {/* Enhanced Bottom Accent Line */}
+                <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full"></div>
+                
+                {/* Sparkle Effect */}
+                <div className="absolute top-4 left-4 text-[#4ECFBF] opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                  ✨
+                </div>
               </button>
             );
-          })}
+          })()}
         </div>
         
         {/* Topic Count Indicator */}
