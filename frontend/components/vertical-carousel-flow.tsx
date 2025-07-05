@@ -1242,8 +1242,8 @@ export default function VerticalCarouselFlow() {
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
             </div>
 
-            {/* Regular Topics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
+            {/* Regular Topics Grid - Mobile-First Responsive Design */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 max-h-[60vh] md:max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
               {topics.filter(topic => topic.id !== 'custom').map((topic, index) => (
                 <button
                   key={topic.id}
@@ -1251,29 +1251,36 @@ export default function VerticalCarouselFlow() {
                   disabled={isLoading || isExtendingKnowledge}
                   className={`
                     group relative overflow-hidden rounded-xl transition-all duration-300 
-                    flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44
+                    flex flex-col text-left touch-target
                     transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20
-                    animate-slide-up touch-target
+                    animate-slide-up
                     ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
                     bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                    
+                    /* Mobile-First Sizing */
+                    p-6 min-h-[160px]
+                    
+                    /* Tablet and Desktop Sizing */
+                    md:p-5 md:min-h-[140px]
+                    lg:p-4 lg:min-h-[120px]
                   `}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {/* Hover Effect Background */}
                   <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  {/* Icon */}
-                  <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">
+                  {/* Icon - Mobile-First Sizing */}
+                  <div className="text-4xl md:text-3xl lg:text-4xl mb-4 md:mb-3">
                     {topic.icon}
                   </div>
                   
-                  {/* Title */}
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                  {/* Title - Mobile-First Typography */}
+                  <h3 className="text-xl md:text-lg lg:text-xl font-semibold mb-3 md:mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
                     {topic.name}
                   </h3>
                   
-                  {/* Description */}
-                  <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3">
+                  {/* Description - Mobile-First Typography */}
+                  <p className="text-sm md:text-xs lg:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3 leading-relaxed">
                     {topic.description}
                   </p>
                   
