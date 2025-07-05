@@ -1623,32 +1623,17 @@ export default function ProfilePage() {
                   Dangerous Area
                 </h3>
                 
-                <div className="space-y-4">
-                  <div className="bg-red-50 rounded-xl p-4">
-                    <h4 className="font-medium text-red-800 mb-2">Sign Out</h4>
-                    <p className="text-sm text-red-600 mb-4">
-                      Sign out of your account. You can sign back in anytime.
-                    </p>
-                    <button 
-                      onClick={handleLogout}
-                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-
-                  <div className="bg-red-100 rounded-xl p-4 border border-red-200">
-                    <h4 className="font-medium text-red-800 mb-2">Delete Account</h4>
-                    <p className="text-sm text-red-600 mb-4">
-                      Permanently delete your account and all associated data. This action cannot be undone.
-                    </p>
-                    <button 
-                      onClick={handleDeleteAccount}
-                      className="bg-red-700 hover:bg-red-800 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
-                    >
-                      Delete Account
-                    </button>
-                  </div>
+                <div className="bg-red-100 rounded-xl p-4 border border-red-200">
+                  <h4 className="font-medium text-red-800 mb-2">Delete Account</h4>
+                  <p className="text-sm text-red-600 mb-4">
+                    Permanently delete your account and all associated data. This action cannot be undone.
+                  </p>
+                  <button 
+                    onClick={handleDeleteAccount}
+                    className="bg-red-700 hover:bg-red-800 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
+                  >
+                    Delete Account
+                  </button>
                 </div>
               </div>
             </div>

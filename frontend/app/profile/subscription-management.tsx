@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
 import { LoadingSpinner } from '../../components/ui/loading-spinner';
 import ConfirmationModal from '../../components/ui/confirmation-modal';
+import { CreditCard } from 'lucide-react';
 
 interface SubscriptionStatus {
   status: string | null;
@@ -195,7 +196,10 @@ export default function SubscriptionManagement() {
   if (isLoading && !subscription) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">Subscription</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+          <CreditCard className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+          Subscription
+        </h2>
         <div className="flex justify-center items-center py-8">
           <LoadingSpinner size="lg" />
         </div>
@@ -206,7 +210,10 @@ export default function SubscriptionManagement() {
   if (error && !subscription) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">Subscription</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+          <CreditCard className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+          Subscription
+        </h2>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
           {error}
         </div>
@@ -217,7 +224,10 @@ export default function SubscriptionManagement() {
   return (
     <>
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">Subscription</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+          <CreditCard className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+          Subscription
+        </h2>
         
         {/* Success Message */}
         {showSuccessMessage && (
