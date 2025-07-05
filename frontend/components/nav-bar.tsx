@@ -188,8 +188,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
-          {/* Landing page navigation items */}
-          {isLandingPage && (
+          {/* Landing page navigation items - only show when not logged in */}
+          {isLandingPage && !user && (
             <div className="flex items-center space-x-6 mr-4">
               <button 
                 onClick={() => scrollToSection('features')}
@@ -318,8 +318,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       {/* Mobile Menu - Enhanced for better mobile UX */}
       {isMenuOpen && (
         <div className="block md:hidden bg-white/10 backdrop-blur-md border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden mobile-menu-container">
-          {/* Landing page menu items on mobile */}
-          {isLandingPage && (
+          {/* Landing page menu items on mobile - only show when not logged in */}
+          {isLandingPage && !user && (
             <>
               <button
                 onClick={() => scrollToSection('features')}
