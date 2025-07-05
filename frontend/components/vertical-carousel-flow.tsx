@@ -1367,9 +1367,9 @@ export default function VerticalCarouselFlow() {
                       {level.description}
                     </p>
                     
-                    <div className="flex flex-wrap gap-2 mt-auto">
+                    <div className="flex flex-col gap-1.5 mt-auto">
                       {level.code.startsWith('A') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Basiswoordenschat'}
                           {selectedLanguage === 'english' && 'Basic Vocabulary'}
                           {selectedLanguage === 'spanish' && 'Vocabulario Básico'}
@@ -1380,7 +1380,7 @@ export default function VerticalCarouselFlow() {
                         </span>
                       )}
                       {(level.code === 'A2' || level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Conversatie'}
                           {selectedLanguage === 'english' && 'Conversation'}
                           {selectedLanguage === 'spanish' && 'Conversación'}
@@ -1391,7 +1391,7 @@ export default function VerticalCarouselFlow() {
                         </span>
                       )}
                       {level.code.startsWith('B') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Complexe Onderwerpen'}
                           {selectedLanguage === 'english' && 'Complex Topics'}
                           {selectedLanguage === 'spanish' && 'Temas Complejos'}
@@ -1402,7 +1402,7 @@ export default function VerticalCarouselFlow() {
                         </span>
                       )}
                       {level.code.startsWith('C') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Vloeiende Expressie'}
                           {selectedLanguage === 'english' && 'Fluent Expression'}
                           {selectedLanguage === 'spanish' && 'Expresión Fluida'}
