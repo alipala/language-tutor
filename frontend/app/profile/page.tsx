@@ -64,6 +64,8 @@ export default function ProfilePage() {
     }
   }, [searchParams]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   
   // Create assessment-learning plan pairs
@@ -611,6 +613,44 @@ export default function ProfilePage() {
   const handleLogoutConfirm = async () => {
     await logout();
     window.location.href = '/';
+  };
+
+  const handleDeleteAccount = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteAccountConfirm = async () => {
+    setIsDeleting(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_URL}/auth/deactivate-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete account');
+      }
+
+      // Account deactivated successfully, logout and redirect
+      await logout();
+      window.location.href = '/';
+    } catch (err: any) {
+      console.error('Account deletion error:', err);
+      setError(err.message || 'Failed to delete account. Please try again.');
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Function to fetch and show enhanced analysis
@@ -1576,11 +1616,11 @@ export default function ProfilePage() {
               {/* Subscription Management */}
               <SubscriptionManagement />
               
-              {/* Account Actions */}
+              {/* Dangerous Area */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-red-100">
                 <h3 className="text-xl font-bold text-red-600 mb-6 flex items-center">
                   <Trash2 className="h-6 w-6 mr-2" />
-                  Account Actions
+                  Dangerous Area
                 </h3>
                 
                 <div className="space-y-4">
@@ -1594,6 +1634,19 @@ export default function ProfilePage() {
                       className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
                     >
                       Sign Out
+                    </button>
+                  </div>
+
+                  <div className="bg-red-100 rounded-xl p-4 border border-red-200">
+                    <h4 className="font-medium text-red-800 mb-2">Delete Account</h4>
+                    <p className="text-sm text-red-600 mb-4">
+                      Permanently delete your account and all associated data. This action cannot be undone.
+                    </p>
+                    <button 
+                      onClick={handleDeleteAccount}
+                      className="bg-red-700 hover:bg-red-800 text-white py-2 px-4 rounded-lg font-medium transition-all text-sm"
+                    >
+                      Delete Account
                     </button>
                   </div>
                 </div>
@@ -1645,6 +1698,56 @@ export default function ProfilePage() {
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-medium transition-all"
                 >
                   Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your learning data, progress, and subscription information.
+              </p>
+              
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+                <p className="text-sm text-red-700 font-medium">
+                  ⚠️ This will permanently deactivate your account and you will lose access to all your data.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccountConfirm}
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Account'
+                  )}
                 </button>
               </div>
             </div>

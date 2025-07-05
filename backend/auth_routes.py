@@ -375,6 +375,40 @@ async def update_password(request: PasswordUpdateRequest, current_user: UserResp
     
     return None
 
+@router.post("/deactivate-account", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate_account(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Deactivate user account by setting is_active to false
+    """
+    # Get the current user from database
+    user = await get_user_by_id(str(current_user.id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Check if account is already deactivated
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account is already deactivated"
+        )
+    
+    # Deactivate the account by setting is_active to false
+    result = await users_collection.update_one(
+        {"_id": user.id},
+        {"$set": {"is_active": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to deactivate account"
+        )
+    
+    return None
+
 # Email verification endpoints
 @router.get("/verify-email")
 async def verify_email_get_redirect(token: str):
