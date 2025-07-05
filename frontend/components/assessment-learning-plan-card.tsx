@@ -243,7 +243,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                   }}
                 >
                   <Timer className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#FFA955' }} />
-                  <div className="text-sm font-bold text-gray-800">{learningPlan.duration_months}m</div>
+                  <div className="text-sm font-bold text-gray-800">{learningPlan.duration_months} {learningPlan.duration_months === 1 ? 'Month' : 'Months'}</div>
                   <div className="text-gray-600 text-xs">Plan Duration</div>
                 </div>
                 
