@@ -192,15 +192,37 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
           {/* Quick Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Confidence */}
-            <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
-              <Heart className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+            <div 
+              className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+              style={{ borderColor: '#4ECFBF' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#5CCFC0';
+                e.currentTarget.style.backgroundColor = '#F0FDFA';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#4ECFBF';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <Heart className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#4ECFBF' }} />
               <div className="text-sm font-bold text-gray-800">{assessment.confidence}%</div>
               <div className="text-gray-600 text-xs">Confidence</div>
             </div>
             
             {/* CEFR Level */}
-            <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
-              <GraduationCap className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+            <div 
+              className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+              style={{ borderColor: '#FFD63A' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#ECC235';
+                e.currentTarget.style.backgroundColor = '#FFFBEB';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#FFD63A';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <GraduationCap className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#FFD63A' }} />
               <div className="text-sm font-bold text-gray-800">{assessment.recommended_level || "B1"}</div>
               <div className="text-gray-600 text-xs">CEFR Level</div>
             </div>
@@ -208,15 +230,37 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
             {learningPlan && (
               <>
                 {/* Plan Duration */}
-                <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
-                  <Timer className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+                <div 
+                  className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                  style={{ borderColor: '#FFA955' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#FF9A42';
+                    e.currentTarget.style.backgroundColor = '#FFF7ED';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#FFA955';
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  <Timer className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#FFA955' }} />
                   <div className="text-sm font-bold text-gray-800">{learningPlan.duration_months}m</div>
                   <div className="text-gray-600 text-xs">Plan Duration</div>
                 </div>
                 
                 {/* Progress */}
-                <div className="bg-white rounded-lg p-3 text-center shadow-md border-2" style={{ borderColor: '#4ECFBF' }}>
-                  <BarChart3 className="h-4 w-4 mx-auto mb-1" style={{ color: '#4ECFBF' }} />
+                <div 
+                  className="bg-white rounded-lg p-3 text-center shadow-md border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer group" 
+                  style={{ borderColor: '#F75A5A' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#E55252';
+                    e.currentTarget.style.backgroundColor = '#FEF2F2';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#F75A5A';
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  <BarChart3 className="h-4 w-4 mx-auto mb-1 transition-colors duration-300" style={{ color: '#F75A5A' }} />
                   <div className="text-sm font-bold text-gray-800">{Math.round(learningPlan.progress_percentage || 0)}%</div>
                   <div className="text-gray-600 text-xs">Progress</div>
                 </div>
