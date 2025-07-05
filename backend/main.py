@@ -836,18 +836,106 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
     
     # Handle regular topics
     elif request.topic and request.topic != "custom":
-        topic_map = {
-            "travel": "Travel & Tourism",
-            "food": "Food & Cooking", 
-            "hobbies": "Hobbies & Interests",
-            "culture": "Culture & Traditions",
-            "movies": "Movies & TV Shows",
-            "music": "Music",
-            "technology": "Technology",
-            "environment": "Environment & Nature"
+        # Enhanced topic mapping with detailed descriptions
+        topic_details = {
+            # Core Topics
+            "travel": {
+                "name": "Travel & Tourism",
+                "description": "Discuss travel destinations, experiences, planning trips, transportation, accommodations, cultural experiences, and travel tips. Practice vocabulary related to airports, hotels, restaurants, sightseeing, and navigation."
+            },
+            "food": {
+                "name": "Food & Cooking",
+                "description": "Talk about cuisines, recipes, restaurants, cooking techniques, ingredients, dietary preferences, and food culture. Practice vocabulary for ordering food, describing flavors, cooking methods, and dining experiences."
+            },
+            "work": {
+                "name": "Work & Career",
+                "description": "Discuss jobs, career goals, workplace situations, professional development, job interviews, office culture, and work-life balance. Practice business vocabulary, professional communication, and workplace scenarios."
+            },
+            "education": {
+                "name": "Education & Learning",
+                "description": "Talk about school, university, learning experiences, educational goals, study methods, academic subjects, and lifelong learning. Practice vocabulary related to education systems, academic achievements, and learning strategies."
+            },
+            
+            # Daily Life Topics
+            "daily-routine": {
+                "name": "Daily Routines",
+                "description": "Share your daily schedule, morning routines, everyday activities, time management, and lifestyle habits. Practice vocabulary for describing time, daily activities, schedules, and personal routines."
+            },
+            "family": {
+                "name": "Family & Relationships",
+                "description": "Discuss family members, relationships, friendships, social connections, family traditions, and personal relationships. Practice vocabulary for describing people, relationships, emotions, and social interactions."
+            },
+            "health": {
+                "name": "Health & Fitness",
+                "description": "Talk about exercise, healthy habits, medical topics, wellness, mental health, and lifestyle choices. Practice vocabulary related to body parts, symptoms, medical care, fitness activities, and healthy living."
+            },
+            "shopping": {
+                "name": "Shopping & Money",
+                "description": "Discuss shopping experiences, prices, budgeting, financial topics, consumer choices, and spending habits. Practice vocabulary for shopping, money, prices, payment methods, and financial planning."
+            },
+            
+            # Entertainment & Culture
+            "movies": {
+                "name": "Movies & TV Shows",
+                "description": "Discuss films, series, actors, directors, entertainment preferences, genres, and media consumption. Practice vocabulary for describing plots, characters, opinions, and entertainment experiences."
+            },
+            "music": {
+                "name": "Music & Arts",
+                "description": "Talk about music genres, artists, concerts, creative arts, cultural events, and artistic expression. Practice vocabulary for describing music, art forms, performances, and creative activities."
+            },
+            "sports": {
+                "name": "Sports & Games",
+                "description": "Discuss sports, games, competitions, physical activities, team sports, individual sports, and recreational activities. Practice vocabulary for sports equipment, rules, competitions, and athletic performance."
+            },
+            "hobbies": {
+                "name": "Hobbies & Interests",
+                "description": "Share your favorite activities, creative pursuits, personal interests, leisure time, and recreational activities. Practice vocabulary for describing interests, skills, pastimes, and personal preferences."
+            },
+            
+            # Modern Life Topics
+            "technology": {
+                "name": "Technology & Digital Life",
+                "description": "Discuss gadgets, apps, social media, digital trends, internet usage, and technology's impact on daily life. Practice vocabulary for digital devices, online activities, and technological innovations."
+            },
+            "news": {
+                "name": "News & Current Events",
+                "description": "Talk about current events, news stories, global happenings, social issues, and world affairs. Practice vocabulary for discussing news, expressing opinions, and analyzing current topics."
+            },
+            "weather": {
+                "name": "Weather & Seasons",
+                "description": "Discuss weather conditions, seasons, climate, outdoor activities, and weather-related experiences. Practice vocabulary for describing weather, seasonal activities, and climate-related topics."
+            },
+            "transportation": {
+                "name": "Transportation & Travel",
+                "description": "Talk about vehicles, public transport, commuting, getting around, traffic, and transportation systems. Practice vocabulary for different modes of transport, directions, and travel logistics."
+            },
+            
+            # Lifestyle & Personal Topics
+            "culture": {
+                "name": "Culture & Traditions",
+                "description": "Explore cultural aspects, traditions, festivals, customs, cultural differences, and heritage. Practice vocabulary for describing cultural practices, celebrations, traditions, and cross-cultural experiences."
+            },
+            "environment": {
+                "name": "Environment & Nature",
+                "description": "Explore environmental issues, sustainability, the natural world, conservation, climate change, and eco-friendly practices. Practice vocabulary for environmental topics, nature, and green living."
+            },
+            "home": {
+                "name": "Home & Living",
+                "description": "Discuss housing, home decoration, household tasks, living spaces, furniture, and domestic life. Practice vocabulary for describing homes, rooms, furniture, household items, and living arrangements."
+            },
+            "pets": {
+                "name": "Pets & Animals",
+                "description": "Talk about pets, animals, wildlife, animal care, pet ownership, and animal behavior. Practice vocabulary for different animals, pet care, animal characteristics, and human-animal relationships."
+            }
         }
         
-        topic_name = topic_map.get(request.topic, request.topic.title())
+        topic_info = topic_details.get(request.topic, {
+            "name": request.topic.title(),
+            "description": f"Discuss various aspects of {request.topic} and related topics."
+        })
+        
+        topic_name = topic_info["name"]
+        topic_description = topic_info["description"]
         
         instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
 
@@ -881,7 +969,15 @@ LANGUAGE RULE: {config['rule']}
 {assessment_context}
 {learning_plan_context}
 
-TOPIC: {topic_name}
+📚 TOPIC DETAILS:
+Topic: {topic_name}
+Description: {topic_description}
+
+CONVERSATION GUIDANCE:
+- Use the topic description to guide conversation areas and vocabulary
+- Focus on the specific aspects mentioned in the description
+- Incorporate relevant vocabulary and scenarios from the topic description
+- Create exercises and activities based on the topic's scope
 
 Start your first message by introducing {topic_name} and asking an engaging question about it.
 

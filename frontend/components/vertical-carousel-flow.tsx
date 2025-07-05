@@ -196,13 +196,23 @@ export default function VerticalCarouselFlow() {
     { code: 'portuguese', name: 'Portuguese', flagComponent: FlagComponents.portuguese },
   ];
 
-  // Topics data
+  // Topics data - Enhanced with 24 engaging topics for language learning
   const getTopics = (language: string | null): Topic[] => {
     const lang = language || 'english';
     
     const baseTopics = [
+      // Core Topics (8 original + enhanced)
       {
-        id: 'travel', name: 'Travel', icon: '✈️',
+        id: 'travel',
+        names: {
+          english: 'Travel & Tourism',
+          dutch: 'Reizen & Toerisme',
+          spanish: 'Viajes y Turismo',
+          german: 'Reisen & Tourismus',
+          french: 'Voyage & Tourisme',
+          portuguese: 'Viagem & Turismo'
+        },
+        icon: '✈️',
         descriptions: {
           english: 'Discuss travel destinations, experiences, and planning trips.',
           dutch: 'Bespreek reisbestemmingen, ervaringen en het plannen van reizen.',
@@ -213,7 +223,16 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'food', name: 'Food & Cooking', icon: '🍲',
+        id: 'food',
+        names: {
+          english: 'Food & Cooking',
+          dutch: 'Eten & Koken',
+          spanish: 'Comida y Cocina',
+          german: 'Essen & Kochen',
+          french: 'Nourriture & Cuisine',
+          portuguese: 'Comida & Culinária'
+        },
+        icon: '🍲',
         descriptions: {
           english: 'Talk about cuisines, recipes, restaurants, and cooking techniques.',
           dutch: 'Praat over keukens, recepten, restaurants en kooktechnieken.',
@@ -224,29 +243,140 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'hobbies', name: 'Hobbies & Interests', icon: '🎨',
+        id: 'work',
+        names: {
+          english: 'Work & Career',
+          dutch: 'Werk & Carrière',
+          spanish: 'Trabajo y Carrera',
+          german: 'Arbeit & Karriere',
+          french: 'Travail & Carrière',
+          portuguese: 'Trabalho & Carreira'
+        },
+        icon: '💼',
         descriptions: {
-          english: 'Share your favorite activities, sports, games, or pastimes.',
-          dutch: 'Deel je favoriete activiteiten, sporten, spellen of hobbys.',
-          spanish: 'Comparte tus actividades, deportes, juegos o pasatiempos favoritos.',
-          german: 'Teile deine Lieblingsaktivitäten, Sportarten, Spiele oder Hobbys.',
-          french: 'Partagez vos activités, sports, jeux ou passe-temps préférés.',
-          portuguese: 'Compartilhe suas atividades, esportes, jogos ou passatempos favoritos.'
+          english: 'Discuss jobs, career goals, workplace situations, and professional development.',
+          dutch: 'Bespreek banen, carrièredoelen, werksituaties en professionele ontwikkeling.',
+          spanish: 'Habla sobre trabajos, objetivos profesionales, situaciones laborales y desarrollo profesional.',
+          german: 'Diskutiere über Jobs, Karriereziele, Arbeitsplatzsituationen und berufliche Entwicklung.',
+          french: 'Discutez des emplois, des objectifs de carrière, des situations de travail et du développement professionnel.',
+          portuguese: 'Converse sobre empregos, objetivos de carreira, situações de trabalho e desenvolvimento profissional.'
         }
       },
       {
-        id: 'culture', name: 'Culture & Traditions', icon: '🏛️',
+        id: 'education',
+        names: {
+          english: 'Education & Learning',
+          dutch: 'Onderwijs & Leren',
+          spanish: 'Educación y Aprendizaje',
+          german: 'Bildung & Lernen',
+          french: 'Éducation & Apprentissage',
+          portuguese: 'Educação & Aprendizagem'
+        },
+        icon: '📚',
         descriptions: {
-          english: 'Explore cultural aspects, traditions, festivals, and customs.',
-          dutch: 'Verken culturele aspecten, tradities, festivals en gebruiken.',
-          spanish: 'Explora aspectos culturales, tradiciones, festivales y costumbres.',
-          german: 'Erkunde kulturelle Aspekte, Traditionen, Feste und Bräuche.',
-          french: 'Explorez les aspects culturels, les traditions, les festivals et les coutumes.',
-          portuguese: 'Explore aspectos culturais, tradições, festivais e costumes.'
+          english: 'Talk about school, university, learning experiences, and educational goals.',
+          dutch: 'Praat over school, universiteit, leerervaringen en educatieve doelen.',
+          spanish: 'Habla sobre la escuela, universidad, experiencias de aprendizaje y objetivos educativos.',
+          german: 'Sprich über Schule, Universität, Lernerfahrungen und Bildungsziele.',
+          french: 'Parlez de l\'école, de l\'université, des expériences d\'apprentissage et des objectifs éducatifs.',
+          portuguese: 'Fale sobre escola, universidade, experiências de aprendizado e objetivos educacionais.'
+        }
+      },
+      
+      // Daily Life Topics (8 new)
+      {
+        id: 'daily-routine',
+        names: {
+          english: 'Daily Routines',
+          dutch: 'Dagelijkse Routines',
+          spanish: 'Rutinas Diarias',
+          german: 'Tägliche Routinen',
+          french: 'Routines Quotidiennes',
+          portuguese: 'Rotinas Diárias'
+        },
+        icon: '⏰',
+        descriptions: {
+          english: 'Share your daily schedule, morning routines, and everyday activities.',
+          dutch: 'Deel je dagelijkse schema, ochtendroutines en alledaagse activiteiten.',
+          spanish: 'Comparte tu horario diario, rutinas matutinas y actividades cotidianas.',
+          german: 'Teile deinen Tagesablauf, Morgenroutinen und alltägliche Aktivitäten.',
+          french: 'Partagez votre emploi du temps quotidien, vos routines matinales et vos activités quotidiennes.',
+          portuguese: 'Compartilhe sua rotina diária, rotinas matinais e atividades do dia a dia.'
         }
       },
       {
-        id: 'movies', name: 'Movies & TV Shows', icon: '🎬',
+        id: 'family',
+        names: {
+          english: 'Family & Relationships',
+          dutch: 'Familie & Relaties',
+          spanish: 'Familia y Relaciones',
+          german: 'Familie & Beziehungen',
+          french: 'Famille & Relations',
+          portuguese: 'Família & Relacionamentos'
+        },
+        icon: '👨‍👩‍👧‍👦',
+        descriptions: {
+          english: 'Discuss family members, relationships, friendships, and social connections.',
+          dutch: 'Bespreek familieleden, relaties, vriendschappen en sociale verbindingen.',
+          spanish: 'Habla sobre miembros de la familia, relaciones, amistades y conexiones sociales.',
+          german: 'Diskutiere über Familienmitglieder, Beziehungen, Freundschaften und soziale Verbindungen.',
+          french: 'Discutez des membres de la famille, des relations, des amitiés et des connexions sociales.',
+          portuguese: 'Converse sobre membros da família, relacionamentos, amizades e conexões sociais.'
+        }
+      },
+      {
+        id: 'health',
+        names: {
+          english: 'Health & Fitness',
+          dutch: 'Gezondheid & Fitness',
+          spanish: 'Salud y Fitness',
+          german: 'Gesundheit & Fitness',
+          french: 'Santé & Fitness',
+          portuguese: 'Saúde & Fitness'
+        },
+        icon: '🏃‍♂️',
+        descriptions: {
+          english: 'Talk about exercise, healthy habits, medical topics, and wellness.',
+          dutch: 'Praat over beweging, gezonde gewoonten, medische onderwerpen en welzijn.',
+          spanish: 'Habla sobre ejercicio, hábitos saludables, temas médicos y bienestar.',
+          german: 'Sprich über Sport, gesunde Gewohnheiten, medizinische Themen und Wohlbefinden.',
+          french: 'Parlez d\'exercice, d\'habitudes saines, de sujets médicaux et de bien-être.',
+          portuguese: 'Fale sobre exercícios, hábitos saudáveis, tópicos médicos e bem-estar.'
+        }
+      },
+      {
+        id: 'shopping',
+        names: {
+          english: 'Shopping & Money',
+          dutch: 'Winkelen & Geld',
+          spanish: 'Compras y Dinero',
+          german: 'Einkaufen & Geld',
+          french: 'Shopping & Argent',
+          portuguese: 'Compras & Dinheiro'
+        },
+        icon: '🛍️',
+        descriptions: {
+          english: 'Discuss shopping experiences, prices, budgeting, and financial topics.',
+          dutch: 'Bespreek winkelervaringen, prijzen, budgetteren en financiële onderwerpen.',
+          spanish: 'Habla sobre experiencias de compras, precios, presupuestos y temas financieros.',
+          german: 'Diskutiere über Einkaufserfahrungen, Preise, Budgetierung und Finanzthemen.',
+          french: 'Discutez des expériences d\'achat, des prix, de la budgétisation et des sujets financiers.',
+          portuguese: 'Converse sobre experiências de compras, preços, orçamento e tópicos financeiros.'
+        }
+      },
+      
+      // Entertainment & Culture (4 enhanced + 4 new)
+      {
+        id: 'movies',
+        names: {
+          english: 'Movies & TV Shows',
+          dutch: 'Films & TV-shows',
+          spanish: 'Películas y Series',
+          german: 'Filme & TV-Serien',
+          french: 'Films & Séries TV',
+          portuguese: 'Filmes & Séries'
+        },
+        icon: '🎬',
         descriptions: {
           english: 'Discuss films, series, actors, directors, and entertainment.',
           dutch: 'Bespreek films, series, acteurs, regisseurs en entertainment.',
@@ -257,29 +387,180 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'music', name: 'Music', icon: '🎵',
+        id: 'music',
+        names: {
+          english: 'Music & Arts',
+          dutch: 'Muziek & Kunst',
+          spanish: 'Música y Artes',
+          german: 'Musik & Kunst',
+          french: 'Musique & Arts',
+          portuguese: 'Música & Artes'
+        },
+        icon: '🎵',
         descriptions: {
-          english: 'Talk about music genres, artists, concerts, and preferences.',
-          dutch: 'Praat over muziekgenres, artiesten, concerten en voorkeuren.',
-          spanish: 'Habla sobre géneros musicales, artistas, conciertos y preferencias.',
-          german: 'Sprich über Musikgenres, Künstler, Konzerte und Vorlieben.',
-          french: 'Parlez des genres musicaux, des artistes, des concerts et des préférences.',
-          portuguese: 'Fale sobre gêneros musicais, artistas, concertos e preferências.'
+          english: 'Talk about music genres, artists, concerts, and creative arts.',
+          dutch: 'Praat over muziekgenres, artiesten, concerten en creatieve kunsten.',
+          spanish: 'Habla sobre géneros musicales, artistas, conciertos y artes creativas.',
+          german: 'Sprich über Musikgenres, Künstler, Konzerte und kreative Künste.',
+          french: 'Parlez des genres musicaux, des artistes, des concerts et des arts créatifs.',
+          portuguese: 'Fale sobre gêneros musicais, artistas, concertos e artes criativas.'
         }
       },
       {
-        id: 'technology', name: 'Technology', icon: '💻',
+        id: 'sports',
+        names: {
+          english: 'Sports & Games',
+          dutch: 'Sport & Spellen',
+          spanish: 'Deportes y Juegos',
+          german: 'Sport & Spiele',
+          french: 'Sports & Jeux',
+          portuguese: 'Esportes & Jogos'
+        },
+        icon: '⚽',
         descriptions: {
-          english: 'Discuss gadgets, apps, innovations, and digital trends.',
-          dutch: 'Bespreek gadgets, apps, innovaties en digitale trends.',
-          spanish: 'Habla sobre gadgets, aplicaciones, innovaciones y tendencias digitales.',
-          german: 'Diskutiere über Gadgets, Apps, Innovationen und digitale Trends.',
-          french: 'Discutez des gadgets, des applications, des innovations et des tendances numériques.',
-          portuguese: 'Converse sobre gadgets, aplicativos, inovações e tendências digitais.'
+          english: 'Discuss sports, games, competitions, and physical activities.',
+          dutch: 'Bespreek sporten, spellen, competities en fysieke activiteiten.',
+          spanish: 'Habla sobre deportes, juegos, competiciones y actividades físicas.',
+          german: 'Diskutiere über Sport, Spiele, Wettkämpfe und körperliche Aktivitäten.',
+          french: 'Discutez des sports, des jeux, des compétitions et des activités physiques.',
+          portuguese: 'Converse sobre esportes, jogos, competições e atividades físicas.'
         }
       },
       {
-        id: 'environment', name: 'Environment & Nature', icon: '🌳',
+        id: 'hobbies',
+        names: {
+          english: 'Hobbies & Interests',
+          dutch: 'Hobbys & Interesses',
+          spanish: 'Aficiones e Intereses',
+          german: 'Hobbys & Interessen',
+          french: 'Loisirs & Intérêts',
+          portuguese: 'Hobbies & Interesses'
+        },
+        icon: '🎨',
+        descriptions: {
+          english: 'Share your favorite activities, creative pursuits, and personal interests.',
+          dutch: 'Deel je favoriete activiteiten, creatieve bezigheden en persoonlijke interesses.',
+          spanish: 'Comparte tus actividades favoritas, actividades creativas e intereses personales.',
+          german: 'Teile deine Lieblingsaktivitäten, kreativen Beschäftigungen und persönlichen Interessen.',
+          french: 'Partagez vos activités préférées, vos activités créatives et vos intérêts personnels.',
+          portuguese: 'Compartilhe suas atividades favoritas, atividades criativas e interesses pessoais.'
+        }
+      },
+      
+      // Modern Life Topics (4 new)
+      {
+        id: 'technology',
+        names: {
+          english: 'Technology & Digital Life',
+          dutch: 'Technologie & Digitaal Leven',
+          spanish: 'Tecnología y Vida Digital',
+          german: 'Technologie & Digitales Leben',
+          french: 'Technologie & Vie Numérique',
+          portuguese: 'Tecnologia & Vida Digital'
+        },
+        icon: '💻',
+        descriptions: {
+          english: 'Discuss gadgets, apps, social media, and digital trends.',
+          dutch: 'Bespreek gadgets, apps, sociale media en digitale trends.',
+          spanish: 'Habla sobre gadgets, aplicaciones, redes sociales y tendencias digitales.',
+          german: 'Diskutiere über Gadgets, Apps, soziale Medien und digitale Trends.',
+          french: 'Discutez des gadgets, des applications, des médias sociaux et des tendances numériques.',
+          portuguese: 'Converse sobre gadgets, aplicativos, mídias sociais e tendências digitais.'
+        }
+      },
+      {
+        id: 'news',
+        names: {
+          english: 'News & Current Events',
+          dutch: 'Nieuws & Actualiteiten',
+          spanish: 'Noticias y Eventos Actuales',
+          german: 'Nachrichten & Aktuelles',
+          french: 'Actualités & Événements',
+          portuguese: 'Notícias & Eventos Atuais'
+        },
+        icon: '📰',
+        descriptions: {
+          english: 'Talk about current events, news stories, and global happenings.',
+          dutch: 'Praat over actuele gebeurtenissen, nieuwsverhalen en wereldwijde gebeurtenissen.',
+          spanish: 'Habla sobre eventos actuales, noticias y acontecimientos globales.',
+          german: 'Sprich über aktuelle Ereignisse, Nachrichten und weltweite Geschehnisse.',
+          french: 'Parlez des événements actuels, des nouvelles et des événements mondiaux.',
+          portuguese: 'Fale sobre eventos atuais, notícias e acontecimentos globais.'
+        }
+      },
+      {
+        id: 'weather',
+        names: {
+          english: 'Weather & Seasons',
+          dutch: 'Weer & Seizoenen',
+          spanish: 'Clima y Estaciones',
+          german: 'Wetter & Jahreszeiten',
+          french: 'Météo & Saisons',
+          portuguese: 'Clima & Estações'
+        },
+        icon: '🌤️',
+        descriptions: {
+          english: 'Discuss weather conditions, seasons, climate, and outdoor activities.',
+          dutch: 'Bespreek weersomstandigheden, seizoenen, klimaat en buitenactiviteiten.',
+          spanish: 'Habla sobre condiciones climáticas, estaciones, clima y actividades al aire libre.',
+          german: 'Diskutiere über Wetterbedingungen, Jahreszeiten, Klima und Outdoor-Aktivitäten.',
+          french: 'Discutez des conditions météorologiques, des saisons, du climat et des activités de plein air.',
+          portuguese: 'Converse sobre condições climáticas, estações, clima e atividades ao ar livre.'
+        }
+      },
+      {
+        id: 'transportation',
+        names: {
+          english: 'Transportation & Travel',
+          dutch: 'Vervoer & Reizen',
+          spanish: 'Transporte y Viajes',
+          german: 'Transport & Reisen',
+          french: 'Transport & Voyage',
+          portuguese: 'Transporte & Viagem'
+        },
+        icon: '🚗',
+        descriptions: {
+          english: 'Talk about vehicles, public transport, commuting, and getting around.',
+          dutch: 'Praat over voertuigen, openbaar vervoer, woon-werkverkeer en verplaatsingen.',
+          spanish: 'Habla sobre vehículos, transporte público, desplazamientos y movilidad.',
+          german: 'Sprich über Fahrzeuge, öffentliche Verkehrsmittel, Pendeln und Fortbewegung.',
+          french: 'Parlez des véhicules, des transports publics, des déplacements domicile-travail et de la mobilité.',
+          portuguese: 'Fale sobre veículos, transporte público, deslocamentos e locomoção.'
+        }
+      },
+      
+      // Lifestyle & Personal Topics (4 new)
+      {
+        id: 'culture',
+        names: {
+          english: 'Culture & Traditions',
+          dutch: 'Cultuur & Tradities',
+          spanish: 'Cultura y Tradiciones',
+          german: 'Kultur & Traditionen',
+          french: 'Culture & Traditions',
+          portuguese: 'Cultura & Tradições'
+        },
+        icon: '🏛️',
+        descriptions: {
+          english: 'Explore cultural aspects, traditions, festivals, and customs.',
+          dutch: 'Verken culturele aspecten, tradities, festivals en gebruiken.',
+          spanish: 'Explora aspectos culturales, tradiciones, festivales y costumbres.',
+          german: 'Erkunde kulturelle Aspekte, Traditionen, Feste und Bräuche.',
+          french: 'Explorez les aspects culturels, les traditions, les festivals et les coutumes.',
+          portuguese: 'Explore aspectos culturais, tradições, festivais e costumes.'
+        }
+      },
+      {
+        id: 'environment',
+        names: {
+          english: 'Environment & Nature',
+          dutch: 'Milieu & Natuur',
+          spanish: 'Medio Ambiente y Naturaleza',
+          german: 'Umwelt & Natur',
+          french: 'Environnement & Nature',
+          portuguese: 'Meio Ambiente & Natureza'
+        },
+        icon: '🌳',
         descriptions: {
           english: 'Explore environmental issues, sustainability, and the natural world.',
           dutch: 'Verken milieukwesties, duurzaamheid en de natuurlijke wereld.',
@@ -290,21 +571,65 @@ export default function VerticalCarouselFlow() {
         }
       },
       {
-        id: 'custom', name: 'Custom Topic', icon: '🔍',
+        id: 'home',
+        names: {
+          english: 'Home & Living',
+          dutch: 'Thuis & Wonen',
+          spanish: 'Hogar y Vida',
+          german: 'Zuhause & Wohnen',
+          french: 'Maison & Vie',
+          portuguese: 'Casa & Vida'
+        },
+        icon: '🏠',
         descriptions: {
-          english: 'Create your own topic for a personalized conversation experience.',
-          dutch: 'Maak je eigen onderwerp voor een gepersonaliseerde gespreks-ervaring.',
-          spanish: 'Crea tu propio tema para una experiencia de conversación personalizada.',
-          german: 'Erstelle dein eigenes Thema für ein personalisiertes Gesprächserlebnis.',
-          french: 'Créez votre propre sujet pour une expérience de conversation personnalisée.',
-          portuguese: 'Crie seu próprio tópico para uma experiência de conversa personalizada.'
+          english: 'Discuss housing, home decoration, household tasks, and living spaces.',
+          dutch: 'Bespreek huisvesting, woninginrichting, huishoudelijke taken en woonruimtes.',
+          spanish: 'Habla sobre vivienda, decoración del hogar, tareas domésticas y espacios habitables.',
+          german: 'Diskutiere über Wohnen, Wohnungseinrichtung, Haushaltsaufgaben und Wohnräume.',
+          french: 'Discutez du logement, de la décoration intérieure, des tâches ménagères et des espaces de vie.',
+          portuguese: 'Converse sobre habitação, decoração de casa, tarefas domésticas e espaços de convivência.'
+        }
+      },
+      {
+        id: 'pets',
+        names: {
+          english: 'Pets & Animals',
+          dutch: 'Huisdieren & Dieren',
+          spanish: 'Mascotas y Animales',
+          german: 'Haustiere & Tiere',
+          french: 'Animaux & Compagnie',
+          portuguese: 'Animais & Pets'
+        },
+        icon: '🐕',
+        descriptions: {
+          english: 'Talk about pets, animals, wildlife, and animal care.',
+          dutch: 'Praat over huisdieren, dieren, wilde dieren en dierenverzorging.',
+          spanish: 'Habla sobre mascotas, animales, vida silvestre y cuidado de animales.',
+          german: 'Sprich über Haustiere, Tiere, Wildtiere und Tierpflege.',
+          french: 'Parlez des animaux de compagnie, des animaux, de la faune et des soins aux animaux.',
+          portuguese: 'Fale sobre animais de estimação, animais, vida selvagem e cuidados com animais.'
+        }
+      },
+      
+      // Special Topics (1 enhanced)
+      {
+        id: 'custom', name: '✨ Create Your Own Topic', icon: '🔍',
+        descriptions: {
+          english: 'Create your own personalized topic for a unique conversation experience.',
+          dutch: 'Maak je eigen gepersonaliseerde onderwerp voor een unieke gespreks-ervaring.',
+          spanish: 'Crea tu propio tema personalizado para una experiencia de conversación única.',
+          german: 'Erstelle dein eigenes personalisiertes Thema für ein einzigartiges Gesprächserlebnis.',
+          french: 'Créez votre propre sujet personnalisé pour une expérience de conversation unique.',
+          portuguese: 'Crie seu próprio tópico personalizado para uma experiência de conversa única.'
         }
       }
     ];
     
     return baseTopics.map(topic => ({
       id: topic.id,
-      name: topic.name,
+      name: topic.names 
+        ? (topic.names[lang as keyof typeof topic.names] || topic.names.english)
+        : topic.name || 'Unknown Topic',
       description: topic.descriptions[lang as keyof typeof topic.descriptions] || topic.descriptions.english,
       icon: topic.icon
     }));
@@ -850,35 +1175,126 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">What would you like to talk about? (Optional)</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {topics.map((topic, index) => (
+            {/* Custom Topic Section - Prominent at Top */}
+            <div className="mb-8">
+              {(() => {
+                const customTopic = topics.find(topic => topic.id === 'custom');
+                if (!customTopic) return null;
+                
+                return (
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => handleTopicSelect('custom')}
+                      disabled={isLoading || isExtendingKnowledge}
+                      className={`
+                        group relative overflow-hidden rounded-2xl transition-all duration-300 
+                        flex flex-col items-center justify-center p-8 text-center
+                        w-full max-w-md mx-auto min-h-[200px]
+                        transform hover:translate-y-[-4px] shadow-xl hover:shadow-2xl hover:shadow-[#4ECFBF]/30
+                        animate-slide-up touch-target
+                        ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
+                        ${isCustomTopicActive ? 'ring-4 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
+                        bg-gradient-to-br from-[#4ECFBF]/15 via-white to-[#4ECFBF]/10 border-3 border-[#4ECFBF] shadow-[#4ECFBF]/20
+                      `}
+                    >
+                      {/* Animated Background */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/20 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      
+                      {/* Sparkle Effects */}
+                      <div className="absolute top-4 right-4 text-[#4ECFBF] animate-pulse">✨</div>
+                      <div className="absolute top-6 left-6 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '0.5s' }}>⭐</div>
+                      <div className="absolute bottom-6 right-8 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '1s' }}>💫</div>
+                      
+                      {/* Popular Badge */}
+                      <div className="absolute top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-sm px-4 py-1 rounded-full font-bold shadow-lg">
+                        Most Popular
+                      </div>
+                      
+                      {/* Icon */}
+                      <div className="text-6xl mb-4 filter drop-shadow-lg">
+                        {customTopic.icon}
+                      </div>
+                      
+                      {/* Title */}
+                      <h3 className="text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-3">
+                        {customTopic.name}
+                      </h3>
+                      
+                      {/* Description */}
+                      <p className="text-gray-700 group-hover:text-gray-800 transition-colors duration-300 text-base leading-relaxed">
+                        {customTopic.description}
+                      </p>
+                      
+                      {/* Bottom Accent Line */}
+                      <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full rounded-b-2xl"></div>
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              <div className="px-6 py-2 bg-white border-2 border-gray-200 rounded-full shadow-sm">
+                <span className="text-gray-500 font-medium text-lg">OR</span>
+              </div>
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+            </div>
+
+            {/* Regular Topics Grid - Mobile-First Responsive Design */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 max-h-[60vh] md:max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
+              {topics.filter(topic => topic.id !== 'custom').map((topic, index) => (
                 <button
                   key={topic.id}
                   onClick={() => handleTopicSelect(topic.id)}
                   disabled={isLoading || isExtendingKnowledge}
                   className={`
                     group relative overflow-hidden rounded-xl transition-all duration-300 
-                    bg-white border-2 border-[#4ECFBF] flex flex-col p-6 text-left min-h-44 
+                    flex flex-col text-left touch-target
                     transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20
                     animate-slide-up
                     ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                    ${isCustomTopicActive && topic.id === 'custom' ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''}
+                    bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                    
+                    /* Mobile-First Sizing */
+                    p-6 min-h-[160px]
+                    
+                    /* Tablet and Desktop Sizing */
+                    md:p-5 md:min-h-[140px]
+                    lg:p-4 lg:min-h-[120px]
                   `}
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
+                  {/* Hover Effect Background */}
                   <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  <div className="text-4xl mb-4">{topic.icon}</div>
+                  {/* Icon - Mobile-First Sizing */}
+                  <div className="text-4xl md:text-3xl lg:text-4xl mb-4 md:mb-3">
+                    {topic.icon}
+                  </div>
                   
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                  {/* Title - Mobile-First Typography */}
+                  <h3 className="text-xl md:text-lg lg:text-xl font-semibold mb-3 md:mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
                     {topic.name}
                   </h3>
                   
-                  <p className="text-gray-600 text-sm group-hover:text-gray-700 transition-colors duration-300">
+                  {/* Description - Mobile-First Typography */}
+                  <p className="text-sm md:text-xs lg:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3 leading-relaxed">
                     {topic.description}
                   </p>
+                  
+                  {/* Bottom Accent Line */}
+                  <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
                 </button>
               ))}
+            </div>
+            
+            {/* Topic Count Indicator */}
+            <div className="text-center mt-6">
+              <p className="text-sm text-gray-500">
+                {topics.length} topics available • Choose one or create your own
+              </p>
             </div>
           </div>
         </div>
@@ -895,7 +1311,7 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">Choose your proficiency level</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {levels.map((level, index) => {
                 const getLevelColors = (code: string) => {
                   if (code.startsWith('A')) return {
@@ -922,9 +1338,9 @@ export default function VerticalCarouselFlow() {
                     key={level.code}
                     onClick={() => handleLevelSelect(level.code)}
                     className={`
-                      relative overflow-hidden flex flex-col items-start p-6 rounded-xl text-left
+                      relative overflow-hidden flex flex-col items-start p-4 md:p-5 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:-translate-y-2
-                      bg-white h-[220px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
+                      bg-white h-[180px] md:h-[200px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
                       shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up
                       ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
                     `}
@@ -993,9 +1409,9 @@ export default function VerticalCarouselFlow() {
                       {level.description}
                     </p>
                     
-                    <div className="flex flex-wrap gap-2 mt-auto">
+                    <div className="flex flex-col gap-1.5 mt-auto">
                       {level.code.startsWith('A') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Basiswoordenschat'}
                           {selectedLanguage === 'english' && 'Basic Vocabulary'}
                           {selectedLanguage === 'spanish' && 'Vocabulario Básico'}
@@ -1006,7 +1422,7 @@ export default function VerticalCarouselFlow() {
                         </span>
                       )}
                       {(level.code === 'A2' || level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Conversatie'}
                           {selectedLanguage === 'english' && 'Conversation'}
                           {selectedLanguage === 'spanish' && 'Conversación'}
@@ -1016,8 +1432,8 @@ export default function VerticalCarouselFlow() {
                           {!selectedLanguage && 'Conversation'}
                         </span>
                       )}
-                      {(level.code.startsWith('B') || level.code.startsWith('C')) && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm">
+                      {level.code.startsWith('B') && (
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Complexe Onderwerpen'}
                           {selectedLanguage === 'english' && 'Complex Topics'}
                           {selectedLanguage === 'spanish' && 'Temas Complejos'}
@@ -1028,7 +1444,7 @@ export default function VerticalCarouselFlow() {
                         </span>
                       )}
                       {level.code.startsWith('C') && (
-                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm">
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 text-purple-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Vloeiende Expressie'}
                           {selectedLanguage === 'english' && 'Fluent Expression'}
                           {selectedLanguage === 'spanish' && 'Expresión Fluida'}

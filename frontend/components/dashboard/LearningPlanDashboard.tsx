@@ -327,7 +327,13 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
         >
           <button
             onClick={() => setShowSessionModeModal(true)}
-            className="bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold px-12 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xl relative overflow-hidden min-w-[320px] h-16 flex items-center justify-center"
+            className="bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden flex items-center justify-center
+            
+            /* Mobile-Optimized Design */
+            px-8 py-4 text-lg min-w-[300px] h-14
+            
+            /* Desktop Enhancement */
+            lg:px-12 lg:text-xl lg:min-w-[320px] lg:h-16"
           >
             {/* Animated gradient text effect */}
             <span className="relative z-10 flex items-center justify-center">
