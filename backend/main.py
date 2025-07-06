@@ -298,36 +298,15 @@ async def startup_db_client():
         print(f"ERROR initializing MongoDB: {str(e)}")
         print("The application will continue, but database functionality may be limited")
 
-# Request logging middleware
-@app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
-    print(f"Requested path: {request.url.path}")
-    print(f"Request headers: {request.headers}")
-    return await call_next(request)
+# Enhanced monitoring middleware with Slack integration
+from monitoring import MonitoringMiddleware, RequestLoggingMiddleware
 
-# Global error handler for better debugging in Railway
-@app.middleware("http")
-async def error_handling_middleware(request: Request, call_next):
-    try:
-        # Process the request and get the response
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        # Log the error with traceback
-        error_detail = f"Error processing request: {str(e)}\n{traceback.format_exc()}"
-        print(error_detail)
-        
-        # Return a JSON response with error details
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "Internal Server Error",
-                "detail": str(e),
-                "path": request.url.path,
-                "railway": os.getenv("RAILWAY") == "true",
-                "environment": os.getenv("ENVIRONMENT", "development")
-            }
-        )
+# Add monitoring middleware (replaces basic error handling)
+app.add_middleware(MonitoringMiddleware, performance_threshold=5.0)
+
+# Add request logging middleware for development
+if os.getenv("ENVIRONMENT") == "development":
+    app.add_middleware(RequestLoggingMiddleware)
 
 # Simple test endpoint to verify API connectivity
 @app.get("/api/test")
@@ -536,6 +515,8 @@ def get_language_iso_code(language: str) -> str:
 
 @app.post("/api/realtime/token")
 async def generate_token(request: TutorSessionRequest):
+    from monitoring import send_error_alert, send_business_logic_alert, AlertContext, AlertSeverity
+    
     try:
         print("="*80)
         print(f"🌐 [UNIVERSAL] Creating ephemeral token for all browsers")
@@ -546,6 +527,18 @@ async def generate_token(request: TutorSessionRequest):
         
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
+            # Send alert for missing API key
+            context = AlertContext(
+                endpoint="/api/realtime/token",
+                method="POST",
+                environment=os.getenv("ENVIRONMENT", "development")
+            )
+            await send_business_logic_alert(
+                operation="OpenAI Token Generation",
+                issue="OpenAI API key not configured",
+                context=context,
+                severity=AlertSeverity.CRITICAL
+            )
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
         
         # ✅ Build universal instructions that work on all browsers
