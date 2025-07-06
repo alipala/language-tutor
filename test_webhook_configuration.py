@@ -10,8 +10,8 @@ import requests
 import json
 from datetime import datetime, timezone
 
-# Configuration
-STRIPE_SECRET_KEY = "sk_test_51Mzx41JcquSiYwWNGndzlyBDtf249jC4H0bjboX2GxHJS2SHb2SXxlZmbt8ObCruGg5KKSTnHgnthxnZknF5F4R300MGsRy0aK"
+# Configuration - REPLACE WITH YOUR ACTUAL KEYS
+STRIPE_SECRET_KEY = "sk_test_YOUR_TEST_SECRET_KEY_HERE"
 RAILWAY_WEBHOOK_URL = "https://your-railway-app.railway.app/api/stripe/webhook"  # Update this!
 
 stripe.api_key = STRIPE_SECRET_KEY

@@ -12,11 +12,11 @@ from dateutil.relativedelta import relativedelta
 import pymongo
 from bson import ObjectId
 
-# Set up Stripe
-stripe.api_key = "sk_test_51Mzx41JcquSiYwWNGndzlyBDtf249jC4H0bjboX2GxHJS2SHb2SXxlZmbt8ObCruGg5KKSTnHgnthxnZknF5F4R300MGsRy0aK"
+# Set up Stripe - REPLACE WITH YOUR ACTUAL KEY
+stripe.api_key = "sk_test_YOUR_TEST_SECRET_KEY_HERE"
 
-# MongoDB connection
-MONGODB_URL = "mongodb://mongo:rdJVDcRfesCmdVXgYuJPNJlDzkFzxIoT@crossover.proxy.rlwy.net:44437/language_tutor?authSource=admin"
+# MongoDB connection - REPLACE WITH YOUR ACTUAL CONNECTION STRING
+MONGODB_URL = "mongodb://your-mongodb-connection-string-here"
 
 def fix_george_subscription():
     """Fix George's subscription to demonstrate proper trial-to-monthly transition"""
