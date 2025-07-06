@@ -483,21 +483,58 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
         """Generate personalized suggestions based on user context"""
         suggestions = []
         
+        print(f"🎯 [SUGGESTIONS] Generating suggestions for user context: {user_context}")
+        
         if user_context.get("user_type") == "guest":
             suggestions.extend([
                 "🎯 Sign up for free to get 4x longer assessments and 5x longer conversations!",
                 "📊 Create an account to save your progress and track improvement",
                 "🏆 Register to unlock achievements and learning streaks"
             ])
-        elif user_context.get("subscription_plan") == "try_learn":
-            if user_context.get("total_sessions", 0) < 5:
-                suggestions.append("💬 Try practicing different conversation topics to expand your vocabulary")
+        else:
+            # For registered users
+            plan = user_context.get("subscription_plan", "try_learn")
+            total_sessions = user_context.get("total_sessions", 0)
+            current_streak = user_context.get("current_streak", 0)
+            sessions_used = user_context.get("usage_this_month", {}).get("sessions_used", 0)
             
-            if user_context.get("current_streak", 0) == 0:
-                suggestions.append("🔥 Start a learning streak by practicing daily for just 5 minutes")
+            print(f"🎯 [SUGGESTIONS] Plan: {plan}, Sessions: {total_sessions}, Streak: {current_streak}, Used: {sessions_used}")
             
-            if user_context.get("usage_this_month", {}).get("sessions_used", 0) >= 2:
-                suggestions.append("🚀 Consider upgrading to Fluency Builder for unlimited practice sessions")
+            # Plan-specific suggestions
+            if plan == "try_learn":
+                if total_sessions < 5:
+                    suggestions.append("💬 Try practicing different conversation topics to expand your vocabulary")
+                
+                if current_streak == 0:
+                    suggestions.append("🔥 Start a learning streak by practicing daily for just 5 minutes")
+                
+                if sessions_used >= 2:
+                    suggestions.append("🚀 Consider upgrading to Fluency Builder for unlimited practice sessions")
+            
+            elif plan == "fluency_builder":
+                if total_sessions < 10:
+                    suggestions.append("📈 You're on Fluency Builder! Try to reach 10 total sessions for better progress tracking")
+                
+                if current_streak == 0:
+                    suggestions.append("🔥 Start a daily practice streak to maximize your Fluency Builder benefits")
+                
+                if sessions_used < 10:
+                    suggestions.append("💪 You have 30 sessions per month - practice more to get the most value from your plan")
+                
+                # Enhanced Analysis suggestion
+                suggestions.append("🧠 Practice for 5+ minutes to unlock Enhanced Analysis with detailed feedback")
+            
+            elif plan == "team_mastery":
+                suggestions.append("🚀 You have unlimited sessions! Practice as much as you want")
+                suggestions.append("📊 Check your team dashboard for progress insights")
+                suggestions.append("🎯 Use advanced features like custom branding and API access")
+            
+            # General suggestions for all registered users
+            if total_sessions == 0:
+                suggestions.append("🎤 Take your first speaking assessment to get started")
+            
+            if total_sessions > 0 and current_streak == 0:
+                suggestions.append("📅 Practice daily to build a learning streak")
         
         # Language-specific suggestions
         if user_context.get("preferred_language"):
@@ -514,6 +551,14 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
             elif level in ["C1", "C2"]:
                 suggestions.append("⭐ Practice advanced topics and cultural nuances")
         
+        # Learning plans suggestions
+        learning_plans_count = user_context.get("learning_plans_count", 0)
+        if learning_plans_count == 0:
+            suggestions.append("📋 Create a personalized learning plan to track your progress")
+        elif learning_plans_count > 0:
+            suggestions.append("📚 Follow your learning plan objectives for structured progress")
+        
+        print(f"🎯 [SUGGESTIONS] Generated {len(suggestions)} suggestions: {suggestions}")
         return suggestions[:3]  # Return top 3 suggestions
     
     def generate_contextual_response(self, query: str, context_docs: List[Dict[str, Any]], user_context: Dict[str, Any]) -> str:
