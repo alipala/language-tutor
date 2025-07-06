@@ -128,6 +128,29 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
     user_dict.pop("hashed_password", None)
     return UserResponse(**user_dict)
 
+async def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[UserResponse]:
+    """Get current user if authenticated, otherwise return None (for optional authentication)"""
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+        token_data = TokenData(user_id=user_id)
+    except JWTError:
+        return None
+    
+    user = await get_user_by_id(token_data.user_id)
+    if user is None:
+        return None
+    
+    # Convert UserInDB to UserResponse
+    user_dict = user.dict(by_alias=True)
+    user_dict.pop("hashed_password", None)
+    return UserResponse(**user_dict)
+
 # User registration
 async def create_user(user: UserCreate) -> UserResponse:
     # Check if user already exists
