@@ -697,6 +697,7 @@ async def get_contextual_knowledge(
         print(f"📚 Sources used: {', '.join(sources)}")
         print(f"📝 Response length: {len(response_text)} characters")
         print(f"🎯 Suggestions generated: {len(suggestions)}")
+        print(f"🎯 Suggestions content: {suggestions}")
         print(f"🎯 Response preview: {response_text[:100]}...")
         print("="*80)
         
