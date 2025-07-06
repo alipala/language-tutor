@@ -101,8 +101,10 @@ app.include_router(export_router)
 # Include chat routes
 from chat_routes import router as chat_router
 from vector_chatbot import router as vector_chat_router
+from contextual_chatbot import router as contextual_chat_router
 app.include_router(chat_router)
 app.include_router(vector_chat_router)
+app.include_router(contextual_chat_router)
 
 # Include admin routes
 from admin_routes import router as admin_router

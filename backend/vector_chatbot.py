@@ -106,6 +106,524 @@ class VectorChatbot:
 """
             },
             {
+                "id": "detailed_pricing_plans",
+                "title": "Complete Pricing Plans & Subscription Details",
+                "category": "Pricing & Subscriptions",
+                "content": """
+💰 COMPLETE PRICING GUIDE FOR MY TACO AI:
+
+🆓 TRY & LEARN PLAN (FREE):
+• Price: Completely FREE forever
+• 3 practice sessions per month (5 minutes each)
+• 1 speaking assessment per month
+• 15-second assessment duration
+• 1-minute conversation practice
+• Basic language level detection
+• Access to all 6 languages
+• No account required for basic features
+• Perfect for trying out the platform
+
+📚 FLUENCY BUILDER PLAN:
+• Monthly: $19.99/month
+• Annual: $199.99/year (SAVE $39.89 - 17% OFF!)
+• 30 practice sessions per month (5 minutes each)
+• 2 speaking assessments per month
+• 60-second assessment duration (4x longer than free)
+• 5-minute conversation practice (5x longer than free)
+• 7-DAY FREE TRIAL included
+• Save unlimited conversation history
+• Track learning progress and streaks
+• Earn achievements and badges
+• Detailed AI analysis and feedback
+• Export learning data as PDF/CSV
+• Email support
+• Personalized learning plans
+• Advanced conversation topics
+
+🚀 TEAM MASTERY PLAN:
+• Monthly: $39.99/month per user
+• Annual: $399.99/year per user (SAVE $79.89 - 17% OFF!)
+• UNLIMITED practice sessions
+• UNLIMITED speaking assessments
+• 60-second assessment duration
+• 5-minute conversation practice
+• 7-DAY FREE TRIAL included
+• Everything in Fluency Builder PLUS:
+• Team management dashboard
+• Multiple user accounts (up to 5 users)
+• Team progress tracking and analytics
+• Bulk user management
+• Dedicated account manager
+• Custom branding options
+• API access for integrations
+• Priority customer support
+• Advanced pronunciation analysis
+• Grammar correction with explanations
+
+💳 PAYMENT & BILLING:
+• All major credit cards accepted
+• PayPal supported
+• Secure payment processing via Stripe
+• Automatic billing with email receipts
+• Update payment methods anytime
+• Cancel anytime - no long-term contracts
+• Pause subscription for up to 3 months
+• Upgrade or downgrade plans instantly
+• Prorated billing for plan changes
+
+🎁 SPECIAL OFFERS:
+• 7-day free trial for all paid plans
+• Student discounts available (contact support)
+• Corporate bulk pricing for 10+ users
+• Seasonal promotions and discounts
+
+📞 NEED HELP CHOOSING?
+Contact our support team at hello@mytacoai.com or use the chat feature. We'll help you find the perfect plan for your language learning goals!
+"""
+            },
+            {
+                "id": "guest_vs_user_experience",
+                "title": "Guest vs Registered User Experience Comparison",
+                "category": "Account Features",
+                "content": """
+🔍 GUEST VS REGISTERED USER COMPARISON:
+
+👤 GUEST USER EXPERIENCE (No Account Required):
+• Assessment Duration: 15 seconds only
+• Conversation Time: 1 minute maximum
+• Session Limit: 3 assessments per browser session
+• Progress Saving: None - resets when you close browser
+• Learning Plans: Temporary only, lost after session
+• Achievements: Not available
+• Conversation History: Not saved
+• Data Export: Not available
+• Enhanced Analysis: Not available
+• Streak Tracking: Not available
+• Support: Community support only
+
+✅ REGISTERED USER EXPERIENCE (Free Account):
+• Assessment Duration: 60 seconds (4x longer!)
+• Conversation Time: 5 minutes (5x longer!)
+• Session Limit: No daily limits
+• Progress Saving: Permanent across all devices
+• Learning Plans: Saved permanently with progress tracking
+• Achievements: 8 different achievements to earn
+• Conversation History: Complete history with AI summaries
+• Data Export: Full data export in PDF/CSV/ZIP formats
+• Enhanced Analysis: 6-tab detailed analysis system
+• Streak Tracking: Daily practice streaks with rewards
+• Support: Email support included
+
+🎯 WHY CREATE AN ACCOUNT?
+• 4x longer assessments for better accuracy
+• 5x longer conversations for meaningful practice
+• Permanent progress tracking across devices
+• AI-generated learning plans that adapt to your progress
+• Detailed conversation analysis with insights
+• Achievement system to motivate learning
+• Complete conversation history with searchable summaries
+• Professional data export for sharing with teachers
+• Streak tracking to build consistent habits
+
+🔄 GUEST-TO-USER TRANSITION:
+• Any learning plans created as guest are automatically saved when you sign up
+• Assessment results transfer to your new account
+• Seamless transition - no data lost
+• Immediate access to all premium features
+
+📱 CROSS-DEVICE SYNC:
+• Registered users: Full sync across phone, tablet, computer
+• Guest users: Data only available on current browser session
+
+🚀 GETTING STARTED:
+• Try as guest first to see if you like the platform
+• Sign up for free when ready for full features
+• Upgrade to paid plans for unlimited practice and advanced features
+"""
+            },
+            {
+                "id": "enhanced_analysis_system",
+                "title": "Enhanced AI Analysis System - Complete Guide",
+                "category": "Advanced Features",
+                "content": """
+🧠 ENHANCED AI ANALYSIS SYSTEM - YOUR PERSONAL LANGUAGE COACH:
+
+📊 WHAT IS ENHANCED ANALYSIS?
+The Enhanced Analysis System is our advanced AI-powered feature that provides comprehensive insights into your conversation sessions. It goes beyond basic summaries to deliver actionable feedback that helps accelerate your language learning.
+
+🎯 WHEN DO YOU GET ENHANCED ANALYSIS?
+• Available for registered users only
+• Automatically generated for conversations 5+ minutes long
+• Also available for shorter conversations with 15+ messages
+• Appears as "Enhanced Analysis Available" badge in your conversation history
+
+📋 THE 6-TAB ANALYSIS INTERFACE:
+
+1️⃣ CONVERSATION TAB:
+• Complete conversation transcript
+• Chat-style message display with timestamps
+• Easy-to-read format for reviewing your practice
+
+2️⃣ OVERVIEW TAB:
+• Quick summary of key metrics
+• Session highlights and achievements
+• Overall performance snapshot
+• Time spent and message count
+
+3️⃣ QUALITY METRICS TAB:
+• Engagement Score: How actively you participated
+• Topic Depth Score: How thoroughly you explored topics
+• Word Count Analysis: Measures expression depth
+• Question Frequency: Tracks curiosity and interaction
+• Elaboration Rate: Evaluates detail quality
+
+4️⃣ PROGRESS TAB:
+• Learning advancement indicators
+• Complexity growth analysis over time
+• Skill development tracking
+• Improvement pattern recognition
+• Confidence building metrics
+
+5️⃣ AI INSIGHTS TAB:
+• Breakthrough Moments: Significant learning achievements
+• Struggle Points: Areas needing attention
+• Confidence Level Assessment
+• Pattern Recognition in your learning
+• Personalized observations from AI
+
+6️⃣ RECOMMENDATIONS TAB:
+• Immediate Actions: What to practice next session
+• Weekly Focus Areas: Medium-term learning goals
+• Long-term Objectives: Strategic language development
+• Specific exercises and activities
+• Conversation topics for improvement
+
+🎯 SAMPLE INSIGHTS YOU'LL RECEIVE:
+• "Successfully used complex conditional sentences"
+• "Demonstrated improved pronunciation of difficult sounds"
+• "Showed increased confidence in expressing opinions"
+• "Could benefit from more varied vocabulary in travel topics"
+• "Excellent progress in using past perfect tense"
+
+📈 HOW TO ACCESS:
+• Complete a 5+ minute conversation
+• Go to your Profile page
+• Look for "Enhanced Analysis Available" badge
+• Click "View Analysis" to open the detailed modal
+• Navigate through all 6 tabs for complete insights
+
+🚀 BENEFITS:
+• Identify your learning breakthroughs
+• Understand exactly what to practice next
+• Track your improvement over time
+• Get personalized AI coaching
+• Accelerate your language learning journey
+"""
+            },
+            {
+                "id": "languages_and_levels",
+                "title": "Complete Languages & CEFR Levels Guide",
+                "category": "Languages & Levels",
+                "content": """
+🌍 COMPLETE LANGUAGES & LEVELS GUIDE:
+
+🗣️ SUPPORTED LANGUAGES:
+• English 🇺🇸 - American English with cultural context
+• Dutch 🇳🇱 - Netherlands Dutch with cultural nuances
+• Spanish 🇪🇸 - International Spanish with regional variations
+• French 🇫🇷 - Standard French with cultural elements
+• German 🇩🇪 - High German with cultural context
+• Portuguese 🇵🇹 - International Portuguese (Brazilian & European)
+
+📊 CEFR LEVELS EXPLAINED:
+
+🟢 A1 - BEGINNER:
+• Can understand and use familiar everyday expressions
+• Can introduce themselves and ask basic questions
+• Can interact simply if the other person speaks slowly
+• Vocabulary: 500-1000 words
+• Grammar: Present tense, basic sentence structures
+• Topics: Greetings, numbers, colors, family, daily routines
+
+🟡 A2 - ELEMENTARY:
+• Can communicate in simple routine tasks
+• Can describe background, immediate environment
+• Can handle simple exchanges of information
+• Vocabulary: 1000-2000 words
+• Grammar: Past tense, future with "going to", modal verbs
+• Topics: Shopping, work, travel basics, personal history
+
+🔵 B1 - INTERMEDIATE:
+• Can deal with most travel situations
+• Can describe experiences, events, dreams, hopes
+• Can give brief explanations for opinions and plans
+• Vocabulary: 2000-3000 words
+• Grammar: All tenses, conditional sentences, passive voice
+• Topics: Current events, hobbies, work, detailed travel
+
+🟣 B2 - UPPER INTERMEDIATE:
+• Can interact with fluency and spontaneity
+• Can understand main ideas of complex texts
+• Can produce detailed text on wide range of subjects
+• Vocabulary: 3000-4000 words
+• Grammar: Complex structures, subjunctive, advanced tenses
+• Topics: Abstract concepts, professional discussions, culture
+
+🔴 C1 - ADVANCED:
+• Can express ideas fluently and spontaneously
+• Can use language flexibly for social, academic, professional purposes
+• Can produce well-structured, detailed text
+• Vocabulary: 4000-8000 words
+• Grammar: All structures with precision and style
+• Topics: Academic subjects, professional specialization, literature
+
+⚫ C2 - PROFICIENCY:
+• Can understand virtually everything heard or read
+• Can express themselves with precision in complex situations
+• Near-native level fluency and accuracy
+• Vocabulary: 8000+ words
+• Grammar: Native-like precision and style
+• Topics: Any subject with native-like competence
+
+🎯 HOW LEVELS AFFECT YOUR EXPERIENCE:
+• Conversation complexity adapts to your level
+• Vocabulary and grammar appropriate for your stage
+• Cultural context increases with higher levels
+• Topics become more sophisticated as you advance
+• AI tutor adjusts speaking speed and complexity
+
+📈 LEVEL PROGRESSION:
+• Take regular assessments to track improvement
+• Conversations automatically adapt as you improve
+• Learning plans adjust to your advancing level
+• Achievement system recognizes level progression
+
+🌟 CULTURAL ELEMENTS BY LANGUAGE:
+• English: American customs, idioms, business culture
+• Dutch: Gezelligheid, directness, cycling culture
+• Spanish: Family values, festivals, regional variations
+• French: Cuisine, art, formal/informal registers
+• German: Efficiency, precision, regional dialects
+• Portuguese: Music, festivals, Brazilian vs European differences
+"""
+            },
+            {
+                "id": "technical_troubleshooting",
+                "title": "Technical Requirements & Troubleshooting Guide",
+                "category": "Technical Support",
+                "content": """
+🔧 TECHNICAL REQUIREMENTS & TROUBLESHOOTING:
+
+💻 SYSTEM REQUIREMENTS:
+
+🌐 BROWSER COMPATIBILITY:
+• Chrome 55+ (Recommended)
+• Safari 11+ (iOS/macOS)
+• Firefox 44+ (Limited support)
+• Edge 79+ (Good support)
+• Mobile browsers supported on iOS 11+ and Android 7+
+
+🎤 MICROPHONE REQUIREMENTS:
+• Built-in microphone: Adequate for basic use
+• Headset microphone: Recommended for best quality
+• USB microphone: Excellent for professional quality
+• Bluetooth headphones: Good quality, may have slight delay
+
+📱 DEVICE COMPATIBILITY:
+• Desktop/Laptop: Full feature support
+• Tablets: Full feature support
+• Smartphones: Optimized mobile interface
+• Minimum RAM: 2GB recommended
+• Stable internet: 1 Mbps minimum for voice features
+
+🚨 COMMON ISSUES & SOLUTIONS:
+
+🎤 MICROPHONE PROBLEMS:
+Problem: "Microphone not detected"
+Solutions:
+• Check browser permissions (click lock icon in address bar)
+• Restart browser and try again
+• Check system microphone settings
+• Try different browser
+• Ensure microphone is not used by other apps
+
+Problem: "Poor audio quality"
+Solutions:
+• Use headphones or external microphone
+• Find quieter environment
+• Check microphone positioning (6-8 inches from mouth)
+• Close other audio applications
+• Test microphone in other apps first
+
+🌐 CONNECTION ISSUES:
+Problem: "Session keeps disconnecting"
+Solutions:
+• Check internet connection stability
+• Try different WiFi network
+• Close bandwidth-heavy applications
+• Refresh page and restart session
+• Contact support if problem persists
+
+Problem: "Slow loading or lag"
+Solutions:
+• Clear browser cache and cookies
+• Close unnecessary browser tabs
+• Restart browser
+• Check available device memory
+• Try incognito/private browsing mode
+
+📱 MOBILE-SPECIFIC ISSUES:
+Problem: "App not working on mobile"
+Solutions:
+• Update to latest browser version
+• Enable JavaScript in browser settings
+• Clear mobile browser cache
+• Try landscape orientation
+• Ensure sufficient battery level
+
+Problem: "Touch controls not responsive"
+Solutions:
+• Clean screen for better touch sensitivity
+• Try different finger/stylus
+• Check if screen protector interferes
+• Restart device if needed
+
+🔊 AUDIO PLAYBACK ISSUES:
+Problem: "Can't hear AI tutor responses"
+Solutions:
+• Check device volume settings
+• Ensure browser has audio permissions
+• Try headphones to test audio output
+• Check if other apps are using audio
+• Restart browser/device
+
+⚡ PERFORMANCE OPTIMIZATION:
+• Close unnecessary browser tabs
+• Disable browser extensions temporarily
+• Use latest browser version
+• Ensure adequate device storage
+• Use WiFi instead of mobile data when possible
+
+🆘 WHEN TO CONTACT SUPPORT:
+• Persistent microphone issues after trying solutions
+• Repeated session disconnections
+• Payment or subscription problems
+• Account access issues
+• Feature not working as described
+
+📧 SUPPORT CONTACT:
+• Email: hello@mytacoai.com
+• Include: Device type, browser version, error description
+• Response time: Within 24 hours
+• Live chat available during business hours
+"""
+            },
+            {
+                "id": "business_policies",
+                "title": "Business Policies & Account Management",
+                "category": "Policies & Management",
+                "content": """
+📋 BUSINESS POLICIES & ACCOUNT MANAGEMENT:
+
+💳 SUBSCRIPTION MANAGEMENT:
+
+🔄 BILLING CYCLES:
+• Monthly plans: Billed every 30 days from signup date
+• Annual plans: Billed every 365 days from signup date
+• Free trial: 7 days before first charge
+• Prorated billing: Immediate adjustment when changing plans
+• Payment date: Same day each month/year as original signup
+
+💰 PRICING CHANGES:
+• Current subscribers: 30-day notice for any price increases
+• Grandfathered pricing: Existing users keep current rates
+• New features: May be added to plans without price increase
+• Promotional pricing: Limited time offers clearly marked
+
+🚫 CANCELLATION POLICY:
+• Cancel anytime: No cancellation fees
+• Immediate effect: Access continues until end of billing period
+• Data retention: Account data kept for 90 days after cancellation
+• Reactivation: Easy reactivation within 90 days
+• Refund policy: Pro-rated refunds for annual plans (see below)
+
+💸 REFUND POLICY:
+• Free trial: Cancel during trial for no charge
+• Monthly plans: No refunds (cancel to avoid next charge)
+• Annual plans: Pro-rated refund for unused months
+• Refund processing: 5-10 business days to original payment method
+• Dispute resolution: Contact support for billing issues
+
+📊 DATA RETENTION & PRIVACY:
+
+🗄️ ACTIVE ACCOUNTS:
+• Conversation history: Stored indefinitely while account active
+• Learning plans: Preserved permanently
+• Progress data: Maintained for progress tracking
+• Assessment results: Kept for level progression analysis
+
+🗑️ CANCELLED ACCOUNTS:
+• Grace period: 90 days to reactivate with full data
+• Data deletion: Automatic deletion after 90 days
+• Export option: Download all data before cancellation
+• Anonymization: Personal identifiers removed, learning data may be kept for research
+
+🔒 PRIVACY PROTECTION:
+• Conversation encryption: All conversations encrypted in transit and at rest
+• No data sharing: Conversations never shared with third parties
+• GDPR compliant: Full data portability and deletion rights
+• Secure storage: Enterprise-grade security measures
+
+👤 ACCOUNT MANAGEMENT:
+
+🔐 ACCOUNT SECURITY:
+• Password requirements: Minimum 8 characters, mixed case recommended
+• Two-factor authentication: Available for enhanced security
+• Login monitoring: Unusual activity alerts
+• Session management: Automatic logout after inactivity
+
+📧 COMMUNICATION PREFERENCES:
+• Marketing emails: Opt-in/opt-out available
+• Product updates: Important updates sent to all users
+• Support communications: Related to your account and usage
+• Frequency control: Manage email frequency in settings
+
+🏢 BUSINESS ACCOUNTS:
+
+👥 TEAM PLANS:
+• Minimum users: 5 users for team pricing
+• Admin controls: Centralized user management
+• Billing consolidation: Single invoice for all users
+• Usage analytics: Team-wide progress reporting
+
+🏛️ ENTERPRISE SOLUTIONS:
+• Custom pricing: Volume discounts for 50+ users
+• SSO integration: Single sign-on with corporate systems
+• Custom features: Tailored functionality for large organizations
+• Dedicated support: Priority support with dedicated account manager
+
+⚖️ TERMS OF SERVICE:
+
+✅ ACCEPTABLE USE:
+• Educational purpose: Platform designed for language learning
+• Personal use: Individual accounts for personal learning
+• Respectful interaction: Appropriate language in all communications
+• No abuse: Prohibited to abuse or exploit platform features
+
+🚫 PROHIBITED ACTIVITIES:
+• Account sharing: Each account for individual use only
+• Automated access: No bots or automated systems
+• Reverse engineering: No attempts to copy or replicate technology
+• Harassment: No inappropriate or offensive content
+
+📞 SUPPORT & CONTACT:
+• Email support: hello@mytacoai.com
+• Response time: 24 hours for general inquiries, 4 hours for billing issues
+• Live chat: Available during business hours (9 AM - 6 PM EST)
+• Knowledge base: Comprehensive self-help resources available
+"""
+            },
+            {
                 "id": "assessment_guide",
                 "title": "How to Take Your Speaking Assessment",
                 "category": "Assessment",
