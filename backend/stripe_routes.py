@@ -524,6 +524,8 @@ async def stripe_webhook(
             await handle_subscription_updated(event["data"]["object"])
         elif event["type"] == "customer.subscription.deleted":
             await handle_subscription_deleted(event["data"]["object"])
+        elif event["type"] == "customer.subscription.trial_will_end":
+            await handle_subscription_trial_will_end(event["data"]["object"])
         elif event["type"] == "checkout.session.completed":
             await handle_checkout_completed(event["data"]["object"])
         elif event["type"] == "invoice.payment_succeeded":
@@ -592,9 +594,11 @@ async def handle_subscription_created(subscription):
         logger.error(f"Error handling subscription created: {str(e)}")
 
 async def handle_subscription_updated(subscription):
-    """Handle subscription updated event"""
+    """Handle subscription updated event - includes trial-to-active transitions"""
     try:
         customer_id = subscription.get("customer")
+        subscription_id = subscription.get("id")
+        
         if not customer_id:
             logger.warning("No customer ID in subscription updated event")
             return
@@ -604,20 +608,60 @@ async def handle_subscription_updated(subscription):
         if not user:
             return
 
+        current_status = user.get("subscription_status")
+        new_status = subscription.get("status")
+        
+        logger.info(f"[SUB_UPDATED] User {user['_id']} subscription {subscription_id}: {current_status} → {new_status}")
+
         # Prepare update data
         update_data = {
-            "subscription_status": subscription.get("status")
+            "subscription_status": new_status
         }
+        
+        # Handle trial-to-active transition
+        if current_status == "trialing" and new_status == "active":
+            logger.info(f"[SUB_UPDATED] Processing trial-to-active transition for user {user['_id']}")
+            
+            # Update trial status
+            update_data["is_in_trial"] = False
+            
+            # Reset usage counters for new billing period
+            update_data["practice_sessions_used"] = 0
+            update_data["assessments_used"] = 0
+            
+            # Calculate proper monthly expiry date
+            from datetime import datetime, timezone
+            from dateutil.relativedelta import relativedelta
+            
+            # Get trial end date if available
+            trial_end_date = None
+            if subscription.get("trial_end"):
+                trial_end_date = datetime.fromtimestamp(subscription.get("trial_end"), tz=timezone.utc)
+                update_data["trial_end_date"] = trial_end_date
+            
+            # Calculate monthly expiry (1 month from trial end or current period start)
+            if trial_end_date:
+                monthly_expiry = trial_end_date + relativedelta(months=1)
+                update_data["subscription_expires_at"] = monthly_expiry
+                logger.info(f"[SUB_UPDATED] Set monthly expiry to {monthly_expiry} (1 month from trial end)")
+            elif subscription.get("current_period_end"):
+                # Fallback to current period end from Stripe
+                update_data["subscription_expires_at"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
+                logger.info(f"[SUB_UPDATED] Using Stripe current_period_end as expiry")
         
         # Add period dates from Stripe
         from datetime import datetime, timezone
         if subscription.get("current_period_start"):
             update_data["current_period_start"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
-            update_data["subscription_started_at"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
+            # Only update subscription_started_at if not already set
+            if not user.get("subscription_started_at"):
+                update_data["subscription_started_at"] = datetime.fromtimestamp(subscription.get("current_period_start"), tz=timezone.utc)
         
         if subscription.get("current_period_end"):
             update_data["current_period_end"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
-            update_data["subscription_expires_at"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
+            # Only update subscription_expires_at if not already calculated above
+            if "subscription_expires_at" not in update_data:
+                update_data["subscription_expires_at"] = datetime.fromtimestamp(subscription.get("current_period_end"), tz=timezone.utc)
         
         # Get the plan details
         if subscription.get("items") and subscription.get("items").get("data"):
@@ -639,9 +683,19 @@ async def handle_subscription_updated(subscription):
             {"$set": update_data}
         )
         
-        logger.info(f"Subscription updated for user {user['_id']}")
+        logger.info(f"[SUB_UPDATED] Successfully updated subscription for user {user['_id']}")
+        
+        # Log the transition details for debugging
+        if current_status == "trialing" and new_status == "active":
+            logger.info(f"[SUB_UPDATED] Trial-to-active transition completed:")
+            logger.info(f"  - User: {user['_id']}")
+            logger.info(f"  - Subscription: {subscription_id}")
+            logger.info(f"  - New expiry: {update_data.get('subscription_expires_at')}")
+            logger.info(f"  - Plan: {update_data.get('subscription_plan')}")
+            logger.info(f"  - Period: {update_data.get('subscription_period')}")
+        
     except Exception as e:
-        logger.error(f"Error handling subscription updated: {str(e)}")
+        logger.error(f"[SUB_UPDATED] Error handling subscription updated: {str(e)}")
 
 async def handle_subscription_deleted(subscription):
     """Handle subscription deleted event"""
@@ -666,6 +720,83 @@ async def handle_subscription_deleted(subscription):
         logger.info(f"Subscription deleted for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling subscription deleted: {str(e)}")
+
+async def handle_subscription_trial_will_end(subscription):
+    """Handle subscription trial_will_end event - prepare for trial-to-monthly transition"""
+    try:
+        customer_id = subscription.get("customer")
+        subscription_id = subscription.get("id")
+        
+        if not customer_id:
+            logger.warning("No customer ID in subscription trial_will_end event")
+            return
+
+        # Find user by multiple methods
+        user = await find_user_by_customer_id(customer_id)
+        if not user:
+            logger.warning(f"No user found for trial ending subscription: {subscription_id}")
+            return
+
+        logger.info(f"[TRIAL_WILL_END] Processing trial end for user {user['_id']}, subscription: {subscription_id}")
+
+        # Get fresh subscription data from Stripe to ensure we have latest info
+        fresh_subscription = stripe.Subscription.retrieve(subscription_id)
+        
+        # Prepare update data for trial ending
+        update_data = {
+            "subscription_status": fresh_subscription.status,
+            "subscription_id": fresh_subscription.id
+        }
+        
+        # Handle trial end date and future monthly billing
+        from datetime import datetime, timezone
+        if hasattr(fresh_subscription, 'trial_end') and fresh_subscription.trial_end:
+            trial_end_date = datetime.fromtimestamp(fresh_subscription.trial_end, tz=timezone.utc)
+            update_data["trial_end_date"] = trial_end_date
+            
+            # If trial is ending, prepare for monthly billing
+            if fresh_subscription.status == "trialing":
+                # Calculate when the monthly subscription will expire (1 month from trial end)
+                from dateutil.relativedelta import relativedelta
+                monthly_expiry = trial_end_date + relativedelta(months=1)
+                update_data["subscription_expires_at"] = monthly_expiry
+                
+                logger.info(f"[TRIAL_WILL_END] Trial ends {trial_end_date}, monthly billing will expire {monthly_expiry}")
+            
+        # Update current period info
+        if hasattr(fresh_subscription, 'current_period_start') and fresh_subscription.current_period_start:
+            update_data["current_period_start"] = datetime.fromtimestamp(fresh_subscription.current_period_start, tz=timezone.utc)
+        
+        if hasattr(fresh_subscription, 'current_period_end') and fresh_subscription.current_period_end:
+            update_data["current_period_end"] = datetime.fromtimestamp(fresh_subscription.current_period_end, tz=timezone.utc)
+        
+        # Get plan details if missing
+        if fresh_subscription.items and len(fresh_subscription.items.data) > 0:
+            price = fresh_subscription.items.data[0].price
+            if price:
+                update_data["subscription_price_id"] = price.id
+                
+                # Get product details
+                product = stripe.Product.retrieve(price.product)
+                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
+                
+                # Determine if monthly or annual
+                if price.recurring and price.recurring.interval:
+                    update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
+
+        # Update user in MongoDB
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+        
+        logger.info(f"[TRIAL_WILL_END] Updated user {user['_id']} for upcoming trial end")
+        
+        # Optional: Send notification email to user about trial ending
+        # This could be implemented here or handled by a separate notification service
+        
+    except Exception as e:
+        logger.error(f"[TRIAL_WILL_END] Error handling subscription trial_will_end: {str(e)}")
 
 async def handle_checkout_completed(checkout_session):
     """Handle checkout session completed event"""
