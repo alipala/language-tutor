@@ -97,7 +97,7 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
   return (
     <>
       <motion.div
-        className={`relative bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden ${className}`}
+        className={`relative bg-white rounded-2xl shadow-lg border border-gray-100 p-4 overflow-hidden ${className}`}
         whileHover={{ scale: 1.02, y: -4 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
         onHoverStart={() => setIsHovered(true)}
@@ -116,7 +116,7 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
         {/* Content */}
         <div className="relative z-10">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <motion.div 
                 className="text-3xl"
@@ -151,17 +151,17 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
           </div>
 
           {/* Progress Ring */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-5">
             <ProgressRing 
               percentage={progress} 
-              size={100}
+              size={90}
               strokeWidth={6}
               animated={true}
             />
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-5">
             <div className="text-center">
               <div className="flex items-center justify-center mb-1">
                 <Target className="h-4 w-4 text-teal-500" />

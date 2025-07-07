@@ -405,7 +405,7 @@ export default function SubscriptionPlans() {
               for larger organizations with specific requirements.
             </p>
             <button
-              onClick={() => window.location.href = 'mailto:enterprise@mytacoai.com?subject=Enterprise Plan Inquiry'}
+              onClick={() => window.location.href = 'mailto:hello@mytacoai.com?subject=Enterprise Plan Inquiry'}
               className="inline-flex items-center px-8 py-3 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
               <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
