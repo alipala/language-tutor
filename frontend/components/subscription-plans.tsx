@@ -146,15 +146,15 @@ const annualPlans: PricingCard[] = [
   }
 ];
 
-// Stripe price IDs - Production Live Mode
+// Stripe price IDs from environment variables
 const STRIPE_PRICES = {
   monthly: {
-    fluency_builder: "price_1RdxNjJcquSiYwWN2XQMwwYW",
-    team_mastery: "price_1RdxlGJcquSiYwWNWvyEgmgL"
+    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
+    team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
   },
   annual: {
-    fluency_builder: "price_1RdxNjJcquSiYwWNIpmYrKSE",
-    team_mastery: "price_1RdxmRJcquSiYwWN7Oc6NnNe"
+    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || "price_1RdxNjJcquSiYwWNIpmYrKSE",
+    team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || "price_1RdxmRJcquSiYwWN7Oc6NnNe"
   }
 };
 
