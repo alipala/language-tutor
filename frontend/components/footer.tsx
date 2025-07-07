@@ -12,10 +12,9 @@ import {
   Mail,
   Phone,
   MapPin,
-  Twitter,
   Linkedin,
-  Github,
   Youtube,
+  Instagram,
   ChevronRight,
   Heart,
   Zap,
@@ -124,14 +123,12 @@ const Footer: React.FC = () => {
 
   const footerSections = [
     {
-      title: "Languages",
+      title: "My Taco",
       links: [
-        { name: "English", href: "/language-selection?lang=english", icon: Globe },
-        { name: "Spanish", href: "/language-selection?lang=spanish", icon: Globe },
-        { name: "French", href: "/language-selection?lang=french", icon: Globe },
-        { name: "German", href: "/language-selection?lang=german", icon: Globe },
-        { name: "Portuguese", href: "/language-selection?lang=portuguese", icon: Globe },
-        { name: "Dutch", href: "/language-selection?lang=dutch", icon: Globe }
+        { name: "About Us", href: "/about", icon: Users },
+        { name: "Press Kit", href: "/press", icon: Star },
+        { name: "Blog", href: "/blog", icon: BookOpen },
+        { name: "Research", href: "/research", icon: Zap }
       ]
     },
     {
@@ -157,16 +154,14 @@ const Footer: React.FC = () => {
       links: [
         { name: "Help Center", href: "/help", icon: MessageSquare },
         { name: "Community", href: "/community", icon: Users },
-        { name: "API Documentation", href: "/docs/api", icon: BookOpen },
         { name: "System Status", href: "/status", icon: Shield }
       ]
     }
   ];
 
   const socialLinks = [
-    { name: "Twitter", href: "https://twitter.com/languagetutor", icon: Twitter },
     { name: "LinkedIn", href: "https://linkedin.com/company/languagetutor", icon: Linkedin },
-    { name: "GitHub", href: "https://github.com/languagetutor", icon: Github },
+    { name: "Instagram", href: "https://instagram.com/languagetutor", icon: Instagram },
     { name: "YouTube", href: "https://youtube.com/@languagetutor", icon: Youtube }
   ];
 
