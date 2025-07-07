@@ -1351,7 +1351,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             {/* AI Tutor Avatar in Summary Bar */}
             {!voiceLoading && (
               <div className="flex items-center gap-2">
-                <div className="relative w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
                   <img 
                     src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
                     alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
@@ -1361,9 +1361,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
                     }}
                   />
-                  {/* Online indicator */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                 </div>
+                {/* Online indicator positioned next to avatar */}
+                <div className="w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
               </div>
             )}
           </div>
