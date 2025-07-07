@@ -29,6 +29,7 @@ class UserBase(BaseModel):
     last_login: Optional[datetime] = None
     preferred_language: Optional[str] = None
     preferred_level: Optional[str] = None
+    preferred_voice: Optional[str] = "alloy"  # AI Tutor voice preference
     last_assessment_data: Optional[Dict[str, Any]] = None
     
     class Config:
@@ -89,6 +90,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     preferred_language: Optional[str] = None
     preferred_level: Optional[str] = None
+    preferred_voice: Optional[str] = None  # AI Tutor voice preference
     last_assessment_data: Optional[Dict[str, Any]] = None
     stripe_customer_id: Optional[str] = None
     subscription_status: Optional[str] = None
@@ -368,3 +370,20 @@ class NotificationListResponse(BaseModel):
     notifications: List[UserNotificationResponse]
     unread_count: int
     total_count: int
+
+# Voice selection models
+class VoiceSelectionRequest(BaseModel):
+    voice: str  # One of: alloy, ash, ballad, coral, echo, sage, shimmer, verse
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class VoiceSelectionResponse(BaseModel):
+    success: bool
+    voice: str
+    message: str
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True

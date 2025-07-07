@@ -128,7 +128,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
     user_dict.pop("hashed_password", None)
     return UserResponse(**user_dict)
 
-async def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[UserResponse]:
+async def get_optional_current_user(token: Optional[str] = None) -> Optional[UserResponse]:
     """Get current user if authenticated, otherwise return None (for optional authentication)"""
     if not token:
         return None
@@ -150,6 +150,28 @@ async def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme
     user_dict = user.dict(by_alias=True)
     user_dict.pop("hashed_password", None)
     return UserResponse(**user_dict)
+
+# Create a dependency that extracts the token from the Authorization header but doesn't require it
+from fastapi import Request
+
+async def get_optional_token(request: Request) -> Optional[str]:
+    """Extract token from Authorization header if present"""
+    authorization = request.headers.get("Authorization")
+    if not authorization:
+        return None
+    
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            return None
+        return token
+    except ValueError:
+        return None
+
+async def get_optional_current_user_from_request(request: Request) -> Optional[UserResponse]:
+    """Get current user from request if authenticated, otherwise return None"""
+    token = await get_optional_token(request)
+    return await get_optional_current_user(token)
 
 # User registration
 async def create_user(user: UserCreate) -> UserResponse:

@@ -15,7 +15,7 @@ from openai import OpenAI
 
 # Import MongoDB and authentication modules
 from database import init_db, client, database, DATABASE_NAME
-from auth import get_current_user
+from auth import get_current_user, get_optional_current_user_from_request
 from models import UserResponse
 from auth_routes import router as auth_router
 from bson import ObjectId
@@ -392,7 +392,7 @@ async def health_check():
 class TutorSessionRequest(BaseModel):
     language: str
     level: str
-    voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+    voice: Optional[str] = "alloy"  # Options: alloy, ash, ballad, coral, echo, sage, shimmer, verse
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: Optional[str] = None  # User prompt for custom topics
     assessment_data: Optional[Dict[str, Any]] = None  # Assessment data from speaking assessment
@@ -403,7 +403,7 @@ class TutorSessionRequest(BaseModel):
 class CustomTopicRequest(BaseModel):
     language: str
     level: str
-    voice: Optional[str] = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+    voice: Optional[str] = "alloy"  # Options: alloy, ash, ballad, coral, echo, sage, shimmer, verse
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: str  # The custom prompt from the user
 
@@ -516,7 +516,7 @@ def get_language_iso_code(language: str) -> str:
 # main.py - Universal backend approach
 
 @app.post("/api/realtime/token")
-async def generate_token(request: TutorSessionRequest):
+async def generate_token(request: TutorSessionRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     from monitoring import send_error_alert, send_business_logic_alert, AlertContext, AlertSeverity
     
     try:
@@ -548,11 +548,36 @@ async def generate_token(request: TutorSessionRequest):
         
         print(f"✅ [UNIVERSAL] Instructions created: {len(instructions)} characters")
         
+        # 🎤 Get user's preferred voice fresh from database to ensure latest selection
+        preferred_voice = "alloy"  # Default voice
+        if current_user:
+            try:
+                from database import users_collection
+                from bson import ObjectId
+                
+                # Get fresh user data from database to ensure we have the latest voice preference
+                user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+                if user_doc and "preferred_voice" in user_doc:
+                    preferred_voice = user_doc["preferred_voice"]
+                    print(f"🎤 [VOICE] Fresh voice preference from DB: {preferred_voice}")
+                else:
+                    print(f"🎤 [VOICE] No voice preference found in DB, using default: {preferred_voice}")
+            except Exception as e:
+                print(f"🎤 [VOICE] Error fetching voice preference: {str(e)}")
+                preferred_voice = "alloy"
+        
+        # Use request voice if provided, otherwise use user's preferred voice
+        selected_voice = request.voice or preferred_voice
+        
+        print(f"🎤 [VOICE] User preferred voice: {preferred_voice}")
+        print(f"🎤 [VOICE] Request voice: {request.voice}")
+        print(f"🎤 [VOICE] Selected voice: {selected_voice}")
+        
         # ✅ Create ephemeral token with complete configuration
         # This approach works reliably on desktop AND mobile browsers
         payload = {
             "model": "gpt-4o-realtime-preview-2024-12-17",
-            "voice": request.voice or "alloy",
+            "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
             "input_audio_transcription": {

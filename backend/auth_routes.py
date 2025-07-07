@@ -22,7 +22,9 @@ from models import (
     UserUpdate,
     EmailVerificationRequest,
     EmailVerificationConfirm,
-    ResendVerificationRequest
+    ResendVerificationRequest,
+    VoiceSelectionRequest,
+    VoiceSelectionResponse
 )
 
 # Add password update model
@@ -617,4 +619,101 @@ async def get_verification_status(email: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get verification status"
+        )
+
+# Voice selection endpoints
+@router.post("/select-voice", response_model=VoiceSelectionResponse)
+async def select_voice(request: VoiceSelectionRequest, current_user: UserResponse = Depends(get_current_user)):
+    """
+    Update user's preferred AI tutor voice (for registered users only)
+    """
+    # Validate voice option
+    valid_voices = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
+    if request.voice not in valid_voices:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid voice option. Must be one of: {', '.join(valid_voices)}"
+        )
+    
+    try:
+        from bson import ObjectId
+        
+        # Convert user ID to ObjectId for MongoDB query
+        user_object_id = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+        
+        print(f"🎤 [VOICE_UPDATE] Updating voice for user {current_user.email} (ID: {current_user.id}) to: {request.voice}")
+        
+        # Update user's preferred voice in database
+        result = await users_collection.update_one(
+            {"_id": user_object_id},
+            {"$set": {"preferred_voice": request.voice}}
+        )
+        
+        print(f"🎤 [VOICE_UPDATE] Update result: modified_count={result.modified_count}, matched_count={result.matched_count}")
+        
+        if result.matched_count == 0:
+            # User not found
+            print(f"❌ [VOICE_UPDATE] User not found with ID: {current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        print(f"✅ Voice preference updated for user {current_user.email}: {request.voice}")
+        
+        return VoiceSelectionResponse(
+            success=True,
+            voice=request.voice,
+            message=f"AI Tutor voice successfully updated to {request.voice.title()}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating voice preference: {str(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update voice preference"
+        )
+
+@router.get("/get-voice")
+async def get_voice_preference(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Get user's current AI tutor voice preference
+    """
+    try:
+        from bson import ObjectId
+        
+        # Convert user ID to ObjectId for MongoDB query
+        user_object_id = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+        
+        print(f"🎤 [VOICE_GET] Getting voice for user {current_user.email} (ID: {current_user.id})")
+        
+        user = await users_collection.find_one({"_id": user_object_id})
+        if not user:
+            print(f"❌ [VOICE_GET] User not found with ID: {current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        preferred_voice = user.get("preferred_voice", "alloy")
+        print(f"✅ [VOICE_GET] Found voice preference: {preferred_voice}")
+        
+        return {
+            "voice": preferred_voice,
+            "available_voices": ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting voice preference: {str(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get voice preference"
         )
