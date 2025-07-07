@@ -123,15 +123,6 @@ const Footer: React.FC = () => {
 
   const footerSections = [
     {
-      title: "My Taco",
-      links: [
-        { name: "About Us", href: "/about", icon: Users },
-        { name: "Press Kit", href: "/press", icon: Star },
-        { name: "Blog", href: "/blog", icon: BookOpen },
-        { name: "Research", href: "/research", icon: Zap }
-      ]
-    },
-    {
       title: "Company",
       links: [
         { name: "About Us", href: "/about", icon: Users },
