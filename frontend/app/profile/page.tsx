@@ -30,6 +30,7 @@ import MembershipBadge, { UsageIndicator } from '@/components/membership-badge';
 import PaymentProcessingModal from '@/components/payment-processing-modal';
 import SoundWaveLoader from '@/components/sound-wave-loader';
 import NotificationsTab from '@/components/notifications-tab';
+import VoiceSelectionComponent from '@/components/voice-selection';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -826,6 +827,7 @@ export default function ProfilePage() {
                   { id: 'overview', label: 'Overview', icon: TrendingUp },
                   { id: 'progress', label: 'Learning Progress', icon: Target },
                   { id: 'achievements', label: 'Achievements', icon: Trophy },
+                  { id: 'ai-tutor', label: 'AI Tutor', icon: Volume2 },
                   { id: 'notifications', label: 'Notifications', icon: Bell },
                   { id: 'export', label: 'Export Data', icon: Download },
                   { id: 'settings', label: 'Settings', icon: Settings }
@@ -1084,6 +1086,33 @@ export default function ProfilePage() {
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <NotificationsTab />
+          )}
+
+          {/* AI Tutor Tab */}
+          {activeTab === 'ai-tutor' && (
+            <div className="space-y-8">
+              {/* Voice Selection Section */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                    <Volume2 className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+                    AI Tutor Voice
+                  </h3>
+                  <div className="text-sm text-gray-500">
+                    Choose your preferred voice for conversations
+                  </div>
+                </div>
+                
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-teal-700">
+                    <strong>🎤 Personalize Your Learning Experience:</strong> Select the AI tutor voice that feels most comfortable for your practice sessions. Your choice will be used for all voice conversations across the platform.
+                  </p>
+                </div>
+
+                {/* Voice Selection Grid */}
+                <VoiceSelectionComponent />
+              </div>
+            </div>
           )}
 
           {/* Achievements Tab */}
