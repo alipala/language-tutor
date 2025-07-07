@@ -1351,7 +1351,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
             {/* AI Tutor Avatar in Summary Bar */}
             {!voiceLoading && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+                <div className="relative w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
                   <img 
                     src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
                     alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
@@ -1361,10 +1361,9 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                       (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
                     }}
                   />
+                  {/* Online indicator */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                 </div>
-                <span className="font-semibold text-lg">
-                  {VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} AI
-                </span>
               </div>
             )}
           </div>
@@ -1379,41 +1378,12 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
                   {/* Real-time Transcript Component */}
                   <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]">
-                    <div className="flex items-center mb-2 sm:mb-4">
-                      {/* AI Tutor Avatar Display - LEFT of title */}
-                      {!voiceLoading && (
-                        <div className="flex items-center gap-2 mr-3">
-                          <div className="relative">
-                            <img 
-                              src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
-                              alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
-                              className="w-8 h-8 rounded-full bg-white p-1 shadow-md border-2 border-blue-200"
-                              onError={(e) => {
-                                console.error('Failed to load avatar:', e);
-                                (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
-                              }}
-                            />
-                            {/* Online indicator */}
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                          </div>
-                          <div className="text-left">
-                            <div className="text-sm font-semibold text-gray-800">
-                              {VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'}
-                            </div>
-                            <div className="text-xs text-gray-600 leading-tight">
-                              AI Tutor
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#F75A5A] flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                        Real-time Transcript
-                      </h3>
-                    </div>
+                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      Real-time Transcript
+                    </h3>
                     <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-y-auto pb-16">
                       <SentenceConstructionAssessment
                         transcript={currentTranscript}
