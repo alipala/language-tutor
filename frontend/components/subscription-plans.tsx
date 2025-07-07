@@ -56,6 +56,7 @@ const monthlyPlans: PricingCard[] = [
       { text: "Learning plan progression", included: true },
       { text: "Achievement badges", included: true },
       { text: "All conversation topics + custom topics", included: true },
+      { text: "🎤 Choose from multiple AI tutor voices", included: true },
       { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
@@ -63,24 +64,24 @@ const monthlyPlans: PricingCard[] = [
     popular: true
   },
   {
-    name: "Team Mastery",
+    name: "Language Mastery",
     price: "$39.99",
-    priceNote: "/month per user",
-    description: "For teams and organizations",
+    priceNote: "/month",
+    description: "For advanced learners seeking fluency",
     features: [
       { text: "🎉 7-day free trial included", included: true },
       { text: "Unlimited practice sessions", included: true },
-      { text: "Unlimited assessments", included: true },
-      { text: "Premium learning plans", included: true },
-      { text: "Advanced analytics", included: true },
-      { text: "Priority support", included: true },
-      { text: "Team collaboration features", included: true },
-      { text: "API access & LMS integrations", included: true },
-      { text: "SSO & admin controls", included: true }
+      { text: "Unlimited speaking assessments", included: true },
+      { text: "Premium learning plans with advanced topics", included: true },
+      { text: "🎤 Choose from multiple AI tutor voices", included: true },
+      { text: "📊 Advanced analytics & detailed insights", included: true },
+      { text: "🎯 Personalized learning recommendations", included: true },
+      { text: "📝 Writing practice & correction", included: true },
+      { text: "🌍 Cultural context & idiom explanations", included: true },
+      { text: "⚡ Priority support & faster response times", included: true }
     ],
     ctaButton: "Start Free Trial",
-    popular: false,
-    note: "Minimum 5 users"
+    popular: false
   }
 ];
 
@@ -116,6 +117,7 @@ const annualPlans: PricingCard[] = [
       { text: "Learning plan progression", included: true },
       { text: "Achievement badges", included: true },
       { text: "All conversation topics + custom topics", included: true },
+      { text: "🎤 Choose from multiple AI tutor voices", included: true },
       { text: "Conversation history & analytics", included: true },
       { text: "Priority email support", included: true }
     ],
@@ -123,26 +125,26 @@ const annualPlans: PricingCard[] = [
     popular: true
   },
   {
-    name: "Team Mastery",
+    name: "Language Mastery",
     price: "$399.99",
-    priceNote: "/year per user",
+    priceNote: "/year",
     originalPrice: "$479.88",
     savings: "Save $79.89 (17% off)",
-    monthlyEquivalent: "Only $33.33/month per user",
-    description: "For teams and organizations",
+    monthlyEquivalent: "Only $33.33/month",
+    description: "For advanced learners seeking fluency",
     features: [
       { text: "Unlimited practice sessions", included: true },
-      { text: "Unlimited assessments", included: true },
-      { text: "Premium learning plans", included: true },
-      { text: "Advanced analytics", included: true },
-      { text: "Priority support", included: true },
-      { text: "Team collaboration features", included: true },
-      { text: "API access & LMS integrations", included: true },
-      { text: "SSO & admin controls", included: true }
+      { text: "Unlimited speaking assessments", included: true },
+      { text: "Premium learning plans with advanced topics", included: true },
+      { text: "🎤 Choose from multiple AI tutor voices", included: true },
+      { text: "📊 Advanced analytics & detailed insights", included: true },
+      { text: "🎯 Personalized learning recommendations", included: true },
+      { text: "📝 Writing practice & correction", included: true },
+      { text: "🌍 Cultural context & idiom explanations", included: true },
+      { text: "⚡ Priority support & faster response times", included: true }
     ],
     ctaButton: "Get Started",
-    popular: false,
-    note: "Minimum 5 users"
+    popular: false
   }
 ];
 
@@ -209,8 +211,8 @@ export default function SubscriptionPlans() {
       let planId = '';
       if (plan.name === "Fluency Builder") {
         planId = 'fluency_builder';
-      } else if (plan.name === "Team Mastery") {
-        planId = 'team_mastery';
+      } else if (plan.name === "Language Mastery") {
+        planId = 'team_mastery'; // Keep using team_mastery price ID for Stripe
       }
 
       if (planId) {
