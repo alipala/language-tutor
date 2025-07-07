@@ -13,6 +13,7 @@ import ModernTimer from '@/components/modern-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
+import { getApiUrl } from '@/lib/api-utils';
 
 interface SpeechClientProps {
   language: string;
@@ -107,6 +108,63 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [showSavingLoader, setShowSavingLoader] = useState(false);
+  
+  // Voice selection state for displaying tutor avatar
+  const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
+  const [voiceLoading, setVoiceLoading] = useState(true);
+  
+  // Voice data mapping for avatars and names
+  const VOICE_DATA = {
+    alloy: { name: 'Alloy', avatar: '/images/tutors/alloy.svg', personality: 'Professional and encouraging' },
+    ash: { name: 'Ash', avatar: '/images/tutors/ash.svg', personality: 'Warm and approachable' },
+    ballad: { name: 'Ballad', avatar: '/images/tutors/ballad.svg', personality: 'Expressive and articulate' },
+    coral: { name: 'Coral', avatar: '/images/tutors/coral.svg', personality: 'Energetic and motivating' },
+    echo: { name: 'Echo', avatar: '/images/tutors/echo.svg', personality: 'Patient and supportive' },
+    sage: { name: 'Sage', avatar: '/images/tutors/sage.svg', personality: 'Engaging storyteller' },
+    shimmer: { name: 'Shimmer', avatar: '/images/tutors/shimmer.svg', personality: 'Confident and authoritative' },
+    verse: { name: 'Verse', avatar: '/images/tutors/verse.svg', personality: 'Dynamic and modern' }
+  };
+  
+  // Fetch user's voice preference
+  useEffect(() => {
+    const fetchVoicePreference = async () => {
+      if (!user) {
+        setVoiceLoading(false);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setVoiceLoading(false);
+          return;
+        }
+
+        const response = await fetch(`${getApiUrl()}/auth/get-voice`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[VOICE_DISPLAY] Fetched voice preference:', data.voice);
+          setSelectedVoice(data.voice || 'alloy');
+        } else {
+          console.error('[VOICE_DISPLAY] Failed to fetch voice preference');
+          setSelectedVoice('alloy');
+        }
+      } catch (error) {
+        console.error('[VOICE_DISPLAY] Error fetching voice preference:', error);
+        setSelectedVoice('alloy');
+      } finally {
+        setVoiceLoading(false);
+      }
+    };
+
+    fetchVoicePreference();
+  }, [user]);
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -1301,12 +1359,41 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
                   {/* Real-time Transcript Component */}
                   <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]">
-                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                      </svg>
-                      Real-time Transcript
-                    </h3>
+                    <div className="flex items-center mb-2 sm:mb-4">
+                      {/* AI Tutor Avatar Display - LEFT of title */}
+                      {!voiceLoading && (
+                        <div className="flex items-center gap-2 mr-3">
+                          <div className="relative">
+                            <img 
+                              src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
+                              alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
+                              className="w-8 h-8 rounded-full bg-white p-1 shadow-md border-2 border-blue-200"
+                              onError={(e) => {
+                                console.error('Failed to load avatar:', e);
+                                (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
+                              }}
+                            />
+                            {/* Online indicator */}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                          </div>
+                          <div className="text-left">
+                            <div className="text-sm font-semibold text-gray-800">
+                              {VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'}
+                            </div>
+                            <div className="text-xs text-gray-600 leading-tight">
+                              AI Tutor
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#F75A5A] flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        Real-time Transcript
+                      </h3>
+                    </div>
                     <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-y-auto pb-16">
                       <SentenceConstructionAssessment
                         transcript={currentTranscript}
@@ -1437,8 +1524,20 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
                                 >
                                   {message.role !== 'user' ? (
-                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md">
-                                      <span className="text-xs font-bold text-gray-800">T</span>
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md overflow-hidden">
+                                      {!voiceLoading ? (
+                                        <img 
+                                          src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
+                                          alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            console.error('Failed to load tutor avatar:', e);
+                                            (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
+                                          }}
+                                        />
+                                      ) : (
+                                        <span className="text-xs font-bold text-gray-800">T</span>
+                                      )}
                                     </div>
                                   ) : (
                                     <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#D6E6FF] flex items-center justify-center ml-2 order-last shadow-md">
