@@ -291,7 +291,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
 
         {/* Plans Grid - Dynamic centering based on number of plans */}
         <motion.div
-          className={`gap-6 mb-12 flex ${
+          className={`gap-6 mb-8 flex ${
             plans.length === 1 
               ? 'justify-center' 
               : plans.length === 2 
@@ -318,9 +318,25 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           ))}
         </motion.div>
 
-        {/* Main Action Button for Registered Users - moved to bottom */}
+        {/* OR Separator */}
         <motion.div
           className="flex items-center justify-center mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <div className="flex items-center w-full max-w-md">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
+            <div className="px-6 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <span className="text-gray-500 font-medium text-sm uppercase tracking-wide">OR</span>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300"></div>
+          </div>
+        </motion.div>
+
+        {/* Main Action Button for Registered Users - moved to bottom */}
+        <motion.div
+          className="flex items-center justify-center mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
