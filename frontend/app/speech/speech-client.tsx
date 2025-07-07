@@ -1347,6 +1347,26 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                 {isAuthenticated() ? 'Unlimited Time' : `${Math.floor(conversationDuration / 60)} min limit`}
               </span>
             </div>
+            
+            {/* AI Tutor Avatar in Summary Bar */}
+            {!voiceLoading && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+                  <img 
+                    src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
+                    alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('Failed to load summary avatar:', e);
+                      (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
+                    }}
+                  />
+                </div>
+                <span className="font-semibold text-lg">
+                  {VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} AI
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1558,7 +1578,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                                   >
                                     <div className="flex items-center justify-between mb-1 text-gray-800">
                                       <span className="text-xs font-semibold">
-                                        {message.role === 'user' ? firstName : 'Tutor'}
+                                        {message.role === 'user' ? firstName : `${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} - AI Tutor`}
                                       </span>
                                       <span className="text-xs opacity-75 ml-2">
                                         {timeDisplay}
