@@ -338,44 +338,89 @@ async def update_password(request: PasswordUpdateRequest, current_user: UserResp
     """
     Update user password
     """
-    # Get the current user from database to verify current password
-    user = await get_user_by_id(str(current_user.id))
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+    print(f"[PASSWORD_UPDATE] Starting password update for user: {current_user.email}")
+    
+    try:
+        # Get the current user from database to verify current password
+        user = await get_user_by_id(str(current_user.id))
+        if not user:
+            print(f"[PASSWORD_UPDATE] ❌ User not found in database: {current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        print(f"[PASSWORD_UPDATE] ✅ User found in database")
+        print(f"[PASSWORD_UPDATE] User hashed_password format: {user.hashed_password[:20]}...")
+        
+        # Check if user is a Google OAuth user
+        if user.hashed_password == "GOOGLE_OAUTH":
+            print(f"[PASSWORD_UPDATE] ❌ Google OAuth user attempted password update")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update password for Google OAuth users"
+            )
+        
+        # Verify current password
+        print(f"[PASSWORD_UPDATE] Verifying current password...")
+        password_valid = verify_password(request.current_password, user.hashed_password)
+        print(f"[PASSWORD_UPDATE] Current password verification result: {password_valid}")
+        
+        if not password_valid:
+            print(f"[PASSWORD_UPDATE] ❌ Current password verification failed")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        print(f"[PASSWORD_UPDATE] ✅ Current password verified successfully")
+        
+        # Hash the new password
+        print(f"[PASSWORD_UPDATE] Hashing new password...")
+        new_hashed_password = get_password_hash(request.new_password)
+        print(f"[PASSWORD_UPDATE] ✅ New password hashed: {new_hashed_password[:20]}...")
+        
+        # Convert user ID to ObjectId for database update
+        from bson import ObjectId
+        user_object_id = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+        print(f"[PASSWORD_UPDATE] Updating password in database for ObjectId: {user_object_id}")
+        
+        # Update the password in database
+        result = await users_collection.update_one(
+            {"_id": user_object_id},
+            {"$set": {"hashed_password": new_hashed_password}}
         )
-    
-    # Check if user is a Google OAuth user
-    if user.hashed_password == "GOOGLE_OAUTH":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update password for Google OAuth users"
-        )
-    
-    # Verify current password
-    if not verify_password(request.current_password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
-        )
-    
-    # Hash the new password
-    new_hashed_password = get_password_hash(request.new_password)
-    
-    # Update the password in database
-    result = await users_collection.update_one(
-        {"_id": user.id},
-        {"$set": {"hashed_password": new_hashed_password}}
-    )
-    
-    if result.modified_count == 0:
+        
+        print(f"[PASSWORD_UPDATE] Database update result: matched={result.matched_count}, modified={result.modified_count}")
+        
+        if result.matched_count == 0:
+            print(f"[PASSWORD_UPDATE] ❌ No user found with ID: {user_object_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found for password update"
+            )
+        
+        if result.modified_count == 0:
+            print(f"[PASSWORD_UPDATE] ❌ Password update failed - no documents modified")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update password"
+            )
+        
+        print(f"[PASSWORD_UPDATE] ✅ Password updated successfully for user: {current_user.email}")
+        return None
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        print(f"[PASSWORD_UPDATE] ❌ Unexpected error: {str(e)}")
+        import traceback
+        print(f"[PASSWORD_UPDATE] Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update password"
+            detail=f"Internal server error during password update: {str(e)}"
         )
-    
-    return None
 
 @router.post("/deactivate-account", status_code=status.HTTP_204_NO_CONTENT)
 async def deactivate_account(current_user: UserResponse = Depends(get_current_user)):

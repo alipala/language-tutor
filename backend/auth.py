@@ -35,11 +35,19 @@ def verify_password(plain_password, hashed_password):
     # Extract salt and hash from stored password
     try:
         parts = hashed_password.split('$')
-        if len(parts) != 3:
-            return False
         
-        salt = parts[1]
-        stored_hash = parts[2]
+        # Handle different password formats
+        if len(parts) == 3:
+            # New format: $salt$hash
+            salt = parts[1]
+            stored_hash = parts[2]
+        elif len(parts) == 4 and parts[0] == '' and parts[3] == '':
+            # Legacy format: $salt$hash$ (with trailing empty string)
+            salt = parts[1]
+            stored_hash = parts[2]
+        else:
+            print(f"[AUTH] Invalid password format: {len(parts)} parts")
+            return False
         
         # Hash the input password with the same salt
         computed_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
