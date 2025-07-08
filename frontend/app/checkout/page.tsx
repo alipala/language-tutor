@@ -18,15 +18,15 @@ export default function CheckoutPage() {
   const planId = searchParams.get('plan');
   const period = searchParams.get('period') || 'monthly';
 
-  // Stripe price IDs
+  // Stripe price IDs from environment variables
   const STRIPE_PRICES = {
     monthly: {
-      fluency_builder: "price_1Re01yJcquSiYwWNJRg7nyce",
-      team_mastery: "price_1Re09WJcquSiYwWNddEyeuxq"
+      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
+      team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
     },
     annual: {
-      fluency_builder: "price_1Re06kJcquSiYwWN89Ra57wC",
-      team_mastery: "price_1Re0LdJcquSiYwWNmF516G2p"
+      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || "price_1RdxNjJcquSiYwWNIpmYrKSE",
+      team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || "price_1RdxmRJcquSiYwWN7Oc6NnNe"
     }
   };
 
