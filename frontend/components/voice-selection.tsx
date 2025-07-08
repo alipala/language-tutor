@@ -295,17 +295,39 @@ export default function VoiceSelectionComponent() {
             
             // Wait a moment for the session to be fully ready
             setTimeout(() => {
-              // Send a response.create message with both audio and text modalities
-              const message = {
-                type: 'response.create',
-                response: {
-                  modalities: ['audio', 'text']
+              // Send a conversation.item.create message with the sample text
+              const itemMessage = {
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'input_text',
+                      text: `Please say exactly this greeting in your natural voice: "${sampleText}"`
+                    }
+                  ]
                 }
               };
               
               if (dataChannel && dataChannel.readyState === 'open') {
-                dataChannel.send(JSON.stringify(message));
-                console.log('[VOICE_PREVIEW] Sent response.create message with audio+text modalities');
+                dataChannel.send(JSON.stringify(itemMessage));
+                console.log('[VOICE_PREVIEW] Sent conversation item with sample text');
+                
+                // Then create a response
+                setTimeout(() => {
+                  const responseMessage = {
+                    type: 'response.create',
+                    response: {
+                      modalities: ['audio', 'text']
+                    }
+                  };
+                  
+                  if (dataChannel && dataChannel.readyState === 'open') {
+                    dataChannel.send(JSON.stringify(responseMessage));
+                    console.log('[VOICE_PREVIEW] Sent response.create message');
+                  }
+                }, 200);
               }
             }, 500);
           };

@@ -114,12 +114,10 @@ async def generate_voice_sample(
 - Speaking style: {voice_info['style']}
 - Voice: {request.voice_id}
 
-You should speak in a way that demonstrates your personality and teaching style. 
-Be natural, engaging, and show your unique character through your speech patterns and tone.
-
-Say exactly this text, but with your unique personality and style: "{sample_text}"
+When the user asks you to say something, speak the COMPLETE text they provide without cutting it short. 
+Make sure to say the entire greeting from beginning to end.
+Use your natural {request.voice_id} voice with your {voice_info['personality']} personality.
 """
-        
         # Create ephemeral token for voice sample generation
         payload = {
             "model": "gpt-4o-realtime-preview-2024-12-17",
@@ -130,9 +128,10 @@ Say exactly this text, but with your unique personality and style: "{sample_text
                 "model": "whisper-1"
             },
             "turn_detection": {
-                "type": "semantic_vad",
-                "eagerness": "low",
-                "create_response": True
+                "type": "server_vad",
+                "threshold": 0.5,
+                "prefix_padding_ms": 300,
+                "silence_duration_ms": 1000
             }
         }
         
