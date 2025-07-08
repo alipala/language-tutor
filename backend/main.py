@@ -126,6 +126,10 @@ app.include_router(share_router)
 from url_redirect_routes import router as url_redirect_router
 app.include_router(url_redirect_router)
 
+# Include voice sample routes
+from voice_sample_routes import router as voice_sample_router
+app.include_router(voice_sample_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
