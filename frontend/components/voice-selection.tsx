@@ -295,17 +295,17 @@ export default function VoiceSelectionComponent() {
             
             // Wait a moment for the session to be fully ready
             setTimeout(() => {
-              // Send a simple response.create message to trigger the voice sample
+              // Send a response.create message with both audio and text modalities
               const message = {
                 type: 'response.create',
                 response: {
-                  modalities: ['audio']
+                  modalities: ['audio', 'text']
                 }
               };
               
               if (dataChannel && dataChannel.readyState === 'open') {
                 dataChannel.send(JSON.stringify(message));
-                console.log('[VOICE_PREVIEW] Sent response.create message');
+                console.log('[VOICE_PREVIEW] Sent response.create message with audio+text modalities');
               }
             }, 500);
           };
