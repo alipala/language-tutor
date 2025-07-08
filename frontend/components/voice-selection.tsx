@@ -325,18 +325,26 @@ export default function VoiceSelectionComponent() {
                 return;
               } else if (message.type === 'response.audio.delta') {
                 console.log('[VOICE_PREVIEW] Receiving audio data...');
-              } else if (message.type === 'response.audio.done' || message.type === 'response.done') {
-                console.log('[VOICE_PREVIEW] Voice sample completed');
+                // Audio is being streamed - keep the animation going
+              } else if (message.type === 'response.audio.done') {
+                console.log('[VOICE_PREVIEW] Audio stream completed');
+                // Wait a bit for audio to finish playing, then cleanup
                 sampleTimeout = setTimeout(() => {
                   cleanup();
                   resolve();
-                }, 2000); // Give more time for audio to finish
+                }, 1500);
+              } else if (message.type === 'response.done') {
+                console.log('[VOICE_PREVIEW] Response completed');
+                // Wait a bit for audio to finish playing, then cleanup
+                sampleTimeout = setTimeout(() => {
+                  cleanup();
+                  resolve();
+                }, 1500);
               }
             } catch (e) {
               console.error('[VOICE_PREVIEW] Error parsing message:', e);
             }
           };
-
           dataChannel.onerror = (error) => {
             console.error('[VOICE_PREVIEW] Data channel error:', error);
             cleanup();
@@ -386,12 +394,12 @@ export default function VoiceSelectionComponent() {
 
           console.log('[VOICE_PREVIEW] WebRTC connection established for voice sample');
 
-          // Set a maximum duration for the sample (10 seconds)
+          // Set a maximum duration for the sample (30 seconds to allow full greeting)
           sampleTimeout = setTimeout(() => {
-            console.log('[VOICE_PREVIEW] Voice sample timeout reached');
+            console.log('[VOICE_PREVIEW] Voice sample timeout reached (30s max)');
             cleanup();
             resolve();
-          }, 10000);
+          }, 30000);
 
         } catch (error) {
           console.error('[VOICE_PREVIEW] Error in voice sample setup:', error);
@@ -505,10 +513,12 @@ export default function VoiceSelectionComponent() {
                   className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 >
                   {playingVoice === voice.id ? (
-                    <div className="flex items-center space-x-1 text-white">
-                      <div className="w-1 h-4 bg-white animate-pulse"></div>
-                      <div className="w-1 h-6 bg-white animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-1 h-4 bg-white animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="flex items-center justify-center space-x-1 text-white">
+                      <div className="w-1 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-4 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-6 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.3s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.4s', animationDuration: '0.6s' }}></div>
                     </div>
                   ) : (
                     <Play className="h-6 w-6 text-white" />
