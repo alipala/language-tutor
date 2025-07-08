@@ -349,19 +349,11 @@ export default function VoiceSelectionComponent() {
                 console.log('[VOICE_PREVIEW] Receiving audio data...');
                 // Audio is being streamed - keep the animation going
               } else if (message.type === 'response.audio.done') {
-                console.log('[VOICE_PREVIEW] Audio stream completed');
-                // Wait a bit for audio to finish playing, then cleanup
-                sampleTimeout = setTimeout(() => {
-                  cleanup();
-                  resolve();
-                }, 1500);
+                console.log('[VOICE_PREVIEW] Audio stream completed, but continuing for fixed duration');
+                // Don't cleanup immediately - let the fixed 10-second timer handle it
               } else if (message.type === 'response.done') {
-                console.log('[VOICE_PREVIEW] Response completed');
-                // Wait a bit for audio to finish playing, then cleanup
-                sampleTimeout = setTimeout(() => {
-                  cleanup();
-                  resolve();
-                }, 1500);
+                console.log('[VOICE_PREVIEW] Response completed, but continuing for fixed duration');
+                // Don't cleanup immediately - let the fixed 10-second timer handle it
               }
             } catch (e) {
               console.error('[VOICE_PREVIEW] Error parsing message:', e);
@@ -416,12 +408,12 @@ export default function VoiceSelectionComponent() {
 
           console.log('[VOICE_PREVIEW] WebRTC connection established for voice sample');
 
-          // Set a maximum duration for the sample (30 seconds to allow full greeting)
+          // Set a fixed 10-second duration for the voice sample
           sampleTimeout = setTimeout(() => {
-            console.log('[VOICE_PREVIEW] Voice sample timeout reached (30s max)');
+            console.log('[VOICE_PREVIEW] Voice sample completed (10 seconds fixed duration)');
             cleanup();
             resolve();
-          }, 30000);
+          }, 10000);
 
         } catch (error) {
           console.error('[VOICE_PREVIEW] Error in voice sample setup:', error);
