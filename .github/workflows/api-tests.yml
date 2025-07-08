@@ -438,7 +438,7 @@ jobs:
     
     steps:
     - name: Download test artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: test-results
         path: test-results/
