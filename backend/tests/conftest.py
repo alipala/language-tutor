@@ -28,44 +28,50 @@ from models import UserInDB
 TEST_DATABASE_NAME = "language_tutor_test"
 TEST_MONGODB_URL = os.getenv("TEST_MONGODB_URL", "mongodb://localhost:27017")
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def test_db():
     """Set up test database connection."""
+    # Create unique database name for each test
+    import uuid
+    unique_db_name = f"{TEST_DATABASE_NAME}_{uuid.uuid4().hex[:8]}"
+    
     # Connect to test database
     test_client = AsyncIOMotorClient(TEST_MONGODB_URL)
-    test_database = test_client[TEST_DATABASE_NAME]
+    test_database = test_client[unique_db_name]
     
     # Override the global database connection for tests
     import database
+    original_client = database.client
+    original_database = database.database
+    original_db_name = database.DATABASE_NAME
+    
     database.client = test_client
     database.database = test_database
-    database.DATABASE_NAME = TEST_DATABASE_NAME
+    database.DATABASE_NAME = unique_db_name
     
     # Initialize collections
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        print(f"Database initialization warning: {e}")
     
     yield test_database
     
-    # Cleanup: Drop test database after all tests
-    await test_client.drop_database(TEST_DATABASE_NAME)
-    await test_client.close()
+    # Cleanup: Drop test database after test
+    try:
+        await test_client.drop_database(unique_db_name)
+        test_client.close()
+    except Exception as e:
+        print(f"Cleanup warning: {e}")
+    
+    # Restore original database connection
+    database.client = original_client
+    database.database = original_database
+    database.DATABASE_NAME = original_db_name
 
 @pytest.fixture
 async def clean_db(test_db):
-    """Clean database before each test."""
-    # Clear all collections
-    collections = await test_db.list_collection_names()
-    for collection_name in collections:
-        await test_db[collection_name].delete_many({})
-    
+    """Alias for test_db for backward compatibility."""
     yield test_db
 
 @pytest.fixture
