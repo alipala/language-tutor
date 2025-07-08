@@ -182,14 +182,248 @@ export default function VoiceSelectionComponent() {
   };
 
   const handlePlayVoicePreview = async (voiceId: string) => {
-    // For now, we'll just show a visual indication
-    // In a real implementation, you might play a sample audio
+    if (playingVoice) {
+      console.log('[VOICE_PREVIEW] Already playing a voice sample, ignoring request');
+      return;
+    }
+
     setPlayingVoice(voiceId);
     
-    // Simulate audio playback
-    setTimeout(() => {
-      setPlayingVoice(null);
-    }, 2000);
+    try {
+      console.log(`[VOICE_PREVIEW] Starting voice sample for: ${voiceId}`);
+      
+      // Get voice sample data from backend
+      const response = await fetch(`${API_URL}/api/voice/sample`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          voice_id: voiceId,
+          language: 'english',
+          level: 'intermediate'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get voice sample: ${response.status}`);
+      }
+
+      const sampleData = await response.json();
+      console.log('[VOICE_PREVIEW] Voice sample data received:', sampleData);
+
+      if (!sampleData.success || !sampleData.ephemeral_key) {
+        throw new Error('Invalid voice sample response');
+      }
+
+      // Create WebRTC connection for voice sample playback
+      await playVoiceSample(sampleData.ephemeral_key, sampleData.sample_text, voiceId);
+      
+    } catch (error) {
+      console.error('[VOICE_PREVIEW] Error playing voice sample:', error);
+      // Show visual feedback for 3 seconds even on error
+      setTimeout(() => {
+        setPlayingVoice(null);
+      }, 3000);
+    }
+  };
+
+  const playVoiceSample = async (ephemeralKey: string, sampleText: string, voiceId: string) => {
+    return new Promise<void>((resolve, reject) => {
+      let peerConnection: RTCPeerConnection | null = null;
+      let dataChannel: RTCDataChannel | null = null;
+      let audioElement: HTMLAudioElement | null = null;
+      let sampleTimeout: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        console.log('[VOICE_PREVIEW] Cleaning up voice sample connection');
+        
+        if (sampleTimeout) {
+          clearTimeout(sampleTimeout);
+          sampleTimeout = null;
+        }
+
+        if (audioElement) {
+          audioElement.pause();
+          audioElement.srcObject = null;
+          audioElement = null;
+        }
+
+        if (dataChannel) {
+          dataChannel.close();
+          dataChannel = null;
+        }
+
+        if (peerConnection) {
+          peerConnection.close();
+          peerConnection = null;
+        }
+
+        setPlayingVoice(null);
+      };
+
+      const startSample = async () => {
+        try {
+          console.log('[VOICE_PREVIEW] Setting up WebRTC connection for voice sample');
+          
+          // Create peer connection
+          peerConnection = new RTCPeerConnection({
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          });
+
+          // Set up audio element
+          audioElement = new Audio();
+          audioElement.autoplay = true;
+          audioElement.volume = 0.8;
+
+          // Handle incoming audio stream
+          peerConnection.ontrack = (event) => {
+            console.log('[VOICE_PREVIEW] Received audio track for voice sample');
+            if (audioElement && event.streams && event.streams[0]) {
+              audioElement.srcObject = event.streams[0];
+            }
+          };
+
+          // Create data channel
+          dataChannel = peerConnection.createDataChannel('oai-events', { ordered: true });
+          
+          dataChannel.onopen = () => {
+            console.log('[VOICE_PREVIEW] Data channel opened, sending sample request');
+            
+            // Wait a moment for the session to be fully ready
+            setTimeout(() => {
+              // Send a conversation.item.create message with the sample text
+              const itemMessage = {
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'input_text',
+                      text: `Please say exactly this greeting in your natural voice: "${sampleText}"`
+                    }
+                  ]
+                }
+              };
+              
+              if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify(itemMessage));
+                console.log('[VOICE_PREVIEW] Sent conversation item with sample text');
+                
+                // Then create a response
+                setTimeout(() => {
+                  const responseMessage = {
+                    type: 'response.create',
+                    response: {
+                      modalities: ['audio', 'text']
+                    }
+                  };
+                  
+                  if (dataChannel && dataChannel.readyState === 'open') {
+                    dataChannel.send(JSON.stringify(responseMessage));
+                    console.log('[VOICE_PREVIEW] Sent response.create message');
+                  }
+                }, 200);
+              }
+            }, 500);
+          };
+
+          dataChannel.onmessage = (event) => {
+            try {
+              const message = JSON.parse(event.data);
+              console.log('[VOICE_PREVIEW] Received message:', message.type);
+              
+              // Handle different message types
+              if (message.type === 'session.created') {
+                console.log('[VOICE_PREVIEW] Session created successfully');
+              } else if (message.type === 'error') {
+                console.error('[VOICE_PREVIEW] Received error from OpenAI:', message);
+                cleanup();
+                reject(new Error(`OpenAI error: ${message.error?.message || 'Unknown error'}`));
+                return;
+              } else if (message.type === 'response.audio.delta') {
+                console.log('[VOICE_PREVIEW] Receiving audio data...');
+                // Audio is being streamed - keep the animation going
+              } else if (message.type === 'response.audio.done') {
+                console.log('[VOICE_PREVIEW] Audio stream completed, but continuing for fixed duration');
+                // Don't cleanup immediately - let the fixed 10-second timer handle it
+              } else if (message.type === 'response.done') {
+                console.log('[VOICE_PREVIEW] Response completed, but continuing for fixed duration');
+                // Don't cleanup immediately - let the fixed 10-second timer handle it
+              }
+            } catch (e) {
+              console.error('[VOICE_PREVIEW] Error parsing message:', e);
+            }
+          };
+          dataChannel.onerror = (error) => {
+            console.error('[VOICE_PREVIEW] Data channel error:', error);
+            cleanup();
+            reject(error);
+          };
+
+          dataChannel.onclose = () => {
+            console.log('[VOICE_PREVIEW] Data channel closed');
+          };
+
+          // Create offer
+          const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
+          await peerConnection.setLocalDescription(offer);
+
+          // Wait for ICE gathering
+          await new Promise<void>((resolve) => {
+            const checkIceGathering = () => {
+              if (peerConnection?.iceGatheringState === 'complete') {
+                resolve();
+              } else {
+                setTimeout(checkIceGathering, 100);
+              }
+            };
+            checkIceGathering();
+          });
+
+          // Send offer to OpenAI
+          const response = await fetch(`https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`, {
+            method: 'POST',
+            body: peerConnection.localDescription?.sdp,
+            headers: {
+              'Authorization': `Bearer ${ephemeralKey}`,
+              'Content-Type': 'application/sdp'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`OpenAI connection failed: ${response.status}`);
+          }
+
+          // Set remote description
+          const answerSdp = await response.text();
+          await peerConnection.setRemoteDescription({
+            type: 'answer',
+            sdp: answerSdp
+          });
+
+          console.log('[VOICE_PREVIEW] WebRTC connection established for voice sample');
+
+          // Set a fixed 10-second duration for the voice sample
+          sampleTimeout = setTimeout(() => {
+            console.log('[VOICE_PREVIEW] Voice sample completed (10 seconds fixed duration)');
+            cleanup();
+            resolve();
+          }, 10000);
+
+        } catch (error) {
+          console.error('[VOICE_PREVIEW] Error in voice sample setup:', error);
+          cleanup();
+          reject(error);
+        }
+      };
+
+      startSample();
+    });
   };
 
   const getVoiceData = (voiceId: string) => {
@@ -293,10 +527,12 @@ export default function VoiceSelectionComponent() {
                   className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 >
                   {playingVoice === voice.id ? (
-                    <div className="flex items-center space-x-1 text-white">
-                      <div className="w-1 h-4 bg-white animate-pulse"></div>
-                      <div className="w-1 h-6 bg-white animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-1 h-4 bg-white animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="flex items-center justify-center space-x-1 text-white">
+                      <div className="w-1 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-4 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-6 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.3s', animationDuration: '0.6s' }}></div>
+                      <div className="w-1 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.4s', animationDuration: '0.6s' }}></div>
                     </div>
                   ) : (
                     <Play className="h-6 w-6 text-white" />
@@ -335,8 +571,8 @@ export default function VoiceSelectionComponent() {
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Volume2 className="h-5 w-5 text-teal-500" />
+            <DialogTitle className="flex items-center space-x-2 text-gray-800">
+              <Volume2 className="h-5 w-5" style={{ color: '#4ECFBF' }} />
               <span>Confirm Voice Change</span>
             </DialogTitle>
           </DialogHeader>
@@ -377,7 +613,7 @@ export default function VoiceSelectionComponent() {
                   setSelectedVoice(currentVoice);
                 }}
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
               >
                 Cancel
               </Button>
