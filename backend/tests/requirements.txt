@@ -1,0 +1,71 @@
+# Test dependencies for Language Tutor API integration tests
+
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-mock==3.12.0
+
+# HTTP client for API testing
+httpx==0.25.2
+
+# FastAPI testing utilities
+fastapi[all]==0.104.1
+
+# Database testing
+motor==3.3.2
+pymongo==4.6.0
+
+# Mocking and fixtures
+responses==0.24.1
+factory-boy==3.3.0
+
+# Coverage reporting
+pytest-cov==4.1.0
+coverage==7.3.2
+
+# Test reporting
+pytest-html==4.1.1
+pytest-json-report==1.5.0
+
+# Performance testing
+pytest-benchmark==4.0.0
+
+# Parallel test execution
+pytest-xdist==3.5.0
+
+# Environment management
+python-dotenv==1.0.0
+
+# Date/time utilities for testing
+freezegun==1.2.2
+
+# Additional assertion helpers
+assertpy==1.1
+
+# Test data generation
+faker==20.1.0
+
+# Memory profiling for tests
+memory-profiler==0.61.0
+
+# Stripe testing utilities (if needed)
+stripe==7.8.0
+
+# OpenAI testing utilities (if needed)
+openai==1.3.7
+
+# Email testing
+aiosmtpd==1.4.4.post2
+
+# JWT testing
+pyjwt==2.8.0
+
+# Password hashing for test fixtures
+passlib==1.7.4
+bcrypt==4.1.2
+
+# Validation testing
+pydantic==2.5.0
+
+# Async testing utilities
+aiofiles==23.2.1
