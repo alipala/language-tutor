@@ -12,6 +12,34 @@ on:
       - 'backend/**'
       - '.github/workflows/api-tests.yml'
   workflow_dispatch:
+    inputs:
+      test_category:
+        description: 'Test category to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - auth
+        - learning
+        - stripe
+        - progress
+        - quick
+      coverage_threshold:
+        description: 'Coverage threshold percentage'
+        required: false
+        default: '70'
+        type: string
+      run_security_scan:
+        description: 'Run security scans'
+        required: false
+        default: true
+        type: boolean
+      run_performance_tests:
+        description: 'Run performance tests'
+        required: false
+        default: false
+        type: boolean
 
 env:
   PYTHON_VERSION: '3.11'
@@ -106,37 +134,91 @@ jobs:
         bandit -r . -ll
       continue-on-error: true
 
+    - name: Determine test category and coverage threshold
+      id: test-config
+      run: |
+        TEST_CATEGORY="${{ github.event.inputs.test_category || 'all' }}"
+        COVERAGE_THRESHOLD="${{ github.event.inputs.coverage_threshold || '70' }}"
+        echo "test_category=$TEST_CATEGORY" >> $GITHUB_OUTPUT
+        echo "coverage_threshold=$COVERAGE_THRESHOLD" >> $GITHUB_OUTPUT
+        echo "🎯 Test Category: $TEST_CATEGORY"
+        echo "📊 Coverage Threshold: $COVERAGE_THRESHOLD%"
+
     - name: Run integration tests with coverage
       working-directory: backend
       run: |
-        python -m pytest tests/integration/ \
+        TEST_CATEGORY="${{ steps.test-config.outputs.test_category }}"
+        COVERAGE_THRESHOLD="${{ steps.test-config.outputs.coverage_threshold }}"
+        
+        # Determine test path based on category
+        case $TEST_CATEGORY in
+          "auth")
+            TEST_PATH="tests/integration/test_auth_routes.py"
+            echo "🔐 Running Authentication Tests Only"
+            ;;
+          "learning")
+            TEST_PATH="tests/integration/test_learning_routes.py"
+            echo "📚 Running Learning Routes Tests Only"
+            ;;
+          "stripe")
+            TEST_PATH="tests/integration/test_stripe_routes.py"
+            echo "💳 Running Stripe/Subscription Tests Only"
+            ;;
+          "progress")
+            TEST_PATH="tests/integration/test_progress_routes.py"
+            echo "📊 Running Progress Tracking Tests Only"
+            ;;
+          "quick")
+            TEST_PATH="tests/integration/"
+            QUICK_FILTER="-k 'test_get_learning_goals or test_register_new_user_success or test_get_subscription_plans or test_get_progress_stats_empty'"
+            echo "⚡ Running Quick Smoke Tests"
+            ;;
+          *)
+            TEST_PATH="tests/integration/"
+            echo "🧪 Running All Integration Tests"
+            ;;
+        esac
+        
+        # Build pytest command
+        PYTEST_CMD="python -m pytest $TEST_PATH \
           --cov=. \
           --cov-report=xml \
           --cov-report=html \
           --cov-report=term-missing \
-          --cov-fail-under=70 \
+          --cov-fail-under=$COVERAGE_THRESHOLD \
           --junitxml=test-results.xml \
           --html=test-report.html \
           --self-contained-html \
           -v \
           --tb=short \
           --maxfail=10 \
-          --durations=10
+          --durations=10"
+        
+        # Add quick filter if needed
+        if [ ! -z "$QUICK_FILTER" ]; then
+          PYTEST_CMD="$PYTEST_CMD $QUICK_FILTER"
+        fi
+        
+        echo "Executing: $PYTEST_CMD"
+        eval $PYTEST_CMD
 
-    - name: Run specific test categories
+    - name: Run additional test validation
       working-directory: backend
+      if: steps.test-config.outputs.test_category == 'all'
       run: |
-        echo "Running authentication tests..."
-        python -m pytest tests/integration/test_auth_routes.py -v --tb=short
+        echo "🔍 Running additional validation for comprehensive test run..."
         
-        echo "Running learning routes tests..."
-        python -m pytest tests/integration/test_learning_routes.py -v --tb=short
+        echo "✅ Authentication Tests:"
+        python -m pytest tests/integration/test_auth_routes.py::TestUserRegistration::test_register_new_user_success -v
         
-        echo "Running stripe/subscription tests..."
-        python -m pytest tests/integration/test_stripe_routes.py -v --tb=short
+        echo "✅ Learning Tests:"
+        python -m pytest tests/integration/test_learning_routes.py::TestLearningGoals::test_get_learning_goals -v
         
-        echo "Running progress tracking tests..."
-        python -m pytest tests/integration/test_progress_routes.py -v --tb=short
+        echo "✅ Stripe Tests:"
+        python -m pytest tests/integration/test_stripe_routes.py::TestSubscriptionStatus::test_get_subscription_plans -v
+        
+        echo "✅ Progress Tests:"
+        python -m pytest tests/integration/test_progress_routes.py::TestProgressStats::test_get_progress_stats_empty -v
 
     - name: Upload test results
       uses: actions/upload-artifact@v3
