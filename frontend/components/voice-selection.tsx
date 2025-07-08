@@ -571,8 +571,8 @@ export default function VoiceSelectionComponent() {
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Volume2 className="h-5 w-5 text-teal-500" />
+            <DialogTitle className="flex items-center space-x-2 text-gray-800">
+              <Volume2 className="h-5 w-5" style={{ color: '#4ECFBF' }} />
               <span>Confirm Voice Change</span>
             </DialogTitle>
           </DialogHeader>
