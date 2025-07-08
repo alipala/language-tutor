@@ -909,7 +909,7 @@ export default function ProfilePage() {
                     <h4 className="text-lg font-medium text-gray-800 mb-2">No Conversations Yet</h4>
                     <p className="text-gray-600 mb-4">Start practicing to see your conversation history here.</p>
                     <Button 
-                      onClick={() => router.push('/speech')}
+                      onClick={() => window.location.href = 'https://mytacoai.com/flow?mode=practice'}
                       className="text-white py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition-all"
                       style={{ backgroundColor: '#4ECFBF' }}
                     >
