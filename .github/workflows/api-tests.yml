@@ -72,7 +72,7 @@ jobs:
         cache: 'pip'
 
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt', 'backend/tests/requirements.txt') }}
@@ -221,7 +221,7 @@ jobs:
         python -m pytest tests/integration/test_progress_routes.py::TestProgressStats::test_get_progress_stats_empty -v
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
@@ -232,7 +232,7 @@ jobs:
           backend/bandit-report.json
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action4
       if: always()
       with:
         file: backend/coverage.xml
@@ -376,7 +376,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: benchmark-results
@@ -421,7 +421,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-reports
