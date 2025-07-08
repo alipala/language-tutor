@@ -60,7 +60,7 @@ export default function ProfilePage() {
   // Check for tab parameter in URL
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['overview', 'progress', 'achievements', 'notifications', 'export', 'settings'].includes(tab)) {
+    if (tab && ['overview', 'progress', 'notifications', 'export', 'settings'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -826,7 +826,6 @@ export default function ProfilePage() {
                 {[
                   { id: 'overview', label: 'Overview', icon: TrendingUp },
                   { id: 'progress', label: 'Learning Progress', icon: Target },
-                  { id: 'achievements', label: 'Achievements', icon: Trophy },
                   { id: 'ai-tutor', label: 'AI Tutor', icon: Volume2 },
                   { id: 'notifications', label: 'Notifications', icon: Bell },
                   { id: 'export', label: 'Export Data', icon: Download },
@@ -1115,63 +1114,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Achievements Tab */}
-          {activeTab === 'achievements' && (
-            <div className="space-y-8">
-              {/* Achievement Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="rounded-2xl p-6 text-white" style={{ backgroundColor: '#FFD63A' }}>
-                  <Trophy className="h-12 w-12 mb-4 opacity-80" />
-                  <div className="text-3xl font-bold">{achievements.filter(a => a.earned).length}</div>
-                  <div className="text-yellow-100">Achievements Earned</div>
-                </div>
-                <div className="rounded-2xl p-6 text-white" style={{ backgroundColor: '#F75A5A' }}>
-                  <Star className="h-12 w-12 mb-4 opacity-80" />
-                  <div className="text-3xl font-bold">{userStats.longestStreak}</div>
-                  <div className="text-red-100">Longest Streak</div>
-                </div>
-                <div className="rounded-2xl p-6 text-white" style={{ backgroundColor: '#4ECFBF' }}>
-                  <Crown className="h-12 w-12 mb-4 opacity-80" />
-                  <div className="text-3xl font-bold">{userStats.currentLevel}</div>
-                  <div className="text-teal-100">Current Level</div>
-                </div>
-              </div>
-
-              {/* Achievements Grid */}
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">All Achievements</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {achievements.map((achievement, index) => (
-                    <div key={index} className={`relative rounded-xl p-6 border-2 transition-all ${
-                      achievement.earned 
-                        ? 'shadow-md' 
-                        : 'bg-gray-50 border-gray-200 opacity-60'
-                    }`} style={achievement.earned ? { backgroundColor: '#FFFBF0', borderColor: '#FFD63A' } : {}}>
-                      <div className="text-center">
-                        <div className="text-4xl mb-3">{achievement.icon}</div>
-                        <h4 className="font-bold text-gray-800 mb-2">{achievement.name}</h4>
-                        <p className="text-sm text-gray-600 mb-3">{achievement.description}</p>
-                        {achievement.earned ? (
-                          <div className="text-xs text-green-600 font-medium">
-                            Earned {achievement.date}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-400">
-                            Not earned yet
-                          </div>
-                        )}
-                      </div>
-                      {achievement.earned && (
-                        <div className="absolute top-2 right-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Export Data Tab */}
           {activeTab === 'export' && (
