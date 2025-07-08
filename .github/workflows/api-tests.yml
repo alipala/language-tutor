@@ -182,6 +182,7 @@ jobs:
         
         # Build pytest command
         PYTEST_CMD="python -m pytest $TEST_PATH \
+          --asyncio-mode=auto \
           --cov=. \
           --cov-report=xml \
           --cov-report=html \
@@ -210,16 +211,16 @@ jobs:
         echo "🔍 Running additional validation for comprehensive test run..."
         
         echo "✅ Authentication Tests:"
-        python -m pytest tests/integration/test_auth_routes.py::TestUserRegistration::test_register_new_user_success -v
+        python -m pytest tests/integration/test_auth_routes.py::TestUserRegistration::test_register_new_user_success -v --asyncio-mode=auto
         
         echo "✅ Learning Tests:"
-        python -m pytest tests/integration/test_learning_routes.py::TestLearningGoals::test_get_learning_goals -v
+        python -m pytest tests/integration/test_learning_routes.py::TestLearningGoals::test_get_learning_goals -v --asyncio-mode=auto
         
         echo "✅ Stripe Tests:"
-        python -m pytest tests/integration/test_stripe_routes.py::TestSubscriptionStatus::test_get_subscription_plans -v
+        python -m pytest tests/integration/test_stripe_routes.py::TestSubscriptionStatus::test_get_subscription_plans -v --asyncio-mode=auto
         
         echo "✅ Progress Tests:"
-        python -m pytest tests/integration/test_progress_routes.py::TestProgressStats::test_get_progress_stats_empty -v
+        python -m pytest tests/integration/test_progress_routes.py::TestProgressStats::test_get_progress_stats_empty -v --asyncio-mode=auto
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -333,9 +334,9 @@ jobs:
         TEST_MONGODB_URL: mongodb://localhost:27017
         DATABASE_NAME: language_tutor_test_${{ matrix.python-version }}_${{ matrix.mongodb-version }}
       run: |
-        python -m pytest tests/integration/test_auth_routes.py::TestUserRegistration::test_register_new_user_success -v
-        python -m pytest tests/integration/test_learning_routes.py::TestLearningGoals::test_get_learning_goals -v
-        python -m pytest tests/integration/test_stripe_routes.py::TestSubscriptionStatus::test_get_subscription_plans -v
+        python -m pytest tests/integration/test_auth_routes.py::TestUserRegistration::test_register_new_user_success -v --asyncio-mode=auto
+        python -m pytest tests/integration/test_learning_routes.py::TestLearningGoals::test_get_learning_goals -v --asyncio-mode=auto
+        python -m pytest tests/integration/test_stripe_routes.py::TestSubscriptionStatus::test_get_subscription_plans -v --asyncio-mode=auto
 
   performance-tests:
     name: Performance Tests
