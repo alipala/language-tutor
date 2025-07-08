@@ -293,18 +293,21 @@ export default function VoiceSelectionComponent() {
           dataChannel.onopen = () => {
             console.log('[VOICE_PREVIEW] Data channel opened, sending sample request');
             
-            // Send a message to trigger the voice sample
-            const message = {
-              type: 'response.create',
-              response: {
-                modalities: ['audio'],
-                instructions: `Say exactly this in your natural ${voiceId} voice: "${sampleText}"`
+            // Wait a moment for the session to be fully ready
+            setTimeout(() => {
+              // Send a simple response.create message to trigger the voice sample
+              const message = {
+                type: 'response.create',
+                response: {
+                  modalities: ['audio']
+                }
+              };
+              
+              if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify(message));
+                console.log('[VOICE_PREVIEW] Sent response.create message');
               }
-            };
-            
-            if (dataChannel && dataChannel.readyState === 'open') {
-              dataChannel.send(JSON.stringify(message));
-            }
+            }, 500);
           };
 
           dataChannel.onmessage = (event) => {
@@ -312,13 +315,22 @@ export default function VoiceSelectionComponent() {
               const message = JSON.parse(event.data);
               console.log('[VOICE_PREVIEW] Received message:', message.type);
               
-              // When we receive audio completion, start cleanup timer
-              if (message.type === 'response.audio.done' || message.type === 'response.done') {
+              // Handle different message types
+              if (message.type === 'session.created') {
+                console.log('[VOICE_PREVIEW] Session created successfully');
+              } else if (message.type === 'error') {
+                console.error('[VOICE_PREVIEW] Received error from OpenAI:', message);
+                cleanup();
+                reject(new Error(`OpenAI error: ${message.error?.message || 'Unknown error'}`));
+                return;
+              } else if (message.type === 'response.audio.delta') {
+                console.log('[VOICE_PREVIEW] Receiving audio data...');
+              } else if (message.type === 'response.audio.done' || message.type === 'response.done') {
                 console.log('[VOICE_PREVIEW] Voice sample completed');
                 sampleTimeout = setTimeout(() => {
                   cleanup();
                   resolve();
-                }, 1000); // Give a moment for audio to finish
+                }, 2000); // Give more time for audio to finish
               }
             } catch (e) {
               console.error('[VOICE_PREVIEW] Error parsing message:', e);
