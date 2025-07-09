@@ -366,7 +366,7 @@ export default function LearningPlanModal({
                   setDuration(parseInt(value));
                   setCustomDuration(null);
                 }
-              }} className={`${isMobile ? 'space-y-0.5' : 'space-y-1.5'} mt-2`}>
+              }} className={`${isMobile ? 'space-y-0' : 'space-y-1.5'} mt-2`}>
                 {[1, 2, 3, 6, 12].map((months) => (
                   <label 
                     key={months}
@@ -433,7 +433,7 @@ export default function LearningPlanModal({
                 <p className="text-gray-700 mt-1 capitalize">{language}</p>
               </div>
               
-              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+              <div className="bg-[#FFF8F8] p-4 rounded-md border-l-4 border-l-[#F75A5A] border border-[#F75A5A]/20">
                 <h3 className="font-semibold text-gray-900">Proficiency Level</h3>
                 <p className="text-gray-700 mt-1 capitalize">{proficiencyLevel}</p>
               </div>
