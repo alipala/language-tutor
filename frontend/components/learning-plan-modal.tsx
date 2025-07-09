@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getLearningGoals, createLearningPlan, LearningGoal, LearningPlanRequest } from '@/lib/learning-api';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-utils';
+import { useMobile } from '@/hooks/use-mobile';
 
 interface LearningPlanModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export default function LearningPlanModal({
   assessmentData
 }: LearningPlanModalProps) {
   const router = useRouter();
+  const isMobile = useMobile();
   const [step, setStep] = useState(1);
   const [goals, setGoals] = useState<LearningGoal[]>([]);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
@@ -297,7 +299,7 @@ export default function LearningPlanModal({
             <DialogTitle className="text-2xl font-bold text-center text-gray-900 mb-2">
               {step === 1 && 'Select Your Learning Goals'}
               {step === 2 && 'Choose Learning Duration'}
-              {step === 3 && 'Review and Create Your Plan'}
+              {step === 3 && (isAuthenticated() ? 'Review and Create Your Plan' : 'Review Your Selections')}
               {step === 4 && 'Learning Plan Created!'}
             </DialogTitle>
             <DialogDescription className="text-gray-600 text-center text-base mb-6">
@@ -364,7 +366,7 @@ export default function LearningPlanModal({
                   setDuration(parseInt(value));
                   setCustomDuration(null);
                 }
-              }} className="space-y-1.5 mt-2">
+              }} className={`${isMobile ? 'space-y-0.5' : 'space-y-1.5'} mt-2`}>
                 {[1, 2, 3, 6, 12].map((months) => (
                   <label 
                     key={months}
@@ -524,7 +526,7 @@ export default function LearningPlanModal({
         )}
         
         {step < 4 && (
-          <DialogFooter className="flex justify-between mt-6 pt-4 border-t border-purple-400/30">
+          <DialogFooter className={`flex justify-between mt-6 pt-4 border-t border-purple-400/30 ${isMobile ? 'gap-3' : ''}`}>
             <Button 
               variant="outline" 
               onClick={handlePrevStep}
