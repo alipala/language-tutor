@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: 'Learn languages through conversation with your personal AI coach',
   icons: {
     icon: [
-      { url: '/logos/my-taco-favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: '32x32' }
     ],
     apple: '/apple-touch-icon.png'
