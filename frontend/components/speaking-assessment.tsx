@@ -411,7 +411,7 @@ export default function SpeakingAssessment({
             <div className={`${isMobile ? 'mt-2' : 'mt-4'} flex justify-center`}>
               <a 
                 href="/auth/login" 
-                className={`inline-flex items-center ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'} bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group`}
+                className={`inline-flex items-center ${isMobile ? 'px-4 py-2 text-xs' : 'px-6 py-3 text-sm'} bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group`}
               >
                 Sign In
                 <ChevronRight className={`ml-1 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'} group-hover:translate-x-1 transition-transform`} />
