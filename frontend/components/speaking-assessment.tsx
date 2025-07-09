@@ -639,7 +639,7 @@ export default function SpeakingAssessment({
             ) : (
               <div className="bg-[#4ECFBF]/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-[#4ECFBF]/30 inline-block">
                 <p className="text-[#555555] text-sm">
-                  🎯 Recording will automatically stop at {formatTime(0)}
+                  🎯 Recording will stop automatically when time reaches zero
                 </p>
               </div>
             )}
