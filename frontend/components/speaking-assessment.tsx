@@ -384,39 +384,38 @@ export default function SpeakingAssessment({
         />
       )}
       
-      {/* Compact Guest User Mode Banner for Mobile */}
+      {/* Centered Guest User Mode Banner */}
       {!isAuthenticated() && (
         <div className={`relative overflow-hidden bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] rounded-xl shadow-lg mb-4 ${isMobile ? 'p-4' : 'p-6 mb-6'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center">
-                <div className="bg-white/20 p-2 rounded-full mr-3">
-                  <Mic className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
-                </div>
-                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white`}>Guest Mode</h3>
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-3">
+              <div className="bg-white/20 p-2 rounded-full mr-3">
+                <Mic className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
               </div>
-              
-              <div className={`${isMobile ? 'mt-2' : 'mt-3'} text-white/90 ${isMobile ? 'text-xs' : 'text-sm'} max-w-xl leading-relaxed`}>
-                {isMobile ? (
-                  <p>Free mode • Results not saved</p>
-                ) : (
-                  <>
-                    <p>You're using the free guest mode with limited features:</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside pl-1">
-                      <li>Results not saved to your profile</li>
-                    </ul>
-                  </>
-                )}
-                <div className={`${isMobile ? 'mt-2' : 'mt-4'} flex space-x-3`}>
-                  <a 
-                    href="/auth/login" 
-                    className={`inline-flex items-center ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'} bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group`}
-                  >
-                    Sign In
-                    <ChevronRight className={`ml-1 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'} group-hover:translate-x-1 transition-transform`} />
-                  </a>
-                </div>
-              </div>
+              <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white`}>Guest Mode</h3>
+            </div>
+            
+            <div className={`text-white/90 ${isMobile ? 'text-xs' : 'text-sm'} leading-relaxed`}>
+              {isMobile ? (
+                <p>Free mode • Results not saved</p>
+              ) : (
+                <>
+                  <p>You're using the free guest mode with limited features:</p>
+                  <ul className="mt-2 space-y-1 list-disc list-inside">
+                    <li>Results not saved to your profile</li>
+                  </ul>
+                </>
+              )}
+            </div>
+            
+            <div className={`${isMobile ? 'mt-2' : 'mt-4'} flex justify-center`}>
+              <a 
+                href="/auth/login" 
+                className={`inline-flex items-center ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'} bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group`}
+              >
+                Sign In
+                <ChevronRight className={`ml-1 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'} group-hover:translate-x-1 transition-transform`} />
+              </a>
             </div>
           </div>
         </div>
@@ -474,7 +473,7 @@ export default function SpeakingAssessment({
               </div>
               
               {/* Status Indicator - Compact on Mobile */}
-              <div className={`flex items-center justify-center space-x-2 ${isMobile ? 'text-xs' : 'text-sm'} text-[#555555] bg-white/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} rounded-full shadow-md border border-[#4ECFBF]/20`}>
+              <div className={`flex items-center justify-center space-x-2 ${isMobile ? 'text-xs' : 'text-sm'} text-[#555555] bg-white/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} rounded-lg shadow-md border border-[#4ECFBF]/20`}>
                 <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-[#4ECFBF] animate-pulse shadow-sm`}></div>
                 <p className="font-medium">
                   {isMobile ? 'Ready' : 'Microphone ready'} • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}
