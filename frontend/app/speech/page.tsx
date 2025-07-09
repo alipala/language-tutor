@@ -364,6 +364,10 @@ export default function SpeechPage() {
             level={selectedLevel} 
             topic={selectedTopic || undefined}
             userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
+            onTimeUp={() => {
+              console.log('⏰ Timer expired - showing TimeUpModal for guest users');
+              setShowTimeUpModal(true);
+            }}
           />
         )}
       </div>
@@ -382,23 +386,23 @@ export default function SpeechPage() {
           // Mark the plan as expired to prevent back button navigation
           if (selectedPlanId) {
             sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
-            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+            sessionStorage.removeItem(`plan_${selectedPlanId}_conversationStartTime`);
           }
-          router.push('/login');
+          router.push('/auth/login');
         }}
         onSignUp={() => {
           // Mark the plan as expired to prevent back button navigation
           if (selectedPlanId) {
             sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
-            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+            sessionStorage.removeItem(`plan_${selectedPlanId}_conversationStartTime`);
           }
-          router.push('/signup');
+          router.push('/auth/signup');
         }}
         onNewAssessment={() => {
           // Mark the plan as expired to prevent back button navigation
           if (selectedPlanId) {
             sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
-            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+            sessionStorage.removeItem(`plan_${selectedPlanId}_conversationStartTime`);
           }
           router.push('/');
         }}

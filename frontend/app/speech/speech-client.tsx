@@ -20,9 +20,10 @@ interface SpeechClientProps {
   level: string;
   topic?: string;
   userPrompt?: string;
+  onTimeUp?: () => void; // Callback to trigger TimeUpModal in parent
 }
 
-export default function SpeechClient({ language, level, topic, userPrompt }: SpeechClientProps) {
+export default function SpeechClient({ language, level, topic, userPrompt, onTimeUp }: SpeechClientProps) {
   // Moving the console.log out of the component body to prevent excessive logging
   const initialRenderRef = useRef(true);
   
@@ -1292,8 +1293,13 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   setSessionCompleted(true);
                   setShowCompletionModal(true);
                 } else {
-                  // For guests or no messages, just end normally
-                  handleEndConversation();
+                  // For guests or no messages, trigger the TimeUpModal via parent callback
+                  if (onTimeUp) {
+                    console.log('🎯 Calling parent onTimeUp callback to show TimeUpModal');
+                    onTimeUp();
+                  } else {
+                    handleEndConversation();
+                  }
                 }
               }}
               className=""
@@ -1415,27 +1421,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                     </div>
                     
                     <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
-                      {/* Sign in prompt for guest users when time is up */}
-                      {!isAuthenticated() && conversationTimeUp && (
-                        <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-                          <h4 className="text-red-800 font-medium mb-1">Guest time limit reached</h4>
-                          <p className="text-red-700 text-sm mb-3">
-                            Your guest conversation time has ended.
-                            <span className="block mt-1 font-medium">
-                              Try a new assessment or sign in for longer conversations
-                            </span>
-                          </p>
-                          <a 
-                            href="/auth/login"
-                            className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            Sign in for unlimited time
-                          </a>
-                        </div>
-                      )}
                       <Button
                         type="button"
                         onClick={(e) => handleToggleRecording(e)}
