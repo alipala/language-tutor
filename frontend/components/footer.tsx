@@ -197,7 +197,6 @@ const Footer: React.FC = () => {
                   context="footer"
                 />
               </div>
-              <p className="text-white/90 text-sm font-medium mt-2">AI Language Coach</p>
             </div>
             
             <p className="text-white/70 mb-6 leading-relaxed">

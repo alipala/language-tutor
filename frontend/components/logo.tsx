@@ -8,8 +8,8 @@ interface LogoProps {
 }
 
 export function Logo({ variant = 'full', context = 'navigation', className = '', onClick }: LogoProps) {
-  // Use different logo for footer to avoid white border issues
-  const logoSrc = context === 'footer' ? '/logos/my-taco-logo.svg' : '/logos/my-taco-logo.svg';
+  // Use the original mytaco.svg logo for all contexts
+  const logoSrc = '/logos/mytaco.svg';
   
   if (variant === 'icon') {
     return (
