@@ -712,71 +712,72 @@ export default function ProfilePage() {
         <NavBar />
         
         <div className="container mx-auto px-4 pt-24 pb-8">
-          {/* Profile Hero Section */}
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
-            <div className="bg-teal-400 p-6 text-white relative overflow-hidden" style={{ backgroundColor: '#4ECFBF' }}>
-              {/* Decorative background elements */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+          {/* Profile Hero Section - Mobile Optimized */}
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6 md:mb-8">
+            <div className="bg-teal-400 p-4 md:p-6 text-white relative overflow-hidden" style={{ backgroundColor: '#4ECFBF' }}>
+              {/* Decorative background elements - hidden on mobile */}
+              <div className="hidden md:block absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+              <div className="hidden md:block absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
               
               <div className="relative z-10">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                    <div className="h-16 w-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl font-bold">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-3 md:mb-4">
+                  <div className="flex items-center space-x-3 md:space-x-4 mb-3 md:mb-0">
+                    <div className="h-12 w-12 md:h-16 md:w-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg md:text-xl font-bold">
                       {user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'U'}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold mb-1">{user?.name || 'User'}</h2>
-                      <p className="text-white/80 text-sm mb-1">{user?.email}</p>
-                      <p className="text-white/60 text-xs">Learning since {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</p>
+                      <h2 className="text-xl md:text-2xl font-bold mb-1">{user?.name || 'User'}</h2>
+                      <p className="text-white/80 text-xs md:text-sm mb-1">{user?.email}</p>
+                      <p className="text-white/60 text-xs hidden md:block">Learning since {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</p>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                      <Trophy className="h-4 w-4" />
-                      <span className="font-semibold text-sm">Level {userStats.currentLevel}</span>
+                  <div className="flex flex-col items-start md:items-end space-y-1 md:space-y-2">
+                    <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-2 md:px-3 py-1">
+                      <Trophy className="h-3 w-3 md:h-4 md:w-4" />
+                      <span className="font-semibold text-xs md:text-sm">Level {userStats.currentLevel}</span>
                     </div>
-                    <div className="text-white/80 text-xs">
+                    <div className="text-white/80 text-xs hidden md:block">
                       Global Rank: #{userStats.globalRank.toLocaleString()}
                     </div>
                   </div>
                 </div>
                 
-                {/* Subscription & Stats Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Subscription Status Card */}
-                  <div className="bg-white/30 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/40">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="text-3xl">{planInfo.icon}</div>
+                {/* Subscription & Stats Row - Mobile Optimized */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  {/* Subscription Status Card - Compact on Mobile */}
+                  <div className="bg-white/30 backdrop-blur-sm rounded-xl p-3 md:p-6 shadow-lg border border-white/40">
+                    <div className="flex items-center justify-between mb-2 md:mb-4">
+                      <div className="flex items-center space-x-2 md:space-x-3">
+                        <div className="text-xl md:text-3xl">{planInfo.icon}</div>
                         <div>
-                          <div className="text-white font-bold text-xl tracking-tight">{planInfo.name}</div>
+                          <div className="text-white font-bold text-sm md:text-xl tracking-tight">{planInfo.name}</div>
                           {planInfo.period && (
-                            <div className="text-white/90 text-base font-medium">{planInfo.period}</div>
+                            <div className="text-white/90 text-xs md:text-base font-medium">{planInfo.period}</div>
                           )}
                         </div>
                       </div>
                       {subscriptionStatus?.status === 'active' && (
-                        <div className="flex items-center text-white text-base font-medium">
-                          <div className="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                          Active
+                        <div className="flex items-center text-white text-xs md:text-base font-medium">
+                          <div className="w-2 h-2 md:w-3 md:h-3 bg-green-400 rounded-full mr-1 md:mr-2 animate-pulse"></div>
+                          <span className="hidden md:inline">Active</span>
+                          <span className="md:hidden">✓</span>
                         </div>
                       )}
                     </div>
                     
                     {!subscriptionLoading && subscriptionStatus?.limits && (
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-white text-base">
-                          <span className="font-medium">Practice Sessions</span>
-                          <span className="font-bold text-lg">
+                      <div className="space-y-1 md:space-y-3">
+                        <div className="flex justify-between text-white text-xs md:text-base">
+                          <span className="font-medium">Sessions</span>
+                          <span className="font-bold text-sm md:text-lg">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
                              `${subscriptionStatus.limits.sessions_remaining}/${subscriptionStatus.limits.sessions_limit}`}
                           </span>
                         </div>
-                        <div className="flex justify-between text-white text-base">
+                        <div className="flex justify-between text-white text-xs md:text-base">
                           <span className="font-medium">Assessments</span>
-                          <span className="font-bold text-lg">
+                          <span className="font-bold text-sm md:text-lg">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
                              `${subscriptionStatus.limits.assessments_remaining}/${subscriptionStatus.limits.assessments_limit}`}
                           </span>
@@ -785,33 +786,33 @@ export default function ProfilePage() {
                     )}
                     
                     {subscriptionLoading && (
-                      <div className="flex items-center justify-center py-3">
-                        <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                      <div className="flex items-center justify-center py-2 md:py-3">
+                        <div className="animate-spin h-4 w-4 md:h-5 md:w-5 border-2 border-white/30 border-t-white rounded-full"></div>
                       </div>
                     )}
                   </div>
                   
-                  {/* Learning Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-yellow-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#FFD63A' }}>
-                      <Flame className="h-5 w-5 mx-auto mb-1 text-white" />
-                      <div className="text-lg font-bold text-white">{userStats.currentStreak}</div>
-                      <div className="text-white text-xs">Day Streak</div>
+                  {/* Learning Stats Grid - Compact on Mobile */}
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                    <div className="bg-yellow-400 rounded-lg p-2 md:p-3 text-center" style={{ backgroundColor: '#FFD63A' }}>
+                      <Flame className="h-4 w-4 md:h-5 md:w-5 mx-auto mb-1 text-white" />
+                      <div className="text-sm md:text-lg font-bold text-white">{userStats.currentStreak}</div>
+                      <div className="text-white text-xs">Streak</div>
                     </div>
-                    <div className="bg-red-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#F75A5A' }}>
-                      <BookOpen className="h-5 w-5 mx-auto mb-1 text-white" />
-                      <div className="text-lg font-bold text-white">{learningPlans.length}</div>
+                    <div className="bg-red-400 rounded-lg p-2 md:p-3 text-center" style={{ backgroundColor: '#F75A5A' }}>
+                      <BookOpen className="h-4 w-4 md:h-5 md:w-5 mx-auto mb-1 text-white" />
+                      <div className="text-sm md:text-lg font-bold text-white">{learningPlans.length}</div>
                       <div className="text-white text-xs">Languages</div>
                     </div>
-                    <div className="bg-orange-400 rounded-lg p-3 text-center" style={{ backgroundColor: '#FFA955' }}>
-                      <Award className="h-5 w-5 mx-auto mb-1 text-white" />
-                      <div className="text-lg font-bold text-white">{achievements.filter(a => a.earned).length}</div>
-                      <div className="text-white text-xs">Achievements</div>
+                    <div className="bg-orange-400 rounded-lg p-2 md:p-3 text-center" style={{ backgroundColor: '#FFA955' }}>
+                      <Award className="h-4 w-4 md:h-5 md:w-5 mx-auto mb-1 text-white" />
+                      <div className="text-sm md:text-lg font-bold text-white">{achievements.filter(a => a.earned).length}</div>
+                      <div className="text-white text-xs">Awards</div>
                     </div>
-                    <div className="bg-blue-500 rounded-lg p-3 text-center">
-                      <Zap className="h-5 w-5 mx-auto mb-1 text-white" />
-                      <div className="text-lg font-bold text-white">{userStats.totalXP.toLocaleString()}</div>
-                      <div className="text-white text-xs">Total XP</div>
+                    <div className="bg-blue-500 rounded-lg p-2 md:p-3 text-center">
+                      <Zap className="h-4 w-4 md:h-5 md:w-5 mx-auto mb-1 text-white" />
+                      <div className="text-sm md:text-lg font-bold text-white">{userStats.totalXP.toLocaleString()}</div>
+                      <div className="text-white text-xs">XP</div>
                     </div>
                   </div>
                 </div>
@@ -819,10 +820,44 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
+          {/* Navigation Tabs - Mobile Optimized */}
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6 md:mb-8">
             <div className="border-b border-gray-200">
-              <nav className="flex">
+              {/* Mobile: Horizontal Scrollable Tabs */}
+              <nav className="md:hidden">
+                <div className="flex overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {[
+                    { id: 'overview', label: 'Overview', icon: TrendingUp },
+                    { id: 'progress', label: 'Progress', icon: Target },
+                    { id: 'ai-tutor', label: 'AI Tutor', icon: Volume2 },
+                    { id: 'notifications', label: 'Alerts', icon: Bell },
+                    { id: 'export', label: 'Export', icon: Download },
+                    { id: 'settings', label: 'Settings', icon: Settings }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-col items-center justify-center px-3 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap min-w-0 flex-shrink-0 ${
+                        activeTab === tab.id
+                          ? 'border-teal-500 text-teal-600 bg-teal-50'
+                          : 'border-transparent text-gray-500'
+                      }`}
+                      style={{
+                        borderBottomColor: activeTab === tab.id ? '#4ECFBF' : 'transparent',
+                        color: activeTab === tab.id ? '#4ECFBF' : undefined,
+                        backgroundColor: activeTab === tab.id ? '#F0FDFA' : undefined,
+                        minWidth: '70px'
+                      }}
+                    >
+                      <tab.icon className="h-4 w-4 mb-1" />
+                      <span className="text-xs leading-tight">{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </nav>
+
+              {/* Desktop: Full Width Tabs */}
+              <nav className="hidden md:flex">
                 {[
                   { id: 'overview', label: 'Overview', icon: TrendingUp },
                   { id: 'progress', label: 'Learning Progress', icon: Target },
