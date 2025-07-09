@@ -8,6 +8,7 @@ import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingA
 import { isAuthenticated } from '@/lib/auth-utils';
 import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription, ASSESSMENT_DURATION_GUEST, ASSESSMENT_DURATION_REGISTERED, CONVERSATION_DURATION_GUEST, CONVERSATION_DURATION_REGISTERED } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
+import { useMobile } from '@/hooks/use-mobile';
 import LearningPlanModal from './learning-plan-modal';
 
 interface SpeakingAssessmentProps {
@@ -419,25 +420,6 @@ export default function SpeakingAssessment({
               </div>
             </div>
             
-            <div className="hidden">
-              <a 
-                href="/auth/login" 
-                className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
-              >
-                Sign In
-                <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </a>
-            </div>
-          </div>
-          
-          <div className="mt-4 md:hidden">
-            <a 
-              href="/auth/login" 
-              className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 w-full justify-center"
-            >
-              Sign In
-              <ArrowUpRight className="ml-2 h-4 w-4" />
-            </a>
           </div>
         </div>
       )}
@@ -975,7 +957,7 @@ export default function SpeakingAssessment({
                 className="bg-[#FFD63A] hover:bg-[#ECC235] text-[#333333] font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
               >
                 <Volume2 className="h-5 w-5" />
-                <span>Save & Practice</span>
+                <span>{isAuthenticated() ? 'Save & Proceed' : 'Proceed to Speak'}</span>
               </Button>
             </div>
           </div>

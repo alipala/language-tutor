@@ -364,7 +364,7 @@ export default function LearningPlanModal({
                   setDuration(parseInt(value));
                   setCustomDuration(null);
                 }
-              }} className="space-y-3 mt-2">
+              }} className="space-y-1.5 mt-2">
                 {[1, 2, 3, 6, 12].map((months) => (
                   <label 
                     key={months}
