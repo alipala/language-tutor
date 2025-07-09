@@ -1,19 +1,24 @@
 {
-  "name": "Language Tutor",
-  "short_name": "Language Tutor",
+  "name": "My Taco - AI Language Coach",
+  "short_name": "My Taco",
   "description": "AI-powered language learning platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#F75A5A",
+  "theme_color": "#4ecfbf",
   "icons": [
     {
-      "src": "/images/icon-192.png",
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/images/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

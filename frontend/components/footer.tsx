@@ -171,7 +171,7 @@ const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="relative bg-gradient-to-br from-[#4ECFBF] via-[#3a9e92] to-[#2d7a6e] text-white overflow-hidden">
+    <footer className="relative bg-[#4ecfbf] text-white overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
@@ -191,7 +191,12 @@ const Footer: React.FC = () => {
           {/* Company Info */}
           <div className="lg:col-span-2">
             <div className="mb-6">
-              <Logo variant="full" className="scale-75 origin-left" />
+              <div className="scale-75 origin-left">
+                <Logo 
+                  variant="full" 
+                  context="footer"
+                />
+              </div>
               <p className="text-white/90 text-sm font-medium mt-2">AI Language Coach</p>
             </div>
             

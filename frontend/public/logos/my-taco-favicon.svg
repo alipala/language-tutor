@@ -1,22 +1,33 @@
-<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-  <!-- Turquoise gradient background -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet">
   <defs>
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4ECFBF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#3da5a0;stop-opacity:1" />
-    </linearGradient>
+    <clipPath id="circle-clip">
+      <circle cx="187.5" cy="187.5" r="187.5"/>
+    </clipPath>
   </defs>
-  <rect width="80" height="80" rx="18" fill="url(#bgGradient)"/>
-  <!-- Voice waveform - bigger and more recognizable -->
-  <g transform="translate(12, 28)">
-    <rect x="0" y="8" width="4" height="4" rx="2" fill="white"/>
-    <rect x="6" y="4" width="4" height="12" rx="2" fill="white"/>
-    <rect x="12" y="0" width="4" height="20" rx="2" fill="white"/>
-    <rect x="18" y="6" width="4" height="8" rx="2" fill="white"/>
-    <rect x="24" y="2" width="4" height="16" rx="2" fill="white"/>
-    <rect x="30" y="5" width="4" height="10" rx="2" fill="white"/>
-    <rect x="36" y="9" width="4" height="2" rx="2" fill="white"/>
-    <!-- AI indicator dot -->
-    <circle cx="46" cy="10" r="3" fill="#F75A5A"/>
+  
+  <!-- Background circle -->
+  <circle cx="187.5" cy="187.5" r="187.5" fill="#4ecfbf"/>
+  
+  <!-- Bear face (simplified for favicon) -->
+  <g clip-path="url(#circle-clip)">
+    <!-- Bear head circle -->
+    <circle cx="187.5" cy="187.5" r="120" fill="#f7f8fa"/>
+    
+    <!-- Bear ears -->
+    <circle cx="140" cy="120" r="25" fill="#4ecfbf"/>
+    <circle cx="235" cy="120" r="25" fill="#4ecfbf"/>
+    
+    <!-- Bear eyes -->
+    <circle cx="160" cy="170" r="8" fill="#333"/>
+    <circle cx="215" cy="170" r="8" fill="#333"/>
+    
+    <!-- Bear nose -->
+    <ellipse cx="187.5" cy="200" rx="6" ry="4" fill="#333"/>
+    
+    <!-- Bear mouth -->
+    <path d="M 175 220 Q 187.5 230 200 220" stroke="#333" stroke-width="3" fill="none"/>
+    
+    <!-- Red dots (simplified) -->
+    <circle cx="235" cy="120" r="4" fill="#f75a5a"/>
   </g>
 </svg>
