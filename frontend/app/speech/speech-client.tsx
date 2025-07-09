@@ -964,7 +964,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       notification.innerHTML = `
         <div class="flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03 8-9 8s9 3.582 9 8z" />
           </svg>
           <div>
             <p class="font-medium">Starting new conversation</p>
@@ -987,6 +987,20 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       setIsConversationTimerActive(false);
       handleEndConversation();
       return;
+    }
+
+    // Start the conversation timer when user clicks "Click to start speaking"
+    if (!conversationStartTime && !isAuthenticated()) {
+      console.log('🎯 User clicked start speaking - setting conversation start time for timer');
+      const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
+      
+      if (planParam) {
+        const startTime = new Date().toISOString();
+        sessionStorage.setItem(`plan_${planParam}_conversationStartTime`, startTime);
+        setConversationStartTime(Date.now());
+        console.log('🕐 Conversation timer will start when AI responds');
+      }
     }
 
     // Check subscription limits for authenticated users before starting a new session

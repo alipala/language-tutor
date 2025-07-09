@@ -71,25 +71,16 @@ export default function TimeUpModal({
           {/* Action Buttons */}
           <div className="space-y-3">
             {!userIsAuthenticated && (
-              <>
-                <Button 
-                  className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md"
-                  onClick={onSignUp}
-                >
-                  Sign Up for Free
-                </Button>
-                
-                <Button 
-                  className="w-full bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800 font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md"
-                  onClick={onSignIn}
-                >
-                  Sign In
-                </Button>
-              </>
+              <Button 
+                className="w-full bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800 font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md"
+                onClick={onSignUp}
+              >
+                Sign up for free
+              </Button>
             )}
             
             <Button 
-              className={`w-full ${userIsAuthenticated ? 'bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white' : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'} font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md`}
+              className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md"
               onClick={onNewAssessment}
             >
               Start New Assessment

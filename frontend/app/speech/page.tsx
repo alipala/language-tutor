@@ -93,24 +93,18 @@ export default function SpeechPage() {
           if (plan) {
             console.log('[SpeechPage] Retrieved plan details:', plan);
             
-            // Store plan creation time if not already stored
-            const storedCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
-            if (!storedCreationTime) {
-              const creationTime = new Date().toISOString();
-              sessionStorage.setItem(`plan_${planParam}_creationTime`, creationTime);
-              setPlanCreationTime(creationTime);
-            } else {
+            // Don't set plan creation time here - it should only be set when conversation starts
+            // Check if conversation has already started and expired
+            const storedCreationTime = sessionStorage.getItem(`plan_${planParam}_conversationStartTime`);
+            if (storedCreationTime) {
               setPlanCreationTime(storedCreationTime);
               
-              // Immediately check if the plan is still valid based on time limits
+              // Check if the conversation has expired
               const userAuthenticated = isAuthenticated();
-              
-              // Use the enhanced validation function that also marks as expired
               const isExpired = checkAndMarkSessionExpired(planParam, userAuthenticated);
               
               if (isExpired) {
-                console.log('[SpeechPage] Plan has expired on page load, showing time up modal');
-                // Show the time's up modal instead of redirecting
+                console.log('[SpeechPage] Conversation has expired, showing time up modal');
                 setShowTimeUpModal(true);
                 return;
               }
