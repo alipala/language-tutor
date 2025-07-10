@@ -230,6 +230,10 @@ async def analyze_sentence(text: str, language: str, level: str, exercise_type: 
         
         # Parse response
         result = json.loads(response.choices[0].message.content)
+        
+        # 🔥 CRITICAL FIX: Add the recognized_text field that the API response model requires
+        result["recognized_text"] = text
+        
         print(f"Successfully analyzed text: '{text}'")
         return result
     except Exception as e:
@@ -239,6 +243,7 @@ async def analyze_sentence(text: str, language: str, level: str, exercise_type: 
         print(traceback.format_exc())
         # Fallback minimal response
         return {
+            "recognized_text": text,  # 🔥 CRITICAL FIX: Include recognized_text in fallback response
             "grammatical_score": 50,
             "vocabulary_score": 50,
             "complexity_score": 50,
