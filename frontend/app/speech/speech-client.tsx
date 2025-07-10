@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
 import { getConversationDuration, formatTime, getGuestLimitationsDescription, getRemainingTime, checkAndMarkSessionExpired } from '@/lib/guest-utils';
 import SentenceConstructionAssessment from '@/components/sentence-construction-assessment';
-import ModernTimer from '@/components/modern-timer';
+import DraggableTimer from '@/components/draggable-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
@@ -947,7 +947,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   };
   
-  // Note: Timer logic is now handled entirely by the ModernTimer component
+  // Note: Timer logic is now handled entirely by the DraggableTimer component
   // No duplicate timer effects needed here
   
   // Handle recording toggle
@@ -1061,10 +1061,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       }
     }
     
-    // Timer logic is now handled entirely by ModernTimer component
+    // Timer logic is now handled entirely by DraggableTimer component
     // Just ensure conversation is not marked as time up when starting
     setConversationTimeUp(false);
-    console.log('🔄 Starting/resuming conversation - timer managed by ModernTimer');
+    console.log('🔄 Starting/resuming conversation - timer managed by DraggableTimer');
     
     // If starting a brand new conversation, reset the paused state
     setIsPaused(false);
@@ -1265,47 +1265,42 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           </div>
         )}
         
-        {/* Timer positioned aligned with Conversation Transcript container top line */}
-        <div className="fixed top-32 sm:top-36 md:top-40 lg:top-44 right-2 sm:right-4 z-40">
-          <div className="scale-75 sm:scale-90 md:scale-100">
-            <ModernTimer
-              initialTime={getConversationDuration(isAuthenticated())}
-              isActive={isConversationTimerActive}
-              onTimeUp={async () => {
-                console.log('⏰ Timer reached 0 - immediately stopping conversation');
-                setConversationTimeUp(true);
-                setIsConversationTimerActive(false);
-                
-                // Immediately stop the conversation to prevent AI from continuing to speak
-                stopConversation();
-                
-                // Auto-save conversation when time is up (5 minutes completed)
-                if (user && processedMessages.length > 0) {
-                  console.log('🔄 Auto-saving conversation at timer end...');
-                  
-                  // Show loading state while saving
-                  setShowSavingLoader(true);
-                  
-                  const saveResult = await saveConversationProgress();
-                  
-                  // Hide loading state and show completion modal
-                  setShowSavingLoader(false);
-                  setSessionCompleted(true);
-                  setShowCompletionModal(true);
-                } else {
-                  // For guests or no messages, trigger the TimeUpModal via parent callback
-                  if (onTimeUp) {
-                    console.log('🎯 Calling parent onTimeUp callback to show TimeUpModal');
-                    onTimeUp();
-                  } else {
-                    handleEndConversation();
-                  }
-                }
-              }}
-              className=""
-            />
-          </div>
-        </div>
+        {/* Draggable Timer - Now floating and draggable */}
+        <DraggableTimer
+          initialTime={getConversationDuration(isAuthenticated())}
+          isActive={isConversationTimerActive}
+          onTimeUp={async () => {
+            console.log('⏰ Timer reached 0 - immediately stopping conversation');
+            setConversationTimeUp(true);
+            setIsConversationTimerActive(false);
+            
+            // Immediately stop the conversation to prevent AI from continuing to speak
+            stopConversation();
+            
+            // Auto-save conversation when time is up (5 minutes completed)
+            if (user && processedMessages.length > 0) {
+              console.log('🔄 Auto-saving conversation at timer end...');
+              
+              // Show loading state while saving
+              setShowSavingLoader(true);
+              
+              const saveResult = await saveConversationProgress();
+              
+              // Hide loading state and show completion modal
+              setShowSavingLoader(false);
+              setSessionCompleted(true);
+              setShowCompletionModal(true);
+            } else {
+              // For guests or no messages, trigger the TimeUpModal via parent callback
+              if (onTimeUp) {
+                console.log('🎯 Calling parent onTimeUp callback to show TimeUpModal');
+                onTimeUp();
+              } else {
+                handleEndConversation();
+              }
+            }
+          }}
+        />
 
         {/* Header - Redesigned */}
         <div className="text-center mb-6">
