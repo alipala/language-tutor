@@ -15,7 +15,13 @@ export class RealtimeService {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 3;
   private currentLanguage: string = '';
+  private currentLevel: string = '';
+  private currentTopic: string = '';
+  private currentUserPrompt: string = '';
+  private currentAssessmentData: any = null;
   private currentLanguageIsoCode: string = '';
+  private isPaused: boolean = false;
+  private pauseStartTime: number | null = null;
 
   constructor() {
     // Only initialize Audio in browser environments
@@ -48,11 +54,23 @@ export class RealtimeService {
       this.onDisconnectedCallback = onDisconnected || null;
       this.reconnectAttempts = 0;
       
-      // Store the language for use in transcription
+      // Store all parameters for use in conversation resumption
       if (language) {
         this.currentLanguage = language.toLowerCase();
         this.currentLanguageIsoCode = this.getLanguageIsoCode(this.currentLanguage);
         console.log('🌐 Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
+      }
+      if (level) {
+        this.currentLevel = level;
+      }
+      if (topic) {
+        this.currentTopic = topic;
+      }
+      if (userPrompt) {
+        this.currentUserPrompt = userPrompt;
+      }
+      if (assessmentData) {
+        this.currentAssessmentData = assessmentData;
       }
       
       // Use the correct backend URL (default to localhost:8000 if running locally)
@@ -523,6 +541,30 @@ export class RealtimeService {
   public async startConversation(instructions?: string): Promise<boolean> {
     console.log('🚀 Starting conversation with universal approach...');
     
+    // If we have conversation instructions (for resuming), we need to get a new ephemeral key
+    // that includes this conversation history
+    if (instructions) {
+      console.log('📝 Conversation instructions provided - getting new ephemeral key with context');
+      
+      // Get a new ephemeral key with the conversation history
+      const newToken = await this.getEphemeralKey(
+        this.currentLanguage, 
+        this.currentLevel, // Use stored level
+        this.currentTopic, // Use stored topic
+        this.currentUserPrompt, // Use stored userPrompt
+        this.currentAssessmentData, // Use stored assessmentData
+        instructions // conversationHistory - this is the key addition!
+      );
+      
+      if (!newToken) {
+        console.error('❌ Failed to get new ephemeral key with conversation history');
+        return false;
+      }
+      
+      this.ephemeralKey = newToken;
+      console.log('✅ Updated ephemeral key with conversation context');
+    }
+    
     // Check if data channel is ready
     if (!this.dataChannel) {
       console.error('❌ Data channel not initialized');
@@ -586,6 +628,108 @@ export class RealtimeService {
     
     console.log('✅ Starting conversation with response.create (no instruction override)');
     return this.sendMessage(event);
+  }
+  
+  /**
+   * Pause the conversation without disconnecting
+   * Keeps the WebRTC connection alive but stops processing audio
+   */
+  public pauseConversation(): boolean {
+    try {
+      console.log('⏸️ Pausing conversation (keeping connection alive)...');
+      
+      if (!this.isConnected || !this.dataChannel) {
+        console.warn('⚠️ Cannot pause - not connected or no data channel');
+        return false;
+      }
+      
+      this.isPaused = true;
+      this.pauseStartTime = Date.now();
+      
+      // Mute the local audio track instead of stopping it
+      if (this.localStream) {
+        const audioTracks = this.localStream.getAudioTracks();
+        audioTracks.forEach(track => {
+          track.enabled = false; // Mute instead of stop
+          console.log('🔇 Muted audio track:', track.label);
+        });
+      }
+      
+      // Mute the remote audio as well
+      if (this.audioElement) {
+        this.audioElement.muted = true;
+        console.log('🔇 Muted remote audio');
+      }
+      
+      console.log('✅ Conversation paused successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Error pausing conversation:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Resume the conversation from pause
+   * Unmutes audio and continues with the same session
+   */
+  public resumeConversation(): boolean {
+    try {
+      console.log('▶️ Resuming conversation...');
+      
+      if (!this.isPaused) {
+        console.warn('⚠️ Conversation is not paused');
+        return false;
+      }
+      
+      if (!this.isConnected || !this.dataChannel) {
+        console.warn('⚠️ Cannot resume - not connected or no data channel');
+        return false;
+      }
+      
+      // Calculate pause duration
+      const pauseDuration = this.pauseStartTime ? Date.now() - this.pauseStartTime : 0;
+      console.log(`⏱️ Resuming after ${pauseDuration}ms pause`);
+      
+      // Unmute the local audio track
+      if (this.localStream) {
+        const audioTracks = this.localStream.getAudioTracks();
+        audioTracks.forEach(track => {
+          track.enabled = true; // Unmute
+          console.log('🔊 Unmuted audio track:', track.label);
+        });
+      }
+      
+      // Unmute the remote audio
+      if (this.audioElement) {
+        this.audioElement.muted = false;
+        console.log('🔊 Unmuted remote audio');
+      }
+      
+      this.isPaused = false;
+      this.pauseStartTime = null;
+      
+      console.log('✅ Conversation resumed successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Error resuming conversation:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Check if the conversation is currently paused
+   */
+  public isPausedState(): boolean {
+    return this.isPaused;
+  }
+  
+  /**
+   * Get pause duration in milliseconds
+   */
+  public getPauseDuration(): number {
+    if (!this.isPaused || !this.pauseStartTime) return 0;
+    return Date.now() - this.pauseStartTime;
   }
   
   /**

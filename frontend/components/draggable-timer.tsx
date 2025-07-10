@@ -140,11 +140,10 @@ export default function DraggableTimer({
     }
   }, [handleDragEnd, isDragging]);
 
-  // Enhanced touch event handlers for real mobile devices
+  // More selective touch event handlers for real mobile devices
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Prevent default touch behaviors that cause scrolling
+    // Only prevent default on the timer itself, not globally
     e.preventDefault();
-    e.stopPropagation();
     
     const touch = e.touches[0];
     if (touch) {
@@ -154,10 +153,8 @@ export default function DraggableTimer({
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (isDragging && e.touches.length > 0) {
-      // Aggressively prevent all default touch behaviors
+      // Only prevent default when actively dragging
       e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
       
       const touch = e.touches[0];
       if (touch) {
@@ -168,63 +165,33 @@ export default function DraggableTimer({
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     if (isDragging) {
-      // Prevent default behaviors on touch end
+      // Only prevent default when we were actually dragging
       e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
       
       handleDragEnd();
     }
   }, [handleDragEnd, isDragging]);
 
-  // Enhanced global event listeners with aggressive touch prevention
+  // More selective global event listeners - only when actively dragging
   useEffect(() => {
     if (isDragging) {
-      // Prevent page scrolling and interactions during drag
-      document.body.style.overflow = 'hidden';
+      // Only prevent scrolling during drag, but allow other interactions
       document.body.style.userSelect = 'none';
       document.body.style.webkitUserSelect = 'none';
-      document.body.style.touchAction = 'none';
       
-      // Set webkit-specific properties safely
-      (document.body.style as any).webkitTouchCallout = 'none';
-      (document.body.style as any).webkitUserDrag = 'none';
-      
-      // Add event listeners with aggressive prevention
+      // Add event listeners for drag continuation
       document.addEventListener('mousemove', handleMouseMove, { passive: false });
       document.addEventListener('mouseup', handleMouseUp, { passive: false });
-      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
-      document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
-      
-      // Additional touch event prevention
-      document.addEventListener('touchstart', (e) => {
-        if (isDragging) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }, { passive: false, capture: true });
-      
-      // Prevent scroll events during drag
-      document.addEventListener('scroll', (e) => {
-        if (isDragging) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }, { passive: false, capture: true });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false });
     }
 
     return () => {
-      // Restore all body styles
-      document.body.style.overflow = '';
+      // Restore body styles
       document.body.style.userSelect = '';
       document.body.style.webkitUserSelect = '';
-      document.body.style.touchAction = '';
       
-      // Restore webkit-specific properties safely
-      (document.body.style as any).webkitTouchCallout = '';
-      (document.body.style as any).webkitUserDrag = '';
-      
-      // Remove all event listeners
+      // Remove event listeners
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -280,9 +247,6 @@ export default function DraggableTimer({
       } as React.CSSProperties & { WebkitUserDrag?: string; WebkitTouchCallout?: string }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
-      // Additional touch event prevention
-      onTouchMove={(e) => e.preventDefault()}
-      onTouchEnd={(e) => e.preventDefault()}
     >
       {/* Clean Analog Timer - Single View */}
       <div className={`relative p-3 rounded-2xl border-2 transition-all duration-300 shadow-lg backdrop-blur-sm ${getBackgroundColor()}`}>
