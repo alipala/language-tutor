@@ -119,50 +119,112 @@ export default function DraggableTimer({
 
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     handleDragStart(e.clientX, e.clientY);
   }, [handleDragStart]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    handleDragMove(e.clientX, e.clientY);
-  }, [handleDragMove]);
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDragMove(e.clientX, e.clientY);
+    }
+  }, [handleDragMove, isDragging]);
 
-  const handleMouseUp = useCallback(() => {
-    handleDragEnd();
-  }, [handleDragEnd]);
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDragEnd();
+    }
+  }, [handleDragEnd, isDragging]);
 
-  // Touch event handlers
+  // Enhanced touch event handlers for real mobile devices
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Prevent default touch behaviors that cause scrolling
+    e.preventDefault();
+    e.stopPropagation();
+    
     const touch = e.touches[0];
-    handleDragStart(touch.clientX, touch.clientY);
+    if (touch) {
+      handleDragStart(touch.clientX, touch.clientY);
+    }
   }, [handleDragStart]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    const touch = e.touches[0];
-    handleDragMove(touch.clientX, touch.clientY);
-  }, [handleDragMove]);
+    if (isDragging && e.touches.length > 0) {
+      // Aggressively prevent all default touch behaviors
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      const touch = e.touches[0];
+      if (touch) {
+        handleDragMove(touch.clientX, touch.clientY);
+      }
+    }
+  }, [handleDragMove, isDragging]);
 
-  const handleTouchEnd = useCallback(() => {
-    handleDragEnd();
-  }, [handleDragEnd]);
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (isDragging) {
+      // Prevent default behaviors on touch end
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      handleDragEnd();
+    }
+  }, [handleDragEnd, isDragging]);
 
-  // Add global event listeners for drag with smooth transitions
+  // Enhanced global event listeners with aggressive touch prevention
   useEffect(() => {
     if (isDragging) {
-      // Prevent page scrolling during drag
+      // Prevent page scrolling and interactions during drag
       document.body.style.overflow = 'hidden';
       document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+      document.body.style.touchAction = 'none';
       
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchmove', handleTouchMove);
-      document.addEventListener('touchend', handleTouchEnd);
+      // Set webkit-specific properties safely
+      (document.body.style as any).webkitTouchCallout = 'none';
+      (document.body.style as any).webkitUserDrag = 'none';
+      
+      // Add event listeners with aggressive prevention
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp, { passive: false });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+      
+      // Additional touch event prevention
+      document.addEventListener('touchstart', (e) => {
+        if (isDragging) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, { passive: false, capture: true });
+      
+      // Prevent scroll events during drag
+      document.addEventListener('scroll', (e) => {
+        if (isDragging) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, { passive: false, capture: true });
     }
 
     return () => {
-      // Restore page scrolling
+      // Restore all body styles
       document.body.style.overflow = '';
       document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+      document.body.style.touchAction = '';
       
+      // Restore webkit-specific properties safely
+      (document.body.style as any).webkitTouchCallout = '';
+      (document.body.style as any).webkitUserDrag = '';
+      
+      // Remove all event listeners
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -209,9 +271,18 @@ export default function DraggableTimer({
         cursor: isDragging ? 'grabbing' : 'grab',
         transform: isDragging ? 'scale(1.05)' : 'scale(1)',
         transition: isDragging ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
+        // Enhanced touch prevention styles
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitUserDrag: 'none',
+      } as React.CSSProperties & { WebkitUserDrag?: string; WebkitTouchCallout?: string }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
+      // Additional touch event prevention
+      onTouchMove={(e) => e.preventDefault()}
+      onTouchEnd={(e) => e.preventDefault()}
     >
       {/* Clean Analog Timer - Single View */}
       <div className={`relative p-3 rounded-2xl border-2 transition-all duration-300 shadow-lg backdrop-blur-sm ${getBackgroundColor()}`}>
