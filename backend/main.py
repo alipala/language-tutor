@@ -24,6 +24,14 @@ from bson import ObjectId
 from sentence_assessment import SentenceAssessmentRequest, SentenceAssessmentResponse, GrammarIssue, \
     recognize_speech, analyze_sentence, generate_exercises
 
+# Import background sentence analysis functionality
+from background_sentence_analysis import (
+    SentenceEvaluationRequest, SentenceEvaluationResponse,
+    BackgroundAnalysisRequest, BackgroundAnalysisResponse,
+    evaluate_sentence_worthiness, perform_background_analysis,
+    process_sentence_for_background_analysis
+)
+
 # Import speaking assessment functionality
 from speaking_assessment import SpeakingAssessmentRequest, SpeakingAssessmentResponse, SkillScore, \
     evaluate_language_proficiency, generate_speaking_prompts
@@ -1645,6 +1653,119 @@ async def get_speaking_prompts(language: str, level: str, count: int = 3):
     except Exception as e:
         print(f"Error generating speaking prompts: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generating prompts: {str(e)}")
+
+# Add background sentence analysis endpoints
+@app.post("/api/sentence/evaluate", response_model=SentenceEvaluationResponse)
+async def evaluate_sentence_for_analysis(request: SentenceEvaluationRequest):
+    """
+    Evaluate whether a sentence is substantial enough for analysis.
+    This endpoint is used by the frontend to determine if background analysis should be triggered.
+    """
+    try:
+        print(f"🔍 [EVALUATION] Evaluating sentence: '{request.text}'")
+        
+        evaluation = await evaluate_sentence_worthiness(
+            text=request.text,
+            language=request.language,
+            level=request.level,
+            conversation_context=request.conversation_context
+        )
+        
+        print(f"✅ [EVALUATION] Result: {evaluation['should_analyze']} - {evaluation['reason']}")
+        
+        return SentenceEvaluationResponse(
+            should_analyze=evaluation["should_analyze"],
+            reason=evaluation["reason"],
+            confidence=evaluation["confidence"]
+        )
+        
+    except Exception as e:
+        print(f"❌ [EVALUATION] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error evaluating sentence: {str(e)}")
+
+@app.post("/api/sentence/background-analyze", response_model=BackgroundAnalysisResponse)
+async def perform_background_sentence_analysis(request: BackgroundAnalysisRequest):
+    """
+    Perform background sentence analysis without interrupting the conversation.
+    This endpoint analyzes the sentence and returns detailed assessment results.
+    """
+    try:
+        print(f"🔬 [BACKGROUND_ANALYSIS] Analyzing sentence: '{request.text}'")
+        
+        analysis = await perform_background_analysis(
+            text=request.text,
+            language=request.language,
+            level=request.level,
+            exercise_type=request.exercise_type,
+            conversation_context=request.conversation_context
+        )
+        
+        print(f"✅ [BACKGROUND_ANALYSIS] Analysis completed for: '{request.text}'")
+        
+        return BackgroundAnalysisResponse(
+            analysis_id=analysis["analysis_id"],
+            recognized_text=analysis["recognized_text"],
+            grammatical_score=analysis["grammatical_score"],
+            vocabulary_score=analysis["vocabulary_score"],
+            complexity_score=analysis["complexity_score"],
+            appropriateness_score=analysis["appropriateness_score"],
+            overall_score=analysis["overall_score"],
+            grammar_issues=analysis["grammar_issues"],
+            improvement_suggestions=analysis["improvement_suggestions"],
+            corrected_text=analysis.get("corrected_text"),
+            level_appropriate_alternatives=analysis.get("level_appropriate_alternatives"),
+            timestamp=analysis["timestamp"]
+        )
+        
+    except Exception as e:
+        print(f"❌ [BACKGROUND_ANALYSIS] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error performing background analysis: {str(e)}")
+
+@app.post("/api/sentence/process-background")
+async def process_sentence_background(request: BackgroundAnalysisRequest):
+    """
+    Complete background sentence processing pipeline.
+    Evaluates if sentence should be analyzed, and if so, performs the analysis.
+    Returns None if sentence doesn't warrant analysis, otherwise returns analysis results.
+    """
+    try:
+        print(f"🔄 [BACKGROUND_PROCESS] Processing sentence: '{request.text}'")
+        
+        result = await process_sentence_for_background_analysis(
+            text=request.text,
+            language=request.language,
+            level=request.level,
+            conversation_context=request.conversation_context
+        )
+        
+        if result is None:
+            print(f"⏭️ [BACKGROUND_PROCESS] Sentence skipped - not substantial enough")
+            return {"analyzed": False, "reason": "Sentence not substantial enough for analysis"}
+        
+        print(f"✅ [BACKGROUND_PROCESS] Analysis completed with ID: {result['analysis_id']}")
+        
+        return {
+            "analyzed": True,
+            "analysis": BackgroundAnalysisResponse(
+                analysis_id=result["analysis_id"],
+                recognized_text=result["recognized_text"],
+                grammatical_score=result["grammatical_score"],
+                vocabulary_score=result["vocabulary_score"],
+                complexity_score=result["complexity_score"],
+                appropriateness_score=result["appropriateness_score"],
+                overall_score=result["overall_score"],
+                grammar_issues=result["grammar_issues"],
+                improvement_suggestions=result["improvement_suggestions"],
+                corrected_text=result.get("corrected_text"),
+                level_appropriate_alternatives=result.get("level_appropriate_alternatives"),
+                timestamp=result["timestamp"]
+            ),
+            "evaluation": result.get("evaluation", {})
+        }
+        
+    except Exception as e:
+        print(f"❌ [BACKGROUND_PROCESS] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing sentence: {str(e)}")
 
 # Add mock token endpoint for testing
 @app.post("/api/mock-token")

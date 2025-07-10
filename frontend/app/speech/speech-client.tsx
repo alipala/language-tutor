@@ -13,7 +13,13 @@ import DraggableTimer from '@/components/draggable-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
+import BackgroundAnalysisCard from '@/components/background-analysis-card';
 import { getApiUrl } from '@/lib/api-utils';
+import { 
+  processBackgroundSentence, 
+  shouldConsiderForAnalysis, 
+  BackgroundAnalysisResponse 
+} from '@/lib/background-sentence-api';
 
 interface SpeechClientProps {
   language: string;
@@ -86,6 +92,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const analyzeButtonRef = useRef<(() => void) | null>(null);
   // Track which messages have been analyzed
   const [analyzedMessageIds, setAnalyzedMessageIds] = useState<string[]>([]);
+  
+  // Background sentence analysis state
+  const [backgroundAnalyses, setBackgroundAnalyses] = useState<BackgroundAnalysisResponse[]>([]);
+  const [isProcessingBackground, setIsProcessingBackground] = useState(false);
   
   // Language alert state - simplified
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
@@ -685,16 +695,82 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
+  // Background sentence analysis function
+  const handleBackgroundAnalysis = useCallback(async (text: string, messageIndex: number) => {
+    // Quick client-side check first
+    if (!shouldConsiderForAnalysis(text)) {
+      console.log('⏭️ [BACKGROUND] Skipping analysis - text too short or basic response:', text);
+      return;
+    }
+
+    // Don't analyze if already processing or if we already have too many analyses
+    if (isProcessingBackground || backgroundAnalyses.length >= 10) {
+      console.log('⏭️ [BACKGROUND] Skipping analysis - already processing or too many analyses');
+      return;
+    }
+
+    try {
+      setIsProcessingBackground(true);
+      console.log('🔄 [BACKGROUND] Starting background analysis for:', text);
+
+      // Build conversation context from recent messages
+      const recentMessages = messages.slice(-5); // Last 5 messages for context
+      const conversationContext = recentMessages
+        .map(msg => `${msg.role === 'user' ? 'Student' : 'Tutor'}: ${msg.content}`)
+        .join('\n');
+
+      const result = await processBackgroundSentence({
+        text: text,
+        language: language,
+        level: level,
+        exercise_type: 'free',
+        conversation_context: conversationContext
+      });
+
+      if (result.analyzed && result.analysis) {
+        console.log('✅ [BACKGROUND] Analysis completed:', result.analysis.analysis_id);
+        
+        // Add to background analyses with a limit
+        setBackgroundAnalyses(prev => {
+          const newAnalyses = [...prev, result.analysis!];
+          // Keep only the last 5 analyses to prevent UI clutter
+          return newAnalyses.slice(-5);
+        });
+      } else {
+        console.log('⏭️ [BACKGROUND] Analysis skipped:', result.reason);
+      }
+    } catch (error) {
+      console.error('❌ [BACKGROUND] Error in background analysis:', error);
+    } finally {
+      setIsProcessingBackground(false);
+    }
+  }, [language, level, messages, isProcessingBackground, backgroundAnalyses.length]);
+
   // Handle transcript updates and language detection
   useEffect(() => {
     // Extract the latest user message for the transcript
     const userMessages = messages.filter(msg => msg.role === 'user');
     if (userMessages.length > 0) {
       const latestUserMessage = userMessages[userMessages.length - 1];
+      const messageIndex = userMessages.length - 1;
       
       // Only set the transcript if it's in the target language or if we're in English mode
       if (isInTargetLanguage(latestUserMessage.content)) {
         setCurrentTranscript(latestUserMessage.content);
+        
+        // Trigger background analysis for substantial sentences
+        // Only analyze if this is a recent message (to avoid analyzing old messages on page load)
+        const now = Date.now();
+        const messageTime = latestUserMessage.timestamp ? new Date(latestUserMessage.timestamp as string).getTime() : now;
+        const messageAge = now - messageTime;
+        const isRecentMessage = messageAge < 10000; // Only process messages less than 10 seconds old
+        
+        if (isRecentMessage && latestUserMessage.content.trim().length > 0) {
+          // Small delay to ensure the conversation continues smoothly
+          setTimeout(() => {
+            handleBackgroundAnalysis(latestUserMessage.content, messageIndex);
+          }, 2000); // 2 second delay to not interfere with conversation flow
+        }
       } else {
         // Clear the transcript or set a placeholder message
         setCurrentTranscript('');
@@ -1402,29 +1478,53 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
-                  {/* Real-time Transcript Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
+                  {/* Real Time Sentence Analysis Component */}
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col h-[400px] sm:h-[450px] md:h-[500px] lg:h-[650px]">
                     <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                       </svg>
-                      Real-time Transcript
+                      Real Time Sentence Analysis
+                      {isProcessingBackground && (
+                        <div className="ml-2 w-4 h-4 border-2 border-[#F75A5A] border-t-transparent rounded-full animate-spin"></div>
+                      )}
                     </h3>
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-y-auto pb-16">
-                      <SentenceConstructionAssessment
-                        transcript={currentTranscript}
-                        isRecording={isRecording}
-                        onStopRecording={handleEndConversation}
-                        onContinueLearning={handleContinueLearning}
-                        language={language}
-                        level={level}
-                        exerciseType={exerciseType}
-                        onChangeExerciseType={setExerciseType}
-                        onAnalyzeRef={analyzeButtonRef}
-                        onMessageAnalyzed={(messageId) => setAnalyzedMessageIds(prev => [...prev, messageId])}
-                        currentMessageId={messages.length > 0 ? `${messages[messages.length - 1].role}-${messages.length - 1}` : undefined}
-                      />
+                    
+                    {/* Fixed Height Background Analysis Results with Scrolling */}
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-hidden">
+                      <div className="h-full overflow-y-auto space-y-3" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                        {backgroundAnalyses.length > 0 ? (
+                          backgroundAnalyses.map((analysis, index) => (
+                            <BackgroundAnalysisCard
+                              key={analysis.analysis_id}
+                              analysis={analysis}
+                              onClose={() => {
+                                setBackgroundAnalyses(prev => prev.filter((_, i) => i !== index));
+                              }}
+                            />
+                          ))
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-500">
+                            {isProcessingBackground ? (
+                              <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <span className="text-lg font-medium">Analyzing your sentence...</span>
+                                <span className="text-sm text-gray-400 mt-2">AI is evaluating your speech for learning feedback</span>
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                <p className="text-lg font-medium mb-2">Sentence Analysis Results</p>
+                                <p className="text-sm text-gray-400">Start speaking to see AI analysis of your sentences</p>
+                                <p className="text-xs text-gray-400 mt-2">Analysis appears automatically for substantial sentences</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
@@ -1439,7 +1539,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             ? 'bg-gray-400 cursor-not-allowed' 
                             : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
                           ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || (!isAuthenticated() && conversationTimeUp)}
+                        disabled={isAttemptingToRecord || isRecording}
                       >
                         {isAttemptingToRecord ? (
                           <>
@@ -1457,7 +1557,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 <span className="audio-wave-bar"></span>
                               </div>
                             </div>
-                            <span className="font-medium text-white">Recording... Click to stop</span>
+                            <span className="font-medium text-white">Recording...</span>
                           </>
                         ) : (
                           <>
@@ -1562,26 +1662,23 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                     </div>
                                     <p className="text-xs sm:text-sm leading-relaxed mt-1 text-gray-800">{message.content}</p>
                                     
-                                    {/* Analyze button in user message bubble - only show for messages that haven't been analyzed yet */}
-                                    {message.role === 'user' && 
-                                     message.content.trim().length > 0 && 
-                                     analyzeButtonRef.current && 
-                                     !analyzedMessageIds.includes(`${message.role}-${index}`) && (
+                                    {/* Analysis indicator for user messages */}
+                                    {message.role === 'user' && message.content.trim().length > 0 && (
                                       <div className="mt-2 flex justify-end">
-                                          <button
-                                            onClick={() => {
-                                              // Mark this specific message as analyzed
-                                              setAnalyzedMessageIds(prev => [...prev, `${message.role}-${index}`]);
-                                              // Call the analyze function
-                                              if (analyzeButtonRef.current) analyzeButtonRef.current();
-                                            }}
-                                            className="px-2 py-1.5 sm:py-1 bg-[#FFD63A] hover:bg-[#FFA955] text-gray-800 text-xs rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1"
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                            </svg>
-                                            <span>Analyze Sentence</span>
-                                        </button>
+                                        {/* Check if this message was analyzed in background */}
+                                        {backgroundAnalyses.some(analysis => 
+                                          analysis.recognized_text.toLowerCase().includes(message.content.toLowerCase().substring(0, 20))
+                                        ) ? (
+                                          <div className="flex items-center space-x-1 text-green-600">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                            <span className="text-xs font-medium">Analyzed</span>
+                                          </div>
+                                        ) : shouldConsiderForAnalysis(message.content) ? (
+                                          <div className="flex items-center space-x-1 text-blue-600">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                            <span className="text-xs font-medium">Being analyzed...</span>
+                                          </div>
+                                        ) : null}
                                       </div>
                                     )}
                                   </div>
