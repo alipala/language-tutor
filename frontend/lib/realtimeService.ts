@@ -16,6 +16,8 @@ export class RealtimeService {
   private maxReconnectAttempts: number = 3;
   private currentLanguage: string = '';
   private currentLanguageIsoCode: string = '';
+  private isPaused: boolean = false;
+  private pauseStartTime: number | null = null;
 
   constructor() {
     // Only initialize Audio in browser environments
@@ -586,6 +588,108 @@ export class RealtimeService {
     
     console.log('✅ Starting conversation with response.create (no instruction override)');
     return this.sendMessage(event);
+  }
+  
+  /**
+   * Pause the conversation without disconnecting
+   * Keeps the WebRTC connection alive but stops processing audio
+   */
+  public pauseConversation(): boolean {
+    try {
+      console.log('⏸️ Pausing conversation (keeping connection alive)...');
+      
+      if (!this.isConnected || !this.dataChannel) {
+        console.warn('⚠️ Cannot pause - not connected or no data channel');
+        return false;
+      }
+      
+      this.isPaused = true;
+      this.pauseStartTime = Date.now();
+      
+      // Mute the local audio track instead of stopping it
+      if (this.localStream) {
+        const audioTracks = this.localStream.getAudioTracks();
+        audioTracks.forEach(track => {
+          track.enabled = false; // Mute instead of stop
+          console.log('🔇 Muted audio track:', track.label);
+        });
+      }
+      
+      // Mute the remote audio as well
+      if (this.audioElement) {
+        this.audioElement.muted = true;
+        console.log('🔇 Muted remote audio');
+      }
+      
+      console.log('✅ Conversation paused successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Error pausing conversation:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Resume the conversation from pause
+   * Unmutes audio and continues with the same session
+   */
+  public resumeConversation(): boolean {
+    try {
+      console.log('▶️ Resuming conversation...');
+      
+      if (!this.isPaused) {
+        console.warn('⚠️ Conversation is not paused');
+        return false;
+      }
+      
+      if (!this.isConnected || !this.dataChannel) {
+        console.warn('⚠️ Cannot resume - not connected or no data channel');
+        return false;
+      }
+      
+      // Calculate pause duration
+      const pauseDuration = this.pauseStartTime ? Date.now() - this.pauseStartTime : 0;
+      console.log(`⏱️ Resuming after ${pauseDuration}ms pause`);
+      
+      // Unmute the local audio track
+      if (this.localStream) {
+        const audioTracks = this.localStream.getAudioTracks();
+        audioTracks.forEach(track => {
+          track.enabled = true; // Unmute
+          console.log('🔊 Unmuted audio track:', track.label);
+        });
+      }
+      
+      // Unmute the remote audio
+      if (this.audioElement) {
+        this.audioElement.muted = false;
+        console.log('🔊 Unmuted remote audio');
+      }
+      
+      this.isPaused = false;
+      this.pauseStartTime = null;
+      
+      console.log('✅ Conversation resumed successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Error resuming conversation:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Check if the conversation is currently paused
+   */
+  public isPausedState(): boolean {
+    return this.isPaused;
+  }
+  
+  /**
+   * Get pause duration in milliseconds
+   */
+  public getPauseDuration(): number {
+    if (!this.isPaused || !this.pauseStartTime) return 0;
+    return Date.now() - this.pauseStartTime;
   }
   
   /**

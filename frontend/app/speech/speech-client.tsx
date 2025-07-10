@@ -197,7 +197,19 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   }, []);
   
   // Initialize the realtime service and handle messages
-  const { isRecording, messages, error, toggleConversation, stopConversation, startConversation, initialize, getFormattedConversationHistory } = useRealtime();
+  const { 
+    isRecording, 
+    messages, 
+    error, 
+    toggleConversation, 
+    stopConversation, 
+    startConversation, 
+    initialize, 
+    getFormattedConversationHistory,
+    pauseConversation,      // NEW
+    resumeConversation,     // NEW
+    isPaused: isRealtimePaused  // NEW - renamed to avoid conflict
+  } = useRealtime();
   
   // Process messages for display and deduplicate both user and assistant messages
   const processedMessages = useMemo(() => {
