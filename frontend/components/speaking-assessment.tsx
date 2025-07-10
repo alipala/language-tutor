@@ -8,6 +8,7 @@ import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingA
 import { isAuthenticated } from '@/lib/auth-utils';
 import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription, ASSESSMENT_DURATION_GUEST, ASSESSMENT_DURATION_REGISTERED, CONVERSATION_DURATION_GUEST, CONVERSATION_DURATION_REGISTERED } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
+import { useMobile } from '@/hooks/use-mobile';
 import LearningPlanModal from './learning-plan-modal';
 
 interface SpeakingAssessmentProps {
@@ -23,6 +24,7 @@ export default function SpeakingAssessment({
 }: SpeakingAssessmentProps) {
   // Access notification context
   const { showNotification } = useNotification();
+  const isMobile = useMobile();
   
   // State for recording and assessment
   const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'complete'>('idle');
@@ -382,177 +384,200 @@ export default function SpeakingAssessment({
         />
       )}
       
-      {/* Guest User Mode Banner*/}
+      {/* Centered Guest User Mode Banner */}
       {!isAuthenticated() && (
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] p-6 mb-6 rounded-xl shadow-lg">
-          <div className="absolute top-0 right-0 w-32 h-32 -mt-8 -mr-8 opacity-20">
-            <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="40" fill="white" />
-              <path d="M50 10 A40 40 0 0 1 90 50" stroke="white" strokeWidth="4" fill="none" />
-              <path d="M50 90 A40 40 0 0 1 10 50" stroke="white" strokeWidth="4" fill="none" />
-            </svg>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center">
-                <div className="bg-white/20 p-2 rounded-full mr-3">
-                  <Mic className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-white">Guest Experience</h3>
+        <div className={`relative overflow-hidden bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] rounded-xl shadow-lg mb-4 ${isMobile ? 'p-4' : 'p-6 mb-6'}`}>
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-3">
+              <div className="bg-white/20 p-2 rounded-full mr-3">
+                <Mic className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
               </div>
-              
-              <div className="mt-3 text-white/90 text-sm max-w-xl leading-relaxed">
-                <p>You're using the free guest mode with limited features:</p>
-                <ul className="mt-2 space-y-1 list-disc list-inside pl-1">
-                  <li>Results not saved to your profile</li>
-                </ul>
-                <div className="mt-4 flex space-x-3">
-                  <a 
-                    href="/auth/login" 
-                    className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
-                  >
-                    Signin for Full Access
-                    <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </a>
-                </div>
-              </div>
+              <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white`}>Guest Mode</h3>
             </div>
             
-            <div className="hidden">
+            <div className={`text-white/90 ${isMobile ? 'text-xs' : 'text-sm'} leading-relaxed`}>
+              {isMobile ? (
+                <p>Free mode • Results not saved</p>
+              ) : (
+                <>
+                  <p>You're using the free guest mode with limited features:</p>
+                  <ul className="mt-2 space-y-1 list-disc list-inside">
+                    <li>Results not saved to your profile</li>
+                  </ul>
+                </>
+              )}
+            </div>
+            
+            <div className={`${isMobile ? 'mt-2' : 'mt-4'} flex justify-center`}>
               <a 
                 href="/auth/login" 
-                className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group"
+                className={`inline-flex items-center ${isMobile ? 'px-4 py-2 text-xs' : 'px-6 py-3 text-sm'} bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 group`}
               >
                 Sign In
-                <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                <ChevronRight className={`ml-1 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'} group-hover:translate-x-1 transition-transform`} />
               </a>
             </div>
-          </div>
-          
-          <div className="mt-4 md:hidden">
-            <a 
-              href="/auth/login" 
-              className="inline-flex items-center px-4 py-2 bg-white text-[#3AA8B1] font-medium rounded-lg shadow-md hover:bg-white/90 transition-all duration-200 w-full justify-center"
-            >
-              Sign In
-              <ArrowUpRight className="ml-2 h-4 w-4" />
-            </a>
           </div>
         </div>
       )}
       
 
 
-      {/* Main Assessment Interface - Redesigned Layout */}
+      {/* Main Assessment Interface - Mobile-First Redesigned Layout */}
       {status === 'idle' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Primary Recording Section - Takes center stage */}
-          <div className="lg:col-span-2 order-1 lg:order-1">
-            <div className="flex flex-col items-center justify-center p-12 bg-gradient-to-br from-white via-[#F8FDFC] to-[#F0FDFB] rounded-2xl shadow-xl border border-[#4ECFBF]/20 relative overflow-hidden">
-              {/* Background decoration */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#4ECFBF]/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#FFD63A]/10 to-transparent rounded-full -ml-12 -mb-12"></div>
+        <div className={`${isMobile ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-3 gap-8'}`}>
+          {/* Primary Recording Section - Compact for Mobile */}
+          <div className={`${isMobile ? 'order-1' : 'lg:col-span-2 order-1 lg:order-1'}`}>
+            <div className={`flex flex-col items-center justify-center ${isMobile ? 'p-6' : 'p-12'} bg-gradient-to-br from-white via-[#F8FDFC] to-[#F0FDFB] rounded-2xl shadow-xl border border-[#4ECFBF]/20 relative overflow-hidden`}>
+              {/* Background decoration - smaller on mobile */}
+              {!isMobile && (
+                <>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#4ECFBF]/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#FFD63A]/10 to-transparent rounded-full -ml-12 -mb-12"></div>
+                </>
+              )}
               
-              <div className="text-center mb-8 relative z-10">
-                <h2 className="text-3xl font-bold text-[#333333] mb-4">
+              <div className={`text-center ${isMobile ? 'mb-4' : 'mb-8'} relative z-10`}>
+                <h2 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-[#333333] ${isMobile ? 'mb-2' : 'mb-4'}`}>
                   Ready to assess your {language} skills?
                 </h2>
-                <p className="text-[#555555] text-lg max-w-lg mx-auto leading-relaxed">
-                  Press the microphone button below and speak naturally in {language} for {isAuthenticated() ? 'up to ' : ''}
-                  <span className="font-semibold text-[#4ECFBF]">{formatTime(getAssessmentDuration(isAuthenticated()))}</span>.
+                <p className={`text-[#555555] ${isMobile ? 'text-sm' : 'text-lg'} max-w-lg mx-auto leading-relaxed`}>
+                  {isMobile ? (
+                    <>Tap the mic and speak for <span className="font-semibold text-[#4ECFBF]">{formatTime(getAssessmentDuration(isAuthenticated()))}</span></>
+                  ) : (
+                    <>Press the microphone button below and speak naturally in {language} for {isAuthenticated() ? 'up to ' : ''}
+                    <span className="font-semibold text-[#4ECFBF]">{formatTime(getAssessmentDuration(isAuthenticated()))}</span>.</>
+                  )}
                 </p>
               </div>
               
-              {/* Enhanced Microphone Button */}
-              <div className="relative mb-8 group">
-                <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
-                <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+              {/* Enhanced Microphone Button - Smaller on Mobile */}
+              <div className={`relative ${isMobile ? 'mb-4' : 'mb-8'} group`}>
+                {!isMobile && (
+                  <>
+                    <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
+                    <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                  </>
+                )}
                 <button
                   onClick={startRecording}
-                  className="relative w-40 h-40 rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer"
+                  className={`relative ${isMobile ? 'w-24 h-24' : 'w-40 h-40'} rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer`}
                   type="button"
                 >
-                  <Mic className="h-14 w-14 group-hover:scale-110 transition-transform duration-300" />
+                  <Mic className={`${isMobile ? 'h-8 w-8' : 'h-14 w-14'} group-hover:scale-110 transition-transform duration-300`} />
                 </button>
                 
-                {/* Pulse rings */}
-                <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping pointer-events-none"></div>
-                <div className="absolute inset-2 rounded-full border-2 border-[#4ECFBF]/20 animate-ping pointer-events-none" style={{animationDelay: '0.5s'}}></div>
+                {/* Pulse rings - smaller on mobile */}
+                <div className={`absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping pointer-events-none`}></div>
+                <div className={`absolute ${isMobile ? 'inset-1' : 'inset-2'} rounded-full border-2 border-[#4ECFBF]/20 animate-ping pointer-events-none`} style={{animationDelay: '0.5s'}}></div>
               </div>
               
-              {/* Status Indicator */}
-              <div className="flex items-center justify-center space-x-3 text-sm text-[#555555] bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-md border border-[#4ECFBF]/20">
-                <div className="w-3 h-3 rounded-full bg-[#4ECFBF] animate-pulse shadow-sm"></div>
-                <p className="font-medium">Microphone ready • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}</p>
+              {/* Status Indicator - Compact on Mobile */}
+              <div className={`flex items-center justify-center space-x-2 ${isMobile ? 'text-xs' : 'text-sm'} text-[#555555] bg-white/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} rounded-lg shadow-md border border-[#4ECFBF]/20`}>
+                <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-[#4ECFBF] animate-pulse shadow-sm`}></div>
+                <p className="font-medium">
+                  {isMobile ? 'Ready' : 'Microphone ready'} • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}
+                </p>
               </div>
               
-              {/* Quick tip */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-[#777777] italic">💡 Speak about any topic you're comfortable with</p>
-              </div>
+              {/* Quick tip - Only show on desktop */}
+              {!isMobile && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-[#777777] italic">💡 Speak about any topic you're comfortable with</p>
+                </div>
+              )}
             </div>
           </div>
           
-          {/* Tips Sidebar - Repositioned and redesigned */}
-          <div className="lg:col-span-1 order-2 lg:order-2">
-            <div className="bg-gradient-to-br from-[#FFFBEB] via-[#FFF8E1] to-[#FFFBEB] rounded-2xl p-6 shadow-lg border border-[#FFD63A]/30 h-full">
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 bg-[#FFD63A] rounded-lg flex items-center justify-center mr-3 shadow-sm">
-                  <Target className="h-5 w-5 text-[#333333]" />
-                </div>
-                <h3 className="text-lg font-bold text-[#333333]">Assessment Tips</h3>
-              </div>
-              
-              <div className="space-y-3 text-[#333333]">
-                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
-                      <span className="text-xs font-bold text-[#333333]">1</span>
+          {/* Tips Section - Collapsible on Mobile */}
+          <div className={`${isMobile ? 'order-2' : 'lg:col-span-1 order-2 lg:order-2'}`}>
+            {isMobile ? (
+              /* Mobile: Compact Tips */
+              <div className="bg-gradient-to-r from-[#FFFBEB] to-[#FFF8E1] rounded-xl p-4 shadow-md border border-[#FFD63A]/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="w-6 h-6 bg-[#FFD63A] rounded-lg flex items-center justify-center mr-2 shadow-sm">
+                      <Target className="h-4 w-4 text-[#333333]" />
                     </div>
-                    <p className="text-sm leading-relaxed">Find a <strong>quiet space</strong> with minimal background noise</p>
+                    <h3 className="text-sm font-bold text-[#333333]">Quick Tips</h3>
                   </div>
                 </div>
                 
-                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
-                      <span className="text-xs font-bold text-[#333333]">2</span>
-                    </div>
-                    <p className="text-sm leading-relaxed">Speak <strong>naturally</strong> about topics you enjoy</p>
+                <div className="grid grid-cols-2 gap-2 text-[#333333]">
+                  <div className="bg-white/70 p-2 rounded-lg border border-[#FFD63A]/20 text-center">
+                    <p className="text-xs font-medium">🔇 Quiet space</p>
                   </div>
-                </div>
-                
-                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
-                      <span className="text-xs font-bold text-[#333333]">3</span>
-                    </div>
-                    <p className="text-sm leading-relaxed">Use <strong>varied vocabulary</strong> and sentence structures</p>
+                  <div className="bg-white/70 p-2 rounded-lg border border-[#FFD63A]/20 text-center">
+                    <p className="text-xs font-medium">💬 Speak naturally</p>
                   </div>
-                </div>
-                
-                <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
-                      <span className="text-xs font-bold text-[#333333]">4</span>
-                    </div>
-                    <p className="text-sm leading-relaxed"><strong>Relax and be yourself</strong> for accurate results</p>
+                  <div className="bg-white/70 p-2 rounded-lg border border-[#FFD63A]/20 text-center">
+                    <p className="text-xs font-medium">📚 Varied vocab</p>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-lg border border-[#FFD63A]/20 text-center">
+                    <p className="text-xs font-medium">😌 Stay relaxed</p>
                   </div>
                 </div>
               </div>
-              
-              {/* Encouragement section */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-[#4ECFBF]/10 to-[#FFD63A]/10 rounded-xl border border-[#4ECFBF]/20">
-                <div className="flex items-center mb-2">
-                  <ThumbsUp className="h-4 w-4 text-[#4ECFBF] mr-2" />
-                  <span className="text-sm font-semibold text-[#333333]">You've got this!</span>
+            ) : (
+              /* Desktop: Full Tips Sidebar */
+              <div className="bg-gradient-to-br from-[#FFFBEB] via-[#FFF8E1] to-[#FFFBEB] rounded-2xl p-6 shadow-lg border border-[#FFD63A]/30 h-full">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-[#FFD63A] rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                    <Target className="h-5 w-5 text-[#333333]" />
+                  </div>
+                  <h3 className="text-lg font-bold text-[#333333]">Assessment Tips</h3>
                 </div>
-                <p className="text-xs text-[#555555] leading-relaxed">
-                  Our AI will analyze your pronunciation, fluency, vocabulary, and grammar to provide personalized feedback.
-                </p>
+                
+                <div className="space-y-3 text-[#333333]">
+                  <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-start space-x-2">
+                      <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                        <span className="text-xs font-bold text-[#333333]">1</span>
+                      </div>
+                      <p className="text-sm leading-relaxed">Find a <strong>quiet space</strong> with minimal background noise</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-start space-x-2">
+                      <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                        <span className="text-xs font-bold text-[#333333]">2</span>
+                      </div>
+                      <p className="text-sm leading-relaxed">Speak <strong>naturally</strong> about topics you enjoy</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-start space-x-2">
+                      <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                        <span className="text-xs font-bold text-[#333333]">3</span>
+                      </div>
+                      <p className="text-sm leading-relaxed">Use <strong>varied vocabulary</strong> and sentence structures</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-[#FFD63A]/20 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-start space-x-2">
+                      <div className="w-6 h-6 bg-[#FFD63A] rounded-full flex items-center justify-center mt-0.5 shadow-sm">
+                        <span className="text-xs font-bold text-[#333333]">4</span>
+                      </div>
+                      <p className="text-sm leading-relaxed"><strong>Relax and be yourself</strong> for accurate results</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Encouragement section */}
+                <div className="mt-6 p-4 bg-gradient-to-r from-[#4ECFBF]/10 to-[#FFD63A]/10 rounded-xl border border-[#4ECFBF]/20">
+                  <div className="flex items-center mb-2">
+                    <ThumbsUp className="h-4 w-4 text-[#4ECFBF] mr-2" />
+                    <span className="text-sm font-semibold text-[#333333]">You've got this!</span>
+                  </div>
+                  <p className="text-xs text-[#555555] leading-relaxed">
+                    Our AI will analyze your pronunciation, fluency, vocabulary, and grammar to provide personalized feedback.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -614,7 +639,7 @@ export default function SpeakingAssessment({
             ) : (
               <div className="bg-[#4ECFBF]/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-[#4ECFBF]/30 inline-block">
                 <p className="text-[#555555] text-sm">
-                  🎯 Recording will automatically stop at {formatTime(0)}
+                  🎯 Recording will stop automatically when time reaches zero
                 </p>
               </div>
             )}
@@ -622,47 +647,50 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Processing State*/}
+      {/* Processing State - Mobile Optimized */}
       {status === 'processing' && (
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#FFF8E1] to-[#FFEDB3] p-8 rounded-xl shadow-lg">
-          <div className="absolute inset-0 opacity-10">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <circle cx="10" cy="10" r="1.5" fill="#FFD63A" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#dots)" />
-            </svg>
-          </div>
+        <div className={`relative overflow-hidden bg-gradient-to-br from-[#FFF8E1] to-[#FFEDB3] ${isMobile ? 'p-4' : 'p-8'} rounded-xl shadow-lg`}>
+          {/* Background decoration - only show on desktop */}
+          {!isMobile && (
+            <div className="absolute inset-0 opacity-10">
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <circle cx="10" cy="10" r="1.5" fill="#FFD63A" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#dots)" />
+              </svg>
+            </div>
+          )}
           
-          <div className="flex flex-col items-center justify-center py-8 relative z-10">
-            <div className="relative mb-8">
-              <div className="absolute -inset-3 bg-[#FFD63A]/30 rounded-full blur-lg"></div>
+          <div className={`flex flex-col items-center justify-center ${isMobile ? 'py-4' : 'py-8'} relative z-10`}>
+            <div className={`relative ${isMobile ? 'mb-4' : 'mb-8'}`}>
+              {!isMobile && <div className="absolute -inset-3 bg-[#FFD63A]/30 rounded-full blur-lg"></div>}
               <div className="relative">
-                <div className="w-24 h-24 border-4 border-[#FFD63A] border-t-[#FFD63A]/20 rounded-full animate-spin shadow-lg"></div>
+                <div className={`${isMobile ? 'w-16 h-16 border-3' : 'w-24 h-24 border-4'} border-[#FFD63A] border-t-[#FFD63A]/20 rounded-full animate-spin shadow-lg`}></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <Target className="h-8 w-8 text-[#FFD63A]" />
+                  <div className={`${isMobile ? 'w-10 h-10' : 'w-16 h-16'} bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center`}>
+                    <Target className={`${isMobile ? 'h-5 w-5' : 'h-8 w-8'} text-[#FFD63A]`} />
                   </div>
                 </div>
               </div>
             </div>
             
-            <h3 className="text-2xl font-bold text-[#333333] mb-4 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-xl shadow-md border border-[#FFD63A]/30">
+            <h3 className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-[#333333] ${isMobile ? 'mb-3' : 'mb-4'} bg-white/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} rounded-xl shadow-md border border-[#FFD63A]/30 text-center`}>
               Analyzing your speaking skills...
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full mb-6">
+            <div className={`${isMobile ? 'grid grid-cols-2 gap-2 max-w-xs' : 'grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl'} w-full ${isMobile ? 'mb-4' : 'mb-6'}`}>
               {['Pronunciation', 'Fluency', 'Vocabulary', 'Grammar'].map((skill, index) => (
-                <div key={skill} className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-[#FFD63A]/30 shadow-sm flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-[#FFD63A] mr-3 animate-pulse" style={{ animationDelay: `${index * 0.2}s` }}></div>
-                  <span className="font-medium text-[#333333]">{skill}</span>
+                <div key={skill} className={`bg-white/80 backdrop-blur-sm ${isMobile ? 'p-2' : 'p-4'} rounded-lg border border-[#FFD63A]/30 shadow-sm flex items-center ${isMobile ? 'justify-center' : ''}`}>
+                  <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-[#FFD63A] ${isMobile ? 'mr-2' : 'mr-3'} animate-pulse`} style={{ animationDelay: `${index * 0.2}s` }}></div>
+                  <span className={`font-medium text-[#333333] ${isMobile ? 'text-xs' : 'text-sm'}`}>{skill}</span>
                 </div>
               ))}
             </div>
             
-            <p className="text-[#555555] text-center max-w-md bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-[#FFD63A]/30 shadow-md">
+            <p className={`text-[#555555] text-center ${isMobile ? 'max-w-xs text-xs' : 'max-w-md text-sm'} bg-white/80 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-[#FFD63A]/30 shadow-md`}>
               Our AI is carefully evaluating your {language} speaking skills to provide an accurate assessment of your current proficiency level.
             </p>
           </div>
@@ -975,7 +1003,7 @@ export default function SpeakingAssessment({
                 className="bg-[#FFD63A] hover:bg-[#ECC235] text-[#333333] font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
               >
                 <Volume2 className="h-5 w-5" />
-                <span>Save & Practice</span>
+                <span>{isAuthenticated() ? 'Save & Proceed' : 'Proceed to Speak'}</span>
               </Button>
             </div>
           </div>

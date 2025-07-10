@@ -137,11 +137,16 @@ export const checkAndMarkSessionExpired = (planId: string, isAuthenticated: bool
     return true;
   }
   
-  // Get the creation time
-  const planCreationTime = sessionStorage.getItem(`plan_${planId}_creationTime`);
+  // Get the conversation start time (not plan creation time)
+  const conversationStartTime = sessionStorage.getItem(`plan_${planId}_conversationStartTime`);
   
-  // Check if the plan is still valid
-  const isValid = isPlanValid(isAuthenticated, planCreationTime);
+  // If conversation hasn't started yet, it's not expired
+  if (!conversationStartTime) {
+    return false;
+  }
+  
+  // Check if the conversation is still valid
+  const isValid = isPlanValid(isAuthenticated, conversationStartTime);
   
   // If not valid, mark as expired
   if (!isValid) {

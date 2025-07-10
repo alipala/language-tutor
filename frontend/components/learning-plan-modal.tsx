@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getLearningGoals, createLearningPlan, LearningGoal, LearningPlanRequest } from '@/lib/learning-api';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-utils';
+import { useMobile } from '@/hooks/use-mobile';
 
 interface LearningPlanModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export default function LearningPlanModal({
   assessmentData
 }: LearningPlanModalProps) {
   const router = useRouter();
+  const isMobile = useMobile();
   const [step, setStep] = useState(1);
   const [goals, setGoals] = useState<LearningGoal[]>([]);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
@@ -59,6 +61,12 @@ export default function LearningPlanModal({
   };
   
   const handleNextStep = () => {
+    // For non-logged users, skip goal and duration selection
+    if (!isAuthenticated()) {
+      handleCreatePlan();
+      return;
+    }
+    
     if (step === 1 && selectedGoals.length === 0) {
       setError('Please select at least one learning goal');
       return;
@@ -259,8 +267,8 @@ export default function LearningPlanModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px] p-0 rounded-xl shadow-lg bg-white border border-[#4ECFBF]/20 overflow-hidden">
-        {/* Step indicator */}
-        {step < 4 && (
+        {/* Step indicator - Only show for authenticated users */}
+        {step < 4 && isAuthenticated() && (
           <div className="w-full bg-white px-6 pt-5 pb-3 border-b border-[#4ECFBF]/30">
             <div className="flex justify-between items-center relative">
               {/* Progress bar background */}
@@ -295,21 +303,47 @@ export default function LearningPlanModal({
         <div className="px-6 pt-5 pb-6 text-gray-900">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center text-gray-900 mb-2">
-              {step === 1 && 'Select Your Learning Goals'}
-              {step === 2 && 'Choose Learning Duration'}
-              {step === 3 && 'Review and Create Your Plan'}
-              {step === 4 && 'Learning Plan Created!'}
+              {!isAuthenticated() && 'Ready to Start Speaking?'}
+              {isAuthenticated() && step === 1 && 'Select Your Learning Goals'}
+              {isAuthenticated() && step === 2 && 'Choose Learning Duration'}
+              {isAuthenticated() && step === 3 && 'Review and Create Your Plan'}
+              {step === 4 && 'Ready to Practice!'}
             </DialogTitle>
             <DialogDescription className="text-gray-600 text-center text-base mb-6">
-              {step === 1 && 'Choose the goals you want to achieve with your language learning.'}
-              {step === 2 && 'How long do you plan to study this language?'}
-              {step === 3 && 'Review your selections before creating your plan.'}
-              {step === 4 && 'Your custom learning plan is ready to use!'}
+              {!isAuthenticated() && 'Start practicing your language skills with personalized conversations.'}
+              {isAuthenticated() && step === 1 && 'Choose the goals you want to achieve with your language learning.'}
+              {isAuthenticated() && step === 2 && 'How long do you plan to study this language?'}
+              {isAuthenticated() && step === 3 && 'Review your selections before creating your plan.'}
+              {step === 4 && 'Your practice session is ready to begin!'}
             </DialogDescription>
           </DialogHeader>
         
-        {/* Step 1: Goal Selection */}
-        {step === 1 && (
+        {/* Non-logged user simplified flow */}
+        {!isAuthenticated() && step === 1 && (
+          <div className="py-4">
+            <div className="space-y-4 mb-6 bg-white p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+                <h3 className="font-semibold text-gray-900">Language</h3>
+                <p className="text-gray-700 mt-1 capitalize">{language}</p>
+              </div>
+              
+              <div className="bg-[#FFF8F8] p-4 rounded-md border-l-4 border-l-[#F75A5A] border border-[#F75A5A]/20">
+                <h3 className="font-semibold text-gray-900">Proficiency Level</h3>
+                <p className="text-gray-700 mt-1 capitalize">{proficiencyLevel}</p>
+              </div>
+            </div>
+            
+            {isCreatingPlan && (
+              <div className="mt-6 flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[#4ECFBF] mb-3"></div>
+                <p className="text-gray-600 text-sm font-medium">Preparing your practice session...</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 1: Goal Selection - Only for authenticated users */}
+        {isAuthenticated() && step === 1 && (
           <div className="py-4 space-y-6">
             <ScrollArea className="h-[300px] pr-4">
               {/* Goals List - Mobile Friendly */}
@@ -364,7 +398,7 @@ export default function LearningPlanModal({
                   setDuration(parseInt(value));
                   setCustomDuration(null);
                 }
-              }} className="space-y-3 mt-2">
+              }} className={`${isMobile ? 'space-y-0' : 'space-y-1.5'} mt-2`}>
                 {[1, 2, 3, 6, 12].map((months) => (
                   <label 
                     key={months}
@@ -431,7 +465,7 @@ export default function LearningPlanModal({
                 <p className="text-gray-700 mt-1 capitalize">{language}</p>
               </div>
               
-              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+              <div className="bg-[#FFF8F8] p-4 rounded-md border-l-4 border-l-[#F75A5A] border border-[#F75A5A]/20">
                 <h3 className="font-semibold text-gray-900">Proficiency Level</h3>
                 <p className="text-gray-700 mt-1 capitalize">{proficiencyLevel}</p>
               </div>
@@ -524,7 +558,7 @@ export default function LearningPlanModal({
         )}
         
         {step < 4 && (
-          <DialogFooter className="flex justify-between mt-6 pt-4 border-t border-purple-400/30">
+          <DialogFooter className={`flex justify-between mt-6 pt-4 border-t border-purple-400/30 ${isMobile ? 'gap-3' : ''}`}>
             <Button 
               variant="outline" 
               onClick={handlePrevStep}
@@ -547,8 +581,8 @@ export default function LearningPlanModal({
               className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 px-5 py-2"
             >
               <span className="flex items-center">
-                {step === 3 ? (isAuthenticated() ? 'Create Plan' : 'Start Conversation') : 'Next'}
-                {step < 3 && (
+                {!isAuthenticated() ? 'Start Speaking' : (step === 3 ? 'Create Plan' : 'Next')}
+                {isAuthenticated() && step < 3 && (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>

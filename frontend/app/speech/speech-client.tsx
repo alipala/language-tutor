@@ -20,9 +20,10 @@ interface SpeechClientProps {
   level: string;
   topic?: string;
   userPrompt?: string;
+  onTimeUp?: () => void; // Callback to trigger TimeUpModal in parent
 }
 
-export default function SpeechClient({ language, level, topic, userPrompt }: SpeechClientProps) {
+export default function SpeechClient({ language, level, topic, userPrompt, onTimeUp }: SpeechClientProps) {
   // Moving the console.log out of the component body to prevent excessive logging
   const initialRenderRef = useRef(true);
   
@@ -964,7 +965,7 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       notification.innerHTML = `
         <div class="flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03 8-9 8s9 3.582 9 8z" />
           </svg>
           <div>
             <p class="font-medium">Starting new conversation</p>
@@ -987,6 +988,20 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
       setIsConversationTimerActive(false);
       handleEndConversation();
       return;
+    }
+
+    // Start the conversation timer when user clicks "Click to start speaking"
+    if (!conversationStartTime && !isAuthenticated()) {
+      console.log('🎯 User clicked start speaking - setting conversation start time for timer');
+      const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
+      
+      if (planParam) {
+        const startTime = new Date().toISOString();
+        sessionStorage.setItem(`plan_${planParam}_conversationStartTime`, startTime);
+        setConversationStartTime(Date.now());
+        console.log('🕐 Conversation timer will start when AI responds');
+      }
     }
 
     // Check subscription limits for authenticated users before starting a new session
@@ -1278,8 +1293,13 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                   setSessionCompleted(true);
                   setShowCompletionModal(true);
                 } else {
-                  // For guests or no messages, just end normally
-                  handleEndConversation();
+                  // For guests or no messages, trigger the TimeUpModal via parent callback
+                  if (onTimeUp) {
+                    console.log('🎯 Calling parent onTimeUp callback to show TimeUpModal');
+                    onTimeUp();
+                  } else {
+                    handleEndConversation();
+                  }
                 }
               }}
               className=""
@@ -1401,27 +1421,6 @@ export default function SpeechClient({ language, level, topic, userPrompt }: Spe
                     </div>
                     
                     <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
-                      {/* Sign in prompt for guest users when time is up */}
-                      {!isAuthenticated() && conversationTimeUp && (
-                        <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-                          <h4 className="text-red-800 font-medium mb-1">Guest time limit reached</h4>
-                          <p className="text-red-700 text-sm mb-3">
-                            Your guest conversation time has ended.
-                            <span className="block mt-1 font-medium">
-                              Try a new assessment or sign in for longer conversations
-                            </span>
-                          </p>
-                          <a 
-                            href="/auth/login"
-                            className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            Sign in for unlimited time
-                          </a>
-                        </div>
-                      )}
                       <Button
                         type="button"
                         onClick={(e) => handleToggleRecording(e)}

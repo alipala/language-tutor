@@ -93,24 +93,18 @@ export default function SpeechPage() {
           if (plan) {
             console.log('[SpeechPage] Retrieved plan details:', plan);
             
-            // Store plan creation time if not already stored
-            const storedCreationTime = sessionStorage.getItem(`plan_${planParam}_creationTime`);
-            if (!storedCreationTime) {
-              const creationTime = new Date().toISOString();
-              sessionStorage.setItem(`plan_${planParam}_creationTime`, creationTime);
-              setPlanCreationTime(creationTime);
-            } else {
+            // Don't set plan creation time here - it should only be set when conversation starts
+            // Check if conversation has already started and expired
+            const storedCreationTime = sessionStorage.getItem(`plan_${planParam}_conversationStartTime`);
+            if (storedCreationTime) {
               setPlanCreationTime(storedCreationTime);
               
-              // Immediately check if the plan is still valid based on time limits
+              // Check if the conversation has expired
               const userAuthenticated = isAuthenticated();
-              
-              // Use the enhanced validation function that also marks as expired
               const isExpired = checkAndMarkSessionExpired(planParam, userAuthenticated);
               
               if (isExpired) {
-                console.log('[SpeechPage] Plan has expired on page load, showing time up modal');
-                // Show the time's up modal instead of redirecting
+                console.log('[SpeechPage] Conversation has expired, showing time up modal');
                 setShowTimeUpModal(true);
                 return;
               }
@@ -370,6 +364,10 @@ export default function SpeechPage() {
             level={selectedLevel} 
             topic={selectedTopic || undefined}
             userPrompt={selectedTopic === 'custom' ? customTopicPrompt || undefined : undefined}
+            onTimeUp={() => {
+              console.log('⏰ Timer expired - showing TimeUpModal for guest users');
+              setShowTimeUpModal(true);
+            }}
           />
         )}
       </div>
@@ -388,23 +386,23 @@ export default function SpeechPage() {
           // Mark the plan as expired to prevent back button navigation
           if (selectedPlanId) {
             sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
-            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+            sessionStorage.removeItem(`plan_${selectedPlanId}_conversationStartTime`);
           }
-          router.push('/login');
+          router.push('/auth/login');
         }}
         onSignUp={() => {
           // Mark the plan as expired to prevent back button navigation
           if (selectedPlanId) {
             sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
-            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+            sessionStorage.removeItem(`plan_${selectedPlanId}_conversationStartTime`);
           }
-          router.push('/signup');
+          router.push('/auth/signup');
         }}
         onNewAssessment={() => {
           // Mark the plan as expired to prevent back button navigation
           if (selectedPlanId) {
             sessionStorage.setItem(`plan_${selectedPlanId}_expired`, 'true');
-            sessionStorage.removeItem(`plan_${selectedPlanId}_creationTime`);
+            sessionStorage.removeItem(`plan_${selectedPlanId}_conversationStartTime`);
           }
           router.push('/');
         }}
