@@ -525,6 +525,30 @@ export class RealtimeService {
   public async startConversation(instructions?: string): Promise<boolean> {
     console.log('🚀 Starting conversation with universal approach...');
     
+    // If we have conversation instructions (for resuming), we need to get a new ephemeral key
+    // that includes this conversation history
+    if (instructions) {
+      console.log('📝 Conversation instructions provided - getting new ephemeral key with context');
+      
+      // Get a new ephemeral key with the conversation history
+      const newToken = await this.getEphemeralKey(
+        this.currentLanguage, 
+        undefined, // level - will be passed from the original initialization
+        undefined, // topic - will be passed from the original initialization
+        undefined, // userPrompt
+        undefined, // assessmentData
+        instructions // conversationHistory - this is the key addition!
+      );
+      
+      if (!newToken) {
+        console.error('❌ Failed to get new ephemeral key with conversation history');
+        return false;
+      }
+      
+      this.ephemeralKey = newToken;
+      console.log('✅ Updated ephemeral key with conversation context');
+    }
+    
     // Check if data channel is ready
     if (!this.dataChannel) {
       console.error('❌ Data channel not initialized');
