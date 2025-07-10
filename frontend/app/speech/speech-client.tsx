@@ -1478,9 +1478,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             {/* Transcript Sections - Now shown immediately */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
                   {/* Real Time Sentence Analysis Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col min-h-[450px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[650px]">
+                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col h-[400px] sm:h-[450px] md:h-[500px] lg:h-[650px]">
                     <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1491,9 +1491,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       )}
                     </h3>
                     
-                    {/* Full Height Background Analysis Results */}
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-y-auto">
-                      <div className="h-full overflow-y-auto space-y-3">
+                    {/* Fixed Height Background Analysis Results with Scrolling */}
+                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-hidden">
+                      <div className="h-full overflow-y-auto space-y-3" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                         {backgroundAnalyses.length > 0 ? (
                           backgroundAnalyses.map((analysis, index) => (
                             <BackgroundAnalysisCard
@@ -1557,7 +1557,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 <span className="audio-wave-bar"></span>
                               </div>
                             </div>
-                            <span className="font-medium text-white">Recording... Click to stop</span>
+                            <span className="font-medium text-white">Recording...</span>
                           </>
                         ) : (
                           <>
