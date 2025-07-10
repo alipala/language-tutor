@@ -80,14 +80,10 @@ export default function ClientHome() {
     // Otherwise, attempt to start recording
     setIsAttemptingToRecord(true);
     try {
-      const success = await toggleConversation();
+      await toggleConversation();
       
-      // If the toggle was not successful and no error was set in the hook,
-      // we need to show a fallback error
-      if (!success && !realtimeError) {
-        setLocalError('Failed to start recording. Please try again.');
-        setIsAttemptingToRecord(false);
-      }
+      // Check if there's an error after attempting to toggle
+      // The isAttemptingToRecord state will be cleared by the useEffect when isRecording changes
     } catch (err) {
       setLocalError('An error occurred while starting the conversation');
       console.error(err);
