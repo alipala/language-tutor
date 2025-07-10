@@ -15,6 +15,10 @@ export class RealtimeService {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 3;
   private currentLanguage: string = '';
+  private currentLevel: string = '';
+  private currentTopic: string = '';
+  private currentUserPrompt: string = '';
+  private currentAssessmentData: any = null;
   private currentLanguageIsoCode: string = '';
   private isPaused: boolean = false;
   private pauseStartTime: number | null = null;
@@ -50,11 +54,23 @@ export class RealtimeService {
       this.onDisconnectedCallback = onDisconnected || null;
       this.reconnectAttempts = 0;
       
-      // Store the language for use in transcription
+      // Store all parameters for use in conversation resumption
       if (language) {
         this.currentLanguage = language.toLowerCase();
         this.currentLanguageIsoCode = this.getLanguageIsoCode(this.currentLanguage);
         console.log('🌐 Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
+      }
+      if (level) {
+        this.currentLevel = level;
+      }
+      if (topic) {
+        this.currentTopic = topic;
+      }
+      if (userPrompt) {
+        this.currentUserPrompt = userPrompt;
+      }
+      if (assessmentData) {
+        this.currentAssessmentData = assessmentData;
       }
       
       // Use the correct backend URL (default to localhost:8000 if running locally)
@@ -533,10 +549,10 @@ export class RealtimeService {
       // Get a new ephemeral key with the conversation history
       const newToken = await this.getEphemeralKey(
         this.currentLanguage, 
-        undefined, // level - will be passed from the original initialization
-        undefined, // topic - will be passed from the original initialization
-        undefined, // userPrompt
-        undefined, // assessmentData
+        this.currentLevel, // Use stored level
+        this.currentTopic, // Use stored topic
+        this.currentUserPrompt, // Use stored userPrompt
+        this.currentAssessmentData, // Use stored assessmentData
         instructions // conversationHistory - this is the key addition!
       );
       
