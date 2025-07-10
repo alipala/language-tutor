@@ -385,6 +385,11 @@ export function useRealtime() {
     return realtimeService.getPauseDuration();
   }, []);
 
+  // Clear error
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -410,6 +415,7 @@ export function useRealtime() {
     toggleConversation,     // For backward compatibility
     getFormattedConversationHistory,
     isPausedState,          // NEW
-    getPauseDuration        // NEW
+    getPauseDuration,       // NEW
+    clearError              // NEW
   };
 }
