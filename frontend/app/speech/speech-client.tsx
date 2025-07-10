@@ -13,7 +13,13 @@ import DraggableTimer from '@/components/draggable-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
+import BackgroundAnalysisCard from '@/components/background-analysis-card';
 import { getApiUrl } from '@/lib/api-utils';
+import { 
+  processBackgroundSentence, 
+  shouldConsiderForAnalysis, 
+  BackgroundAnalysisResponse 
+} from '@/lib/background-sentence-api';
 
 interface SpeechClientProps {
   language: string;
@@ -86,6 +92,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const analyzeButtonRef = useRef<(() => void) | null>(null);
   // Track which messages have been analyzed
   const [analyzedMessageIds, setAnalyzedMessageIds] = useState<string[]>([]);
+  
+  // Background sentence analysis state
+  const [backgroundAnalyses, setBackgroundAnalyses] = useState<BackgroundAnalysisResponse[]>([]);
+  const [isProcessingBackground, setIsProcessingBackground] = useState(false);
   
   // Language alert state - simplified
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
@@ -685,16 +695,82 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
+  // Background sentence analysis function
+  const handleBackgroundAnalysis = useCallback(async (text: string, messageIndex: number) => {
+    // Quick client-side check first
+    if (!shouldConsiderForAnalysis(text)) {
+      console.log('⏭️ [BACKGROUND] Skipping analysis - text too short or basic response:', text);
+      return;
+    }
+
+    // Don't analyze if already processing or if we already have too many analyses
+    if (isProcessingBackground || backgroundAnalyses.length >= 10) {
+      console.log('⏭️ [BACKGROUND] Skipping analysis - already processing or too many analyses');
+      return;
+    }
+
+    try {
+      setIsProcessingBackground(true);
+      console.log('🔄 [BACKGROUND] Starting background analysis for:', text);
+
+      // Build conversation context from recent messages
+      const recentMessages = messages.slice(-5); // Last 5 messages for context
+      const conversationContext = recentMessages
+        .map(msg => `${msg.role === 'user' ? 'Student' : 'Tutor'}: ${msg.content}`)
+        .join('\n');
+
+      const result = await processBackgroundSentence({
+        text: text,
+        language: language,
+        level: level,
+        exercise_type: 'free',
+        conversation_context: conversationContext
+      });
+
+      if (result.analyzed && result.analysis) {
+        console.log('✅ [BACKGROUND] Analysis completed:', result.analysis.analysis_id);
+        
+        // Add to background analyses with a limit
+        setBackgroundAnalyses(prev => {
+          const newAnalyses = [...prev, result.analysis!];
+          // Keep only the last 5 analyses to prevent UI clutter
+          return newAnalyses.slice(-5);
+        });
+      } else {
+        console.log('⏭️ [BACKGROUND] Analysis skipped:', result.reason);
+      }
+    } catch (error) {
+      console.error('❌ [BACKGROUND] Error in background analysis:', error);
+    } finally {
+      setIsProcessingBackground(false);
+    }
+  }, [language, level, messages, isProcessingBackground, backgroundAnalyses.length]);
+
   // Handle transcript updates and language detection
   useEffect(() => {
     // Extract the latest user message for the transcript
     const userMessages = messages.filter(msg => msg.role === 'user');
     if (userMessages.length > 0) {
       const latestUserMessage = userMessages[userMessages.length - 1];
+      const messageIndex = userMessages.length - 1;
       
       // Only set the transcript if it's in the target language or if we're in English mode
       if (isInTargetLanguage(latestUserMessage.content)) {
         setCurrentTranscript(latestUserMessage.content);
+        
+        // Trigger background analysis for substantial sentences
+        // Only analyze if this is a recent message (to avoid analyzing old messages on page load)
+        const now = Date.now();
+        const messageTime = latestUserMessage.timestamp ? new Date(latestUserMessage.timestamp as string).getTime() : now;
+        const messageAge = now - messageTime;
+        const isRecentMessage = messageAge < 10000; // Only process messages less than 10 seconds old
+        
+        if (isRecentMessage && latestUserMessage.content.trim().length > 0) {
+          // Small delay to ensure the conversation continues smoothly
+          setTimeout(() => {
+            handleBackgroundAnalysis(latestUserMessage.content, messageIndex);
+          }, 2000); // 2 second delay to not interfere with conversation flow
+        }
       } else {
         // Clear the transcript or set a placeholder message
         setCurrentTranscript('');
@@ -1425,6 +1501,38 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         onMessageAnalyzed={(messageId) => setAnalyzedMessageIds(prev => [...prev, messageId])}
                         currentMessageId={messages.length > 0 ? `${messages[messages.length - 1].role}-${messages.length - 1}` : undefined}
                       />
+                      
+                      {/* Background Analysis Results */}
+                      {backgroundAnalyses.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          <h4 className="text-sm font-semibold text-[#4ECFBF] flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Background Analysis Results
+                            {isProcessingBackground && (
+                              <div className="ml-2 w-4 h-4 border-2 border-[#4ECFBF] border-t-transparent rounded-full animate-spin"></div>
+                            )}
+                          </h4>
+                          {backgroundAnalyses.map((analysis, index) => (
+                            <BackgroundAnalysisCard
+                              key={analysis.analysis_id}
+                              analysis={analysis}
+                              onClose={() => {
+                                setBackgroundAnalyses(prev => prev.filter((_, i) => i !== index));
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Processing indicator */}
+                      {isProcessingBackground && backgroundAnalyses.length === 0 && (
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center">
+                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                          <span className="text-sm text-blue-700">Analyzing your sentence in the background...</span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
