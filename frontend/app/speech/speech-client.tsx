@@ -725,6 +725,16 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     if (cachedResult) {
       console.log('⚡ [CACHE] Using cached analysis result');
       setBackgroundAnalyses(prev => {
+        // Check if we already have this analysis in the UI
+        const isDuplicate = prev.some(existing => 
+          existing.recognized_text.toLowerCase().trim() === cachedResult.recognized_text.toLowerCase().trim()
+        );
+        
+        if (isDuplicate) {
+          console.log('⏭️ [CACHE] Skipping duplicate cached analysis for UI:', cachedResult.recognized_text.substring(0, 50) + '...');
+          return prev; // Don't add duplicate
+        }
+        
         const newAnalyses = [...prev, cachedResult];
         return newAnalyses.slice(-5); // Keep only last 5
       });
@@ -761,8 +771,18 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         // Cache the result for future use
         setCachedAnalysis(text, language, level, result.analysis);
         
-        // Add to background analyses with a limit
+        // Add to background analyses with deduplication and limit
         setBackgroundAnalyses(prev => {
+          // Check if we already have an analysis for this exact text
+          const isDuplicate = prev.some(existing => 
+            existing.recognized_text.toLowerCase().trim() === result.analysis!.recognized_text.toLowerCase().trim()
+          );
+          
+          if (isDuplicate) {
+            console.log('⏭️ [BACKGROUND] Skipping duplicate analysis result for UI:', result.analysis!.recognized_text.substring(0, 50) + '...');
+            return prev; // Don't add duplicate
+          }
+          
           const newAnalyses = [...prev, result.analysis!];
           // Keep only the last 5 analyses to prevent UI clutter
           return newAnalyses.slice(-5);
