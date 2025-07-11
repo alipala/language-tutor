@@ -13,6 +13,9 @@ import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# Import production-safe logging
+from logging_config import logger, get_logger
+
 # Import MongoDB and authentication modules
 from database import init_db, client, database, DATABASE_NAME
 from auth import get_current_user, get_optional_current_user_from_request
@@ -41,8 +44,8 @@ load_dotenv()
 
 # Check if OpenAI API key is configured
 if not os.getenv("OPENAI_API_KEY"):
-    print("ERROR: OPENAI_API_KEY is not configured in .env file")
-    print("Please add OPENAI_API_KEY=your_api_key to your .env file")
+    logger.error("OPENAI_API_KEY is not configured in environment")
+    logger.error("Please configure OPENAI_API_KEY in environment variables")
 
 app = FastAPI(title="Language Tutor Backend API")
 
