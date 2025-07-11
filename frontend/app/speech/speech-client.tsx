@@ -699,11 +699,16 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
 
   // Enhanced background sentence analysis function with caching and smart filtering
   const handleBackgroundAnalysis = useCallback(async (text: string, messageIndex: number) => {
-    // Build conversation context for enhanced filtering
+    console.log(`🔄 [BACKGROUND] Starting analysis check for: "${text.substring(0, 50)}..."`);
+    
+    // Build conversation context for enhanced filtering - but exclude the current message to avoid false repetition detection
     const recentUserMessages = messages
       .filter(msg => msg.role === 'user')
-      .slice(-3)
-      .map(msg => msg.content);
+      .slice(-5) // Get last 5 user messages
+      .map(msg => msg.content)
+      .filter(content => content !== text); // Exclude current message to avoid false repetition
+
+    console.log(`🔍 [BACKGROUND] Recent user messages for context:`, recentUserMessages);
 
     // Enhanced client-side check with conversation context and language awareness
     const analysisDecision = shouldConsiderForAnalysis(text, recentUserMessages, language);
@@ -780,26 +785,28 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       const latestUserMessage = userMessages[userMessages.length - 1];
       const messageIndex = userMessages.length - 1;
       
-      // Only set the transcript if it's in the target language or if we're in English mode
-      if (isInTargetLanguage(latestUserMessage.content)) {
+      console.log('🔍 [TRANSCRIPT] Processing user message:', latestUserMessage.content.substring(0, 50) + '...');
+      
+      // For English conversations, always process the message
+      // For other languages, check if it's in the target language
+      const shouldProcessMessage = language === 'english' || isInTargetLanguage(latestUserMessage.content);
+      
+      if (shouldProcessMessage) {
         setCurrentTranscript(latestUserMessage.content);
         
-        // Trigger background analysis for substantial sentences
-        // Only analyze if this is a recent message (to avoid analyzing old messages on page load)
-        const now = Date.now();
-        const messageTime = latestUserMessage.timestamp ? new Date(latestUserMessage.timestamp as string).getTime() : now;
-        const messageAge = now - messageTime;
-        const isRecentMessage = messageAge < 10000; // Only process messages less than 10 seconds old
-        
-        if (isRecentMessage && latestUserMessage.content.trim().length > 0) {
-          // Debounced delay to ensure the conversation continues smoothly and prevent rapid triggers
+        // Always trigger background analysis for user messages (remove restrictive timing)
+        if (latestUserMessage.content.trim().length > 0) {
+          console.log('🎯 [TRANSCRIPT] Triggering background analysis for:', latestUserMessage.content.substring(0, 50) + '...');
+          
+          // Reduced delay to make analysis more responsive
           setTimeout(() => {
             handleBackgroundAnalysis(latestUserMessage.content, messageIndex);
-          }, 3000); // 3 second delay to not interfere with conversation flow and allow for debouncing
+          }, 1000); // Reduced from 3000ms to 1000ms for faster response
         }
       } else {
         // Clear the transcript or set a placeholder message
         setCurrentTranscript('');
+        console.log('⏭️ [TRANSCRIPT] Skipping message - not in target language:', latestUserMessage.content.substring(0, 50) + '...');
       }
       
       // Check if this is a recent message (within the last 5 seconds)
@@ -1688,25 +1695,45 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                     </div>
                                     <p className="text-xs sm:text-sm leading-relaxed mt-1 text-gray-800">{message.content}</p>
                                     
-                                    {/* Analysis indicator for user messages */}
-                                    {message.role === 'user' && message.content.trim().length > 0 && (
-                                      <div className="mt-2 flex justify-end">
-                                        {/* Check if this message was analyzed in background */}
-                                        {backgroundAnalyses.some(analysis => 
-                                          analysis.recognized_text.toLowerCase().includes(message.content.toLowerCase().substring(0, 20))
-                                        ) ? (
-                                          <div className="flex items-center space-x-1 text-green-600">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                            <span className="text-xs font-medium">Analyzed</span>
-                                          </div>
-                                        ) : shouldConsiderForAnalysis(message.content) ? (
-                                          <div className="flex items-center space-x-1 text-blue-600">
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                            <span className="text-xs font-medium">Being analyzed...</span>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    )}
+                    {/* Analysis indicator for user messages */}
+                    {message.role === 'user' && message.content.trim().length > 0 && (
+                      <div className="mt-2 flex justify-end">
+                        {/* Check if this message was analyzed in background */}
+                        {backgroundAnalyses.some(analysis => 
+                          analysis.recognized_text.toLowerCase().includes(message.content.toLowerCase().substring(0, 20))
+                        ) ? (
+                          <div className="flex items-center space-x-1 text-green-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs font-medium">Analyzed</span>
+                          </div>
+                        ) : (() => {
+                          // Use the same logic as the actual analysis function to avoid UI/logic mismatch
+                          const recentUserMessages = processedMessages
+                            .filter(msg => msg.role === 'user')
+                            .slice(-5)
+                            .map(msg => msg.content)
+                            .filter(content => content !== message.content); // Exclude current message
+                          
+                          const analysisDecision = shouldConsiderForAnalysis(message.content, recentUserMessages, language);
+                          
+                          if (analysisDecision.shouldAnalyze) {
+                            return (
+                              <div className="flex items-center space-x-1 text-blue-600">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs font-medium">Being analyzed...</span>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="flex items-center space-x-1 text-gray-500">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                <span className="text-xs font-medium">Skipped - {analysisDecision.reason}</span>
+                              </div>
+                            );
+                          }
+                        })()}
+                      </div>
+                    )}
                                   </div>
                                 </div>
                               );
