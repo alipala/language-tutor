@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import httpx
+import requests
 from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Response
@@ -47,6 +48,423 @@ class ShareProgressResponse(BaseModel):
     download_url: Optional[str] = None
     qr_code: Optional[str] = None
 
+def create_epic_achievement_prompt(progress_data: Dict[str, Any], share_type: str, platform: str, week_number: Optional[int] = None) -> str:
+    """
+    Create EPIC, engaging achievement prompts that users will be proud to share and wear on t-shirts
+    """
+    # Extract data
+    learning_plan = progress_data.get("learning_plan", {})
+    plan_content = progress_data.get("plan_content", {})
+    language = learning_plan.get("language", "English").title()
+    level = learning_plan.get("level", "B1").upper()
+    app_name = progress_data.get("app_name", "MyTacoAI")
+    
+    # Brand colors for epic design
+    turquoise = "#4ECFBF"
+    yellow = "#FFD63A"
+    coral = "#F75A5A"
+    orange = "#FFA955"
+    
+    # Epic achievement types based on week number and progress
+    if week_number:
+        if week_number == 1:
+            achievement_type = "FIRST VICTORY"
+            epic_element = "golden crown with radiating light beams"
+            background_effect = "explosive celebration with confetti and fireworks"
+        elif week_number <= 4:
+            achievement_type = "CHAMPION RISING"
+            epic_element = "blazing phoenix wings spreading wide"
+            background_effect = "dynamic energy waves and lightning bolts"
+        elif week_number <= 8:
+            achievement_type = "WARRIOR ELITE"
+            epic_element = "majestic sword crossed with laurel branches"
+            background_effect = "cosmic nebula with swirling galaxies"
+        elif week_number <= 12:
+            achievement_type = "LEGEND MASTER"
+            epic_element = "mythical dragon coiled around a crystal"
+            background_effect = "divine rays of light piercing storm clouds"
+        else:
+            achievement_type = "ULTIMATE CHAMPION"
+            epic_element = "celestial crown with floating gems"
+            background_effect = "otherworldly aurora with magical particles"
+    else:
+        achievement_type = "LANGUAGE WARRIOR"
+        epic_element = "heroic shield with glowing runes"
+        background_effect = "epic battlefield with victory banners"
+    
+    # Create platform-optimized prompt
+    if platform == "instagram":
+        # Square format, Instagram-optimized
+        prompt = f"""Create an EPIC achievement badge design that screams SUCCESS and VICTORY! 
+
+🎯 DESIGN CONCEPT: "{achievement_type} - WEEK {week_number} CONQUERED!"
+
+VISUAL ELEMENTS:
+- Center: Massive, bold text "WEEK {week_number}" in heroic golden font with chrome effects
+- Below: "COMPLETE!" in explosive letters with fire trails
+- Around: {epic_element} as the main heroic symbol
+- Background: {background_effect} in cinematic style
+
+COLOR SCHEME: 
+- Primary: Brilliant gold ({yellow}) and electric turquoise ({turquoise})
+- Accents: Victory coral ({coral}) and champion orange ({orange})
+- Effects: Metallic chrome, glowing auras, light explosions
+
+STYLE: 
+- Epic fantasy art meets superhero comic book
+- Cinematic lighting with dramatic shadows
+- Perfect for t-shirt printing - bold, high contrast
+- Social media ready - eye-catching and shareable
+
+TEXT PLACEMENT:
+- Top arc: "{level} {language} MASTERY"
+- Bottom banner: "{app_name} CHAMPION"
+- Side elements: Victory stars and achievement flames
+
+MOOD: Triumphant, powerful, legendary achievement unlocked!
+Format: Square 1024x1024 for perfect Instagram sharing"""
+
+    elif platform == "whatsapp":
+        # More personal, friendly but still epic
+        prompt = f"""Design a CELEBRATION EXPLOSION achievement that friends will be amazed by!
+
+🏆 ACHIEVEMENT: "LANGUAGE CHAMPION - WEEK {week_number} MASTERED!"
+
+DESIGN ELEMENTS:
+- Bold central text: "WEEK {week_number} DONE!" with celebration effects
+- {epic_element} surrounding the text majestically
+- {background_effect} creating an awesome backdrop
+- Victory ribbons flowing with "{level} {language}" text
+
+COLORS:
+- Vibrant celebration palette: {turquoise}, {yellow}, {coral}
+- Metallic gold accents for premium feel
+- Glowing effects that pop on phone screens
+
+STYLE:
+- Modern achievement badge meets party celebration
+- Clean enough for WhatsApp but epic enough for bragging
+- T-shirt ready design with bold graphics
+
+ELEMENTS:
+- Confetti and celebration particles
+- Achievement stars bursting outward
+- "{app_name}" banner at bottom
+- Success crown or victory laurels
+
+Perfect for sharing progress with friends and family!
+Square format 1024x1024"""
+
+    else:  # General/universal
+        # Most epic version for maximum impact
+        prompt = f"""Create an ABSOLUTELY LEGENDARY achievement design that commands respect!
+
+🔥 ULTIMATE ACHIEVEMENT: "{achievement_type} UNLOCKED!"
+
+EPIC ELEMENTS:
+- Dominant text: "WEEK {week_number} CONQUERED" in god-tier typography
+- Subtitle: "{level} {language} WARRIOR" in heroic font
+- Central symbol: {epic_element} rendered in mythical glory
+- Background: {background_effect} with cinematic grandeur
+
+LEGENDARY DESIGN:
+- Style: Epic fantasy meets modern superhero aesthetic
+- Lighting: Dramatic cinematic lighting with divine rays
+- Effects: Particle explosions, energy auras, metallic gleams
+- Colors: Champion gold, warrior turquoise, victory coral, flame orange
+
+POWER ELEMENTS:
+- Lightning bolts crackling around edges
+- Victory wreaths and champion laurels
+- Mystical runes spelling "{app_name}"
+- Achievement gems floating in corners
+
+IMPACT GOALS:
+- Museum-quality poster worthy
+- T-shirt design that starts conversations
+- Social media post that gets engagement
+- Badge of honor users wear with pride
+
+Format: Perfect square for maximum platform compatibility
+Mood: "I am a LEGEND and this proves it!"
+1024x1024 resolution for crisp printing and sharing"""
+
+    return prompt
+
+def create_weekly_milestone_prompt(progress_data: Dict[str, Any], week_number: int, platform: str) -> str:
+    """
+    Special prompts for specific weekly milestones with unique themes
+    """
+    learning_plan = progress_data.get("learning_plan", {})
+    language = learning_plan.get("language", "English").title()
+    level = learning_plan.get("level", "B1").upper()
+    app_name = progress_data.get("app_name", "MyTacoAI")
+    
+    # Special milestone themes
+    milestone_themes = {
+        1: {
+            "title": "FIRST BLOOD",
+            "theme": "Medieval knight achieving first victory",
+            "elements": "golden sword piercing through darkness",
+            "background": "dawn breaking over mountain peaks",
+            "mood": "triumphant beginning of an epic journey"
+        },
+        4: {
+            "title": "MONTH WARRIOR", 
+            "theme": "Ancient gladiator in the arena",
+            "elements": "colosseum with roaring crowds",
+            "background": "golden sunset with victory banners",
+            "mood": "earned respect through persistent battle"
+        },
+        8: {
+            "title": "CHAMPION RISE",
+            "theme": "Dragon rider soaring above clouds",
+            "elements": "majestic dragon with glowing eyes",
+            "background": "stormy skies with lightning",
+            "mood": "power and mastery over the elements"
+        },
+        12: {
+            "title": "LANGUAGE GOD",
+            "theme": "Mythical deity on mountain throne",
+            "elements": "crown of stars and cosmic energy",
+            "background": "divine realm with floating islands",
+            "mood": "transcendent mastery beyond mortal limits"
+        }
+    }
+    
+    # Get milestone or default
+    milestone = milestone_themes.get(week_number, milestone_themes[1])
+    
+    prompt = f"""Design an ABSOLUTELY LEGENDARY {milestone['title']} achievement!
+
+🌟 MILESTONE: "{milestone['title']} - {level} {language} LEGEND"
+
+EPIC THEME: {milestone['theme']}
+- Central element: {milestone['elements']}
+- Background scene: {milestone['background']}
+- Artistic mood: {milestone['mood']}
+
+HEROIC TEXT:
+- Main: "WEEK {week_number}" in massive godlike letters
+- Subtitle: "{milestone['title']}" in epic carved stone font
+- Banner: "{level} {language} MASTERY ACHIEVED"
+- Signature: "{app_name} CHAMPION" in victory scroll
+
+LEGENDARY DESIGN:
+- Style: Cinematic concept art meets ancient mythology
+- Lighting: Divine rays, magical auras, epic backlighting
+- Colors: Mythical gold, eternal turquoise, victory crimson
+- Effects: Particle magic, energy waves, heroic glow
+
+POWER SYMBOLS:
+- Achievement runes glowing with power
+- Victory wreaths made of linguistic symbols
+- Magical elements representing language mastery
+- Epic flourishes worthy of a movie poster
+
+IMPACT: Users will frame this and show it off proudly!
+Perfect for t-shirts, posters, social media dominance!
+Square 1024x1024 for maximum awesome!"""
+    
+    return prompt
+
+def create_achievement_tier_prompt(progress_data: Dict[str, Any], achievement_level: str, platform: str) -> str:
+    """
+    Create tier-based achievement prompts (Bronze, Silver, Gold, Platinum, Diamond)
+    """
+    learning_plan = progress_data.get("learning_plan", {})
+    language = learning_plan.get("language", "English").title()
+    level = learning_plan.get("level", "B1").upper()
+    completed_sessions = learning_plan.get("completed_sessions", 0)
+    app_name = progress_data.get("app_name", "MyTacoAI")
+    
+    # Achievement tiers with epic themes
+    tiers = {
+        "bronze": {
+            "title": "BRONZE WARRIOR",
+            "color_scheme": "Bronze metallic with copper highlights",
+            "elements": "Ancient bronze shield with warrior engravings",
+            "background": "Forge fires with sparks flying",
+            "subtitle": "THE JOURNEY BEGINS"
+        },
+        "silver": {
+            "title": "SILVER CHAMPION", 
+            "color_scheme": "Brilliant silver with platinum accents",
+            "elements": "Gleaming silver armor with victory wreaths",
+            "background": "Moonlit battlefield with silver light rays",
+            "subtitle": "RISING TO GLORY"
+        },
+        "gold": {
+            "title": "GOLD LEGEND",
+            "color_scheme": "Pure gold with radiant yellow highlights", 
+            "elements": "Majestic golden crown with floating gems",
+            "background": "Sunburst explosion with golden particles",
+            "subtitle": "LEGENDARY STATUS ACHIEVED"
+        },
+        "platinum": {
+            "title": "PLATINUM MASTER",
+            "color_scheme": "Platinum white with prismatic rainbow effects",
+            "elements": "Crystalline scepter with energy orbs",
+            "background": "Cosmic nebula with swirling galaxies",
+            "subtitle": "BEYOND MORTAL LIMITS"
+        },
+        "diamond": {
+            "title": "DIAMOND GOD",
+            "color_scheme": "Diamond clarity with rainbow prismatic effects",
+            "elements": "Transcendent crystal formation with divine light",
+            "background": "Otherworldly dimension with floating crystals",
+            "subtitle": "ULTIMATE PERFECTION"
+        }
+    }
+    
+    tier = tiers.get(achievement_level.lower(), tiers["bronze"])
+    
+    prompt = f"""Create an ABSOLUTELY MAGNIFICENT {tier['title']} achievement badge!
+
+💎 TIER ACHIEVEMENT: "{tier['title']} - {level} {language}"
+
+EPIC DESIGN ELEMENTS:
+- Primary text: "{tier['title']}" in legendary typography
+- Secondary: "{tier['subtitle']}" in heroic script
+- Central symbol: {tier['elements']} 
+- Background: {tier['background']}
+- Color palette: {tier['color_scheme']}
+
+ACHIEVEMENT DETAILS:
+- Sessions completed: {completed_sessions} VICTORIES
+- Language level: {level} {language} MASTERY
+- Platform: {app_name} CHAMPION
+- Tier status: {tier['title']} RANK ACHIEVED
+
+ARTISTIC STYLE:
+- Premium gaming achievement aesthetic
+- Hollywood movie poster quality
+- Museum-worthy artistic composition
+- Perfect for luxury merchandise
+
+VISUAL EFFECTS:
+- Metallic textures with realistic reflections
+- Particle systems with magical sparkles
+- Dynamic lighting with dramatic shadows
+- Cinematic depth and epic proportions
+
+USER PRIDE FACTOR: 
+This is something they'll want to print on everything!
+T-shirts, mugs, posters, business cards!
+Pure visual flex that commands respect!
+
+Square format 1024x1024 for perfect sharing and printing"""
+    
+    return prompt
+
+def create_image_prompt(progress_data: Dict[str, Any], share_type: str, platform: str, week_number: Optional[int] = None) -> str:
+    """
+    Master function that routes to the appropriate epic prompt creator
+    """
+    learning_plan = progress_data.get("learning_plan", {})
+    completed_sessions = learning_plan.get("completed_sessions", 0)
+    
+    # Determine achievement tier based on progress
+    if completed_sessions >= 48:
+        achievement_level = "diamond"
+    elif completed_sessions >= 36:
+        achievement_level = "platinum"
+    elif completed_sessions >= 24:
+        achievement_level = "gold"
+    elif completed_sessions >= 12:
+        achievement_level = "silver"
+    else:
+        achievement_level = "bronze"
+    
+    # Choose prompt type based on share_type and data
+    if share_type == "milestone" and week_number and week_number in [1, 4, 8, 12]:
+        return create_weekly_milestone_prompt(progress_data, week_number, platform)
+    elif share_type == "tier" or completed_sessions >= 12:
+        return create_achievement_tier_prompt(progress_data, achievement_level, platform)
+    else:
+        return create_epic_achievement_prompt(progress_data, share_type, platform, week_number)
+
+def create_share_text(progress_data: Dict[str, Any], platform: str, custom_message: Optional[str] = None, week_number: Optional[int] = None) -> str:
+    """
+    Create epic, engaging share text that matches the powerful imagery
+    """
+    learning_plan = progress_data.get("learning_plan", {})
+    language = learning_plan.get("language", "English").title()
+    level = learning_plan.get("level", "B1").upper()
+    completed_sessions = learning_plan.get("completed_sessions", 0)
+    app_name = progress_data.get("app_name", "MyTacoAI")
+    
+    # Epic achievement phrases
+    victory_phrases = [
+        "🔥 CONQUERED ANOTHER WEEK",
+        "⚡ DOMINATING MY LANGUAGE GOALS", 
+        "🏆 CRUSHING EVERY MILESTONE",
+        "💪 UNSTOPPABLE LEARNING MACHINE",
+        "🎯 PRECISION STRIKING MY TARGETS"
+    ]
+    
+    power_phrases = [
+        f"I don't just learn languages - I MASTER them! 💎",
+        f"Another week, another victory in my linguistic conquest! ⚔️", 
+        f"My {language} skills are reaching legendary status! 🌟",
+        f"Building my language empire one week at a time! 🏛️",
+        f"Transforming from student to {language} CHAMPION! 👑"
+    ]
+    
+    if custom_message:
+        base_text = custom_message
+    else:
+        if platform == "instagram":
+            victory = victory_phrases[week_number % len(victory_phrases) if week_number else 0]
+            power = power_phrases[completed_sessions % len(power_phrases)]
+            
+            base_text = f"""{victory}
+
+Week {week_number} ✅ COMPLETE!
+{level} {language} progression: DOMINANT 📈
+
+{power}
+
+This isn't just language learning - this is LANGUAGE MASTERY! 
+
+Every session brings me closer to fluency perfection. Every week proves I'm unstoppable! 
+
+Who else is ready to join the {language} champions? 💪
+
+#{language}Learning #{language}Champion #{app_name}Warrior #LanguageMastery #UnstoppableLearning #WeeklyWins #LanguageGoals #LearningJourney #FluentLife #StudyMotivation #LanguageSkills #MasteryMode"""
+
+        elif platform == "whatsapp":
+            base_text = f"""🎉 WEEK {week_number} CRUSHED! 🎉
+
+Just dominated another week of {language} learning! 
+
+Current status: {level} level CHAMPION 👑
+Sessions completed: {completed_sessions} VICTORIES ⚡
+Confidence level: MAXIMUM 💪
+
+I'm not just learning {language} - I'm CONQUERING it! 
+
+Every week I get stronger, smarter, and more fluent. This journey with {app_name} is turning me into a language LEGEND! 
+
+Want to join my conquest? Let's dominate languages together! 🚀"""
+
+        else:  # General platform
+            base_text = f"""🏆 LANGUAGE MASTERY UPDATE 🏆
+
+Week {week_number}: CONQUERED ✅
+Level: {level} {language} CHAMPION 👑  
+Progress: {completed_sessions} sessions of pure DOMINATION 💪
+
+I'm not just learning - I'm building a LEGEND! 
+
+Every week with {app_name} transforms me into a more powerful, confident {language} speaker. 
+
+This is what REAL progress looks like! 🔥
+
+#LanguageChampion #{language}Mastery #UnstoppableLearning"""
+    
+    return base_text
+
 @router.post("/generate-progress-image", response_model=ShareProgressResponse)
 async def generate_progress_image(
     request: ShareProgressRequest,
@@ -71,7 +489,7 @@ async def generate_progress_image(
         # Generate the image prompt
         image_prompt = create_image_prompt(progress_data, request.share_type, request.platform, request.week_number)
         
-        print(f"[SHARE] Generated prompt: {image_prompt[:200]}...")
+        print(f"[SHARE] Generated epic prompt: {image_prompt[:200]}...")
         
         # Generate image using DALL-E 3
         try:
@@ -90,7 +508,7 @@ async def generate_progress_image(
                 )
             
             image_url = response.data[0].url
-            print(f"[SHARE] ✅ Image generated successfully: {image_url}")
+            print(f"[SHARE] ✅ Epic image generated successfully: {image_url}")
             
         except Exception as openai_error:
             print(f"[SHARE] ❌ OpenAI error: {str(openai_error)}")
@@ -103,9 +521,6 @@ async def generate_progress_image(
         image_base64 = None
         try:
             print(f"[SHARE] 🔄 Downloading image immediately from: {image_url}")
-            
-            # CRITICAL FIX: Use requests instead of httpx to avoid URL encoding issues
-            import requests
             
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -275,77 +690,6 @@ async def get_user_progress_data(user_id: str, assessment_id: Optional[str], lea
     except Exception as e:
         print(f"[SHARE] ❌ Error retrieving enhanced progress data: {str(e)}")
         return None
-
-def create_image_prompt(progress_data: Dict[str, Any], share_type: str, platform: str, week_number: Optional[int] = None) -> str:
-    """
-    Create a SIMPLE, clean badge prompt that avoids complexity and gibberish text
-    """
-    # Brand colors
-    turquoise = "#4ECFBF"
-    yellow = "#FFD63A"
-    
-    # Extract basic data
-    learning_plan = progress_data.get("learning_plan", {})
-    language = learning_plan.get("language", "English").title()
-    level = learning_plan.get("level", "B1").upper()
-    app_name = progress_data.get("app_name", "MyTacoAI")
-    
-    prompt = f"""Create a SIMPLE circular achievement badge with minimal text.
-
-EXACT TEXT ONLY:
-- Center: "WEEK {week_number} COMPLETE!"
-- Top: "{level} {language}"  
-- Bottom: "{app_name}"
-
-DESIGN:
-- Clean circle, 1024x1024
-- Turquoise {turquoise} to yellow {yellow} gradient
-- White bold text
-- 2-3 small stars for decoration
-- NO other text or letters anywhere
-
-Keep it SIMPLE and CLEAN. Focus on the achievement."""
-
-    return prompt
-
-def create_share_text(progress_data: Dict[str, Any], platform: str, custom_message: Optional[str] = None, week_number: Optional[int] = None) -> str:
-    """
-    Create platform-appropriate share text (no percentages)
-    """
-    assessment = progress_data.get("assessment", {})
-    learning_plan = progress_data.get("learning_plan", {})
-    app_name = progress_data.get("app_name", "TacoAI")
-    
-    # Extract key metrics
-    if learning_plan:
-        language = learning_plan.get("language", "English")
-        level = learning_plan.get("level", "B1")
-        sessions = learning_plan.get("completed_sessions", 0)
-    elif assessment:
-        language = assessment.get("language", "English")
-        level = assessment.get("level", "B1")
-        sessions = 1
-    else:
-        language = "English"
-        level = "B1"
-        sessions = 5
-    
-    # Add week-specific content
-    week_text = f"Week {week_number} completed! 🎉" if week_number else ""
-    
-    if custom_message:
-        base_text = custom_message
-    else:
-        if platform == "instagram":
-            base_text = f"🎓 Learning {language} with {app_name}! \n\n{week_text}\n📚 {level} Level\n💪 {sessions} Sessions Completed\n\n#LanguageLearning #{language}Learning #Progress #MyTacoAI #LanguageGoals #StudyMotivation"
-        
-        elif platform == "whatsapp":
-            base_text = f"🎓 I'm learning {language} with {app_name}! \n\n{week_text}\nCurrently at {level} level 📚\n\nCompleted {sessions} sessions so far 💪\n\nWant to join me? Check out {app_name}! 🚀"
-        
-        else:  # general
-            base_text = f"🎓 Learning {language} with {app_name}!\n\n{week_text}\n🎯 Level: {level}\n💪 Sessions: {sessions}\n\n#LanguageLearning #{language}"
-    
-    return base_text
 
 async def track_sharing_activity(user_id: str, share_type: str, platform: str, progress_data: Dict[str, Any]):
     """
