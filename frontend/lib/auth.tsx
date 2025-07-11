@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import logger from './logger';
 
 // API base URL
 // In Railway deployment, the API is served from the same domain

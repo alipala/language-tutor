@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
+  // Remove console logs in production for security
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error'] // Keep console.error for critical error logging
+    } : false,
+  },
   // Enable static export for Railway deployment
   output: 'export', // Use static export for Railway deployment
   distDir: 'out', // Output to 'out' directory for static files
