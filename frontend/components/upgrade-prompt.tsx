@@ -218,12 +218,14 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
 
                   <ul className="space-y-3 mb-6">
                     {[
-                      `${isAnnual ? '360' : '30'} practice sessions ${isAnnual ? 'annually' : 'monthly'}`,
+                      '🎉 7-day free trial included',
+                      `${isAnnual ? '360' : '30'} practice sessions (5 minutes each) ${isAnnual ? 'annually' : 'monthly'}`,
                       `${isAnnual ? '24' : '2'} speaking assessments ${isAnnual ? 'annually' : 'monthly'}`,
                       'Advanced progress tracking',
                       'Learning plan progression',
                       'Achievement badges',
                       'All conversation topics + custom topics',
+                      '🎤 Choose from multiple AI tutor voices',
                       'Conversation history & analytics',
                       'Priority email support'
                     ].map((feature, index) => (
@@ -238,14 +240,14 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                     onClick={() => handlePlanSelect('fluency_builder')}
                     className="w-full py-3 px-6 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
                   >
-                    Get Started
+                    Start Free Trial
                   </button>
                 </div>
 
-                {/* Team Mastery */}
+                {/* Language Mastery */}
                 <div className="border-2 border-gray-200 rounded-2xl p-6">
                   <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Team Mastery</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Language Mastery</h3>
                     <div className="mb-2">
                       {isAnnual && (
                         <div className="text-sm text-gray-500 line-through">$479.88</div>
@@ -255,7 +257,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                           {isAnnual ? '$399.99' : '$39.99'}
                         </span>
                         <span className="text-gray-600 ml-2 mb-1">
-                          {isAnnual ? '/year per user' : '/month per user'}
+                          {isAnnual ? '/year' : '/month'}
                         </span>
                       </div>
                       {isAnnual && (
@@ -264,19 +266,21 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                         </div>
                       )}
                     </div>
-                    <p className="text-gray-600">For teams and organizations</p>
+                    <p className="text-gray-600">For advanced learners seeking fluency</p>
                   </div>
 
                   <ul className="space-y-3 mb-6">
                     {[
+                      '🎉 7-day free trial included',
                       'Unlimited practice sessions',
-                      'Unlimited assessments',
-                      'Premium learning plans',
-                      'Advanced analytics',
-                      'Priority support',
-                      'Team collaboration features',
-                      'API access & LMS integrations',
-                      'SSO & admin controls'
+                      'Unlimited speaking assessments',
+                      'Premium learning plans with advanced topics',
+                      '🎤 Choose from multiple AI tutor voices',
+                      '📊 Advanced analytics & detailed insights',
+                      '🎯 Personalized learning recommendations',
+                      '📝 Writing practice & correction',
+                      '🌍 Cultural context & idiom explanations',
+                      '⚡ Priority support & faster response times'
                     ].map((feature, index) => (
                       <li key={index} className="flex items-start">
                         <Check className="w-5 h-5 text-[#4ECFBF] mt-0.5 mr-3 flex-shrink-0" />
@@ -289,12 +293,8 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                     onClick={() => handlePlanSelect('team_mastery')}
                     className="w-full py-3 px-6 bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] font-semibold rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-colors duration-300"
                   >
-                    Get Started
+                    Start Free Trial
                   </button>
-                  
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    Minimum 5 users
-                  </p>
                 </div>
               </div>
             </div>
