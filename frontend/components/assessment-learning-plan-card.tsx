@@ -949,7 +949,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                   onClick={() => setShowShareModal(true)}
                   variant="outline"
                   className="flex-1 border-2 py-3 px-6 rounded-xl font-medium hover:bg-opacity-10 transition-all flex items-center justify-center" 
-                  style={{ borderColor: '#4ECFBF', color: '#4ECFBF' }}
+                  style={{ borderColor: '#F75A5A', color: '#F75A5A' }}
                 >
                   <Share2 className="h-5 w-5 mr-2" />
                   Share Progress
