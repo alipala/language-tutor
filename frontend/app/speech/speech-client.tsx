@@ -18,6 +18,8 @@ import { getApiUrl } from '@/lib/api-utils';
 import { 
   processBackgroundSentence, 
   shouldConsiderForAnalysis, 
+  getCachedAnalysis,
+  setCachedAnalysis,
   BackgroundAnalysisResponse 
 } from '@/lib/background-sentence-api';
 
@@ -695,23 +697,44 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
-  // Background sentence analysis function
+  // Enhanced background sentence analysis function with caching and smart filtering
   const handleBackgroundAnalysis = useCallback(async (text: string, messageIndex: number) => {
-    // Quick client-side check first
-    if (!shouldConsiderForAnalysis(text)) {
-      console.log('⏭️ [BACKGROUND] Skipping analysis - text too short or basic response:', text);
+    // Build conversation context for enhanced filtering
+    const recentUserMessages = messages
+      .filter(msg => msg.role === 'user')
+      .slice(-3)
+      .map(msg => msg.content);
+
+    // Enhanced client-side check with conversation context and language awareness
+    const analysisDecision = shouldConsiderForAnalysis(text, recentUserMessages, language);
+    
+    if (!analysisDecision.shouldAnalyze) {
+      console.log(`⏭️ [BACKGROUND] Skipping analysis - ${analysisDecision.reason}:`, text.substring(0, 50) + '...');
+      return;
+    }
+
+    console.log(`🎯 [BACKGROUND] Analysis approved - ${analysisDecision.reason} (confidence: ${analysisDecision.confidence}):`, text.substring(0, 50) + '...');
+
+    // Check cache first to avoid duplicate API calls
+    const cachedResult = getCachedAnalysis(text, language, level);
+    if (cachedResult) {
+      console.log('⚡ [CACHE] Using cached analysis result');
+      setBackgroundAnalyses(prev => {
+        const newAnalyses = [...prev, cachedResult];
+        return newAnalyses.slice(-5); // Keep only last 5
+      });
       return;
     }
 
     // Don't analyze if already processing or if we already have too many analyses
-    if (isProcessingBackground || backgroundAnalyses.length >= 10) {
+    if (isProcessingBackground || backgroundAnalyses.length >= 8) {
       console.log('⏭️ [BACKGROUND] Skipping analysis - already processing or too many analyses');
       return;
     }
 
     try {
       setIsProcessingBackground(true);
-      console.log('🔄 [BACKGROUND] Starting background analysis for:', text);
+      console.log('🔄 [BACKGROUND] Starting background analysis for:', text.substring(0, 50) + '...');
 
       // Build conversation context from recent messages
       const recentMessages = messages.slice(-5); // Last 5 messages for context
@@ -730,6 +753,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       if (result.analyzed && result.analysis) {
         console.log('✅ [BACKGROUND] Analysis completed:', result.analysis.analysis_id);
         
+        // Cache the result for future use
+        setCachedAnalysis(text, language, level, result.analysis);
+        
         // Add to background analyses with a limit
         setBackgroundAnalyses(prev => {
           const newAnalyses = [...prev, result.analysis!];
@@ -737,7 +763,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           return newAnalyses.slice(-5);
         });
       } else {
-        console.log('⏭️ [BACKGROUND] Analysis skipped:', result.reason);
+        console.log('⏭️ [BACKGROUND] Analysis skipped by backend:', result.reason);
       }
     } catch (error) {
       console.error('❌ [BACKGROUND] Error in background analysis:', error);
@@ -766,10 +792,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         const isRecentMessage = messageAge < 10000; // Only process messages less than 10 seconds old
         
         if (isRecentMessage && latestUserMessage.content.trim().length > 0) {
-          // Small delay to ensure the conversation continues smoothly
+          // Debounced delay to ensure the conversation continues smoothly and prevent rapid triggers
           setTimeout(() => {
             handleBackgroundAnalysis(latestUserMessage.content, messageIndex);
-          }, 2000); // 2 second delay to not interfere with conversation flow
+          }, 3000); // 3 second delay to not interfere with conversation flow and allow for debouncing
         }
       } else {
         // Clear the transcript or set a placeholder message

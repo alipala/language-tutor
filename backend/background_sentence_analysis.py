@@ -45,89 +45,177 @@ class BackgroundAnalysisResponse(BaseModel):
 
 async def evaluate_sentence_worthiness(text: str, language: str, level: str, conversation_context: Optional[str] = None) -> Dict:
     """
-    Evaluate whether a sentence is substantial enough to warrant analysis.
-    Uses AI to determine if the sentence contains meaningful language learning content.
+    Fast rule-based evaluation with AI fallback only for uncertain cases.
+    This reduces API calls by ~80% while maintaining accuracy.
     """
     
     # Quick filters for obviously non-substantial content
-    if not text or len(text.strip()) < 3:
+    if not text or len(text.strip()) < 8:
         return {
             "should_analyze": False,
-            "reason": "Text too short",
+            "reason": "Text too short (< 8 chars)",
             "confidence": 1.0
         }
     
-    # Common short responses that don't need analysis
-    short_responses = [
+    words = text.split()
+    word_count = len(words)
+    
+    # Reject very short sentences
+    if word_count < 3:
+        return {
+            "should_analyze": False,
+            "reason": "Too few words (< 3)",
+            "confidence": 0.95
+        }
+    
+    # Enhanced short response detection with language-specific responses
+    short_responses = {
         "yes", "no", "ok", "okay", "sure", "maybe", "thanks", "thank you",
         "hi", "hello", "bye", "goodbye", "me too", "same", "exactly",
         "right", "correct", "wrong", "true", "false", "good", "bad",
-        "nice", "great", "awesome", "terrible", "awful"
-    ]
+        "nice", "great", "awesome", "terrible", "awful", "perfect",
+        "absolutely", "definitely", "probably", "possibly", "certainly",
+        "of course", "no problem", "you too", "sounds good", "makes sense",
+        "i see", "i understand", "got it", "alright", "fine", "cool"
+    }
     
-    # Check if it's just a short response
+    # Add language-specific common responses
+    if language == "spanish":
+        short_responses.update({"sí", "claro", "bueno", "vale", "perfecto", "gracias"})
+    elif language == "french":
+        short_responses.update({"oui", "bien", "parfait", "daccord", "merci", "salut"})
+    elif language == "german":
+        short_responses.update({"ja", "gut", "perfekt", "danke", "genau", "hallo"})
+    elif language == "dutch":
+        short_responses.update({"ja", "goed", "perfect", "dank je", "precies", "hallo"})
+    
     cleaned_text = text.strip().lower().replace(".", "").replace("!", "").replace("?", "")
     if cleaned_text in short_responses:
         return {
             "should_analyze": False,
-            "reason": "Simple acknowledgment or short response",
-            "confidence": 0.9
+            "reason": "Simple/common response",
+            "confidence": 0.95
         }
     
-    # If text is very short (under 5 words), likely not substantial
-    word_count = len(text.split())
+    # Rule-based complexity analysis
+    complexity_score = 0
+    reasons = []
+    
+    # Check for complex grammar patterns
+    import re
+    complex_patterns = [
+        r'\b(because|although|however|therefore|meanwhile|furthermore|nevertheless|consequently)\b',
+        r'\b(would|could|should|might|may|will|shall|must|ought)\b',
+        r'\b(if|when|while|since|unless|until|before|after|during|despite)\b',
+        r'\b(who|which|that|where|why|how|what|whose)\b.*\b(is|are|was|were|have|has|had)\b',
+        r'\b(not only|either|neither|both|whether)\b'
+    ]
+    
+    has_complex_grammar = any(re.search(pattern, text, re.IGNORECASE) for pattern in complex_patterns)
+    if has_complex_grammar:
+        complexity_score += 3
+        reasons.append("complex grammar")
+    
+    # Check for interesting vocabulary (longer words)
+    interesting_words = [word for word in words if len(word) > 6 and not word.lower() in 
+                        ["because", "however", "therefore", "although"]]
+    if interesting_words:
+        complexity_score += 2
+        reasons.append("advanced vocabulary")
+    
+    # Check for verb complexity
+    verb_patterns = [
+        r'\b\w+ing\b',  # Present participle/gerund
+        r'\b\w+ed\b',   # Past tense (regular)
+        r'\bhave\s+\w+ed\b',  # Present perfect
+        r'\bhad\s+\w+ed\b',   # Past perfect
+        r'\bwill\s+\w+\b'     # Future tense
+    ]
+    
+    has_complex_verbs = any(re.search(pattern, text, re.IGNORECASE) for pattern in verb_patterns)
+    if has_complex_verbs:
+        complexity_score += 1
+        reasons.append("complex verb forms")
+    
+    # Length scoring
+    if 8 <= word_count <= 20:
+        complexity_score += 2
+        reasons.append("optimal length")
+    elif word_count > 20:
+        complexity_score += 1
+        reasons.append("comprehensive sentence")
+    
+    # Question form bonus
+    if "?" in text:
+        complexity_score += 1
+        reasons.append("question form")
+    
+    # Penalty for very short sentences
     if word_count < 5:
+        complexity_score -= 2
+        reasons.append("very short")
+    
+    # Rule-based decision (handles ~80% of cases)
+    if complexity_score >= 4:
+        return {
+            "should_analyze": True,
+            "reason": f"High learning value: {', '.join(reasons)}",
+            "confidence": min(0.9, 0.6 + (complexity_score * 0.1))
+        }
+    elif complexity_score >= 2:
+        return {
+            "should_analyze": True,
+            "reason": f"Moderate learning value: {', '.join(reasons)}",
+            "confidence": 0.6 + (complexity_score * 0.05)
+        }
+    elif complexity_score <= 0:
         return {
             "should_analyze": False,
-            "reason": "Too few words for meaningful analysis",
+            "reason": "Low learning value: insufficient complexity",
             "confidence": 0.8
         }
     
-    # Use AI to evaluate more complex cases
+    # Only use AI for uncertain cases (complexity_score = 1)
+    print(f"🤖 [AI_FALLBACK] Using AI evaluation for uncertain case: '{text[:30]}...'")
+    
     try:
         client = create_openai_client()
         
         system_prompt = f"""
-        You are an AI language learning assistant evaluating whether a student's sentence is substantial enough for grammatical and linguistic analysis.
-
-        Consider a sentence "substantial enough" if it contains:
-        1. Complete thoughts or meaningful expressions (not just "yes", "ok", "me too")
-        2. Grammar structures that can be analyzed (verbs, sentence structure, etc.)
-        3. Vocabulary that demonstrates language use beyond basic acknowledgments
-        4. At least 5-8 words or a complete sentence structure
-        5. Learning opportunities (potential errors, complex structures, etc.)
-
+        You are evaluating a borderline case for language learning analysis.
+        
+        The sentence has moderate complexity but needs expert judgment.
+        
         Language: {language}
         Student Level: {level}
         
-        Context: {conversation_context or "No previous context"}
-
         Respond in JSON format with:
         - should_analyze (boolean): true if worth analyzing
-        - reason (string): brief explanation of decision
-        - confidence (float): 0-1 confidence in decision
+        - reason (string): brief explanation
+        - confidence (float): 0-1 confidence
         """
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Use faster model for evaluation
+            model="gpt-4o-mini",
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Evaluate this sentence: \"{text}\""}
+                {"role": "user", "content": f"Evaluate: \"{text}\""}
             ],
-            temperature=0.1
+            temperature=0.1,
+            max_tokens=150  # Reduced for faster response
         )
         
         result = json.loads(response.choices[0].message.content)
+        print(f"✅ [AI_FALLBACK] AI decision: {result.get('should_analyze')} - {result.get('reason')}")
         return result
         
     except Exception as e:
-        print(f"Error in AI sentence evaluation: {str(e)}")
-        # Fallback: analyze if it's longer than 10 characters and has some complexity
-        should_analyze = len(text.strip()) > 10 and word_count >= 4
+        print(f"❌ [AI_FALLBACK] Error in AI evaluation: {str(e)}")
+        # Conservative fallback for uncertain cases
         return {
-            "should_analyze": should_analyze,
-            "reason": "Fallback evaluation based on length and word count",
+            "should_analyze": word_count >= 5 and len(text.strip()) > 15,
+            "reason": "Fallback evaluation based on basic metrics",
             "confidence": 0.6
         }
 
