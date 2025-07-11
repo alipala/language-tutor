@@ -586,6 +586,9 @@ interface AnalysisCache {
 const analysisCache: AnalysisCache = {};
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
+// Track ongoing analysis requests to prevent duplicates
+const ongoingAnalysis = new Set<string>();
+
 // Generate cache key for analysis results
 function getCacheKey(text: string, language: string, level: string): string {
   const normalizedText = text.toLowerCase().trim().replace(/[.!?]/g, '');
@@ -698,6 +701,7 @@ export async function performBackgroundAnalysis(
 /**
  * Complete background sentence processing pipeline
  * Evaluates if sentence should be analyzed, and if so, performs the analysis
+ * Includes deduplication to prevent multiple analysis of the same sentence
  */
 export async function processBackgroundSentence(
   request: BackgroundAnalysisRequest
@@ -705,28 +709,63 @@ export async function processBackgroundSentence(
   try {
     console.log('🔄 [PROCESS_API] Processing sentence in background:', request.text);
     
-    const response = await fetch(`${getApiUrl()}/api/sentence/process-background`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || `HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
+    // Create a unique key for this analysis request
+    const analysisKey = getCacheKey(request.text, request.language, request.level);
     
-    if (result.analyzed) {
-      console.log('✅ [PROCESS_API] Sentence analyzed successfully:', result.analysis.analysis_id);
-    } else {
-      console.log('⏭️ [PROCESS_API] Sentence skipped:', result.reason);
+    // Check if this analysis is already in progress
+    if (ongoingAnalysis.has(analysisKey)) {
+      console.log('⏭️ [PROCESS_API] Analysis already in progress for this sentence, skipping duplicate');
+      return {
+        analyzed: false,
+        reason: 'Analysis already in progress for this sentence'
+      };
     }
     
-    return result;
+    // Check cache first
+    const cachedResult = getCachedAnalysis(request.text, request.language, request.level);
+    if (cachedResult) {
+      console.log('⚡ [PROCESS_API] Using cached analysis result');
+      return {
+        analyzed: true,
+        analysis: cachedResult
+      };
+    }
+    
+    // Mark this analysis as ongoing
+    ongoingAnalysis.add(analysisKey);
+    
+    try {
+      const response = await fetch(`${getApiUrl()}/api/sentence/process-background`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Cache the result if analysis was successful
+      if (result.analyzed && result.analysis) {
+        setCachedAnalysis(request.text, request.language, request.level, result.analysis);
+      }
+      
+      if (result.analyzed) {
+        console.log('✅ [PROCESS_API] Sentence analyzed successfully:', result.analysis.analysis_id);
+      } else {
+        console.log('⏭️ [PROCESS_API] Sentence skipped:', result.reason);
+      }
+      
+      return result;
+    } finally {
+      // Always remove from ongoing analysis set
+      ongoingAnalysis.delete(analysisKey);
+    }
   } catch (error) {
     console.error('❌ [PROCESS_API] Error processing sentence:', error);
     throw error;

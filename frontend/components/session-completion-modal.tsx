@@ -9,6 +9,7 @@ interface SessionCompletionModalProps {
   isOpen: boolean;
   onGoHome: () => void;
   onStartNew: () => void;
+  onCheckAnalysis?: () => void;
   sessionDuration: string;
   messageCount: number;
   language: string;
@@ -154,6 +155,14 @@ const translations = {
     german: 'Großartige Arbeit! Dein Gespräch wurde in deiner Übungshistorie gespeichert.',
     french: 'Excellent travail! Votre conversation a été sauvegardée dans votre historique de pratique.',
     portuguese: 'Ótimo trabalho! Sua conversa foi salva no seu histórico de prática.'
+  },
+  checkAnalyzedSentences: {
+    english: 'Check Analyzed Sentences',
+    dutch: 'Bekijk Geanalyseerde Zinnen',
+    spanish: 'Ver Oraciones Analizadas',
+    german: 'Analysierte Sätze prüfen',
+    french: 'Vérifier les Phrases Analysées',
+    portuguese: 'Verificar Frases Analisadas'
   }
 };
 
@@ -161,6 +170,7 @@ export default function SessionCompletionModal({
   isOpen,
   onGoHome,
   onStartNew,
+  onCheckAnalysis,
   sessionDuration,
   messageCount,
   language,
@@ -241,6 +251,19 @@ export default function SessionCompletionModal({
             
             {/* Action Buttons */}
             <div className="space-y-3">
+              {/* Check Analyzed Sentences Button - Only show if callback is provided */}
+              {onCheckAnalysis && (
+                <Button 
+                  className="w-full bg-[#FFA955] hover:bg-[#E6954D] text-white font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md flex items-center justify-center gap-2"
+                  onClick={onCheckAnalysis}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  {getText(language, level, 'Check Analyzed Sentences', translations.checkAnalyzedSentences)}
+                </Button>
+              )}
+              
               <Button 
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md flex items-center justify-center gap-2"
                 onClick={onGoHome}

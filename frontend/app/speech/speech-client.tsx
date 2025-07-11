@@ -1779,6 +1779,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         isOpen={showCompletionModal}
         onGoHome={handleGoHome}
         onStartNew={handleStartNewSession}
+        onCheckAnalysis={() => {
+          console.log('🔍 User wants to check analyzed sentences - closing modal to show analysis');
+          setShowCompletionModal(false);
+        }}
         sessionDuration={getPracticeTime()}
         messageCount={processedMessages.length}
         language={language}
