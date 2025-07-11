@@ -1676,7 +1676,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                   <div 
                                     className={`max-w-[85%] sm:max-w-[80%] break-words p-3 sm:p-4 lg:p-5 rounded-2xl shadow-md ${
                                       message.role === 'user' 
-                                        ? 'bg-[#D6E6FF] text-gray-800 ml-2 rounded-tr-none'
+                                        ? 'bg-[#F75A5A] text-white ml-2 rounded-tr-none'
                                         : 'bg-[#AFF4EB] text-gray-800 mr-2 rounded-tl-none'
                                     }`}
                                     style={{
