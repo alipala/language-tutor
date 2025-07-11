@@ -55,8 +55,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           window.location.hostname === 'mytacoai.com'
         );
         if (isRailwayEnv) {
-          console.log('Running auth check in Railway environment');
-          console.log('API_URL:', API_URL);
+          logger.debug('Running auth check in Railway environment');
+          logger.debug('API_URL configured for Railway');
         }
         
         // Try to get token from localStorage
@@ -64,16 +64,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           token = localStorage.getItem('token');
         } catch (storageErr) {
-          console.error('Error accessing localStorage:', storageErr);
+          logger.error('Error accessing localStorage:', storageErr);
           // Continue without token
         }
         
         if (token) {
-          console.log('Checking authentication with token');
+          logger.debug('Checking authentication with token');
           
           // Determine the correct URL to use
           const authUrl = isRailway ? '/auth/me' : `${API_URL}/auth/me`;
-          console.log('Using auth URL:', authUrl);
+          logger.debug('Using auth URL for authentication check');
           
           try {
             const response = await fetch(authUrl, {
@@ -87,28 +87,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               mode: 'cors'  // Explicitly use CORS mode
             });
 
-            console.log('Auth check response status:', response.status);
+            logger.debug('Auth check response received');
             
             if (response.ok) {
               const userData = await response.json();
-              console.log('User data retrieved:', userData);
+              logger.auth('User authentication successful', userData._id);
               
               // Store user data in localStorage
               try {
                 localStorage.setItem('userData', JSON.stringify(userData));
               } catch (storageErr) {
-                console.error('Error storing user data in localStorage:', storageErr);
+                logger.error('Error storing user data in localStorage:', storageErr);
                 // Continue without storing in localStorage
               }
               
               setUser(userData);
             } else {
               // Token is invalid or expired
-              console.log('Token invalid or expired, clearing');
+              logger.debug('Token invalid or expired, clearing');
               try {
                 localStorage.removeItem('token');
               } catch (storageErr) {
-                console.error('Error removing token from localStorage:', storageErr);
+                logger.error('Error removing token from localStorage:', storageErr);
               }
               setUser(null);
             }
@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      console.log('Attempting login for:', email);
+      logger.userAction('Login attempt', email);
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -175,20 +175,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         credentials: 'omit' // Don't send cookies for cross-origin requests
       });
 
-      console.log('Login response status:', response.status);
+      logger.debug('Login response received');
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Login error:', errorData);
+        logger.apiError('/auth/login', errorData);
         throw new Error(errorData.detail || 'Login failed');
       }
 
       const data = await response.json();
-      console.log('Login successful, token received');
+      logger.auth('Login successful');
       
       // Save token to localStorage
       localStorage.setItem('token', data.access_token);
-      console.log('Token saved to localStorage');
+      logger.debug('Authentication token saved');
       
       // Set user data
       const userData = {
@@ -200,7 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Store user data in localStorage
       localStorage.setItem('userData', JSON.stringify(userData));
       setUser(userData);
-      console.log('User data set in context and stored in localStorage');
+      logger.auth('User session established', userData._id);
 
       // Save user preferences if available
       if (data.preferred_language) {
