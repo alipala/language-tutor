@@ -86,6 +86,11 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
   const resources = planContent.resources || {};
   const milestones = planContent.milestones || [];
 
+  // Pagination state for weekly schedule
+  const [currentPage, setCurrentPage] = React.useState(0);
+  const weeksPerPage = 2;
+  const totalPages = Math.ceil(weeklySchedule.length / weeksPerPage);
+
   if (!isOpen) {
     return null;
   }
@@ -310,16 +315,24 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                   {/* Pagination Controls */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-600">
-                      Showing weeks {Math.min(1, weeklySchedule.length)}-{Math.min(2, weeklySchedule.length)} of {weeklySchedule.length}
+                      Showing weeks {currentPage * weeksPerPage + 1}-{Math.min((currentPage + 1) * weeksPerPage, weeklySchedule.length)} of {weeklySchedule.length}
                     </span>
                     <div className="flex items-center space-x-2">
-                      <button className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <button 
+                        onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                        disabled={currentPage === 0}
+                        className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
                         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600">1/6</span>
-                      <button className="p-1 rounded-full hover:bg-gray-100">
+                      <span className="text-sm text-gray-600">{currentPage + 1}/{totalPages}</span>
+                      <button 
+                        onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                        disabled={currentPage >= totalPages - 1}
+                        className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
                         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
@@ -329,7 +342,16 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                   
                   {/* Weekly Schedule Grid - Fixed Layout */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {weeklySchedule.slice(0, 2).map((week: any, index: number) => {
+                    {(() => {
+                      // Sort weeks by week number to ensure proper order
+                      const sortedWeeks = [...weeklySchedule].sort((a, b) => (a.week || 0) - (b.week || 0));
+                      
+                      // Get weeks for current page
+                      const startIndex = currentPage * weeksPerPage;
+                      const endIndex = startIndex + weeksPerPage;
+                      const currentWeeks = sortedWeeks.slice(startIndex, endIndex);
+                      
+                      return currentWeeks.map((week: any, index: number) => {
                         // Calculate week progress based on individual week's sessions_completed
                         const sessionsPerWeek = 2;
                         const weekSessionsCompleted = week.sessions_completed || 0;
@@ -370,100 +392,101 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                         const isCompleted = weekStatus === 'completed';
                         const isCurrent = weekStatus === 'current';
                       
-                      return (
-                        <div key={index} className={`rounded-lg p-3 border-2 ${
-                          isCompleted ? 'bg-green-50 border-green-200' :
-                          isCurrent ? 'bg-blue-50 border-blue-200' :
-                          'bg-gray-50 border-gray-200'
-                        }`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                              <span className={`text-sm font-medium ${
-                                isCompleted ? 'text-green-700' :
-                                isCurrent ? 'text-blue-700' :
-                                'text-gray-600'
-                              }`}>
-                                Week {week.week}
-                              </span>
-                              {isCompleted && (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              )}
-                              {isCurrent && (
-                                <div className="flex items-center space-x-1">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                  <span className="text-xs text-blue-600 font-medium">Current</span>
-                                </div>
-                              )}
-                            </div>
-                            <span className={`text-xs px-2 py-1 rounded-full truncate max-w-[200px] ${
-                              isCompleted ? 'text-green-600 bg-green-100' :
-                              isCurrent ? 'text-blue-600 bg-blue-100' :
-                              'text-gray-600 bg-gray-100'
-                            }`}>
-                              {week.focus}
-                            </span>
-                          </div>
-                          
-                          {/* Week Progress Bar */}
-                          <div className="mb-2">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className={`${
-                                isCompleted ? 'text-green-600' :
-                                isCurrent ? 'text-blue-600' :
-                                'text-gray-500'
-                              }`}>
-                                Progress
-                              </span>
-                              <span className={`${
-                                isCompleted ? 'text-green-600' :
-                                isCurrent ? 'text-blue-600' :
-                                'text-gray-500'
-                              }`}>
-                                {isCompleted ? `${weekTotalSessions}/${weekTotalSessions}` : isCurrent ? `${weekSessionsCompleted}/${weekTotalSessions}` : `0/${weekTotalSessions}`} sessions
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className={`h-2 rounded-full transition-all duration-500 ${
-                                  isCompleted ? 'bg-green-500' :
-                                  isCurrent ? 'bg-blue-500' :
-                                  'bg-gray-300'
-                                }`}
-                                style={{ width: `${weekProgress}%` }}
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-1">
-                            {week.activities && week.activities.slice(0, 2).map((activity: string, actIndex: number) => (
-                              <div key={actIndex} className="flex items-center space-x-2">
-                                <Circle className={`h-2 w-2 flex-shrink-0 ${
-                                  isCompleted ? 'text-green-500' :
-                                  isCurrent ? 'text-blue-500' :
-                                  'text-gray-400'
-                                }`} />
-                                <span className={`text-xs ${
+                        return (
+                          <div key={index} className={`rounded-lg p-3 border-2 ${
+                            isCompleted ? 'bg-green-50 border-green-200' :
+                            isCurrent ? 'bg-blue-50 border-blue-200' :
+                            'bg-gray-50 border-gray-200'
+                          }`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className={`text-sm font-medium ${
                                   isCompleted ? 'text-green-700' :
                                   isCurrent ? 'text-blue-700' :
                                   'text-gray-600'
                                 }`}>
-                                  {activity}
+                                  Week {week.week}
+                                </span>
+                                {isCompleted && (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                )}
+                                {isCurrent && (
+                                  <div className="flex items-center space-x-1">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                    <span className="text-xs text-blue-600 font-medium">Current</span>
+                                  </div>
+                                )}
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded-full truncate max-w-[200px] ${
+                                isCompleted ? 'text-green-600 bg-green-100' :
+                                isCurrent ? 'text-blue-600 bg-blue-100' :
+                                'text-gray-600 bg-gray-100'
+                              }`}>
+                                {week.focus}
+                              </span>
+                            </div>
+                            
+                            {/* Week Progress Bar */}
+                            <div className="mb-2">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className={`${
+                                  isCompleted ? 'text-green-600' :
+                                  isCurrent ? 'text-blue-600' :
+                                  'text-gray-500'
+                                }`}>
+                                  Progress
+                                </span>
+                                <span className={`${
+                                  isCompleted ? 'text-green-600' :
+                                  isCurrent ? 'text-blue-600' :
+                                  'text-gray-500'
+                                }`}>
+                                  {isCompleted ? `${weekTotalSessions}/${weekTotalSessions}` : isCurrent ? `${weekSessionsCompleted}/${weekTotalSessions}` : `0/${weekTotalSessions}`} sessions
                                 </span>
                               </div>
-                            ))}
-                            {week.activities && week.activities.length > 2 && (
-                              <div className={`text-xs ${
-                                isCompleted ? 'text-green-600' :
-                                isCurrent ? 'text-blue-600' :
-                                'text-gray-500'
-                              }`}>
-                                +{week.activities.length - 2} more activities
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all duration-500 ${
+                                    isCompleted ? 'bg-green-500' :
+                                    isCurrent ? 'bg-blue-500' :
+                                    'bg-gray-300'
+                                  }`}
+                                  style={{ width: `${weekProgress}%` }}
+                                />
                               </div>
-                            )}
+                            </div>
+                            
+                            <div className="space-y-1">
+                              {week.activities && week.activities.slice(0, 2).map((activity: string, actIndex: number) => (
+                                <div key={actIndex} className="flex items-center space-x-2">
+                                  <Circle className={`h-2 w-2 flex-shrink-0 ${
+                                    isCompleted ? 'text-green-500' :
+                                    isCurrent ? 'text-blue-500' :
+                                    'text-gray-400'
+                                  }`} />
+                                  <span className={`text-xs ${
+                                    isCompleted ? 'text-green-700' :
+                                    isCurrent ? 'text-blue-700' :
+                                    'text-gray-600'
+                                  }`}>
+                                    {activity}
+                                  </span>
+                                </div>
+                              ))}
+                              {week.activities && week.activities.length > 2 && (
+                                <div className={`text-xs ${
+                                  isCompleted ? 'text-green-600' :
+                                  isCurrent ? 'text-blue-600' :
+                                  'text-gray-500'
+                                }`}>
+                                  +{week.activities.length - 2} more activities
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               )}
