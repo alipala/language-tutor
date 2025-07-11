@@ -43,9 +43,167 @@ class BackgroundAnalysisResponse(BaseModel):
     level_appropriate_alternatives: Optional[List[str]] = None
     timestamp: str
 
+def detect_meta_conversational(text: str, language: str = "english") -> Dict:
+    """
+    Detect if text is meta-conversational (about managing the conversation itself)
+    rather than demonstrating language learning content.
+    Returns dict with isMetaConversational, confidence, category, and reason.
+    """
+    
+    if not text or len(text.strip()) < 2:
+        return {
+            "isMetaConversational": False,
+            "confidence": "high",
+            "reason": "Text too short to be meta-conversational"
+        }
+    
+    import re
+    clean_text = text.strip().lower()
+    
+    # Define multilingual patterns for meta-conversational detection
+    patterns = {
+        # Clarification requests
+        "clarification": {
+            "english": [
+                r"\b(didn't hear|can't hear|couldn't hear|cannot hear)\b",
+                r"\b(repeat|say that again|come again|pardon|excuse me)\b",
+                r"\b(what did you (say|just say))\b",
+                r"\b(i (didn't|don't) understand)\b",
+                r"\b(could you repeat)\b",
+                r"\b(sorry,? what)\b"
+            ],
+            "spanish": [
+                r"\b(no te escuché|no escuché|no oí)\b",
+                r"\b(puedes repetir|puede repetir|repite)\b",
+                r"\b(qué dijiste|qué dijo)\b",
+                r"\b(no entendí|no entiendo)\b",
+                r"\b(perdón|disculpa|cómo)\b"
+            ],
+            "french": [
+                r"\b(je n'ai pas entendu|je n'entends pas)\b",
+                r"\b(pouvez-vous répéter|peux-tu répéter|répétez)\b",
+                r"\b(qu'avez-vous dit|qu'est-ce que vous avez dit)\b",
+                r"\b(je ne comprends pas|je n'ai pas compris)\b",
+                r"\b(pardon|excusez-moi|comment)\b"
+            ],
+            "german": [
+                r"\b(ich habe (sie|dich) nicht gehört|ich höre nicht)\b",
+                r"\b(können sie wiederholen|kannst du wiederholen|wiederholen)\b",
+                r"\b(was haben sie gesagt|was hast du gesagt)\b",
+                r"\b(ich verstehe nicht|ich habe nicht verstanden)\b",
+                r"\b(entschuldigung|wie bitte)\b"
+            ],
+            "dutch": [
+                r"\b(ik hoorde je niet|ik hoor je niet|niet gehoord)\b",
+                r"\b(kun je herhalen|kunt u herhalen|herhaal)\b",
+                r"\b(wat zei je|wat zei u)\b",
+                r"\b(ik begrijp het niet|ik snap het niet)\b",
+                r"\b(sorry|pardon|wat)\b"
+            ],
+            "portuguese": [
+                r"\b(não te ouvi|não ouvi|não escutei)\b",
+                r"\b(podes repetir|pode repetir|repete)\b",
+                r"\b(o que disseste|o que disse)\b",
+                r"\b(não entendi|não entendo)\b",
+                r"\b(desculpa|perdão|como)\b"
+            ]
+        },
+        
+        # Technical issues
+        "technical": {
+            "english": [
+                r"\b(audio is|sound is|volume is)\b",
+                r"\b(cutting out|breaking up|connection|static)\b",
+                r"\b(can't hear you|cannot hear you)\b",
+                r"\b(microphone|mic|speaker)\b",
+                r"\b(technical (problem|issue))\b"
+            ],
+            "spanish": [
+                r"\b(el audio|el sonido|el volumen)\b",
+                r"\b(se corta|conexión|estática)\b",
+                r"\b(no te escucho|no puedo escucharte)\b",
+                r"\b(micrófono|altavoz)\b",
+                r"\b(problema técnico)\b"
+            ]
+        },
+        
+        # Pace control
+        "pace": {
+            "english": [
+                r"\b(speak (slower|faster)|talk (slower|faster))\b",
+                r"\b(too (fast|slow)|very (fast|slow))\b",
+                r"\b(slow down|speed up)\b",
+                r"\b(more slowly|more quickly)\b"
+            ],
+            "spanish": [
+                r"\b(habla más (despacio|lento|rápido))\b",
+                r"\b(muy (rápido|lento))\b",
+                r"\b(más despacio|más rápido)\b"
+            ]
+        },
+        
+        # Volume control
+        "volume": {
+            "english": [
+                r"\b(speak (louder|quieter)|talk (louder|quieter))\b",
+                r"\b(too (loud|quiet)|very (loud|quiet))\b",
+                r"\b(turn up|turn down|volume)\b",
+                r"\b(can barely hear|hard to hear)\b"
+            ]
+        },
+        
+        # Conversation management
+        "conversation_management": {
+            "english": [
+                r"\b(let's (start over|begin again|restart))\b",
+                r"\b(change (topic|subject)|different topic)\b",
+                r"\b(can we (talk about|discuss))\b",
+                r"\b(i want to (talk about|discuss))\b",
+                r"\b(let's talk about)\b",
+                r"\b(wait a (moment|second|minute))\b"
+            ]
+        }
+    }
+    
+    # Check patterns for the specified language and English (as fallback)
+    languages_to_check = [language] if language == "english" else [language, "english"]
+    
+    for lang in languages_to_check:
+        for category, lang_patterns in patterns.items():
+            category_patterns = lang_patterns.get(lang, [])
+            for pattern in category_patterns:
+                if re.search(pattern, clean_text, re.IGNORECASE):
+                    return {
+                        "isMetaConversational": True,
+                        "confidence": "high",
+                        "category": category,
+                        "reason": f"Detected {category} request in {lang}"
+                    }
+    
+    # Check for medium confidence cases (partial matches or context-dependent)
+    medium_confidence_patterns = [
+        r"\b(what|que|quoi|was|wat|o que)\b.*\b(you|tu|sie|je|você)\b.*\b(said|dijiste|dit|gesagt|zei|disse)\b",
+        r"\b(i|yo|je|ich|ik|eu)\b.*\b(don't|no|ne|nicht|niet|não)\b.*\b(understand|entiendo|comprends|verstehe|begrijp|entendo)\b",
+        r"\b(can|puedes|peux|können|kun|podes)\b.*\b(you|tu|sie|je|você)\b"
+    ]
+    
+    for pattern in medium_confidence_patterns:
+        if re.search(pattern, clean_text, re.IGNORECASE):
+            return {
+                "isMetaConversational": False,  # Will be determined by AI
+                "confidence": "medium",
+                "reason": "Uncertain - requires AI classification"
+            }
+    
+    return {
+        "isMetaConversational": False,
+        "confidence": "low",
+        "reason": "No meta-conversational patterns detected"
+    }
+
 async def evaluate_sentence_worthiness(text: str, language: str, level: str, conversation_context: Optional[str] = None) -> Dict:
     """
-    Fast rule-based evaluation with AI fallback only for uncertain cases.
+    Enhanced evaluation with meta-conversational detection and fast rule-based analysis.
     This reduces API calls by ~80% while maintaining accuracy.
     """
     
@@ -56,6 +214,77 @@ async def evaluate_sentence_worthiness(text: str, language: str, level: str, con
             "reason": "Text too short (< 8 chars)",
             "confidence": 1.0
         }
+    
+    # First check for meta-conversational content
+    meta_result = detect_meta_conversational(text, language)
+    if meta_result["isMetaConversational"] and meta_result["confidence"] == "high":
+        return {
+            "should_analyze": False,
+            "reason": f"Meta-conversational: {meta_result['reason']}",
+            "confidence": 0.9,
+            "isMetaConversational": True,
+            "metaCategory": meta_result.get("category")
+        }
+    
+    # If medium confidence meta-conversational, use AI to decide
+    if meta_result["confidence"] == "medium":
+        print(f"🤖 [META_AI] Using AI for meta-conversational classification: '{text[:30]}...'")
+        
+        try:
+            client = create_openai_client()
+            
+            system_prompt = f"""
+            You are determining if a student's utterance is meta-conversational (about managing the conversation) 
+            or contains language learning content worth analyzing.
+            
+            Meta-conversational examples:
+            - "I didn't hear you, can you repeat?"
+            - "Can you speak slower?"
+            - "What did you just say?"
+            - "I don't understand what we're talking about"
+            
+            Learning content examples:
+            - "I didn't hear the news about the election" (content-related)
+            - "Can you speak about economics?" (content request)
+            - "What did you think about my presentation?" (learning content)
+            
+            Language: {language}
+            Student Level: {level}
+            
+            Respond in JSON format with:
+            - should_analyze (boolean): false if meta-conversational, true if learning content
+            - reason (string): brief explanation
+            - confidence (float): 0-1 confidence
+            - isMetaConversational (boolean): true if about conversation management
+            """
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Classify: \"{text}\""}
+                ],
+                temperature=0.1,
+                max_tokens=150
+            )
+            
+            ai_result = json.loads(response.choices[0].message.content)
+            print(f"✅ [META_AI] AI classification: {ai_result}")
+            
+            if ai_result.get("isMetaConversational", False):
+                return {
+                    "should_analyze": False,
+                    "reason": f"AI classified as meta-conversational: {ai_result.get('reason')}",
+                    "confidence": ai_result.get("confidence", 0.7),
+                    "isMetaConversational": True
+                }
+            
+            # Continue with normal evaluation if not meta-conversational
+            
+        except Exception as e:
+            print(f"❌ [META_AI] Error in AI meta-conversational classification: {str(e)}")
+            # Continue with normal evaluation if AI fails
     
     words = text.split()
     word_count = len(words)
