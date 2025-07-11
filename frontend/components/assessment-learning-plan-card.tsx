@@ -702,28 +702,10 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
                     const weeksPerPage = 2;
                     const totalPages = Math.ceil(allWeeks.length / weeksPerPage);
                     
-                    // Show most recently completed week + current week
-                    let weeksToShow = [];
-                    if (lastCompletedWeekNumber > 0) {
-                      // Show last completed week + current week
-                      weeksToShow = allWeeks.filter(week => 
-                        week.week === lastCompletedWeekNumber || week.week === currentWeekNumber
-                      );
-                    } else {
-                      // No completed weeks yet, show first two weeks
-                      weeksToShow = allWeeks.slice(0, 2);
-                    }
-                    
-                    // If user is navigating manually, use pagination
-                    let currentWeeks;
-                    if (currentWeekPage > 0) {
-                      const startIndex = currentWeekPage * weeksPerPage;
-                      const endIndex = startIndex + weeksPerPage;
-                      currentWeeks = allWeeks.slice(startIndex, endIndex);
-                    } else {
-                      // Default view: show relevant weeks
-                      currentWeeks = weeksToShow;
-                    }
+                    // Always show weeks in chronological order with proper pagination
+                    const startIndex = currentWeekPage * weeksPerPage;
+                    const endIndex = startIndex + weeksPerPage;
+                    const currentWeeks = allWeeks.slice(startIndex, endIndex);
                     
                     return allWeeks.length > 0 && (
                       <div>
