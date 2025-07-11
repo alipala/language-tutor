@@ -121,6 +121,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [showSavingLoader, setShowSavingLoader] = useState(false);
+  const [isReviewingAnalysis, setIsReviewingAnalysis] = useState(false);
   
   // Voice selection state for displaying tutor avatar
   const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
@@ -1592,7 +1593,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             ? 'bg-gray-400 cursor-not-allowed' 
                             : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
                           ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording}
+                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
                       >
                         {isAttemptingToRecord ? (
                           <>
@@ -1802,6 +1803,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         onCheckAnalysis={() => {
           console.log('🔍 User wants to check analyzed sentences - closing modal to show analysis');
           setShowCompletionModal(false);
+          setIsReviewingAnalysis(true); // Disable recording button
         }}
         sessionDuration={getPracticeTime()}
         messageCount={processedMessages.length}

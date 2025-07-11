@@ -306,25 +306,30 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                     <Calendar className="h-5 w-5 mr-2 text-blue-500" />
                     Weekly Schedule Preview
                   </h4>
-                  <div className="space-y-3">
-                    {(() => {
-                      // Calculate which weeks to show (current week and next week)
-                      const sessionsPerWeek = 2;
-                      let currentWeekNumber = 1;
-                      
-                      if (completedSessions > 0) {
-                        currentWeekNumber = Math.floor((completedSessions - 1) / sessionsPerWeek) + 1;
-                      }
-                      
-                      // Show current week and next week (max 2 weeks)
-                      const weeksToShow = weeklySchedule.filter((week: any) => 
-                        week.week >= currentWeekNumber && week.week <= currentWeekNumber + 1
-                      );
-                      
-                      // If no weeks match (edge case), show first 2 weeks
-                      const finalWeeksToShow = weeksToShow.length > 0 ? weeksToShow : weeklySchedule.slice(0, 2);
-                      
-                      return finalWeeksToShow.map((week: any, index: number) => {
+                  
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-gray-600">
+                      Showing weeks {Math.min(1, weeklySchedule.length)}-{Math.min(2, weeklySchedule.length)} of {weeklySchedule.length}
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <button className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600">1/6</span>
+                      <button className="p-1 rounded-full hover:bg-gray-100">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Weekly Schedule Grid - Fixed Layout */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {weeklySchedule.slice(0, 2).map((week: any, index: number) => {
                         // Calculate week progress based on individual week's sessions_completed
                         const sessionsPerWeek = 2;
                         const weekSessionsCompleted = week.sessions_completed || 0;
@@ -430,7 +435,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                           </div>
                           
                           <div className="space-y-1">
-                            {week.activities.slice(0, 2).map((activity: string, actIndex: number) => (
+                            {week.activities && week.activities.slice(0, 2).map((activity: string, actIndex: number) => (
                               <div key={actIndex} className="flex items-center space-x-2">
                                 <Circle className={`h-2 w-2 flex-shrink-0 ${
                                   isCompleted ? 'text-green-500' :
@@ -446,7 +451,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                                 </span>
                               </div>
                             ))}
-                            {week.activities.length > 2 && (
+                            {week.activities && week.activities.length > 2 && (
                               <div className={`text-xs ${
                                 isCompleted ? 'text-green-600' :
                                 isCurrent ? 'text-blue-600' :
@@ -458,13 +463,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                           </div>
                         </div>
                       );
-                      });
-                    })()}
-                    {weeklySchedule.length > 2 && (
-                      <div className="text-center text-sm text-gray-500">
-                        +{weeklySchedule.length - 2} more weeks in your plan
-                      </div>
-                    )}
+                    })}
                   </div>
                 </div>
               )}
