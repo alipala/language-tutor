@@ -352,45 +352,15 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                       const currentWeeks = sortedWeeks.slice(startIndex, endIndex);
                       
                       return currentWeeks.map((week: any, index: number) => {
-                        // Calculate week progress based on individual week's sessions_completed
-                        const sessionsPerWeek = 2;
+                        // Calculate week progress based on sessions completed
                         const weekSessionsCompleted = week.sessions_completed || 0;
-                        const weekTotalSessions = week.total_sessions || sessionsPerWeek;
+                        const weekTotalSessions = week.total_sessions || 2;
+                        const weekProgress = weekTotalSessions > 0 ? (weekSessionsCompleted / weekTotalSessions) * 100 : 0;
                         
-                        // Determine week status based on individual week data
-                        let weekStatus = 'upcoming';
-                        let weekProgress = 0;
-                        
-                        if (weekSessionsCompleted >= weekTotalSessions) {
-                          // Week is fully completed
-                          weekStatus = 'completed';
-                          weekProgress = 100;
-                        } else if (weekSessionsCompleted > 0) {
-                          // Week is in progress
-                          weekStatus = 'current';
-                          weekProgress = (weekSessionsCompleted / weekTotalSessions) * 100;
-                        } else {
-                          // Check if this is the next week after the last completed week
-                          const previousWeek = weeklySchedule.find(w => w.week === week.week - 1);
-                          if (!previousWeek) {
-                            // This is week 1 and no previous week exists
-                            weekStatus = 'current';
-                            weekProgress = 0;
-                          } else {
-                            // Check if previous week is completed
-                            const prevWeekCompleted = (previousWeek.sessions_completed || 0) >= (previousWeek.total_sessions || 2);
-                            if (prevWeekCompleted) {
-                              weekStatus = 'current';
-                              weekProgress = 0;
-                            } else {
-                              weekStatus = 'upcoming';
-                              weekProgress = 0;
-                            }
-                          }
-                        }
-                        
-                        const isCompleted = weekStatus === 'completed';
-                        const isCurrent = weekStatus === 'current';
+                        // Determine week status based on completion
+                        const isCompleted = weekSessionsCompleted >= weekTotalSessions;
+                        const isCurrent = weekSessionsCompleted > 0 && weekSessionsCompleted < weekTotalSessions;
+                        const isUpcoming = weekSessionsCompleted === 0;
                       
                         return (
                           <div key={index} className={`rounded-lg p-3 border-2 ${
