@@ -97,9 +97,9 @@ export const AuthRequiredModal: React.FC<AuthRequiredModalProps> = ({
                 <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4">
                   {getPlanIcon()}
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Almost there!</h2>
+                <h2 className="text-2xl font-bold mb-2">Create Account to Continue</h2>
                 <p className="text-white/90 text-lg">
-                  Create your account to get started with <strong>{planName}</strong>
+                  Start your <strong>7-day free trial</strong> of {planName} - no payment required now
                 </p>
               </div>
             </div>
