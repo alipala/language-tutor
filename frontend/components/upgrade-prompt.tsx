@@ -18,7 +18,10 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
 
   // Check if user should see upgrade prompt
   const shouldShowUpgrade = () => {
-    if (!subscriptionStatus || dismissed || loading) return false;
+    if (dismissed || loading) return false;
+    
+    // If no subscription status, show the prompt (likely free user)
+    if (!subscriptionStatus) return true;
     
     // Don't show for premium users
     if (subscriptionStatus.plan === 'fluency_builder' || subscriptionStatus.plan === 'team_mastery') {
@@ -36,7 +39,8 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
       return sessions_remaining <= 1 || assessments_remaining <= 0;
     }
     
-    return false;
+    // Default to showing the prompt if we're unsure
+    return true;
   };
 
   // Handle upgrade click - Show modal for better UX
@@ -186,7 +190,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
               {/* Pricing Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Fluency Builder */}
-                <div className="border-2 border-[#4ECFBF] rounded-2xl p-6 relative bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10">
+                <div className="border-2 border-[#4ECFBF] rounded-2xl p-6 relative bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10 flex flex-col h-full">
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <div className="bg-[#4ECFBF] text-white px-4 py-1 rounded-full text-sm font-bold">
                       MOST POPULAR
@@ -216,7 +220,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                     <p className="text-gray-600">Ideal for serious language learners</p>
                   </div>
 
-                  <ul className="space-y-3 mb-6">
+                  <ul className="space-y-3 mb-6 flex-grow">
                     {[
                       '🎉 7-day free trial included',
                       `${isAnnual ? '360' : '30'} practice sessions (5 minutes each) ${isAnnual ? 'annually' : 'monthly'}`,
@@ -236,16 +240,18 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                     ))}
                   </ul>
 
-                  <button
-                    onClick={() => handlePlanSelect('fluency_builder')}
-                    className="w-full py-3 px-6 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
-                  >
-                    Start Free Trial
-                  </button>
+                  <div className="mt-auto">
+                    <button
+                      onClick={() => handlePlanSelect('fluency_builder')}
+                      className="w-full py-3 px-6 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
+                    >
+                      Start Free Trial
+                    </button>
+                  </div>
                 </div>
 
                 {/* Language Mastery */}
-                <div className="border-2 border-gray-200 rounded-2xl p-6">
+                <div className="border-2 border-gray-200 rounded-2xl p-6 flex flex-col h-full">
                   <div className="text-center mb-6">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">Language Mastery</h3>
                     <div className="mb-2">
@@ -269,7 +275,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                     <p className="text-gray-600">For advanced learners seeking fluency</p>
                   </div>
 
-                  <ul className="space-y-3 mb-6">
+                  <ul className="space-y-3 mb-6 flex-grow">
                     {[
                       '🎉 7-day free trial included',
                       'Unlimited practice sessions',
@@ -289,12 +295,14 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                     ))}
                   </ul>
 
-                  <button
-                    onClick={() => handlePlanSelect('team_mastery')}
-                    className="w-full py-3 px-6 bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] font-semibold rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-colors duration-300"
-                  >
-                    Start Free Trial
-                  </button>
+                  <div className="mt-auto">
+                    <button
+                      onClick={() => handlePlanSelect('team_mastery')}
+                      className="w-full py-3 px-6 bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] font-semibold rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-colors duration-300"
+                    >
+                      Start Free Trial
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
