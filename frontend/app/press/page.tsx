@@ -2,58 +2,62 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Download, Image, FileText, Users, Award, Globe, MessageSquare, Calendar } from 'lucide-react';
+import { Download, Image, FileText, Users, Award, Globe, MessageSquare, Calendar, Clock, Star } from 'lucide-react';
 
 const PressKit: React.FC = () => {
   const assets = [
     {
       title: "Logo Package",
-      description: "High-resolution logos in various formats (PNG, SVG, EPS)",
-      size: "2.3 MB",
-      icon: Image
+      description: "High-resolution MyTaco AI logos in various formats (PNG, SVG, EPS)",
+      size: "2.1 MB",
+      icon: Image,
+      available: true
     },
     {
       title: "Brand Guidelines",
       description: "Complete brand style guide and usage instructions",
-      size: "1.8 MB", 
-      icon: FileText
+      size: "1.5 MB", 
+      icon: FileText,
+      available: true
     },
     {
       title: "Product Screenshots",
-      description: "High-quality screenshots of our platform and features",
-      size: "5.2 MB",
-      icon: Image
+      description: "High-quality screenshots of our AI language learning platform",
+      size: "4.8 MB",
+      icon: Image,
+      available: true
     },
     {
-      title: "Executive Photos",
-      description: "Professional headshots of our leadership team",
-      size: "3.1 MB",
-      icon: Users
+      title: "Founder Photos",
+      description: "Professional headshots of Gamze and Ali Pala",
+      size: "2.3 MB",
+      icon: Users,
+      available: true
     }
   ];
 
   const stats = [
-    { number: "50K+", label: "Active Learners", icon: Users },
+    { number: "2025", label: "Founded", icon: Calendar },
     { number: "6", label: "Languages Supported", icon: Globe },
-    { number: "10K+", label: "Daily Conversations", icon: MessageSquare },
-    { number: "94%", label: "Success Rate", icon: Award }
+    { number: "AI-Powered", label: "Real-time Conversations", icon: MessageSquare },
+    { number: "24/7", label: "Available Learning", icon: Clock }
   ];
 
-  const newsItems = [
+  const upcomingMilestones = [
     {
-      date: "January 2025",
-      title: "Language Tutor Raises $15M Series A to Expand AI-Powered Language Learning",
-      outlet: "TechCrunch"
+      timeline: "Q2 2025",
+      title: "MyTaco AI Official Launch - Revolutionizing Language Learning for Busy Parents",
+      description: "Public launch of our AI-powered language learning platform designed specifically for time-constrained learners"
     },
     {
-      date: "December 2024", 
-      title: "The Future of Language Learning: How AI is Revolutionizing Education",
-      outlet: "EdTech Magazine"
+      timeline: "Q3 2025", 
+      title: "European Expansion - Bringing Accessible Language Learning to More Communities",
+      description: "Expanding our services across European markets with localized content and community partnerships"
     },
     {
-      date: "November 2024",
-      title: "Language Tutor Named 'Best AI Education Platform' at EdTech Awards",
-      outlet: "Education Week"
+      timeline: "Q4 2025",
+      title: "Advanced AI Features - Enhanced Personalization and Learning Analytics",
+      description: "Introduction of next-generation AI capabilities for even more personalized learning experiences"
     }
   ];
 
@@ -68,10 +72,10 @@ const PressKit: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-5xl font-bold mb-6">Press Kit</h1>
+            <h1 className="text-5xl font-bold mb-6">MyTaco AI Press Kit</h1>
             <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-              Resources for journalists, bloggers, and media professionals covering Language Tutor 
-              and the future of AI-powered language learning.
+              Resources for journalists, bloggers, and media professionals covering MyTaco AI 
+              and the future of accessible AI-powered language learning.
             </p>
           </motion.div>
         </div>
@@ -95,19 +99,25 @@ const PressKit: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <h3 className="text-2xl font-bold text-gray-800 mb-6">About Language Tutor</h3>
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">About MyTaco AI</h3>
               <p className="text-gray-600 leading-relaxed mb-4">
-                Language Tutor is revolutionizing language learning through AI-powered conversations that provide 
-                personalized, real-time feedback. Our platform makes language acquisition more natural and effective 
-                by simulating real-world conversations with advanced AI technology.
+                My Taco - AI Language Coach revolutionises language learning by offering AI-powered conversations, 
+                personalised feedback, and adaptive learning experiences. It enables users to master any language 
+                confidently through tailored practice and skill development.
+              </p>
+              <p className="text-gray-600 leading-relaxed mb-4">
+                Imagine mastering a new language just by having real conversations, right from home. My Taco AI 
+                combines advanced AI with live, voice-based tutors, providing instant feedback and tailored learning 
+                plans based on your speaking skills.
               </p>
               <p className="text-gray-600 leading-relaxed mb-6">
-                Founded in 2023, we've quickly grown to serve over 50,000 active learners across 6 languages, 
-                with a 94% success rate in helping users achieve their language learning goals.
+                Founded in 2025 by immigrant parents Gamze Dede Pala and Ali Pala in Amsterdam, MyTaco AI was born 
+                from personal experience struggling to find time for language learning while juggling work, family, 
+                and community integration in the Netherlands.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <a
-                  href="mailto:press@languagetutor.ai"
+                  href="mailto:hello@mytacoai.com"
                   className="px-6 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300 text-center"
                 >
                   Contact Press Team
@@ -127,7 +137,7 @@ const PressKit: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.6 }}
               className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200"
             >
-              <h4 className="text-xl font-bold text-gray-800 mb-6">Key Statistics</h4>
+              <h4 className="text-xl font-bold text-gray-800 mb-6">Key Facts</h4>
               <div className="grid grid-cols-2 gap-6">
                 {stats.map((stat, index) => (
                   <div key={stat.label} className="text-center">
@@ -136,6 +146,14 @@ const PressKit: React.FC = () => {
                     <div className="text-gray-600 text-sm">{stat.label}</div>
                   </div>
                 ))}
+              </div>
+              
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h5 className="font-bold text-gray-800 mb-3">Mission</h5>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  Making language learning accessible to busy parents, professionals, and immigrants who want to learn 
+                  but can't find the time or afford expensive traditional methods.
+                </p>
               </div>
             </motion.div>
           </div>
@@ -153,7 +171,7 @@ const PressKit: React.FC = () => {
           >
             <h2 className="text-4xl font-bold text-gray-800 mb-6">Press Assets</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Download high-quality assets for your stories and coverage.
+              Download high-quality assets for your stories and coverage about MyTaco AI.
             </p>
           </motion.div>
 
@@ -176,7 +194,10 @@ const PressKit: React.FC = () => {
                       <p className="text-gray-500 text-sm">{asset.size}</p>
                     </div>
                   </div>
-                  <button className="p-2 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white rounded-lg transition-colors duration-300">
+                  <button 
+                    className="p-2 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white rounded-lg transition-colors duration-300"
+                    onClick={() => alert('Asset download will be available soon. Please contact hello@mytacoai.com for immediate access.')}
+                  >
                     <Download className="w-5 h-5" />
                   </button>
                 </div>
@@ -184,10 +205,20 @@ const PressKit: React.FC = () => {
               </motion.div>
             ))}
           </div>
+
+          <div className="mt-12 text-center">
+            <div className="bg-[#FFD63A]/10 border border-[#FFD63A]/20 rounded-2xl p-6 max-w-2xl mx-auto">
+              <h4 className="text-lg font-bold text-gray-800 mb-2">Need Additional Assets?</h4>
+              <p className="text-gray-600 text-sm">
+                For immediate access to press assets or custom materials, please contact our press team at 
+                <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] font-medium"> hello@mytacoai.com</a>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Recent News */}
+      {/* Upcoming Milestones */}
       <div className="py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
@@ -196,14 +227,14 @@ const PressKit: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">Recent Coverage</h2>
+            <h2 className="text-4xl font-bold text-gray-800 mb-6">Upcoming Milestones</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Latest news and media coverage about Language Tutor.
+              Key developments and announcements to watch for from MyTaco AI.
             </p>
           </motion.div>
 
           <div className="space-y-6">
-            {newsItems.map((item, index) => (
+            {upcomingMilestones.map((item, index) => (
               <motion.div
                 key={item.title}
                 initial={{ opacity: 0, y: 20 }}
@@ -213,17 +244,33 @@ const PressKit: React.FC = () => {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center mb-2">
-                      <Calendar className="w-4 h-4 text-[#4ECFBF] mr-2" />
-                      <span className="text-sm text-gray-500">{item.date}</span>
-                      <span className="mx-2 text-gray-300">•</span>
-                      <span className="text-sm font-medium text-[#4ECFBF]">{item.outlet}</span>
+                    <div className="flex items-center mb-3">
+                      <Star className="w-4 h-4 text-[#FFD63A] mr-2" />
+                      <span className="text-sm font-medium text-[#4ECFBF] bg-[#4ECFBF]/10 px-3 py-1 rounded-full">
+                        {item.timeline}
+                      </span>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800">{item.title}</h3>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">{item.title}</h3>
+                    <p className="text-gray-600 leading-relaxed">{item.description}</p>
                   </div>
                 </div>
               </motion.div>
             ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#FFD63A]/10 border border-[#4ECFBF]/20 rounded-2xl p-8 max-w-3xl mx-auto">
+              <h4 className="text-xl font-bold text-gray-800 mb-3">Stay Updated</h4>
+              <p className="text-gray-600 mb-4">
+                Be the first to know about MyTaco AI's major announcements, product launches, and company news.
+              </p>
+              <a
+                href="mailto:hello@mytacoai.com?subject=Press Updates Subscription"
+                className="inline-flex items-center px-6 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
+              >
+                Subscribe to Press Updates
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -238,13 +285,32 @@ const PressKit: React.FC = () => {
           >
             <h2 className="text-4xl font-bold text-gray-800 mb-6">Media Inquiries</h2>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              For press inquiries, interviews, or additional information, please contact our media team.
+              For press inquiries, interviews, or additional information about MyTaco AI, please contact our team.
             </p>
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 max-w-md mx-auto">
               <h3 className="text-lg font-bold text-gray-800 mb-4">Press Contact</h3>
-              <p className="text-gray-600 mb-2">Sarah Chen, CEO</p>
-              <p className="text-[#4ECFBF] mb-2">press@languagetutor.ai</p>
-              <p className="text-gray-600">+1 (555) 012-3456</p>
+              <p className="text-gray-600 mb-2">Gamze Dede Pala & Ali Pala</p>
+              <p className="text-gray-600 mb-2">Co-Founders</p>
+              <p className="text-[#4ECFBF] mb-2 font-medium">hello@mytacoai.com</p>
+              <p className="text-gray-600 mb-2">+31 0657126162</p>
+              <p className="text-gray-500 text-sm">Amsterdam, Netherlands</p>
+            </div>
+
+            <div className="mt-8 grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+                <h4 className="font-bold text-gray-800 mb-2">Gamze Dede Pala</h4>
+                <p className="text-sm text-gray-600 mb-2">Co-Founder</p>
+                <p className="text-xs text-gray-500">
+                  Expert in Prompt Engineering, Context Engineering, and accessible learning solutions
+                </p>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+                <h4 className="font-bold text-gray-800 mb-2">Ali Pala</h4>
+                <p className="text-sm text-gray-600 mb-2">Co-Founder</p>
+                <p className="text-xs text-gray-500">
+                  GenAI Expert, 15+ years software development, AI Agents & Real-time Voice Chat specialist
+                </p>
+              </div>
             </div>
           </motion.div>
         </div>

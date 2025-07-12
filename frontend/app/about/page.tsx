@@ -1,298 +1,311 @@
-'use client';
+import { Users, Target, Shield, Lightbulb, Heart, Globe, Mail, Phone, MapPin } from "lucide-react";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Heart, Users, Globe, Zap, Target, Award, Mail, Phone, MapPin } from 'lucide-react';
-
-const AboutUs: React.FC = () => {
-  const values = [
-    {
-      title: "Personalized Learning",
-      icon: Target,
-      description: "We believe every learner is unique. Our AI-powered platform adapts to your learning style, pace, and goals to provide a truly personalized experience."
-    },
-    {
-      title: "Real Conversations",
-      icon: Users,
-      description: "Practice with our advanced AI tutor that engages in natural, meaningful conversations to build your confidence and fluency."
-    },
-    {
-      title: "Global Accessibility",
-      icon: Globe,
-      description: "Language learning should be accessible to everyone, everywhere. Our platform works on any device, making learning convenient and flexible."
-    },
-    {
-      title: "Continuous Innovation",
-      icon: Zap,
-      description: "We're constantly improving our technology and methods based on the latest research in language acquisition and AI."
-    }
-  ];
-
-  const team = [
-    {
-      name: "Dr. Sarah Chen",
-      role: "Chief Executive Officer",
-      description: "Former Google AI researcher with a PhD in Computational Linguistics. Passionate about making language learning accessible to everyone."
-    },
-    {
-      name: "Michael Rodriguez",
-      role: "Chief Technology Officer",
-      description: "15+ years in AI and machine learning. Previously led engineering teams at Duolingo and Babbel."
-    },
-    {
-      name: "Dr. Emma Thompson",
-      role: "Head of Learning Sciences",
-      description: "Educational psychologist specializing in second language acquisition. Former professor at Stanford University."
-    },
-    {
-      name: "David Kim",
-      role: "Head of Product",
-      description: "Product leader with experience at top tech companies. Focused on creating intuitive and engaging user experiences."
-    }
-  ];
-
-  const stats = [
-    { number: "500K+", label: "Active Learners" },
-    { number: "25+", label: "Languages Supported" },
-    { number: "10M+", label: "Conversations Completed" },
-    { number: "95%", label: "User Satisfaction" }
-  ];
-
+export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-16">
-        <div className="max-w-4xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <div className="flex items-center justify-center mb-6">
-              <Heart className="w-12 h-12 mr-4" />
-              <h1 className="text-4xl font-bold">About Language Tutor</h1>
-            </div>
-            <p className="text-xl text-white/90 mb-4">
-              Empowering millions of learners worldwide to master new languages through AI-powered conversations.
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Hero Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-[#4ECFBF] via-[#FFD63A] to-[#F75A5A] bg-clip-text text-transparent mb-6">
+            About MyTaco AI
+          </h1>
+          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto mb-8">
+            My Taco - AI Language Coach revolutionises language learning by offering AI-powered conversations, 
+            personalised feedback, and adaptive learning experiences. It enables users to master any language 
+            confidently through tailored practice and skill development.
+          </p>
+          <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Our Mission</h2>
+            <p className="text-gray-600 leading-relaxed">
+              Imagine mastering a new language just by having real conversations, right from home. My Taco AI 
+              combines advanced AI with live, voice-based tutors, providing instant feedback and tailored learning 
+              plans based on your speaking skills. Experience authentic practice with diverse voices and truly 
+              accelerate your fluency—not by memorizing, but by speaking. Start now and see for yourself how 
+              interactive AI can help you speak with confidence every single day.
             </p>
-          </motion.div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-16">
-        {/* Mission */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-16"
-        >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Our Mission</h2>
-            <p className="text-lg text-gray-600 leading-relaxed text-center mb-6">
-              To break down language barriers and connect people across cultures by providing the most effective, 
-              accessible, and engaging language learning experience powered by artificial intelligence.
-            </p>
-            <p className="text-gray-600 leading-relaxed text-center">
-              We believe that language learning should be conversational, practical, and fun. Our AI tutor provides 
-              real-time feedback, adapts to your learning style, and helps you build confidence through natural conversations.
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mb-16"
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
-              <div key={stat.label} className="text-center">
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                  <div className="text-3xl font-bold text-[#4ECFBF] mb-2">{stat.number}</div>
-                  <div className="text-gray-600 font-medium">{stat.label}</div>
-                </div>
+      {/* Our Values Section */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Our Values</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Accessibility Value */}
+            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20 hover:border-[#4ECFBF]/40 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-[#4ECFBF] rounded-full flex items-center justify-center mb-6">
+                <Globe className="w-6 h-6 text-white" />
               </div>
-            ))}
-          </div>
-        </motion.div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Accessibility for All</h3>
+              <p className="text-gray-600 leading-relaxed">
+                We believe language learning should be accessible to everyone, regardless of their schedule, 
+                budget, or location. Our AI-powered platform breaks down traditional barriers to language 
+                education, making quality learning available 24/7 at an affordable price.
+              </p>
+            </div>
 
-        {/* Values */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Our Values</h2>
+            {/* Innovation Value */}
+            <div className="bg-gradient-to-br from-[#FFD63A]/10 to-[#FFD63A]/5 rounded-2xl p-8 border border-[#FFD63A]/20 hover:border-[#FFD63A]/40 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-[#FFD63A] rounded-full flex items-center justify-center mb-6">
+                <Lightbulb className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">AI-Powered Innovation</h3>
+              <p className="text-gray-600 leading-relaxed">
+                We harness cutting-edge AI technology to create personalized learning experiences that adapt 
+                to your unique learning style, pace, and goals. Our real-time voice interaction and intelligent 
+                feedback systems revolutionize how languages are learned.
+              </p>
+            </div>
+
+            {/* Empathy Value */}
+            <div className="bg-gradient-to-br from-[#F75A5A]/10 to-[#F75A5A]/5 rounded-2xl p-8 border border-[#F75A5A]/20 hover:border-[#F75A5A]/40 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-[#F75A5A] rounded-full flex items-center justify-center mb-6">
+                <Heart className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Empathy & Understanding</h3>
+              <p className="text-gray-600 leading-relaxed">
+                As parents and immigrants ourselves, we understand the challenges of learning a new language 
+                while juggling work, family, and community responsibilities. We build with empathy, creating 
+                solutions that fit into real life.
+              </p>
+            </div>
+
+            {/* Quality Value */}
+            <div className="bg-gradient-to-br from-[#FFA955]/10 to-[#FFA955]/5 rounded-2xl p-8 border border-[#FFA955]/20 hover:border-[#FFA955]/40 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-[#FFA955] rounded-full flex items-center justify-center mb-6">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Quality & Excellence</h3>
+              <p className="text-gray-600 leading-relaxed">
+                With over 15 years of enterprise software development experience, we bring professional-grade 
+                quality to language learning. Every feature is meticulously crafted to deliver exceptional 
+                user experiences and measurable learning outcomes.
+              </p>
+            </div>
+
+            {/* Responsible AI Value */}
+            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#F75A5A]/5 rounded-2xl p-8 border border-[#4ECFBF]/20 hover:border-[#F75A5A]/20 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#4ECFBF] to-[#F75A5A] rounded-full flex items-center justify-center mb-6">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Responsible AI</h3>
+              <p className="text-gray-600 leading-relaxed">
+                We are committed to ethical AI development and responsible data usage. Our AI systems are 
+                designed with privacy-first principles, transparent algorithms, and bias mitigation. We ensure 
+                our technology enhances human learning without replacing human connection.
+              </p>
+            </div>
+
+            {/* Data Privacy Value */}
+            <div className="bg-gradient-to-br from-[#FFD63A]/10 to-[#FFA955]/5 rounded-2xl p-8 border border-[#FFD63A]/20 hover:border-[#FFA955]/20 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#FFD63A] to-[#FFA955] rounded-full flex items-center justify-center mb-6">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Data Privacy & Trust</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Your learning data and personal information are sacred to us. We implement enterprise-grade 
+                security measures, transparent data practices, and give you full control over your information. 
+                Your trust is the foundation of our relationship.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Our Story Section */}
+      <section className="py-16 px-4 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Our Story</h2>
+          <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+            <p className="text-gray-600 leading-relaxed mb-6">
+              The idea for MyTaco AI was born from our personal struggles as immigrant parents in the Netherlands. 
+              We officially started building this application in 2025, but the concept had been brewing in our minds 
+              for years.
+            </p>
+            <p className="text-gray-600 leading-relaxed mb-6">
+              As two busy parents juggling demanding careers, raising children, and integrating into Dutch society, 
+              we experienced firsthand the challenges of finding time to learn a new language. Between work commitments, 
+              caring for our kids, understanding the Dutch system, and actively participating in our local community, 
+              traditional language learning methods simply didn't fit our reality.
+            </p>
+            <p className="text-gray-600 leading-relaxed mb-6">
+              The turning point came during our kids' hockey club activities. As active parents engaging with other 
+              families, we often found ourselves in social situations where English was sufficient, but we felt 
+              something was missing. We experienced that subtle sense of being on the outside—not because we weren't 
+              welcome, but because language barriers prevented us from fully connecting and contributing to our community.
+            </p>
+            <p className="text-gray-600 leading-relaxed mb-6">
+              This personal frustration, combined with our extensive experience in enterprise software development 
+              and business solutions, sparked the vision for MyTaco AI (Language Coach - "Taal Coach" in Dutch). 
+              Having worked for major enterprise companies throughout our careers, we possessed the technical expertise 
+              and business acumen to transform our personal challenge into a solution that could help millions of others.
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              We're passionate about helping people who face the same struggles we did—parents, professionals, and 
+              immigrants who want to learn but can't find the time or afford expensive traditional methods. MyTaco AI 
+              represents our commitment to making language learning accessible, affordable, and effective for everyone, 
+              regardless of their circumstances. Because we believe that language should connect us, not divide us.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Meet Our Team Section */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Meet Our Team</h2>
+          
+          {/* Founders */}
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            {/* Gamze */}
+            <div className="bg-gradient-to-br from-[#4ECFBF]/5 to-[#FFD63A]/5 rounded-2xl p-8 border border-gray-100 hover:shadow-lg transition-all duration-300">
+              <div className="text-center mb-6">
+                <div className="w-24 h-24 bg-gradient-to-r from-[#4ECFBF] to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-white text-2xl font-bold">GP</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Gamze Dede Pala</h3>
+                <p className="text-[#4ECFBF] font-semibold">Co-Founder</p>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                Former business analyst and QA Engineer from Turkey, Gamze is the visionary founder of Kolay Gelsin NL 
+                application in the Netherlands. She's passionate about making learning accessible for everyone and brings 
+                deep expertise in Prompt Engineering and Context Engineering. Her unique perspective as both a tech 
+                professional and immigrant parent drives MyTaco AI's user-centric approach.
+              </p>
+            </div>
+
+            {/* Ali */}
+            <div className="bg-gradient-to-br from-[#F75A5A]/5 to-[#FFA955]/5 rounded-2xl p-8 border border-gray-100 hover:shadow-lg transition-all duration-300">
+              <div className="text-center mb-6">
+                <div className="w-24 h-24 bg-gradient-to-r from-[#F75A5A] to-[#FFA955] rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-white text-2xl font-bold">AP</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Ali Pala</h3>
+                <p className="text-[#F75A5A] font-semibold">Co-Founder</p>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                Currently working as a Backend QA Engineer, Ali brings 15+ years of software development experience 
+                to MyTaco AI. He's an active GenAI contributor to various communities both within and outside his 
+                corporate role. His passion for AI Agents, real-time voice chat, guardrails, and self-healing systems 
+                shapes the technical excellence of our platform.
+              </p>
+            </div>
+          </div>
+
+          {/* AI Agents */}
           <div className="grid md:grid-cols-2 gap-8">
-            {values.map((value, index) => (
-              <motion.div
-                key={value.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 * (index + 5) }}
-              >
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200 h-full">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
-                      <value.icon className="w-6 h-6 text-[#4ECFBF]" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-800">{value.title}</h3>
-                  </div>
-                  <p className="text-gray-600 leading-relaxed">{value.description}</p>
+            {/* Educational Psychologist AI */}
+            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20">
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-[#4ECFBF] rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-white text-lg font-bold">EP</span>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                <h3 className="text-lg font-bold text-gray-800">Dr. Elena Psyche</h3>
+                <p className="text-[#4ECFBF] font-semibold">Educational Psychologist AI Agent</p>
+              </div>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                Our specialized AI agent focused on understanding learning psychology and emotional barriers to 
+                language acquisition. Dr. Elena analyzes user behavior patterns, identifies learning obstacles, 
+                and provides personalized motivational support. She ensures that our platform addresses not just 
+                the cognitive aspects of learning, but also the emotional and psychological factors that influence 
+                language learning success.
+              </p>
+            </div>
 
-        {/* Story */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="mb-16"
-        >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Our Story</h2>
-            <div className="space-y-6 text-gray-600 leading-relaxed">
-              <p>
-                Language Tutor was founded in 2023 by a team of AI researchers, linguists, and educators who shared 
-                a common frustration: traditional language learning methods weren't keeping up with the digital age.
-              </p>
-              <p>
-                After experiencing the challenges of learning new languages themselves, our founders realized that 
-                the key to effective language learning wasn't just memorizing vocabulary or grammar rules—it was 
-                having meaningful conversations and receiving personalized feedback.
-              </p>
-              <p>
-                Combining cutting-edge AI technology with proven language learning methodologies, we created an 
-                intelligent tutor that can engage learners in natural conversations, provide instant feedback, 
-                and adapt to individual learning styles and goals.
-              </p>
-              <p>
-                Today, Language Tutor serves hundreds of thousands of learners worldwide, helping them achieve 
-                their language learning goals through personalized, conversational AI tutoring.
+            {/* Adaptive Learning Expert AI */}
+            <div className="bg-gradient-to-br from-[#FFD63A]/10 to-[#FFD63A]/5 rounded-2xl p-8 border border-[#FFD63A]/20">
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-white text-lg font-bold">AL</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Prof. Adam Learning</h3>
+                <p className="text-[#FFD63A] font-semibold">Adaptive Learning Expert AI Agent</p>
+              </div>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                Our advanced AI agent specializing in adaptive learning algorithms and personalized curriculum 
+                design. Prof. Adam continuously analyzes user performance data, learning patterns, and progress 
+                rates to dynamically adjust difficulty levels, content selection, and learning paths. He ensures 
+                that every user receives a truly personalized learning experience that evolves with their progress.
               </p>
             </div>
           </div>
-        </motion.div>
+        </div>
+      </section>
 
-        {/* Team */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Meet Our Team</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            {team.map((member, index) => (
-              <motion.div
-                key={member.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 * (index + 10) }}
-              >
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mr-4">
-                      <span className="text-white font-bold text-xl">
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-800">{member.name}</h3>
-                      <p className="text-[#4ECFBF] font-medium">{member.role}</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-600 leading-relaxed">{member.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Awards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.0 }}
-          className="mb-16"
-        >
-          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
-            <div className="flex items-center justify-center mb-6">
-              <Award className="w-8 h-8 text-[#4ECFBF] mr-3" />
-              <h2 className="text-2xl font-bold text-gray-800">Recognition & Awards</h2>
+      {/* Journey Highlights Section */}
+      <section className="py-16 px-4 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Our Journey So Far</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#4ECFBF] to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Lightbulb className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Innovation Launch</h3>
+              <p className="text-gray-600">
+                Successfully launched with cutting-edge AI voice technology and real-time conversation capabilities.
+              </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-6 text-center">
-              <div>
-                <h3 className="font-bold text-gray-800 mb-2">EdTech Innovation Award</h3>
-                <p className="text-gray-600">2024 - Best AI-Powered Learning Platform</p>
+
+            <div className="text-center bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#F75A5A] to-[#FFA955] rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Users className="w-8 h-8 text-white" />
               </div>
-              <div>
-                <h3 className="font-bold text-gray-800 mb-2">App Store Editor's Choice</h3>
-                <p className="text-gray-600">2024 - Featured in Education Category</p>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Growing Community</h3>
+              <p className="text-gray-600">
+                Building a passionate community of learners from diverse backgrounds, all sharing the goal of language mastery.
+              </p>
+            </div>
+
+            <div className="text-center bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#FFD63A] to-[#4ECFBF] rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Target className="w-8 h-8 text-white" />
               </div>
-              <div>
-                <h3 className="font-bold text-gray-800 mb-2">TechCrunch Startup of the Year</h3>
-                <p className="text-gray-600">2023 - Finalist in Education Technology</p>
-              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Continuous Evolution</h3>
+              <p className="text-gray-600">
+                Constantly improving our AI models and learning algorithms based on user feedback and latest research.
+              </p>
             </div>
           </div>
-        </motion.div>
+        </div>
+      </section>
 
-        {/* Contact */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.1 }}
-        >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Get in Touch</h2>
-            <p className="text-gray-600 mb-6 text-center">
-              Have questions about our mission or want to learn more about Language Tutor? We'd love to hear from you.
-            </p>
-            
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="flex items-center justify-center">
-                <Mail className="w-5 h-5 text-[#4ECFBF] mr-3" />
-                <div className="text-center">
-                  <p className="font-medium text-gray-800">Email</p>
-                  <a href="mailto:hello@languagetutor.ai" className="text-[#4ECFBF] hover:underline">
-                    hello@languagetutor.ai
-                  </a>
-                </div>
+      {/* Get in Touch Section */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-gray-800 mb-8">Get in Touch</h2>
+          <p className="text-xl text-gray-600 mb-12">
+            Have questions about MyTaco AI? We'd love to hear from you!
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-[#4ECFBF] rounded-full flex items-center justify-center mb-4">
+                <Mail className="w-8 h-8 text-white" />
               </div>
-              
-              <div className="flex items-center justify-center">
-                <Phone className="w-5 h-5 text-[#4ECFBF] mr-3" />
-                <div className="text-center">
-                  <p className="font-medium text-gray-800">Phone</p>
-                  <a href="tel:+1-555-0123" className="text-[#4ECFBF] hover:underline">
-                    +1 (555) 012-3456
-                  </a>
-                </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Email</h3>
+              <p className="text-gray-600">hello@mytacoai.com</p>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-[#FFD63A] rounded-full flex items-center justify-center mb-4">
+                <Phone className="w-8 h-8 text-white" />
               </div>
-              
-              <div className="flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-[#4ECFBF] mr-3" />
-                <div className="text-center">
-                  <p className="font-medium text-gray-800">Location</p>
-                  <p className="text-gray-600">San Francisco, CA</p>
-                </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Phone</h3>
+              <p className="text-gray-600">+31 0657126162</p>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-[#F75A5A] rounded-full flex items-center justify-center mb-4">
+                <MapPin className="w-8 h-8 text-white" />
               </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Location</h3>
+              <p className="text-gray-600">Amsterdam, Netherlands</p>
             </div>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </section>
     </div>
   );
-};
-
-export default AboutUs;
+}
