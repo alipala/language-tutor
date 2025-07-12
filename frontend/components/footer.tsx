@@ -132,6 +132,12 @@ const Footer: React.FC = () => {
       ]
     },
     {
+      title: "Responsible AI",
+      links: [
+        { name: "What We Think", href: "/responsible-ai", icon: Shield }
+      ]
+    },
+    {
       title: "Legal",
       links: [
         { name: "Privacy Policy", href: "/privacy", icon: Shield },
@@ -254,7 +260,7 @@ const Footer: React.FC = () => {
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="group flex items-center text-white/70 hover:text-[#4ECFBF] transition-all duration-300"
+                      className="group flex items-center text-white/70 hover:text-white transition-all duration-300"
                     >
                       <link.icon className="w-4 h-4 mr-3 opacity-60 group-hover:opacity-100 transition-opacity" />
                       <span className="group-hover:translate-x-1 transition-transform duration-300">
@@ -313,10 +319,15 @@ const Footer: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Copyright */}
-            <div className="flex items-center text-white/70">
-              <span>© {currentYear} My TaCo. Made with</span>
-              <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
-              <span>for language learners worldwide.</span>
+            <div className="flex flex-col items-start text-white/70">
+              <div className="flex items-center mb-1">
+                <span>© {currentYear} My TaCo. Made with</span>
+                <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
+                <span>for language learners worldwide.</span>
+              </div>
+              <div className="text-sm">
+                <span>Big Davinci • KVK: 90200004</span>
+              </div>
             </div>
 
             {/* Legal Links */}
