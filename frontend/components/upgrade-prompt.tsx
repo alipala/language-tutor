@@ -52,9 +52,10 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
   const handlePlanSelect = (planId: string) => {
     const period = isAnnual ? 'annual' : 'monthly';
     
-    // For logged-in users, redirect to dashboard with a message about upgrading
-    // The actual subscription upgrade should be handled through a proper subscription management flow
-    router.push('/dashboard?upgrade=true&plan=' + planId + '&period=' + period);
+    // Store the current location for post-checkout redirect
+    sessionStorage.setItem('checkoutReturnUrl', window.location.pathname);
+    
+    router.push(`/checkout?plan=${planId}&period=${period}`);
   };
 
   // Handle dismiss
