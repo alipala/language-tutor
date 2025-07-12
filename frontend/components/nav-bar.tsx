@@ -193,25 +193,25 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <div className="flex items-center space-x-6 mr-4">
               <button 
                 onClick={() => scrollToSection('features')}
-                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
+                className="text-white/90 hover:text-[#FFD63A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFD63A]/70 hover:bg-[#FFD63A]/10 hover:shadow-lg"
               >
                 Features
               </button>
               <button 
                 onClick={() => scrollToSection('how-it-works')}
-                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
+                className="text-white/90 hover:text-[#F75A5A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#F75A5A]/70 hover:bg-[#F75A5A]/10 hover:shadow-lg"
               >
                 How It Works
               </button>
               <button 
                 onClick={() => scrollToSection('pricing')}
-                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
+                className="text-white/90 hover:text-[#FFA955] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFA955]/70 hover:bg-[#FFA955]/10 hover:shadow-lg"
               >
                 Pricing
               </button>
               <button 
                 onClick={() => scrollToSection('faq')}
-                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10"
+                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 hover:shadow-lg"
               >
                 FAQ
               </button>
@@ -323,19 +323,19 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <>
               <button
                 onClick={() => scrollToSection('features')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-[#FFD63A] hover:bg-[#FFD63A]/10 hover:border hover:border-[#FFD63A]/70 transition-all duration-300 touch-target"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('how-it-works')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-[#F75A5A] hover:bg-[#F75A5A]/10 hover:border hover:border-[#F75A5A]/70 transition-all duration-300 touch-target"
               >
                 How It Works
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-[#FFA955] hover:bg-[#FFA955]/10 hover:border hover:border-[#FFA955]/70 transition-all duration-300 touch-target"
               >
                 Pricing
               </button>
