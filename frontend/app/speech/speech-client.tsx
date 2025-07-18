@@ -1635,17 +1635,15 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Mobile-Optimized Layout */}
           <div className="w-full">
-            {/* Transcript Sections - Mobile-First Responsive Design */}
+            {/* Transcript Sections - Responsive Design */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
-                {/* Mobile Layout: Stacked vertically with optimized heights */}
-                <div className="flex flex-col lg:grid lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
-                  {/* Real Time Sentence Analysis Component - Mobile Optimized */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
+                  {/* Real Time Sentence Analysis Component */}
                   <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
-                    h-[280px] sm:h-[320px] md:h-[380px] lg:h-[650px]
-                    order-1 lg:order-1">
+                    h-[280px] sm:h-[320px] md:h-[380px] lg:h-[650px]">
                     
-                    {/* Compact Header for Mobile */}
+                    {/* Header */}
                     <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 lg:pb-4 border-b border-gray-100">
                       <h3 className="text-sm sm:text-base lg:text-xl font-semibold text-[#F75A5A] flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1668,7 +1666,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       </div>
                     </div>
                     
-                    {/* Mobile-Optimized Analysis Display */}
+                    {/* Analysis Display */}
                     <div className="flex-1 p-3 sm:p-4 lg:p-6 pt-0 overflow-hidden">
                       <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 h-full flex flex-col">
                         {backgroundAnalyses.length > 0 ? (
@@ -1754,12 +1752,68 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         )}
                       </div>
                     </div>
+                    
+                    {/* Desktop Recording Button - Under Analysis Section */}
+                    <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
+                      <Button
+                        type="button"
+                        onClick={(e) => handleToggleRecording(e)}
+                        onTouchStart={(e) => e.preventDefault()}
+                        aria-label={isRecording ? "Stop recording" : "Start recording"}
+                        className={`w-full py-3 sm:py-4 relative flex items-center justify-center gap-2 sm:gap-3 transition-all duration-300 rounded-lg ${isRecording 
+                          ? 'bg-[#F75A5A] hover:bg-[#E55252]' 
+                          : (!isAuthenticated() && conversationTimeUp) 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
+                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
+                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
+                      >
+                        {isAttemptingToRecord ? (
+                          <>
+                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-medium text-white">Initializing microphone...</span>
+                          </>
+                        ) : isRecording ? (
+                          <>
+                            <div className="relative h-6 w-6 flex items-center justify-center">
+                              <div className="audio-wave">
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                              </div>
+                            </div>
+                            <span className="font-medium text-white">Recording...</span>
+                          </>
+                        ) : (
+                          <>
+                            <MicrophoneIcon isRecording={false} size={20} />
+                            <span className="font-medium text-gray-800 font-bold">Click to start speaking</span>
+                          </>
+                        )}
+                      </Button>
+                      
+                      {/* Error message */}
+                      {localError && (
+                        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto">
+                          <p>{localError}</p>
+                        </div>
+                      )}
+                      
+                      {/* Warning message when content is not in target language */}
+                      {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
+                       !isInTargetLanguage(messages[messages.length - 1].content) && (
+                        <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
+                          <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
-                  {/* Conversation Transcript Section - Mobile Optimized */}
+                  {/* Conversation Transcript Section */}
                   <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
-                    h-[320px] sm:h-[380px] md:h-[420px] lg:h-[650px]
-                    order-2 lg:order-2">
+                    h-[320px] sm:h-[380px] md:h-[420px] lg:h-[650px]">
                     
                     <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 lg:pb-4 border-b border-gray-100">
                       <h3 className="text-sm sm:text-base lg:text-xl font-semibold text-[#F75A5A] flex items-center">
