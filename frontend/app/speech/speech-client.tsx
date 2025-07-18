@@ -127,9 +127,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
   const [voiceLoading, setVoiceLoading] = useState(true);
   
-  // Information banner state
-  const [showInfoBanner, setShowInfoBanner] = useState(true);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
+  // Information modal state
+  const [showInfoModal, setShowInfoModal] = useState(true);
+  const [modalDismissed, setModalDismissed] = useState(false);
   
   // Voice data mapping for avatars and names
   const VOICE_DATA = {
@@ -1458,107 +1458,107 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           </p>
         </div>
 
-        {/* Information Banner - Speech Optimization Tips */}
-        {showInfoBanner && !bannerDismissed && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 sm:p-6 mb-6 mx-auto max-w-4xl relative z-10 shadow-lg animate-fadeIn">
-            <div className="flex items-start gap-4">
-              {/* Icon */}
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
+        {/* Information Modal - Speech Optimization Tips */}
+        {showInfoModal && !modalDismissed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl mx-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">🎯 Optimize Your Speaking Experience</h3>
                 </div>
+                <button
+                  onClick={() => {
+                    setModalDismissed(true);
+                    setShowInfoModal(false);
+                  }}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
               
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <span>🎯 Optimize Your Speaking Experience</span>
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setBannerDismissed(true);
-                      setShowInfoBanner(false);
-                    }}
-                    className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 transition-colors"
-                    aria-label="Dismiss banner"
-                  >
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {/* Modal Content */}
+              <div className="p-6">
+                {/* 2x2 Grid Layout */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   {/* Quiet Environment */}
-                  <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg border border-blue-100">
-                    <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-start gap-4 p-4 bg-green-50 rounded-xl border border-green-100">
+                    <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">Find a Quiet Space</h4>
-                      <p className="text-xs text-gray-600 mt-1">Choose a location with minimal background noise for better speech recognition accuracy.</p>
+                      <h4 className="font-semibold text-gray-900 text-base mb-2">Find a Quiet Space</h4>
+                      <p className="text-sm text-gray-600">Choose a location with minimal background noise for better speech recognition accuracy.</p>
                     </div>
                   </div>
                   
                   {/* Headphones */}
-                  <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg border border-blue-100">
-                    <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                    <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">Use Headphones</h4>
-                      <p className="text-xs text-gray-600 mt-1">Headphones prevent audio feedback and provide clearer AI tutor responses.</p>
+                      <h4 className="font-semibold text-gray-900 text-base mb-2">Use Headphones</h4>
+                      <p className="text-sm text-gray-600">Headphones prevent audio feedback and provide clearer AI tutor responses.</p>
                     </div>
                   </div>
                   
                   {/* Clear Speech */}
-                  <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg border border-blue-100">
-                    <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-start gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                    <div className="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">Speak Clearly</h4>
-                      <p className="text-xs text-gray-600 mt-1">Speak at a normal pace and volume. Don't worry about perfection - practice makes progress!</p>
+                      <h4 className="font-semibold text-gray-900 text-base mb-2">Speak Clearly</h4>
+                      <p className="text-sm text-gray-600">Speak at a normal pace and volume. Don't worry about perfection - practice makes progress!</p>
                     </div>
                   </div>
                   
                   {/* Device Position */}
-                  <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg border border-blue-100">
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">Position Your Device</h4>
-                      <p className="text-xs text-gray-600 mt-1">Keep your device 6-12 inches from your mouth for optimal microphone pickup.</p>
+                      <h4 className="font-semibold text-gray-900 text-base mb-2">Position Your Device</h4>
+                      <p className="text-sm text-gray-600">Keep your device 6-12 inches from your mouth for optimal microphone pickup.</p>
                     </div>
                   </div>
                 </div>
                 
+                {/* Ready Message */}
+                <div className="flex items-center justify-center gap-2 text-gray-600 mb-6">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-base">Ready to start your {language} conversation?</span>
+                </div>
+                
                 {/* Action Button */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Ready to start your {language} conversation?</span>
-                  </div>
+                <div className="flex justify-center">
                   <button
                     onClick={() => {
-                      setBannerDismissed(true);
-                      setShowInfoBanner(false);
+                      setModalDismissed(true);
+                      setShowInfoModal(false);
                     }}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                    className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-base font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     Got it! Let's start
                   </button>
@@ -1766,61 +1766,71 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                   
                   {/* Recording Button - Mobile Optimized Position */}
                   <div className="order-2 lg:hidden">
-                    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
-                      <Button
-                        type="button"
-                        onClick={(e) => handleToggleRecording(e)}
-                        onTouchStart={(e) => e.preventDefault()}
-                        aria-label={isRecording ? "Stop recording" : "Start recording"}
-                        className={`w-full py-4 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg text-base font-semibold ${isRecording 
-                          ? 'bg-[#F75A5A] hover:bg-[#E55252] text-white' 
-                          : (!isAuthenticated() && conversationTimeUp) 
-                            ? 'bg-gray-400 cursor-not-allowed text-white' 
-                            : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
-                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
-                      >
-                        {isAttemptingToRecord ? (
-                          <>
-                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-medium">Initializing...</span>
-                          </>
-                        ) : isRecording ? (
-                          <>
-                            <div className="relative h-6 w-6 flex items-center justify-center">
-                              <div className="audio-wave">
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                              </div>
+                    {/* Show compact recording indicator when recording, full button when not */}
+                    {isRecording ? (
+                      <div className="bg-[#F75A5A] border border-red-300 rounded-lg p-2 shadow-lg">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="relative h-4 w-4 flex items-center justify-center">
+                            <div className="audio-wave">
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
                             </div>
-                            <span className="font-medium">Recording...</span>
-                          </>
-                        ) : (
-                          <>
-                            <MicrophoneIcon isRecording={false} size={24} />
-                            <span className="font-bold">Click to start speaking</span>
-                          </>
+                          </div>
+                          <span className="text-white text-sm font-medium">Recording...</span>
+                          <button
+                            onClick={(e) => handleToggleRecording(e)}
+                            className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-md transition-colors"
+                          >
+                            Stop
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+                        <Button
+                          type="button"
+                          onClick={(e) => handleToggleRecording(e)}
+                          onTouchStart={(e) => e.preventDefault()}
+                          aria-label="Start recording"
+                          className={`w-full py-3 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg text-base font-semibold ${
+                            (!isAuthenticated() && conversationTimeUp) 
+                              ? 'bg-gray-400 cursor-not-allowed text-white' 
+                              : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
+                            ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
+                          disabled={isAttemptingToRecord || isReviewingAnalysis}
+                        >
+                          {isAttemptingToRecord ? (
+                            <>
+                              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span className="font-medium">Initializing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <MicrophoneIcon isRecording={false} size={24} />
+                              <span className="font-bold">Click to start speaking</span>
+                            </>
+                          )}
+                        </Button>
+                        
+                        {/* Error message */}
+                        {localError && (
+                          <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-600 text-center">
+                            <p className="text-sm">{localError}</p>
+                          </div>
                         )}
-                      </Button>
-                      
-                      {/* Error message */}
-                      {localError && (
-                        <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-600 text-center">
-                          <p className="text-sm">{localError}</p>
-                        </div>
-                      )}
-                      
-                      {/* Warning message when content is not in target language */}
-                      {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
-                       !isInTargetLanguage(messages[messages.length - 1].content) && (
-                        <div className="mt-3 px-3 py-2 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-700 text-center">
-                          <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)}</p>
-                        </div>
-                      )}
-                    </div>
+                        
+                        {/* Warning message when content is not in target language */}
+                        {messages.length > 0 && messages[messages.length - 1].role === 'user' && 
+                         !isInTargetLanguage(messages[messages.length - 1].content) && (
+                          <div className="mt-3 px-3 py-2 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-700 text-center">
+                            <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Conversation Transcript Section - Mobile Optimized */}
