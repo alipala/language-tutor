@@ -160,29 +160,29 @@ export default function Home() {
                   {/* Left Column - Content */}
                   <div className="text-left">
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-left">
-                    <span className="block mb-2 text-gray-800">Welcome to</span>
-                    <span className="animated-gradient-text">Your Smart Language Coach</span>
+                    <span className="block mb-2 text-gray-800">Hey there! 👋</span>
+                    <span className="animated-gradient-text">Speak Fluently in 5 Minutes Daily</span>
                   </h1>
                   
                   <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg font-medium">
-                    Your personal AI language tutor that adapts to your learning style and helps you become fluent through natural conversations.
+                    Master any language through real-time AI conversations that adapt to your schedule. From beginner to confident speaker in weeks, not years.
                   </div>
                   
                   <div className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full">
-                    {/* PRIMARY BUTTON - New Vertical Carousel Flow with Original Design */}
+                    {/* PRIMARY BUTTON - Start Speaking Today */}
                     <button
                       onClick={() => window.location.href = '/flow'}
-                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2 self-start"
+                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2 self-start"
                       disabled={isLoading}
                     >
                       {isLoading ? (
                         <>
-                          <div className="animate-spin h-5 w-5 border-2 border-[#4ECFBF] border-t-transparent rounded-full mr-2"></div>
+                          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
                           <span>Loading...</span>
                         </>
                       ) : (
                         <>
-                          <span>Start Your Journey</span>
+                          <span>Start Speaking Today</span>
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                           </svg>
@@ -190,79 +190,89 @@ export default function Home() {
                       )}
                     </button>
                     
-                    {/* TEMPORARILY HIDDEN - Classic Multi-page Flow (can be restored quickly if needed) */}
-                    {/*
+                    {/* SECONDARY BUTTON - See How It Works */}
                     <button
-                      onClick={handleStartLearning}
-                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
+                      onClick={() => scrollToSection('how-it-works')}
+                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2 self-start"
                     >
-                      <span>Use Classic Flow</span>
+                      <span>See How It Works</span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                       </svg>
                     </button>
-                    */}
                   </div>
                   
-                  <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                  <div className="flex flex-wrap gap-6 text-sm text-gray-600">
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg className="w-4 h-4 mr-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
                       </svg>
-                      <span>Personalized feedback</span>
+                      <span>Real-time voice conversations</span>
                     </div>
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg className="w-4 h-4 mr-2 text-[#4ECFBF]" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
                       </svg>
                       <span>6 languages available</span>
                     </div>
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg className="w-4 h-4 mr-2 text-[#4ECFBF]" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
                       </svg>
-                      <span>Real-time corrections</span>
+                      <span>Available 24/7</span>
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-2 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                      </svg>
+                      <span>Personalized learning plans</span>
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                      </svg>
+                      <span>Instant feedback & corrections</span>
                     </div>
                   </div>
                 </div>
                 
                 {/* Right Column - Conversation Demo */}
-                <div className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-shadow duration-300">
+                <div className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-shadow duration-300 transform scale-110 -mt-8">
                   <div className="bg-gray-100 rounded-t-lg p-2 border-b border-gray-200 flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-[#FF5F57] mr-2"></div>
                       <div className="w-3 h-3 rounded-full bg-[#FFBD2E] mr-2"></div>
                       <div className="w-3 h-3 rounded-full bg-[#28CA41]"></div>
                     </div>
-                    <div className="text-center text-sm text-gray-700 font-medium">AI Language Coach</div>
+                    <div className="text-center text-sm text-gray-700 font-medium">Realtime Conversation</div>
                     <div className="w-12"></div>
                   </div>
                   
-                  <div className="max-h-80 overflow-y-auto p-4 space-y-4">
+                  <div className="h-80 overflow-hidden p-3 space-y-2">
                     {/* Coach Message */}
                     <div className="flex items-start">
-                      <div className="w-8 h-8 rounded-full bg-[#3a9e92] flex items-center justify-center text-white shrink-0 mr-3">
-                        AI
+                      <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
+                        <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
                       </div>
-                      <div className="bg-[#e6f7f5] rounded-lg p-3 text-gray-700 max-w-[80%] border border-[#3a9e92]/20">
-                        <p>Hi there! I'd love to help you practice your English today. Let's talk about your hobbies. What do you enjoy doing in your free time?</p>
+                      <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
+                        <p className="text-sm">Hi there! Let's talk about your hobbies. What do you enjoy doing?</p>
                       </div>
                     </div>
                     
                     {/* User Message */}
                     <div className="flex items-start justify-end">
-                      <div className="bg-[#edf2fd] rounded-lg p-3 text-gray-700 max-w-[80%] mr-3 border border-blue-500/20">
-                        <p>I enjoy playing tennis and reading books about history.</p>
+                      <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
+                        <p className="text-sm">I enjoy playing tennis and reading history books.</p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
                         You
                       </div>
                     </div>
                     
                     {/* Feedback */}
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
                       <div className="text-xs text-gray-600 font-medium mb-1">Feedback:</div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="grid grid-cols-3 gap-1 text-xs">
                         <div>
                           <span className="text-green-600 font-medium">Pronunciation: </span>
                           <span className="text-gray-700">90%</span>
@@ -280,23 +290,38 @@ export default function Home() {
                     
                     {/* Coach Reply */}
                     <div className="flex items-start">
-                      <div className="w-8 h-8 rounded-full bg-[#3a9e92] flex items-center justify-center text-white shrink-0 mr-3">
-                        AI
+                      <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
+                        <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
                       </div>
-                      <div className="bg-[#e6f7f5] rounded-lg p-3 text-gray-700 max-w-[80%] border border-[#3a9e92]/20">
-                        <p>That's great! Tennis is excellent for fitness. What period of history interests you the most?</p>
+                      <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
+                        <p className="text-sm">Great! What period of history interests you most?</p>
+                      </div>
+                    </div>
+                    
+                    {/* User Reply */}
+                    <div className="flex items-start justify-end">
+                      <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
+                        <p className="text-sm">I'm fascinated by ancient Rome and medieval Europe.</p>
+                      </div>
+                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
+                        You
                       </div>
                     </div>
                     
                     {/* Input Area */}
-                    <div className="mt-auto border-t border-gray-200 pt-3">
-                      <div className="bg-gray-100 rounded-full flex items-center p-1 pr-3">
-                        <button className="w-8 h-8 rounded-full bg-[#3a9e92] flex items-center justify-center text-white mr-2">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                          </svg>
-                        </button>
-                        <div className="text-gray-500 text-sm">Press to speak...</div>
+                    <div className="mt-auto border-t border-gray-200 pt-2">
+                      <div className="bg-gray-100 rounded-full flex items-center p-1 pr-2 w-1/2">
+                        <div className="relative">
+                          <button className="w-6 h-6 rounded-full bg-[#F75A5A] flex items-center justify-center text-white mr-2 relative z-10">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                          </button>
+                          {/* Sound Circle Animation */}
+                          <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-30 animate-ping"></div>
+                          <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-20 animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                        </div>
+                        <div className="text-gray-500 text-xs">Press to speak...</div>
                       </div>
                     </div>
                   </div>
