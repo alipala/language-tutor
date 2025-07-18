@@ -1959,63 +1959,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Desktop Recording Button - Hidden on Mobile */}
-                    <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
-                      <Button
-                        type="button"
-                        onClick={(e) => handleToggleRecording(e)}
-                        onTouchStart={(e) => e.preventDefault()}
-                        aria-label={isRecording ? "Stop recording" : "Start recording"}
-                        className={`w-full py-3 sm:py-4 relative flex items-center justify-center gap-2 sm:gap-3 transition-all duration-300 rounded-lg ${isRecording 
-                          ? 'bg-[#F75A5A] hover:bg-[#E55252]' 
-                          : (!isAuthenticated() && conversationTimeUp) 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
-                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
-                      >
-                        {isAttemptingToRecord ? (
-                          <>
-                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-medium text-white">Initializing microphone...</span>
-                          </>
-                        ) : isRecording ? (
-                          <>
-                            <div className="relative h-6 w-6 flex items-center justify-center">
-                              <div className="audio-wave">
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                              </div>
-                            </div>
-                            <span className="font-medium text-white">Recording...</span>
-                          </>
-                        ) : (
-                          <>
-                            <MicrophoneIcon isRecording={false} size={20} />
-                            <span className="font-medium text-gray-800 font-bold">Click to start speaking</span>
-                          </>
-                        )}
-                      </Button>
-                      
-                      {/* Error message */}
-                      {localError && (
-                        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto">
-                          <p>{localError}</p>
-                        </div>
-                      )}
-                      
-                      {/* Warning message when content is not in target language */}
-                      {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
-                       !isInTargetLanguage(messages[messages.length - 1].content) && (
-                        <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
-                          <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
                 
