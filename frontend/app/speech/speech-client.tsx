@@ -1754,7 +1754,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     </div>
                     
                     {/* Desktop Recording Button - Under Analysis Section */}
-                    <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
+                    <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 px-3 sm:px-4 lg:px-6 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
                       <Button
                         type="button"
                         onClick={(e) => handleToggleRecording(e)}
