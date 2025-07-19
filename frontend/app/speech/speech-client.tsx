@@ -127,6 +127,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
   const [voiceLoading, setVoiceLoading] = useState(true);
   
+  // Information modal state
+  const [showInfoModal, setShowInfoModal] = useState(true);
+  const [modalDismissed, setModalDismissed] = useState(false);
+  
   // Voice data mapping for avatars and names
   const VOICE_DATA = {
     alloy: { name: 'Alloy', avatar: '/images/tutors/alloy.svg', personality: 'Professional and encouraging' },
@@ -1454,6 +1458,108 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           </p>
         </div>
 
+        {/* Information Modal - Speech Optimization Tips */}
+        {showInfoModal && !modalDismissed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">💡 Important Information</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setModalDismissed(true);
+                    setShowInfoModal(false);
+                  }}
+                  className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Modal Content */}
+              <div className="p-4">
+                {/* 2x2 Grid Layout */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {/* Quiet Environment */}
+                  <div className="flex flex-col items-center text-center p-3 bg-green-50 rounded-lg border border-green-100">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-1">Find a Quiet Space</h4>
+                    <p className="text-xs text-gray-600">Choose a location with minimal background noise for better speech recognition.</p>
+                  </div>
+                  
+                  {/* Headphones */}
+                  <div className="flex flex-col items-center text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 18V5l12-2v13M9 18l12-2M9 18l-4-2V4l4 2M21 16l-4-2M9 10l12-2" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-1">Use Headphones</h4>
+                    <p className="text-xs text-gray-600">Headphones prevent audio feedback and provide clearer AI tutor responses.</p>
+                  </div>
+                  
+                  {/* Clear Speech */}
+                  <div className="flex flex-col items-center text-center p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mb-2">
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-1">Speak Clearly</h4>
+                    <p className="text-xs text-gray-600">Speak at a normal pace and volume. Practice makes progress!</p>
+                  </div>
+                  
+                  {/* Device Position */}
+                  <div className="flex flex-col items-center text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-1">Position Your Device</h4>
+                    <p className="text-xs text-gray-600">Keep your device 6-12 inches from your mouth for optimal pickup.</p>
+                  </div>
+                </div>
+                
+                {/* Ready Message */}
+                <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm">Ready to start your {language} conversation?</span>
+                </div>
+                
+                {/* Action Button */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => {
+                      setModalDismissed(true);
+                      setShowInfoModal(false);
+                    }}
+                    className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    Got it! Let's start
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* User Selection Summary */}
         <div className="bg-white border-2 border-[#4ECFBF] rounded-xl p-4 mb-4 mx-auto max-w-4xl relative z-10 shadow-lg">
           <div className="flex flex-wrap items-center justify-center gap-4 text-gray-800">
@@ -1527,53 +1633,119 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         </div>
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
-          {/* Main Content Area - Redesigned for better responsiveness and alignment */}
+          {/* Main Content Area - Mobile-Optimized Layout */}
           <div className="w-full">
-            {/* Transcript Sections - Now shown immediately */}
+            {/* Transcript Sections - Responsive Design */}
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
                   {/* Real Time Sentence Analysis Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col h-[400px] sm:h-[450px] md:h-[500px] lg:h-[650px]">
-                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 sm:mb-4 text-[#F75A5A] flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      Real Time Sentence Analysis
-                      {isProcessingBackground && (
-                        <div className="ml-2 w-4 h-4 border-2 border-[#F75A5A] border-t-transparent rounded-full animate-spin"></div>
-                      )}
-                    </h3>
+                  <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
+                    h-[280px] sm:h-[320px] md:h-[380px] lg:h-[650px]">
                     
-                    {/* Fixed Height Background Analysis Results with Scrolling */}
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-grow overflow-hidden">
-                      <div className="h-full overflow-y-auto space-y-3" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 lg:pb-4 border-b border-gray-100">
+                      <h3 className="text-sm sm:text-base lg:text-xl font-semibold text-[#F75A5A] flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span className="hidden sm:inline">Real Time Sentence Analysis</span>
+                        <span className="sm:hidden">Sentence Analysis</span>
+                      </h3>
+                      
+                      {/* Analysis Counter and Status */}
+                      <div className="flex items-center gap-2">
+                        {isProcessingBackground && (
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-[#F75A5A] border-t-transparent rounded-full animate-spin"></div>
+                        )}
+                        {backgroundAnalyses.length > 0 && (
+                          <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {backgroundAnalyses.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Analysis Display */}
+                    <div className="flex-1 p-3 sm:p-4 lg:p-6 pt-0 overflow-hidden">
+                      <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 h-full flex flex-col">
                         {backgroundAnalyses.length > 0 ? (
-                          backgroundAnalyses.map((analysis, index) => (
-                            <BackgroundAnalysisCard
-                              key={analysis.analysis_id}
-                              analysis={analysis}
-                              onClose={() => {
-                                setBackgroundAnalyses(prev => prev.filter((_, i) => i !== index));
-                              }}
-                            />
-                          ))
+                          <div className="flex-1 overflow-hidden">
+                            {/* Mobile: Show one analysis at a time with navigation */}
+                            <div className="h-full flex flex-col lg:hidden">
+                              <div className="flex-1 p-3 overflow-y-auto">
+                                <BackgroundAnalysisCard
+                                  analysis={backgroundAnalyses[backgroundAnalyses.length - 1]}
+                                  onClose={() => {
+                                    setBackgroundAnalyses(prev => prev.slice(0, -1));
+                                  }}
+                                />
+                              </div>
+                              
+                              {/* Navigation for multiple analyses on mobile */}
+                              {backgroundAnalyses.length > 1 && (
+                                <div className="border-t border-[#4ECFBF]/20 p-2 flex items-center justify-between bg-white/50">
+                                  <button
+                                    onClick={() => {
+                                      const current = backgroundAnalyses[backgroundAnalyses.length - 1];
+                                      setBackgroundAnalyses(prev => [current, ...prev.slice(0, -1)]);
+                                    }}
+                                    className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    Previous
+                                  </button>
+                                  
+                                  <span className="text-xs text-gray-500">
+                                    {backgroundAnalyses.length} of {backgroundAnalyses.length}
+                                  </span>
+                                  
+                                  <button
+                                    onClick={() => {
+                                      const [first, ...rest] = backgroundAnalyses;
+                                      setBackgroundAnalyses([...rest, first]);
+                                    }}
+                                    className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
+                                  >
+                                    Next
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Desktop: Show all analyses with scrolling */}
+                            <div className="hidden lg:block h-full p-3 sm:p-4 lg:p-6 overflow-y-auto space-y-3">
+                              {backgroundAnalyses.map((analysis, index) => (
+                                <BackgroundAnalysisCard
+                                  key={analysis.analysis_id}
+                                  analysis={analysis}
+                                  onClose={() => {
+                                    setBackgroundAnalyses(prev => prev.filter((_, i) => i !== index));
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         ) : (
-                          <div className="flex items-center justify-center h-full text-gray-500">
+                          <div className="flex items-center justify-center h-full text-gray-500 p-3">
                             {isProcessingBackground ? (
-                              <div className="flex flex-col items-center">
-                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                <span className="text-lg font-medium">Analyzing your sentence...</span>
-                                <span className="text-sm text-gray-400 mt-2">AI is evaluating your speech for learning feedback</span>
+                              <div className="flex flex-col items-center text-center">
+                                <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2 sm:mb-4"></div>
+                                <span className="text-sm sm:text-lg font-medium">Analyzing...</span>
+                                <span className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">AI is evaluating your speech</span>
                               </div>
                             ) : (
                               <div className="text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 lg:h-16 lg:w-16 mx-auto mb-2 sm:mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                 </svg>
-                                <p className="text-lg font-medium mb-2">Sentence Analysis Results</p>
-                                <p className="text-sm text-gray-400">Start speaking to see AI analysis of your sentences</p>
-                                <p className="text-xs text-gray-400 mt-2">Analysis appears automatically for substantial sentences</p>
+                                <p className="text-sm sm:text-lg font-medium mb-1 sm:mb-2">Analysis Results</p>
+                                <p className="text-xs sm:text-sm text-gray-400">Start speaking to see AI feedback</p>
                               </div>
                             )}
                           </div>
@@ -1581,7 +1753,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       </div>
                     </div>
                     
-                    <div className="sticky bottom-0 left-0 right-0 w-full mt-auto py-3 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
+                    {/* Desktop Recording Button - Under Analysis Section */}
+                    <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 px-3 sm:px-4 lg:px-6 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
                       <Button
                         type="button"
                         onClick={(e) => handleToggleRecording(e)}
@@ -1620,160 +1793,231 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                           </>
                         )}
                       </Button>
+                      
+                      {/* Error message */}
+                      {localError && (
+                        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto">
+                          <p>{localError}</p>
+                        </div>
+                      )}
+                      
+                      {/* Warning message when content is not in target language */}
+                      {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
+                       !isInTargetLanguage(messages[messages.length - 1].content) && (
+                        <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
+                          <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  
+                  {/* Conversation Transcript Section */}
+                  <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
+                    h-[320px] sm:h-[380px] md:h-[420px] lg:h-[650px]">
+                    
+                    <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 lg:pb-4 border-b border-gray-100">
+                      <h3 className="text-sm sm:text-base lg:text-xl font-semibold text-[#F75A5A] flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <span className="hidden sm:inline">Conversation Transcript</span>
+                        <span className="sm:hidden">Conversation</span>
+                      </h3>
+                      
+                      {/* Message Counter */}
+                      {processedMessages.length > 0 && (
+                        <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {processedMessages.length}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 p-3 sm:p-4 lg:p-6 pt-0 overflow-hidden">
+                      <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 h-full overflow-y-auto custom-scrollbar flex flex-col">
+                        <div className="space-y-4 flex-1 flex flex-col p-3">
+                          {processedMessages.length > 0 ? (
+                            // Sort messages by timestamp if available, otherwise use the array order
+                            processedMessages
+                              .sort((a: any, b: any) => {
+                                if (a.timestamp && b.timestamp) {
+                                  return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                                }
+                                return 0;
+                              })
+                              .map((message: any, index: number) => {
+                                // Parse timestamp for display or use current time as fallback
+                                const messageTime = message.timestamp 
+                                  ? new Date(message.timestamp) 
+                                  : new Date();
+                                
+                                // Format the time for display
+                                const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                
+                                return (
+                                  <div 
+                                    key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
+                                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                                  >
+                                    {message.role !== 'user' ? (
+                                      <div className="flex-shrink-0 h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md overflow-hidden">
+                                        {!voiceLoading ? (
+                                          <img 
+                                            src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
+                                            alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              console.error('Failed to load tutor avatar:', e);
+                                              (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
+                                            }}
+                                          />
+                                        ) : (
+                                          <span className="text-xs font-bold text-gray-800">T</span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex-shrink-0 h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-[#D6E6FF] flex items-center justify-center ml-2 order-last shadow-md">
+                                        <span className="text-xs font-bold text-gray-800">{firstName.charAt(0)}</span>
+                                      </div>
+                                    )}
+                                    <div 
+                                      className={`max-w-[85%] sm:max-w-[80%] break-words p-2 sm:p-3 lg:p-4 rounded-2xl shadow-md ${
+                                        message.role === 'user' 
+                                          ? 'bg-[#FFA955] text-white ml-2 rounded-tr-none'
+                                          : 'bg-[#AFF4EB] text-gray-800 mr-2 rounded-tl-none'
+                                      }`}
+                                      style={{
+                                        wordBreak: 'break-word',
+                                        overflowWrap: 'break-word',
+                                        whiteSpace: 'pre-wrap'
+                                      }}
+                                    >
+                                      <div className="flex items-center justify-between mb-1 text-gray-800">
+                                        <span className="text-xs font-semibold">
+                                          {message.role === 'user' ? firstName : `${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} - AI Tutor`}
+                                        </span>
+                                        <span className="text-xs opacity-75 ml-2">
+                                          {timeDisplay}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs sm:text-sm leading-relaxed mt-1 text-gray-800">{message.content}</p>
+                                      
+                                      {/* Analysis indicator for user messages */}
+                                      {message.role === 'user' && message.content.trim().length > 0 && (
+                                        <div className="mt-2 flex justify-end">
+                                          {/* Check if this message was analyzed in background */}
+                                          {backgroundAnalyses.some(analysis => 
+                                            analysis.recognized_text.toLowerCase().includes(message.content.toLowerCase().substring(0, 20))
+                                          ) ? (
+                                            <div className="flex items-center space-x-1 text-green-600">
+                                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                              <span className="text-xs font-medium">Analyzed</span>
+                                            </div>
+                                          ) : (() => {
+                                            // Use the same logic as the actual analysis function to avoid UI/logic mismatch
+                                            const recentUserMessages = processedMessages
+                                              .filter(msg => msg.role === 'user')
+                                              .slice(-5)
+                                              .map(msg => msg.content)
+                                              .filter(content => content !== message.content); // Exclude current message
+                                            
+                                            const analysisDecision = shouldConsiderForAnalysis(message.content, recentUserMessages, language);
+                                            
+                                            if (analysisDecision.shouldAnalyze) {
+                                              return (
+                                                <div className="flex items-center space-x-1 text-blue-600">
+                                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                                  <span className="text-xs font-medium">Being analyzed...</span>
+                                                </div>
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="flex items-center space-x-1 text-gray-500">
+                                                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                                  <span className="text-xs font-medium">Skipped - {analysisDecision.reason}</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                          ) : (
+                            <div className="flex justify-center items-center h-full flex-1">
+                              <div className="text-center p-4 sm:p-6 rounded-lg bg-[#4ECFBF]/10 border border-[#4ECFBF]/20 animate-fadeIn w-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-4 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <p className="text-[#4ECFBF] font-medium text-sm sm:text-lg">Your conversation will appear here</p>
+                                <p className="text-slate-400 text-xs sm:text-base mt-1 sm:mt-2">Click the microphone button to start talking</p>
+                              </div>
+                            </div>
+                          )}
+                          <div ref={messagesEndRef} className="mt-auto" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Mobile Recording Button - Under Conversation Section */}
+                <div className="lg:hidden mt-4">
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+                    <Button
+                      type="button"
+                      onClick={(e) => handleToggleRecording(e)}
+                      onTouchStart={(e) => e.preventDefault()}
+                      aria-label={isRecording ? "Stop recording" : "Start recording"}
+                      className={`w-full py-4 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg text-base font-semibold ${isRecording 
+                        ? 'bg-[#F75A5A] hover:bg-[#E55252] text-white' 
+                        : (!isAuthenticated() && conversationTimeUp) 
+                          ? 'bg-gray-400 cursor-not-allowed text-white' 
+                          : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
+                        ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
+                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
+                    >
+                      {isAttemptingToRecord ? (
+                        <>
+                          <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span className="font-medium">Initializing...</span>
+                        </>
+                      ) : isRecording ? (
+                        <>
+                          <div className="relative h-6 w-6 flex items-center justify-center">
+                            <div className="audio-wave">
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                              <span className="audio-wave-bar"></span>
+                            </div>
+                          </div>
+                          <span className="font-medium">Recording...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MicrophoneIcon isRecording={false} size={24} />
+                          <span className="font-bold">Click to start speaking</span>
+                        </>
+                      )}
+                    </Button>
                     
                     {/* Error message */}
                     {localError && (
-                      <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto">
-                        <p>{localError}</p>
+                      <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-600 text-center">
+                        <p className="text-sm">{localError}</p>
                       </div>
                     )}
                     
                     {/* Warning message when content is not in target language */}
                     {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
                      !isInTargetLanguage(messages[messages.length - 1].content) && (
-                      <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
-                        <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
+                      <div className="mt-3 px-3 py-2 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-700 text-center">
+                        <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)}</p>
                       </div>
                     )}
-                  </div>
-                  
-                  {/* Conversation Transcript Section */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg flex flex-col h-[450px] sm:h-[500px] md:h-[550px] lg:h-[650px]">
-                    <div className="flex items-center justify-between mb-2 sm:mb-4">
-                      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#F75A5A] flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        Conversation Transcript
-                      </h3>
-                    </div>
-                    <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 p-3 sm:p-4 lg:p-6 flex-1 min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[450px] max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar flex flex-col">
-                      <div className="space-y-4 flex-1 flex flex-col">
-                        {processedMessages.length > 0 ? (
-                          // Sort messages by timestamp if available, otherwise use the array order
-                          processedMessages
-                            .sort((a: any, b: any) => {
-                              if (a.timestamp && b.timestamp) {
-                                return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-                              }
-                              return 0;
-                            })
-                            .map((message: any, index: number) => {
-                              // Parse timestamp for display or use current time as fallback
-                              const messageTime = message.timestamp 
-                                ? new Date(message.timestamp) 
-                                : new Date();
-                              
-                              // Format the time for display
-                              const timeDisplay = messageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                              
-                              return (
-                                <div 
-                                  key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
-                                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-                                >
-                                  {message.role !== 'user' ? (
-                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md overflow-hidden">
-                                      {!voiceLoading ? (
-                                        <img 
-                                          src={VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.avatar || '/images/tutors/alloy.svg'} 
-                                          alt={`${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} Avatar`}
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            console.error('Failed to load tutor avatar:', e);
-                                            (e.target as HTMLImageElement).src = '/images/tutors/alloy.svg';
-                                          }}
-                                        />
-                                      ) : (
-                                        <span className="text-xs font-bold text-gray-800">T</span>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#D6E6FF] flex items-center justify-center ml-2 order-last shadow-md">
-                                      <span className="text-xs font-bold text-gray-800">{firstName.charAt(0)}</span>
-                                    </div>
-                                  )}
-                                  <div 
-                                    className={`max-w-[85%] sm:max-w-[80%] break-words p-3 sm:p-4 lg:p-5 rounded-2xl shadow-md ${
-                                      message.role === 'user' 
-                                        ? 'bg-[#FFA955] text-white ml-2 rounded-tr-none'
-                                        : 'bg-[#AFF4EB] text-gray-800 mr-2 rounded-tl-none'
-                                    }`}
-                                    style={{
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'break-word',
-                                      whiteSpace: 'pre-wrap'
-                                    }}
-                                  >
-                                    <div className="flex items-center justify-between mb-1 text-gray-800">
-                                      <span className="text-xs font-semibold">
-                                        {message.role === 'user' ? firstName : `${VOICE_DATA[selectedVoice as keyof typeof VOICE_DATA]?.name || 'Alloy'} - AI Tutor`}
-                                      </span>
-                                      <span className="text-xs opacity-75 ml-2">
-                                        {timeDisplay}
-                                      </span>
-                                    </div>
-                                    <p className="text-xs sm:text-sm leading-relaxed mt-1 text-gray-800">{message.content}</p>
-                                    
-                    {/* Analysis indicator for user messages */}
-                    {message.role === 'user' && message.content.trim().length > 0 && (
-                      <div className="mt-2 flex justify-end">
-                        {/* Check if this message was analyzed in background */}
-                        {backgroundAnalyses.some(analysis => 
-                          analysis.recognized_text.toLowerCase().includes(message.content.toLowerCase().substring(0, 20))
-                        ) ? (
-                          <div className="flex items-center space-x-1 text-green-600">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs font-medium">Analyzed</span>
-                          </div>
-                        ) : (() => {
-                          // Use the same logic as the actual analysis function to avoid UI/logic mismatch
-                          const recentUserMessages = processedMessages
-                            .filter(msg => msg.role === 'user')
-                            .slice(-5)
-                            .map(msg => msg.content)
-                            .filter(content => content !== message.content); // Exclude current message
-                          
-                          const analysisDecision = shouldConsiderForAnalysis(message.content, recentUserMessages, language);
-                          
-                          if (analysisDecision.shouldAnalyze) {
-                            return (
-                              <div className="flex items-center space-x-1 text-blue-600">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs font-medium">Being analyzed...</span>
-                              </div>
-                            );
-                          } else {
-                            return (
-                              <div className="flex items-center space-x-1 text-gray-500">
-                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                                <span className="text-xs font-medium">Skipped - {analysisDecision.reason}</span>
-                              </div>
-                            );
-                          }
-                        })()}
-                      </div>
-                    )}
-                                  </div>
-                                </div>
-                              );
-                            })
-                        ) : (
-                          <div className="flex justify-center items-center h-full flex-1">
-                            <div className="text-center p-6 rounded-lg bg-[#4ECFBF]/10 border border-[#4ECFBF]/20 animate-fadeIn w-full">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                              </svg>
-                              <p className="text-[#4ECFBF] font-medium text-lg">Your conversation will appear here</p>
-                              <p className="text-slate-400 text-base mt-2">Click the microphone button to start talking</p>
-                            </div>
-                          </div>
-                        )}
-                        <div ref={messagesEndRef} className="mt-auto" />
-                      </div>
-                    </div>
-                    <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-[#4ECFBF] h-1 w-1/3 rounded-full opacity-70"></div>
                   </div>
                 </div>
               </div>
