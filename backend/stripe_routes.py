@@ -173,19 +173,44 @@ async def track_usage(
 
 @router.post("/track-speaking-time")
 async def track_speaking_time(
-    request: SpeakingTimeTrackingRequest,
     http_request: Request,
     current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
 ):
     """Track speaking time and optionally increment session count - supports both authenticated and beacon requests"""
     try:
+        # Parse request body
+        body = await http_request.body()
+        if not body:
+            raise HTTPException(status_code=400, detail="Request body is required")
+        
+        import json
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON in request body")
+        
         # Handle case where user is not authenticated (e.g., sendBeacon from page unload)
         if not current_user:
-            logger.warning("[PARTIAL_SESSION] No authenticated user found - skipping speaking time tracking")
-            return {"success": False, "message": "Authentication required"}
+            # Try to authenticate using token from request body (for sendBeacon)
+            token = data.get('token')
+            if token:
+                try:
+                    from auth import get_optional_current_user
+                    current_user = await get_optional_current_user(token)
+                    logger.info("[PARTIAL_SESSION] Successfully authenticated user from beacon token")
+                except Exception as auth_error:
+                    logger.warning(f"[PARTIAL_SESSION] Failed to authenticate from beacon token: {str(auth_error)}")
+            
+            if not current_user:
+                logger.warning("[PARTIAL_SESSION] No authenticated user found - skipping speaking time tracking")
+                return {"success": False, "message": "Authentication required"}
         
-        # Ensure the request is for the current user
-        request.user_id = current_user.id
+        # Create request object
+        request = SpeakingTimeTrackingRequest(
+            speaking_minutes=data.get('speaking_minutes', 0.0),
+            session_completed=data.get('session_completed', False),
+            user_id=current_user.id
+        )
         
         # Log the tracking request
         logger.info(f"[SPEAKING_TIME] Tracking {request.speaking_minutes:.1f} minutes for user {current_user.id}, session_completed: {request.session_completed}")

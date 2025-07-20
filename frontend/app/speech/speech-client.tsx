@@ -1359,12 +1359,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           console.log('[PARTIAL_SESSION] Auto-saving partial session on page unload:', durationMinutes.toFixed(1), 'minutes');
           
           // Use sendBeacon for reliable tracking during page unload
+          const token = localStorage.getItem('token');
           const trackingData = {
             speaking_minutes: durationMinutes,
-            session_completed: false // Mark as partial session
+            session_completed: false, // Mark as partial session
+            token: token // Include token for authentication
           };
           
-          const token = localStorage.getItem('token');
           if (token && navigator.sendBeacon) {
             const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
             const success = navigator.sendBeacon(
@@ -1383,8 +1384,34 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      // Only intercept if there are messages, user is authenticated, and session is not completed
-      if (user && processedMessages.length > 0 && !sessionCompleted) {
+      // Auto-track speaking time for partial sessions BEFORE showing modal
+      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
+        // Calculate duration for partial session
+        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+        
+        // Only track if session is meaningful (>30 seconds)
+        if (durationMinutes > 0.5) {
+          console.log('[PARTIAL_SESSION] Auto-saving partial session on back button:', durationMinutes.toFixed(1), 'minutes');
+          
+          // Use sendBeacon for reliable tracking during navigation
+          const token = localStorage.getItem('token');
+          const trackingData = {
+            speaking_minutes: durationMinutes,
+            session_completed: false, // Mark as partial session
+            token: token // Include token for authentication
+          };
+          
+          if (token && navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
+            const success = navigator.sendBeacon(
+              `${window.location.origin}/api/stripe/track-speaking-time`,
+              blob
+            );
+            console.log('[PARTIAL_SESSION] Back button beacon sent:', success);
+          }
+        }
+        
+        // Then handle the navigation prevention
         e.preventDefault();
         // Push the current state back to prevent navigation
         window.history.pushState(null, '', window.location.href);
