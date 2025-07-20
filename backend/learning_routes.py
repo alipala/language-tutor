@@ -406,7 +406,9 @@ async def create_learning_plan(
             "created_at": datetime.utcnow().isoformat(),
             "total_sessions": total_sessions,
             "completed_sessions": 0,
-            "progress_percentage": 0.0
+            "progress_percentage": 0.0,
+            "practice_minutes_used": 0.0,
+            "total_practice_minutes": total_sessions * 5.0  # Assume 5 minutes per session average
         }
         
         # If user is authenticated and assessment data is provided, update user profile
@@ -723,14 +725,24 @@ async def update_session_progress(
             detail=f"Error updating session progress: {str(e)}"
         )
 
+class SessionSummaryRequest(BaseModel):
+    """Model for session summary with optional duration"""
+    messages: Optional[List[Dict[str, Any]]] = []
+    duration_minutes: Optional[float] = 0.0
+    language: Optional[str] = None
+    level: Optional[str] = None
+    topic: Optional[str] = None
+
 @router.post("/session-summary")
 async def save_session_summary(
     plan_id: str,
     session_summary: str,
+    request: Optional[SessionSummaryRequest] = None,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Save a session summary to the correct week in the learning plan structure
+    Also tracks speaking minutes for the learning plan
     """
     try:
         # Find the learning plan
@@ -796,17 +808,32 @@ async def save_session_summary(
         new_completed = session_number
         progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
         
+        # Track speaking minutes if provided in request
+        duration_minutes = 0.0
+        if request and request.duration_minutes:
+            duration_minutes = request.duration_minutes
+            print(f"[SESSION_SUMMARY] 🕐 Tracking {duration_minutes} minutes of speaking time")
+        
+        # Update practice minutes used in learning plan
+        current_minutes_used = learning_plan.get("practice_minutes_used", 0.0)
+        new_minutes_used = current_minutes_used + duration_minutes
+        
         # Update the learning plan
+        update_fields = {
+            "plan_content.weekly_schedule": weekly_schedule,
+            "completed_sessions": new_completed,
+            "progress_percentage": progress_percentage,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        # Add minute tracking if duration was provided
+        if duration_minutes > 0:
+            update_fields["practice_minutes_used"] = new_minutes_used
+            print(f"[SESSION_SUMMARY] 📊 Updated learning plan minutes: {current_minutes_used} → {new_minutes_used}")
+        
         result = await learning_plans_collection.update_one(
             {"_id": learning_plan["_id"]},
-            {
-                "$set": {
-                    "plan_content.weekly_schedule": weekly_schedule,
-                    "completed_sessions": new_completed,
-                    "progress_percentage": progress_percentage,
-                    "updated_at": datetime.utcnow().isoformat()
-                }
-            }
+            {"$set": update_fields}
         )
         
         if result.modified_count > 0:
