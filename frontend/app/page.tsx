@@ -172,7 +172,7 @@ export default function Home() {
                     {/* PRIMARY BUTTON - Start Speaking Today */}
                     <button
                       onClick={() => window.location.href = '/flow'}
-                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2 self-start"
+                      className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
                       disabled={isLoading}
                     >
                       {isLoading ? (
@@ -193,7 +193,7 @@ export default function Home() {
                     {/* SECONDARY BUTTON - See How It Works */}
                     <button
                       onClick={() => scrollToSection('how-it-works')}
-                      className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2 self-start"
+                      className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
                     >
                       <span>See How It Works</span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
