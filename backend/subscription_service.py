@@ -6,7 +6,7 @@ import os
 from database import database
 from models import (
     SubscriptionPlan, SubscriptionLimits, SubscriptionStatus, 
-    UsageTrackingRequest, LearningPlanPreservation
+    UsageTrackingRequest, SpeakingTimeTrackingRequest, LearningPlanPreservation
 )
 from bson import ObjectId
 
@@ -36,6 +36,9 @@ class SubscriptionService:
             annual_sessions=3,  # Same as monthly for free tier
             monthly_assessments=1,
             annual_assessments=1,  # Same as monthly for free tier
+            # NEW: Minute limits for duration-based tracking
+            monthly_minutes=15,  # 3 sessions × 5 minutes
+            annual_minutes=15,   # Same as monthly for free tier
             features=[
                 "3 practice sessions (5 minutes each) monthly",
                 "1 speaking assessment monthly",
@@ -52,6 +55,9 @@ class SubscriptionService:
             annual_sessions=360,  # 30 sessions × 12 months
             monthly_assessments=2,
             annual_assessments=24,  # 2 assessments × 12 months
+            # NEW: Minute limits for duration-based tracking
+            monthly_minutes=150,  # 30 sessions × 5 minutes
+            annual_minutes=1800,  # 360 sessions × 5 minutes
             features=[
                 "30 practice sessions (5 minutes each) monthly",
                 "2 speaking assessments monthly",
@@ -69,6 +75,9 @@ class SubscriptionService:
             annual_sessions=-1,   # Unlimited
             monthly_assessments=-1,  # Unlimited
             annual_assessments=-1,   # Unlimited
+            # NEW: Minute limits for duration-based tracking
+            monthly_minutes=-1,  # Unlimited
+            annual_minutes=-1,   # Unlimited
             features=[
                 "Unlimited practice sessions",
                 "Unlimited assessments",
@@ -222,9 +231,11 @@ class SubscriptionService:
         if period == "annual":
             sessions_limit = plan.annual_sessions
             assessments_limit = plan.annual_assessments
+            minutes_limit = plan.annual_minutes
         else:
             sessions_limit = plan.monthly_sessions
             assessments_limit = plan.monthly_assessments
+            minutes_limit = plan.monthly_minutes
         
         # Get current period dates
         period_start = user_data.get("current_period_start")
@@ -272,10 +283,12 @@ class SubscriptionService:
         # Get current usage
         sessions_used = user_data.get("practice_sessions_used", 0)
         assessments_used = user_data.get("assessments_used", 0)
+        minutes_used = user_data.get("practice_minutes_used", 0.0)
         
         # Calculate remaining
         sessions_remaining = sessions_limit - sessions_used if sessions_limit != -1 else -1
         assessments_remaining = assessments_limit - assessments_used if assessments_limit != -1 else -1
+        minutes_remaining = minutes_limit - minutes_used if minutes_limit != -1 else -1
         
         return SubscriptionLimits(
             plan=plan_id,
@@ -286,9 +299,13 @@ class SubscriptionService:
             assessments_used=assessments_used,
             sessions_remaining=sessions_remaining,
             assessments_remaining=assessments_remaining,
+            # NEW: Minute tracking fields
+            minutes_limit=minutes_limit,
+            minutes_used=minutes_used,
+            minutes_remaining=minutes_remaining,
             period_start=period_start,
             period_end=period_end,
-            is_unlimited=(sessions_limit == -1 and assessments_limit == -1)
+            is_unlimited=(sessions_limit == -1 and assessments_limit == -1 and minutes_limit == -1)
         )
     
     @classmethod
@@ -327,14 +344,60 @@ class SubscriptionService:
             return False
     
     @classmethod
+    async def track_speaking_time(cls, request: SpeakingTimeTrackingRequest) -> bool:
+        """Track speaking time and optionally increment session count"""
+        try:
+            user_id = request.user_id
+            speaking_minutes = request.speaking_minutes
+            session_completed = request.session_completed
+            
+            # Get current subscription status to check minute limits
+            status = await cls.get_user_subscription_status(user_id)
+            
+            # Check if user has remaining minutes (allow current session to complete even if over limit)
+            if status.limits and status.limits.minutes_remaining is not None and status.limits.minutes_remaining <= 0:
+                logger.warning(f"User {user_id} has no speaking time remaining: {status.limits.minutes_remaining} minutes")
+                # Still track the time but warn about limit
+            
+            # Always track speaking minutes
+            update_data = {"$inc": {"practice_minutes_used": speaking_minutes}}
+            
+            # Only increment session count if session was completed (5+ minutes + saved)
+            if session_completed:
+                update_data["$inc"]["practice_sessions_used"] = 1
+                logger.info(f"Session completed for user {user_id}: +1 session, +{speaking_minutes} minutes")
+            else:
+                logger.info(f"Partial session for user {user_id}: +0 sessions, +{speaking_minutes} minutes")
+            
+            await database["users"].update_one(
+                get_user_query(user_id),
+                update_data
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error tracking speaking time for user {user_id}: {str(e)}")
+            return False
+    
+    @classmethod
     async def can_access_feature(cls, user_id: str, feature_type: str) -> tuple[bool, str]:
         """Check if user can access a specific feature"""
         try:
             status = await cls.get_user_subscription_status(user_id)
             
             if feature_type == "practice_session":
+                # Check minute limits first (more restrictive)
+                if status.limits and status.limits.minutes_remaining is not None and status.limits.minutes_remaining <= 0:
+                    if status.limits.minutes_limit == -1:
+                        # Unlimited plan
+                        return True, ""
+                    return False, f"No speaking time remaining this {status.period}. You have used {status.limits.minutes_used:.1f} of {status.limits.minutes_limit} minutes. Upgrade to continue learning!"
+                
+                # Then check session limits (for backward compatibility)
                 if status.limits and status.limits.sessions_remaining == 0:
                     return False, f"You've used all {status.limits.sessions_limit} practice sessions for this {status.period}. Upgrade to continue learning!"
+                
                 return True, ""
             
             elif feature_type == "assessment":
@@ -351,6 +414,28 @@ class SubscriptionService:
             
         except Exception as e:
             logger.error(f"Error checking feature access for user {user_id}: {str(e)}")
+            return False, "Unable to verify access. Please try again."
+    
+    @classmethod
+    async def can_start_session(cls, user_id: str) -> tuple[bool, str]:
+        """Check if user can start a new session based on minute limits"""
+        try:
+            status = await cls.get_user_subscription_status(user_id)
+            
+            # Check minute limit first
+            if status.limits and status.limits.minutes_remaining is not None:
+                if status.limits.minutes_limit == -1:
+                    # Unlimited plan
+                    return True, f"✨ Unlimited speaking time remaining"
+                elif status.limits.minutes_remaining <= 0:
+                    return False, f"🚫 No speaking time remaining. Upgrade to continue learning!"
+                else:
+                    return True, f"You have {status.limits.minutes_remaining:.0f} minutes remaining this {status.period}"
+            
+            return True, ""
+            
+        except Exception as e:
+            logger.error(f"Error checking session access for user {user_id}: {str(e)}")
             return False, "Unable to verify access. Please try again."
     
     @classmethod
@@ -463,6 +548,7 @@ Resubscribe to unlock:
                 {"$set": {
                     "practice_sessions_used": 0,
                     "assessments_used": 0,
+                    "practice_minutes_used": 0.0,  # NEW: Reset minute usage
                     "current_period_start": now.replace(day=1, hour=0, minute=0, second=0, microsecond=0),
                     "current_period_end": next_month
                 }}

@@ -4,7 +4,7 @@ from typing import Optional
 import stripe
 import os
 from auth import get_current_user
-from models import UserResponse, UsageTrackingRequest
+from models import UserResponse, UsageTrackingRequest, SpeakingTimeTrackingRequest
 from database import database
 from subscription_service import SubscriptionService
 import logging
@@ -169,6 +169,40 @@ async def track_usage(
             return {"success": False, "message": "Usage limit exceeded"}
     except Exception as e:
         logger.error(f"Error tracking usage: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/track-speaking-time")
+async def track_speaking_time(
+    request: SpeakingTimeTrackingRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Track speaking time and optionally increment session count"""
+    try:
+        # Ensure the request is for the current user
+        request.user_id = current_user.id
+        
+        success = await SubscriptionService.track_speaking_time(request)
+        if success:
+            return {"success": True, "message": "Speaking time tracked successfully"}
+        else:
+            return {"success": False, "message": "Failed to track speaking time"}
+    except Exception as e:
+        logger.error(f"Error tracking speaking time: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/can-start-session")
+async def can_start_session(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Check if user can start a new session based on minute limits"""
+    try:
+        can_start, message = await SubscriptionService.can_start_session(current_user.id)
+        return {
+            "can_start": can_start,
+            "message": message
+        }
+    except Exception as e:
+        logger.error(f"Error checking session access: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/can-access/{feature_type}")

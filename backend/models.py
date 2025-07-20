@@ -62,6 +62,9 @@ class UserInDB(UserBase):
     practice_sessions_used: int = 0  # Sessions used in current period
     assessments_used: int = 0  # Assessments used in current period
     
+    # NEW: Minute tracking for duration-based limits
+    practice_minutes_used: float = 0.0  # Speaking minutes used in current period
+    
     # Learning plan preservation
     learning_plan_preserved: bool = False  # True if plan is in preservation mode
     learning_plan_data: Optional[Dict[str, Any]] = None  # Preserved learning plan data
@@ -235,6 +238,9 @@ class SubscriptionPlan(BaseModel):
     annual_sessions: int   # -1 for unlimited
     monthly_assessments: int  # -1 for unlimited
     annual_assessments: int   # -1 for unlimited
+    # NEW: Minute limits for duration-based tracking
+    monthly_minutes: int  # -1 for unlimited
+    annual_minutes: int   # -1 for unlimited
     features: List[str]
     is_free: bool = False
 
@@ -247,6 +253,10 @@ class SubscriptionLimits(BaseModel):
     assessments_used: int
     sessions_remaining: int  # -1 for unlimited
     assessments_remaining: int  # -1 for unlimited
+    # NEW: Minute limits and usage tracking
+    minutes_limit: int  # -1 for unlimited
+    minutes_used: float
+    minutes_remaining: float  # -1 for unlimited
     period_start: datetime
     period_end: datetime
     is_unlimited: bool = False
@@ -270,6 +280,16 @@ class UsageTrackingRequest(BaseModel):
     user_id: str
     usage_type: str  # 'practice_session' or 'assessment'
     duration_minutes: Optional[float] = None
+
+# NEW: Speaking time tracking request
+class SpeakingTimeTrackingRequest(BaseModel):
+    user_id: str
+    speaking_minutes: float
+    session_completed: bool = False  # True if session was completed (5+ minutes + saved)
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
 
 class LearningPlanPreservation(BaseModel):
     user_id: str
