@@ -181,10 +181,11 @@ def detect_meta_conversational(text: str, language: str = "english") -> Dict:
                     }
     
     # Check for medium confidence cases (partial matches or context-dependent)
+    # Only trigger AI classification for very specific conversation management patterns
     medium_confidence_patterns = [
-        r"\b(what|que|quoi|was|wat|o que)\b.*\b(you|tu|sie|je|você)\b.*\b(said|dijiste|dit|gesagt|zei|disse)\b",
-        r"\b(i|yo|je|ich|ik|eu)\b.*\b(don't|no|ne|nicht|niet|não)\b.*\b(understand|entiendo|comprends|verstehe|begrijp|entendo)\b",
-        r"\b(can|puedes|peux|können|kun|podes)\b.*\b(you|tu|sie|je|você)\b"
+        r"\b(what did you just say|what did you say)\b",  # More specific repetition requests
+        r"\b(i didn't understand you|i don't understand you)\b",  # Specific to conversation clarity
+        r"\b(can you repeat that|could you repeat that)\b"  # Specific repetition requests
     ]
     
     for pattern in medium_confidence_patterns:
@@ -237,25 +238,34 @@ async def evaluate_sentence_worthiness(text: str, language: str, level: str, con
             You are determining if a student's utterance is meta-conversational (about managing the conversation) 
             or contains language learning content worth analyzing.
             
-            Meta-conversational examples:
-            - "I didn't hear you, can you repeat?"
-            - "Can you speak slower?"
-            - "What did you just say?"
-            - "I don't understand what we're talking about"
+            ONLY classify as meta-conversational if it's PURELY about conversation mechanics:
             
-            Learning content examples:
-            - "I didn't hear the news about the election" (content-related)
-            - "Can you speak about economics?" (content request)
-            - "What did you think about my presentation?" (learning content)
+            Meta-conversational (SKIP analysis):
+            - "I didn't hear you, can you repeat?"
+            - "Can you speak slower/louder?"
+            - "What did you just say?" (asking for repetition)
+            - "The audio is cutting out"
+            - "Your microphone is not working"
+            
+            Learning content (ANALYZE these):
+            - "I don't understand this topic" (content confusion, not conversation management)
+            - "Can you explain more about economics?" (asking for topic explanation)
+            - "What does this word mean?" (vocabulary learning)
+            - "I have no idea about this subject" (expressing knowledge gaps)
+            - "Actually, I think..." (expressing opinions with complex grammar)
+            - Any attempt to engage with the topic content, even if confused
+            
+            IMPORTANT: If the student is trying to engage with the topic content (even if confused), 
+            it should be analyzed for language learning value.
             
             Language: {language}
             Student Level: {level}
             
             Respond in JSON format with:
-            - should_analyze (boolean): false if meta-conversational, true if learning content
+            - should_analyze (boolean): false ONLY if purely about conversation mechanics
             - reason (string): brief explanation
             - confidence (float): 0-1 confidence
-            - isMetaConversational (boolean): true if about conversation management
+            - isMetaConversational (boolean): true only if about conversation management, not topic content
             """
 
             response = client.chat.completions.create(

@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 import stripe
 import os
-from auth import get_current_user
-from models import UserResponse, UsageTrackingRequest
+from auth import get_current_user, get_optional_current_user_from_request
+from models import UserResponse, UsageTrackingRequest, SpeakingTimeTrackingRequest
 from database import database
 from subscription_service import SubscriptionService
 import logging
@@ -169,6 +169,74 @@ async def track_usage(
             return {"success": False, "message": "Usage limit exceeded"}
     except Exception as e:
         logger.error(f"Error tracking usage: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/track-speaking-time")
+async def track_speaking_time(
+    http_request: Request,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
+):
+    """Track speaking time and optionally increment session count - supports both authenticated and beacon requests"""
+    try:
+        # Parse request body
+        body = await http_request.body()
+        if not body:
+            raise HTTPException(status_code=400, detail="Request body is required")
+        
+        import json
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON in request body")
+        
+        # Handle case where user is not authenticated (e.g., sendBeacon from page unload)
+        if not current_user:
+            # Try to authenticate using token from request body (for sendBeacon)
+            token = data.get('token')
+            if token:
+                try:
+                    from auth import get_optional_current_user
+                    current_user = await get_optional_current_user(token)
+                    logger.info("[PARTIAL_SESSION] Successfully authenticated user from beacon token")
+                except Exception as auth_error:
+                    logger.warning(f"[PARTIAL_SESSION] Failed to authenticate from beacon token: {str(auth_error)}")
+            
+            if not current_user:
+                logger.warning("[PARTIAL_SESSION] No authenticated user found - skipping speaking time tracking")
+                return {"success": False, "message": "Authentication required"}
+        
+        # Create request object
+        request = SpeakingTimeTrackingRequest(
+            speaking_minutes=data.get('speaking_minutes', 0.0),
+            session_completed=data.get('session_completed', False),
+            user_id=current_user.id
+        )
+        
+        # Log the tracking request
+        logger.info(f"[SPEAKING_TIME] Tracking {request.speaking_minutes:.1f} minutes for user {current_user.id}, session_completed: {request.session_completed}")
+        
+        success = await SubscriptionService.track_speaking_time(request)
+        if success:
+            return {"success": True, "message": "Speaking time tracked successfully"}
+        else:
+            return {"success": False, "message": "Failed to track speaking time"}
+    except Exception as e:
+        logger.error(f"Error tracking speaking time: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/can-start-session")
+async def can_start_session(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Check if user can start a new session based on minute limits"""
+    try:
+        can_start, message = await SubscriptionService.can_start_session(current_user.id)
+        return {
+            "can_start": can_start,
+            "message": message
+        }
+    except Exception as e:
+        logger.error(f"Error checking session access: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/can-access/{feature_type}")

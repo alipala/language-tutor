@@ -98,6 +98,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   // Background sentence analysis state
   const [backgroundAnalyses, setBackgroundAnalyses] = useState<BackgroundAnalysisResponse[]>([]);
   const [isProcessingBackground, setIsProcessingBackground] = useState(false);
+  const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0);
+  
+  // Reset current analysis index when new analyses are added
+  useEffect(() => {
+    if (backgroundAnalyses.length > 0) {
+      setCurrentAnalysisIndex(backgroundAnalyses.length - 1); // Always show the latest analysis
+    }
+  }, [backgroundAnalyses.length]);
   
   // Language alert state - simplified
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
@@ -183,6 +191,64 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
 
     fetchVoicePreference();
   }, [user]);
+
+  // Fetch subscription information for the modal
+  useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      if (!user) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${getApiUrl()}/api/stripe/subscription-status`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const displayElement = document.getElementById('subscription-info-display');
+          
+          if (displayElement && data.limits) {
+            const { limits } = data;
+            let infoText = '';
+            
+            if (limits.is_unlimited) {
+              infoText = '✨ You have unlimited speaking time! Practice as much as you want.';
+            } else {
+              const minutesRemaining = Math.round(limits.minutes_remaining || 0);
+              const minutesLimit = limits.minutes_limit || 0;
+              const minutesUsed = Math.round(limits.minutes_used || 0);
+              
+              infoText = `You have ${minutesRemaining} minutes remaining this ${data.period || 'month'}. (${minutesUsed}/${minutesLimit} minutes used)`;
+            }
+            
+            displayElement.textContent = infoText;
+          }
+        } else {
+          console.error('[SUBSCRIPTION_INFO] Failed to fetch subscription status');
+          const displayElement = document.getElementById('subscription-info-display');
+          if (displayElement) {
+            displayElement.textContent = 'Unable to load subscription information.';
+          }
+        }
+      } catch (error) {
+        console.error('[SUBSCRIPTION_INFO] Error fetching subscription info:', error);
+        const displayElement = document.getElementById('subscription-info-display');
+        if (displayElement) {
+          displayElement.textContent = 'Unable to load subscription information.';
+        }
+      }
+    };
+
+    // Only fetch when the modal is shown and user is authenticated
+    if (showInfoModal && user) {
+      fetchSubscriptionInfo();
+    }
+  }, [showInfoModal, user]);
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -1060,32 +1126,30 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       const result = await response.json();
       console.log('[AUTO_SAVE] ✅ Practice conversation saved successfully:', result);
 
-      // Track usage for subscription limits (only for practice sessions >= 5 minutes)
-      if (durationMinutes >= 5) {
-        try {
-          console.log('[SUBSCRIPTION] Tracking practice session usage for subscription limits');
-          const usageResponse = await fetch(`${getApiUrl()}/api/stripe/track-usage`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              usage_type: 'practice_session',
-              duration_minutes: durationMinutes
-            })
-          });
+      // Track speaking time for subscription limits (new duration-based tracking)
+      try {
+        console.log('[SUBSCRIPTION] Tracking speaking time for subscription limits');
+        const speakingTimeResponse = await fetch(`${getApiUrl()}/api/stripe/track-speaking-time`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            speaking_minutes: durationMinutes,
+            session_completed: durationMinutes >= 5 // Only count as completed session if >= 5 minutes
+          })
+        });
 
-          if (usageResponse.ok) {
-            const usageResult = await usageResponse.json();
-            console.log('[SUBSCRIPTION] ✅ Practice session usage tracked:', usageResult);
-          } else {
-            const usageError = await usageResponse.json();
-            console.warn('[SUBSCRIPTION] ⚠️ Failed to track usage:', usageError);
-          }
-        } catch (usageError) {
-          console.error('[SUBSCRIPTION] ❌ Error tracking usage:', usageError);
+        if (speakingTimeResponse.ok) {
+          const speakingTimeResult = await speakingTimeResponse.json();
+          console.log('[SUBSCRIPTION] ✅ Speaking time tracked:', speakingTimeResult);
+        } else {
+          const speakingTimeError = await speakingTimeResponse.json();
+          console.warn('[SUBSCRIPTION] ⚠️ Failed to track speaking time:', speakingTimeError);
         }
+      } catch (speakingTimeError) {
+        console.error('[SUBSCRIPTION] ❌ Error tracking speaking time:', speakingTimeError);
       }
 
     } catch (error) {
@@ -1293,8 +1357,34 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   // Browser navigation protection - disabled when session is completed
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show warning if there are messages, user is authenticated, and session is not completed
-      if (user && processedMessages.length > 0 && !sessionCompleted) {
+      // Auto-save conversation and track speaking time for partial sessions
+      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
+        // Calculate duration for partial session
+        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+        
+        // Only track if session is meaningful (>30 seconds)
+        if (durationMinutes > 0.5) {
+          console.log('[PARTIAL_SESSION] Auto-saving partial session on page unload:', durationMinutes.toFixed(1), 'minutes');
+          
+          // Use sendBeacon for reliable tracking during page unload
+          const token = localStorage.getItem('token');
+          const trackingData = {
+            speaking_minutes: durationMinutes,
+            session_completed: false, // Mark as partial session
+            token: token // Include token for authentication
+          };
+          
+          if (token && navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
+            const success = navigator.sendBeacon(
+              `${window.location.origin}/api/stripe/track-speaking-time`,
+              blob
+            );
+            console.log('[PARTIAL_SESSION] Beacon sent:', success);
+          }
+        }
+        
+        // Still show warning for user experience
         e.preventDefault();
         e.returnValue = '';
         return '';
@@ -1302,8 +1392,34 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      // Only intercept if there are messages, user is authenticated, and session is not completed
-      if (user && processedMessages.length > 0 && !sessionCompleted) {
+      // Auto-track speaking time for partial sessions BEFORE showing modal
+      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
+        // Calculate duration for partial session
+        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+        
+        // Only track if session is meaningful (>30 seconds)
+        if (durationMinutes > 0.5) {
+          console.log('[PARTIAL_SESSION] Auto-saving partial session on back button:', durationMinutes.toFixed(1), 'minutes');
+          
+          // Use sendBeacon for reliable tracking during navigation
+          const token = localStorage.getItem('token');
+          const trackingData = {
+            speaking_minutes: durationMinutes,
+            session_completed: false, // Mark as partial session
+            token: token // Include token for authentication
+          };
+          
+          if (token && navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
+            const success = navigator.sendBeacon(
+              `${window.location.origin}/api/stripe/track-speaking-time`,
+              blob
+            );
+            console.log('[PARTIAL_SESSION] Back button beacon sent:', success);
+          }
+        }
+        
+        // Then handle the navigation prevention
         e.preventDefault();
         // Push the current state back to prevent navigation
         window.history.pushState(null, '', window.location.href);
@@ -1325,7 +1441,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [user, processedMessages.length, sessionCompleted]);
+  }, [user, processedMessages.length, sessionCompleted, conversationStartTime]);
   
   // Handle leave conversation
   const handleLeaveConversation = () => {
@@ -1535,6 +1651,21 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                   </div>
                 </div>
                 
+                {/* Subscription Info for Authenticated Users */}
+                {user && (
+                  <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-medium text-teal-800">Your Speaking Time</span>
+                    </div>
+                    <div id="subscription-info-display" className="text-xs text-teal-700">
+                      Loading your subscription details...
+                    </div>
+                  </div>
+                )}
+
                 {/* Ready Message */}
                 <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
                   <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1675,9 +1806,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             <div className="h-full flex flex-col lg:hidden">
                               <div className="flex-1 p-3 overflow-y-auto">
                                 <BackgroundAnalysisCard
-                                  analysis={backgroundAnalyses[backgroundAnalyses.length - 1]}
+                                  analysis={backgroundAnalyses[currentAnalysisIndex] || backgroundAnalyses[backgroundAnalyses.length - 1]}
                                   onClose={() => {
-                                    setBackgroundAnalyses(prev => prev.slice(0, -1));
+                                    setBackgroundAnalyses(prev => prev.filter((_, i) => i !== currentAnalysisIndex));
+                                    // Adjust current index if needed
+                                    setCurrentAnalysisIndex(prev => 
+                                      prev >= backgroundAnalyses.length - 1 ? Math.max(0, backgroundAnalyses.length - 2) : prev
+                                    );
                                   }}
                                 />
                               </div>
@@ -1687,8 +1822,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 <div className="border-t border-[#4ECFBF]/20 p-2 flex items-center justify-between bg-white/50">
                                   <button
                                     onClick={() => {
-                                      const current = backgroundAnalyses[backgroundAnalyses.length - 1];
-                                      setBackgroundAnalyses(prev => [current, ...prev.slice(0, -1)]);
+                                      setCurrentAnalysisIndex(prev => 
+                                        prev > 0 ? prev - 1 : backgroundAnalyses.length - 1
+                                      );
                                     }}
                                     className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
                                   >
@@ -1699,13 +1835,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                   </button>
                                   
                                   <span className="text-xs text-gray-500">
-                                    {backgroundAnalyses.length} of {backgroundAnalyses.length}
+                                    {currentAnalysisIndex + 1} of {backgroundAnalyses.length}
                                   </span>
                                   
                                   <button
                                     onClick={() => {
-                                      const [first, ...rest] = backgroundAnalyses;
-                                      setBackgroundAnalyses([...rest, first]);
+                                      setCurrentAnalysisIndex(prev => 
+                                        prev < backgroundAnalyses.length - 1 ? prev + 1 : 0
+                                      );
                                     }}
                                     className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
                                   >
