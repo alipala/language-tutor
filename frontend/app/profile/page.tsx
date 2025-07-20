@@ -776,6 +776,13 @@ export default function ProfilePage() {
                           </span>
                         </div>
                         <div className="flex justify-between text-white text-xs md:text-base">
+                          <span className="font-medium">Speaking Time</span>
+                          <span className="font-bold text-sm md:text-lg">
+                            {subscriptionStatus.limits.is_unlimited ? '∞' : 
+                             `${Math.round(subscriptionStatus.limits.minutes_remaining || 0)} min left`}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-white text-xs md:text-base">
                           <span className="font-medium">Assessments</span>
                           <span className="font-bold text-sm md:text-lg">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 

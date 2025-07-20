@@ -183,6 +183,64 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
 
     fetchVoicePreference();
   }, [user]);
+
+  // Fetch subscription information for the modal
+  useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      if (!user) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${getApiUrl()}/api/stripe/subscription-status`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const displayElement = document.getElementById('subscription-info-display');
+          
+          if (displayElement && data.limits) {
+            const { limits } = data;
+            let infoText = '';
+            
+            if (limits.is_unlimited) {
+              infoText = '✨ You have unlimited speaking time! Practice as much as you want.';
+            } else {
+              const minutesRemaining = Math.round(limits.minutes_remaining || 0);
+              const minutesLimit = limits.minutes_limit || 0;
+              const minutesUsed = Math.round(limits.minutes_used || 0);
+              
+              infoText = `You have ${minutesRemaining} minutes remaining this ${data.period || 'month'}. (${minutesUsed}/${minutesLimit} minutes used)`;
+            }
+            
+            displayElement.textContent = infoText;
+          }
+        } else {
+          console.error('[SUBSCRIPTION_INFO] Failed to fetch subscription status');
+          const displayElement = document.getElementById('subscription-info-display');
+          if (displayElement) {
+            displayElement.textContent = 'Unable to load subscription information.';
+          }
+        }
+      } catch (error) {
+        console.error('[SUBSCRIPTION_INFO] Error fetching subscription info:', error);
+        const displayElement = document.getElementById('subscription-info-display');
+        if (displayElement) {
+          displayElement.textContent = 'Unable to load subscription information.';
+        }
+      }
+    };
+
+    // Only fetch when the modal is shown and user is authenticated
+    if (showInfoModal && user) {
+      fetchSubscriptionInfo();
+    }
+  }, [showInfoModal, user]);
   
   // Only log on initial render, not on every re-render
   useEffect(() => {
@@ -1060,32 +1118,30 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       const result = await response.json();
       console.log('[AUTO_SAVE] ✅ Practice conversation saved successfully:', result);
 
-      // Track usage for subscription limits (only for practice sessions >= 5 minutes)
-      if (durationMinutes >= 5) {
-        try {
-          console.log('[SUBSCRIPTION] Tracking practice session usage for subscription limits');
-          const usageResponse = await fetch(`${getApiUrl()}/api/stripe/track-usage`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              usage_type: 'practice_session',
-              duration_minutes: durationMinutes
-            })
-          });
+      // Track speaking time for subscription limits (new duration-based tracking)
+      try {
+        console.log('[SUBSCRIPTION] Tracking speaking time for subscription limits');
+        const speakingTimeResponse = await fetch(`${getApiUrl()}/api/stripe/track-speaking-time`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            speaking_minutes: durationMinutes,
+            session_completed: durationMinutes >= 5 // Only count as completed session if >= 5 minutes
+          })
+        });
 
-          if (usageResponse.ok) {
-            const usageResult = await usageResponse.json();
-            console.log('[SUBSCRIPTION] ✅ Practice session usage tracked:', usageResult);
-          } else {
-            const usageError = await usageResponse.json();
-            console.warn('[SUBSCRIPTION] ⚠️ Failed to track usage:', usageError);
-          }
-        } catch (usageError) {
-          console.error('[SUBSCRIPTION] ❌ Error tracking usage:', usageError);
+        if (speakingTimeResponse.ok) {
+          const speakingTimeResult = await speakingTimeResponse.json();
+          console.log('[SUBSCRIPTION] ✅ Speaking time tracked:', speakingTimeResult);
+        } else {
+          const speakingTimeError = await speakingTimeResponse.json();
+          console.warn('[SUBSCRIPTION] ⚠️ Failed to track speaking time:', speakingTimeError);
         }
+      } catch (speakingTimeError) {
+        console.error('[SUBSCRIPTION] ❌ Error tracking speaking time:', speakingTimeError);
       }
 
     } catch (error) {
@@ -1535,6 +1591,21 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                   </div>
                 </div>
                 
+                {/* Subscription Info for Authenticated Users */}
+                {user && (
+                  <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-medium text-teal-800">Your Speaking Time</span>
+                    </div>
+                    <div id="subscription-info-display" className="text-xs text-teal-700">
+                      Loading your subscription details...
+                    </div>
+                  </div>
+                )}
+
                 {/* Ready Message */}
                 <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
                   <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
