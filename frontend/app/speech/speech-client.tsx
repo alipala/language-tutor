@@ -98,6 +98,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   // Background sentence analysis state
   const [backgroundAnalyses, setBackgroundAnalyses] = useState<BackgroundAnalysisResponse[]>([]);
   const [isProcessingBackground, setIsProcessingBackground] = useState(false);
+  const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0);
+  
+  // Reset current analysis index when new analyses are added
+  useEffect(() => {
+    if (backgroundAnalyses.length > 0) {
+      setCurrentAnalysisIndex(backgroundAnalyses.length - 1); // Always show the latest analysis
+    }
+  }, [backgroundAnalyses.length]);
   
   // Language alert state - simplified
   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
@@ -1798,9 +1806,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             <div className="h-full flex flex-col lg:hidden">
                               <div className="flex-1 p-3 overflow-y-auto">
                                 <BackgroundAnalysisCard
-                                  analysis={backgroundAnalyses[backgroundAnalyses.length - 1]}
+                                  analysis={backgroundAnalyses[currentAnalysisIndex] || backgroundAnalyses[backgroundAnalyses.length - 1]}
                                   onClose={() => {
-                                    setBackgroundAnalyses(prev => prev.slice(0, -1));
+                                    setBackgroundAnalyses(prev => prev.filter((_, i) => i !== currentAnalysisIndex));
+                                    // Adjust current index if needed
+                                    setCurrentAnalysisIndex(prev => 
+                                      prev >= backgroundAnalyses.length - 1 ? Math.max(0, backgroundAnalyses.length - 2) : prev
+                                    );
                                   }}
                                 />
                               </div>
@@ -1810,8 +1822,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 <div className="border-t border-[#4ECFBF]/20 p-2 flex items-center justify-between bg-white/50">
                                   <button
                                     onClick={() => {
-                                      const current = backgroundAnalyses[backgroundAnalyses.length - 1];
-                                      setBackgroundAnalyses(prev => [current, ...prev.slice(0, -1)]);
+                                      setCurrentAnalysisIndex(prev => 
+                                        prev > 0 ? prev - 1 : backgroundAnalyses.length - 1
+                                      );
                                     }}
                                     className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
                                   >
@@ -1822,13 +1835,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                   </button>
                                   
                                   <span className="text-xs text-gray-500">
-                                    {backgroundAnalyses.length} of {backgroundAnalyses.length}
+                                    {currentAnalysisIndex + 1} of {backgroundAnalyses.length}
                                   </span>
                                   
                                   <button
                                     onClick={() => {
-                                      const [first, ...rest] = backgroundAnalyses;
-                                      setBackgroundAnalyses([...rest, first]);
+                                      setCurrentAnalysisIndex(prev => 
+                                        prev < backgroundAnalyses.length - 1 ? prev + 1 : 0
+                                      );
                                     }}
                                     className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
                                   >
