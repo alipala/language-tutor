@@ -1349,8 +1349,33 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   // Browser navigation protection - disabled when session is completed
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show warning if there are messages, user is authenticated, and session is not completed
-      if (user && processedMessages.length > 0 && !sessionCompleted) {
+      // Auto-save conversation and track speaking time for partial sessions
+      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
+        // Calculate duration for partial session
+        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+        
+        // Only track if session is meaningful (>30 seconds)
+        if (durationMinutes > 0.5) {
+          console.log('[PARTIAL_SESSION] Auto-saving partial session on page unload:', durationMinutes.toFixed(1), 'minutes');
+          
+          // Use sendBeacon for reliable tracking during page unload
+          const trackingData = {
+            speaking_minutes: durationMinutes,
+            session_completed: false // Mark as partial session
+          };
+          
+          const token = localStorage.getItem('token');
+          if (token && navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
+            const success = navigator.sendBeacon(
+              `${window.location.origin}/api/stripe/track-speaking-time`,
+              blob
+            );
+            console.log('[PARTIAL_SESSION] Beacon sent:', success);
+          }
+        }
+        
+        // Still show warning for user experience
         e.preventDefault();
         e.returnValue = '';
         return '';
@@ -1381,7 +1406,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [user, processedMessages.length, sessionCompleted]);
+  }, [user, processedMessages.length, sessionCompleted, conversationStartTime]);
   
   // Handle leave conversation
   const handleLeaveConversation = () => {

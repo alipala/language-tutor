@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 import stripe
 import os
-from auth import get_current_user
+from auth import get_current_user, get_optional_current_user_from_request
 from models import UserResponse, UsageTrackingRequest, SpeakingTimeTrackingRequest
 from database import database
 from subscription_service import SubscriptionService
@@ -174,12 +174,21 @@ async def track_usage(
 @router.post("/track-speaking-time")
 async def track_speaking_time(
     request: SpeakingTimeTrackingRequest,
-    current_user: UserResponse = Depends(get_current_user)
+    http_request: Request,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
 ):
-    """Track speaking time and optionally increment session count"""
+    """Track speaking time and optionally increment session count - supports both authenticated and beacon requests"""
     try:
+        # Handle case where user is not authenticated (e.g., sendBeacon from page unload)
+        if not current_user:
+            logger.warning("[PARTIAL_SESSION] No authenticated user found - skipping speaking time tracking")
+            return {"success": False, "message": "Authentication required"}
+        
         # Ensure the request is for the current user
         request.user_id = current_user.id
+        
+        # Log the tracking request
+        logger.info(f"[SPEAKING_TIME] Tracking {request.speaking_minutes:.1f} minutes for user {current_user.id}, session_completed: {request.session_completed}")
         
         success = await SubscriptionService.track_speaking_time(request)
         if success:
