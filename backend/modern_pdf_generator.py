@@ -16,9 +16,24 @@ import seaborn as sns
 import numpy as np
 from matplotlib.patches import Rectangle
 
-# HTML/PDF generation
-import weasyprint
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+# HTML/PDF generation - Railway compatible imports
+try:
+    import weasyprint
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    WEASYPRINT_AVAILABLE = True
+    print("[MODERN_PDF] ✅ WeasyPrint available - using advanced PDF generation")
+except ImportError as e:
+    print(f"[MODERN_PDF] ⚠️ WeasyPrint not available: {str(e)}")
+    print("[MODERN_PDF] 🔄 Falling back to ReportLab for Railway compatibility")
+    WEASYPRINT_AVAILABLE = False
+    # Import ReportLab as fallback
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
 import logging
 
 # Configure matplotlib for better rendering
@@ -43,21 +58,29 @@ class ModernPDFGenerator:
     }
     
     def __init__(self):
-        # Setup Jinja2 environment
-        template_dir = os.path.join(os.path.dirname(__file__), 'templates', 'pdf')
-        self.jinja_env = Environment(
-            loader=FileSystemLoader(template_dir),
-            autoescape=select_autoescape(['html', 'xml'])
-        )
-        
-        # Configure logging
-        logging.getLogger('weasyprint').setLevel(logging.ERROR)
+        if WEASYPRINT_AVAILABLE:
+            # Setup Jinja2 environment
+            template_dir = os.path.join(os.path.dirname(__file__), 'templates', 'pdf')
+            self.jinja_env = Environment(
+                loader=FileSystemLoader(template_dir),
+                autoescape=select_autoescape(['html', 'xml'])
+            )
+            
+            # Configure logging
+            logging.getLogger('weasyprint').setLevel(logging.ERROR)
+        else:
+            print("[MODERN_PDF] 🔄 Initializing ReportLab fallback mode")
     
     @staticmethod
     def generate_comprehensive_report(user_data: Dict[str, Any], report_type: str = "comprehensive") -> BytesIO:
         """Generate a professional report based on type - maintains API compatibility"""
         
         generator = ModernPDFGenerator()
+        
+        # Use ReportLab fallback if WeasyPrint is not available
+        if not WEASYPRINT_AVAILABLE:
+            print("[MODERN_PDF] 🔄 Using ReportLab fallback for Railway compatibility")
+            return generator._generate_reportlab_report(user_data, report_type)
         
         if report_type == "learning_plans":
             return generator._generate_learning_plans_report(user_data)
@@ -648,6 +671,238 @@ class ModernPDFGenerator:
             if value >= threshold:
                 return level
         return 'Good'
+    
+    def _generate_reportlab_report(self, user_data: Dict[str, Any], report_type: str) -> BytesIO:
+        """Generate report using ReportLab (Railway compatible fallback)"""
+        
+        try:
+            print("[MODERN_PDF] 📄 Generating ReportLab PDF for Railway compatibility...")
+            
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1*inch, bottomMargin=1*inch)
+            
+            # Get styles
+            styles = getSampleStyleSheet()
+            
+            # Custom styles
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=24,
+                spaceAfter=30,
+                textColor=colors.HexColor(self.COLORS['primary']),
+                alignment=TA_CENTER
+            )
+            
+            heading_style = ParagraphStyle(
+                'CustomHeading',
+                parent=styles['Heading2'],
+                fontSize=16,
+                spaceAfter=12,
+                textColor=colors.HexColor(self.COLORS['dark']),
+                alignment=TA_LEFT
+            )
+            
+            normal_style = ParagraphStyle(
+                'CustomNormal',
+                parent=styles['Normal'],
+                fontSize=11,
+                spaceAfter=6,
+                alignment=TA_LEFT
+            )
+            
+            # Build content
+            story = []
+            
+            # Title
+            user_profile = user_data.get('user_profile', {})
+            if report_type == "learning_plans":
+                title = "Learning Plans & Assessment Report"
+            elif report_type == "conversations":
+                title = "Conversation History & Analysis Report"
+            else:
+                title = "Comprehensive Learning Report"
+            
+            story.append(Paragraph(title, title_style))
+            story.append(Paragraph(f"Generated for {user_profile.get('name', 'Student')}", normal_style))
+            story.append(Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", normal_style))
+            story.append(Spacer(1, 20))
+            
+            # Overview metrics
+            analytics = user_data.get('analytics', {})
+            overview = analytics.get('overview', {})
+            
+            story.append(Paragraph("Learning Overview", heading_style))
+            
+            # Create metrics table
+            metrics_data = [
+                ['Metric', 'Value', 'Achievement'],
+                ['Practice Sessions', str(overview.get('total_conversations', 0)), 'Getting Started'],
+                ['Practice Time', f"{overview.get('total_practice_minutes', 0):.1f} minutes", 'Building'],
+                ['Languages Studied', str(overview.get('languages_studied', 0)), 'Focused'],
+                ['Learning Plans', str(overview.get('total_learning_plans', 0)), 'Structured']
+            ]
+            
+            metrics_table = Table(metrics_data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
+            metrics_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(self.COLORS['primary'])),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(metrics_table)
+            story.append(Spacer(1, 20))
+            
+            # Add specific content based on report type
+            if report_type == "conversations":
+                self._add_conversation_content_reportlab(story, user_data, heading_style, normal_style)
+            else:
+                self._add_learning_plans_content_reportlab(story, user_data, heading_style, normal_style)
+            
+            # AI Insights
+            ai_insights = user_data.get('ai_insights', {})
+            if ai_insights.get('professional_assessment'):
+                story.append(Paragraph("AI-Powered Insights", heading_style))
+                story.append(Paragraph("Professional Assessment", ParagraphStyle(
+                    'SubHeading', parent=normal_style, fontSize=13, textColor=colors.HexColor(self.COLORS['primary'])
+                )))
+                story.append(Paragraph(ai_insights['professional_assessment'], normal_style))
+                story.append(Spacer(1, 12))
+            
+            # Footer
+            story.append(Spacer(1, 30))
+            footer_style = ParagraphStyle(
+                'Footer',
+                parent=normal_style,
+                fontSize=10,
+                textColor=colors.HexColor(self.COLORS['medium_gray']),
+                alignment=TA_CENTER
+            )
+            story.append(Paragraph("My Taco AI Learning Platform", footer_style))
+            story.append(Paragraph("Professional Language Learning Analytics & Insights", footer_style))
+            story.append(Paragraph("For support: hello@mytacoai.com | www.mytacoai.com", footer_style))
+            
+            # Build PDF
+            doc.build(story)
+            buffer.seek(0)
+            
+            print("[MODERN_PDF] ✅ ReportLab PDF generated successfully")
+            return buffer
+            
+        except Exception as e:
+            print(f"[MODERN_PDF] ❌ ReportLab generation failed: {str(e)}")
+            return self._generate_text_fallback(user_data, report_type)
+    
+    def _add_conversation_content_reportlab(self, story, user_data, heading_style, normal_style):
+        """Add conversation-specific content to ReportLab PDF"""
+        
+        conversations = user_data.get('conversations', [])
+        
+        if conversations:
+            story.append(Paragraph("Conversation Sessions", heading_style))
+            
+            # Create conversation table
+            conv_data = [['#', 'Date', 'Language', 'Level', 'Topic', 'Duration', 'Messages']]
+            
+            for i, conv in enumerate(conversations[:10], 1):  # Limit to 10 for space
+                conv_data.append([
+                    str(i),
+                    conv.get('date', 'N/A'),
+                    conv.get('language', 'Unknown'),
+                    conv.get('level', 'Unknown'),
+                    conv.get('topic', 'General'),
+                    conv.get('duration', '0m'),
+                    str(conv.get('messages', 0))
+                ])
+            
+            conv_table = Table(conv_data, colWidths=[0.3*inch, 0.8*inch, 0.8*inch, 0.6*inch, 0.8*inch, 0.6*inch, 0.6*inch])
+            conv_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(self.COLORS['primary'])),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0F9FF')])
+            ]))
+            
+            story.append(conv_table)
+            story.append(Spacer(1, 20))
+    
+    def _add_learning_plans_content_reportlab(self, story, user_data, heading_style, normal_style):
+        """Add learning plans content to ReportLab PDF"""
+        
+        learning_plans = user_data.get('learning_plans', [])
+        
+        if learning_plans:
+            story.append(Paragraph("Learning Plans", heading_style))
+            
+            for i, plan in enumerate(learning_plans, 1):
+                plan_text = f"""
+                <b>Plan {i}:</b> {plan.get('language', 'Unknown')} - {plan.get('proficiency_level', 'Unknown')}<br/>
+                Progress: {plan.get('progress_percentage', 0):.1f}% ({plan.get('completed_sessions', 0)}/{plan.get('total_sessions', 0)} sessions)<br/>
+                Created: {plan.get('created_date', 'N/A')}
+                """
+                story.append(Paragraph(plan_text, normal_style))
+                story.append(Spacer(1, 8))
+    
+    def _generate_text_fallback(self, user_data: Dict[str, Any], report_type: str) -> BytesIO:
+        """Generate simple text-based report as last resort"""
+        
+        try:
+            user_profile = user_data.get('user_profile', {})
+            analytics = user_data.get('analytics', {})
+            overview = analytics.get('overview', {})
+            
+            if report_type == "learning_plans":
+                title = "Learning Plans & Assessment Report"
+            elif report_type == "conversations":
+                title = "Conversation History & Analysis Report"
+            else:
+                title = "Comprehensive Learning Report"
+            
+            content = f"""
+{title}
+{'=' * len(title)}
+
+Student: {user_profile.get('name', 'Student')}
+Generated: {datetime.now().strftime('%B %d, %Y')}
+
+LEARNING OVERVIEW
+-----------------
+Practice Sessions: {overview.get('total_conversations', 0)}
+Practice Time: {overview.get('total_practice_minutes', 0):.1f} minutes
+Languages Studied: {overview.get('languages_studied', 0)}
+Learning Plans: {overview.get('total_learning_plans', 0)}
+
+REPORT STATUS
+-------------
+This is a simplified text report generated due to system limitations.
+For the full professional PDF report with charts and detailed analysis,
+please contact support at hello@mytacoai.com
+
+My Taco AI Learning Platform
+www.mytacoai.com
+"""
+            
+            buffer = BytesIO()
+            buffer.write(content.encode('utf-8'))
+            buffer.seek(0)
+            
+            return buffer
+            
+        except Exception as e:
+            print(f"[MODERN_PDF] ❌ Text fallback failed: {str(e)}")
+            # Return minimal buffer
+            buffer = BytesIO()
+            buffer.write(b"Report generation failed. Please contact support.")
+            buffer.seek(0)
+            return buffer
 
 # Maintain backward compatibility by providing the same interface as the old generator
 class ProfessionalPDFGenerator:
