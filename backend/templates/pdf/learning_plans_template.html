@@ -1,0 +1,277 @@
+{% extends "base_template.html" %}
+
+{% block content %}
+<!-- Overview Metrics -->
+<div class="card no-break">
+    <div class="card-header">
+        <h2 class="card-title">Learning Overview</h2>
+    </div>
+    
+    <div class="grid grid-4">
+        <div class="metric-card">
+            <div class="metric-value">{{ overview.total_conversations }}</div>
+            <div class="metric-label">Practice Sessions</div>
+            <div class="metric-achievement">{{ overview.sessions_achievement }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{{ "%.1f"|format(overview.total_practice_minutes) }}</div>
+            <div class="metric-label">Minutes Practiced</div>
+            <div class="metric-achievement">{{ overview.time_achievement }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{{ overview.languages_studied }}</div>
+            <div class="metric-label">Languages</div>
+            <div class="metric-achievement">{{ overview.language_achievement }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{{ overview.total_learning_plans }}</div>
+            <div class="metric-label">Learning Plans</div>
+            <div class="metric-achievement">{{ overview.plans_achievement }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+{% if charts.progress_overview %}
+<div class="chart-container no-break">
+    <h3 class="chart-title">Progress Overview</h3>
+    <img src="data:image/png;base64,{{ charts.progress_overview }}" alt="Progress Overview Chart" class="chart-image">
+</div>
+{% endif %}
+
+{% if charts.skills_radar %}
+<div class="chart-container no-break">
+    <h3 class="chart-title">Skills Analysis</h3>
+    <img src="data:image/png;base64,{{ charts.skills_radar }}" alt="Skills Radar Chart" class="chart-image">
+</div>
+{% endif %}
+
+<!-- Learning Plans Performance -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Learning Plan Performance</h2>
+    </div>
+    
+    {% if learning_plans %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Plan</th>
+                <th>Language</th>
+                <th>Level</th>
+                <th>Progress</th>
+                <th>Sessions</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in learning_plans %}
+            <tr>
+                <td class="font-semibold">Plan {{ loop.index }}</td>
+                <td>{{ plan.language|title }}</td>
+                <td><span class="badge badge-primary">{{ plan.proficiency_level }}</span></td>
+                <td>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ plan.progress_percentage }}%"></div>
+                        </div>
+                        <div class="text-center mt-2">{{ "%.1f"|format(plan.progress_percentage) }}%</div>
+                    </div>
+                </td>
+                <td>{{ plan.completed_sessions }}/{{ plan.total_sessions }}</td>
+                <td>{{ plan.created_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-gray">
+        <p>No learning plans found. Create your first learning plan to see detailed analysis here.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Progress Tracking -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Progress Tracking & Milestones</h2>
+    </div>
+    
+    <div class="grid grid-2">
+        <div>
+            <h3 class="card-subtitle">Overall Learning Progress</h3>
+            <p>You have completed <strong>{{ progress.total_sessions_completed }}</strong> out of <strong>{{ progress.total_sessions_planned }}</strong> planned learning sessions, achieving <strong>{{ "%.1f"|format(progress.overall_progress_percentage) }}%</strong> of your overall learning goals.</p>
+            
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Overall Progress</span>
+                    <span>{{ "%.1f"|format(progress.overall_progress_percentage) }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ progress.overall_progress_percentage }}%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <h3 class="card-subtitle">Learning Consistency</h3>
+            <p>Your consistency score is <strong>{{ "%.1f"|format(progress.consistency_score) }}%</strong>, indicating {{ progress.consistency_description }} learning habits.</p>
+            
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Consistency Score</span>
+                    <span>{{ "%.1f"|format(progress.consistency_score) }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ progress.consistency_score }}%"></div>
+                </div>
+            </div>
+            
+            <p class="text-gray">{{ progress.consistency_recommendation }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Skills Development -->
+{% if skills.skill_breakdown %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Skill Development Analysis</h2>
+    </div>
+    
+    <div class="mb-6">
+        <h3 class="card-subtitle">Overall Skill Development Trend</h3>
+        <p class="font-semibold text-primary">{{ skills.trend_description }}</p>
+    </div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Skill Area</th>
+                <th>Average Score</th>
+                <th>Latest Score</th>
+                <th>Trend</th>
+                <th>Improvement</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for skill_name, skill_data in skills.skill_breakdown.items() %}
+            <tr>
+                <td class="font-semibold">{{ skill_name|replace('_', ' ')|title }}</td>
+                <td>{{ "%.1f"|format(skill_data.average_score) }}</td>
+                <td>{{ "%.1f"|format(skill_data.latest_score) }}</td>
+                <td>
+                    {% if skill_data.trend == 'improving' %}
+                        <span class="badge badge-success">↗ Improving</span>
+                    {% elif skill_data.trend == 'declining' %}
+                        <span class="badge badge-warning">↘ Declining</span>
+                    {% else %}
+                        <span class="badge badge-primary">→ Stable</span>
+                    {% endif %}
+                </td>
+                <td class="{% if skill_data.improvement > 0 %}text-success{% elif skill_data.improvement < 0 %}text-accent{% else %}text-gray{% endif %}">
+                    {{ "%+.1f"|format(skill_data.improvement) }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- AI-Powered Learning Insights -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">AI-Powered Learning Insights</h2>
+    </div>
+    
+    <div class="mb-6">
+        <h3 class="card-subtitle">Professional Assessment</h3>
+        <p>{{ ai_insights.professional_assessment }}</p>
+    </div>
+    
+    {% if ai_insights.learning_insights %}
+    <div class="mb-6">
+        <h3 class="card-subtitle">Learning Style Analysis</h3>
+        <div class="grid grid-1">
+            {% for insight_type, insight_text in ai_insights.learning_insights.items() %}
+            <div class="card" style="background: rgba(78, 207, 191, 0.05); border: 1px solid rgba(78, 207, 191, 0.2);">
+                <h4 class="font-semibold text-primary mb-2">{{ insight_type|replace('_', ' ')|title }}</h4>
+                <p>{{ insight_text }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if ai_insights.improvement_opportunities %}
+    <div>
+        <h3 class="card-subtitle">Areas for Improvement</h3>
+        <ul>
+            {% for improvement in ai_insights.improvement_opportunities %}
+            <li>
+                {% if improvement is mapping %}
+                    <strong>{{ improvement.area }}:</strong> {{ improvement.suggestion }}
+                {% else %}
+                    {{ improvement }}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Learning Plan Recommendations -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Learning Plan Recommendations</h2>
+    </div>
+    
+    {% if ai_insights.personalized_recommendations %}
+    <div class="grid grid-1">
+        {% if ai_insights.personalized_recommendations.immediate_actions %}
+        <div>
+            <h3 class="card-subtitle">Immediate Actions (This Week)</h3>
+            <ul>
+                {% for action in ai_insights.personalized_recommendations.immediate_actions %}
+                <li>{{ action }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if ai_insights.personalized_recommendations.monthly_focus %}
+        <div>
+            <h3 class="card-subtitle">Monthly Focus Areas</h3>
+            <ul>
+                {% for focus in ai_insights.personalized_recommendations.monthly_focus %}
+                <li>{{ focus }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if ai_insights.personalized_recommendations.long_term_strategy %}
+        <div>
+            <h3 class="card-subtitle">Long-term Strategy</h3>
+            <ul>
+                {% for strategy in ai_insights.personalized_recommendations.long_term_strategy %}
+                <li>{{ strategy }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Weekly Activity Chart -->
+{% if charts.weekly_activity %}
+<div class="chart-container">
+    <h3 class="chart-title">Weekly Learning Activity</h3>
+    <img src="data:image/png;base64,{{ charts.weekly_activity }}" alt="Weekly Activity Chart" class="chart-image">
+</div>
+{% endif %}
+
+{% endblock %}

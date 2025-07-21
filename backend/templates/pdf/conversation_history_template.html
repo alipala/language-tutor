@@ -1,0 +1,276 @@
+{% extends "base_template.html" %}
+
+{% block content %}
+
+<!-- Practice Statistics -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Practice Statistics Overview</h2>
+    </div>
+    
+    <div class="grid grid-2">
+        <div>
+            <h3 class="card-subtitle">Session Summary</h3>
+            <div class="grid grid-2">
+                <div class="metric-card">
+                    <div class="metric-value">{{ overview.total_conversations }}</div>
+                    <div class="metric-label">Total Practice Sessions</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ "%.2f"|format(overview.total_practice_minutes) }}</div>
+                    <div class="metric-label">Total Practice Time</div>
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <h3 class="card-subtitle">Engagement Metrics</h3>
+            <div class="grid grid-2">
+                <div class="metric-card">
+                    <div class="metric-value">{{ overview.total_messages }}</div>
+                    <div class="metric-label">Total Messages Exchanged</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ overview.enhanced_analyses }}</div>
+                    <div class="metric-label">Enhanced Analyses Available</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conversation Sessions Overview -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Conversation Sessions Overview</h2>
+    </div>
+    
+    {% if conversations %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Language</th>
+                <th>Level</th>
+                <th>Topic</th>
+                <th>Duration</th>
+                <th>Messages</th>
+                <th>Analysis</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for conv in conversations %}
+            <tr>
+                <td class="font-semibold">{{ loop.index }}</td>
+                <td>{{ conv.date }}</td>
+                <td>{{ conv.language|title }}</td>
+                <td><span class="badge badge-primary">{{ conv.level }}</span></td>
+                <td>{{ conv.topic }}</td>
+                <td>{{ conv.duration }}</td>
+                <td>{{ conv.messages }}</td>
+                <td>
+                    {% if conv.has_analysis %}
+                        <span class="badge badge-success">Yes</span>
+                    {% else %}
+                        <span class="badge badge-warning">No</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-gray">
+        <p>No conversation sessions found. Start practicing to see detailed analysis here.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Charts Section -->
+{% if charts.engagement_trends %}
+<div class="chart-container no-break">
+    <h3 class="chart-title">Engagement Trends Over Time</h3>
+    <img src="data:image/png;base64,{{ charts.engagement_trends }}" alt="Engagement Trends Chart" class="chart-image">
+</div>
+{% endif %}
+
+{% if charts.topic_distribution %}
+<div class="chart-container no-break">
+    <h3 class="chart-title">Topic Distribution</h3>
+    <img src="data:image/png;base64,{{ charts.topic_distribution }}" alt="Topic Distribution Chart" class="chart-image">
+</div>
+{% endif %}
+
+<!-- Detailed AI Analysis -->
+{% if detailed_analyses %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Detailed AI Analysis</h2>
+    </div>
+    
+    {% for analysis in detailed_analyses %}
+    <div class="mb-8">
+        <h3 class="card-subtitle">Session {{ analysis.session_number }} Analysis - {{ analysis.language }} ({{ analysis.level }})</h3>
+        
+        <!-- Quality Metrics -->
+        <div class="mb-6">
+            <h4 class="font-semibold mb-4">Quality Metrics</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Quality Metric</th>
+                        <th>Score</th>
+                        <th>Assessment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for metric_name, metric_data in analysis.quality_metrics.items() %}
+                    <tr>
+                        <td class="font-semibold">{{ metric_name|replace('_', ' ')|title }}</td>
+                        <td>{{ metric_data.score }}/100</td>
+                        <td>
+                            {% if metric_data.score >= 80 %}
+                                <span class="badge badge-success">{{ metric_data.assessment }}</span>
+                            {% elif metric_data.score >= 60 %}
+                                <span class="badge badge-warning">{{ metric_data.assessment }}</span>
+                            {% else %}
+                                <span class="badge badge-warning">{{ metric_data.assessment }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Breakthrough Moments -->
+        {% if analysis.breakthrough_moments %}
+        <div class="mb-6">
+            <h4 class="font-semibold mb-4">Breakthrough Moments</h4>
+            <div class="card" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <p>{{ analysis.breakthrough_moments }}</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Areas of Struggle -->
+        {% if analysis.areas_of_struggle %}
+        <div class="mb-6">
+            <h4 class="font-semibold mb-4">Areas of Struggle</h4>
+            <div class="card" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2);">
+                <p>{{ analysis.areas_of_struggle }}</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Vocabulary Highlights -->
+        {% if analysis.vocabulary_highlights %}
+        <div class="mb-6">
+            <h4 class="font-semibold mb-4">Vocabulary Highlights</h4>
+            <div class="card" style="background: rgba(78, 207, 191, 0.05); border: 1px solid rgba(78, 207, 191, 0.2);">
+                <p>{{ analysis.vocabulary_highlights }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- AI-Powered Conversation Insights -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">AI-Powered Conversation Insights</h2>
+    </div>
+    
+    <div class="mb-6">
+        <h3 class="card-subtitle">Professional Assessment</h3>
+        <p>{{ ai_insights.professional_assessment }}</p>
+    </div>
+    
+    {% if ai_insights.conversation_insights %}
+    <div class="mb-6">
+        <h3 class="card-subtitle">Conversation Analysis</h3>
+        <div class="grid grid-1">
+            {% for insight_type, insight_text in ai_insights.conversation_insights.items() %}
+            <div class="card" style="background: rgba(78, 207, 191, 0.05); border: 1px solid rgba(78, 207, 191, 0.2);">
+                <h4 class="font-semibold text-primary mb-2">{{ insight_type|replace('_', ' ')|title }}</h4>
+                <p>{{ insight_text }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if ai_insights.improvement_opportunities %}
+    <div>
+        <h3 class="card-subtitle">Areas for Improvement</h3>
+        <ul>
+            {% for improvement in ai_insights.improvement_opportunities %}
+            <li>
+                {% if improvement is mapping %}
+                    <strong>{{ improvement.area }}:</strong> {{ improvement.suggestion }}
+                {% else %}
+                    {{ improvement }}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Conversation Recommendations -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Conversation Practice Recommendations</h2>
+    </div>
+    
+    {% if ai_insights.personalized_recommendations %}
+    <div class="grid grid-1">
+        {% if ai_insights.personalized_recommendations.immediate_actions %}
+        <div>
+            <h3 class="card-subtitle">Immediate Actions (This Week)</h3>
+            <ul>
+                {% for action in ai_insights.personalized_recommendations.immediate_actions %}
+                <li>{{ action }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if ai_insights.personalized_recommendations.monthly_focus %}
+        <div>
+            <h3 class="card-subtitle">Monthly Focus Areas</h3>
+            <ul>
+                {% for focus in ai_insights.personalized_recommendations.monthly_focus %}
+                <li>{{ focus }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if ai_insights.personalized_recommendations.long_term_strategy %}
+        <div>
+            <h3 class="card-subtitle">Long-term Strategy</h3>
+            <ul>
+                {% for strategy in ai_insights.personalized_recommendations.long_term_strategy %}
+                <li>{{ strategy }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Performance Trends Chart -->
+{% if charts.performance_trends %}
+<div class="chart-container">
+    <h3 class="chart-title">Performance Trends Over Time</h3>
+    <img src="data:image/png;base64,{{ charts.performance_trends }}" alt="Performance Trends Chart" class="chart-image">
+</div>
+{% endif %}
+
+{% endblock %}

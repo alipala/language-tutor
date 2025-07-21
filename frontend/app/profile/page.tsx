@@ -199,7 +199,7 @@ export default function ProfilePage() {
     assessments: assessmentLearningPairs.length
   };
 
-  // Direct export functions
+  // Enhanced export functions using new AI-powered endpoints
   const handleDirectExport = async (type: 'learning-plans' | 'conversations' | 'data', format: 'pdf' | 'csv' | 'zip' | 'json') => {
     if (!user) return;
     
@@ -212,7 +212,37 @@ export default function ProfilePage() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/api/export/${type}?format=${format}`, {
+      let endpoint = '';
+      
+      // Get the authenticated user's ID from the token
+      // The backend will automatically identify the user from the auth token
+      // We'll use a placeholder since the backend uses current_user from auth
+      const userId = 'current'; // Placeholder - backend will use authenticated user
+      
+      if (type === 'learning-plans') {
+        if (format === 'pdf') {
+          // Use new comprehensive report for learning plans with report_type parameter
+          endpoint = `${API_URL}/export/comprehensive-report/current?format=pdf&report_type=learning_plans`;
+        } else {
+          // Use detailed learning plans endpoint for other formats
+          endpoint = `${API_URL}/export/learning-plans-detailed/current`;
+        }
+      } else if (type === 'conversations') {
+        if (format === 'pdf') {
+          // Use new comprehensive report for conversations with report_type parameter
+          endpoint = `${API_URL}/export/comprehensive-report/current?format=pdf&report_type=conversations`;
+        } else if (format === 'csv') {
+          // Use conversation insights endpoint
+          endpoint = `${API_URL}/export/conversation-insights/current`;
+        }
+      } else if (type === 'data') {
+        // Use comprehensive report endpoint for complete data
+        endpoint = `${API_URL}/export/comprehensive-report/current?format=${format}&report_type=comprehensive`;
+      }
+
+      console.log(`[EXPORT] Using new AI-enhanced endpoint: ${endpoint}`);
+
+      const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -220,12 +250,14 @@ export default function ProfilePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Export failed');
+        const errorText = await response.text();
+        console.error(`[EXPORT] Error response: ${response.status} - ${errorText}`);
+        throw new Error(`Export failed: ${response.status}`);
       }
 
       // Get filename from response headers or create default
       const contentDisposition = response.headers.get('content-disposition');
-      let filename = `${type}_${user.name.replace(' ', '_')}.${format}`;
+      let filename = `ai_enhanced_${type}_${user.name.replace(' ', '_')}.${format}`;
       
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
@@ -233,6 +265,8 @@ export default function ProfilePage() {
           filename = filenameMatch[1];
         }
       }
+
+      console.log(`[EXPORT] Downloading file: ${filename}`);
 
       // Create blob and download
       const blob = await response.blob();
@@ -245,8 +279,10 @@ export default function ProfilePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
+      console.log(`[EXPORT] ✅ Successfully exported ${filename}`);
+      
     } catch (error) {
-      console.error('Export error:', error);
+      console.error('[EXPORT] ❌ Export error:', error);
       // You could add a toast notification here
     } finally {
       setExportLoading(prev => ({ ...prev, [exportKey]: false }));
