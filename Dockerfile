@@ -5,11 +5,29 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install Node.js for frontend build only
+# Install Node.js for frontend build AND WeasyPrint system dependencies
 RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     curl \
+    # WeasyPrint system dependencies
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libffi-dev \
+    shared-mime-info \
+    libcairo2 \
+    libcairo-gobject2 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libgdk-pixbuf-2.0-0 \
+    libpango-1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    libgdk-pixbuf-2.0-0 \
+    fontconfig \
+    fonts-dejavu-core \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \

@@ -16,24 +16,9 @@ import seaborn as sns
 import numpy as np
 from matplotlib.patches import Rectangle
 
-# HTML/PDF generation - Railway compatible imports
-try:
-    import weasyprint
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-    WEASYPRINT_AVAILABLE = True
-    print("[MODERN_PDF] ✅ WeasyPrint available - using advanced PDF generation")
-except ImportError as e:
-    print(f"[MODERN_PDF] ⚠️ WeasyPrint not available: {str(e)}")
-    print("[MODERN_PDF] 🔄 Falling back to ReportLab for Railway compatibility")
-    WEASYPRINT_AVAILABLE = False
-    # Import ReportLab as fallback
-    from reportlab.lib.pagesizes import letter, A4
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
-
+# HTML/PDF generation
+import weasyprint
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 import logging
 
 # Configure matplotlib for better rendering
@@ -58,29 +43,21 @@ class ModernPDFGenerator:
     }
     
     def __init__(self):
-        if WEASYPRINT_AVAILABLE:
-            # Setup Jinja2 environment
-            template_dir = os.path.join(os.path.dirname(__file__), 'templates', 'pdf')
-            self.jinja_env = Environment(
-                loader=FileSystemLoader(template_dir),
-                autoescape=select_autoescape(['html', 'xml'])
-            )
-            
-            # Configure logging
-            logging.getLogger('weasyprint').setLevel(logging.ERROR)
-        else:
-            print("[MODERN_PDF] 🔄 Initializing ReportLab fallback mode")
+        # Setup Jinja2 environment
+        template_dir = os.path.join(os.path.dirname(__file__), 'templates', 'pdf')
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(template_dir),
+            autoescape=select_autoescape(['html', 'xml'])
+        )
+        
+        # Configure logging
+        logging.getLogger('weasyprint').setLevel(logging.ERROR)
     
     @staticmethod
     def generate_comprehensive_report(user_data: Dict[str, Any], report_type: str = "comprehensive") -> BytesIO:
         """Generate a professional report based on type - maintains API compatibility"""
         
         generator = ModernPDFGenerator()
-        
-        # Use ReportLab fallback if WeasyPrint is not available
-        if not WEASYPRINT_AVAILABLE:
-            print("[MODERN_PDF] 🔄 Using ReportLab fallback for Railway compatibility")
-            return generator._generate_reportlab_report(user_data, report_type)
         
         if report_type == "learning_plans":
             return generator._generate_learning_plans_report(user_data)

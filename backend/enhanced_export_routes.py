@@ -12,14 +12,7 @@ import asyncio
 from auth import get_current_user
 from models import UserResponse
 from ai_report_generator import AIReportGenerator
-# Railway-compatible import - fallback to ReportLab if WeasyPrint fails
-try:
-    from modern_pdf_generator import ProfessionalPDFGenerator
-    print("[EXPORT_ROUTES] ✅ Using modern PDF generator with WeasyPrint")
-except ImportError as e:
-    print(f"[EXPORT_ROUTES] ⚠️ WeasyPrint not available: {str(e)}")
-    print("[EXPORT_ROUTES] 🔄 Using ReportLab fallback for Railway compatibility")
-    from professional_pdf_generator import ProfessionalPDFGenerator
+from modern_pdf_generator import ProfessionalPDFGenerator
 
 # Initialize router
 router = APIRouter(prefix="/export", tags=["enhanced_export"])
