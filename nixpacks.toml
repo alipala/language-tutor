@@ -2,7 +2,24 @@
 npmVersion = "10"
 nodeVersion = "20"
 pythonVersion = "3.11.9"
-aptPkgs = ["python3-pip", "python3-dev", "build-essential"]
+aptPkgs = [
+  "python3-pip", 
+  "python3-dev", 
+  "build-essential",
+  # WeasyPrint system dependencies
+  "libpango-1.0-0",
+  "libpangoft2-1.0-0", 
+  "libpangocairo-1.0-0",
+  "libgdk-pixbuf2.0-0",
+  "libffi-dev",
+  "shared-mime-info",
+  "libcairo2",
+  "libcairo-gobject2",
+  "libglib2.0-0",
+  "libgtk-3-0",
+  "fontconfig",
+  "fonts-dejavu-core"
+]
 
 [phases.install]
 cmds = [
