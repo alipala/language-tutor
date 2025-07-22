@@ -157,9 +157,9 @@ const Footer: React.FC = () => {
   ];
 
   const socialLinks = [
-    { name: "LinkedIn", href: "https://linkedin.com/company/languagetutor", icon: Linkedin },
-    { name: "Instagram", href: "https://instagram.com/languagetutor", icon: Instagram },
-    { name: "YouTube", href: "https://youtube.com/@languagetutor", icon: Youtube }
+    { name: "LinkedIn", href: "https://www.linkedin.com/company/mytaco-ai", icon: Linkedin },
+    { name: "Instagram", href: "https://www.instagram.com/mytacoai/", icon: Instagram },
+    { name: "YouTube", href: "https://www.youtube.com/@MyTacoAI", icon: Youtube }
   ];
 
   const legalLinks = [
