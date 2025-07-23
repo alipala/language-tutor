@@ -823,41 +823,119 @@ async def download_image(
         )
 
 @router.get("/user-weeks")
-async def get_user_weeks(current_user: UserResponse = Depends(get_current_user)):
+async def get_user_weeks(
+    current_user: UserResponse = Depends(get_current_user),
+    learning_plan_id: Optional[str] = None
+):
     """
     Get user's completed weeks for sharing
+    - If learning_plan_id is provided: return weeks for THAT specific plan only
+    - If no learning_plan_id: return aggregated weeks across ALL plans (global achievements)
     """
     try:
-        # Get latest learning plan
         learning_plans_collection = database.learning_plans
-        latest_plan = await learning_plans_collection.find_one(
-            {"user_id": current_user.id},
-            sort=[("created_at", -1)]
-        )
         
-        if not latest_plan:
-            return {"completed_weeks": [], "total_weeks": 0}
-        
-        completed_sessions = latest_plan.get("completed_sessions", 0)
-        sessions_per_week = 2
-        completed_weeks_count = completed_sessions // sessions_per_week
-        total_weeks = latest_plan.get("duration_months", 6) * 4
-        
-        # Create weeks array
-        weeks = []
-        for i in range(1, completed_weeks_count + 1):
-            weeks.append({
-                "week_number": i,
-                "sessions_completed": sessions_per_week,
-                "total_sessions": sessions_per_week,
-                "is_completed": True
+        if learning_plan_id:
+            # SPECIFIC PLAN MODE: Only show achievements for the specified learning plan
+            print(f"[SHARE] Getting weeks for specific learning plan: {learning_plan_id}")
+            
+            specific_plan = await learning_plans_collection.find_one({
+                "id": learning_plan_id,
+                "user_id": current_user.id
             })
+            
+            if not specific_plan:
+                print(f"[SHARE] Learning plan {learning_plan_id} not found for user {current_user.id}")
+                return {"completed_weeks": [], "total_weeks": 0, "completed_sessions": 0}
+            
+            completed_sessions = specific_plan.get("completed_sessions", 0)
+            sessions_per_week = 2
+            plan_completed_weeks = completed_sessions // sessions_per_week
+            plan_total_weeks = specific_plan.get("duration_months", 6) * 4
+            plan_language = specific_plan.get("language", "unknown")
+            
+            print(f"[SHARE] Specific plan: {plan_language}, {completed_sessions} sessions, {plan_completed_weeks} weeks completed")
+            
+            # Create weeks array for this specific plan only
+            completed_weeks_list = []
+            for week_num in range(1, plan_completed_weeks + 1):
+                completed_weeks_list.append({
+                    "week_number": week_num,
+                    "sessions_completed": sessions_per_week,
+                    "total_sessions": sessions_per_week,
+                    "is_completed": True,
+                    "plan_language": plan_language,
+                    "plan_id": learning_plan_id
+                })
+            
+            print(f"[SHARE] ✅ Returning {len(completed_weeks_list)} weeks for specific plan {learning_plan_id}")
+            
+            return {
+                "completed_weeks": completed_weeks_list,
+                "total_weeks": plan_total_weeks,
+                "completed_sessions": completed_sessions,
+                "plan_specific": True,
+                "plan_language": plan_language
+            }
         
-        return {
-            "completed_weeks": weeks,
-            "total_weeks": total_weeks,
-            "completed_sessions": completed_sessions
-        }
+        else:
+            # GLOBAL MODE: Aggregate achievements across ALL plans
+            print(f"[SHARE] Getting aggregated weeks across all learning plans")
+            
+            all_plans = await learning_plans_collection.find(
+                {"user_id": current_user.id}
+            ).to_list(100)
+            
+            if not all_plans:
+                return {"completed_weeks": [], "total_weeks": 0, "completed_sessions": 0}
+            
+            print(f"[SHARE] Found {len(all_plans)} learning plans for user {current_user.id}")
+            
+            # Aggregate completed weeks across ALL plans
+            all_completed_weeks = {}
+            max_total_weeks = 0
+            total_completed_sessions = 0
+            
+            for plan in all_plans:
+                completed_sessions = plan.get("completed_sessions", 0)
+                sessions_per_week = 2
+                plan_completed_weeks = completed_sessions // sessions_per_week
+                plan_total_weeks = plan.get("duration_months", 6) * 4
+                plan_language = plan.get("language", "unknown")
+                
+                print(f"[SHARE] Plan {plan.get('id', 'unknown')}: {plan_language}, {completed_sessions} sessions, {plan_completed_weeks} weeks completed")
+                
+                # Track the highest week completed across all plans
+                for week_num in range(1, plan_completed_weeks + 1):
+                    if week_num not in all_completed_weeks:
+                        all_completed_weeks[week_num] = {
+                            "week_number": week_num,
+                            "sessions_completed": sessions_per_week,
+                            "total_sessions": sessions_per_week,
+                            "is_completed": True,
+                            "plan_language": plan_language,
+                            "plan_id": plan.get("id", "unknown")
+                        }
+                        print(f"[SHARE] Added week {week_num} from {plan_language} plan")
+                
+                max_total_weeks = max(max_total_weeks, plan_total_weeks)
+                total_completed_sessions += completed_sessions
+            
+            # Convert to sorted list
+            completed_weeks_list = [
+                all_completed_weeks[week_num] 
+                for week_num in sorted(all_completed_weeks.keys())
+            ]
+            
+            print(f"[SHARE] ✅ Aggregated {len(completed_weeks_list)} completed weeks across all plans")
+            print(f"[SHARE] Completed weeks: {[w['week_number'] for w in completed_weeks_list]}")
+            
+            return {
+                "completed_weeks": completed_weeks_list,
+                "total_weeks": max_total_weeks,
+                "completed_sessions": total_completed_sessions,
+                "plan_specific": False
+            }
         
     except Exception as e:
         print(f"[SHARE] ❌ Error getting user weeks: {str(e)}")
