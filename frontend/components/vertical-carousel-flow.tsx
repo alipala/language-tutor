@@ -1000,7 +1000,68 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">Select a language to begin your journey</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Mobile & Tablet: Compact Grid Layout */}
+            <div className="block lg:hidden">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                {languages.map((language, index) => (
+                  <button
+                    key={language.code}
+                    onClick={() => handleLanguageSelect(language.code)}
+                    className={`
+                      group relative overflow-hidden rounded-lg 
+                      transition-all duration-300 ease-out 
+                      bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40
+                      hover:shadow-md hover:shadow-[#4ECFBF]/20 hover:scale-102 hover:-translate-y-1
+                      animate-slide-up
+                      ${
+                        selectedLanguage === language.code
+                          ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30 shadow-md border-[#4ECFBF]/60'
+                          : 'hover:border-[#4ECFBF]/60'
+                      }
+                      
+                      /* Mobile: Much more compact cards */
+                      p-3 h-[80px] md:p-4 md:h-[90px]
+                    `}
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <div className="relative z-10 h-full">
+                      <div className="flex flex-col items-center justify-center h-full gap-2">
+                        <div className="flex-shrink-0 w-8 h-6 md:w-10 md:h-7 flex items-center justify-center rounded-md bg-gradient-to-br from-black/5 to-black/20 backdrop-blur-sm shadow-sm border border-white/30 overflow-hidden relative">
+                          <div className="relative w-full h-full overflow-hidden rounded-md transition-all duration-300 transform group-hover:scale-105">
+                            <div className="w-full h-full relative">
+                              {language.flagComponent}
+                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-black/10 pointer-events-none"></div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-center">
+                          <h3 className="text-sm md:text-base font-bold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
+                            {language.name}
+                          </h3>
+                        </div>
+                        
+                        {selectedLanguage === language.code && (
+                          <div className="absolute top-1 right-1">
+                            <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-md">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-2.5 h-2.5 md:w-3 md:h-3">
+                                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className={`absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] transition-all duration-700 ease-out opacity-80 ${selectedLanguage === language.code ? 'w-full' : 'w-0 group-hover:w-full'}`}></div>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Keep Original Grid Layout */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-6">
               {languages.map((language, index) => (
                 <button
                   key={language.code}
@@ -1074,7 +1135,77 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">Choose how you want to start your language journey</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {/* Mobile & Tablet: Compact Choice Cards */}
+            <div className="block md:hidden">
+              <div className="space-y-4 max-w-sm mx-auto">
+                {/* Assessment Option */}
+                <button
+                  onClick={() => {
+                    setIsLoading(true);
+                    window.location.href = '/assessment/speaking';
+                  }}
+                  className="group relative overflow-hidden rounded-lg transition-all duration-300 ease-out bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:shadow-md hover:shadow-[#4ECFBF]/20 hover:scale-102 hover:-translate-y-1 animate-slide-up w-full p-4 text-left h-[120px]"
+                  style={{ animationDelay: '100ms' }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  
+                  <div className="relative z-10 flex items-center gap-4 h-full">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                        Assess my speaking level
+                      </h3>
+                      <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-2">
+                        Take a quick assessment to determine your current language proficiency level.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-purple-600 w-0 group-hover:w-full transition-all duration-500"></div>
+                </button>
+
+                {/* Practice Option */}
+                <button
+                  onClick={() => {
+                    markStepCompleted(FlowStep.CHOICE);
+                    setTimeout(() => {
+                      transitionToNextStep();
+                    }, 300);
+                  }}
+                  className="group relative overflow-hidden rounded-lg transition-all duration-300 ease-out bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:shadow-md hover:shadow-[#4ECFBF]/20 hover:scale-102 hover:-translate-y-1 animate-slide-up w-full p-4 text-left h-[120px]"
+                  style={{ animationDelay: '200ms' }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-transparent to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  
+                  <div className="relative z-10 flex items-center gap-4 h-full">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#4ECFBF] to-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                        Do a Practice
+                      </h3>
+                      <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-2">
+                        Start a conversation practice session on topics of your choice.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-green-500 w-0 group-hover:w-full transition-all duration-500"></div>
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop & Large Tablet: Keep Original Layout */}
+            <div className="hidden md:grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
               {/* Assessment Option */}
               <button
                 onClick={() => {
@@ -1175,7 +1306,7 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">What would you like to talk about? (Optional)</p>
             </div>
 
-            {/* Custom Topic Section - Prominent at Top */}
+            {/* Custom Topic Section - Mobile & Desktop Responsive */}
             <div className="mb-8">
               {(() => {
                 const customTopic = topics.find(topic => topic.id === 'custom');
@@ -1183,51 +1314,100 @@ export default function VerticalCarouselFlow() {
                 
                 return (
                   <div className="flex flex-col items-center">
-                    <button
-                      onClick={() => handleTopicSelect('custom')}
-                      disabled={isLoading || isExtendingKnowledge}
-                      className={`
-                        group relative overflow-hidden rounded-2xl transition-all duration-300 
-                        flex flex-col items-center justify-center p-8 text-center
-                        w-full max-w-md mx-auto min-h-[200px]
-                        transform hover:translate-y-[-4px] shadow-xl hover:shadow-2xl hover:shadow-[#4ECFBF]/30
-                        animate-slide-up touch-target
-                        ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                        ${isCustomTopicActive ? 'ring-4 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
-                        bg-gradient-to-br from-[#4ECFBF]/15 via-white to-[#4ECFBF]/10 border-3 border-[#4ECFBF] shadow-[#4ECFBF]/20
-                      `}
-                    >
-                      {/* Animated Background */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/20 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                      
-                      {/* Sparkle Effects */}
-                      <div className="absolute top-4 right-4 text-[#4ECFBF] animate-pulse">✨</div>
-                      <div className="absolute top-6 left-6 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '0.5s' }}>⭐</div>
-                      <div className="absolute bottom-6 right-8 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '1s' }}>💫</div>
-                      
-                      {/* Popular Badge */}
-                      <div className="absolute top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-sm px-4 py-1 rounded-full font-bold shadow-lg">
-                        Most Popular
-                      </div>
-                      
-                      {/* Icon */}
-                      <div className="text-6xl mb-4 filter drop-shadow-lg">
-                        {customTopic.icon}
-                      </div>
-                      
-                      {/* Title */}
-                      <h3 className="text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-3">
-                        {customTopic.name}
-                      </h3>
-                      
-                      {/* Description */}
-                      <p className="text-gray-700 group-hover:text-gray-800 transition-colors duration-300 text-base leading-relaxed">
-                        {customTopic.description}
-                      </p>
-                      
-                      {/* Bottom Accent Line */}
-                      <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full rounded-b-2xl"></div>
-                    </button>
+                    {/* Mobile & Tablet: Compact Custom Topic Card */}
+                    <div className="block lg:hidden">
+                      <button
+                        onClick={() => handleTopicSelect('custom')}
+                        disabled={isLoading || isExtendingKnowledge}
+                        className={`
+                          group relative overflow-hidden rounded-lg transition-all duration-300 
+                          flex items-center gap-4 p-4 text-left
+                          w-full max-w-sm mx-auto h-[100px]
+                          transform hover:translate-y-[-2px] shadow-md hover:shadow-lg hover:shadow-[#4ECFBF]/20
+                          animate-slide-up touch-target
+                          ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}
+                          ${isCustomTopicActive ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
+                          bg-gradient-to-r from-[#4ECFBF]/10 via-white to-[#4ECFBF]/5 border-2 border-[#4ECFBF]/60 shadow-[#4ECFBF]/10
+                        `}
+                      >
+                        {/* Animated Background */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#4ECFBF]/15 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        
+                        {/* Popular Badge */}
+                        <div className="absolute top-1 right-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-sm">
+                          Popular
+                        </div>
+                        
+                        {/* Icon */}
+                        <div className="text-3xl md:text-4xl filter drop-shadow-sm flex-shrink-0">
+                          {customTopic.icon}
+                        </div>
+                        
+                        <div className="flex-1">
+                          {/* Title */}
+                          <h3 className="text-base md:text-lg font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-1 leading-tight">
+                            Create Custom Topic
+                          </h3>
+                          
+                          {/* Description */}
+                          <p className="text-xs md:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-2 leading-tight">
+                            Create your own personalized topic for a unique conversation experience.
+                          </p>
+                        </div>
+                        
+                        {/* Bottom Accent Line */}
+                        <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-0 group-hover:w-full transition-all duration-500"></div>
+                      </button>
+                    </div>
+
+                    {/* Desktop: Keep Original Large Card */}
+                    <div className="hidden lg:block">
+                      <button
+                        onClick={() => handleTopicSelect('custom')}
+                        disabled={isLoading || isExtendingKnowledge}
+                        className={`
+                          group relative overflow-hidden rounded-2xl transition-all duration-300 
+                          flex flex-col items-center justify-center p-8 text-center
+                          w-full max-w-md mx-auto min-h-[200px]
+                          transform hover:translate-y-[-4px] shadow-xl hover:shadow-2xl hover:shadow-[#4ECFBF]/30
+                          animate-slide-up touch-target
+                          ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
+                          ${isCustomTopicActive ? 'ring-4 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
+                          bg-gradient-to-br from-[#4ECFBF]/15 via-white to-[#4ECFBF]/10 border-3 border-[#4ECFBF] shadow-[#4ECFBF]/20
+                        `}
+                      >
+                        {/* Animated Background */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/20 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        
+                        {/* Sparkle Effects */}
+                        <div className="absolute top-4 right-4 text-[#4ECFBF] animate-pulse">✨</div>
+                        <div className="absolute top-6 left-6 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '0.5s' }}>⭐</div>
+                        <div className="absolute bottom-6 right-8 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '1s' }}>💫</div>
+                        
+                        {/* Popular Badge */}
+                        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-sm px-4 py-1 rounded-full font-bold shadow-lg">
+                          Most Popular
+                        </div>
+                        
+                        {/* Icon */}
+                        <div className="text-6xl mb-4 filter drop-shadow-lg">
+                          {customTopic.icon}
+                        </div>
+                        
+                        {/* Title */}
+                        <h3 className="text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-3">
+                          {customTopic.name}
+                        </h3>
+                        
+                        {/* Description */}
+                        <p className="text-gray-700 group-hover:text-gray-800 transition-colors duration-300 text-base leading-relaxed">
+                          {customTopic.description}
+                        </p>
+                        
+                        {/* Bottom Accent Line */}
+                        <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full rounded-b-2xl"></div>
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
@@ -1242,8 +1422,117 @@ export default function VerticalCarouselFlow() {
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
             </div>
 
-            {/* Regular Topics Grid - Mobile-First Responsive Design */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 max-h-[60vh] md:max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
+            {/* Mobile & Tablet: Compact Grid with Progressive Disclosure */}
+            <div className="block lg:hidden">
+              {/* Popular Topics Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">Popular Topics</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                  {topics.filter(topic => topic.id !== 'custom').slice(0, 6).map((topic, index) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => handleTopicSelect(topic.id)}
+                      disabled={isLoading || isExtendingKnowledge}
+                      className={`
+                        group relative overflow-hidden rounded-lg transition-all duration-300 
+                        flex flex-col text-left touch-target
+                        transform hover:translate-y-[-1px] shadow-md hover:shadow-[#4ECFBF]/20
+                        animate-slide-up
+                        ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}
+                        bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                        
+                        /* Mobile: Ultra-compact cards */
+                        p-3 h-[100px] md:p-4 md:h-[110px]
+                      `}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      {/* Hover Effect Background */}
+                      <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
+                      {/* Icon - Compact Sizing */}
+                      <div className="text-2xl md:text-3xl mb-2">
+                        {topic.icon}
+                      </div>
+                      
+                      {/* Title - Compact Typography */}
+                      <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight line-clamp-2">
+                        {topic.name}
+                      </h3>
+                      
+                      {/* Bottom Accent Line */}
+                      <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Show More Button */}
+              {topics.filter(topic => topic.id !== 'custom').length > 6 && (
+                <div className="text-center mb-4">
+                  <button
+                    onClick={() => {
+                      const moreTopicsSection = document.getElementById('more-topics-mobile');
+                      if (moreTopicsSection) {
+                        moreTopicsSection.classList.toggle('hidden');
+                        const button = document.querySelector('[data-show-more]');
+                        if (button) {
+                          button.textContent = moreTopicsSection.classList.contains('hidden') ? 'Show More Topics' : 'Show Less';
+                        }
+                      }
+                    }}
+                    data-show-more
+                    className="px-6 py-2 bg-[#4ECFBF]/10 hover:bg-[#4ECFBF]/20 border-2 border-[#4ECFBF]/30 hover:border-[#4ECFBF]/50 rounded-full text-[#4ECFBF] font-medium transition-all duration-300 hover:scale-105"
+                  >
+                    Show More Topics
+                  </button>
+                </div>
+              )}
+
+              {/* More Topics Section - Initially Hidden */}
+              <div id="more-topics-mobile" className="hidden">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">All Topics</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 max-h-[40vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
+                  {topics.filter(topic => topic.id !== 'custom').slice(6).map((topic, index) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => handleTopicSelect(topic.id)}
+                      disabled={isLoading || isExtendingKnowledge}
+                      className={`
+                        group relative overflow-hidden rounded-lg transition-all duration-300 
+                        flex flex-col text-left touch-target
+                        transform hover:translate-y-[-1px] shadow-md hover:shadow-[#4ECFBF]/20
+                        animate-slide-up
+                        ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}
+                        bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                        
+                        /* Mobile: Ultra-compact cards */
+                        p-3 h-[100px] md:p-4 md:h-[110px]
+                      `}
+                      style={{ animationDelay: `${(index + 6) * 50}ms` }}
+                    >
+                      {/* Hover Effect Background */}
+                      <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
+                      {/* Icon - Compact Sizing */}
+                      <div className="text-2xl md:text-3xl mb-2">
+                        {topic.icon}
+                      </div>
+                      
+                      {/* Title - Compact Typography */}
+                      <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight line-clamp-2">
+                        {topic.name}
+                      </h3>
+                      
+                      {/* Bottom Accent Line */}
+                      <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop: Keep Original Grid Layout */}
+            <div className="hidden lg:grid lg:grid-cols-4 gap-6 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4ECFBF]/30 scrollbar-track-gray-100">
               {topics.filter(topic => topic.id !== 'custom').map((topic, index) => (
                 <button
                   key={topic.id}
@@ -1256,31 +1545,25 @@ export default function VerticalCarouselFlow() {
                     animate-slide-up
                     ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
                     bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
-                    
-                    /* Mobile-First Sizing */
-                    p-6 min-h-[160px]
-                    
-                    /* Tablet and Desktop Sizing */
-                    md:p-5 md:min-h-[140px]
-                    lg:p-4 lg:min-h-[120px]
+                    p-4 min-h-[120px]
                   `}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {/* Hover Effect Background */}
                   <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  {/* Icon - Mobile-First Sizing */}
-                  <div className="text-4xl md:text-3xl lg:text-4xl mb-4 md:mb-3">
+                  {/* Icon */}
+                  <div className="text-4xl mb-3">
                     {topic.icon}
                   </div>
                   
-                  {/* Title - Mobile-First Typography */}
-                  <h3 className="text-xl md:text-lg lg:text-xl font-semibold mb-3 md:mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
+                  {/* Title */}
+                  <h3 className="text-xl font-semibold mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
                     {topic.name}
                   </h3>
                   
-                  {/* Description - Mobile-First Typography */}
-                  <p className="text-sm md:text-xs lg:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3 leading-relaxed">
+                  {/* Description */}
+                  <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-3 leading-relaxed">
                     {topic.description}
                   </p>
                   
@@ -1311,7 +1594,153 @@ export default function VerticalCarouselFlow() {
               <p className="text-lg text-gray-600">Choose your proficiency level</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Mobile & Tablet: Compact Level Cards */}
+            <div className="block lg:hidden">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                {levels.map((level, index) => {
+                  const getLevelColors = (code: string) => {
+                    if (code.startsWith('A')) return {
+                      bg: 'from-green-500 to-emerald-600',
+                      badge: 'bg-gradient-to-br from-green-400 to-emerald-500 via-green-500',
+                      badgeShadow: 'shadow-green-500/30'
+                    };
+                    if (code.startsWith('B')) return {
+                      bg: 'from-blue-500 to-indigo-600',
+                      badge: 'bg-gradient-to-br from-blue-400 to-indigo-500 via-blue-500',
+                      badgeShadow: 'shadow-blue-500/30'
+                    };
+                    return {
+                      bg: 'from-purple-500 to-violet-600',
+                      badge: 'bg-gradient-to-br from-purple-400 to-violet-500 via-purple-500',
+                      badgeShadow: 'shadow-purple-500/30'
+                    };
+                  };
+                  
+                  const colors = getLevelColors(level.code);
+                  
+                  return (
+                    <button
+                      key={level.code}
+                      onClick={() => handleLevelSelect(level.code)}
+                      className={`
+                        relative overflow-hidden flex flex-col items-start rounded-lg text-left
+                        transition-all duration-300 transform hover:scale-102 hover:shadow-lg hover:-translate-y-1
+                        bg-white border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
+                        shadow-md hover:shadow-[#4ECFBF]/20 animate-slide-up
+                        ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-lg shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
+                        
+                        /* Mobile: Ultra-compact cards */
+                        p-3 h-[120px] md:p-4 md:h-[130px]
+                      `}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <div className={`absolute -top-2 -right-2 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center overflow-hidden`}>
+                        <div className={`absolute transform rotate-45 w-16 h-6 md:w-20 md:h-7 ${colors.badge} top-1 right-[-4px] md:top-2 md:right-[-6px] shadow-md ${colors.badgeShadow}`}>
+                          <div className="absolute inset-0 opacity-20 animate-pulse"></div>
+                        </div>
+                        <span className="relative text-white font-bold text-xs">{level.code}</span>
+                      </div>
+                      
+                      <h2 className="text-base md:text-lg font-bold mb-2 text-gray-800 leading-tight">
+                        {selectedLanguage === 'dutch' && (
+                          level.code === 'A1' ? 'Beginner' : 
+                          level.code === 'A2' ? 'Basis' :
+                          level.code === 'B1' ? 'Gemiddeld' :
+                          level.code === 'B2' ? 'Hoog Gemiddeld' :
+                          level.code === 'C1' ? 'Gevorderd' : 'Zeer Gevorderd'
+                        )}
+                        {selectedLanguage === 'english' && (
+                          level.code === 'A1' ? 'Beginner' : 
+                          level.code === 'A2' ? 'Elementary' :
+                          level.code === 'B1' ? 'Intermediate' :
+                          level.code === 'B2' ? 'Upper Inter.' :
+                          level.code === 'C1' ? 'Advanced' : 'Proficient'
+                        )}
+                        {selectedLanguage === 'spanish' && (
+                          level.code === 'A1' ? 'Principiante' : 
+                          level.code === 'A2' ? 'Elemental' :
+                          level.code === 'B1' ? 'Intermedio' :
+                          level.code === 'B2' ? 'Inter. Alto' :
+                          level.code === 'C1' ? 'Avanzado' : 'Dominio'
+                        )}
+                        {selectedLanguage === 'german' && (
+                          level.code === 'A1' ? 'Anfänger' : 
+                          level.code === 'A2' ? 'Grundstufe' :
+                          level.code === 'B1' ? 'Mittelstufe' :
+                          level.code === 'B2' ? 'Fortgeschr.' :
+                          level.code === 'C1' ? 'Fortgeschr.' : 'Kompetent'
+                        )}
+                        {selectedLanguage === 'french' && (
+                          level.code === 'A1' ? 'Débutant' : 
+                          level.code === 'A2' ? 'Élémentaire' :
+                          level.code === 'B1' ? 'Intermédiaire' :
+                          level.code === 'B2' ? 'Inter. Avancé' :
+                          level.code === 'C1' ? 'Avancé' : 'Maîtrise'
+                        )}
+                        {selectedLanguage === 'portuguese' && (
+                          level.code === 'A1' ? 'Iniciante' : 
+                          level.code === 'A2' ? 'Básico' :
+                          level.code === 'B1' ? 'Intermediário' :
+                          level.code === 'B2' ? 'Inter. Superior' :
+                          level.code === 'C1' ? 'Avançado' : 'Proficiente'
+                        )}
+                        {!selectedLanguage && (
+                          level.code === 'A1' ? 'Beginner' : 
+                          level.code === 'A2' ? 'Elementary' :
+                          level.code === 'B1' ? 'Intermediate' :
+                          level.code === 'B2' ? 'Upper Inter.' :
+                          level.code === 'C1' ? 'Advanced' : 'Proficient'
+                        )}
+                      </h2>
+                      
+                      <p className="text-xs md:text-sm text-gray-600 mb-3 line-clamp-2 leading-tight">
+                        {level.description}
+                      </p>
+                      
+                      <div className="flex flex-wrap gap-1 mt-auto">
+                        {level.code.startsWith('A') && (
+                          <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm">
+                            {selectedLanguage === 'dutch' && 'Basis'}
+                            {selectedLanguage === 'english' && 'Basic'}
+                            {selectedLanguage === 'spanish' && 'Básico'}
+                            {selectedLanguage === 'german' && 'Grund'}
+                            {selectedLanguage === 'french' && 'Base'}
+                            {selectedLanguage === 'portuguese' && 'Básico'}
+                            {!selectedLanguage && 'Basic'}
+                          </span>
+                        )}
+                        {(level.code === 'A2' || level.code.startsWith('B') || level.code.startsWith('C')) && (
+                          <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 text-blue-400 rounded-full shadow-sm">
+                            {selectedLanguage === 'dutch' && 'Gesprek'}
+                            {selectedLanguage === 'english' && 'Talk'}
+                            {selectedLanguage === 'spanish' && 'Hablar'}
+                            {selectedLanguage === 'german' && 'Sprechen'}
+                            {selectedLanguage === 'french' && 'Parler'}
+                            {selectedLanguage === 'portuguese' && 'Falar'}
+                            {!selectedLanguage && 'Talk'}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {selectedLevel === level.code && (
+                        <div className="absolute top-2 left-2">
+                          <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-lg animate-pulse">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-3 h-3 md:w-4 md:h-4">
+                              <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className={`absolute bottom-0 left-0 h-1 bg-gradient-to-r ${colors.bg} transition-all duration-500 ${selectedLevel === level.code ? 'w-full' : 'w-0'}`} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop: Keep Original Layout with Better Spacing */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-6">
               {levels.map((level, index) => {
                 const getLevelColors = (code: string) => {
                   if (code.startsWith('A')) return {
@@ -1338,9 +1767,9 @@ export default function VerticalCarouselFlow() {
                     key={level.code}
                     onClick={() => handleLevelSelect(level.code)}
                     className={`
-                      relative overflow-hidden flex flex-col items-start p-4 md:p-5 rounded-xl text-left
+                      relative overflow-hidden flex flex-col items-start p-5 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:-translate-y-2
-                      bg-white h-[180px] md:h-[200px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
+                      bg-white h-[220px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
                       shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up
                       ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
                     `}
@@ -1409,7 +1838,7 @@ export default function VerticalCarouselFlow() {
                       {level.description}
                     </p>
                     
-                    <div className="flex flex-col gap-1.5 mt-auto">
+                    <div className="flex flex-col gap-2 mt-auto mb-4">
                       {level.code.startsWith('A') && (
                         <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Basiswoordenschat'}
