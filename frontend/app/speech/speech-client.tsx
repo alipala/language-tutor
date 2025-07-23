@@ -1775,7 +1775,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                 </svg>
               </div>
               <span className="font-semibold text-lg drop-shadow-sm">
-                {isAuthenticated() ? 'Unlimited Time' : `${Math.floor(conversationDuration / 60)} min limit`}
+                {Math.floor(conversationDuration / 60)} min
               </span>
             </div>
             
