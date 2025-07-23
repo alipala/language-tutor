@@ -102,7 +102,16 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
         ? 'https://mytacoai.com' 
         : 'http://localhost:8000';
       
-      const response = await fetch(`${apiUrl}/api/share/user-weeks`, {
+      // Build URL with learning_plan_id parameter if provided
+      let url = `${apiUrl}/api/share/user-weeks`;
+      if (learningPlanId) {
+        url += `?learning_plan_id=${encodeURIComponent(learningPlanId)}`;
+        console.log(`[SHARE] Loading weeks for specific learning plan: ${learningPlanId}`);
+      } else {
+        console.log(`[SHARE] Loading aggregated weeks across all plans`);
+      }
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
