@@ -25,6 +25,10 @@ export default function Home() {
   const [maxRedirectAttempts] = useState(3);
   const redirectAttemptsRef = useRef(0);
   
+  // Video player state
+  const [showVideo, setShowVideo] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  
   // Scroll to section function
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId);
@@ -236,95 +240,149 @@ export default function Home() {
                   </div>
                 </div>
                 
-                {/* Right Column - Conversation Demo */}
-                <div className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-shadow duration-300 transform scale-110 -mt-8">
+                {/* Right Column - Conversation Demo with Video */}
+                <div 
+                  className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-all duration-300 transform scale-110 -mt-8 relative cursor-pointer group"
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
+                  onClick={() => setShowVideo(true)}
+                >
                   <div className="bg-gray-100 rounded-t-lg p-2 border-b border-gray-200 flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-[#FF5F57] mr-2"></div>
                       <div className="w-3 h-3 rounded-full bg-[#FFBD2E] mr-2"></div>
                       <div className="w-3 h-3 rounded-full bg-[#28CA41]"></div>
                     </div>
-                    <div className="text-center text-sm text-gray-700 font-medium">Realtime Conversation</div>
+                    <div className="text-center text-sm text-gray-700 font-medium">
+                      {showVideo ? 'Live Demo Video' : 'Realtime Conversation'}
+                    </div>
                     <div className="w-12"></div>
                   </div>
                   
-                  <div className="h-80 overflow-hidden p-3 space-y-2">
-                    {/* Coach Message */}
-                    <div className="flex items-start">
-                      <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
-                        <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
-                        <p className="text-sm">Hi there! Let's talk about your hobbies. What do you enjoy doing?</p>
-                      </div>
-                    </div>
-                    
-                    {/* User Message */}
-                    <div className="flex items-start justify-end">
-                      <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
-                        <p className="text-sm">I enjoy playing tennis and reading history books.</p>
-                      </div>
-                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
-                        You
-                      </div>
-                    </div>
-                    
-                    {/* Feedback */}
-                    <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                      <div className="text-xs text-gray-600 font-medium mb-1">Feedback:</div>
-                      <div className="grid grid-cols-3 gap-1 text-xs">
-                        <div>
-                          <span className="text-green-600 font-medium">Pronunciation: </span>
-                          <span className="text-gray-700">90%</span>
+                  {!showVideo ? (
+                    <>
+                      {/* Conversation Demo Content */}
+                      <div className="h-80 overflow-hidden p-3 space-y-2 relative">
+                        {/* Coach Message */}
+                        <div className="flex items-start">
+                          <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
+                            <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
+                            <p className="text-sm">Hi there! Let's talk about your hobbies. What do you enjoy doing?</p>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-amber-600 font-medium">Grammar: </span>
-                          <span className="text-gray-700">85%</span>
+                        
+                        {/* User Message */}
+                        <div className="flex items-start justify-end">
+                          <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
+                            <p className="text-sm">I enjoy playing tennis and reading history books.</p>
+                          </div>
+                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
+                            You
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-blue-600 font-medium">Vocabulary: </span>
-                          <span className="text-gray-700">80%</span>
+                        
+                        {/* Feedback */}
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                          <div className="text-xs text-gray-600 font-medium mb-1">Feedback:</div>
+                          <div className="grid grid-cols-3 gap-1 text-xs">
+                            <div>
+                              <span className="text-green-600 font-medium">Pronunciation: </span>
+                              <span className="text-gray-700">90%</span>
+                            </div>
+                            <div>
+                              <span className="text-amber-600 font-medium">Grammar: </span>
+                              <span className="text-gray-700">85%</span>
+                            </div>
+                            <div>
+                              <span className="text-blue-600 font-medium">Vocabulary: </span>
+                              <span className="text-gray-700">80%</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    {/* Coach Reply */}
-                    <div className="flex items-start">
-                      <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
-                        <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
-                        <p className="text-sm">Great! What period of history interests you most?</p>
-                      </div>
-                    </div>
-                    
-                    {/* User Reply */}
-                    <div className="flex items-start justify-end">
-                      <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
-                        <p className="text-sm">I'm fascinated by ancient Rome and medieval Europe.</p>
-                      </div>
-                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
-                        You
-                      </div>
-                    </div>
-                    
-                    {/* Input Area */}
-                    <div className="mt-auto border-t border-gray-200 pt-2">
-                      <div className="bg-gray-100 rounded-full flex items-center p-1 pr-2 w-1/2">
-                        <div className="relative">
-                          <button className="w-6 h-6 rounded-full bg-[#F75A5A] flex items-center justify-center text-white mr-2 relative z-10">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        
+                        {/* Coach Reply */}
+                        <div className="flex items-start">
+                          <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
+                            <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
+                            <p className="text-sm">Great! What period of history interests you most?</p>
+                          </div>
+                        </div>
+                        
+                        {/* User Reply */}
+                        <div className="flex items-start justify-end">
+                          <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
+                            <p className="text-sm">I'm fascinated by ancient Rome and medieval Europe.</p>
+                          </div>
+                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
+                            You
+                          </div>
+                        </div>
+                        
+                        {/* Input Area */}
+                        <div className="mt-auto border-t border-gray-200 pt-2">
+                          <div className="bg-gray-100 rounded-full flex items-center p-1 pr-2 w-1/2">
+                            <div className="relative">
+                              <button className="w-6 h-6 rounded-full bg-[#F75A5A] flex items-center justify-center text-white mr-2 relative z-10">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                </svg>
+                              </button>
+                              {/* Sound Circle Animation */}
+                              <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-30 animate-ping"></div>
+                              <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-20 animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                            </div>
+                            <div className="text-gray-500 text-xs">Press to speak...</div>
+                          </div>
+                        </div>
+                        
+                        {/* Video Play Button Overlay */}
+                        <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm rounded-lg flex items-center justify-center transition-all duration-300 ${
+                          isHovering ? 'opacity-100' : 'opacity-0'
+                        }`}>
+                          <div className="bg-white/90 backdrop-blur-sm rounded-full p-6 shadow-2xl transform transition-all duration-300 hover:scale-110 group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)]">
+                            <svg className="w-12 h-12 text-[#4ECFBF] ml-1" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
                             </svg>
-                          </button>
-                          {/* Sound Circle Animation */}
-                          <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-30 animate-ping"></div>
-                          <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-20 animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                          </div>
+                          <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg">
+                            <p className="text-sm font-medium text-gray-800 whitespace-nowrap">
+                              🎥 Watch Live Demo
+                            </p>
+                            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 w-2 h-2 bg-white/90 rotate-45"></div>
+                          </div>
                         </div>
-                        <div className="text-gray-500 text-xs">Press to speak...</div>
                       </div>
+                    </>
+                  ) : (
+                    /* YouTube Video Player */
+                    <div className="h-80 relative">
+                      <iframe
+                        src="https://www.youtube.com/embed/64N7w2dFfDw?autoplay=1&rel=0&modestbranding=1"
+                        title="Language Tutor Demo"
+                        className="w-full h-full rounded-b-lg"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                      
+                      {/* Close Video Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowVideo(false);
+                        }}
+                        className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 z-10"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
                 </div>
               </div>
