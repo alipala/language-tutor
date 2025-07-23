@@ -1739,7 +1739,7 @@ export default function VerticalCarouselFlow() {
               </div>
             </div>
 
-            {/* Desktop: Keep Original Layout */}
+            {/* Desktop: Keep Original Layout with Better Spacing */}
             <div className="hidden lg:grid lg:grid-cols-3 gap-6">
               {levels.map((level, index) => {
                 const getLevelColors = (code: string) => {
@@ -1769,7 +1769,7 @@ export default function VerticalCarouselFlow() {
                     className={`
                       relative overflow-hidden flex flex-col items-start p-5 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:-translate-y-2
-                      bg-white h-[200px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
+                      bg-white h-[220px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
                       shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up
                       ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
                     `}
@@ -1838,7 +1838,7 @@ export default function VerticalCarouselFlow() {
                       {level.description}
                     </p>
                     
-                    <div className="flex flex-col gap-1.5 mt-auto">
+                    <div className="flex flex-col gap-2 mt-auto mb-4">
                       {level.code.startsWith('A') && (
                         <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 text-green-400 rounded-full shadow-sm text-center">
                           {selectedLanguage === 'dutch' && 'Basiswoordenschat'}
