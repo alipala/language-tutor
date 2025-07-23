@@ -36,6 +36,82 @@ function cleanTranscript(transcript: string): string {
   return uniqueLines.join(' ');
 }
 
+// Helper function to split transcript into sentences
+function splitIntoSentences(text: string): string[] {
+  if (!text || text.trim() === '') return [];
+  
+  // Split by sentence-ending punctuation, keeping the punctuation
+  const sentences = text
+    .split(/([.!?]+\s*)/)
+    .reduce((acc: string[], part: string, index: number) => {
+      if (index % 2 === 0) {
+        // This is the text part
+        if (part.trim()) {
+          acc.push(part.trim());
+        }
+      } else {
+        // This is the punctuation part
+        if (acc.length > 0) {
+          acc[acc.length - 1] += part;
+        }
+      }
+      return acc;
+    }, [])
+    .map(sentence => sentence.trim())
+    .filter(sentence => sentence.length > 0);
+  
+  // If no sentences were found (no punctuation), return the original text as one sentence
+  if (sentences.length === 0 && text.trim()) {
+    return [text.trim()];
+  }
+  
+  return sentences;
+}
+
+// Smart sentence grouping function for better bubble organization
+function smartGroupSentences(sentences: string[]): string[] {
+  if (sentences.length === 0) return [];
+  if (sentences.length === 1) return sentences;
+  
+  const groups: string[] = [];
+  let currentGroup: string[] = [];
+  let currentGroupLength = 0;
+  
+  for (const sentence of sentences) {
+    const sentenceLength = sentence.length;
+    
+    // If sentence is very long (>120 chars), make it its own bubble
+    if (sentenceLength > 120) {
+      // Flush current group first
+      if (currentGroup.length > 0) {
+        groups.push(currentGroup.join(' '));
+        currentGroup = [];
+        currentGroupLength = 0;
+      }
+      // Add long sentence as separate bubble
+      groups.push(sentence);
+    }
+    // If adding this sentence would make group too long (>150 total), start new group
+    else if (currentGroupLength + sentenceLength > 150 && currentGroup.length > 0) {
+      groups.push(currentGroup.join(' '));
+      currentGroup = [sentence];
+      currentGroupLength = sentenceLength;
+    }
+    // Add to current group
+    else {
+      currentGroup.push(sentence);
+      currentGroupLength += sentenceLength + 1; // +1 for space
+    }
+  }
+  
+  // Don't forget the last group
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup.join(' '));
+  }
+  
+  return groups.length > 0 ? groups : sentences;
+}
+
 // Helper function to manage sliding window memory
 function manageConversationMemory(
   messages: RealtimeMessage[], 
@@ -149,16 +225,23 @@ export function useRealtime() {
       if (transcriptEvent.transcript) {
         const cleanedTranscript = cleanTranscript(transcriptEvent.transcript);
         if (cleanedTranscript) {
-          const newMessage: RealtimeMessage = {
+          // Split transcript into sentences and apply smart grouping
+          const sentences = splitIntoSentences(cleanedTranscript);
+          const smartGroups = smartGroupSentences(sentences);
+          const baseTimestamp = new Date().toISOString();
+          const baseItemId = transcriptEvent.item_id || Date.now().toString();
+          
+          // Create multiple messages for each smart group
+          const newMessages: RealtimeMessage[] = smartGroups.map((group, index) => ({
             role: 'assistant',
-            content: cleanedTranscript,
-            itemId: transcriptEvent.item_id || Date.now().toString(),
-            timestamp: new Date().toISOString(),
+            content: group,
+            itemId: `${baseItemId}-group-${index}`,
+            timestamp: new Date(Date.now() + index * 100).toISOString(), // Slight delay between groups
             isComplete: true
-          };
+          }));
           
           setMessages(prev => {
-            const updated = [...prev, newMessage];
+            const updated = [...prev, ...newMessages];
             
             // Update conversation memory
             setConversationMemory(current => {
@@ -175,16 +258,23 @@ export function useRealtime() {
       if (userTranscriptEvent.transcript) {
         const cleanedTranscript = cleanTranscript(userTranscriptEvent.transcript);
         if (cleanedTranscript) {
-          const newMessage: RealtimeMessage = {
+          // Split transcript into sentences and apply smart grouping
+          const sentences = splitIntoSentences(cleanedTranscript);
+          const smartGroups = smartGroupSentences(sentences);
+          const baseTimestamp = new Date().toISOString();
+          const baseItemId = userTranscriptEvent.item_id || Date.now().toString();
+          
+          // Create multiple messages for each smart group
+          const newMessages: RealtimeMessage[] = smartGroups.map((group, index) => ({
             role: 'user',
-            content: cleanedTranscript,
-            itemId: userTranscriptEvent.item_id || Date.now().toString(),
-            timestamp: new Date().toISOString(),
+            content: group,
+            itemId: `${baseItemId}-group-${index}`,
+            timestamp: new Date(Date.now() + index * 100).toISOString(), // Slight delay between groups
             isComplete: true
-          };
+          }));
           
           setMessages(prev => {
-            const updated = [...prev, newMessage];
+            const updated = [...prev, ...newMessages];
             
             // Update conversation memory
             setConversationMemory(current => {

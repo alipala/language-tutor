@@ -294,21 +294,58 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     isPaused: isRealtimePaused  // NEW - renamed to avoid conflict
   } = useRealtime();
   
-  // Process messages for display and deduplicate both user and assistant messages
+  // Process messages for display and group sentences from the same speech segment
   const processedMessages = useMemo(() => {
-    // First, map the messages to add consistent IDs
-    const mappedMessages = messages.map((message, index) => ({
-      ...message,
-      itemId: `message-${index}`,
-      role: message.role === 'assistant' ? 'assistant' : 'user'
-    }));
+    // First, map the messages to add consistent IDs and group information
+    const mappedMessages = messages.map((message, index) => {
+      // Extract base item ID to identify groups from the same speech segment
+      const baseItemId = message.itemId?.split('-group-')[0] || `message-${index}`;
+      const isGroupPart = message.itemId?.includes('-group-') || false;
+      
+      return {
+        ...message,
+        itemId: message.itemId || `message-${index}`,
+        role: message.role === 'assistant' ? 'assistant' : 'user',
+        baseItemId,
+        isGroupPart
+      };
+    });
+
+    // Group messages by baseItemId and role to identify speech segment groups
+    const groupedMessages = mappedMessages.reduce((acc, message, index) => {
+      const key = `${message.baseItemId}-${message.role}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push({ ...message, originalIndex: index });
+      return acc;
+    }, {} as Record<string, Array<typeof mappedMessages[0] & { originalIndex: number }>>);
+
+    // Add grouping information to messages
+    const messagesWithGrouping = mappedMessages.map((message, index) => {
+      const key = `${message.baseItemId}-${message.role}`;
+      const group = groupedMessages[key];
+      const isGrouped = group && group.length > 1;
+      const groupIndex = isGrouped ? group.findIndex(m => m.originalIndex === index) : 0;
+      const isFirstInGroup = groupIndex === 0;
+      const isLastInGroup = groupIndex === group.length - 1;
+      
+      return {
+        ...message,
+        isGrouped,
+        isFirstInGroup,
+        isLastInGroup,
+        groupSize: group ? group.length : 1,
+        groupIndex
+      };
+    });
 
     // Deduplicate messages by filtering out those with very similar content
-    const filteredMessages: typeof mappedMessages = [];
+    const filteredMessages: typeof messagesWithGrouping = [];
     const seenContents: {content: string, index: number, role: string}[] = [];
 
     // First pass: collect all messages and their indices
-    mappedMessages.forEach((message, index) => {
+    messagesWithGrouping.forEach((message, index) => {
       seenContents.push({
         content: message.content.trim(),
         index,
@@ -379,8 +416,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
 
     // Add all non-duplicate messages to the filtered list
-    for (let i = 0; i < mappedMessages.length; i++) {
-      const message = mappedMessages[i];
+    for (let i = 0; i < messagesWithGrouping.length; i++) {
+      const message = messagesWithGrouping[i];
       if (!duplicateIndices.has(i)) {
         filteredMessages.push(message);
       }
@@ -1993,7 +2030,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 return (
                                   <div 
                                     key={`${message.role}-${index}-${message.itemId || messageTime.getTime()}`}
-                                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn ${
+                                      message.isGrouped && !message.isFirstInGroup ? 'mt-1' : 'mt-4'
+                                    }`}
                                   >
                                     {message.role !== 'user' ? (
                                       <div className="flex-shrink-0 h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-[#AFF4EB] flex items-center justify-center mr-2 shadow-md overflow-hidden">
