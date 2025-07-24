@@ -8,7 +8,6 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { Logo } from './logo';
 import { Crown, Star, Zap } from 'lucide-react';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
-import NotificationBell from '@/components/notification-bell';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -22,6 +21,36 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
+
+  // Notification state
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/unread-count', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadCount(data.unread_count);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  // Handle notifications navigation
+  const handleNotificationsNavigation = () => {
+    // Navigate to profile page with notifications tab
+    window.location.href = '/profile?tab=notifications';
+    setIsMenuOpen(false);
+  };
 
   // Check if we're on the landing page
   useEffect(() => {
@@ -39,6 +68,17 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       }
     }
   }, []);
+
+  // Fetch unread count when user is available
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+      
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
   
 
   // Helper function to get plan display info
@@ -231,17 +271,14 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             </div>
           ) : user ? (
             <div className="flex items-center space-x-2">
-              {/* Notification Bell */}
-              <NotificationBell />
-              
               <div className="relative user-menu-container">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="text-white/80 hover:text-white transition-all duration-300"
+                  className="text-white/80 hover:text-white transition-all duration-300 relative"
                 >
                   {!subscriptionLoading && planInfo.name !== 'Try & Learn' ? (
                     <div 
-                      className="flex items-center justify-between px-3 py-2 rounded-md font-medium border border-white/50 hover:bg-white/10 transition-all duration-300"
+                      className="flex items-center justify-between px-3 py-2 rounded-md font-medium border border-white/50 hover:bg-white/10 transition-all duration-300 relative"
                       style={{ backgroundColor: planInfo.color }}
                     >
                       <div className="flex items-center space-x-2">
@@ -251,13 +288,25 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                       <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ml-2 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
+                      {/* Notification dot */}
+                      {unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium shadow-lg">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                    <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300 relative">
                       <span className="font-medium text-lg">{user.name}</span>
                       <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
+                      {/* Notification dot */}
+                      {unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium shadow-lg">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </div>
+                      )}
                     </div>
                   )}
                 </button>
@@ -273,6 +322,17 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                     className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
                   >
                     Your Profile
+                  </button>
+                  <button
+                    onClick={handleNotificationsNavigation}
+                    className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10 flex items-center justify-between"
+                  >
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </button>
                   <button
                     onClick={() => setShowLogoutConfirm(true)}
@@ -366,6 +426,17 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
                 Your Profile
+              </button>
+              <button
+                onClick={handleNotificationsNavigation}
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target flex items-center justify-between"
+              >
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setShowLogoutConfirm(true)}
