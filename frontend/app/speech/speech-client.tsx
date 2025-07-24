@@ -1940,7 +1940,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             ? 'bg-gray-400 cursor-not-allowed' 
                             : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
                           ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
+                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis || (!isAuthenticated() && conversationTimeUp)}
                       >
                         {isAttemptingToRecord ? (
                           <>
@@ -2152,7 +2152,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                           ? 'bg-gray-400 cursor-not-allowed text-white' 
                           : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
                         ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis}
+                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis || (!isAuthenticated() && conversationTimeUp)}
                     >
                       {isAttemptingToRecord ? (
                         <>
