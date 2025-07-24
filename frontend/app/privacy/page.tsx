@@ -215,8 +215,8 @@ const PrivacyPolicy: React.FC = () => {
                 <Mail className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
                   <p className="font-medium text-gray-800">Email</p>
-                  <a href="mailto:privacy@languagetutor.ai" className="text-[#4ECFBF] hover:underline">
-                    privacy@languagetutor.ai
+                  <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] hover:underline">
+                    hello@mytacoai.com
                   </a>
                 </div>
               </div>
@@ -225,8 +225,8 @@ const PrivacyPolicy: React.FC = () => {
                 <Phone className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
                   <p className="font-medium text-gray-800">Phone</p>
-                  <a href="tel:+1-555-0123" className="text-[#4ECFBF] hover:underline">
-                    +1 (555) 012-3456
+                  <a href="tel:+31-0657126162" className="text-[#4ECFBF] hover:underline">
+                    +31 0657126162
                   </a>
                 </div>
               </div>
@@ -235,7 +235,7 @@ const PrivacyPolicy: React.FC = () => {
                 <MapPin className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
                   <p className="font-medium text-gray-800">Address</p>
-                  <p className="text-gray-600">San Francisco, CA</p>
+                  <p className="text-gray-600">Amsterdam, Netherlands</p>
                 </div>
               </div>
             </div>
