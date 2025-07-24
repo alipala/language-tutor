@@ -85,7 +85,7 @@ class ContextualVectorChatbot:
 🎤 STEP 2: Take Your Speaking Assessment
 • Click the big "Take Assessment" button
 • Allow microphone permission when asked
-• Speak clearly for 15 seconds (guests) or 60 seconds (registered users)
+• Speak clearly for 30 seconds (guests) or 60 seconds (registered users)
 • Talk about anything - describe your day, hobbies, or goals
 • Our AI will tell you your level: A1 (beginner) to C2 (advanced)
 
@@ -94,7 +94,7 @@ class ContextualVectorChatbot:
 • Talk naturally with our AI tutor
 • Discuss interesting topics like travel, food, or culture
 • Get instant feedback and corrections
-• Practice for 1 minute (guests) or 5 minutes (registered users)
+• Practice for 2 minutes (guests) or 5 minutes (registered users)
 
 📊 STEP 4: Save Your Progress (Optional but Recommended!)
 • Click "Sign Up" to create a free account
@@ -123,8 +123,8 @@ class ContextualVectorChatbot:
 • Price: Completely FREE forever
 • 3 practice sessions per month (5 minutes each)
 • 1 speaking assessment per month
-• 15-second assessment duration
-• 1-minute conversation practice
+• 30-second assessment duration
+• 2-minute conversation practice
 • Basic language level detection
 • Access to all 6 languages
 • No account required for basic features
@@ -135,8 +135,8 @@ class ContextualVectorChatbot:
 • Annual: $199.99/year (SAVE $39.89 - 17% OFF!)
 • 30 practice sessions per month (5 minutes each)
 • 2 speaking assessments per month
-• 60-second assessment duration (4x longer than free)
-• 5-minute conversation practice (5x longer than free)
+• 60-second assessment duration (2x longer than free)
+• 5-minute conversation practice (2.5x longer than free)
 • 7-DAY FREE TRIAL included
 • Save unlimited conversation history
 • Track learning progress and streaks
@@ -196,8 +196,8 @@ Contact our support team at hello@mytacoai.com or use the chat feature. We'll he
 🔍 GUEST VS REGISTERED USER COMPARISON:
 
 👤 GUEST USER EXPERIENCE (No Account Required):
-• Assessment Duration: 15 seconds only
-• Conversation Time: 1 minute maximum
+• Assessment Duration: 30 seconds only
+• Conversation Time: 2 minutes maximum
 • Session Limit: 3 assessments per browser session
 • Progress Saving: None - resets when you close browser
 • Learning Plans: Temporary only, lost after session
@@ -209,8 +209,8 @@ Contact our support team at hello@mytacoai.com or use the chat feature. We'll he
 • Support: Community support only
 
 ✅ REGISTERED USER EXPERIENCE (Free Account):
-• Assessment Duration: 60 seconds (4x longer!)
-• Conversation Time: 5 minutes (5x longer!)
+• Assessment Duration: 60 seconds (2x longer!)
+• Conversation Time: 5 minutes (2.5x longer!)
 • Session Limit: No daily limits
 • Progress Saving: Permanent across all devices
 • Learning Plans: Saved permanently with progress tracking
@@ -222,8 +222,8 @@ Contact our support team at hello@mytacoai.com or use the chat feature. We'll he
 • Support: Email support included
 
 🎯 WHY CREATE AN ACCOUNT?
-• 4x longer assessments for better accuracy
-• 5x longer conversations for meaningful practice
+• 2x longer assessments for better accuracy
+• 2.5x longer conversations for meaningful practice
 • Permanent progress tracking across devices
 • AI-generated learning plans that adapt to your progress
 • Detailed conversation analysis with insights
@@ -335,7 +335,7 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
             return {
                 "user_type": "guest",
                 "subscription_plan": "guest",
-                "features_available": ["15s assessments", "1min conversations", "basic features"],
+                "features_available": ["30s assessments", "2min conversations", "basic features"],
                 "limitations": ["No progress saving", "Limited session time", "No advanced features"]
             }
         
@@ -487,7 +487,7 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
         
         if user_context.get("user_type") == "guest":
             suggestions.extend([
-                "🎯 Sign up for free to get 4x longer assessments and 5x longer conversations!",
+                "🎯 Sign up for free to get 2x longer assessments and 2.5x longer conversations!",
                 "📊 Create an account to save your progress and track improvement",
                 "🏆 Register to unlock achievements and learning streaks"
             ])
@@ -578,7 +578,7 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
         # Prepare user context for the prompt
         user_info = ""
         if user_context.get("user_type") == "guest":
-            user_info = "User is a GUEST (not logged in) with limited features: 15s assessments, 1min conversations, no progress saving."
+            user_info = "User is a GUEST (not logged in) with limited features: 30s assessments, 2min conversations, no progress saving."
         else:
             plan = user_context.get("subscription_plan", "try_learn")
             sessions = user_context.get("total_sessions", 0)
