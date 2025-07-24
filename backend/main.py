@@ -1943,6 +1943,13 @@ if frontend_build_path.exists():
             return FileResponse(status_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Status page not found")
     
+    @app.get("/responsible-ai")
+    async def serve_responsible_ai():
+        responsible_ai_file = frontend_build_path / "responsible-ai.html"
+        if responsible_ai_file.exists():
+            return FileResponse(responsible_ai_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Responsible AI page not found")
+    
     # Add admin panel route
     @app.get("/_admin")
     async def serve_admin_panel():
