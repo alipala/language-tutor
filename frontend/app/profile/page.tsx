@@ -173,6 +173,9 @@ export default function ProfilePage() {
   const [achievements, setAchievements] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+  
+  // State to control showing all conversations
+  const [showAllConversations, setShowAllConversations] = useState(false);
 
   // Enhanced analysis modal state
   const [showEnhancedAnalysis, setShowEnhancedAnalysis] = useState(false);
@@ -996,7 +999,7 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {conversationHistory.slice(0, 5).map((session, index) => (
+                    {conversationHistory.slice(0, showAllConversations ? conversationHistory.length : 5).map((session, index) => (
                       <div key={session.id || index} className="border rounded-xl p-4" style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center space-x-3">
@@ -1083,10 +1086,14 @@ export default function ProfilePage() {
                     {conversationHistory.length > 5 && (
                       <div className="text-center pt-4">
                         <button 
+                          onClick={() => setShowAllConversations(!showAllConversations)}
                           className="text-sm font-medium hover:opacity-80 transition-opacity"
                           style={{ color: '#4ECFBF' }}
                         >
-                          View all {conversationHistory.length} conversations
+                          {showAllConversations 
+                            ? `Show less conversations` 
+                            : `View all ${conversationHistory.length} conversations`
+                          }
                         </button>
                       </div>
                     )}
