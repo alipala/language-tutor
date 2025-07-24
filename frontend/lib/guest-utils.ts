@@ -1,7 +1,7 @@
 // Constants for guest user limitations
-export const ASSESSMENT_DURATION_GUEST = 15; // 15 seconds for guest assessment
+export const ASSESSMENT_DURATION_GUEST = 30; // 30 seconds for guest assessment
 export const ASSESSMENT_DURATION_REGISTERED = 60; // 60 seconds for registered user assessment
-export const CONVERSATION_DURATION_GUEST = 60; // 1 minute for guest conversation
+export const CONVERSATION_DURATION_GUEST = 120; // 2 minutes for guest conversation
 export const CONVERSATION_DURATION_REGISTERED = 300; // 5 minutes for registered user conversation
 
 /**
@@ -47,7 +47,7 @@ export const formatTime = (seconds: number): string => {
  * @returns {string} A description of the guest user limitations
  */
 export const getGuestLimitationsDescription = (): string => {
-  return `Limited to ${ASSESSMENT_DURATION_GUEST}s assessment and ${CONVERSATION_DURATION_GUEST}s conversation.`;
+  return `Limited to ${ASSESSMENT_DURATION_GUEST}s assessment and ${Math.floor(CONVERSATION_DURATION_GUEST/60)}min conversation.`;
 };
 
 /**
