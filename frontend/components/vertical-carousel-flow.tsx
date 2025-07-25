@@ -8,6 +8,17 @@ import LanguageOptionsModal from '@/components/language-options-modal';
 import LoadingModal from '@/components/loading-modal';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 import NavBar from '@/components/nav-bar';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the world map to avoid SSR issues
+const WorldMap = dynamic(() => import('react-svg-worldmap'), { 
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+      <div className="text-gray-500">Loading world map...</div>
+    </div>
+  )
+});
 
 // Types
 interface Language {
@@ -63,9 +74,61 @@ export default function VerticalCarouselFlow() {
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
   const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   
+  // State to track if component is mounted (to prevent hydration issues)
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // State for map hover effects
+  const [hoveredLanguage, setHoveredLanguage] = useState<string | null>(null);
+  const [hoveredCountry, setHoveredCountry] = useState<{ code: string; name: string; language?: string } | null>(null);
+  
+  // State for responsive map sizing
+  const [mapScale, setMapScale] = useState(1);
+  
   // Refs for smooth scrolling
   const containerRef = useRef<HTMLDivElement>(null);
   const customInputRef = useRef<HTMLTextAreaElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle component mount and responsive map sizing
+  useEffect(() => {
+    setIsMounted(true);
+    
+    const calculateMapScale = () => {
+      if (mapContainerRef.current) {
+        const container = mapContainerRef.current;
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        // Base map dimensions (approximate)
+        const baseMapWidth = 800;
+        const baseMapHeight = 400;
+        
+        // Calculate scale to fit both width and height with some padding
+        const scaleX = (containerWidth * 0.90) / baseMapWidth;
+        const scaleY = (containerHeight * 0.90) / baseMapHeight;
+        
+        // Use the smaller scale to ensure map fits completely
+        const optimalScale = Math.min(scaleX, scaleY, 2.5); // Cap at 2.5x for very large screens
+        const finalScale = Math.max(optimalScale, 0.8); // Minimum scale of 0.8
+        
+        setMapScale(finalScale);
+      }
+    };
+    
+    // Calculate initial scale
+    setTimeout(calculateMapScale, 100);
+    
+    // Recalculate on window resize
+    const handleResize = () => {
+      setTimeout(calculateMapScale, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Handle mode parameter on component mount
   useEffect(() => {
@@ -186,15 +249,82 @@ export default function VerticalCarouselFlow() {
     ),
   };
 
-  // Languages data
-  const languages: Language[] = [
-    { code: 'dutch', name: 'Dutch', flagComponent: FlagComponents.dutch },
-    { code: 'english', name: 'English', flagComponent: FlagComponents.english },
-    { code: 'spanish', name: 'Spanish', flagComponent: FlagComponents.spanish },
-    { code: 'german', name: 'German', flagComponent: FlagComponents.german },
-    { code: 'french', name: 'French', flagComponent: FlagComponents.french },
-    { code: 'portuguese', name: 'Portuguese', flagComponent: FlagComponents.portuguese },
-  ];
+  // Language-Country Mapping Configuration with requested colors and population data
+  const languageConfig = {
+    dutch: {
+      name: 'Dutch',
+      color: '#FF8C00', // Nice orange (DarkOrange)
+      countries: ['NL', 'BE', 'SR'], // Netherlands, Belgium, Suriname
+      flagComponent: FlagComponents.dutch,
+      speakers: '24 million' // Total Dutch speakers worldwide
+    },
+    english: {
+      name: 'English', 
+      color: '#1E3A8A', // Proper dark blue
+      countries: ['US', 'GB', 'AU', 'NZ', 'IE'], // USA, UK, Australia, New Zealand, Ireland (removed Canada)
+      flagComponent: FlagComponents.english,
+      speakers: '1.5 billion' // Total English speakers worldwide
+    },
+    spanish: {
+      name: 'Spanish',
+      color: '#FFD700', // Yellow (Gold)
+      countries: ['ES', 'MX', 'AR', 'CO', 'PE', 'VE', 'CL', 'EC', 'CU'], // Spain, Mexico, Argentina, Colombia, Peru, Venezuela, Chile, Ecuador, Cuba
+      flagComponent: FlagComponents.spanish,
+      speakers: '500 million' // Total Spanish speakers worldwide
+    },
+    german: {
+      name: 'German',
+      color: '#8B4513', // Same brown (SaddleBrown)
+      countries: ['DE', 'AT', 'CH'], // Germany, Austria, Switzerland
+      flagComponent: FlagComponents.german,
+      speakers: '130 million' // Total German speakers worldwide
+    },
+    french: {
+      name: 'French',
+      color: '#DC143C', // Crimson red - clearly different from English blue
+      countries: ['FR', 'CA', 'BE', 'CH', 'SN', 'CI', 'MG'], // France, Canada, Belgium, Switzerland, Senegal, Ivory Coast, Madagascar
+      flagComponent: FlagComponents.french,
+      speakers: '280 million' // Total French speakers worldwide
+    },
+    portuguese: {
+      name: 'Portuguese',
+      color: '#228B22', // Same color (ForestGreen)
+      countries: ['PT', 'BR', 'AO', 'MZ'], // Portugal, Brazil, Angola, Mozambique
+      flagComponent: FlagComponents.portuguese,
+      speakers: '260 million' // Total Portuguese speakers worldwide
+    }
+  };
+
+  // Languages data (derived from languageConfig)
+  const languages: Language[] = Object.entries(languageConfig).map(([code, config]) => ({
+    code,
+    name: config.name,
+    flagComponent: config.flagComponent
+  }));
+
+  // Prepare world map data
+  const getWorldMapData = () => {
+    const mapData: Array<{ country: string; value: string; color: string }> = [];
+    
+    Object.entries(languageConfig).forEach(([langCode, config]) => {
+      config.countries.forEach(countryCode => {
+        mapData.push({
+          country: countryCode,
+          value: langCode,
+          color: config.color
+        });
+      });
+    });
+    
+    return mapData;
+  };
+
+  // Handle country click on world map
+  const handleCountryClick = (countryCode: string, languageCode: string) => {
+    if (languageCode && languageConfig[languageCode as keyof typeof languageConfig]) {
+      handleLanguageSelect(languageCode);
+    }
+  };
 
   // Topics data - Enhanced with 24 engaging topics for language learning
   const getTopics = (language: string | null): Topic[] => {
@@ -991,131 +1121,152 @@ export default function VerticalCarouselFlow() {
         style={{ scrollSnapType: 'y mandatory' }}
       >
         {/* Step 1: Language Selection */}
-        <div className="min-h-screen snap-start flex flex-col justify-center items-center p-8">
-          <div className="w-full max-w-4xl mx-auto">
-            <div className="text-center mb-12 animate-fade-in">
-              <h1 className="text-5xl font-bold tracking-tight text-gray-800 mb-4">
-                Choose Your Language
-              </h1>
-              <p className="text-lg text-gray-600">Select a language to begin your journey</p>
-            </div>
-
-            {/* Mobile & Tablet: Compact Grid Layout */}
-            <div className="block lg:hidden">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                {languages.map((language, index) => (
+        <div className="min-h-screen snap-start flex flex-col justify-center items-center p-3 pt-8 md:p-4 md:pt-12">
+          <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 mt-[3vh] md:mt-[5vh]">
+            {/* Language Legend Section - Mobile Optimized */}
+            <div className="relative z-10 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-[#4ECFBF] p-3 md:p-5 animate-fade-in">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-2">
+                {Object.entries(languageConfig).map(([langCode, config]) => (
                   <button
-                    key={language.code}
-                    onClick={() => handleLanguageSelect(language.code)}
+                    key={langCode}
+                    onClick={() => handleLanguageSelect(langCode)}
+                    onMouseEnter={() => setHoveredLanguage(langCode)}
+                    onMouseLeave={() => setHoveredLanguage(null)}
+                    onTouchStart={() => setHoveredLanguage(langCode)}
+                    onTouchEnd={() => setTimeout(() => setHoveredLanguage(null), 2000)}
                     className={`
                       group relative overflow-hidden rounded-lg 
-                      transition-all duration-300 ease-out 
-                      bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40
-                      hover:shadow-md hover:shadow-[#4ECFBF]/20 hover:scale-102 hover:-translate-y-1
-                      animate-slide-up
+                      transition-all duration-300 ease-out
+                      bg-white/90 backdrop-blur-sm border-2 
+                      hover:shadow-lg hover:scale-105 hover:-translate-y-1
+                      active:scale-95 active:shadow-sm
+                      animate-slide-up touch-manipulation
                       ${
-                        selectedLanguage === language.code
-                          ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30 shadow-md border-[#4ECFBF]/60'
-                          : 'hover:border-[#4ECFBF]/60'
+                        selectedLanguage === langCode
+                          ? 'ring-2 ring-[#4ECFBF]/50 shadow-lg border-[#4ECFBF]/60'
+                          : 'border-gray-200/50 hover:border-[#4ECFBF]/40'
                       }
                       
-                      /* Mobile: Much more compact cards */
-                      p-3 h-[80px] md:p-4 md:h-[90px]
+                      /* Mobile: Ultra-compact sizing */
+                      p-2 h-[85px] 
+                      /* Tablet: Slightly larger */
+                      md:p-3 md:h-[95px]
+                      /* Desktop: Original size */
+                      lg:h-[110px]
                     `}
-                    style={{ animationDelay: `${index * 100}ms` }}
+                    style={{ 
+                      animationDelay: `${Object.keys(languageConfig).indexOf(langCode) * 100}ms`,
+                      borderColor: selectedLanguage === langCode ? config.color : undefined
+                    }}
+                    title={`${config.name} - ${config.speakers} speakers worldwide`}
                   >
-                    <div className="relative z-10 h-full">
-                      <div className="flex flex-col items-center justify-center h-full gap-2">
-                        <div className="flex-shrink-0 w-8 h-6 md:w-10 md:h-7 flex items-center justify-center rounded-md bg-gradient-to-br from-black/5 to-black/20 backdrop-blur-sm shadow-sm border border-white/30 overflow-hidden relative">
-                          <div className="relative w-full h-full overflow-hidden rounded-md transition-all duration-300 transform group-hover:scale-105">
-                            <div className="w-full h-full relative">
-                              {language.flagComponent}
-                            </div>
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-black/10 pointer-events-none"></div>
-                          </div>
-                        </div>
-                        
-                        <div className="text-center">
-                          <h3 className="text-sm md:text-base font-bold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
-                            {language.name}
-                          </h3>
-                        </div>
-                        
-                        {selectedLanguage === language.code && (
-                          <div className="absolute top-1 right-1">
-                            <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-md">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-2.5 h-2.5 md:w-3 md:h-3">
-                                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    {/* Color Indicator - Mobile optimized */}
+                    <div 
+                      className="relative w-full h-1.5 md:h-2 lg:h-3 rounded-full mb-1.5 md:mb-2 shadow-sm overflow-hidden"
+                      style={{ backgroundColor: config.color }}
+                    />
+                    
+                    {/* Flag - Mobile optimized */}
+                    <div className="w-6 h-4 md:w-7 md:h-5 lg:w-8 lg:h-6 mx-auto mb-1.5 md:mb-2 rounded-md overflow-hidden shadow-sm border border-white/30">
+                      {config.flagComponent}
                     </div>
                     
-                    <div className={`absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] transition-all duration-700 ease-out opacity-80 ${selectedLanguage === language.code ? 'w-full' : 'w-0 group-hover:w-full'}`}></div>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    {/* Language Name - Mobile optimized */}
+                    <h3 className="text-xs md:text-sm font-bold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-center leading-tight">
+                      {config.name}
+                    </h3>
+                    
+                    {/* Speaker Count - Numbers only, always visible */}
+                    <div className="transition-opacity duration-300 mt-0.5 md:mt-1 opacity-100">
+                      <p className="text-xs text-gray-600 text-center font-medium">
+                        {config.speakers}
+                      </p>
+                    </div>
+                    
+                    {/* Selection Checkmark - Mobile optimized */}
+                    {selectedLanguage === langCode && (
+                      <div className="absolute top-1 right-1 z-10">
+                        <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-md animate-pulse">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-2 h-2 md:w-3 md:h-3">
+                            <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Bottom Accent Line - Contained within button */}
+                    <div 
+                      className={`absolute bottom-0 left-0 h-1 transition-all duration-500 overflow-hidden ${
+                        selectedLanguage === langCode ? 'w-full' : 'w-0 group-hover:w-full'
+                      }`}
+                      style={{ backgroundColor: config.color }}
+                    />
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Desktop: Keep Original Grid Layout */}
-            <div className="hidden lg:grid lg:grid-cols-3 gap-6">
-              {languages.map((language, index) => (
-                <button
-                  key={language.code}
-                  onClick={() => handleLanguageSelect(language.code)}
-                  className={`
-                    group relative overflow-hidden rounded-xl 
-                    transition-all duration-500 ease-out 
-                    bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40
-                    hover:shadow-lg hover:shadow-[#4ECFBF]/20 hover:scale-105 hover:-translate-y-2
-                    animate-slide-up
-                    ${
-                      selectedLanguage === language.code
-                        ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30 shadow-md border-[#4ECFBF]/60'
-                        : 'hover:border-[#4ECFBF]/60'
-                    }
-                  `}
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="relative z-10 p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-20 h-14 flex items-center justify-center rounded-lg bg-gradient-to-br from-black/5 to-black/20 backdrop-blur-sm shadow-lg border border-white/30 overflow-hidden relative">
-                        <div className="relative w-full h-full overflow-hidden rounded-lg transition-all duration-300 transform group-hover:scale-105">
-                          <div className="w-full h-full relative">
-                            {language.flagComponent}
-                          </div>
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-black/10 pointer-events-none"></div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 text-left">
-                        <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[#4ECFBF] transition-colors duration-300">
-                          {language.name}
-                        </h3>
-                        <p className="text-gray-600 text-sm group-hover:text-gray-700 transition-colors duration-300">
-                          Start your {language.name.toLowerCase()} learning journey
-                        </p>
-                      </div>
-                      
-                      {selectedLanguage === language.code && (
-                        <div className="absolute top-4 right-4">
-                          <div className="w-7 h-7 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-md">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-4 h-4">
-                              <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
+            {/* World Map Section - Optimized for Better Screen Utilization */}
+            <div className="relative z-0 bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border-2 border-[#FFD63A] p-3 md:p-4 animate-fade-in">
+              <div 
+                ref={mapContainerRef} 
+                className="relative w-full h-[45vh] md:h-[55vh] lg:h-[60vh] flex items-center justify-center overflow-hidden rounded-xl"
+              >
+                {isMounted && (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <div 
+                      className="w-full h-full flex items-center justify-center transition-transform duration-300"
+                      style={{ transform: `scale(${mapScale})` }}
+                    >
+                      <WorldMap
+                        color="#E5E7EB"
+                        value-suffix=""
+                        size="xxl"
+                        data={getWorldMapData()}
+                        onClickFunction={(event: any) => {
+                          const countryCode = event?.countryCode;
+                          const mapData = getWorldMapData();
+                          const countryData = mapData.find(item => item.country === countryCode);
+                          if (countryData) {
+                            handleCountryClick(countryCode, countryData.value);
+                          }
+                        }}
+                        tooltipTextFunction={(context: any) => {
+                          const mapData = getWorldMapData();
+                          const countryData = mapData.find(item => item.country === context.countryCode);
+                          
+                          if (countryData) {
+                            const languageName = languageConfig[countryData.value as keyof typeof languageConfig]?.name;
+                            return `${context.countryName} speaks ${languageName}`;
+                          } else {
+                            // For unsupported countries, show "will be available soon" message
+                            const countryName = context.countryName || 'This language';
+                            return `${countryName} will be available soon!`;
+                          }
+                        }}
+                        styleFunction={(context: any) => {
+                          const mapData = getWorldMapData();
+                          const countryData = mapData.find(item => item.country === context.countryCode);
+                          
+                          // Determine if this country should be highlighted
+                          const shouldHighlight = hoveredLanguage && countryData?.value === hoveredLanguage;
+                          const isSelected = selectedLanguage && countryData?.value === selectedLanguage;
+                          
+                          return {
+                            fill: shouldHighlight || isSelected ? countryData.color : '#E5E7EB',
+                            fillOpacity: shouldHighlight ? 0.9 : isSelected ? 0.8 : 0.6,
+                            stroke: shouldHighlight || isSelected ? '#FFFFFF' : '#D1D5DB',
+                            strokeWidth: shouldHighlight ? 3 : isSelected ? 2 : 1,
+                            strokeOpacity: 0.8,
+                            cursor: countryData ? 'pointer' : 'default',
+                            transition: 'all 0.3s ease'
+                          };
+                        }}
+                      />
                     </div>
                   </div>
-                  
-                  <div className={`absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF] transition-all duration-700 ease-out opacity-80 ${selectedLanguage === language.code ? 'w-full' : 'w-0 group-hover:w-full'}`}></div>
-                  <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                </button>
-              ))}
+                )}
+              </div>
             </div>
           </div>
         </div>
