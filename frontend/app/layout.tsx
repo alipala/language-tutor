@@ -15,7 +15,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'My Taco - AI Language Coach',
+  title: 'Your Speaking Partner Never Sleeps',
   description: 'Learn languages through conversation with your personal AI coach',
   icons: {
     icon: [
