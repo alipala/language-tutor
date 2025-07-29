@@ -107,9 +107,9 @@ app.include_router(progress_router)
 
 # Include export routes
 from export_routes import router as export_router
-from enhanced_export_routes import router as enhanced_export_router
+# from enhanced_export_routes import router as enhanced_export_router  # Temporarily disabled due to plotly dependency
 app.include_router(export_router)
-app.include_router(enhanced_export_router)
+# app.include_router(enhanced_export_router)  # Temporarily disabled due to plotly dependency
 
 # Include chat routes
 from chat_routes import router as chat_router
@@ -142,6 +142,10 @@ app.include_router(url_redirect_router)
 # Include voice sample routes
 from voice_sample_routes import router as voice_sample_router
 app.include_router(voice_sample_router)
+
+# Include conversation help routes
+from conversation_help_routes import router as conversation_help_router
+app.include_router(conversation_help_router)
 
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)

@@ -193,6 +193,18 @@ export class RealtimeService {
                 eventData.item?.input ? 'Input present' : 'No input');
             } else if (eventData.type === 'conversation.item.input_audio_transcription.completed') {
               console.log('📝 Transcription completed:', eventData.transcription?.text);
+            } else if (eventData.type === 'input_audio_buffer.speech_stopped') {
+              // Emit user speaking completion event for conversation help modal hiding
+              if (typeof window !== 'undefined') {
+                const userSpeakingCompleteEvent = new CustomEvent('user-speaking-complete');
+                window.dispatchEvent(userSpeakingCompleteEvent);
+                console.log('[CONVERSATION_HELP] Emitted user-speaking-complete event from input_audio_buffer.speech_stopped');
+                
+                // Also emit input-audio-stop for modal hiding with animation
+                const inputAudioStopEvent = new CustomEvent('input-audio-stop');
+                window.dispatchEvent(inputAudioStopEvent);
+                console.log('[CONVERSATION_HELP] Emitted input-audio-stop event for modal hiding with animation');
+              }
             }
             
             this.onMessageCallback(eventData);

@@ -1071,3 +1071,148 @@ html {
   scrollbar-width: thin;
   scrollbar-color: rgba(78, 207, 191, 0.3) transparent;
 }
+
+/* Conversation Help Modal Animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+}
+
+@keyframes helpModalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    backdrop-filter: blur(2px);
+  }
+}
+
+@keyframes helpModalFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    backdrop-filter: blur(2px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-15px);
+    backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideOutDown {
+  animation: slideOutDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-helpModalFadeIn {
+  animation: helpModalFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-helpModalFadeOut {
+  animation: helpModalFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-loadingPulse {
+  animation: loadingPulse 2s ease-in-out infinite;
+}
+
+/* Enhanced conversation help transitions */
+.help-modal-container {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.help-modal-entering {
+  animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.help-modal-exiting {
+  animation: slideOutDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Smooth loading to content transition */
+.help-content-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Enhanced loading animation */
+.loading-container {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.loading-container.fade-out {
+  opacity: 0;
+}
+
+/* Speech bubble slide-in animation */
+@keyframes speechBubbleSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-speechBubbleSlideIn {
+  animation: speechBubbleSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Coordinated transition timing */
+.help-to-speech-transition {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced bounce animation for loading dots */
+@keyframes enhancedBounce {
+  0%, 80%, 100% {
+    transform: scale(0.8) translateY(0);
+    opacity: 0.7;
+  }
+  40% {
+    transform: scale(1.2) translateY(-8px);
+    opacity: 1;
+  }
+}
+
+.animate-enhancedBounce {
+  animation: enhancedBounce 1.4s ease-in-out infinite;
+}
