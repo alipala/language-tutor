@@ -26,7 +26,11 @@ import {
   shouldConsiderForAnalysis, 
   getCachedAnalysis,
   setCachedAnalysis,
-  BackgroundAnalysisResponse 
+  BackgroundAnalysisResponse,
+  submitAnalysisFeedback,
+  markAsRejected,
+  isRejected,
+  SentenceAnalysisFeedback
 } from '@/lib/background-sentence-api';
 
 interface SpeechClientProps {
@@ -105,6 +109,20 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [backgroundAnalyses, setBackgroundAnalyses] = useState<BackgroundAnalysisResponse[]>([]);
   const [isProcessingBackground, setIsProcessingBackground] = useState(false);
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0);
+  
+  // Feedback system state
+  const [feedbackModal, setFeedbackModal] = useState<{
+    isOpen: boolean;
+    type: 'rejection' | 'timeout' | 'quality';
+    context: {
+      sentence: string;
+      reason?: string;
+      duration?: number;
+    };
+  } | null>(null);
+  
+  // Timeout management for stuck analyses
+  const [analysisTimeouts, setAnalysisTimeouts] = useState<Map<string, NodeJS.Timeout>>(new Map());
   
   // Reset current analysis index when new analyses are added
   useEffect(() => {
@@ -730,12 +748,19 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     
     const lowerText = text.toLowerCase();
     
-    // Language detection patterns
+    // Enhanced language detection patterns with more comprehensive vocabulary
     const languagePatterns: Record<string, RegExp[]> = {
       dutch: [
-        /\b(ik|je|het|de|een|en|is|zijn|hebben|mijn|jouw|hoe|wat|waar|waarom|wanneer|wie)\b/i,
-        /\b(goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig)\b/i,
-        /\b(hallo|dag|goedemorgen|goedemiddag|goedenavond|doei|tot ziens)\b/i
+        // Core Dutch words - pronouns, articles, common verbs
+        /\b(ik|je|hij|zij|het|de|een|en|is|zijn|ben|was|waren|hebben|heeft|had|mijn|jouw|zijn|haar)\b/i,
+        // Common Dutch verbs and adjectives
+        /\b(goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig|kom|komt|ga|gaat|zie|ziet|doe|doet)\b/i,
+        // Dutch greetings and common phrases
+        /\b(hallo|dag|goedemorgen|goedemiddag|goedenavond|doei|tot ziens|dankjewel|alsjeblieft|graag)\b/i,
+        // Dutch-specific words from the conversation
+        /\b(sta|staat|ontbijt|ontbijten|lees|lezen|boek|school|huiswerk|vrienden|middag|ochtend|avond)\b/i,
+        // Dutch prepositions and conjunctions
+        /\b(van|naar|met|voor|door|over|onder|tussen|na|om|uit|in|op|aan|bij|tot|als|dat|omdat)\b/i
       ],
       spanish: [
         /\b(yo|tu|el|ella|nosotros|ellos|es|son|tengo|tiene|mi|tu|como|que|donde|por que|cuando|quien)\b/i,
@@ -766,60 +791,79 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     
     // Check if text contains patterns from the target language
     const currentLanguage = language as keyof typeof languagePatterns;
-    const containsTargetLanguage = languagePatterns[currentLanguage]?.some((pattern: RegExp) => pattern.test(lowerText)) || false;
+    const targetPatterns = languagePatterns[currentLanguage] || [];
+    const containsTargetLanguage = targetPatterns.some((pattern: RegExp) => pattern.test(lowerText));
     
-    // Check if text contains English patterns (common wrong language)
-    const containsEnglish = languagePatterns.english.some((pattern: RegExp) => pattern.test(lowerText));
+    // Check if text contains English patterns (for non-English languages)
+    const containsEnglish = language !== 'english' ? 
+      languagePatterns.english.some((pattern: RegExp) => pattern.test(lowerText)) : false;
     
-    // Additional language-specific checks
-    let isLikelyWrongLanguage = false;
-    
-    if (language === 'dutch') {
-      // Dutch-specific detection
-      const hasNonDutchCharacters = /[qwxyz]/i.test(lowerText) && lowerText.length > 3; // These characters are rare in Dutch
-      const hasDutchSpecificCombinations = /\b(ij|aa|ee|oo|uu|eu|oe|ui)\b/i.test(lowerText);
-      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
-                           (lowerText.length > 5 && !containsTargetLanguage && !hasDutchSpecificCombinations) ||
-                           hasNonDutchCharacters;
-    } else if (language === 'spanish') {
-      // Spanish-specific detection
-      const hasNonSpanishCharacters = /[kw]/i.test(lowerText) && lowerText.length > 3; // These are uncommon in Spanish
-      const hasSpanishSpecificCharacters = /[ñáéíóúü]/i.test(lowerText);
-      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
-                           (lowerText.length > 5 && !containsTargetLanguage && !hasSpanishSpecificCharacters) ||
-                           hasNonSpanishCharacters;
-    } else if (language === 'german') {
-      // German-specific detection
-      const hasGermanSpecificCharacters = /[äöüß]/i.test(lowerText);
-      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
-                           (lowerText.length > 5 && !containsTargetLanguage && !hasGermanSpecificCharacters);
-    } else if (language === 'french') {
-      // French-specific detection
-      const hasFrenchSpecificCharacters = /[éèêëàâçîïôùûüÿ]/i.test(lowerText);
-      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
-                           (lowerText.length > 5 && !containsTargetLanguage && !hasFrenchSpecificCharacters);
-    } else if (language === 'portuguese') {
-      // Portuguese-specific detection
-      const hasPortugueseSpecificCharacters = /[áàâãéêíóôõúç]/i.test(lowerText);
-      isLikelyWrongLanguage = (containsEnglish && !containsTargetLanguage) || 
-                           (lowerText.length > 5 && !containsTargetLanguage && !hasPortugueseSpecificCharacters);
-    }
-    
-    // For English mode, we need to check if the text is actually in English
+    // For English mode, simple check
     if (language === 'english') {
-      // Check if text contains English patterns
-      const containsEnglish = languagePatterns.english.some((pattern: RegExp) => pattern.test(lowerText));
-      
-      // Check for non-English characters that are uncommon in English
+      const hasEnglishPatterns = languagePatterns.english.some((pattern: RegExp) => pattern.test(lowerText));
       const hasNonEnglishCharacters = /[áàâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/i.test(lowerText);
-      
-      // For English, we consider text to be in the target language if it contains English patterns
-      // and doesn't have too many non-English characters
-      return containsEnglish && !hasNonEnglishCharacters;
+      return hasEnglishPatterns && !hasNonEnglishCharacters;
     }
     
-    // For other languages, return true if it's likely in the target language (not wrong language)
-    return !isLikelyWrongLanguage;
+    // For Dutch and other languages - be more permissive
+    if (language === 'dutch') {
+      // If it contains Dutch patterns, it's likely Dutch
+      if (containsTargetLanguage) return true;
+      
+      // Check for Dutch-specific letter combinations
+      const hasDutchCombinations = /\b(ij|aa|ee|oo|uu|eu|oe|ui)\b/i.test(lowerText);
+      if (hasDutchCombinations) return true;
+      
+      // Check for Dutch-specific words that might not be in patterns
+      const dutchSpecificWords = /\b(het|een|van|naar|met|voor|door|over|onder|tussen|na|om|uit|in|op|aan|bij|tot|als|dat|omdat|maar|ook|nog|wel|niet|geen|alle|deze|die|dit|zo|zeer|heel|erg|best|goed|slecht|mooi|lelijk|groot|klein|nieuw|oud|veel|weinig|weinig|weinig)\b/i;
+      if (dutchSpecificWords.test(lowerText)) return true;
+      
+      // Only reject if it's clearly English AND has no Dutch characteristics
+      const hasStrongEnglishIndicators = /\b(the|and|or|but|with|from|they|this|that|have|will|would|could|should)\b/i.test(lowerText);
+      const hasNonDutchCharacters = /[qwxyz]/i.test(lowerText) && lowerText.length > 5;
+      
+      // Be permissive - only reject if clearly English
+      return !(hasStrongEnglishIndicators && !containsTargetLanguage && hasNonDutchCharacters);
+    }
+    
+    // For other languages, use similar permissive logic
+    if (containsTargetLanguage) return true;
+    
+    // Language-specific permissive checks
+    if (language === 'spanish') {
+      const hasSpanishCharacters = /[ñáéíóúü]/i.test(lowerText);
+      if (hasSpanishCharacters) return true;
+      
+      const hasStrongEnglishIndicators = /\b(the|and|or|but|with|from|they|this|that|have|will|would|could|should)\b/i.test(lowerText);
+      return !(hasStrongEnglishIndicators && !containsTargetLanguage);
+    }
+    
+    if (language === 'german') {
+      const hasGermanCharacters = /[äöüß]/i.test(lowerText);
+      if (hasGermanCharacters) return true;
+      
+      const hasStrongEnglishIndicators = /\b(the|and|or|but|with|from|they|this|that|have|will|would|could|should)\b/i.test(lowerText);
+      return !(hasStrongEnglishIndicators && !containsTargetLanguage);
+    }
+    
+    if (language === 'french') {
+      const hasFrenchCharacters = /[éèêëàâçîïôùûüÿ]/i.test(lowerText);
+      if (hasFrenchCharacters) return true;
+      
+      const hasStrongEnglishIndicators = /\b(the|and|or|but|with|from|they|this|that|have|will|would|could|should)\b/i.test(lowerText);
+      return !(hasStrongEnglishIndicators && !containsTargetLanguage);
+    }
+    
+    if (language === 'portuguese') {
+      const hasPortugueseCharacters = /[áàâãéêíóôõúç]/i.test(lowerText);
+      if (hasPortugueseCharacters) return true;
+      
+      const hasStrongEnglishIndicators = /\b(the|and|or|but|with|from|they|this|that|have|will|would|could|should)\b/i.test(lowerText);
+      return !(hasStrongEnglishIndicators && !containsTargetLanguage);
+    }
+    
+    // Default: be permissive and allow the text through
+    return true;
   };
 
   // Start timer when AI begins speaking (first assistant message)
@@ -887,9 +931,32 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       return;
     }
 
+    // Create a unique key for this analysis to track timeouts
+    const analysisKey = `${text.substring(0, 30)}-${Date.now()}`;
+    
     try {
       setIsProcessingBackground(true);
       console.log('🔄 [BACKGROUND] Starting background analysis for:', text.substring(0, 50) + '...');
+
+      // Set up a timeout to prevent stuck analyses
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ [BACKGROUND] Analysis timeout for:', text.substring(0, 50) + '...');
+        setIsProcessingBackground(false);
+        
+        // Clean up the timeout from our tracking
+        setAnalysisTimeouts(prev => {
+          const newTimeouts = new Map(prev);
+          newTimeouts.delete(analysisKey);
+          return newTimeouts;
+        });
+      }, 15000); // 15 second timeout
+
+      // Track this timeout
+      setAnalysisTimeouts(prev => {
+        const newTimeouts = new Map(prev);
+        newTimeouts.set(analysisKey, timeoutId);
+        return newTimeouts;
+      });
 
       // Build conversation context from recent messages
       const recentMessages = messages.slice(-5); // Last 5 messages for context
@@ -903,6 +970,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         level: level,
         exercise_type: 'free',
         conversation_context: conversationContext
+      });
+
+      // Clear the timeout since we got a result
+      clearTimeout(timeoutId);
+      setAnalysisTimeouts(prev => {
+        const newTimeouts = new Map(prev);
+        newTimeouts.delete(analysisKey);
+        return newTimeouts;
       });
 
       if (result.analyzed && result.analysis) {
@@ -932,6 +1007,17 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       }
     } catch (error) {
       console.error('❌ [BACKGROUND] Error in background analysis:', error);
+      
+      // Clear any pending timeout for this analysis
+      setAnalysisTimeouts(prev => {
+        const newTimeouts = new Map(prev);
+        const timeoutId = newTimeouts.get(analysisKey);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          newTimeouts.delete(analysisKey);
+        }
+        return newTimeouts;
+      });
     } finally {
       setIsProcessingBackground(false);
     }
@@ -2115,7 +2201,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                             analysis.recognized_text.toLowerCase().includes(message.content.toLowerCase().substring(0, 20))
                                           ) ? (
                                             <div className="flex items-center space-x-1 text-green-600">
-                                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                               <span className="text-xs font-medium">Analyzed</span>
                                             </div>
                                           ) : (() => {
@@ -2129,12 +2215,27 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                             const analysisDecision = shouldConsiderForAnalysis(message.content, recentUserMessages, language);
                                             
                                             if (analysisDecision.shouldAnalyze) {
-                                              return (
-                                                <div className="flex items-center space-x-1 text-blue-600">
-                                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                                  <span className="text-xs font-medium">Being analyzed...</span>
-                                                </div>
-                                              );
+                                              // Check if this message is currently being processed
+                                              const isCurrentlyProcessing = isProcessingBackground && 
+                                                processedMessages.filter(msg => msg.role === 'user').slice(-1)[0]?.content === message.content;
+                                              
+                                              if (isCurrentlyProcessing) {
+                                                return (
+                                                  <div className="flex items-center space-x-1 text-blue-600">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                                    <span className="text-xs font-medium">Being analyzed...</span>
+                                                  </div>
+                                                );
+                                              } else {
+                                                // Check if analysis was attempted but not found in results
+                                                // This could mean it was skipped by backend or is still processing
+                                                return (
+                                                  <div className="flex items-center space-x-1 text-gray-500">
+                                                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                                    <span className="text-xs font-medium">Not analyzed</span>
+                                                  </div>
+                                                );
+                                              }
                                             } else {
                                               return (
                                                 <div className="flex items-center space-x-1 text-gray-500">

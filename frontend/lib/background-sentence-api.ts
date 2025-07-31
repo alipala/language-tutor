@@ -544,30 +544,37 @@ export function shouldConsiderForAnalysis(
     }
   }
 
-  // Decision based on score
-  if (score >= 25) {
+  // Decision based on score - Made more permissive
+  if (score >= 15) {
     return {
       shouldAnalyze: true,
       reason: `High learning value: ${reasons.join(', ')}`,
       confidence: 0.9
     };
-  } else if (score >= 15) {
+  } else if (score >= 8) {
     return {
       shouldAnalyze: true,
       reason: `Moderate learning value: ${reasons.join(', ')}`,
       confidence: 0.7
     };
-  } else if (score >= 8) {
+  } else if (score >= 3) {
     return {
       shouldAnalyze: true,
       reason: `Some learning value: ${reasons.join(', ')}`,
       confidence: 0.6
     };
+  } else if (wordCount >= 4) {
+    // Be more permissive - analyze any sentence with 4+ words unless it's clearly not worth it
+    return {
+      shouldAnalyze: true,
+      reason: 'Basic sentence structure - worth analyzing',
+      confidence: 0.5
+    };
   } else {
     return {
       shouldAnalyze: false,
-      reason: 'Limited learning value for analysis',
-      confidence: 0.7
+      reason: 'Too short for meaningful analysis',
+      confidence: 0.8
     };
   }
 }
@@ -799,5 +806,87 @@ export function formatAnalysisTimestamp(timestamp: string): string {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch (error) {
     return 'Unknown time';
+  }
+}
+
+// Feedback system types and functions
+export interface SentenceAnalysisFeedback {
+  session_id: string;
+  feedback_type: 'analysis_rejection' | 'stuck_state' | 'quality_rating';
+  sentence_text: string;
+  language: string;
+  level: string;
+  analysis_decision: {
+    should_analyze: boolean;
+    reason: string;
+    confidence: number;
+  };
+  user_rating?: number; // 1-5 stars
+  user_comment?: string;
+  expected_outcome?: string;
+  session_duration?: number;
+  retry_count?: number;
+  conversation_context?: string[];
+}
+
+// Enhanced cache with rejection tracking
+const rejectedAnalysisCache = new Set<string>();
+
+export function markAsRejected(text: string, language: string, level: string, reason: string): void {
+  const key = getCacheKey(text, language, level);
+  rejectedAnalysisCache.add(key);
+  
+  // Store rejection reason for feedback context
+  const rejectionData = { text, language, level, reason, timestamp: Date.now() };
+  try {
+    sessionStorage.setItem(`rejection_${key}`, JSON.stringify(rejectionData));
+  } catch (error) {
+    console.warn('Failed to store rejection data in sessionStorage:', error);
+  }
+}
+
+export function isRejected(text: string, language: string, level: string): boolean {
+  const key = getCacheKey(text, language, level);
+  return rejectedAnalysisCache.has(key);
+}
+
+export function getRejectionData(text: string, language: string, level: string): any {
+  const key = getCacheKey(text, language, level);
+  try {
+    const stored = sessionStorage.getItem(`rejection_${key}`);
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.warn('Failed to retrieve rejection data from sessionStorage:', error);
+    return null;
+  }
+}
+
+/**
+ * Submit user feedback about sentence analysis decisions
+ */
+export async function submitAnalysisFeedback(feedback: SentenceAnalysisFeedback): Promise<boolean> {
+  try {
+    console.log('📝 [FEEDBACK] Submitting analysis feedback:', feedback.feedback_type);
+    
+    const response = await fetch(`${getApiUrl()}/api/feedback/sentence-analysis`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(feedback),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ [FEEDBACK] Feedback submitted successfully:', result.feedback_id);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ [FEEDBACK] Error submitting feedback:', error);
+    return false;
   }
 }

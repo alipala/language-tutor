@@ -472,16 +472,45 @@ async def perform_background_analysis(text: str, language: str, level: str, exer
         import uuid
         from datetime import datetime
         
+        # 🔥 CRITICAL FIX: Ensure analysis_result is a dict and has all required fields
+        if not isinstance(analysis_result, dict):
+            print(f"❌ [BACKGROUND_ANALYSIS] analyze_sentence returned non-dict: {type(analysis_result)}")
+            raise ValueError("analyze_sentence returned invalid format")
+        
+        # Ensure all required fields exist with defaults
+        required_fields = {
+            "recognized_text": text,
+            "grammatical_score": 50.0,
+            "vocabulary_score": 50.0,
+            "complexity_score": 50.0,
+            "appropriateness_score": 50.0,
+            "overall_score": 50.0,
+            "grammar_issues": [],
+            "improvement_suggestions": [],
+            "corrected_text": text,
+            "level_appropriate_alternatives": []
+        }
+        
+        # Merge with defaults to ensure all fields exist
+        for field, default_value in required_fields.items():
+            if field not in analysis_result:
+                print(f"⚠️ [BACKGROUND_ANALYSIS] Missing field '{field}', using default: {default_value}")
+                analysis_result[field] = default_value
+        
         background_result = {
             "analysis_id": str(uuid.uuid4()),
             "timestamp": datetime.now().isoformat(),
             **analysis_result
         }
         
+        print(f"✅ [BACKGROUND_ANALYSIS] Successfully created background result with analysis_id: {background_result['analysis_id']}")
         return background_result
         
     except Exception as e:
-        print(f"Error in background analysis: {str(e)}")
+        print(f"❌ [BACKGROUND_ANALYSIS] Error in background analysis: {str(e)}")
+        import traceback
+        print(f"❌ [BACKGROUND_ANALYSIS] Full traceback: {traceback.format_exc()}")
+        
         # Return minimal error response
         import uuid
         from datetime import datetime
@@ -501,10 +530,10 @@ async def perform_background_analysis(text: str, language: str, level: str, exer
             "level_appropriate_alternatives": []
         }
 
-async def process_sentence_for_background_analysis(text: str, language: str, level: str, conversation_context: Optional[str] = None) -> Optional[Dict]:
+async def process_sentence_for_background_analysis(text: str, language: str, level: str, conversation_context: Optional[str] = None) -> Dict:
     """
     Complete pipeline: evaluate if sentence should be analyzed, and if so, perform the analysis.
-    Returns None if sentence doesn't warrant analysis, otherwise returns analysis results.
+    Returns explicit response whether analyzed or rejected, enabling proper frontend feedback.
     """
     
     # Step 1: Evaluate if sentence is worth analyzing
@@ -512,14 +541,32 @@ async def process_sentence_for_background_analysis(text: str, language: str, lev
     
     if not evaluation.get("should_analyze", False):
         print(f"Skipping analysis for: '{text}' - Reason: {evaluation.get('reason', 'Unknown')}")
-        return None
+        
+        # NEW: Return explicit rejection response instead of None
+        return {
+            "analyzed": False,
+            "reason": evaluation.get("reason", "Not suitable for analysis"),
+            "confidence": evaluation.get("confidence", 0.5),
+            "should_retry": False,
+            "rejection_feedback_enabled": True,  # Signal frontend to show feedback option
+            "evaluation": evaluation,
+            "text": text,
+            "language": language,
+            "level": level
+        }
     
     print(f"Performing background analysis for: '{text}' - Reason: {evaluation.get('reason', 'Substantial content detected')}")
     
     # Step 2: Perform the analysis
     analysis_result = await perform_background_analysis(text, language, level, "free", conversation_context)
     
-    # Add evaluation metadata
-    analysis_result["evaluation"] = evaluation
-    
-    return analysis_result
+    # Add evaluation metadata and success indicators
+    return {
+        "analyzed": True,
+        "reason": "Analysis completed successfully",
+        "confidence": 1.0,
+        "should_retry": False,
+        "rejection_feedback_enabled": False,
+        "evaluation": evaluation,
+        "analysis": analysis_result
+    }

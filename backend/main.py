@@ -1281,6 +1281,72 @@ async def subscribe_to_newsletter(request: SubscriptionRequest):
             detail=f"Error processing subscription: {str(e)}"
         )
 
+# Sentence Analysis Feedback Models
+class SentenceAnalysisFeedback(BaseModel):
+    session_id: str
+    feedback_type: str  # "analysis_rejection", "stuck_state", "quality_rating"
+    sentence_text: str
+    language: str
+    level: str
+    analysis_decision: Dict[str, Any]
+    user_rating: Optional[int] = None  # 1-5 stars
+    user_comment: Optional[str] = None
+    expected_outcome: Optional[str] = None
+    session_duration: Optional[int] = None
+    retry_count: Optional[int] = None
+    conversation_context: Optional[List[str]] = None
+
+# Add endpoint for sentence analysis feedback
+@app.post("/api/feedback/sentence-analysis")
+async def submit_sentence_analysis_feedback(
+    request: Request,
+    feedback: SentenceAnalysisFeedback,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
+):
+    """Store user feedback about sentence analysis decisions"""
+    try:
+        from database import database
+        from datetime import datetime, timezone
+        
+        # Create feedback collection if it doesn't exist
+        feedback_collection = database.sentence_analysis_feedback
+        
+        # Build feedback document
+        feedback_doc = {
+            "user_id": ObjectId(current_user.id) if current_user else None,
+            "session_id": feedback.session_id,
+            "feedback_type": feedback.feedback_type,
+            "sentence_text": feedback.sentence_text,
+            "language": feedback.language,
+            "level": feedback.level,
+            "analysis_decision": feedback.analysis_decision,
+            "user_rating": feedback.user_rating,
+            "user_comment": feedback.user_comment,
+            "expected_outcome": feedback.expected_outcome,
+            "timestamp": datetime.now(timezone.utc),
+            "ip_address": request.client.host if hasattr(request, 'client') else None,
+            "user_agent": request.headers.get("user-agent"),
+            "session_duration": feedback.session_duration,
+            "retry_count": feedback.retry_count,
+            "conversation_context": feedback.conversation_context,
+            "resolved": False  # Will be updated when issues are addressed
+        }
+        
+        # Insert feedback document
+        result = await feedback_collection.insert_one(feedback_doc)
+        
+        print(f"✅ [FEEDBACK] Stored feedback: {feedback.feedback_type} for sentence: '{feedback.sentence_text[:30]}...'")
+        
+        return {
+            "success": True,
+            "feedback_id": str(result.inserted_id),
+            "message": "Feedback submitted successfully"
+        }
+        
+    except Exception as e:
+        print(f"❌ [FEEDBACK] Error storing feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error storing feedback: {str(e)}")
+
 # Add endpoint for session summary storage
 @app.post("/api/learning/session-summary")
 async def store_session_summary(
@@ -1747,27 +1813,35 @@ async def process_sentence_background(request: BackgroundAnalysisRequest):
             conversation_context=request.conversation_context
         )
         
-        if result is None:
-            print(f"⏭️ [BACKGROUND_PROCESS] Sentence skipped - not substantial enough")
-            return {"analyzed": False, "reason": "Sentence not substantial enough for analysis"}
+        if not result or not result.get("analyzed"):
+            reason = result.get("reason", "Sentence not substantial enough for analysis") if result else "Sentence not substantial enough for analysis"
+            print(f"⏭️ [BACKGROUND_PROCESS] Sentence skipped - {reason}")
+            return {"analyzed": False, "reason": reason}
         
-        print(f"✅ [BACKGROUND_PROCESS] Analysis completed with ID: {result['analysis_id']}")
+        # Extract analysis data from the result
+        analysis_data = result.get("analysis", {})
+        if not analysis_data:
+            print(f"❌ [BACKGROUND_PROCESS] No analysis data in result")
+            return {"analyzed": False, "reason": "No analysis data available"}
+        
+        analysis_id = analysis_data.get("analysis_id", "unknown")
+        print(f"✅ [BACKGROUND_PROCESS] Analysis completed with ID: {analysis_id}")
         
         return {
             "analyzed": True,
             "analysis": BackgroundAnalysisResponse(
-                analysis_id=result["analysis_id"],
-                recognized_text=result["recognized_text"],
-                grammatical_score=result["grammatical_score"],
-                vocabulary_score=result["vocabulary_score"],
-                complexity_score=result["complexity_score"],
-                appropriateness_score=result["appropriateness_score"],
-                overall_score=result["overall_score"],
-                grammar_issues=result["grammar_issues"],
-                improvement_suggestions=result["improvement_suggestions"],
-                corrected_text=result.get("corrected_text"),
-                level_appropriate_alternatives=result.get("level_appropriate_alternatives"),
-                timestamp=result["timestamp"]
+                analysis_id=analysis_id,
+                recognized_text=analysis_data.get("recognized_text", request.text),
+                grammatical_score=analysis_data.get("grammatical_score", 50.0),
+                vocabulary_score=analysis_data.get("vocabulary_score", 50.0),
+                complexity_score=analysis_data.get("complexity_score", 50.0),
+                appropriateness_score=analysis_data.get("appropriateness_score", 50.0),
+                overall_score=analysis_data.get("overall_score", 50.0),
+                grammar_issues=analysis_data.get("grammar_issues", []),
+                improvement_suggestions=analysis_data.get("improvement_suggestions", []),
+                corrected_text=analysis_data.get("corrected_text"),
+                level_appropriate_alternatives=analysis_data.get("level_appropriate_alternatives"),
+                timestamp=analysis_data.get("timestamp", "")
             ),
             "evaluation": result.get("evaluation", {})
         }
