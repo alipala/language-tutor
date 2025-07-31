@@ -14,6 +14,12 @@ import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
 import BackgroundAnalysisCard from '@/components/background-analysis-card';
+import ConversationHelpModal from '@/components/conversation-help-modal';
+import ConversationHelpSettings from '@/components/conversation-help-settings';
+import ConversationHelpInline from '@/components/conversation-help-inline';
+import ConversationHelpAfterAi from '@/components/conversation-help-after-ai';
+import { useConversationHelp } from '@/hooks/useConversationHelp';
+import { useInlineConversationHelp } from '@/hooks/useInlineConversationHelp';
 import { getApiUrl } from '@/lib/api-utils';
 import { 
   processBackgroundSentence, 
@@ -138,6 +144,32 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   // Information modal state
   const [showInfoModal, setShowInfoModal] = useState(true);
   const [modalDismissed, setModalDismissed] = useState(false);
+  
+  // Initialize conversation help system
+  const {
+    helpSettings,
+    updateHelpSettings,
+    helpData,
+    isLoading: isHelpLoading,
+    error: helpError,
+    isModalOpen: isHelpModalOpen,
+    showHelpModal,
+    closeHelpModal,
+    selectSuggestedResponse,
+    trackHelpUsage
+  } = useConversationHelp(language, level, topic);
+
+  // Initialize inline conversation help system
+  const {
+    settings: inlineHelpSettings,
+    updateSettings: updateInlineHelpSettings,
+    pendingHelp,
+    isUserSpeaking,
+    clearPendingHelp,
+    handleAiResponseComplete,
+    handleUserSpeakingStart,
+    handleUserSpeakingStop
+  } = useInlineConversationHelp(language, level, topic);
   
   // Voice data mapping for avatars and names
   const VOICE_DATA = {
@@ -1795,6 +1827,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
               </div>
             )}
+            
+            {/* Conversation Help Settings */}
+            <ConversationHelpSettings
+              onSettingsChange={updateHelpSettings}
+              initialSettings={helpSettings}
+              compact={true}
+            />
           </div>
         </div>
 
@@ -1973,13 +2012,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         </div>
                       )}
                       
-                      {/* Warning message when content is not in target language */}
-                      {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
-                       !isInTargetLanguage(messages[messages.length - 1].content) && (
-                        <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
-                          <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                   
@@ -2114,6 +2146,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                           })()}
                                         </div>
                                       )}
+
                                     </div>
                                   </div>
                                 );
@@ -2129,13 +2162,24 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                               </div>
                             </div>
                           )}
+                          
+                          {/* Conversation Help After AI - Positioned in conversation flow */}
+                          <ConversationHelpAfterAi
+                            isEnabled={helpSettings.help_enabled}
+                            targetLanguage={language}
+                            helpLanguage={helpSettings.help_language}
+                            userLevel={level}
+                            conversationTopic={topic || 'general conversation'}
+                            messages={processedMessages}
+                          />
+                          
                           <div ref={messagesEndRef} className="mt-auto" />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Mobile Recording Button - Under Conversation Section */}
                 <div className="lg:hidden mt-4">
                   <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
@@ -2228,6 +2272,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         language={language}
         level={level}
       />
+
+      {/* Conversation Help Modal - DISABLED - Only use inline help after AI completes speaking */}
 
       {/* Saving Progress Loading Modal */}
       {showSavingLoader && (

@@ -31,6 +31,7 @@ This repository contains comprehensive documentation to help you understand, use
 - 📝 **Language Proficiency Analysis**: CEFR level determination and personalized recommendations
 - 📋 **Custom Learning Plans**: AI-generated study plans based on assessment results and goals
 - 🗣️ **Topic-based Practice**: Predefined topics or custom conversations with web search integration
+- 🤖 **AI-based Conversation Rescue System**: Intelligent help system that provides contextual assistance after AI tutor responses
 - 🌍 **Multi-language Support**: Currently Dutch and English with all CEFR levels (A1-C2)
 - 🔐 **Flexible Authentication**: Email/password, Google Sign-In, and guest user functionality
 - 📱 **Responsive Design**: Modern UI optimized for both desktop and mobile devices
@@ -64,6 +65,53 @@ Transform your learning journey into professional documents and comprehensive da
 - **GDPR Compliant**: Full data portability rights with comprehensive export functionality
 
 **Access your export options through the Profile → Export Data tab for instant downloads of your learning achievements.**
+
+### 🤖 AI-based Conversation Rescue System
+
+An intelligent help system that provides contextual assistance after AI tutor responses, designed to support learners when they need guidance during conversations.
+
+#### 🎯 **Core Functionality**
+- **Smart Trigger**: Automatically activates after each AI tutor response when enabled
+- **Contextual Analysis**: Uses GPT-4o to analyze the AI tutor's last response and conversation context
+- **Multi-language Support**: Provides help content in the user's native language (8 languages supported)
+- **User-Controlled**: Completely optional system that users can enable/disable at any time
+
+#### 🌟 **Help Content Features**
+- **AI Response Summary**: Clear explanation of what the AI tutor just said in simple terms
+- **Suggested Responses**: 3-4 contextually appropriate response options with pronunciation guides
+- **Vocabulary Highlights**: Key words from the AI's speech with definitions and examples
+- **Grammar Tips**: Simple grammar explanations relevant to the conversation context
+- **Cultural Context**: Brief cultural notes when relevant to the conversation topic
+
+#### 🎨 **User Experience Design**
+- **Modern Modal Interface**: Beautiful glassmorphism design with smooth animations
+- **Mobile Optimized**: Responsive design with proper text sizing for all devices
+- **Immediate Feedback**: Modal appears instantly when help generation starts
+- **Visual Separation**: Clear UI distinction with brand color integration (#F75A5A)
+- **Intuitive Controls**: Toggle-based activation with progressive disclosure
+
+#### 🔧 **Technical Implementation**
+- **Frontend**: React components with TypeScript and Tailwind CSS
+- **Backend**: FastAPI endpoints with OpenAI GPT-4o integration
+- **Real-time Integration**: Hooks into existing conversation flow seamlessly
+- **Settings Persistence**: User preferences saved across sessions
+- **Analytics Tracking**: Usage analytics for system improvement
+
+#### 📱 **Settings & Controls**
+- **AI Help Toggle**: Enable/disable the entire system (disabled by default)
+- **Help Language Selection**: Choose native language for help content
+- **Feature Customization**: Control which help components to show
+- **Session Persistence**: Settings maintained throughout the conversation
+
+#### 🌍 **Supported Help Languages**
+English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Chinese, Japanese, Korean, Arabic, Hindi, Turkish
+
+#### 🚀 **API Integration**
+- `POST /api/conversation-help/generate` - Generate contextual help content
+- `GET/PUT /api/conversation-help/settings` - Manage user help preferences
+- `POST /api/conversation-help/track-usage` - Analytics and usage tracking
+
+The system enhances the learning experience by providing just-in-time assistance without interrupting the natural flow of conversation, making language learning more accessible and confidence-building for learners at all levels.
 
 - **API endpoints** for authentication, learning plan management, real-time conversation, speaking/sentence assessment, and web search.
 - **Authentication** using JWT and Google OAuth, with secure password storage and token validation.
