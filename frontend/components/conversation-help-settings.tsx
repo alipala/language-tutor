@@ -124,16 +124,17 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
             <select
               value={settings.help_language}
               onChange={(e) => updateSetting('help_language', e.target.value)}
-              className="text-sm font-medium rounded-md px-3 py-1 border-2 transition-all duration-200 min-w-[80px] bg-white border-[#F75A5A]/30 text-gray-800 hover:border-[#F75A5A] focus:ring-2 focus:ring-[#F75A5A]/50 focus:border-[#F75A5A]"
+              className="text-sm sm:text-sm md:text-base font-medium rounded-md px-3 py-1 border-2 transition-all duration-200 min-w-[80px] bg-white border-[#F75A5A]/30 text-gray-800 hover:border-[#F75A5A] focus:ring-2 focus:ring-[#F75A5A]/50 focus:border-[#F75A5A]"
               style={{ 
                 appearance: 'none',
                 WebkitAppearance: 'none',
                 MozAppearance: 'none',
-                backgroundImage: 'none'
+                backgroundImage: 'none',
+                fontSize: '16px' // Force 16px on mobile to prevent zoom
               }}
             >
               {SUPPORTED_HELP_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-white text-gray-800 py-2">
+                <option key={lang.code} value={lang.code} className="bg-white text-gray-800 py-3 text-base" style={{ fontSize: '16px' }}>
                   {lang.native_name}
                 </option>
               ))}

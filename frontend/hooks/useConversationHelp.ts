@@ -61,7 +61,7 @@ export const useConversationHelp = (
   topic?: string
 ) => {
   const [helpSettings, setHelpSettings] = useState<HelpSettings>({
-    help_enabled: true,
+    help_enabled: false,
     help_language: "english",
     show_pronunciation: true,
     show_grammar_tips: true,
