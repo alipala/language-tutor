@@ -162,8 +162,9 @@ const ConversationHelpAfterAi: React.FC<ConversationHelpAfterAiProps> = ({
     }
 
     console.log('[HELP_AFTER_AI] 🔄 Setting loading state and making API call...');
-    // 🚀 NEW STRATEGY: Only show modal when we have REAL AI-generated content
+    // 🚀 SHOW MODAL IMMEDIATELY with loading state so user sees help is coming
     setIsLoading(true); // Show loading while we wait for AI
+    setShowHelp(true);  // Show modal immediately with loading state
     
     // Auto-scroll to loading modal immediately when loading starts
     setTimeout(() => {
@@ -436,40 +437,6 @@ const ConversationHelpAfterAi: React.FC<ConversationHelpAfterAiProps> = ({
     );
   }
 
-  // Show loading animation while generating help content
-  if (isLoading) {
-    console.log('[HELP_AFTER_AI] 🔄 Rendering loading animation');
-    return (
-      <div className="w-full mt-3 animate-fadeIn">
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 shadow-md relative transition-all duration-500 ease-in-out">
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className="relative mb-6">
-              {/* Enhanced animated circles */}
-              <div className="w-20 h-20 relative">
-                <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-pulse"></div>
-                <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <div className="absolute inset-2 border-3 border-purple-300 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                <div className="absolute inset-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-pulse">
-                  <MessageCircle className="w-6 h-6 text-white animate-bounce" />
-                </div>
-              </div>
-            </div>
-            <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-3">{uiText.generatingHelp}</h3>
-                <p className="text-base text-gray-600 mb-2">{uiText.analyzingConversation}</p>
-                <p className="text-sm text-gray-500">{uiText.creatingSuggestions}</p>
-            </div>
-            {/* Enhanced progress dots */}
-            <div className="flex items-center gap-2 mt-6">
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Show help content
   if (showHelp) {
@@ -513,9 +480,9 @@ const ConversationHelpAfterAi: React.FC<ConversationHelpAfterAiProps> = ({
                 </div>
               </div>
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Generating Personalized Help</h3>
-                <p className="text-sm text-gray-600 mb-1">AI is analyzing the conversation...</p>
-                <p className="text-xs text-gray-500">Creating suggestions and explanations for you</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">{uiText.generatingHelp}</h3>
+                <p className="text-sm text-gray-600 mb-1">{uiText.analyzingConversation}</p>
+                <p className="text-xs text-gray-500">{uiText.creatingSuggestions}</p>
               </div>
               {/* Progress dots */}
               <div className="flex items-center gap-1 mt-4">
