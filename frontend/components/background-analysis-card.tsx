@@ -2,14 +2,19 @@
 
 import { useState } from 'react';
 import { BackgroundAnalysisResponse, getScoreColorClass, getScoreBackgroundClass, formatAnalysisTimestamp } from '@/lib/background-sentence-api';
+import SentenceAnalysisFeedbackComponent from './sentence-analysis-feedback';
 
 interface BackgroundAnalysisCardProps {
   analysis: BackgroundAnalysisResponse;
+  language: string;
+  level: string;
+  sessionId: string;
   onClose?: () => void;
 }
 
-export default function BackgroundAnalysisCard({ analysis, onClose }: BackgroundAnalysisCardProps) {
+export default function BackgroundAnalysisCard({ analysis, language, level, sessionId, onClose }: BackgroundAnalysisCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   return (
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4 mb-3 shadow-sm animate-fadeIn">
@@ -147,6 +152,40 @@ export default function BackgroundAnalysisCard({ analysis, onClose }: Background
               </div>
             </div>
           )}
+
+          {/* Feedback Section - Always visible, no expansion needed */}
+          <div className="pt-3 border-t border-blue-200">
+            <SentenceAnalysisFeedbackComponent
+              analysis={analysis}
+              language={language}
+              level={level}
+              sessionId={sessionId}
+              onFeedbackSubmitted={() => {
+                console.log('✅ [FEEDBACK] Analysis feedback submitted successfully');
+              }}
+              onClose={() => {
+                console.log('✅ [FEEDBACK] Feedback component closed');
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Quick Feedback (when not expanded) - Always visible, no expansion needed */}
+      {!isExpanded && (
+        <div className="mt-3 pt-3 border-t border-blue-200">
+          <SentenceAnalysisFeedbackComponent
+            analysis={analysis}
+            language={language}
+            level={level}
+            sessionId={sessionId}
+            onFeedbackSubmitted={() => {
+              console.log('✅ [FEEDBACK] Analysis feedback submitted successfully');
+            }}
+            onClose={() => {
+              console.log('✅ [FEEDBACK] Feedback component closed');
+            }}
+          />
         </div>
       )}
     </div>

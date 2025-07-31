@@ -1967,6 +1967,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                               <div className="flex-1 p-3 overflow-y-auto">
                                 <BackgroundAnalysisCard
                                   analysis={backgroundAnalyses[currentAnalysisIndex] || backgroundAnalyses[backgroundAnalyses.length - 1]}
+                                  language={language}
+                                  level={level}
+                                  sessionId={user?.email || 'guest'}
                                   onClose={() => {
                                     setBackgroundAnalyses(prev => prev.filter((_, i) => i !== currentAnalysisIndex));
                                     // Adjust current index if needed
@@ -2021,6 +2024,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 <BackgroundAnalysisCard
                                   key={analysis.analysis_id}
                                   analysis={analysis}
+                                  language={language}
+                                  level={level}
+                                  sessionId={user?.email || 'guest'}
                                   onClose={() => {
                                     setBackgroundAnalyses(prev => prev.filter((_, i) => i !== index));
                                   }}
