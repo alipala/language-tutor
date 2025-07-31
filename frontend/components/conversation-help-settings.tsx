@@ -90,61 +90,59 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
   // Compact version for control panel
   if (compact) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <span className="font-semibold text-lg">Help</span>
-        
-        {/* Language Selection Dropdown - Mobile-friendly */}
-        <div className="relative">
-          <select
-            value={settings.help_language}
-            onChange={(e) => updateSetting('help_language', e.target.value)}
-            disabled={!settings.help_enabled}
-            className={`text-sm font-medium rounded-md px-3 py-1 border-2 transition-all duration-200 min-w-[80px] ${
+      <div className={`flex items-center gap-3 ${className}`}>
+        {/* Help Label with Toggle */}
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-lg">Help</span>
+          
+          {/* Modern Toggle Switch - Next to Help */}
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.help_enabled}
+              onChange={(e) => updateSetting('help_enabled', e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className={`relative w-11 h-6 rounded-full peer transition-colors duration-200 ease-in-out ${
               settings.help_enabled 
-                ? 'bg-white border-indigo-200 text-gray-800 hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' 
-                : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-            style={{ 
-              appearance: 'none',
-              WebkitAppearance: 'none',
-              MozAppearance: 'none',
-              backgroundImage: 'none'
-            }}
-          >
-            {SUPPORTED_HELP_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code} className="bg-white text-gray-800 py-2">
-                {lang.native_name}
-              </option>
-            ))}
-          </select>
-          {/* Custom dropdown arrow - Mobile optimized */}
-          <div className={`absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none transition-colors duration-200 ${
-            settings.help_enabled ? 'text-gray-600' : 'text-gray-400'
-          }`}>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-600' 
+                : 'bg-gray-300'
+            }`}>
+              <div className={`absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-transform duration-200 ease-in-out shadow-md ${
+                settings.help_enabled ? 'translate-x-5' : 'translate-x-0'
+              }`}></div>
+            </div>
+          </label>
         </div>
         
-        {/* Modern Toggle Switch */}
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={settings.help_enabled}
-            onChange={(e) => updateSetting('help_enabled', e.target.checked)}
-            className="sr-only peer"
-          />
-          <div className={`relative w-11 h-6 rounded-full peer transition-colors duration-200 ease-in-out ${
-            settings.help_enabled 
-              ? 'bg-gradient-to-r from-indigo-500 to-purple-600' 
-              : 'bg-gray-300'
-          }`}>
-            <div className={`absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-transform duration-200 ease-in-out shadow-md ${
-              settings.help_enabled ? 'translate-x-5' : 'translate-x-0'
-            }`}></div>
+        {/* Language Selection Dropdown - Only show when enabled */}
+        {settings.help_enabled && (
+          <div className="relative animate-fadeIn">
+            <select
+              value={settings.help_language}
+              onChange={(e) => updateSetting('help_language', e.target.value)}
+              className="text-sm font-medium rounded-md px-3 py-1 border-2 transition-all duration-200 min-w-[80px] bg-white border-indigo-200 text-gray-800 hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              style={{ 
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                backgroundImage: 'none'
+              }}
+            >
+              {SUPPORTED_HELP_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code} className="bg-white text-gray-800 py-2">
+                  {lang.native_name}
+                </option>
+              ))}
+            </select>
+            {/* Custom dropdown arrow - Mobile optimized */}
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none transition-colors duration-200 text-gray-600">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
-        </label>
+        )}
       </div>
     );
   }

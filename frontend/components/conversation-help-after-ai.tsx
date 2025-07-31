@@ -454,7 +454,7 @@ const ConversationHelpAfterAi: React.FC<ConversationHelpAfterAiProps> = ({
               {isLoading && (
                 <div className="flex items-center gap-2 ml-2">
                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm text-blue-600 font-medium">Generating help...</span>
+                  <span className="text-sm text-blue-600 font-medium">{uiText.generatingHelp}...</span>
                 </div>
               )}
             </div>

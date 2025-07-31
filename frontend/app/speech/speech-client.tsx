@@ -2012,13 +2012,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         </div>
                       )}
                       
-                      {/* Warning message when content is not in target language */}
-                      {isRecording && messages.length > 0 && messages[messages.length - 1].role === 'user' && 
-                       !isInTargetLanguage(messages[messages.length - 1].content) && (
-                        <div className="mt-4 px-4 py-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-200 text-center">
-                          <p className="text-sm">Please speak in {language.charAt(0).toUpperCase() + language.slice(1)} to analyze your sentence.</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                   
