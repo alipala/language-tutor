@@ -43,7 +43,7 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
   compact = false
 }) => {
   const [settings, setSettings] = useState<HelpSettings>({
-    help_enabled: true,
+    help_enabled: false,
     help_language: "english",
     show_pronunciation: true,
     show_grammar_tips: true,
@@ -91,11 +91,14 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
   if (compact) {
     return (
       <div className={`flex items-center gap-3 ${className}`}>
-        {/* Help Label with Toggle */}
+        {/* Visual Separator */}
+        <div className="h-6 w-px bg-gray-300"></div>
+        
+        {/* AI Help Label with Toggle */}
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-lg">Help</span>
+          <span className="font-semibold text-lg">AI Help</span>
           
-          {/* Modern Toggle Switch - Next to Help */}
+          {/* Modern Toggle Switch - Next to AI Help */}
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -105,7 +108,7 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
             />
             <div className={`relative w-11 h-6 rounded-full peer transition-colors duration-200 ease-in-out ${
               settings.help_enabled 
-                ? 'bg-gradient-to-r from-indigo-500 to-purple-600' 
+                ? 'bg-[#F75A5A]' 
                 : 'bg-gray-300'
             }`}>
               <div className={`absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-transform duration-200 ease-in-out shadow-md ${
@@ -121,7 +124,7 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
             <select
               value={settings.help_language}
               onChange={(e) => updateSetting('help_language', e.target.value)}
-              className="text-sm font-medium rounded-md px-3 py-1 border-2 transition-all duration-200 min-w-[80px] bg-white border-indigo-200 text-gray-800 hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="text-sm font-medium rounded-md px-3 py-1 border-2 transition-all duration-200 min-w-[80px] bg-white border-[#F75A5A]/30 text-gray-800 hover:border-[#F75A5A] focus:ring-2 focus:ring-[#F75A5A]/50 focus:border-[#F75A5A]"
               style={{ 
                 appearance: 'none',
                 WebkitAppearance: 'none',
@@ -136,7 +139,7 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
               ))}
             </select>
             {/* Custom dropdown arrow - Mobile optimized */}
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none transition-colors duration-200 text-gray-600">
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none transition-colors duration-200 text-[#F75A5A]">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
