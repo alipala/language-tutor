@@ -1635,52 +1635,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   return (
     <main className="flex flex-col text-white p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden min-h-screen">
       <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
-        {/* Language alert notification with animation states */}
-        {showLanguageAlert && (
-          <div 
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white px-6 py-3 rounded-lg border border-amber-400/20 z-50 flex items-center space-x-3 max-w-md
-            `}
-            role="alert"
-            aria-live="assertive"
-            id="language-alert-notification"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div className="flex flex-col">
-              {language === 'dutch' && (
-                <>
-                  <span className="text-sm md:text-base font-medium">Dit is een Nederlandse les.</span>
-                  <span className="text-xs md:text-sm text-amber-100">Probeer alsjeblieft in het Nederlands te spreken.</span>
-                </>
-              )}
-              {language === 'spanish' && (
-                <>
-                  <span className="text-sm md:text-base font-medium">Esta es una clase de español.</span>
-                  <span className="text-xs md:text-sm text-amber-100">Por favor, intenta hablar en español.</span>
-                </>
-              )}
-              {language === 'german' && (
-                <>
-                  <span className="text-sm md:text-base font-medium">Dies ist ein Deutschunterricht.</span>
-                  <span className="text-xs md:text-sm text-amber-100">Bitte versuche, auf Deutsch zu sprechen.</span>
-                </>
-              )}
-              {language === 'french' && (
-                <>
-                  <span className="text-sm md:text-base font-medium">C'est un cours de français.</span>
-                  <span className="text-xs md:text-sm text-amber-100">S'il vous plaît, essayez de parler en français.</span>
-                </>
-              )}
-              {language === 'portuguese' && (
-                <>
-                  <span className="text-sm md:text-base font-medium">Esta é uma aula de português.</span>
-                  <span className="text-xs md:text-sm text-amber-100">Por favor, tente falar em português.</span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
         
         {/* Draggable Timer - Now floating and draggable */}
         <DraggableTimer
@@ -1844,13 +1798,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           </div>
         )}
 
-        {/* User Selection Summary */}
-        <div className="bg-white border-2 border-[#4ECFBF] rounded-xl p-4 mb-4 mx-auto max-w-4xl relative z-10 shadow-lg">
+        {/* User Selection Summary - Desktop Only */}
+        <div className="hidden sm:block bg-white border-2 border-[#4ECFBF] rounded-xl p-2 sm:p-3 md:p-4 mb-3 sm:mb-4 w-full relative z-10 shadow-lg">
+          {/* Desktop: Original layout */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-gray-800">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-[#4ECFBF] rounded-full flex items-center justify-center shadow-lg">
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733 18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98A1 1 0 0117 18H10a1 1 0 01-.894-1.447l.99-1.98.019-.038 2.991-5.982A1 1 0 0114 8h-1z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733a18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98A1 1 0 0117 18H10a1 1 0 01-.894-1.447l.99-1.98.019-.038 2.991-5.982A1 1 0 0114 8h-1z" clipRule="evenodd" />
                 </svg>
               </div>
               <span className="font-semibold text-lg">
@@ -1895,7 +1850,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
               </span>
             </div>
             
-            {/* AI Tutor Avatar in Summary Bar */}
             {!voiceLoading && (
               <div className="relative">
                 <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
@@ -1909,19 +1863,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     }}
                   />
                 </div>
-                {/* Online indicator positioned at bottom-right corner of avatar */}
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
               </div>
             )}
             
-            {/* Conversation Help Settings */}
-            <ConversationHelpSettings
-              onSettingsChange={updateHelpSettings}
-              initialSettings={helpSettings}
-              compact={true}
-            />
+            
           </div>
         </div>
+
 
         <div className="flex-1 flex flex-col items-stretch justify-center w-full">
           {/* Main Content Area - Mobile-Optimized Layout */}
@@ -2092,7 +2041,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         ) : (
                           <>
                             <MicrophoneIcon isRecording={false} size={20} />
-                            <span className="font-medium text-gray-800 font-bold">Click to start speaking</span>
+                            <span className="font-medium text-gray-800">Click to start speaking</span>
                           </>
                         )}
                       </Button>
@@ -2120,12 +2069,83 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         <span className="sm:hidden">Conversation</span>
                       </h3>
                       
-                      {/* Message Counter */}
-                      {processedMessages.length > 0 && (
-                        <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {processedMessages.length}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {/* Mobile ONLY AI Help - Single Row Layout */}
+                        <div className="flex items-center gap-2 sm:hidden">
+                          <span className="text-sm font-semibold text-gray-800">AI Help</span>
+                          
+                          {/* Toggle Switch */}
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={helpSettings.help_enabled}
+                              onChange={(e) => updateHelpSettings({...helpSettings, help_enabled: e.target.checked})}
+                              className="sr-only peer"
+                            />
+                            <div className={`relative w-9 h-5 rounded-full peer transition-colors duration-200 ease-in-out ${
+                              helpSettings.help_enabled 
+                                ? 'bg-[#F75A5A]' 
+                                : 'bg-gray-300'
+                            }`}>
+                              <div className={`absolute top-0.5 left-0.5 bg-white rounded-full h-4 w-4 transition-transform duration-200 ease-in-out shadow-md ${
+                                helpSettings.help_enabled ? 'translate-x-4' : 'translate-x-0'
+                              }`}></div>
+                            </div>
+                          </label>
+                          
+                          {/* Language Dropdown - Same Row */}
+                          {helpSettings.help_enabled && (
+                            <div className="relative">
+                              <select
+                                value={helpSettings.help_language}
+                                onChange={(e) => updateHelpSettings({...helpSettings, help_language: e.target.value})}
+                                className="text-xs font-medium rounded-md px-2 py-1 border border-gray-300 bg-white text-gray-800 hover:border-[#F75A5A] focus:ring-1 focus:ring-[#F75A5A]/50 focus:border-[#F75A5A] focus:outline-none min-w-[80px]"
+                                style={{ 
+                                  appearance: 'none',
+                                  WebkitAppearance: 'none',
+                                  MozAppearance: 'none',
+                                  backgroundImage: 'none',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                {[
+                                  { code: "english", native_name: "English" },
+                                  { code: "spanish", native_name: "Español" },
+                                  { code: "french", native_name: "Français" },
+                                  { code: "german", native_name: "Deutsch" },
+                                  { code: "italian", native_name: "Italiano" },
+                                  { code: "portuguese", native_name: "Português" },
+                                  { code: "dutch", native_name: "Nederlands" },
+                                  { code: "russian", native_name: "Русский" },
+                                  { code: "chinese", native_name: "中文" },
+                                  { code: "japanese", native_name: "日本語" },
+                                  { code: "korean", native_name: "한국어" },
+                                  { code: "arabic", native_name: "العربية" },
+                                  { code: "hindi", native_name: "हिन्दी" },
+                                  { code: "turkish", native_name: "Türkçe" }
+                                ].map((lang) => (
+                                  <option key={lang.code} value={lang.code} className="bg-white text-gray-800 text-xs">
+                                    {lang.native_name}
+                                  </option>
+                                ))}
+                              </select>
+                              {/* Custom dropdown arrow */}
+                              <div className="absolute right-1 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Message Counter */}
+                        {processedMessages.length > 0 && (
+                          <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {processedMessages.length}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex-1 p-3 sm:p-4 lg:p-6 pt-0 overflow-hidden">
@@ -2324,7 +2344,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       ) : (
                         <>
                           <MicrophoneIcon isRecording={false} size={24} />
-                          <span className="font-bold">Click to start speaking</span>
+                          <span className="font-medium">Click to start speaking</span>
                         </>
                       )}
                     </Button>

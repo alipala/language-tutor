@@ -443,20 +443,14 @@ const ConversationHelpAfterAi: React.FC<ConversationHelpAfterAiProps> = ({
     console.log('[HELP_AFTER_AI] 🎨 Rendering help modal with data:', helpData);
     return (
       <div ref={modalRef} className={`w-full mt-3 help-modal-container ${isExiting ? 'animate-slideOutDown' : 'animate-slideInUp'}`}>
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3 shadow-md relative transition-all duration-500 ease-in-out transform">
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-2 sm:p-3 shadow-md relative transition-all duration-500 ease-in-out transform max-h-[60vh] sm:max-h-[70vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <HelpCircle className="w-4 h-4 text-white" />
+                <MessageCircle className="w-4 h-4 text-white" />
               </div>
               <span className="text-base font-semibold text-gray-800">{uiText.conversationHelp}</span>
-              {isLoading && (
-                <div className="flex items-center gap-2 ml-2">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm text-blue-600 font-medium">{uiText.generatingHelp}...</span>
-                </div>
-              )}
             </div>
             <button
               onClick={handleClose}
@@ -467,28 +461,28 @@ const ConversationHelpAfterAi: React.FC<ConversationHelpAfterAiProps> = ({
           </div>
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="relative mb-4">
-                {/* Animated circles */}
-                <div className="w-16 h-16 relative">
-                  <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
-                  <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <div className="absolute inset-2 border-2 border-purple-300 rounded-full animate-pulse"></div>
-                  <div className="absolute inset-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <MessageCircle className="w-4 h-4 text-white animate-pulse" />
+            <div className="flex flex-col items-center justify-center py-6 sm:py-8 md:py-12">
+              <div className="relative mb-3 sm:mb-4">
+                {/* Mobile: Smaller animated circles */}
+                <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 relative">
+                  <div className="absolute inset-0 border-2 sm:border-3 md:border-4 border-blue-200 rounded-full"></div>
+                  <div className="absolute inset-0 border-2 sm:border-3 md:border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="absolute inset-1 sm:inset-2 border border-purple-300 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-2 sm:inset-3 md:inset-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <MessageCircle className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4 text-white animate-pulse" />
                   </div>
                 </div>
               </div>
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">{uiText.generatingHelp}</h3>
-                <p className="text-sm text-gray-600 mb-1">{uiText.analyzingConversation}</p>
-                <p className="text-xs text-gray-500">{uiText.creatingSuggestions}</p>
+                <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">{uiText.generatingHelp}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{uiText.analyzingConversation}</p>
+                <p className="text-xs text-gray-500 hidden sm:block">{uiText.creatingSuggestions}</p>
               </div>
-              {/* Progress dots */}
-              <div className="flex items-center gap-1 mt-4">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              {/* Progress dots - smaller on mobile */}
+              <div className="flex items-center gap-1 mt-2 sm:mt-4">
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           ) : helpData ? (

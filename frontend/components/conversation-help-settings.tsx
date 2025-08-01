@@ -17,6 +17,7 @@ interface ConversationHelpSettingsProps {
   initialSettings?: HelpSettings;
   className?: string;
   compact?: boolean;
+  floating?: boolean;
 }
 
 const SUPPORTED_HELP_LANGUAGES = [
@@ -40,7 +41,8 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
   onSettingsChange,
   initialSettings,
   className = "",
-  compact = false
+  compact = false,
+  floating = false
 }) => {
   const [settings, setSettings] = useState<HelpSettings>({
     help_enabled: false,
@@ -86,6 +88,38 @@ const ConversationHelpSettings: React.FC<ConversationHelpSettingsProps> = ({
     const lang = SUPPORTED_HELP_LANGUAGES.find(l => l.code === code);
     return lang ? `${lang.name} (${lang.native_name})` : code;
   };
+
+  // Floating version for mobile - minimal AI Help toggle button with dropdown
+  if (floating) {
+    return (
+      <div className={`bg-white border border-gray-200 rounded-lg shadow-lg backdrop-blur-sm ${className}`}>
+        <div className="flex items-center gap-2 px-3 py-2">
+          {/* AI Help Text */}
+          <span className="text-sm font-semibold text-gray-800">AI Help</span>
+          
+          {/* Toggle Switch */}
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.help_enabled}
+              onChange={(e) => updateSetting('help_enabled', e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className={`relative w-9 h-5 rounded-full peer transition-colors duration-200 ease-in-out ${
+              settings.help_enabled 
+                ? 'bg-[#F75A5A]' 
+                : 'bg-gray-300'
+            }`}>
+              <div className={`absolute top-0.5 left-0.5 bg-white rounded-full h-4 w-4 transition-transform duration-200 ease-in-out shadow-md ${
+                settings.help_enabled ? 'translate-x-4' : 'translate-x-0'
+              }`}></div>
+            </div>
+          </label>
+        </div>
+        
+      </div>
+    );
+  }
 
   // Compact version for control panel
   if (compact) {

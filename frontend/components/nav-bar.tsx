@@ -13,6 +13,9 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   // Determine if we're on the landing page
   const [isLandingPage, setIsLandingPage] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isNavHidden, setIsNavHidden] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const { user, logout, loading: authLoading } = useAuth();
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -52,22 +55,54 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     setIsMenuOpen(false);
   };
 
-  // Check if we're on the landing page
+  // Check if we're on the landing page and detect mobile
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsLandingPage(window.location.pathname === '/');
       
-      // Add scroll listener for the landing page
-      const handleScroll = () => {
-        setIsScrolled(window.scrollY > 50);
+      // Detect mobile device
+      const checkMobile = () => {
+        const isMobileDevice = window.innerWidth < 768 || 
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        setIsMobile(isMobileDevice);
       };
       
-      if (window.location.pathname === '/') {
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-      }
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      
+      // Enhanced scroll handler for both landing page and mobile hide-on-scroll
+      const handleScroll = () => {
+        const currentScrollY = window.scrollY;
+        
+        // Landing page scroll effect
+        setIsScrolled(currentScrollY > 50);
+        
+        // Mobile hide-on-scroll functionality (only on speech pages)
+        if (isMobile && window.location.pathname.includes('/speech')) {
+          const scrollDifference = currentScrollY - lastScrollY;
+          
+          // Hide navbar when scrolling down (more than 5px) and past 100px
+          if (scrollDifference > 5 && currentScrollY > 100) {
+            setIsNavHidden(true);
+          }
+          // Show navbar when scrolling up (more than 5px) or near top
+          else if (scrollDifference < -5 || currentScrollY < 50) {
+            setIsNavHidden(false);
+          }
+          
+          setLastScrollY(currentScrollY);
+        }
+      };
+      
+      // Add scroll listener
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      
+      return () => {
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', checkMobile);
+      };
     }
-  }, []);
+  }, [lastScrollY, isMobile]);
 
   // Fetch unread count when user is available
   useEffect(() => {
@@ -205,8 +240,15 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, []);
 
   // Keep the navbar fixed with appropriate styling - compact height with large logo
-  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90'} ${activeSection ? 'navbar-section1' : ''}`;
+  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90'} ${activeSection ? 'navbar-section1' : ''}`;
   navbarClass += isScrolled ? ' py-1' : ' py-2';
+  
+  // Add hide/show animation for mobile on speech pages
+  if (isMobile && window.location.pathname.includes('/speech')) {
+    navbarClass += isNavHidden ? ' -top-20 opacity-0' : ' top-0 opacity-100';
+  } else {
+    navbarClass += ' top-0';
+  }
   
   return (
     <nav className={navbarClass}>
