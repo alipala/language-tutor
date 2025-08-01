@@ -87,6 +87,7 @@ async def create_checkout_session(
             success_url=success_url,
             cancel_url=cancel_url,
             client_reference_id=str(current_user.id),
+            allow_promotion_codes=True,  # Enable promo code field
         )
 
         return {"url": checkout_session.url}
