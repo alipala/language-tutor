@@ -85,82 +85,101 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
   return (
     <>
       <div className={`relative ${className}`}>
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 shadow-lg">
-          <div className="flex items-start space-x-4">
-            {/* Icon */}
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <Crown className="h-6 w-6 text-blue-600" />
+        {/* 🎯 COMPACT MOBILE-FIRST DESIGN */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+          {/* 🎯 IMPROVED DISMISS BUTTON */}
+          <button
+            onClick={handleDismiss}
+            className="absolute top-3 right-3 z-10 w-6 h-6 bg-white/80 hover:bg-white rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all duration-200 shadow-sm hover:shadow-md"
+            aria-label="Dismiss upgrade prompt"
+          >
+            <X className="h-3 w-3" />
+          </button>
+
+          {/* 📱 MOBILE LAYOUT (default) */}
+          <div className="p-4 md:hidden">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Crown className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-blue-900 leading-tight">
+                  🚀 Ready to Unlock More?
+                </h3>
+                <p className="text-xs text-blue-700 mt-1">
+                  Try & Learn plan • 3 sessions/month
+                </p>
               </div>
             </div>
+            
+            {/* Compact action buttons */}
+            <div className="flex space-x-2">
+              <button
+                onClick={handleUpgrade}
+                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center space-x-1"
+              >
+                <Zap className="h-3 w-3" />
+                <span>Upgrade</span>
+              </button>
+              <div className="flex-1 text-center">
+                <div className="text-xs text-gray-600 font-medium">Continue Free</div>
+                <div className="text-xs text-gray-500">3 sessions left</div>
+              </div>
+            </div>
+          </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-blue-900 mb-2">
-                🚀 Ready to Unlock More Learning?
-              </h3>
+          {/* 🖥️ ULTRA-COMPACT DESKTOP LAYOUT */}
+          <div className="hidden md:block p-3">
+            <div className="flex items-center justify-between max-w-2xl mx-auto">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Crown className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-blue-900">
+                    🚀 Ready to Unlock More?
+                  </h3>
+                  <p className="text-xs text-blue-700">
+                    Try & Learn • Upgrade for unlimited access
+                  </p>
+                </div>
+              </div>
               
-              <p className="text-blue-800 mb-4">
-                You're currently on the <strong>Try & Learn</strong> plan (3 sessions/month). 
-                Upgrade to get unlimited practice sessions and advanced features!
-              </p>
-
-
-              {/* Two-column layout for options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Continue with Free */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h4 className="font-semibold text-gray-800 mb-2">Continue Free</h4>
-                  <ul className="text-sm text-gray-600 space-y-1 mb-3">
-                    <li>• 3 practice sessions/month</li>
-                    <li>• 1 assessment/month</li>
-                    <li>• Basic progress tracking</li>
-                  </ul>
-                  <p className="text-xs text-gray-500">Perfect for trying out the platform</p>
+              <div className="flex items-center space-x-2">
+                <div className="text-center px-2">
+                  <div className="text-xs font-medium text-gray-700">Continue Free</div>
+                  <div className="text-xs text-gray-500">3 sessions left</div>
                 </div>
-
-                {/* Upgrade Option */}
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-4 text-white relative overflow-hidden">
-                  <div className="relative z-10">
-                    <h4 className="font-semibold mb-2">Upgrade to Premium</h4>
-                    <ul className="text-sm space-y-1 mb-3">
-                      <li>• 30+ sessions/month</li>
-                      <li>• Unlimited assessments</li>
-                      <li>• Advanced analytics</li>
-                    </ul>
-                    <button
-                      onClick={handleUpgrade}
-                      className="bg-white text-blue-600 font-semibold px-4 py-2 rounded-lg hover:bg-gray-100 transition-all duration-300 text-sm flex items-center space-x-2 w-full justify-center"
-                    >
-                      <span>View Plans</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-16 h-16 bg-white/10 rounded-full"></div>
-                </div>
+                <button
+                  onClick={handleUpgrade}
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 flex items-center space-x-1 text-xs"
+                >
+                  <Zap className="h-3 w-3" />
+                  <span>Upgrade</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Pricing Modal */}
+      {/* 🎯 COMPACT DESKTOP MODAL - Optimized Width */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Choose Your Plan</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            {/* Modal Header - Compact */}
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200">
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900">Choose Your Plan</h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 md:h-6 md:w-6" />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-6">
+            {/* Modal Content - Responsive Padding */}
+            <div className="p-4 md:p-6">
               {/* Billing Toggle */}
               <div className="flex items-center justify-center mb-8">
                 <span className={`text-lg font-medium transition-colors duration-300 ${!isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
@@ -187,40 +206,40 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                 )}
               </div>
 
-              {/* Pricing Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 📱 MOBILE-OPTIMIZED PRICING CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {/* Fluency Builder */}
-                <div className="border-2 border-[#4ECFBF] rounded-2xl p-6 relative bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10 flex flex-col h-full">
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-[#4ECFBF] text-white px-4 py-1 rounded-full text-sm font-bold">
+                <div className="border-2 border-[#4ECFBF] rounded-xl md:rounded-2xl p-4 md:p-6 relative bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10 flex flex-col h-full">
+                  <div className="absolute -top-2 md:-top-3 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-[#4ECFBF] text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-bold">
                       MOST POPULAR
                     </div>
                   </div>
                   
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Fluency Builder</h3>
+                  <div className="text-center mb-4 md:mb-6">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Fluency Builder</h3>
                     <div className="mb-2">
                       {isAnnual && (
-                        <div className="text-sm text-gray-500 line-through">$239.88</div>
+                        <div className="text-xs md:text-sm text-gray-500 line-through">$239.88</div>
                       )}
                       <div className="flex items-end justify-center">
-                        <span className="text-4xl font-bold text-gray-900">
+                        <span className="text-2xl md:text-4xl font-bold text-gray-900">
                           {isAnnual ? '$199.99' : '$19.99'}
                         </span>
-                        <span className="text-gray-600 ml-2 mb-1">
+                        <span className="text-gray-600 ml-2 mb-1 text-sm md:text-base">
                           {isAnnual ? '/year' : '/month'}
                         </span>
                       </div>
                       {isAnnual && (
-                        <div className="text-green-600 font-semibold text-sm">
+                        <div className="text-green-600 font-semibold text-xs md:text-sm">
                           Save $39.89 (17% off)
                         </div>
                       )}
                     </div>
-                    <p className="text-gray-600">Ideal for serious language learners</p>
+                    <p className="text-gray-600 text-sm md:text-base">Ideal for serious language learners</p>
                   </div>
 
-                  <ul className="space-y-3 mb-6 flex-grow">
+                  <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                     {[
                       '🎉 7-day free trial included',
                       `${isAnnual ? '360' : '30'} practice sessions (5 minutes each) ${isAnnual ? 'annually' : 'monthly'}`,
@@ -234,8 +253,8 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                       'Priority email support'
                     ].map((feature, index) => (
                       <li key={index} className="flex items-start">
-                        <Check className="w-5 h-5 text-[#4ECFBF] mt-0.5 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
+                        <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
+                        <span className="text-gray-700 text-sm md:text-base">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -251,31 +270,31 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                 </div>
 
                 {/* Language Mastery */}
-                <div className="border-2 border-gray-200 rounded-2xl p-6 flex flex-col h-full">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Language Mastery</h3>
+                <div className="border-2 border-gray-200 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col h-full">
+                  <div className="text-center mb-4 md:mb-6">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Language Mastery</h3>
                     <div className="mb-2">
                       {isAnnual && (
-                        <div className="text-sm text-gray-500 line-through">$479.88</div>
+                        <div className="text-xs md:text-sm text-gray-500 line-through">$479.88</div>
                       )}
                       <div className="flex items-end justify-center">
-                        <span className="text-4xl font-bold text-gray-900">
+                        <span className="text-2xl md:text-4xl font-bold text-gray-900">
                           {isAnnual ? '$399.99' : '$39.99'}
                         </span>
-                        <span className="text-gray-600 ml-2 mb-1">
+                        <span className="text-gray-600 ml-2 mb-1 text-sm md:text-base">
                           {isAnnual ? '/year' : '/month'}
                         </span>
                       </div>
                       {isAnnual && (
-                        <div className="text-green-600 font-semibold text-sm">
+                        <div className="text-green-600 font-semibold text-xs md:text-sm">
                           Save $79.89 (17% off)
                         </div>
                       )}
                     </div>
-                    <p className="text-gray-600">For advanced learners seeking fluency</p>
+                    <p className="text-gray-600 text-sm md:text-base">For advanced learners seeking fluency</p>
                   </div>
 
-                  <ul className="space-y-3 mb-6 flex-grow">
+                  <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                     {[
                       '🎉 7-day free trial included',
                       'Unlimited practice sessions',
@@ -289,8 +308,8 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
                       '⚡ Priority support & faster response times'
                     ].map((feature, index) => (
                       <li key={index} className="flex items-start">
-                        <Check className="w-5 h-5 text-[#4ECFBF] mt-0.5 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
+                        <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
+                        <span className="text-gray-700 text-sm md:text-base">{feature}</span>
                       </li>
                     ))}
                   </ul>
