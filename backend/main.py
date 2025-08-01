@@ -610,6 +610,9 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 "eagerness": "low",
                 "create_response": True,
                 "interrupt_response": True
+            },
+            "input_audio_noise_reduction": {
+                "type": "near_field"  # Focus on learner's voice for semantic analysis
             }
         }
         
@@ -1346,6 +1349,110 @@ async def submit_sentence_analysis_feedback(
     except Exception as e:
         print(f"❌ [FEEDBACK] Error storing feedback: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error storing feedback: {str(e)}")
+
+# Add semantic VAD monitoring endpoint
+@app.get("/api/realtime/semantic-feedback")
+async def get_semantic_feedback_monitoring():
+    """
+    Monitor semantic VAD feedback incidents and conversation quality metrics
+    Provides debugging information for semantic VAD issues
+    """
+    try:
+        from database import database
+        from datetime import datetime, timezone, timedelta
+        
+        # Get feedback data from the last 24 hours
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        feedback_collection = database.sentence_analysis_feedback
+        
+        # Get recent feedback incidents
+        recent_feedback = await feedback_collection.find({
+            "timestamp": {"$gte": twenty_four_hours_ago}
+        }).sort("timestamp", -1).limit(100).to_list(100)
+        
+        # Analyze feedback patterns
+        feedback_stats = {
+            "total_incidents": len(recent_feedback),
+            "feedback_types": {},
+            "languages": {},
+            "levels": {},
+            "common_issues": [],
+            "quality_ratings": []
+        }
+        
+        for feedback in recent_feedback:
+            # Count feedback types
+            feedback_type = feedback.get("feedback_type", "unknown")
+            feedback_stats["feedback_types"][feedback_type] = feedback_stats["feedback_types"].get(feedback_type, 0) + 1
+            
+            # Count languages
+            language = feedback.get("language", "unknown")
+            feedback_stats["languages"][language] = feedback_stats["languages"].get(language, 0) + 1
+            
+            # Count levels
+            level = feedback.get("level", "unknown")
+            feedback_stats["levels"][level] = feedback_stats["levels"].get(level, 0) + 1
+            
+            # Collect quality ratings
+            if feedback.get("user_rating"):
+                feedback_stats["quality_ratings"].append(feedback.get("user_rating"))
+        
+        # Calculate average quality rating
+        if feedback_stats["quality_ratings"]:
+            feedback_stats["average_quality_rating"] = sum(feedback_stats["quality_ratings"]) / len(feedback_stats["quality_ratings"])
+        else:
+            feedback_stats["average_quality_rating"] = None
+        
+        # Identify common issues
+        analysis_rejection_count = feedback_stats["feedback_types"].get("analysis_rejection", 0)
+        stuck_state_count = feedback_stats["feedback_types"].get("stuck_state", 0)
+        
+        if analysis_rejection_count > 5:
+            feedback_stats["common_issues"].append("High analysis rejection rate")
+        if stuck_state_count > 3:
+            feedback_stats["common_issues"].append("Users getting stuck in conversation state")
+        
+        # Get semantic VAD specific metrics
+        semantic_vad_metrics = {
+            "feedback_loops_detected": 0,
+            "background_conversation_triggers": 0,
+            "ai_self_hearing_incidents": 0
+        }
+        
+        for feedback in recent_feedback:
+            user_comment = feedback.get("user_comment", "").lower()
+            if "feedback" in user_comment or "echo" in user_comment:
+                semantic_vad_metrics["feedback_loops_detected"] += 1
+            if "background" in user_comment or "other conversation" in user_comment:
+                semantic_vad_metrics["background_conversation_triggers"] += 1
+            if "ai hearing itself" in user_comment or "self hearing" in user_comment:
+                semantic_vad_metrics["ai_self_hearing_incidents"] += 1
+        
+        return {
+            "success": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "monitoring_period": "24 hours",
+            "feedback_stats": feedback_stats,
+            "semantic_vad_metrics": semantic_vad_metrics,
+            "recent_feedback": [
+                {
+                    "id": str(feedback["_id"]),
+                    "timestamp": feedback.get("timestamp"),
+                    "feedback_type": feedback.get("feedback_type"),
+                    "language": feedback.get("language"),
+                    "level": feedback.get("level"),
+                    "user_rating": feedback.get("user_rating"),
+                    "user_comment": feedback.get("user_comment", "")[:100] + "..." if len(feedback.get("user_comment", "")) > 100 else feedback.get("user_comment", ""),
+                    "resolved": feedback.get("resolved", False)
+                }
+                for feedback in recent_feedback[:20]  # Return only the 20 most recent
+            ]
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting semantic feedback monitoring: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting semantic feedback monitoring: {str(e)}")
 
 # Add endpoint for session summary storage
 @app.post("/api/learning/session-summary")

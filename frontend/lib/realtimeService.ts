@@ -1,4 +1,5 @@
 import { RealtimeEvent, RealtimeResponseCreateEvent } from './types';
+import { SemanticMuteController } from './semanticMuteController';
 
 export class RealtimeService {
   private peerConnection: RTCPeerConnection | null = null;
@@ -22,6 +23,13 @@ export class RealtimeService {
   private currentLanguageIsoCode: string = '';
   private isPaused: boolean = false;
   private pauseStartTime: number | null = null;
+  private semanticMuteController: SemanticMuteController | null = null;
+  
+  // ✅ CRITICAL: Fallback AI speaking state tracking for when SemanticMuteController fails
+  private ai_is_speaking: boolean = false;
+  private fallback_mute_timeout: NodeJS.Timeout | null = null;
+  private fallback_protection_enabled: boolean = true;
+  private last_ai_speech_event: string = '';
 
   constructor() {
     // Only initialize Audio in browser environments
@@ -185,6 +193,14 @@ export class RealtimeService {
             const eventData = JSON.parse(e.data) as RealtimeEvent;
             console.log('📨 Received message type:', eventData.type);
             
+            // ✅ SEMANTIC VAD: Handle events with SemanticMuteController
+            if (this.semanticMuteController) {
+              this.semanticMuteController.handleRealtimeEvent(eventData);
+            } else {
+              // ✅ CRITICAL: Fallback handling when SemanticMuteController is null
+              this.handleFallbackMuting(eventData);
+            }
+            
             // Log specific details for transcription events
             if (eventData.type === 'conversation.item.created') {
               console.log('💬 Conversation item created:', 
@@ -269,12 +285,27 @@ export class RealtimeService {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      // ✅ UNIVERSAL: Request microphone with fallback constraints
+      // ✅ SEMANTIC VAD OPTIMIZED: Enhanced constraints for semantic voice activity detection
       const constraints = {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
+          // Semantic VAD specific optimizations
+          googEchoCancellationType: "system",
+          googNoiseSuppressionLevel: 2,
+          googExperimentalEchoCancellation: true,
+          googAutoGainControl2: true,
+          googHighpassFilter: true,
+          googTypingNoiseDetection: true,
+          // Additional semantic filtering parameters
+          googAudioMirroring: false,
+          googDAEchoCancellation: true,
+          googNoiseSuppression2: true,
+          // Latency optimization for real-time semantic analysis
+          latency: { ideal: 0.01, max: 0.02 },
+          sampleRate: { ideal: 48000 },
+          channelCount: { ideal: 1, max: 1 }
         }
       };
       
@@ -318,6 +349,21 @@ export class RealtimeService {
         try {
           const sender = this.peerConnection.addTrack(audioTracks[0], this.localStream);
           console.log('✅ Track added successfully, sender created:', sender ? 'Yes' : 'No');
+          
+          // ✅ SEMANTIC VAD: Initialize SemanticMuteController with the media stream
+          try {
+            this.semanticMuteController = new SemanticMuteController();
+            const muteControllerInitialized = await this.semanticMuteController.initialize(this.localStream);
+            if (muteControllerInitialized) {
+              console.log('✅ [SEMANTIC_VAD] SemanticMuteController initialized successfully');
+            } else {
+              console.warn('⚠️ [SEMANTIC_VAD] SemanticMuteController initialization failed, continuing without it');
+              this.semanticMuteController = null;
+            }
+          } catch (muteError) {
+            console.error('❌ [SEMANTIC_VAD] Error initializing SemanticMuteController:', muteError);
+            this.semanticMuteController = null;
+          }
           
           // ✅ UNIVERSAL: Add delay after adding track (helps mobile browsers)
           await new Promise(resolve => setTimeout(resolve, 200));
@@ -745,6 +791,240 @@ export class RealtimeService {
   }
   
   /**
+   * ✅ CRITICAL: Fallback muting handler when SemanticMuteController is null
+   * Provides essential feedback prevention when the advanced controller fails
+   */
+  private handleFallbackMuting(eventData: RealtimeEvent): void {
+    if (!this.fallback_protection_enabled) {
+      return;
+    }
+
+    console.log(`🚨 [FALLBACK_MUTE] Handling event: ${eventData.type} (SemanticMuteController unavailable)`);
+    this.last_ai_speech_event = eventData.type;
+
+    switch (eventData.type) {
+      case 'response.audio.start':
+        console.log('🚨 [FALLBACK_MUTE] AI started speaking - immediate mute');
+        this.setAISpeaking(true);
+        this.muteViaTrackEnabled(true);
+        break;
+
+      case 'response.audio.done':
+      case 'response.done':
+        console.log('🚨 [FALLBACK_MUTE] AI finished speaking - delayed unmute');
+        this.setAISpeaking(false);
+        this.scheduleDelayedUnmute('AI speech completed');
+        break;
+
+      case 'response.audio.delta':
+        // Ensure we stay muted during AI speech chunks
+        if (!this.ai_is_speaking) {
+          console.log('🚨 [FALLBACK_MUTE] AI audio delta - ensuring muted');
+          this.setAISpeaking(true);
+          this.muteViaTrackEnabled(true);
+        }
+        break;
+
+      case 'input_audio_buffer.speech_started':
+        console.log('🚨 [FALLBACK_MUTE] User started speaking - ensure unmuted');
+        this.clearDelayedUnmute();
+        this.setAISpeaking(false);
+        this.muteViaTrackEnabled(false);
+        break;
+
+      case 'input_audio_buffer.speech_stopped':
+        // Don't immediately mute when user stops speaking
+        // Let natural conversation flow handle this
+        console.log('🚨 [FALLBACK_MUTE] User stopped speaking - maintaining current state');
+        break;
+
+      default:
+        // Log other audio events for debugging
+        if (eventData.type.includes('audio') || eventData.type.includes('speech')) {
+          console.log(`🚨 [FALLBACK_MUTE] Unhandled audio event: ${eventData.type}`);
+        }
+        break;
+    }
+  }
+
+  /**
+   * ✅ CRITICAL: Direct microphone muting via MediaStreamTrack.enabled
+   * Essential fallback when SemanticMuteController fails
+   */
+  private muteViaTrackEnabled(mute: boolean): void {
+    try {
+      if (!this.localStream) {
+        console.warn('🚨 [FALLBACK_MUTE] No local stream available for muting');
+        return;
+      }
+
+      const audioTracks = this.localStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.warn('🚨 [FALLBACK_MUTE] No audio tracks found for muting');
+        return;
+      }
+
+      const action = mute ? 'Muting' : 'Unmuting';
+      console.log(`🚨 [FALLBACK_MUTE] ${action} ${audioTracks.length} audio track(s) via track.enabled`);
+
+      audioTracks.forEach((track, index) => {
+        if (track.readyState === 'live') {
+          track.enabled = !mute;
+          console.log(`🚨 [FALLBACK_MUTE] Track ${index} (${track.label}) enabled: ${!mute}`);
+        } else {
+          console.warn(`🚨 [FALLBACK_MUTE] Track ${index} not live (state: ${track.readyState})`);
+        }
+      });
+
+      // Emit custom events for UI feedback
+      if (typeof window !== 'undefined') {
+        const eventType = mute ? 'fallback-mute-engaged' : 'fallback-mute-released';
+        const event = new CustomEvent(eventType, {
+          detail: {
+            reason: this.last_ai_speech_event,
+            ai_is_speaking: this.ai_is_speaking,
+            timestamp: Date.now(),
+            fallback_mode: true
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
+    } catch (error) {
+      console.error('🚨 [FALLBACK_MUTE] Error in muteViaTrackEnabled:', error);
+    }
+  }
+
+  /**
+   * ✅ CRITICAL: Set AI speaking state with logging
+   */
+  private setAISpeaking(speaking: boolean): void {
+    const previousState = this.ai_is_speaking;
+    this.ai_is_speaking = speaking;
+    
+    if (previousState !== speaking) {
+      console.log(`🚨 [FALLBACK_MUTE] AI speaking state changed: ${previousState} → ${speaking}`);
+    }
+  }
+
+  /**
+   * ✅ CRITICAL: Schedule delayed unmuting with semantic processing buffer
+   */
+  private scheduleDelayedUnmute(reason: string): void {
+    // Clear any existing delayed unmute
+    this.clearDelayedUnmute();
+
+    // Use semantic processing delay (300ms) + AI speech tail protection (500ms)
+    const SEMANTIC_PROCESSING_DELAY = 300;
+    const AI_SPEECH_TAIL_PROTECTION = 500;
+    const totalDelay = SEMANTIC_PROCESSING_DELAY + AI_SPEECH_TAIL_PROTECTION;
+
+    console.log(`🚨 [FALLBACK_MUTE] Scheduling delayed unmute in ${totalDelay}ms: ${reason}`);
+
+    this.fallback_mute_timeout = setTimeout(() => {
+      console.log(`🚨 [FALLBACK_MUTE] Executing delayed unmute: ${reason}`);
+      
+      // Double-check AI speaking state before unmuting
+      if (!this.ai_is_speaking) {
+        this.muteViaTrackEnabled(false);
+      } else {
+        console.log(`🚨 [FALLBACK_MUTE] Skipping unmute - AI still speaking`);
+      }
+      
+      this.fallback_mute_timeout = null;
+    }, totalDelay);
+  }
+
+  /**
+   * ✅ CRITICAL: Clear any pending delayed unmute operations
+   */
+  private clearDelayedUnmute(): void {
+    if (this.fallback_mute_timeout) {
+      clearTimeout(this.fallback_mute_timeout);
+      this.fallback_mute_timeout = null;
+      console.log('🚨 [FALLBACK_MUTE] Cleared pending delayed unmute');
+    }
+  }
+
+  /**
+   * ✅ CRITICAL: Emergency mute override for critical situations
+   */
+  public emergencyMute(reason: string): void {
+    console.log(`🚨 [EMERGENCY_MUTE] Emergency mute activated: ${reason}`);
+    
+    this.clearDelayedUnmute();
+    this.setAISpeaking(true);
+    
+    // Try SemanticMuteController first
+    if (this.semanticMuteController) {
+      try {
+        this.semanticMuteController.forceMute(true, reason);
+        console.log('🚨 [EMERGENCY_MUTE] Used SemanticMuteController for emergency mute');
+      } catch (error) {
+        console.error('🚨 [EMERGENCY_MUTE] SemanticMuteController failed, using fallback:', error);
+        this.muteViaTrackEnabled(true);
+      }
+    } else {
+      // Use fallback muting
+      this.muteViaTrackEnabled(true);
+    }
+  }
+
+  /**
+   * ✅ CRITICAL: Emergency unmute override for critical situations
+   */
+  public emergencyUnmute(reason: string): void {
+    console.log(`🚨 [EMERGENCY_UNMUTE] Emergency unmute activated: ${reason}`);
+    
+    this.clearDelayedUnmute();
+    this.setAISpeaking(false);
+    
+    // Try SemanticMuteController first
+    if (this.semanticMuteController) {
+      try {
+        this.semanticMuteController.forceMute(false, reason);
+        console.log('🚨 [EMERGENCY_UNMUTE] Used SemanticMuteController for emergency unmute');
+      } catch (error) {
+        console.error('🚨 [EMERGENCY_UNMUTE] SemanticMuteController failed, using fallback:', error);
+        this.muteViaTrackEnabled(false);
+      }
+    } else {
+      // Use fallback unmuting
+      this.muteViaTrackEnabled(false);
+    }
+  }
+
+  /**
+   * ✅ CRITICAL: Get current AI speaking state for debugging
+   */
+  public getAISpeakingState(): boolean {
+    return this.ai_is_speaking;
+  }
+
+  /**
+   * ✅ CRITICAL: Get comprehensive muting diagnostics
+   */
+  public getMutingDiagnostics(): any {
+    return {
+      ai_is_speaking: this.ai_is_speaking,
+      fallback_protection_enabled: this.fallback_protection_enabled,
+      last_ai_speech_event: this.last_ai_speech_event,
+      fallback_mute_timeout_active: this.fallback_mute_timeout !== null,
+      semantic_controller_available: this.semanticMuteController !== null,
+      local_stream_available: this.localStream !== null,
+      audio_tracks_count: this.localStream ? this.localStream.getAudioTracks().length : 0,
+      audio_tracks_enabled: this.localStream ? 
+        this.localStream.getAudioTracks().map(track => ({
+          label: track.label,
+          enabled: track.enabled,
+          readyState: track.readyState
+        })) : [],
+      semantic_controller_diagnostics: this.semanticMuteController ? 
+        this.semanticMuteController.getDiagnostics() : null
+    };
+  }
+
+  /**
    * Disconnect and clean up all resources
    */
   public disconnect(): void {
@@ -797,6 +1077,20 @@ export class RealtimeService {
       if (this.audioElement) {
         this.audioElement.srcObject = null;
       }
+      
+      // ✅ SEMANTIC VAD: Dispose of SemanticMuteController
+      if (this.semanticMuteController) {
+        this.semanticMuteController.dispose();
+        this.semanticMuteController = null;
+        console.log('✅ [SEMANTIC_VAD] SemanticMuteController disposed');
+      }
+      
+      // ✅ CRITICAL: Clean up fallback system
+      this.clearDelayedUnmute();
+      this.ai_is_speaking = false;
+      this.fallback_protection_enabled = true;
+      this.last_ai_speech_event = '';
+      console.log('✅ [FALLBACK_MUTE] Fallback system reset');
     } catch (e) {
       console.error('❌ Error during disconnect:', e);
     } finally {
