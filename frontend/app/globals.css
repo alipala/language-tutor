@@ -1216,3 +1216,389 @@ html {
 .animate-enhancedBounce {
   animation: enhancedBounce 1.4s ease-in-out infinite;
 }
+
+/* Mobile Navigation Hide/Show Animation */
+@media (max-width: 768px) {
+  /* Navigation bar hide/show transitions for mobile */
+  nav {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out;
+    will-change: transform, opacity;
+  }
+  
+  /* Hidden state - slides up and fades out */
+  nav.-top-20 {
+    transform: translateY(-100%);
+  }
+  
+  nav.opacity-0 {
+    opacity: 0;
+  }
+  
+  /* Visible state - slides down and fades in */
+  nav.top-0 {
+    transform: translateY(0);
+  }
+  
+  nav.opacity-100 {
+    opacity: 1;
+  }
+  
+  /* Enhanced touch targets for mobile navigation */
+  nav .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 8px;
+  }
+  
+  /* Mobile menu improvements */
+  .mobile-menu-container {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  /* Prevent layout shift when navbar hides */
+  body {
+    padding-top: 0;
+  }
+  
+  /* Adjust main content when navbar is hidden */
+  main {
+    transition: padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Desktop navigation - always visible */
+@media (min-width: 769px) {
+  nav {
+    position: fixed !important;
+    top: 0 !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+}
+
+/* Mobile Device Optimizations for 2025 Screen Sizes */
+/* Based on most common mobile resolutions: 360×800, 390×844, 393×873, 412×915, 375×812 */
+
+/* Small Mobile Devices (320px - 360px) */
+@media (max-width: 360px) {
+  .speech-client-container {
+    padding: 8px;
+  }
+  
+  /* Compact header for very small screens */
+  .mobile-header {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Smaller sections for tiny screens */
+  .analysis-section, .conversation-section {
+    height: 240px;
+    padding: 8px;
+  }
+  
+  /* Compact floating AI Help button */
+  .floating-ai-help {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+  
+  /* Smaller recording button */
+  .mobile-record-button {
+    padding: 12px;
+    font-size: 0.875rem;
+  }
+}
+
+/* Standard Mobile Devices (361px - 390px) - Most Common */
+@media (min-width: 361px) and (max-width: 390px) {
+  .speech-client-container {
+    padding: 12px;
+  }
+  
+  .mobile-header {
+    font-size: 1.75rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .analysis-section, .conversation-section {
+    height: 280px;
+    padding: 12px;
+  }
+  
+  .floating-ai-help {
+    padding: 8px 12px;
+    font-size: 0.875rem;
+  }
+  
+  .mobile-record-button {
+    padding: 16px;
+    font-size: 1rem;
+  }
+}
+
+/* Large Mobile Devices (391px - 430px) */
+@media (min-width: 391px) and (max-width: 430px) {
+  .speech-client-container {
+    padding: 16px;
+  }
+  
+  .mobile-header {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .analysis-section, .conversation-section {
+    height: 320px;
+    padding: 16px;
+  }
+  
+  .floating-ai-help {
+    padding: 10px 16px;
+    font-size: 0.875rem;
+  }
+  
+  .mobile-record-button {
+    padding: 18px;
+    font-size: 1rem;
+  }
+}
+
+/* iPhone and Android Specific Optimizations */
+/* iPhone 12/13/14 (390×844) and iPhone 15 Pro (393×873) */
+@media (min-width: 390px) and (max-width: 393px) and (min-height: 844px) {
+  .speech-sections-grid {
+    gap: 12px;
+  }
+  
+  .section-header {
+    padding: 12px 16px 8px 16px;
+  }
+  
+  .section-content {
+    padding: 12px 16px;
+  }
+  
+  /* Optimize for iPhone notch */
+  .fixed-header {
+    padding-top: env(safe-area-inset-top, 20px);
+  }
+}
+
+/* Large Android Phones (412×915) */
+@media (min-width: 412px) and (max-width: 412px) and (min-height: 915px) {
+  .analysis-section, .conversation-section {
+    height: 380px;
+  }
+  
+  .mobile-record-button {
+    padding: 20px;
+    margin-top: 16px;
+  }
+}
+
+/* Enhanced Touch Targets for All Mobile Devices */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements meet 48px minimum */
+  button, .button, [role="button"] {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 12px 16px;
+  }
+  
+  /* Floating AI Help button optimizations */
+  .floating-ai-help {
+    border-radius: 8px; /* Less rounded as requested */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  
+  /* Recording button optimizations */
+  .mobile-record-button {
+    border-radius: 8px; /* Less rounded to match other elements */
+    font-weight: 500; /* Medium weight, not bold */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Section containers */
+  .section-container {
+    border-radius: 8px; /* Consistent less rounded corners */
+    margin-bottom: 12px;
+  }
+  
+  /* Improved text sizing for mobile readability */
+  .section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  
+  .message-text {
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+  
+  /* Better spacing for mobile conversation */
+  .message-bubble {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 12px;
+  }
+  
+  /* Emoji feedback improvements */
+  .emoji-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+  }
+  
+  .emoji-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+  }
+  
+  /* Digital timer for mobile */
+  .mobile-digital-timer {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Prevent zoom on form inputs */
+  input[type="text"], input[type="email"], input[type="password"], 
+  input[type="tel"], input[type="url"], textarea, select {
+    font-size: 16px !important; /* Prevents iOS zoom */
+  }
+  
+  /* Improved touch feedback */
+  .touch-feedback:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  /* Better modal sizing for mobile */
+  .mobile-modal {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+    border-radius: 12px;
+  }
+  
+  /* Compact navigation for speech page */
+  .speech-nav-hidden {
+    transform: translateY(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .speech-nav-visible {
+    transform: translateY(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* High DPI Display Optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .floating-ai-help, .mobile-record-button, .section-container {
+    border: 0.5px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .mobile-digital-timer {
+    border: 0.5px solid rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Landscape Mobile Optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .analysis-section, .conversation-section {
+    height: 240px;
+  }
+  
+  .mobile-header {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .speech-sections-grid {
+    gap: 8px;
+  }
+  
+  .mobile-record-button {
+    padding: 12px 24px;
+    margin-top: 8px;
+  }
+}
+
+/* Accessibility Improvements for Mobile */
+@media (max-width: 768px) {
+  /* Enhanced focus indicators */
+  button:focus-visible, .button:focus-visible {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+  }
+  
+  /* Better contrast for mobile */
+  .section-title {
+    color: #1F2937;
+  }
+  
+  .message-text {
+    color: #374151;
+  }
+  
+  /* Improved tap targets */
+  .tap-target {
+    position: relative;
+  }
+  
+  .tap-target::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    z-index: -1;
+  }
+}
+
+/* Performance Optimizations for Mobile */
+@media (max-width: 768px) {
+  /* Reduce animations on mobile for better performance */
+  .reduce-motion {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  /* Optimize transforms for mobile */
+  .mobile-optimized {
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+  
+  /* Reduce blur effects on older devices */
+  @supports not (backdrop-filter: blur(8px)) {
+    .floating-ai-help {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: none;
+    }
+  }
+}

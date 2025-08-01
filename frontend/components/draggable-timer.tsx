@@ -22,6 +22,7 @@ export default function DraggableTimer({
 }: DraggableTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState(initialTime);
   const [hasWarned, setHasWarned] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Dragging state
   const [isDragging, setIsDragging] = useState(false);
@@ -31,17 +32,32 @@ export default function DraggableTimer({
   
   const timerRef = useRef<HTMLDivElement>(null);
 
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = window.innerWidth < 768 || 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Initialize position on first render
   useEffect(() => {
     if (!isInitialized && typeof window !== 'undefined') {
-      // Default position: top right with some margin
-      const defaultX = window.innerWidth - 200; // 200px from right edge
-      const defaultY = 120; // 120px from top
+      // Mobile: position at top center, Desktop: top right
+      const defaultX = isMobile 
+        ? (window.innerWidth / 2) - (isMobile ? 80 : 100) // Center for mobile
+        : window.innerWidth - 200; // 200px from right edge for desktop
+      const defaultY = isMobile ? 80 : 120; // Higher for mobile to avoid navbar
       
       setPosition({ x: defaultX, y: defaultY });
       setIsInitialized(true);
     }
-  }, [isInitialized]);
+  }, [isInitialized, isMobile]);
 
   // Reset timer when initialTime changes
   useEffect(() => {
@@ -231,7 +247,7 @@ export default function DraggableTimer({
   return (
     <div
       ref={timerRef}
-      className={`fixed z-50 select-none ${className}`}
+      className={`fixed z-[9999] select-none ${className}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -248,77 +264,121 @@ export default function DraggableTimer({
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
-      {/* Clean Analog Timer - Single View */}
-      <div className={`relative p-3 rounded-2xl border-2 transition-all duration-300 shadow-lg backdrop-blur-sm ${getBackgroundColor()}`}>
-        {/* Drag handle indicator */}
-        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-gray-400 rounded-full opacity-60"></div>
-        
-        {/* Circular Progress Ring */}
-        <div className="relative w-20 h-20 flex items-center justify-center">
-          <svg
-            className="w-20 h-20 transform -rotate-90"
-            viewBox="0 0 80 80"
-          >
-            {/* Background circle */}
-            <circle
-              cx="40"
-              cy="40"
-              r="35"
-              stroke="currentColor"
-              strokeWidth="6"
-              fill="transparent"
-              className="text-gray-200"
-            />
-            {/* Progress circle */}
-            <circle
-              cx="40"
-              cy="40"
-              r="35"
-              stroke="currentColor"
-              strokeWidth="6"
-              fill="transparent"
-              strokeDasharray={2 * Math.PI * 35}
-              strokeDashoffset={2 * Math.PI * 35 - (progressPercentage / 100) * 2 * Math.PI * 35}
-              strokeLinecap="round"
-              className={`transition-all duration-1000 ease-out ${getProgressColor()}`}
-            />
-          </svg>
+      {isMobile ? (
+        /* Mobile: Compact Digital Timer */
+        <div className={`relative px-3 py-2 rounded-lg border-2 transition-all duration-300 shadow-lg backdrop-blur-sm ${getBackgroundColor()}`}>
+          {/* Drag handle indicator */}
+          <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-6 h-1 bg-gray-400 rounded-full opacity-60"></div>
           
-          {/* Timer display in center */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className={`text-lg font-bold transition-colors duration-300 ${getTimerColor()}`}>
+          {/* Digital Timer Display */}
+          <div className="flex items-center gap-2">
+            {/* Status dot */}
+            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              isActive 
+                ? timeRemaining <= 10 
+                  ? 'bg-red-500 animate-pulse' 
+                  : timeRemaining <= 30 
+                    ? 'bg-orange-500 animate-pulse' 
+                    : 'bg-green-500'
+                : 'bg-gray-300'
+            }`} />
+            
+            {/* Time display */}
+            <div className={`text-sm font-bold transition-colors duration-300 ${getTimerColor()}`}>
               {formatTime(timeRemaining)}
             </div>
-            <div className="text-xs text-gray-500 font-medium">
-              {isActive ? 'left' : 'ready'}
+            
+            {/* Progress bar */}
+            <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden ml-2">
+              <div 
+                className={`h-full transition-all duration-1000 ease-out rounded-full ${
+                  timeRemaining <= 10 ? 'bg-red-500' :
+                  timeRemaining <= 30 ? 'bg-orange-500' :
+                  timeRemaining <= 60 ? 'bg-yellow-500' : 'bg-green-500'
+                }`}
+                style={{ width: `${progressPercentage}%` }}
+              />
             </div>
           </div>
+
+          {/* Warning pulse effect for low time */}
+          {isActive && timeRemaining <= 10 && (
+            <div className="absolute inset-0 rounded-lg border-2 border-red-400 animate-ping opacity-75" />
+          )}
         </div>
+      ) : (
+        /* Desktop: Analog Timer */
+        <div className={`relative p-3 rounded-2xl border-2 transition-all duration-300 shadow-lg backdrop-blur-sm ${getBackgroundColor()}`}>
+          {/* Drag handle indicator */}
+          <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-gray-400 rounded-full opacity-60"></div>
+          
+          {/* Circular Progress Ring */}
+          <div className="relative w-20 h-20 flex items-center justify-center">
+            <svg
+              className="w-20 h-20 transform -rotate-90"
+              viewBox="0 0 80 80"
+            >
+              {/* Background circle */}
+              <circle
+                cx="40"
+                cy="40"
+                r="35"
+                stroke="currentColor"
+                strokeWidth="6"
+                fill="transparent"
+                className="text-gray-200"
+              />
+              {/* Progress circle */}
+              <circle
+                cx="40"
+                cy="40"
+                r="35"
+                stroke="currentColor"
+                strokeWidth="6"
+                fill="transparent"
+                strokeDasharray={2 * Math.PI * 35}
+                strokeDashoffset={2 * Math.PI * 35 - (progressPercentage / 100) * 2 * Math.PI * 35}
+                strokeLinecap="round"
+                className={`transition-all duration-1000 ease-out ${getProgressColor()}`}
+              />
+            </svg>
+            
+            {/* Timer display in center */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className={`text-lg font-bold transition-colors duration-300 ${getTimerColor()}`}>
+                {formatTime(timeRemaining)}
+              </div>
+              <div className="text-xs text-gray-500 font-medium">
+                {isActive ? 'left' : 'ready'}
+              </div>
+            </div>
+          </div>
 
-        {/* Status indicator */}
-        <div className="flex items-center justify-center mt-2">
-          <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
-            isActive 
-              ? timeRemaining <= 10 
-                ? 'bg-red-500 animate-pulse' 
-                : timeRemaining <= 30 
-                  ? 'bg-orange-500 animate-pulse' 
-                  : 'bg-green-500'
-              : 'bg-gray-300'
-          }`} />
-          <span className="text-xs text-gray-600 ml-2 font-medium">
-            {isActive ? 'Active' : 'Paused'}
-          </span>
+          {/* Status indicator */}
+          <div className="flex items-center justify-center mt-2">
+            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              isActive 
+                ? timeRemaining <= 10 
+                  ? 'bg-red-500 animate-pulse' 
+                  : timeRemaining <= 30 
+                    ? 'bg-orange-500 animate-pulse' 
+                    : 'bg-green-500'
+                : 'bg-gray-300'
+            }`} />
+            <span className="text-xs text-gray-600 ml-2 font-medium">
+              {isActive ? 'Active' : 'Paused'}
+            </span>
+          </div>
+
+          {/* Warning pulse effect for low time */}
+          {isActive && timeRemaining <= 10 && (
+            <div className="absolute inset-0 rounded-2xl border-2 border-red-400 animate-ping opacity-75" />
+          )}
+
+          {/* Floating effect shadow */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-transparent pointer-events-none"></div>
         </div>
-
-        {/* Warning pulse effect for low time */}
-        {isActive && timeRemaining <= 10 && (
-          <div className="absolute inset-0 rounded-2xl border-2 border-red-400 animate-ping opacity-75" />
-        )}
-
-        {/* Floating effect shadow */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-transparent pointer-events-none"></div>
-      </div>
+      )}
     </div>
   );
 }

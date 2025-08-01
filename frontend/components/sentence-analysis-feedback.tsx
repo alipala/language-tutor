@@ -107,32 +107,32 @@ export default function SentenceAnalysisFeedbackComponent({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-1 sm:gap-2">
         {/* Thumbs Up */}
         <button
           onClick={() => handleFeedback(5, 'positive')}
           disabled={isSubmitting}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-green-100 hover:bg-green-200 text-green-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
         >
-          👍
+          <span className="text-sm sm:text-base leading-none flex items-center justify-center">👍</span>
         </button>
 
         {/* Neutral */}
         <button
           onClick={() => handleFeedback(3, 'neutral')}
           disabled={isSubmitting}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
         >
-          😐
+          <span className="text-sm sm:text-base leading-none flex items-center justify-center">😐</span>
         </button>
 
         {/* Thumbs Down */}
         <button
           onClick={() => handleFeedback(1, 'negative')}
           disabled={isSubmitting}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-red-100 hover:bg-red-200 text-red-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
         >
-          👎
+          <span className="text-sm sm:text-base leading-none flex items-center justify-center">👎</span>
         </button>
 
         {isSubmitting && (
