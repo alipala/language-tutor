@@ -363,7 +363,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                     }}
                     className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
                   >
-                    Your Profile
+                    Your Dashboard
                   </button>
                   <button
                     onClick={handleNotificationsNavigation}
@@ -401,12 +401,17 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         {/* Mobile Menu Button - Enhanced for better touch targets */}
         <div className="block md:hidden">
           <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="text-white/80 hover:text-white focus:outline-none p-2 -mr-2 touch-target"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className="text-white/80 hover:text-white focus:outline-none p-3 -mr-2 touch-target relative z-50 bg-transparent border-none cursor-pointer"
             aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMenuOpen}
+            style={{ minWidth: '48px', minHeight: '48px' }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {isMenuOpen ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               ) : (
@@ -467,7 +472,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 }}
                 className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
               >
-                Your Profile
+                Your Dashboard
               </button>
               <button
                 onClick={handleNotificationsNavigation}

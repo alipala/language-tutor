@@ -831,6 +831,21 @@
   font-weight: 600;
 }
 
+/* Mobile-specific text size for "Start New Learning Session" button */
+@media (max-width: 768px) {
+  .animated-gradient-text {
+    font-size: 0.875rem; /* 14px - much smaller for mobile */
+    font-weight: 500; /* Slightly lighter weight */
+  }
+}
+
+/* Tablet and larger screens keep the original size */
+@media (min-width: 769px) {
+  .animated-gradient-text {
+    font-size: inherit; /* Use the button's font-size */
+  }
+}
+
 /* Shimmer animation for button */
 @keyframes shimmer {
   0% {

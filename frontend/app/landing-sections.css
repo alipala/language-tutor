@@ -386,13 +386,33 @@
 
 /* Responsive adjustments for animated text */
 @media (max-width: 768px) {
-  .animated-gradient-text {
+  /* Only apply large font size to landing page headings, not buttons */
+  .landing-first .animated-gradient-text,
+  .landing-second .animated-gradient-text,
+  .landing-third .animated-gradient-text {
     font-size: 2.5rem;
+  }
+  
+  /* Keep button text small on mobile */
+  button .animated-gradient-text,
+  .button .animated-gradient-text {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
   }
 }
 
 @media (max-width: 480px) {
-  .animated-gradient-text {
+  /* Only apply large font size to landing page headings, not buttons */
+  .landing-first .animated-gradient-text,
+  .landing-second .animated-gradient-text,
+  .landing-third .animated-gradient-text {
     font-size: 2rem;
+  }
+  
+  /* Keep button text small on mobile */
+  button .animated-gradient-text,
+  .button .animated-gradient-text {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
   }
 }
