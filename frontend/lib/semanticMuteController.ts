@@ -191,11 +191,18 @@ export class SemanticMuteController {
   }
   
   /**
-   * Handle OpenAI WebSocket events for semantic VAD
+   * Handle OpenAI WebSocket events for semantic VAD with PREEMPTIVE muting
    */
   public handleRealtimeEvent(event: any): void {
     switch (event.type) {
+      // ✅ CRITICAL: Preemptive muting on response creation (before audio starts)
+      case 'response.created':
+        console.log('🔇 [SEMANTIC_MUTE] Response created - PREEMPTIVE MUTE to prevent feedback');
+        this.muteForAISpeech('Response created - preemptive mute');
+        break;
+
       case 'response.audio.start':
+        console.log('🔇 [SEMANTIC_MUTE] Audio started - ensuring already muted');
         this.muteForAISpeech('OpenAI audio response started');
         break;
         
@@ -218,6 +225,22 @@ export class SemanticMuteController {
         // Don't immediately mute when user stops speaking
         // Let semantic VAD and natural conversation flow handle this
         console.log('👤 [SEMANTIC_MUTE] User speech stopped - maintaining current mute state');
+        break;
+
+      // ✅ CRITICAL: Additional preemptive muting events
+      case 'response.output_item.added':
+        if (event.item && event.item.type === 'message' && 
+            event.item.role === 'assistant') {
+          console.log('🔇 [SEMANTIC_MUTE] Assistant message added - preemptive mute');
+          this.muteForAISpeech('Assistant message output item added');
+        }
+        break;
+
+      case 'response.content_part.added':
+        if (event.part && event.part.type === 'audio') {
+          console.log('🔇 [SEMANTIC_MUTE] Audio content part added - preemptive mute');
+          this.muteForAISpeech('Audio content part added');
+        }
         break;
         
       default:

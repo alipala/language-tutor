@@ -791,8 +791,8 @@ export class RealtimeService {
   }
   
   /**
-   * ✅ CRITICAL: Fallback muting handler when SemanticMuteController is null
-   * Provides essential feedback prevention when the advanced controller fails
+   * ✅ CRITICAL: Enhanced fallback muting handler with PREEMPTIVE muting
+   * Addresses iPhone Safari feedback loops by muting BEFORE AI speech starts
    */
   private handleFallbackMuting(eventData: RealtimeEvent): void {
     if (!this.fallback_protection_enabled) {
@@ -803,8 +803,15 @@ export class RealtimeService {
     this.last_ai_speech_event = eventData.type;
 
     switch (eventData.type) {
+      // ✅ CRITICAL: Preemptive muting on response creation
+      case 'response.created':
+        console.log('🚨 [FALLBACK_MUTE] Response created - PREEMPTIVE MUTE to prevent feedback');
+        this.setAISpeaking(true);
+        this.muteViaTrackEnabled(true);
+        break;
+
       case 'response.audio.start':
-        console.log('🚨 [FALLBACK_MUTE] AI started speaking - immediate mute');
+        console.log('🚨 [FALLBACK_MUTE] AI started speaking - ensuring already muted');
         this.setAISpeaking(true);
         this.muteViaTrackEnabled(true);
         break;
@@ -825,8 +832,9 @@ export class RealtimeService {
         }
         break;
 
+      // ✅ CRITICAL: Enhanced user speech detection
       case 'input_audio_buffer.speech_started':
-        console.log('🚨 [FALLBACK_MUTE] User started speaking - ensure unmuted');
+        console.log('🚨 [FALLBACK_MUTE] User started speaking - IMMEDIATE unmute');
         this.clearDelayedUnmute();
         this.setAISpeaking(false);
         this.muteViaTrackEnabled(false);
@@ -836,6 +844,24 @@ export class RealtimeService {
         // Don't immediately mute when user stops speaking
         // Let natural conversation flow handle this
         console.log('🚨 [FALLBACK_MUTE] User stopped speaking - maintaining current state');
+        break;
+
+      // ✅ CRITICAL: Additional events that indicate AI is about to speak
+      case 'response.output_item.added':
+        if (eventData.item && eventData.item.type === 'message' && 
+            eventData.item.role === 'assistant') {
+          console.log('🚨 [FALLBACK_MUTE] Assistant message added - preemptive mute');
+          this.setAISpeaking(true);
+          this.muteViaTrackEnabled(true);
+        }
+        break;
+
+      case 'response.content_part.added':
+        if (eventData.part && eventData.part.type === 'audio') {
+          console.log('🚨 [FALLBACK_MUTE] Audio content part added - preemptive mute');
+          this.setAISpeaking(true);
+          this.muteViaTrackEnabled(true);
+        }
         break;
 
       default:
