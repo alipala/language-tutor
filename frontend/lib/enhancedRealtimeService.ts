@@ -49,9 +49,9 @@ export class EnhancedRealtimeService {
   private mobile_optimization_active: boolean = false;
   private echo_cancellation_level: number = 3; // Maximum level
   
-  // ✅ NEW: Advanced timing controls
-  private readonly PREEMPTIVE_MUTE_DELAY = 0; // Immediate muting
-  private readonly MOBILE_SAFETY_BUFFER = 100; // Extra buffer for mobile
+  // ✅ PHASE 1: Reduced aggressive timing controls
+  private readonly PREEMPTIVE_MUTE_DELAY = 100; // Wait 100ms before muting
+  private readonly MOBILE_SAFETY_BUFFER = 0; // Reduced mobile buffer
   private readonly EMERGENCY_MUTE_THRESHOLD = 50; // Emergency trigger time
   
   constructor() {
@@ -630,38 +630,19 @@ export class EnhancedRealtimeService {
   }
 
   /**
-   * ✅ CRITICAL: Enhanced realtime event handling with COMPLETE coverage
+   * ✅ PHASE 1: Less aggressive realtime event handling
    */
   private handleEnhancedRealtimeEvent(eventData: RealtimeEvent): void {
     console.log(`🔧 [ENHANCED] Processing event: ${eventData.type}`);
     
-    // ✅ CRITICAL: Handle ALL possible AI speech events with IMMEDIATE muting
+    // ✅ PHASE 1: Only mute on actual audio output, not preemptive
     switch (eventData.type) {
-      // ✅ PREEMPTIVE MUTING - Before AI starts speaking
-      case 'response.created':
-        console.log('🚨 [ENHANCED] Response created - IMMEDIATE PREEMPTIVE MUTE');
-        this.executeImmediateMute('Response created - preemptive');
-        break;
-
-      case 'response.output_item.added':
-        if (eventData.item && eventData.item.type === 'message' && 
-            eventData.item.role === 'assistant') {
-          console.log('🚨 [ENHANCED] Assistant message added - IMMEDIATE PREEMPTIVE MUTE');
-          this.executeImmediateMute('Assistant message output item added');
-        }
-        break;
-
-      case 'response.content_part.added':
-        if (eventData.part && eventData.part.type === 'audio') {
-          console.log('🚨 [ENHANCED] Audio content part added - IMMEDIATE PREEMPTIVE MUTE');
-          this.executeImmediateMute('Audio content part added');
-        }
-        break;
-
-      // ✅ AI SPEECH ACTIVE - Ensure muting continues
+      // ✅ PHASE 1: Wait for actual audio before muting
       case 'response.audio.start':
-        console.log('🚨 [ENHANCED] AI audio started - ENSURING MUTED');
-        this.executeImmediateMute('AI audio response started');
+        console.log('🚨 [ENHANCED] AI audio started - DELAYED MUTE');
+        setTimeout(() => {
+          this.executeImmediateMute('AI audio response started');
+        }, this.PREEMPTIVE_MUTE_DELAY);
         break;
 
       case 'response.audio.delta':
@@ -672,20 +653,14 @@ export class EnhancedRealtimeService {
         }
         break;
 
-      case 'response.audio_transcript.delta':
-        // ✅ NEW: Handle AI transcript deltas
-        console.log('🚨 [ENHANCED] AI transcript delta - ENSURING MUTED');
-        this.executeImmediateMute('AI transcript delta received');
-        break;
-
-      // ✅ AI SPEECH ENDING - Schedule delayed unmute
+      // ✅ AI SPEECH ENDING - Schedule faster unmute
       case 'response.audio.done':
-        console.log('🔊 [ENHANCED] AI audio done - SCHEDULING DELAYED UNMUTE');
+        console.log('🔊 [ENHANCED] AI audio done - SCHEDULING FASTER UNMUTE');
         this.scheduleDelayedUnmute('AI audio response completed');
         break;
 
       case 'response.done':
-        console.log('🔊 [ENHANCED] Response done - SCHEDULING DELAYED UNMUTE');
+        console.log('🔊 [ENHANCED] Response done - SCHEDULING FASTER UNMUTE');
         this.scheduleDelayedUnmute('AI response completed');
         break;
 
@@ -698,25 +673,6 @@ export class EnhancedRealtimeService {
       case 'input_audio_buffer.speech_stopped':
         console.log('👤 [ENHANCED] User speech stopped - MAINTAINING STATE');
         // Don't immediately mute when user stops speaking
-        break;
-
-      case 'input_audio_buffer.committed':
-        // ✅ NEW: Critical transition point
-        console.log('🔄 [ENHANCED] Audio buffer committed - TRANSITION POINT');
-        break;
-
-      // ✅ CONVERSATION FLOW EVENTS
-      case 'conversation.item.created':
-        if (eventData.item && eventData.item.role === 'assistant') {
-          console.log('🚨 [ENHANCED] Assistant conversation item - PREEMPTIVE MUTE');
-          this.executeImmediateMute('Assistant conversation item created');
-        }
-        break;
-
-      // ✅ FUNCTION CALL EVENTS (can trigger AI speech)
-      case 'response.function_call_arguments.delta':
-        console.log('🚨 [ENHANCED] Function call arguments - ENSURING MUTED');
-        this.executeImmediateMute('Function call processing');
         break;
 
       default:
@@ -803,9 +759,9 @@ export class EnhancedRealtimeService {
     // Clear any existing delayed operations
     this.clearAllDelayedOperations();
     
-    // ✅ ENHANCED: Mobile-aware delay calculation
-    const semanticDelay = 300; // Semantic processing buffer
-    const tailProtection = 500; // AI speech tail protection
+    // ✅ PHASE 1: Reduced delay calculation
+    const semanticDelay = 100; // Reduced from 300ms
+    const tailProtection = 100; // Reduced from 500ms
     const mobileBuffer = this.mobile_optimization_active ? this.MOBILE_SAFETY_BUFFER : 0;
     const totalDelay = semanticDelay + tailProtection + mobileBuffer;
     
@@ -862,19 +818,20 @@ export class EnhancedRealtimeService {
         }
       });
 
-      // ✅ ENHANCED: Also control remote audio element
-      if (this.audioElement) {
-        if (mute) {
-          this.audioElement.muted = true;
-          console.log('🔇 [ENHANCED] Remote audio muted');
-        } else {
-          // Only unmute remote audio if we're not in AI speaking state
-          if (!this.ai_is_speaking) {
-            this.audioElement.muted = false;
-            console.log('🔊 [ENHANCED] Remote audio unmuted');
+        // ✅ PHASE 1: Less aggressive remote audio control
+        if (this.audioElement) {
+          if (mute) {
+            // Use gradual volume reduction instead of complete muting
+            this.audioElement.volume = 0.1; // Reduce to 10% instead of complete mute
+            console.log('🔇 [ENHANCED] Remote audio volume reduced to 10%');
+          } else {
+            // Only unmute remote audio if we're not in AI speaking state
+            if (!this.ai_is_speaking) {
+              this.audioElement.volume = 1.0; // Restore full volume
+              console.log('🔊 [ENHANCED] Remote audio volume restored to 100%');
+            }
           }
         }
-      }
 
       // Emit custom events for UI feedback
       if (typeof window !== 'undefined') {
