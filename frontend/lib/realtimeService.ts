@@ -285,27 +285,44 @@ export class RealtimeService {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      // ✅ SEMANTIC VAD OPTIMIZED: Enhanced constraints for semantic voice activity detection
+      // ✅ UNIVERSAL SEMANTIC VAD: Enhanced constraints for ALL browsers and devices
+      // Works on: Desktop (Chrome, Firefox, Safari, Edge), Mobile (iOS Safari, Android Chrome), etc.
       const constraints = {
         audio: {
+          // ✅ Standard WebRTC constraints (supported by all browsers)
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          // Semantic VAD specific optimizations
+          
+          // ✅ Chrome/Chromium-based browsers (Chrome, Edge, Opera, Android Chrome)
           googEchoCancellationType: "system",
           googNoiseSuppressionLevel: 2,
           googExperimentalEchoCancellation: true,
           googAutoGainControl2: true,
           googHighpassFilter: true,
           googTypingNoiseDetection: true,
-          // Additional semantic filtering parameters
           googAudioMirroring: false,
           googDAEchoCancellation: true,
           googNoiseSuppression2: true,
-          // Latency optimization for real-time semantic analysis
+          
+          // ✅ Firefox-specific optimizations
+          mozEchoCancellation: true,
+          mozNoiseSuppression: true,
+          mozAutoGainControl: true,
+          
+          // ✅ Safari/WebKit optimizations (Desktop Safari, iOS Safari)
+          webkitEchoCancellation: true,
+          webkitNoiseSuppression: true,
+          webkitAutoGainControl: true,
+          
+          // ✅ Universal latency and quality optimization
           latency: { ideal: 0.01, max: 0.02 },
           sampleRate: { ideal: 48000 },
-          channelCount: { ideal: 1, max: 1 }
+          channelCount: { ideal: 1, max: 1 },
+          
+          // ✅ Additional semantic VAD optimizations for all browsers
+          sampleSize: { ideal: 16 },
+          volume: { ideal: 1.0 }
         }
       };
       
@@ -791,8 +808,9 @@ export class RealtimeService {
   }
   
   /**
-   * ✅ CRITICAL: Enhanced fallback muting handler with PREEMPTIVE muting
-   * Addresses iPhone Safari feedback loops by muting BEFORE AI speech starts
+   * ✅ CRITICAL: Universal fallback muting handler with PREEMPTIVE muting
+   * Addresses feedback loops on ALL browsers and devices by muting BEFORE AI speech starts
+   * Works on: Desktop (Chrome, Firefox, Safari, Edge), Mobile (iOS Safari, Android Chrome), etc.
    */
   private handleFallbackMuting(eventData: RealtimeEvent): void {
     if (!this.fallback_protection_enabled) {

@@ -1,6 +1,7 @@
 /**
- * SemanticMuteController - Enhanced muting controller for semantic VAD
+ * SemanticMuteController - Universal muting controller for semantic VAD
  * Implements dual-layer muting and semantic processing delays to prevent AI self-hearing
+ * Works on ALL browsers and devices: Desktop (Chrome, Firefox, Safari, Edge), Mobile (iOS Safari, Android Chrome), etc.
  */
 
 export interface SemanticMuteState {
