@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import realtimeService from './realtimeService';
+import enhancedRealtimeService from './enhancedRealtimeService';
 import { RealtimeMessage, RealtimeEvent, RealtimeTextDeltaEvent, RealtimeAudioTranscriptionEvent } from './types';
 
 // Enhanced conversation memory interface
@@ -349,7 +349,7 @@ export function useRealtime() {
     try {
       setError(null);
       
-      const success = await realtimeService.initialize(
+      const success = await enhancedRealtimeService.initialize(
         handleMessage,
         () => setIsConnected(true),
         () => setIsConnected(false),
@@ -407,21 +407,21 @@ export function useRealtime() {
       }
       
       // Start microphone first
-      const micSuccess = await realtimeService.startMicrophone();
+      const micSuccess = await enhancedRealtimeService.startMicrophone();
       if (!micSuccess) {
         setError('Failed to start microphone');
         return false;
       }
       
       // Connect to OpenAI
-      const connectSuccess = await realtimeService.connect();
+      const connectSuccess = await enhancedRealtimeService.connect();
       if (!connectSuccess) {
         setError('Failed to connect to OpenAI');
         return false;
       }
       
       // Start the conversation
-      const conversationSuccess = await realtimeService.startConversation(instructions);
+      const conversationSuccess = await enhancedRealtimeService.startConversation(instructions);
       if (!conversationSuccess) {
         setError('Failed to start conversation');
         return false;
@@ -459,7 +459,7 @@ export function useRealtime() {
     if (!isBrowser) return false;
     
     try {
-      const success = realtimeService.pauseConversation();
+      const success = enhancedRealtimeService.pauseConversation();
       if (success) {
         setIsPaused(true);
         setIsRecording(false);
@@ -477,7 +477,7 @@ export function useRealtime() {
     if (!isBrowser) return false;
     
     try {
-      const success = realtimeService.resumeConversation();
+      const success = enhancedRealtimeService.resumeConversation();
       if (success) {
         setIsPaused(false);
         setIsRecording(true);
@@ -495,7 +495,7 @@ export function useRealtime() {
     if (!isBrowser) return;
     
     try {
-      realtimeService.disconnect();
+      enhancedRealtimeService.disconnect();
       setIsConnected(false);
       setIsRecording(false);
       setIsPaused(false);
@@ -522,12 +522,12 @@ export function useRealtime() {
 
   // Check if conversation is paused
   const isPausedState = useCallback((): boolean => {
-    return realtimeService.isPausedState();
+    return enhancedRealtimeService.isPausedState();
   }, []);
 
   // Get pause duration
   const getPauseDuration = useCallback((): number => {
-    return realtimeService.getPauseDuration();
+    return enhancedRealtimeService.getPauseDuration();
   }, []);
 
   // Clear error
@@ -539,7 +539,7 @@ export function useRealtime() {
   useEffect(() => {
     return () => {
       if (isBrowser) {
-        realtimeService.disconnect();
+        enhancedRealtimeService.disconnect();
       }
     };
   }, [isBrowser]);
