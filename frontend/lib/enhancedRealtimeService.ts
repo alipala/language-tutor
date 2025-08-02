@@ -208,9 +208,10 @@ export class EnhancedRealtimeService {
         if (this.audioElement && e.streams && e.streams[0]) {
           this.audioElement.srcObject = e.streams[0];
           
-          // ✅ CRITICAL: Immediate muting of remote audio to prevent feedback
-          this.audioElement.muted = true;
-          console.log('🔇 [ENHANCED] Remote audio IMMEDIATELY muted to prevent feedback');
+          // ✅ PHASE 1: Don't mute remote audio - let user hear AI
+          this.audioElement.muted = false;
+          this.audioElement.volume = 1.0; // Full volume for AI speech
+          console.log('🔊 [ENHANCED] Remote audio enabled for AI speech');
           
           // ✅ NEW: Set up audio element for mobile optimization
           if (this.mobile_optimization_active) {
@@ -350,10 +351,11 @@ export class EnhancedRealtimeService {
       });
     }
     
-    // ✅ CRITICAL: Ensure remote audio stays muted
+    // ✅ PHASE 1: Don't mute remote audio - user needs to hear AI
     if (this.audioElement) {
-      this.audioElement.muted = true;
-      console.log('🔇 [ENHANCED] Post-connection mute - Remote audio muted');
+      this.audioElement.muted = false;
+      this.audioElement.volume = 1.0;
+      console.log('🔊 [ENHANCED] Post-connection - Remote audio enabled for AI speech');
     }
     
     // ✅ CRITICAL: Initialize semantic mute controller if not already done
@@ -818,19 +820,12 @@ export class EnhancedRealtimeService {
         }
       });
 
-        // ✅ PHASE 1: Less aggressive remote audio control
+        // ✅ PHASE 1: Don't control remote audio volume - let user hear AI
         if (this.audioElement) {
-          if (mute) {
-            // Use gradual volume reduction instead of complete muting
-            this.audioElement.volume = 0.1; // Reduce to 10% instead of complete mute
-            console.log('🔇 [ENHANCED] Remote audio volume reduced to 10%');
-          } else {
-            // Only unmute remote audio if we're not in AI speaking state
-            if (!this.ai_is_speaking) {
-              this.audioElement.volume = 1.0; // Restore full volume
-              console.log('🔊 [ENHANCED] Remote audio volume restored to 100%');
-            }
-          }
+          // Keep remote audio always enabled so user can hear AI
+          this.audioElement.muted = false;
+          this.audioElement.volume = this.mobile_optimization_active ? 0.8 : 1.0;
+          console.log('🔊 [ENHANCED] Remote audio kept enabled for AI speech');
         }
 
       // Emit custom events for UI feedback
