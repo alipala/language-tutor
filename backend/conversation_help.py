@@ -182,7 +182,7 @@ JSON (2 responses):
                 messages=[{"role": "user", "content": ultra_minimal_prompt}],
                 temperature=0,      # Zero temperature for maximum speed
                 max_tokens=300,     # 🚀 Increased to prevent truncation
-                timeout=5,          # 🚀 5 seconds for more reliable completion
+                timeout=8,          # 🚀 8 seconds for reliable completion (based on 7s average)
                 stream=False,
                 top_p=0.1,         # 🚀 Slightly more flexible for complete responses
                 frequency_penalty=0,

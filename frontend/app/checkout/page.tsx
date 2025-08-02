@@ -69,13 +69,19 @@ export default function CheckoutPage() {
 
       let response;
 
+      // 🎯 FIX: Use correct backend URLs instead of frontend API routes
+      const backendUrl = process.env.NODE_ENV === 'production' 
+        ? '' // Use relative URLs in production
+        : 'http://localhost:8000'; // Use backend URL in development
+
       if (isGuest) {
         // For guest users, create checkout session without authentication
-        response = await fetch('/api/stripe/create-guest-checkout-session', {
+        response = await fetch(`${backendUrl}/api/stripe/create-guest-checkout-session`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for CORS
           body: JSON.stringify({
             price_id: priceId,
             success_url: successUrl,
@@ -85,12 +91,13 @@ export default function CheckoutPage() {
       } else {
         // For authenticated users, use existing endpoint
         const token = localStorage.getItem('token');
-        response = await fetch('/api/stripe/create-checkout-session', {
+        response = await fetch(`${backendUrl}/api/stripe/create-checkout-session`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
+          credentials: 'include', // Include cookies for CORS
           body: JSON.stringify({
             price_id: priceId,
             success_url: successUrl,
@@ -100,8 +107,23 @@ export default function CheckoutPage() {
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create checkout session');
+        let errorMessage = 'Failed to create checkout session';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          console.error('🚨 [CHECKOUT] Backend error details:', errorData);
+        } catch (parseError) {
+          // If we can't parse JSON, get the raw text
+          try {
+            const errorText = await response.text();
+            console.error('🚨 [CHECKOUT] Backend error (raw):', errorText);
+            errorMessage = `Server error (${response.status}): ${errorText.substring(0, 100)}`;
+          } catch (textError) {
+            console.error('🚨 [CHECKOUT] Could not parse error response');
+            errorMessage = `Server error (${response.status})`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const { url } = await response.json();
