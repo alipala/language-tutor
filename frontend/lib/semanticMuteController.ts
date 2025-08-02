@@ -19,9 +19,9 @@ export class SemanticMuteController {
   private audioTracks: MediaStreamTrack[] = [];
   private state: SemanticMuteState;
   
-  // Semantic VAD specific delays
-  private readonly SEMANTIC_PROCESSING_DELAY = 300; // 300ms buffer for semantic analysis
-  private readonly AI_SPEECH_TAIL_PROTECTION = 500; // 500ms protection after AI speech ends
+  // ✅ PHASE 1: Reduced semantic VAD delays
+  private readonly SEMANTIC_PROCESSING_DELAY = 100; // Reduced from 300ms
+  private readonly AI_SPEECH_TAIL_PROTECTION = 100; // Reduced from 500ms
   private readonly FADE_DURATION = 50; // 50ms fade to prevent audio pops
   
   constructor() {
@@ -192,19 +192,17 @@ export class SemanticMuteController {
   }
   
   /**
-   * Handle OpenAI WebSocket events for semantic VAD with PREEMPTIVE muting
+   * ✅ PHASE 1: Less aggressive semantic VAD event handling
    */
   public handleRealtimeEvent(event: any): void {
     switch (event.type) {
-      // ✅ CRITICAL: Preemptive muting on response creation (before audio starts)
-      case 'response.created':
-        console.log('🔇 [SEMANTIC_MUTE] Response created - PREEMPTIVE MUTE to prevent feedback');
-        this.muteForAISpeech('Response created - preemptive mute');
-        break;
-
+      // ✅ PHASE 1: Only mute on actual audio start, not preemptive
       case 'response.audio.start':
-        console.log('🔇 [SEMANTIC_MUTE] Audio started - ensuring already muted');
-        this.muteForAISpeech('OpenAI audio response started');
+        console.log('🔇 [SEMANTIC_MUTE] Audio started - DELAYED MUTE');
+        // Add small delay to prevent cutting off beginning of AI speech
+        setTimeout(() => {
+          this.muteForAISpeech('OpenAI audio response started');
+        }, 100);
         break;
         
       case 'response.audio.done':
@@ -226,22 +224,6 @@ export class SemanticMuteController {
         // Don't immediately mute when user stops speaking
         // Let semantic VAD and natural conversation flow handle this
         console.log('👤 [SEMANTIC_MUTE] User speech stopped - maintaining current mute state');
-        break;
-
-      // ✅ CRITICAL: Additional preemptive muting events
-      case 'response.output_item.added':
-        if (event.item && event.item.type === 'message' && 
-            event.item.role === 'assistant') {
-          console.log('🔇 [SEMANTIC_MUTE] Assistant message added - preemptive mute');
-          this.muteForAISpeech('Assistant message output item added');
-        }
-        break;
-
-      case 'response.content_part.added':
-        if (event.part && event.part.type === 'audio') {
-          console.log('🔇 [SEMANTIC_MUTE] Audio content part added - preemptive mute');
-          this.muteForAISpeech('Audio content part added');
-        }
         break;
         
       default:
