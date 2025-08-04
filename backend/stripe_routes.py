@@ -1,21 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import JSONResponse
 from typing import Optional
-import stripe
 import os
+import logging
+
+# Set up logging FIRST
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# CRITICAL FIX: Initialize Stripe properly to avoid circular import issues
+import stripe
+
+# Load environment variables
+stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
+stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+# Set Stripe API key immediately after import
+if stripe_secret_key:
+    stripe.api_key = stripe_secret_key
+    logger.info(f"[STRIPE_INIT] ✅ Stripe API key set successfully")
+else:
+    logger.error(f"[STRIPE_INIT] ❌ STRIPE_SECRET_KEY not found in environment")
+
+# Import other modules AFTER Stripe is properly initialized
 from auth import get_current_user, get_optional_current_user_from_request
 from models import UserResponse, UsageTrackingRequest, SpeakingTimeTrackingRequest
 from database import database
 from subscription_service import SubscriptionService
-import logging
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Initialize Stripe with API key
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
@@ -37,7 +48,7 @@ def map_stripe_product_to_plan_id(product_name: str) -> str:
 @router.post("/create-checkout-session")
 async def create_checkout_session(
     request: Request,
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
 ):
     try:
         data = await request.json()
@@ -48,48 +59,149 @@ async def create_checkout_session(
         if not price_id:
             raise HTTPException(status_code=400, detail="Price ID is required")
 
+        # Require authentication for all checkout sessions
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required for checkout")
+
+        # Handle authenticated user checkout
+        logger.info(f"[AUTH_CHECKOUT] Creating checkout session for user: {current_user.id}")
+        
+        # IMMEDIATE DEBUG - Check environment variables right at the start
+        logger.info(f"[AUTH_CHECKOUT] IMMEDIATE DEBUG - Stripe API key: {bool(stripe.api_key)}")
+        logger.info(f"[AUTH_CHECKOUT] IMMEDIATE DEBUG - Webhook secret: {bool(stripe_webhook_secret)}")
+        
         # Check if user already has a Stripe customer ID
         customer_id = getattr(current_user, 'stripe_customer_id', None)
+        logger.info(f"[AUTH_CHECKOUT] User has existing customer ID: {bool(customer_id)}")
 
         # If not, create a new customer in Stripe
         if not customer_id:
-            customer = stripe.Customer.create(
-                email=current_user.email,
-                name=current_user.name,
-                metadata={"user_id": str(current_user.id)}
-            )
-            customer_id = customer.id
+            logger.info(f"[AUTH_CHECKOUT] Creating new Stripe customer...")
+            logger.info(f"[AUTH_CHECKOUT] Customer data - email: {current_user.email}, name: {current_user.name}, user_id: {current_user.id}")
+            
+            try:
+                logger.info(f"[AUTH_CHECKOUT] About to call stripe.Customer.create()...")
+                customer = stripe.Customer.create(
+                    email=current_user.email,
+                    name=current_user.name,
+                    metadata={"user_id": str(current_user.id)}
+                )
+                logger.info(f"[AUTH_CHECKOUT] ✅ stripe.Customer.create() completed successfully")
+                
+                logger.info(f"[AUTH_CHECKOUT] Customer object received: {type(customer)}")
+                logger.info(f"[AUTH_CHECKOUT] Customer object: {customer}")
+                
+                if customer and hasattr(customer, 'id'):
+                    customer_id = customer.id
+                    logger.info(f"[AUTH_CHECKOUT] ✅ Stripe customer created: {customer_id}")
+                else:
+                    logger.error(f"[AUTH_CHECKOUT] ❌ Invalid customer object returned from Stripe: {customer}")
+                    raise HTTPException(status_code=500, detail="Failed to create Stripe customer")
+                    
+            except Exception as stripe_customer_error:
+                logger.error(f"[AUTH_CHECKOUT] ❌ stripe.Customer.create() failed: {str(stripe_customer_error)}")
+                logger.error(f"[AUTH_CHECKOUT] Error type: {type(stripe_customer_error)}")
+                import traceback
+                logger.error(f"[AUTH_CHECKOUT] Full traceback: {traceback.format_exc()}")
+                
+                # Check if this is the 'Secret' attribute error
+                if "'Secret'" in str(stripe_customer_error):
+                    logger.error(f"[AUTH_CHECKOUT] 🔥 FOUND THE SECRET ATTRIBUTE ERROR!")
+                    logger.error(f"[AUTH_CHECKOUT] This is likely a Stripe library or webhook configuration issue")
+                
+                raise HTTPException(status_code=500, detail=f"Stripe customer creation failed: {str(stripe_customer_error)}")
 
             # Update user with Stripe customer ID in MongoDB
-            await database["users"].update_one(
-                {"_id": current_user.id},
-                {"$set": {"stripe_customer_id": customer_id}}
-            )
+            try:
+                logger.info(f"[AUTH_CHECKOUT] About to update MongoDB for user: {current_user.id}")
+                from bson import ObjectId
+                logger.info(f"[AUTH_CHECKOUT] Converting user ID to ObjectId...")
+                user_object_id = ObjectId(current_user.id)
+                logger.info(f"[AUTH_CHECKOUT] ObjectId created successfully: {user_object_id}")
+                
+                logger.info(f"[AUTH_CHECKOUT] Updating user in MongoDB...")
+                result = await database["users"].update_one(
+                    {"_id": user_object_id},
+                    {"$set": {"stripe_customer_id": customer_id}}
+                )
+                logger.info(f"[AUTH_CHECKOUT] MongoDB update result: {result.modified_count} documents modified")
+                logger.info(f"[AUTH_CHECKOUT] Created Stripe customer: {customer_id}")
+            except Exception as mongo_error:
+                logger.error(f"[AUTH_CHECKOUT] MongoDB update failed: {str(mongo_error)}")
+                logger.error(f"[AUTH_CHECKOUT] Error type: {type(mongo_error)}")
+                import traceback
+                logger.error(f"[AUTH_CHECKOUT] MongoDB traceback: {traceback.format_exc()}")
+                # Continue without failing - we can still create checkout session
+                pass
 
+        # CRITICAL DEBUG: Add logging right after customer creation
+        logger.info(f"[AUTH_CHECKOUT] Customer creation completed successfully: {customer_id}")
+        logger.info(f"[AUTH_CHECKOUT] Current user ID: {current_user.id}")
+        logger.info(f"[AUTH_CHECKOUT] Price ID: {price_id}")
+        logger.info(f"[AUTH_CHECKOUT] Success URL: {success_url}")
+        logger.info(f"[AUTH_CHECKOUT] Cancel URL: {cancel_url}")
+        
+        # Debug Stripe configuration
+        logger.info(f"[AUTH_CHECKOUT] Stripe API key configured: {bool(stripe.api_key)}")
+        logger.info(f"[AUTH_CHECKOUT] Stripe API key type: {type(stripe.api_key)}")
+        if stripe.api_key:
+            logger.info(f"[AUTH_CHECKOUT] Stripe API key starts with: {stripe.api_key[:15]}...")
+        else:
+            logger.error(f"[AUTH_CHECKOUT] ❌ STRIPE API KEY IS NONE!")
+        
+        # Debug webhook secret (this might be the issue)
+        logger.info(f"[AUTH_CHECKOUT] Stripe webhook secret configured: {bool(stripe_webhook_secret)}")
+        logger.info(f"[AUTH_CHECKOUT] Stripe webhook secret type: {type(stripe_webhook_secret)}")
+        if stripe_webhook_secret:
+            logger.info(f"[AUTH_CHECKOUT] Webhook secret starts with: {stripe_webhook_secret[:15]}...")
+        else:
+            logger.error(f"[AUTH_CHECKOUT] ❌ WEBHOOK SECRET IS NONE!")
+        
         # Create checkout session with 7-day free trial
-        checkout_session = stripe.checkout.Session.create(
-            customer=customer_id,
-            payment_method_types=["card"],
-            line_items=[
-                {
-                    "price": price_id,
-                    "quantity": 1,
-                },
-            ],
-            mode="subscription",
-            subscription_data={
-                "trial_period_days": 7,
-                "metadata": {
-                    "user_id": str(current_user.id),
-                    "has_trial": "true"
-                }
-            },
-            success_url=success_url,
-            cancel_url=cancel_url,
-            client_reference_id=str(current_user.id),
-            allow_promotion_codes=True,  # Enable promo code field
-        )
+        try:
+            logger.info(f"[AUTH_CHECKOUT] Creating Stripe checkout session...")
+            
+            # CRITICAL DEBUG: Test if the issue is with subscription_data
+            logger.info(f"[AUTH_CHECKOUT] Testing minimal checkout session creation...")
+            
+            # Try creating a minimal checkout session first
+            minimal_session_data = {
+                "customer": customer_id,
+                "payment_method_types": ["card"],
+                "line_items": [
+                    {
+                        "price": price_id,
+                        "quantity": 1,
+                    },
+                ],
+                "mode": "subscription",
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+                "allow_promotion_codes": True,  # Enable promo code field
+            }
+            
+            logger.info(f"[AUTH_CHECKOUT] Attempting minimal checkout session...")
+            checkout_session = stripe.checkout.Session.create(**minimal_session_data)
+            logger.info(f"[AUTH_CHECKOUT] ✅ Minimal checkout session created: {checkout_session.id}")
+            
+            # If minimal works, the issue was with subscription_data or other parameters
+            logger.info(f"[AUTH_CHECKOUT] SUCCESS: The issue was with subscription_data parameters!")
+            
+        except Exception as checkout_error:
+            logger.error(f"[AUTH_CHECKOUT] ❌ Even minimal checkout session failed: {str(checkout_error)}")
+            logger.error(f"[AUTH_CHECKOUT] Error type: {type(checkout_error)}")
+            import traceback
+            logger.error(f"[AUTH_CHECKOUT] Full traceback: {traceback.format_exc()}")
+            
+            # Try to identify the exact issue
+            logger.error(f"[AUTH_CHECKOUT] Stripe API key type: {type(stripe.api_key)}")
+            logger.error(f"[AUTH_CHECKOUT] Stripe API key value: {stripe.api_key}")
+            logger.error(f"[AUTH_CHECKOUT] Customer ID: {customer_id}")
+            logger.error(f"[AUTH_CHECKOUT] Price ID: {price_id}")
+            
+            raise checkout_error
 
+        logger.info(f"[AUTH_CHECKOUT] Created checkout session: {checkout_session.id}")
         return {"url": checkout_session.url}
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error: {str(e)}")

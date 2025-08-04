@@ -42,6 +42,7 @@ from speaking_assessment import SpeakingAssessmentRequest, SpeakingAssessmentRes
 # Load environment variables
 load_dotenv()
 
+
 # Check if OpenAI API key is configured
 if not os.getenv("OPENAI_API_KEY"):
     logger.error("OPENAI_API_KEY is not configured in environment")
@@ -126,6 +127,7 @@ app.include_router(admin_router)
 # Include stripe routes
 from stripe_routes import router as stripe_router
 app.include_router(stripe_router)
+
 
 # Include notification routes
 from notification_routes import router as notification_router

@@ -98,9 +98,9 @@ export default function LoginPage() {
       const plan = JSON.parse(selectedPlan);
       sessionStorage.removeItem('selectedPlan'); // Clean up
       
-      // Redirect to checkout with plan details
-      const planId = plan.name === 'Fluency Builder' ? 'fluency_builder' : 'team_mastery';
-      const period = plan.period === 'year' ? 'annual' : 'monthly';
+      // Redirect directly to checkout (no intermediate modal)
+      const planId = plan.planId || (plan.name === 'Fluency Builder' ? 'fluency_builder' : 'team_mastery');
+      const period = plan.period || (plan.period === 'year' ? 'annual' : 'monthly');
       router.push(`/checkout?plan=${planId}&period=${period}`);
       return;
     }
@@ -121,9 +121,9 @@ export default function LoginPage() {
       const plan = JSON.parse(selectedPlan);
       sessionStorage.removeItem('selectedPlan'); // Clean up
       
-      // Redirect to checkout with plan details
-      const planId = plan.name === 'Fluency Builder' ? 'fluency_builder' : 'team_mastery';
-      const period = plan.period === 'year' ? 'annual' : 'monthly';
+      // Redirect directly to checkout (no intermediate modal)
+      const planId = plan.planId || (plan.name === 'Fluency Builder' ? 'fluency_builder' : 'team_mastery');
+      const period = plan.period || (plan.period === 'year' ? 'annual' : 'monthly');
       router.push(`/checkout?plan=${planId}&period=${period}`);
       return;
     }
