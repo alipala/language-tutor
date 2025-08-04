@@ -111,14 +111,14 @@ export default function GoogleAuthButton({
             // Call the googleLogin function from auth context
             await googleLogin(credential);
             
-            // Call onSuccess callback if provided
+            // Call onSuccess callback if provided - let it handle navigation
             if (onSuccess) {
               onSuccess();
+            } else {
+              // Only use default navigation if no custom onSuccess handler
+              console.log('Google login successful, navigating to home page');
+              navigation.navigateToHome();
             }
-            
-            // Use the navigation service for consistent navigation
-            console.log('Google login successful, navigating to home page');
-            navigation.navigateToHome();
           } catch (error) {
             console.error('Google login error:', error);
             setError(error instanceof Error ? error.message : 'Google login failed');

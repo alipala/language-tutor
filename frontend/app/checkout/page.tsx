@@ -17,6 +17,7 @@ export default function CheckoutPage() {
   // Get plan details from URL params
   const planId = searchParams.get('plan');
   const period = searchParams.get('period') || 'monthly';
+  const isGuest = searchParams.get('guest') === 'true';
 
   // Stripe price IDs from environment variables
   const STRIPE_PRICES = {
@@ -38,9 +39,9 @@ export default function CheckoutPage() {
       annual: { price: '$199.99', priceNote: '/year', savings: 'Save $39.89 (17% off)' }
     },
     team_mastery: {
-      name: 'Team Mastery',
-      monthly: { price: '$39.99', priceNote: '/month per user' },
-      annual: { price: '$399.99', priceNote: '/year per user', savings: 'Save $79.89 (17% off)' }
+      name: 'Language Mastery',
+      monthly: { price: '$39.99', priceNote: '/month' },
+      annual: { price: '$399.99', priceNote: '/year', savings: 'Save $79.89 (17% off)' }
     }
   };
 
@@ -67,44 +68,34 @@ export default function CheckoutPage() {
         : `${baseUrl}${returnUrl}?checkout=success`;
       const cancelUrl = `${baseUrl}${returnUrl}`;
 
-      let response;
-
-      // 🎯 FIX: Use correct backend URLs instead of frontend API routes
+      // Use correct backend URLs instead of frontend API routes
       const backendUrl = process.env.NODE_ENV === 'production' 
         ? '' // Use relative URLs in production
         : 'http://localhost:8000'; // Use backend URL in development
 
-      if (isGuest) {
-        // For guest users, create checkout session without authentication
-        response = await fetch(`${backendUrl}/api/stripe/create-guest-checkout-session`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for CORS
-          body: JSON.stringify({
-            price_id: priceId,
-            success_url: successUrl,
-            cancel_url: cancelUrl,
-          }),
-        });
-      } else {
-        // For authenticated users, use existing endpoint
-        const token = localStorage.getItem('token');
-        response = await fetch(`${backendUrl}/api/stripe/create-checkout-session`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          credentials: 'include', // Include cookies for CORS
-          body: JSON.stringify({
-            price_id: priceId,
-            success_url: successUrl,
-            cancel_url: cancelUrl,
-          }),
-        });
+      // Use the same endpoint for both authenticated and guest users
+      // The backend will handle guest users by creating a customer without linking to a user account
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Only add Authorization header if user is authenticated
+      if (!isGuest && token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
+
+      const response = await fetch(`${backendUrl}/api/stripe/create-checkout-session`, {
+        method: 'POST',
+        headers,
+        credentials: 'include', // Include cookies for CORS
+        body: JSON.stringify({
+          price_id: priceId,
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          guest_checkout: isGuest, // Flag to indicate guest checkout
+        }),
+      });
 
       if (!response.ok) {
         let errorMessage = 'Failed to create checkout session';
@@ -159,8 +150,8 @@ export default function CheckoutPage() {
         throw new Error('Invalid plan or period selected');
       }
 
-      // Create checkout session based on user authentication status
-      await createCheckoutSession(priceId, !user);
+      // Create checkout session based on user authentication status or guest flag
+      await createCheckoutSession(priceId, !user || isGuest);
     } catch (err: any) {
       console.error('Checkout error:', err);
       setError(err.message || 'Failed to start checkout process');

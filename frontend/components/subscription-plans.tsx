@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 import { LoadingSpinner } from './ui/loading-spinner';
-import AuthRequiredModal from './auth-required-modal';
+import { usePlanModal } from './modals/plan-modal-context';
 
 interface PricingFeature {
   text: string;
@@ -163,11 +163,10 @@ const STRIPE_PRICES = {
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PricingCard | null>(null);
   const currentPlans = isAnnual ? annualPlans : monthlyPlans;
   const router = useRouter();
   const { user } = useAuth();
+  const { openPlanModal } = usePlanModal();
 
   const createCheckoutSession = async (priceId: string) => {
     setIsLoading(true);
@@ -199,15 +198,7 @@ export default function SubscriptionPlans() {
       // Navigate to sign up flow
       router.push('/auth/signup');
     } else if (plan.ctaButton === "Get Started" || plan.ctaButton === "Start Free Trial") {
-      // Check if user is authenticated
-      if (!user) {
-        // Show auth modal for guest users
-        setSelectedPlan(plan);
-        setShowAuthModal(true);
-        return;
-      }
-
-      // User is authenticated - proceed with checkout
+      // Determine plan ID
       let planId = '';
       if (plan.name === "Fluency Builder") {
         planId = 'fluency_builder';
@@ -216,12 +207,21 @@ export default function SubscriptionPlans() {
       }
 
       if (planId) {
-        // Get the appropriate price ID
         const period = isAnnual ? 'annual' : 'monthly';
-        const priceId = STRIPE_PRICES[period][planId as keyof typeof STRIPE_PRICES.monthly];
-
-        if (priceId) {
-          await createCheckoutSession(priceId);
+        
+        if (!user) {
+          // Store plan selection for after signup/login
+          sessionStorage.setItem('selectedPlan', JSON.stringify({
+            name: plan.name,
+            planId: planId,
+            period: period
+          }));
+          
+          // Redirect directly to login page
+          router.push('/auth/login?from=pricing');
+        } else {
+          // User is authenticated - proceed directly to checkout
+          router.push(`/checkout?plan=${planId}&period=${period}`);
         }
       }
     } else if (plan.ctaButton === "Contact Sales") {
@@ -419,19 +419,6 @@ export default function SubscriptionPlans() {
         </div>
       </div>
 
-      {/* Auth Required Modal */}
-      {selectedPlan && (
-        <AuthRequiredModal
-          isOpen={showAuthModal}
-          onClose={() => {
-            setShowAuthModal(false);
-            setSelectedPlan(null);
-          }}
-          planName={selectedPlan.name}
-          planPrice={selectedPlan.price}
-          planPeriod={isAnnual ? 'year' : 'month'}
-        />
-      )}
     </section>
   );
 }

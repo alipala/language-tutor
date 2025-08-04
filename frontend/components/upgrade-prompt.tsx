@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Crown, Star, Zap, ArrowRight, X, Check } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { usePlanModal } from '@/components/modals/plan-modal-context';
 
 interface UpgradePromptProps {
   className?: string;
@@ -12,9 +13,9 @@ interface UpgradePromptProps {
 export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) => {
   const { subscriptionStatus, loading, refreshSubscriptionStatus } = useSubscriptionStatus();
   const [dismissed, setDismissed] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [isAnnual, setIsAnnual] = useState(false);
   const router = useRouter();
+  const { openPlanModal } = usePlanModal();
 
   // Check if user should see upgrade prompt
   const shouldShowUpgrade = () => {
@@ -45,17 +46,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
 
   // Handle upgrade click - Show modal for better UX
   const handleUpgrade = () => {
-    setShowModal(true);
-  };
-
-  // Handle plan selection
-  const handlePlanSelect = (planId: string) => {
-    const period = isAnnual ? 'annual' : 'monthly';
-    
-    // Store the current location for post-checkout redirect
-    sessionStorage.setItem('checkoutReturnUrl', window.location.pathname);
-    
-    router.push(`/checkout?plan=${planId}&period=${period}`);
+    openPlanModal();
   };
 
   // Handle dismiss
@@ -163,171 +154,6 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ className = "" }) 
         </div>
       </div>
 
-      {/* 🎯 COMPACT DESKTOP MODAL - Optimized Width */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
-          <div className="bg-white rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
-            {/* Modal Header - Compact */}
-            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200">
-              <h2 className="text-lg md:text-2xl font-bold text-gray-900">Choose Your Plan</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-              >
-                <X className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
-            </div>
-
-            {/* Modal Content - Responsive Padding */}
-            <div className="p-4 md:p-6">
-              {/* Billing Toggle */}
-              <div className="flex items-center justify-center mb-8">
-                <span className={`text-lg font-medium transition-colors duration-300 ${!isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
-                  Monthly
-                </span>
-                <button
-                  onClick={() => setIsAnnual(!isAnnual)}
-                  className="mx-4 relative inline-flex h-8 w-14 items-center rounded-full bg-gray-200 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
-                  style={{ backgroundColor: isAnnual ? '#4ECFBF' : '#e5e7eb' }}
-                >
-                  <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
-                      isAnnual ? 'translate-x-7' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <span className={`text-lg font-medium transition-colors duration-300 ${isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
-                  Annual
-                </span>
-                {isAnnual && (
-                  <div className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                    Save up to 17%
-                  </div>
-                )}
-              </div>
-
-              {/* 📱 MOBILE-OPTIMIZED PRICING CARDS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                {/* Fluency Builder */}
-                <div className="border-2 border-[#4ECFBF] rounded-xl md:rounded-2xl p-4 md:p-6 relative bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10 flex flex-col h-full">
-                  <div className="absolute -top-2 md:-top-3 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-[#4ECFBF] text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-bold">
-                      MOST POPULAR
-                    </div>
-                  </div>
-                  
-                  <div className="text-center mb-4 md:mb-6">
-                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Fluency Builder</h3>
-                    <div className="mb-2">
-                      {isAnnual && (
-                        <div className="text-xs md:text-sm text-gray-500 line-through">$239.88</div>
-                      )}
-                      <div className="flex items-end justify-center">
-                        <span className="text-2xl md:text-4xl font-bold text-gray-900">
-                          {isAnnual ? '$199.99' : '$19.99'}
-                        </span>
-                        <span className="text-gray-600 ml-2 mb-1 text-sm md:text-base">
-                          {isAnnual ? '/year' : '/month'}
-                        </span>
-                      </div>
-                      {isAnnual && (
-                        <div className="text-green-600 font-semibold text-xs md:text-sm">
-                          Save $39.89 (17% off)
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-sm md:text-base">Ideal for serious language learners</p>
-                  </div>
-
-                  <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
-                    {[
-                      '🎉 7-day free trial included',
-                      `${isAnnual ? '360' : '30'} practice sessions (5 minutes each) ${isAnnual ? 'annually' : 'monthly'}`,
-                      `${isAnnual ? '24' : '2'} speaking assessments ${isAnnual ? 'annually' : 'monthly'}`,
-                      'Advanced progress tracking',
-                      'Learning plan progression',
-                      'Achievement badges',
-                      'All conversation topics + custom topics',
-                      '🎤 Choose from multiple AI tutor voices',
-                      'Conversation history & analytics',
-                      'Priority email support'
-                    ].map((feature, index) => (
-                      <li key={index} className="flex items-start">
-                        <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
-                        <span className="text-gray-700 text-sm md:text-base">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="mt-auto">
-                    <button
-                      onClick={() => handlePlanSelect('fluency_builder')}
-                      className="w-full py-3 px-6 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
-                    >
-                      Start Free Trial
-                    </button>
-                  </div>
-                </div>
-
-                {/* Language Mastery */}
-                <div className="border-2 border-gray-200 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col h-full">
-                  <div className="text-center mb-4 md:mb-6">
-                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Language Mastery</h3>
-                    <div className="mb-2">
-                      {isAnnual && (
-                        <div className="text-xs md:text-sm text-gray-500 line-through">$479.88</div>
-                      )}
-                      <div className="flex items-end justify-center">
-                        <span className="text-2xl md:text-4xl font-bold text-gray-900">
-                          {isAnnual ? '$399.99' : '$39.99'}
-                        </span>
-                        <span className="text-gray-600 ml-2 mb-1 text-sm md:text-base">
-                          {isAnnual ? '/year' : '/month'}
-                        </span>
-                      </div>
-                      {isAnnual && (
-                        <div className="text-green-600 font-semibold text-xs md:text-sm">
-                          Save $79.89 (17% off)
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-sm md:text-base">For advanced learners seeking fluency</p>
-                  </div>
-
-                  <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
-                    {[
-                      '🎉 7-day free trial included',
-                      'Unlimited practice sessions',
-                      'Unlimited speaking assessments',
-                      'Premium learning plans with advanced topics',
-                      '🎤 Choose from multiple AI tutor voices',
-                      '📊 Advanced analytics & detailed insights',
-                      '🎯 Personalized learning recommendations',
-                      '📝 Writing practice & correction',
-                      '🌍 Cultural context & idiom explanations',
-                      '⚡ Priority support & faster response times'
-                    ].map((feature, index) => (
-                      <li key={index} className="flex items-start">
-                        <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
-                        <span className="text-gray-700 text-sm md:text-base">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="mt-auto">
-                    <button
-                      onClick={() => handlePlanSelect('team_mastery')}
-                      className="w-full py-3 px-6 bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] font-semibold rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-colors duration-300"
-                    >
-                      Start Free Trial
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

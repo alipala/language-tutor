@@ -7,6 +7,7 @@ import AuthProviderWrapper from '@/components/auth-provider-wrapper'
 import { NavigationProvider } from '@/lib/navigation'
 import NavBar from '@/components/nav-bar'
 import ConditionalFooter from '@/components/conditional-footer'
+import { PlanModalProvider } from '@/components/modals/plan-modal-context'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -166,13 +167,15 @@ export default function RootLayout({
       <body className={`${inter.className} font-sans antialiased overflow-x-hidden`}>
         <NavigationProvider>
           <AuthProviderWrapper>
-            <div className="app-background min-h-screen w-full bg-white">
-              <NavBar />
-              <main id="main-content" tabIndex={-1} className="outline-none">
-                {children}
-              </main>
-              <ConditionalFooter />
-            </div>
+            <PlanModalProvider>
+              <div className="app-background min-h-screen w-full bg-white">
+                <NavBar />
+                <main id="main-content" tabIndex={-1} className="outline-none">
+                  {children}
+                </main>
+                <ConditionalFooter />
+              </div>
+            </PlanModalProvider>
           </AuthProviderWrapper>
         </NavigationProvider>
       </body>
