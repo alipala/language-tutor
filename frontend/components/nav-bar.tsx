@@ -251,7 +251,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }
   
   return (
-    <nav className={navbarClass}>
+    <nav className={`main-navbar ${navbarClass}`}>
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
         <Logo 

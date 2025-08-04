@@ -1284,7 +1284,7 @@ html {
 
 /* Desktop navigation - always visible */
 @media (min-width: 769px) {
-  nav {
+  .main-navbar {
     position: fixed !important;
     top: 0 !important;
     opacity: 1 !important;
