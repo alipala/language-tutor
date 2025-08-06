@@ -813,6 +813,13 @@ async def save_session_summary(
         if request and request.duration_minutes:
             duration_minutes = request.duration_minutes
             print(f"[SESSION_SUMMARY] 🕐 Tracking {duration_minutes} minutes of speaking time")
+        else:
+            # Default to 5 minutes if no duration provided (typical session length)
+            duration_minutes = 5.0
+            print(f"[SESSION_SUMMARY] 🕐 No duration provided, defaulting to {duration_minutes} minutes")
+        
+        # Add duration to session detail for future reference
+        session_detail["duration_minutes"] = duration_minutes
         
         # Update practice minutes used in learning plan
         current_minutes_used = learning_plan.get("practice_minutes_used", 0.0)
@@ -823,13 +830,11 @@ async def save_session_summary(
             "plan_content.weekly_schedule": weekly_schedule,
             "completed_sessions": new_completed,
             "progress_percentage": progress_percentage,
+            "practice_minutes_used": new_minutes_used,
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        # Add minute tracking if duration was provided
-        if duration_minutes > 0:
-            update_fields["practice_minutes_used"] = new_minutes_used
-            print(f"[SESSION_SUMMARY] 📊 Updated learning plan minutes: {current_minutes_used} → {new_minutes_used}")
+        print(f"[SESSION_SUMMARY] 📊 Updated learning plan minutes: {current_minutes_used} → {new_minutes_used}")
         
         result = await learning_plans_collection.update_one(
             {"_id": learning_plan["_id"]},
@@ -840,12 +845,12 @@ async def save_session_summary(
             print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
             print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
             
-            # CRITICAL FIX: Track subscription usage for practice sessions
-            # This was the missing piece causing the "30/30" display issue!
+            # CRITICAL FIX: Track subscription usage for both sessions AND minutes
             try:
                 from subscription_service import SubscriptionService
-                from models import UsageTrackingRequest
+                from models import UsageTrackingRequest, SpeakingTimeTrackingRequest
                 
+                # Track session usage (existing logic)
                 usage_request = UsageTrackingRequest(
                     user_id=str(current_user.id),
                     usage_type="practice_session"
@@ -854,9 +859,22 @@ async def save_session_summary(
                 usage_tracked = await SubscriptionService.track_usage(usage_request)
                 if usage_tracked:
                     print(f"[SESSION_SUMMARY] ✅ Tracked practice session usage for user {current_user.id}")
-                    print(f"[SESSION_SUMMARY] ✅ Subscription usage counter incremented")
                 else:
                     print(f"[SESSION_SUMMARY] ⚠️ Failed to track practice session usage (may have exceeded limit)")
+                
+                # MISSING PIECE: Track speaking minutes usage
+                speaking_time_request = SpeakingTimeTrackingRequest(
+                    user_id=str(current_user.id),
+                    speaking_minutes=duration_minutes,
+                    session_completed=True  # Learning plan sessions are always completed when saved
+                )
+                
+                minutes_tracked = await SubscriptionService.track_speaking_time(speaking_time_request)
+                if minutes_tracked:
+                    print(f"[SESSION_SUMMARY] ✅ Tracked speaking time usage: {duration_minutes} minutes for user {current_user.id}")
+                    print(f"[SESSION_SUMMARY] ✅ User subscription minutes counter updated")
+                else:
+                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track speaking time usage")
                     
             except Exception as usage_error:
                 print(f"[SESSION_SUMMARY] ⚠️ Warning: Failed to track subscription usage: {str(usage_error)}")
