@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lightbulb, Zap, Languages, Settings } from 'lucide-react';
 
 interface ConversationHelpHintButtonProps {
@@ -26,6 +26,13 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [animationState, setAnimationState] = useState<'idle' | 'ready' | 'pulse'>('idle');
+  
+  // Dragging state for mobile
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle help ready animation
   useEffect(() => {
@@ -79,8 +86,83 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
     return 'bg-blue-500 hover:bg-blue-600';
   };
 
+  // Touch event handlers for mobile dragging
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
+    setIsDragging(false); // Reset dragging state
+    
+    // Set a timeout to detect if this is a drag vs tap
+    dragTimeoutRef.current = setTimeout(() => {
+      setIsDragging(true);
+    }, 150); // 150ms threshold for drag detection
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+      dragTimeoutRef.current = null;
+    }
+    
+    const touch = e.touches[0];
+    const newX = touch.clientX - dragStart.x;
+    const newY = touch.clientY - dragStart.y;
+    
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const buttonSize = 60; // Approximate button width including settings
+    
+    // Constrain to viewport bounds
+    const constrainedX = Math.max(0, Math.min(viewportWidth - buttonSize, newX));
+    const constrainedY = Math.max(0, Math.min(viewportHeight - buttonSize, newY));
+    
+    setPosition({ x: constrainedX, y: constrainedY });
+    setIsDragging(true);
+    
+    // Prevent scrolling while dragging
+    e.preventDefault();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+      dragTimeoutRef.current = null;
+    }
+    
+    // If this was a tap (not a drag), trigger the button action
+    if (!isDragging && isHelpEnabled && isHelpReady) {
+      onShowHelp();
+    }
+    
+    // Reset dragging state after a short delay
+    setTimeout(() => {
+      setIsDragging(false);
+    }, 100);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className={`relative ${className}`}>
+    <div 
+      ref={buttonRef}
+      className={`relative ${className} ${isDragging ? 'z-50' : ''}`}
+      style={{
+        transform: `translate(${position.x}px, ${position.y}px)`,
+        transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+        touchAction: 'none' // Prevent default touch behaviors
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Settings Panel */}
       {showSettings && (
         <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 min-w-[280px] z-50">
