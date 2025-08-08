@@ -273,54 +273,29 @@ export function useRealtime() {
             return updated;
           });
           
-          // DO NOT emit ai-response-complete here - this triggers after each speech bubble
-          // We only want to trigger help after ALL speech bubbles are complete
-          // The correct trigger is in 'output_audio_buffer.stopped' below
-        }
-      }
-    } else if (event.type === 'output_audio_buffer.stopped') {
-      // This is the key event that indicates AI has finished speaking
-      console.log('[CONVERSATION_HELP] Received message type: output_audio_buffer.stopped');
-      
-      // Wait a moment for all messages to be processed, then emit the help event
-      setTimeout(() => {
-        setMessages(currentMessages => {
-          // Get all recent assistant messages (they should be the latest ones)
-          const recentAssistantMessages = currentMessages.filter(msg => msg.role === 'assistant');
-          
-          if (recentAssistantMessages.length > 0) {
-            // Get the last few assistant messages that form the complete response
-            // Look for messages with similar timestamps (within last 2 seconds)
-            const now = Date.now();
-            const recentThreshold = 2000; // 2 seconds
-            
-            const recentAiMessages = recentAssistantMessages.filter(msg => {
-              const msgTime = msg.timestamp ? new Date(msg.timestamp).getTime() : now;
-              return (now - msgTime) < recentThreshold;
-            });
-            
-            // Combine all recent AI messages into one complete response
-            const completeAiResponse = recentAiMessages.length > 0 
-              ? recentAiMessages.map(msg => msg.content).join(' ')
-              : recentAssistantMessages[recentAssistantMessages.length - 1].content;
-            
-            // Emit custom event for conversation help system
+          // OPTIMIZATION: Emit help generation event immediately when transcript is ready
+          // This saves time by starting help generation while AI is still speaking
+          setTimeout(() => {
             if (typeof window !== 'undefined') {
               const helpEvent = new CustomEvent('ai-response-complete', {
                 detail: {
-                  aiResponse: completeAiResponse,
-                  conversationContext: currentMessages.slice(-5) // Last 5 messages for context
+                  aiResponse: cleanedTranscript,
+                  conversationContext: [...messages, ...newMessages].slice(-5) // Include new messages in context
                 }
               });
               window.dispatchEvent(helpEvent);
-              console.log('[CONVERSATION_HELP] Emitted ai-response-complete event from output_audio_buffer.stopped');
-              console.log('[CONVERSATION_HELP] Complete AI response:', completeAiResponse.substring(0, 100) + '...');
+              console.log('[CONVERSATION_HELP] OPTIMIZED: Emitted ai-response-complete event from transcript completion');
+              console.log('[CONVERSATION_HELP] Starting help generation early with transcript:', cleanedTranscript.substring(0, 100) + '...');
             }
-          }
-          
-          return currentMessages; // Don't modify messages, just use them for the event
-        });
-      }, 100); // Small delay to ensure all messages are processed
+          }, 100); // Small delay to ensure messages are processed
+        }
+      }
+    } else if (event.type === 'output_audio_buffer.stopped') {
+      // AI has finished speaking - help generation already started from transcript completion
+      console.log('[CONVERSATION_HELP] AI finished speaking - help generation already in progress from transcript');
+      
+      // No need to emit help event here since we already triggered it from transcript completion
+      // This optimization saves significant time by starting help generation earlier
     } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
       const userTranscriptEvent = event as any;
       if (userTranscriptEvent.transcript) {
