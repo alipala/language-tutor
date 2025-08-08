@@ -6,6 +6,7 @@ import { Lightbulb, Zap, Languages, Settings } from 'lucide-react';
 interface ConversationHelpHintButtonProps {
   isHelpReady: boolean;
   isHelpEnabled: boolean;
+  isLoading?: boolean;
   helpLanguage: string;
   onToggleHelp: (enabled: boolean) => void;
   onChangeLanguage: (language: string) => void;
@@ -16,6 +17,7 @@ interface ConversationHelpHintButtonProps {
 const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
   isHelpReady,
   isHelpEnabled,
+  isLoading = false,
   helpLanguage,
   onToggleHelp,
   onChangeLanguage,
@@ -72,6 +74,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
 
   const getButtonColor = () => {
     if (!isHelpEnabled) return 'bg-gray-400 hover:bg-gray-500';
+    if (isLoading) return 'bg-gradient-to-r from-blue-500 to-indigo-600 animate-loading-glow';
     if (isHelpReady) return 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600';
     return 'bg-blue-500 hover:bg-blue-600';
   };
@@ -173,18 +176,36 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
             <div className="absolute inset-0 rounded-full bg-yellow-300 opacity-30 animate-ping"></div>
           )}
           
-          {/* Icon */}
-          {isHelpReady && isHelpEnabled ? (
-            <Zap className="w-6 h-6 text-white drop-shadow-sm" />
-          ) : (
-            <Lightbulb className="w-6 h-6 text-white drop-shadow-sm" />
-          )}
-
-          {/* Ready indicator */}
-          {isHelpReady && isHelpEnabled && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+          {/* Enhanced Loading Animation */}
+          {isLoading && isHelpEnabled ? (
+            <div className="relative">
+              {/* Outer rotating ring */}
+              <div className="w-7 h-7 border-2 border-white/20 border-t-white border-r-white rounded-full animate-spin"></div>
+              {/* Inner rotating ring - opposite direction */}
+              <div className="absolute inset-0.5 w-6 h-6 border-2 border-white/30 border-b-white border-l-white rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+              {/* Center pulsing core */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full animate-loading-pulse-center"></div>
+              </div>
+              {/* Subtle shimmer overlay */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
             </div>
+          ) : (
+            /* Icon */
+            <>
+              {isHelpReady && isHelpEnabled ? (
+                <Zap className="w-6 h-6 text-white drop-shadow-sm" />
+              ) : (
+                <Lightbulb className="w-6 h-6 text-white drop-shadow-sm" />
+              )}
+
+              {/* Ready indicator */}
+              {isHelpReady && isHelpEnabled && (
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                </div>
+              )}
+            </>
           )}
         </button>
       </div>

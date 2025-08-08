@@ -2076,6 +2076,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       <ConversationHelpHintButton
                         isHelpReady={isHelpReady}
                         isHelpEnabled={helpSettings.help_enabled}
+                        isLoading={isHelpLoading}
                         helpLanguage={helpSettings.help_language}
                         onToggleHelp={(enabled) => updateHelpSettings({ help_enabled: enabled })}
                         onChangeLanguage={(language) => updateHelpSettings({ help_language: language })}
