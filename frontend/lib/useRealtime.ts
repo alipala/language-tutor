@@ -218,8 +218,29 @@ export function useRealtime() {
   const maxRetries = 3;
   const isBrowser = typeof window !== 'undefined';
 
+  // Track if AI has started speaking in current response
+  const aiSpeakingStartedRef = useRef(false);
+
   // Handle incoming messages
   const handleMessage = useCallback((event: RealtimeEvent) => {
+    // Detect when AI starts speaking (first audio transcript delta)
+    if (event.type === 'response.audio_transcript.delta' && !aiSpeakingStartedRef.current) {
+      console.log('[CONVERSATION_HELP] AI started speaking - emitting ai-speaking-start event');
+      aiSpeakingStartedRef.current = true;
+      
+      // Emit custom event for conversation help modal to hide
+      if (typeof window !== 'undefined') {
+        const aiSpeakingStartEvent = new CustomEvent('ai-speaking-start');
+        window.dispatchEvent(aiSpeakingStartEvent);
+      }
+    }
+    
+    // Reset AI speaking flag when response is complete
+    if (event.type === 'response.done') {
+      console.log('[CONVERSATION_HELP] AI response complete - resetting speaking flag');
+      aiSpeakingStartedRef.current = false;
+    }
+    
     if (event.type === 'response.audio_transcript.done') {
       const transcriptEvent = event as RealtimeAudioTranscriptionEvent;
       if (transcriptEvent.transcript) {

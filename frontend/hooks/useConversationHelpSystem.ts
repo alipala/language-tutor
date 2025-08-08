@@ -347,6 +347,14 @@ export const useConversationHelpSystem = (
       }
     };
 
+    // Listen for AI speaking start to close modal
+    const handleAISpeakingStart = () => {
+      if (isModalOpen) {
+        console.log('[CONVERSATION_HELP_SYSTEM] AI started speaking, closing help modal');
+        setIsModalOpen(false);
+      }
+    };
+
     // Listen for conversation end events
     const handleConversationEnd = () => {
       console.log('[CONVERSATION_HELP_SYSTEM] Conversation ended - resetting help state');
@@ -361,12 +369,14 @@ export const useConversationHelpSystem = (
     // Listen for the custom events
     window.addEventListener('ai-response-complete', handleAIResponseComplete as EventListener);
     window.addEventListener('user-speaking-start', handleUserSpeakingStart as EventListener);
+    window.addEventListener('ai-speaking-start', handleAISpeakingStart as EventListener);
     window.addEventListener('conversation-ended', handleConversationEnd as EventListener);
     window.addEventListener('conversation-time-up', handleTimeUp as EventListener);
 
     return () => {
       window.removeEventListener('ai-response-complete', handleAIResponseComplete as EventListener);
       window.removeEventListener('user-speaking-start', handleUserSpeakingStart as EventListener);
+      window.removeEventListener('ai-speaking-start', handleAISpeakingStart as EventListener);
       window.removeEventListener('conversation-ended', handleConversationEnd as EventListener);
       window.removeEventListener('conversation-time-up', handleTimeUp as EventListener);
       
@@ -375,7 +385,7 @@ export const useConversationHelpSystem = (
         clearTimeout(helpGenerationTimeoutRef.current);
       }
     };
-  }, [helpSettings.help_enabled, isHelpReady, isLoading, resetHelpState]);
+  }, [helpSettings.help_enabled, isHelpReady, isLoading, isModalOpen, resetHelpState]);
 
   return {
     // Settings
