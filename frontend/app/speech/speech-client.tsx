@@ -16,6 +16,7 @@ import SessionCompletionModal from '@/components/session-completion-modal';
 import BackgroundAnalysisCard from '@/components/background-analysis-card';
 import ConversationHelpModal from '@/components/conversation-help-modal';
 import ConversationHelpHintButton from '@/components/conversation-help-hint-button';
+import ConversationHelpTimeoutNotification from '@/components/conversation-help-timeout-notification';
 import { useConversationHelpSystem } from '@/hooks/useConversationHelpSystem';
 import { getApiUrl } from '@/lib/api-utils';
 import { 
@@ -172,7 +173,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     showHelpModal,
     closeHelpModal,
     selectSuggestedResponse,
-    trackHelpUsage
+    trackHelpUsage,
+    timeoutNotification
   } = useConversationHelpSystem(language, level, topic);
   
   // Voice data mapping for avatars and names
@@ -2370,6 +2372,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           </div>
         </div>
       )}
+
+      {/* Conversation Help Timeout Notification */}
+      <ConversationHelpTimeoutNotification
+        show={timeoutNotification.show}
+        message={timeoutNotification.message}
+        type={timeoutNotification.type}
+      />
     </main>
   );
 }

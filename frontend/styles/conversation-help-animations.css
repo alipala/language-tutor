@@ -207,3 +207,45 @@
 .animate-loading-glow {
   animation: loading-glow 2s ease-in-out infinite;
 }
+
+/* Timeout notification slide animations */
+@keyframes slide-down-enter {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes slide-down-visible {
+  0%, 100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes slide-down-exit {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+.animate-slide-down-enter {
+  animation: slide-down-enter 0.3s ease-out forwards;
+}
+
+.animate-slide-down-visible {
+  animation: slide-down-visible 0.1s ease-out forwards;
+}
+
+.animate-slide-down-exit {
+  animation: slide-down-exit 0.3s ease-in forwards;
+}

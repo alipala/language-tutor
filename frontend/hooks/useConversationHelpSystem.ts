@@ -74,6 +74,11 @@ export const useConversationHelpSystem = (
   const [error, setError] = useState<string | null>(null);
   const [isHelpReady, setIsHelpReady] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [timeoutNotification, setTimeoutNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'timeout' | 'error' | 'info';
+  }>({ show: false, message: '', type: 'info' });
   
   // Track the last AI message to avoid duplicate processing
   const lastProcessedMessageRef = useRef<string>('');
@@ -235,7 +240,41 @@ export const useConversationHelpSystem = (
       return helpContent;
     } catch (error) {
       console.error('[CONVERSATION_HELP_SYSTEM] Error generating help content:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate help content');
+      
+      // Handle timeout errors specifically
+      if (error instanceof Error && (error.message.includes('timeout') || error.message.includes('TimeoutError'))) {
+        console.log('[CONVERSATION_HELP_SYSTEM] Timeout detected - showing user-friendly notification');
+        
+        // Show timeout notification
+        setTimeoutNotification({
+          show: true,
+          message: "AI help is taking longer than usual. Keep talking - help will be ready soon! 💬",
+          type: 'timeout'
+        });
+        
+        // Auto-hide notification after 4 seconds
+        setTimeout(() => {
+          setTimeoutNotification(prev => ({ ...prev, show: false }));
+        }, 4000);
+        
+        // Don't set error state for timeouts - just show the friendly notification
+        setError(null);
+      } else {
+        // For other errors, show a helpful message
+        setTimeoutNotification({
+          show: true,
+          message: "AI help temporarily unavailable. Continue your conversation! 🗣️",
+          type: 'error'
+        });
+        
+        // Auto-hide notification after 3 seconds
+        setTimeout(() => {
+          setTimeoutNotification(prev => ({ ...prev, show: false }));
+        }, 3000);
+        
+        setError(error instanceof Error ? error.message : 'Failed to generate help content');
+      }
+      
       setIsHelpReady(false);
       return null;
     } finally {
@@ -402,6 +441,9 @@ export const useConversationHelpSystem = (
     isModalOpen,
     showHelpModal,
     closeHelpModal,
+    
+    // Notifications
+    timeoutNotification,
     
     // Actions
     selectSuggestedResponse,
