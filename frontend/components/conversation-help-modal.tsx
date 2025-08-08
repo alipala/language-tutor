@@ -76,18 +76,19 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
     }
   }, [isOpen]);
 
-  // Handle user speaking - fade out the modal
-  useEffect(() => {
-    if (isUserSpeaking && isOpen && animationState === 'visible') {
-      console.log('[CONVERSATION_HELP_MODAL] User started speaking - fading out modal');
-      setAnimationState('fading');
-      // Close the modal after fade animation
-      const timer = setTimeout(() => {
-        onClose();
-      }, 500); // Slightly longer to complete the fade animation
-      return () => clearTimeout(timer);
-    }
-  }, [isUserSpeaking, isOpen, animationState, onClose]);
+  // Temporarily disable user speaking fade-out to fix modal visibility
+  // TODO: Re-implement with proper user speaking detection
+  // useEffect(() => {
+  //   if (isUserSpeaking && isOpen && animationState === 'visible') {
+  //     console.log('[CONVERSATION_HELP_MODAL] User started speaking - fading out modal');
+  //     setAnimationState('fading');
+  //     // Close the modal after fade animation
+  //     const timer = setTimeout(() => {
+  //       onClose();
+  //     }, 500); // Slightly longer to complete the fade animation
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [isUserSpeaking, isOpen, animationState, onClose]);
 
   // Handle escape key
   useEffect(() => {

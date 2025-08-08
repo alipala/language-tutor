@@ -330,21 +330,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     isPaused: isRealtimePaused  // NEW - renamed to avoid conflict
   } = useRealtime();
   
-  // Track user speaking state for modal fade-out
+  // Temporarily remove user speaking detection to fix modal visibility
+  // TODO: Re-implement with proper detection logic
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
-
-  // Track when user starts speaking to fade out help modal
-  // Only set to true when user actually starts a NEW recording session
-  useEffect(() => {
-    // Only trigger user speaking when recording starts AND help modal is open
-    if (isRecording && isHelpModalOpen) {
-      console.log('[USER_SPEAKING] User started speaking while modal is open - setting isUserSpeaking to true');
-      setIsUserSpeaking(true);
-    } else {
-      console.log('[USER_SPEAKING] User stopped speaking or modal not open - setting isUserSpeaking to false');
-      setIsUserSpeaking(false);
-    }
-  }, [isRecording, isHelpModalOpen]);
   
   // Process messages for display and group sentences from the same speech segment
   const processedMessages = useMemo(() => {
