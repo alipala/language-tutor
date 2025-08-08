@@ -2309,18 +2309,16 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             </div>
                           )}
                           
-                          {/* Inline Conversation Help Modal */}
-                          {isHelpModalOpen && (
-                            <ConversationHelpModal
-                              isOpen={isHelpModalOpen}
-                              onClose={closeHelpModal}
-                              helpData={helpData}
-                              isLoading={isHelpLoading}
-                              onResponseSelect={selectSuggestedResponse}
-                              targetLanguage={language}
-                              isUserSpeaking={isUserSpeaking}
-                            />
-                          )}
+                          {/* Inline Conversation Help Modal - Always render, let modal handle visibility */}
+                          <ConversationHelpModal
+                            isOpen={isHelpModalOpen}
+                            onClose={closeHelpModal}
+                            helpData={helpData}
+                            isLoading={isHelpLoading}
+                            onResponseSelect={selectSuggestedResponse}
+                            targetLanguage={language}
+                            isUserSpeaking={isUserSpeaking}
+                          />
                           
                           <div ref={messagesEndRef} className="mt-auto" />
                         </div>

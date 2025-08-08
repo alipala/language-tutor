@@ -64,19 +64,15 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
   const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'fading' | 'hidden'>('hidden');
 
   useEffect(() => {
+    console.log('[CONVERSATION_HELP_MODAL] isOpen changed to:', isOpen, 'isVisible:', isVisible, 'animationState:', animationState);
     if (isOpen) {
+      console.log('[CONVERSATION_HELP_MODAL] Setting visible to true immediately');
       setIsVisible(true);
-      setAnimationState('entering');
-      // Small delay to trigger the visible animation
-      const timer = setTimeout(() => setAnimationState('visible'), 50);
-      return () => clearTimeout(timer);
+      setAnimationState('visible');
     } else {
-      setAnimationState('fading');
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-        setAnimationState('hidden');
-      }, 300);
-      return () => clearTimeout(timer);
+      console.log('[CONVERSATION_HELP_MODAL] Closing modal - setting visible to false');
+      setIsVisible(false);
+      setAnimationState('hidden');
     }
   }, [isOpen]);
 
@@ -160,7 +156,12 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
     }
   };
 
-  if (!isVisible) return null;
+  console.log('[CONVERSATION_HELP_MODAL] Render check - isVisible:', isVisible, 'isOpen:', isOpen, 'animationState:', animationState);
+  
+  if (!isVisible) {
+    console.log('[CONVERSATION_HELP_MODAL] Not rendering - isVisible is false');
+    return null;
+  }
 
   // Get animation classes based on current state
   const getAnimationClasses = () => {
