@@ -75,7 +75,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
   const getButtonColor = () => {
     if (!isHelpEnabled) return 'bg-gray-400 hover:bg-gray-500';
     if (isLoading) return 'bg-gradient-to-r from-blue-500 to-indigo-600 animate-loading-glow';
-    if (isHelpReady) return 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600';
+    if (isHelpReady) return 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600';
     return 'bg-blue-500 hover:bg-blue-600';
   };
 
@@ -171,9 +171,9 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
                 : "Click for conversation help"
           }
         >
-          {/* Lightning effect overlay */}
+          {/* Microphone ready effect overlay */}
           {animationState === 'ready' && (
-            <div className="absolute inset-0 rounded-full bg-yellow-300 opacity-30 animate-ping"></div>
+            <div className="absolute inset-0 rounded-full bg-blue-300 opacity-30 animate-ping"></div>
           )}
           
           {/* Enhanced Loading Animation */}
@@ -194,7 +194,21 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
             /* Icon */
             <>
               {isHelpReady && isHelpEnabled ? (
-                <Zap className="w-6 h-6 text-white drop-shadow-sm" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6 text-white drop-shadow-sm"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
               ) : (
                 <Lightbulb className="w-6 h-6 text-white drop-shadow-sm" />
               )}
