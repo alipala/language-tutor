@@ -62,6 +62,7 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
   const [activeTab, setActiveTab] = useState<'responses' | 'vocabulary' | 'grammar' | 'culture'>('responses');
   const [isVisible, setIsVisible] = useState(false);
   const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'fading' | 'hidden'>('hidden');
+  const modalRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     console.log('[CONVERSATION_HELP_MODAL] isOpen changed to:', isOpen, 'isVisible:', isVisible, 'animationState:', animationState);
@@ -69,6 +70,18 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
       console.log('[CONVERSATION_HELP_MODAL] Setting visible to true immediately');
       setIsVisible(true);
       setAnimationState('visible');
+      
+      // Scroll modal into view after a short delay to ensure it's rendered
+      setTimeout(() => {
+        if (modalRef.current) {
+          console.log('[CONVERSATION_HELP_MODAL] Scrolling modal into view');
+          modalRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     } else {
       console.log('[CONVERSATION_HELP_MODAL] Closing modal - setting visible to false');
       setIsVisible(false);
@@ -178,7 +191,10 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
   };
 
   return (
-    <div className={`bg-white border border-purple-200 rounded-lg shadow-lg p-4 mb-4 mx-4 transition-all duration-500 ease-in-out ${getAnimationClasses()}`}>
+    <div 
+      ref={modalRef}
+      className={`bg-white border border-purple-200 rounded-lg shadow-lg p-4 mb-4 mx-4 transition-all duration-500 ease-in-out ${getAnimationClasses()}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
