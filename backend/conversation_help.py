@@ -132,14 +132,21 @@ INSTANT_RESPONSE_TEMPLATES = {
     }
 }
 
-async def generate_conversation_help_fast(request: ConversationHelpRequest) -> ConversationHelpResponse:
+async def generate_conversation_help_fast(request: ConversationHelpRequest) -> Optional[ConversationHelpResponse]:
     """
     ULTRA-OPTIMIZED conversation help generation - 2-5 second target
     """
     try:
-        # 🚀 STRATEGY 1: Smart Input Truncation (preserves context, speeds processing)
-        def smart_truncate(text: str, max_length: int = 50) -> str:
-            """Intelligently truncate while preserving key information"""
+        print(f"[CONVERSATION_HELP] 🚀 Starting ultra-fast help generation...")
+        print(f"[CONVERSATION_HELP] AI response: {request.ai_response[:100]}...")
+        
+        # Validate input
+        if not request.ai_response or not request.ai_response.strip():
+            print(f"[CONVERSATION_HELP] ❌ Empty AI response")
+            return None
+        
+        # Smart truncation for speed
+        def smart_truncate(text: str, max_length: int = 100) -> str:
             if len(text) <= max_length:
                 return text
             
@@ -149,182 +156,104 @@ async def generate_conversation_help_fast(request: ConversationHelpRequest) -> C
             last_question = truncated.rfind('?')
             last_exclamation = truncated.rfind('!')
             
-            # Find the best cut point
             best_cut = max(last_period, last_question, last_exclamation)
-            if best_cut > max_length * 0.6:  # If we can preserve 60%+ of content
+            if best_cut > max_length * 0.6:
                 return text[:best_cut + 1]
             
-            # Otherwise, cut at word boundary
             last_space = truncated.rfind(' ')
             if last_space > max_length * 0.7:
                 return text[:last_space] + "..."
             
             return text[:max_length] + "..."
 
-        # 🚀 STRATEGY 2: Ultra-Minimal Prompt (50% size reduction)
-        truncated_response = smart_truncate(request.ai_response, 75)
+        # Ultra-minimal prompt for maximum speed
+        truncated_response = smart_truncate(request.ai_response, 100)
         
-        ultra_minimal_prompt = f"""AI: "{truncated_response}"
-Lang: {request.target_language}
-Level: {request.proficiency_level}
+        prompt = f"""AI tutor said: "{truncated_response}"
+Target language: {request.target_language}
+Student level: {request.proficiency_level}
+Help language: {request.user_language}
 
-JSON (2 responses):
-{{"summary": "what AI said in {request.user_language}", "responses": [{{"text": "{request.target_language} response", "pronunciation": "guide", "explanation": "why"}}]}}"""
+Generate 2 contextual responses in JSON:
+{{"summary": "brief summary in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits"}}]}}"""
 
-        # 🚀 STRATEGY 3: Maximum Speed OpenAI Call
-        print(f"[CONVERSATION_HELP] Ultra-fast generation for: {truncated_response[:30]}...")
-        print(f"[CONVERSATION_HELP] 📤 Sending prompt to OpenAI: {ultra_minimal_prompt[:100]}...")
+        print(f"[CONVERSATION_HELP] 📤 Sending optimized prompt to OpenAI...")
         
-        try:
-            print(f"[CONVERSATION_HELP] 🔄 Making OpenAI API call...")
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": ultra_minimal_prompt}],
-                temperature=0,      # Zero temperature for maximum speed
-                max_tokens=300,     # 🚀 Increased to prevent truncation
-                timeout=8,          # 🚀 8 seconds for reliable completion (based on 7s average)
-                stream=False,
-                top_p=0.1,         # 🚀 Slightly more flexible for complete responses
-                frequency_penalty=0,
-                presence_penalty=0
-            )
-            print(f"[CONVERSATION_HELP] ✅ OpenAI API call completed successfully")
-
-            if not response.choices:
-                print(f"[CONVERSATION_HELP] ❌ No response choices in OpenAI response, returning None")
-                return None
-            
-            if not response.choices[0].message:
-                print(f"[CONVERSATION_HELP] ❌ No message in first choice, returning None")
-                return None
-            
-            if not response.choices[0].message.content:
-                print(f"[CONVERSATION_HELP] ❌ No content in message, returning None")
-                return None
-
-            # 🚀 STRATEGY 4: Ultra-Fast JSON parsing
-            try:
-                content = response.choices[0].message.content
-                print(f"[CONVERSATION_HELP] Full raw response: {content}")
-                
-                # Try to parse the new format first - handle markdown code blocks
-                try:
-                    # Remove markdown code blocks if present
-                    clean_content = content.strip()
-                    print(f"[CONVERSATION_HELP] Content after strip: '{clean_content[:50]}...'")
-                    
-                    if clean_content.startswith('```json'):
-                        clean_content = clean_content[7:]  # Remove ```json
-                        print(f"[CONVERSATION_HELP] Removed ```json prefix")
-                    elif clean_content.startswith('```'):
-                        clean_content = clean_content[3:]   # Remove ```
-                        print(f"[CONVERSATION_HELP] Removed ``` prefix")
-                    
-                    if clean_content.endswith('```'):
-                        clean_content = clean_content[:-3]  # Remove closing ```
-                        print(f"[CONVERSATION_HELP] Removed ``` suffix")
-                    
-                    clean_content = clean_content.strip()
-                    print(f"[CONVERSATION_HELP] Final clean content: {clean_content}")
-                    
-                    help_content = json.loads(clean_content)
-                    print(f"[CONVERSATION_HELP] ✅ JSON parsed successfully")
-                    responses_key = "responses" if "responses" in help_content else "suggested_responses"
-                    
-                    suggested_responses = []
-                    for resp in help_content.get(responses_key, [])[:2]:
-                        suggested_responses.append(SuggestedResponse(
-                            text=resp.get("text", ""),
-                            pronunciation=resp.get("pronunciation", ""),
-                            difficulty_level="beginner",
-                            explanation=resp.get("explanation", "")
-                        ))
-
-                    if len(suggested_responses) > 0:
-                        print(f"[CONVERSATION_HELP] ✅ Generated {len(suggested_responses)} contextual responses")
-                        return ConversationHelpResponse(
-                            ai_response_summary=help_content.get("summary", help_content.get("ai_response_summary", "The AI provided guidance.")),
-                            suggested_responses=suggested_responses,
-                            vocabulary_highlights=[],
-                            grammar_tips=[]
-                        )
-                    else:
-                        print(f"[CONVERSATION_HELP] ❌ No valid responses, returning None")
-                        return None
-                        
-                except json.JSONDecodeError as e:
-                    print(f"[CONVERSATION_HELP] ❌ JSON parsing failed: {e}")
-                    print(f"[CONVERSATION_HELP] Attempting to fix malformed JSON...")
-                    
-                    # Try to fix common JSON issues
-                    try:
-                        # If JSON is incomplete, try to complete it
-                        if not clean_content.endswith('}'):
-                            # Find the last complete object
-                            last_brace = clean_content.rfind('}')
-                            if last_brace > 0:
-                                clean_content = clean_content[:last_brace + 1]
-                                print(f"[CONVERSATION_HELP] Truncated to last complete brace")
-                        
-                        # Try parsing again
-                        help_content = json.loads(clean_content)
-                        print(f"[CONVERSATION_HELP] ✅ JSON fixed and parsed successfully")
-                        
-                        # Continue with the parsing logic
-                        responses_key = "responses" if "responses" in help_content else "suggested_responses"
-                        
-                        suggested_responses = []
-                        for resp in help_content.get(responses_key, [])[:2]:
-                            suggested_responses.append(SuggestedResponse(
-                                text=resp.get("text", ""),
-                                pronunciation=resp.get("pronunciation", ""),
-                                difficulty_level="beginner",
-                                explanation=resp.get("explanation", "")
-                            ))
-
-                        if len(suggested_responses) > 0:
-                            print(f"[CONVERSATION_HELP] ✅ Generated {len(suggested_responses)} contextual responses from fixed JSON")
-                            return ConversationHelpResponse(
-                                ai_response_summary=help_content.get("summary", help_content.get("ai_response_summary", "The AI provided guidance.")),
-                                suggested_responses=suggested_responses,
-                                vocabulary_highlights=[],
-                                grammar_tips=[]
-                            )
-                        else:
-                            print(f"[CONVERSATION_HELP] ❌ No valid responses in fixed JSON, returning None")
-                            return None
-                        
-                    except json.JSONDecodeError:
-                        print(f"[CONVERSATION_HELP] ❌ Could not fix JSON, returning None")
-                        return None
-                
-            except Exception as e:
-                print(f"[CONVERSATION_HELP] ❌ Processing failed: {e}, returning None")
-                return None
-                
-        except Exception as e:
-            print(f"[CONVERSATION_HELP] ❌ OpenAI call failed: {e}, returning None")
+        # Maximum speed OpenAI call
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=400,
+            timeout=10,
+            stream=False
+        )
+        
+        print(f"[CONVERSATION_HELP] ✅ OpenAI response received")
+        
+        if not response.choices or not response.choices[0].message or not response.choices[0].message.content:
+            print(f"[CONVERSATION_HELP] ❌ Invalid OpenAI response structure")
             return None
 
-    except Exception as e:
-        print(f"Fast help generation failed: {e}")
-        # Always return instant fallback on any error
-        templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
-        level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
+        content = response.choices[0].message.content.strip()
+        print(f"[CONVERSATION_HELP] Raw content: {content}")
         
-        return ConversationHelpResponse(
-            ai_response_summary=f"The AI tutor provided guidance in {request.target_language}.",
-            suggested_responses=[
-                SuggestedResponse(
-                    text=template["text"],
-                    pronunciation=template["pronunciation"],
-                    difficulty_level="beginner",
-                    explanation=template["explanation"]
-                ) for template in level_templates[:2]
-            ],
-            vocabulary_highlights=[],
-            grammar_tips=[]
-        )
+        # Clean JSON content
+        if content.startswith('```json'):
+            content = content[7:]
+        elif content.startswith('```'):
+            content = content[3:]
+        
+        if content.endswith('```'):
+            content = content[:-3]
+        
+        content = content.strip()
+        
+        # Parse JSON
+        try:
+            help_data = json.loads(content)
+            print(f"[CONVERSATION_HELP] ✅ JSON parsed successfully")
+            
+            # Extract responses
+            responses_key = "responses" if "responses" in help_data else "suggested_responses"
+            raw_responses = help_data.get(responses_key, [])
+            
+            if not raw_responses:
+                print(f"[CONVERSATION_HELP] ❌ No responses in parsed data")
+                return None
+            
+            # Build response objects
+            suggested_responses = []
+            for resp in raw_responses[:2]:  # Limit to 2 responses
+                if isinstance(resp, dict) and resp.get("text"):
+                    suggested_responses.append(SuggestedResponse(
+                        text=resp.get("text", ""),
+                        pronunciation=resp.get("pronunciation", ""),
+                        difficulty_level=resp.get("difficulty_level", "beginner"),
+                        explanation=resp.get("explanation", "")
+                    ))
+            
+            if not suggested_responses:
+                print(f"[CONVERSATION_HELP] ❌ No valid responses created")
+                return None
+            
+            print(f"[CONVERSATION_HELP] ✅ Generated {len(suggested_responses)} contextual responses")
+            
+            return ConversationHelpResponse(
+                ai_response_summary=help_data.get("summary", "The AI provided guidance."),
+                suggested_responses=suggested_responses,
+                vocabulary_highlights=[],
+                grammar_tips=[]
+            )
+            
+        except json.JSONDecodeError as e:
+            print(f"[CONVERSATION_HELP] ❌ JSON parsing failed: {e}")
+            print(f"[CONVERSATION_HELP] Content that failed: {content}")
+            return None
+            
+    except Exception as e:
+        print(f"[CONVERSATION_HELP] ❌ Fast generation failed: {e}")
+        return None
 
 # Keep the original function as backup
 async def generate_conversation_help(request: ConversationHelpRequest) -> ConversationHelpResponse:

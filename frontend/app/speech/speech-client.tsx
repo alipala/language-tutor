@@ -15,11 +15,9 @@ import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
 import BackgroundAnalysisCard from '@/components/background-analysis-card';
 import ConversationHelpModal from '@/components/conversation-help-modal';
-import ConversationHelpSettings from '@/components/conversation-help-settings';
-import ConversationHelpInline from '@/components/conversation-help-inline';
-import ConversationHelpAfterAi from '@/components/conversation-help-after-ai';
-import { useConversationHelp } from '@/hooks/useConversationHelp';
-import { useInlineConversationHelp } from '@/hooks/useInlineConversationHelp';
+import ConversationHelpHintButton from '@/components/conversation-help-hint-button';
+import ConversationHelpTimeoutNotification from '@/components/conversation-help-timeout-notification';
+import { useConversationHelpSystem } from '@/hooks/useConversationHelpSystem';
 import { getApiUrl } from '@/lib/api-utils';
 import { 
   processBackgroundSentence, 
@@ -163,31 +161,21 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [showInfoModal, setShowInfoModal] = useState(true);
   const [modalDismissed, setModalDismissed] = useState(false);
   
-  // Initialize conversation help system
+  // Initialize new conversation help system
   const {
     helpSettings,
     updateHelpSettings,
     helpData,
     isLoading: isHelpLoading,
     error: helpError,
+    isHelpReady,
     isModalOpen: isHelpModalOpen,
     showHelpModal,
     closeHelpModal,
     selectSuggestedResponse,
-    trackHelpUsage
-  } = useConversationHelp(language, level, topic);
-
-  // Initialize inline conversation help system
-  const {
-    settings: inlineHelpSettings,
-    updateSettings: updateInlineHelpSettings,
-    pendingHelp,
-    isUserSpeaking,
-    clearPendingHelp,
-    handleAiResponseComplete,
-    handleUserSpeakingStart,
-    handleUserSpeakingStop
-  } = useInlineConversationHelp(language, level, topic);
+    trackHelpUsage,
+    timeoutNotification
+  } = useConversationHelpSystem(language, level, topic);
   
   // Voice data mapping for avatars and names
   const VOICE_DATA = {
@@ -343,6 +331,25 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     resumeConversation,     // NEW
     isPaused: isRealtimePaused  // NEW - renamed to avoid conflict
   } = useRealtime();
+  
+  // Track user speaking state for modal fade-out - only when modal is open
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const previousRecordingState = useRef(false);
+
+  // Detect when user STARTS speaking (recording transitions from false to true) while modal is open
+  useEffect(() => {
+    // Only trigger when recording state changes from false to true AND modal is open
+    if (isRecording && !previousRecordingState.current && isHelpModalOpen) {
+      console.log('[USER_SPEAKING] User started NEW recording session while modal is open - setting isUserSpeaking to true');
+      setIsUserSpeaking(true);
+    } else if (!isRecording) {
+      console.log('[USER_SPEAKING] User stopped speaking - setting isUserSpeaking to false');
+      setIsUserSpeaking(false);
+    }
+    
+    // Update the previous state
+    previousRecordingState.current = isRecording;
+  }, [isRecording, isHelpModalOpen]);
   
   // Process messages for display and group sentences from the same speech segment
   const processedMessages = useMemo(() => {
@@ -1457,6 +1464,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     conversationHistoryRef.current = getFormattedConversationHistory();
     console.log('Storing conversation history before pausing:', conversationHistoryRef.current);
     
+    // Emit conversation ended event for help system
+    window.dispatchEvent(new CustomEvent('conversation-ended'));
+    
     // Set the conversation as paused for pronunciation review
     setIsPaused(true);
     stopConversation();
@@ -1644,6 +1654,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             console.log('⏰ Timer reached 0 - immediately stopping conversation');
             setConversationTimeUp(true);
             setIsConversationTimerActive(false);
+            
+            // Emit conversation time-up event for help system
+            window.dispatchEvent(new CustomEvent('conversation-time-up'));
             
             // Immediately stop the conversation to prevent AI from continuing to speak
             stopConversation();
@@ -2060,6 +2073,20 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                   <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
                     h-[320px] sm:h-[380px] md:h-[420px] lg:h-[650px]">
                     
+                    {/* Conversation Help Hint Button - Bottom Right */}
+                    <div className="absolute bottom-4 right-4 z-20">
+                      <ConversationHelpHintButton
+                        isHelpReady={isHelpReady}
+                        isHelpEnabled={helpSettings.help_enabled}
+                        isLoading={isHelpLoading}
+                        helpLanguage={helpSettings.help_language}
+                        onToggleHelp={(enabled) => updateHelpSettings({ help_enabled: enabled })}
+                        onChangeLanguage={(language) => updateHelpSettings({ help_language: language })}
+                        onShowHelp={showHelpModal}
+                        className="group"
+                      />
+                    </div>
+                    
                     <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 lg:pb-4 border-b border-gray-100">
                       <h3 className="text-sm sm:text-base lg:text-xl font-semibold text-[#F75A5A] flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2070,75 +2097,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       </h3>
                       
                       <div className="flex items-center gap-2">
-                        {/* Mobile ONLY AI Help - Single Row Layout */}
-                        <div className="flex items-center gap-2 sm:hidden">
-                          <span className="text-sm font-semibold text-gray-800">AI Help</span>
-                          
-                          {/* Toggle Switch */}
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={helpSettings.help_enabled}
-                              onChange={(e) => updateHelpSettings({...helpSettings, help_enabled: e.target.checked})}
-                              className="sr-only peer"
-                            />
-                            <div className={`relative w-9 h-5 rounded-full peer transition-colors duration-200 ease-in-out ${
-                              helpSettings.help_enabled 
-                                ? 'bg-[#F75A5A]' 
-                                : 'bg-gray-300'
-                            }`}>
-                              <div className={`absolute top-0.5 left-0.5 bg-white rounded-full h-4 w-4 transition-transform duration-200 ease-in-out shadow-md ${
-                                helpSettings.help_enabled ? 'translate-x-4' : 'translate-x-0'
-                              }`}></div>
-                            </div>
-                          </label>
-                          
-                          {/* Language Dropdown - Same Row */}
-                          {helpSettings.help_enabled && (
-                            <div className="relative">
-                              <select
-                                value={helpSettings.help_language}
-                                onChange={(e) => updateHelpSettings({...helpSettings, help_language: e.target.value})}
-                                className="text-xs font-medium rounded-md px-2 py-1 border border-gray-300 bg-white text-gray-800 hover:border-[#F75A5A] focus:ring-1 focus:ring-[#F75A5A]/50 focus:border-[#F75A5A] focus:outline-none min-w-[80px]"
-                                style={{ 
-                                  appearance: 'none',
-                                  WebkitAppearance: 'none',
-                                  MozAppearance: 'none',
-                                  backgroundImage: 'none',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                {[
-                                  { code: "english", native_name: "English" },
-                                  { code: "spanish", native_name: "Español" },
-                                  { code: "french", native_name: "Français" },
-                                  { code: "german", native_name: "Deutsch" },
-                                  { code: "italian", native_name: "Italiano" },
-                                  { code: "portuguese", native_name: "Português" },
-                                  { code: "dutch", native_name: "Nederlands" },
-                                  { code: "russian", native_name: "Русский" },
-                                  { code: "chinese", native_name: "中文" },
-                                  { code: "japanese", native_name: "日本語" },
-                                  { code: "korean", native_name: "한국어" },
-                                  { code: "arabic", native_name: "العربية" },
-                                  { code: "hindi", native_name: "हिन्दी" },
-                                  { code: "turkish", native_name: "Türkçe" }
-                                ].map((lang) => (
-                                  <option key={lang.code} value={lang.code} className="bg-white text-gray-800 text-xs">
-                                    {lang.native_name}
-                                  </option>
-                                ))}
-                              </select>
-                              {/* Custom dropdown arrow */}
-                              <div className="absolute right-1 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
                         {/* Message Counter */}
                         {processedMessages.length > 0 && (
                           <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
@@ -2290,14 +2248,15 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                             </div>
                           )}
                           
-                          {/* Conversation Help After AI - Positioned in conversation flow */}
-                          <ConversationHelpAfterAi
-                            isEnabled={helpSettings.help_enabled}
+                          {/* Inline Conversation Help Modal - Always render, let modal handle visibility */}
+                          <ConversationHelpModal
+                            isOpen={isHelpModalOpen}
+                            onClose={closeHelpModal}
+                            helpData={helpData}
+                            isLoading={isHelpLoading}
+                            onResponseSelect={selectSuggestedResponse}
                             targetLanguage={language}
-                            helpLanguage={helpSettings.help_language}
-                            userLevel={level}
-                            conversationTopic={topic || 'general conversation'}
-                            messages={processedMessages}
+                            isUserSpeaking={isUserSpeaking}
                           />
                           
                           <div ref={messagesEndRef} className="mt-auto" />
@@ -2400,7 +2359,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         level={level}
       />
 
-      {/* Conversation Help Modal - DISABLED - Only use inline help after AI completes speaking */}
 
       {/* Saving Progress Loading Modal */}
       {showSavingLoader && (
@@ -2414,6 +2372,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           </div>
         </div>
       )}
+
+      {/* Conversation Help Timeout Notification */}
+      <ConversationHelpTimeoutNotification
+        show={timeoutNotification.show}
+        message={timeoutNotification.message}
+        type={timeoutNotification.type}
+      />
     </main>
   );
 }

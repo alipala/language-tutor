@@ -5,11 +5,14 @@ from models import UserResponse
 from conversation_help import (
     ConversationHelpRequest,
     ConversationHelpResponse,
+    SuggestedResponse,
     UserHelpSettings,
     generate_conversation_help,
+    generate_conversation_help_fast,
     get_user_help_settings,
     update_user_help_settings,
-    track_help_usage
+    track_help_usage,
+    INSTANT_RESPONSE_TEMPLATES
 )
 
 router = APIRouter(prefix="/api/conversation-help", tags=["conversation-help"])
@@ -43,16 +46,31 @@ async def generate_help_content(
         
         # Generate help content using ultra-fast method
         print(f"[CONVERSATION_HELP] 🔄 Calling generate_conversation_help_fast...")
-        from conversation_help import generate_conversation_help_fast
         help_response = await generate_conversation_help_fast(request)
         print(f"[CONVERSATION_HELP] 📥 Received response from generate_conversation_help_fast: {help_response is not None}")
         
-        # 🚀 NEW STRATEGY: Only return contextual responses, never generic fallbacks
+        # Check if we got a valid response
         if help_response is None:
-            print(f"[CONVERSATION_HELP] ✅ No contextual help generated, returning 204 No Content")
-            # Return 204 No Content - frontend will not show modal
-            from fastapi import Response
-            return Response(status_code=204)
+            print(f"[CONVERSATION_HELP] ❌ Fast generation returned None, trying fallback...")
+            
+            # Use instant fallback templates
+            templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
+            level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
+            
+            help_response = ConversationHelpResponse(
+                ai_response_summary=f"The AI tutor provided guidance in {request.target_language}.",
+                suggested_responses=[
+                    SuggestedResponse(
+                        text=template["text"],
+                        pronunciation=template["pronunciation"],
+                        difficulty_level="beginner",
+                        explanation=template["explanation"]
+                    ) for template in level_templates[:2]
+                ],
+                vocabulary_highlights=[],
+                grammar_tips=[]
+            )
+            print(f"[CONVERSATION_HELP] ✅ Using fallback template responses")
         
         # Track usage analytics if user is authenticated
         if current_user:

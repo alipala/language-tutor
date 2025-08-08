@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import conversation help animations */
+@import '../styles/conversation-help-animations.css';
+
 /* Import gradient theme */
 @import '../styles/gradient-theme.css';
 /* Import solid theme override */
