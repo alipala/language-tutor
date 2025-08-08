@@ -193,7 +193,11 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
   return (
     <div 
       ref={modalRef}
-      className={`bg-white border border-purple-200 rounded-lg shadow-lg p-4 mb-4 mx-4 transition-all duration-500 ease-in-out ${getAnimationClasses()}`}
+      className={`bg-white border border-purple-200 rounded-lg shadow-lg p-3 mb-4 mx-4 transition-all duration-500 ease-in-out max-h-[60vh] overflow-y-auto ${getAnimationClasses()}`}
+      style={{
+        maxWidth: '90vw',
+        width: 'auto'
+      }}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
