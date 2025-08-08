@@ -47,6 +47,7 @@ interface ConversationHelpModalProps {
   isLoading: boolean;
   onResponseSelect: (response: string) => void;
   targetLanguage: string;
+  isUserSpeaking?: boolean;
 }
 
 const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
@@ -55,19 +56,42 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
   helpData,
   isLoading,
   onResponseSelect,
-  targetLanguage
+  targetLanguage,
+  isUserSpeaking = false
 }) => {
   const [activeTab, setActiveTab] = useState<'responses' | 'vocabulary' | 'grammar' | 'culture'>('responses');
   const [isVisible, setIsVisible] = useState(false);
+  const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'fading' | 'hidden'>('hidden');
 
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
+      setAnimationState('entering');
+      // Small delay to trigger the visible animation
+      const timer = setTimeout(() => setAnimationState('visible'), 50);
+      return () => clearTimeout(timer);
     } else {
-      const timer = setTimeout(() => setIsVisible(false), 300);
+      setAnimationState('fading');
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setAnimationState('hidden');
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Handle user speaking - fade out the modal
+  useEffect(() => {
+    if (isUserSpeaking && isOpen && animationState === 'visible') {
+      console.log('[CONVERSATION_HELP_MODAL] User started speaking - fading out modal');
+      setAnimationState('fading');
+      // Close the modal after fade animation
+      const timer = setTimeout(() => {
+        onClose();
+      }, 500); // Slightly longer to complete the fade animation
+      return () => clearTimeout(timer);
+    }
+  }, [isUserSpeaking, isOpen, animationState, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -138,8 +162,22 @@ const ConversationHelpModal: React.FC<ConversationHelpModalProps> = ({
 
   if (!isVisible) return null;
 
+  // Get animation classes based on current state
+  const getAnimationClasses = () => {
+    switch (animationState) {
+      case 'entering':
+        return 'animate-help-modal-enter';
+      case 'visible':
+        return 'animate-help-modal-visible';
+      case 'fading':
+        return 'animate-help-modal-fade-out';
+      default:
+        return '';
+    }
+  };
+
   return (
-    <div className="bg-white border border-purple-200 rounded-lg shadow-lg p-4 mb-4 mx-4">
+    <div className={`bg-white border border-purple-200 rounded-lg shadow-lg p-4 mb-4 mx-4 transition-all duration-500 ease-in-out ${getAnimationClasses()}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

@@ -330,6 +330,20 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     isPaused: isRealtimePaused  // NEW - renamed to avoid conflict
   } = useRealtime();
   
+  // Track user speaking state for modal fade-out
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+
+  // Track when user starts speaking to fade out help modal
+  useEffect(() => {
+    if (isRecording) {
+      console.log('[USER_SPEAKING] User started speaking - setting isUserSpeaking to true');
+      setIsUserSpeaking(true);
+    } else {
+      console.log('[USER_SPEAKING] User stopped speaking - setting isUserSpeaking to false');
+      setIsUserSpeaking(false);
+    }
+  }, [isRecording]);
+  
   // Process messages for display and group sentences from the same speech segment
   const processedMessages = useMemo(() => {
     // First, map the messages to add consistent IDs and group information
@@ -2304,6 +2318,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                               isLoading={isHelpLoading}
                               onResponseSelect={selectSuggestedResponse}
                               targetLanguage={language}
+                              isUserSpeaking={isUserSpeaking}
                             />
                           )}
                           
