@@ -12,6 +12,7 @@ interface ConversationHelpHintButtonProps {
   onChangeLanguage: (language: string) => void;
   onShowHelp: () => void;
   className?: string;
+  sessionEnded?: boolean;
 }
 
 const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
@@ -22,7 +23,8 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
   onToggleHelp,
   onChangeLanguage,
   onShowHelp,
-  className = ''
+  className = '',
+  sessionEnded = false
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [animationState, setAnimationState] = useState<'idle' | 'ready' | 'pulse'>('idle');
@@ -80,6 +82,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
   };
 
   const getButtonColor = () => {
+    if (sessionEnded) return 'bg-gray-400';
     if (!isHelpEnabled) return 'bg-gray-400 hover:bg-gray-500';
     if (isLoading) return 'bg-gradient-to-r from-blue-500 to-indigo-600 animate-loading-glow';
     if (isHelpReady) return 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600';
@@ -131,7 +134,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
     }
     
     // If this was a tap (not a drag), trigger the button action
-    if (!isDragging && isHelpEnabled && isHelpReady) {
+    if (!isDragging && isHelpEnabled && isHelpReady && !sessionEnded) {
       onShowHelp();
     }
     
@@ -236,21 +239,23 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
 
         {/* Main Hint Button */}
         <button
-          onClick={isHelpEnabled && isHelpReady ? onShowHelp : undefined}
-          disabled={!isHelpEnabled || !isHelpReady}
+          onClick={isHelpEnabled && isHelpReady && !sessionEnded ? onShowHelp : undefined}
+          disabled={!isHelpEnabled || !isHelpReady || sessionEnded}
           className={`
             relative w-12 h-12 rounded-full flex items-center justify-center
             transition-all duration-300 shadow-lg
             ${getButtonColor()}
             ${getAnimationClasses()}
-            ${!isHelpEnabled || !isHelpReady ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:scale-105'}
+            ${!isHelpEnabled || !isHelpReady || sessionEnded ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:scale-105'}
           `}
           title={
-            !isHelpEnabled 
-              ? "AI Help is disabled" 
-              : !isHelpReady 
-                ? "Waiting for AI response..." 
-                : "Click for conversation help"
+            sessionEnded
+              ? "Session ended - help not available"
+              : !isHelpEnabled 
+                ? "AI Help is disabled" 
+                : !isHelpReady 
+                  ? "Waiting for AI response..." 
+                  : "Click for conversation help"
           }
         >
           {/* Lightning ready effect overlay */}
@@ -278,7 +283,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
               <Lightbulb className="w-6 h-6 text-white drop-shadow-sm" />
 
               {/* Ready indicator */}
-              {isHelpReady && isHelpEnabled && (
+              {isHelpReady && isHelpEnabled && !sessionEnded && (
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                 </div>
@@ -289,7 +294,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
       </div>
 
       {/* Tooltip */}
-      {isHelpReady && isHelpEnabled && (
+      {isHelpReady && isHelpEnabled && !sessionEnded && (
         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           Conversation help ready!
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>

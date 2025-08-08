@@ -1,6 +1,28 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+
+// Custom hook for responsive detection
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    
+    // Set initial value
+    checkIsDesktop();
+    
+    // Add event listener
+    window.addEventListener('resize', checkIsDesktop);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIsDesktop);
+  }, []);
+  
+  return isDesktop;
+}
 import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
 import { RealtimeMessage } from '@/lib/types';
@@ -47,6 +69,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   
   const router = useRouter();
   const { user } = useAuth();
+  
+  // Custom hook for responsive detection
+  const isDesktop = useIsDesktop();
   
   // Extract the user's first name from their full name
   const firstName = useMemo(() => {
@@ -152,6 +177,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [showSavingLoader, setShowSavingLoader] = useState(false);
   const [isReviewingAnalysis, setIsReviewingAnalysis] = useState(false);
+  
+  // Mobile session end state - to ensure analysis section shows after session ends
+  const [mobileSessionEnded, setMobileSessionEnded] = useState(false);
   
   // Voice selection state for displaying tutor avatar
   const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
@@ -1637,6 +1665,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     setConversationTimeUp(false);
     setConversationStartTime(null);
     setAnalyzedMessageIds([]);
+    setMobileSessionEnded(false); // Reset mobile session state
     
     // Redirect to language selection to start fresh
     router.push('/language-selection');
@@ -1661,6 +1690,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             // Immediately stop the conversation to prevent AI from continuing to speak
             stopConversation();
             
+            // Mark session as ended for mobile layout
+            setMobileSessionEnded(true);
+            setSessionCompleted(true);
+            
             // Auto-save conversation when time is up (5 minutes completed)
             if (user && processedMessages.length > 0) {
               console.log('🔄 Auto-saving conversation at timer end...');
@@ -1672,7 +1705,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
               
               // Hide loading state and show completion modal
               setShowSavingLoader(false);
-              setSessionCompleted(true);
               setShowCompletionModal(true);
             } else {
               // For guests or no messages, trigger the TimeUpModal via parent callback
@@ -1892,9 +1924,19 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             {showMessages && (
               <div className="w-full transition-all duration-700 ease-in-out opacity-100 translate-y-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full">
-                  {/* Real Time Sentence Analysis Component */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
-                    h-[280px] sm:h-[320px] md:h-[380px] lg:h-[650px]">
+                  {/* Real Time Sentence Analysis Component - Mobile: Show only when session ended */}
+                  <div 
+                    className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col lg:h-[650px]"
+                    style={{
+                      // Desktop: Always show with fixed height
+                      display: isDesktop ? 'flex' : 
+                        // Mobile: Show when session ended OR when we have analyses to show after session completion
+                        (mobileSessionEnded || sessionCompleted || isPaused || 
+                         (conversationTimeUp && backgroundAnalyses.length > 0)) ? 'flex' : 'none',
+                      // Mobile: Full screen height minus header and padding
+                      height: isDesktop ? '650px' : 'calc(100vh - 200px)'
+                    }}
+                  >
                     
                     {/* Header */}
                     <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 lg:pb-4 border-b border-gray-100">
@@ -2069,9 +2111,19 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     </div>
                   </div>
                   
-                  {/* Conversation Transcript Section */}
-                  <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col 
-                    h-[320px] sm:h-[380px] md:h-[420px] lg:h-[650px]">
+                  {/* Conversation Transcript Section - Mobile: Show only during active session */}
+                  <div 
+                    className="relative bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col lg:h-[650px]"
+                    style={{
+                      // Desktop: Always show with fixed height
+                      display: isDesktop ? 'flex' : 
+                        // Mobile: Hide when session ended OR when we have analyses after completion
+                        (mobileSessionEnded || sessionCompleted || 
+                         (conversationTimeUp && backgroundAnalyses.length > 0)) ? 'none' : 'flex',
+                      // Mobile: Full screen height minus header and padding
+                      height: isDesktop ? '650px' : 'calc(100vh - 200px)'
+                    }}
+                  >
                     
                     {/* Conversation Help Hint Button - Bottom Right */}
                     <div className="absolute bottom-4 right-4 z-20">
@@ -2084,6 +2136,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         onChangeLanguage={(language) => updateHelpSettings({ help_language: language })}
                         onShowHelp={showHelpModal}
                         className="group"
+                        sessionEnded={mobileSessionEnded || sessionCompleted || isPaused || conversationTimeUp}
                       />
                     </div>
                     
