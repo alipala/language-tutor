@@ -55,8 +55,11 @@ class SentenceAssessmentResponse(BaseModel):
     corrected_text: Optional[str] = None
     level_appropriate_alternatives: Optional[List[str]] = None
 
-# Helper function for speech recognition using OpenAI's audio transcription
+# Helper function for speech recognition using OpenAI's audio transcription with gpt-4o-transcribe and fallback
 async def recognize_speech(audio_base64: str, language: str) -> str:
+    # 🎛️ Configuration: Allow switching between models via environment variable
+    USE_GPT4O_TRANSCRIBE = os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true"
+    
     # Map language codes
     language_map = {
         "english": "en",
@@ -82,18 +85,48 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
         
         # Open the audio file
         with open(temp_audio_path, "rb") as audio_file:
-            # Call OpenAI's transcription API
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                language=speech_language,
-                response_format="text"
-            )
-        
-        return transcript
+            if USE_GPT4O_TRANSCRIBE:
+                try:
+                    # 🚀 NEW: Try gpt-4o-transcribe first for better multilingual accuracy
+                    transcript = client.audio.transcriptions.create(
+                        model="gpt-4o-transcribe",
+                        file=audio_file,
+                        language=speech_language,
+                        response_format="text",
+                        prompt=f"This is a {language} language learning conversation. Focus on accurate transcription of student speech for language assessment."
+                    )
+                    print(f"✅ [TRANSCRIPTION] Used gpt-4o-transcribe for {language} transcription")
+                    return transcript
+                    
+                except Exception as gpt4o_error:
+                    print(f"⚠️ [TRANSCRIPTION] gpt-4o-transcribe failed: {gpt4o_error}")
+                    print(f"🔄 [TRANSCRIPTION] Falling back to whisper-1 for {language}")
+                    
+                    # Reset file pointer for fallback
+                    audio_file.seek(0)
+                    
+                    # Fallback to whisper-1
+                    transcript = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language=speech_language,
+                        response_format="text"
+                    )
+                    print(f"✅ [TRANSCRIPTION] Used whisper-1 fallback for {language} transcription")
+                    return transcript
+            else:
+                # Use whisper-1 directly when GPT-4o transcribe is disabled
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language=speech_language,
+                    response_format="text"
+                )
+                print(f"✅ [TRANSCRIPTION] Used whisper-1 (GPT-4o transcribe disabled) for {language} transcription")
+                return transcript
     
     except Exception as e:
-        print(f"Error in speech recognition: {str(e)}")
+        print(f"❌ [TRANSCRIPTION] Error in speech recognition: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Speech recognition failed: {str(e)}")
     finally:
         # Clean up temp file
