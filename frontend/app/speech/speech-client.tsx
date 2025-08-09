@@ -2125,8 +2125,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     }}
                   >
                     
-                    {/* Conversation Help Hint Button - Bottom Right */}
-                    <div className="absolute bottom-4 right-4 z-20">
+                    {/* Conversation Help Hint Button - Bottom Right - Desktop Only */}
+                    <div className="absolute bottom-4 right-4 z-20 hidden lg:block">
                       <ConversationHelpHintButton
                         isHelpReady={isHelpReady}
                         isHelpEnabled={helpSettings.help_enabled}
@@ -2322,44 +2322,64 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                 {/* Mobile Recording Button - Under Conversation Section */}
                 <div className="lg:hidden mt-4">
                   <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
-                    <Button
-                      type="button"
-                      onClick={(e) => handleToggleRecording(e)}
-                      onTouchStart={(e) => e.preventDefault()}
-                      aria-label={isRecording ? "Stop recording" : "Start recording"}
-                      className={`w-full py-4 relative flex items-center justify-center gap-3 transition-all duration-300 rounded-lg text-base font-semibold ${isRecording 
-                        ? 'bg-[#F75A5A] hover:bg-[#E55252] text-white' 
-                        : (!isAuthenticated() && conversationTimeUp) 
-                          ? 'bg-gray-400 cursor-not-allowed text-white' 
-                          : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
-                        ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis || conversationTimeUp}
-                    >
-                      {isAttemptingToRecord ? (
-                        <>
-                          <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span className="font-medium">Initializing...</span>
-                        </>
-                      ) : isRecording ? (
-                        <>
-                          <div className="relative h-6 w-6 flex items-center justify-center">
-                            <div className="audio-wave">
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
-                              <span className="audio-wave-bar"></span>
+                    {/* Main button row with 2/3 + 1/3 layout */}
+                    <div className="flex items-center gap-3">
+                      {/* Recording Button - 2/3 width */}
+                      <Button
+                        type="button"
+                        onClick={(e) => handleToggleRecording(e)}
+                        onTouchStart={(e) => e.preventDefault()}
+                        aria-label={isRecording ? "Stop recording" : "Start recording"}
+                        className={`flex-1 py-4 relative flex items-center justify-center gap-2 transition-all duration-300 rounded-lg text-sm font-semibold ${isRecording 
+                          ? 'bg-[#F75A5A] hover:bg-[#E55252] text-white' 
+                          : (!isAuthenticated() && conversationTimeUp) 
+                            ? 'bg-gray-400 cursor-not-allowed text-white' 
+                            : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
+                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
+                          disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis || conversationTimeUp}
+                        style={{ flexBasis: '66.666%' }}
+                      >
+                        {isAttemptingToRecord ? (
+                          <>
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-medium text-xs sm:text-sm">Initializing...</span>
+                          </>
+                        ) : isRecording ? (
+                          <>
+                            <div className="relative h-5 w-5 flex items-center justify-center">
+                              <div className="audio-wave">
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                                <span className="audio-wave-bar"></span>
+                              </div>
                             </div>
-                          </div>
-                          <span className="font-medium">Recording...</span>
-                        </>
-                      ) : (
-                        <>
-                          <MicrophoneIcon isRecording={false} size={24} />
-                          <span className="font-medium">Click to start speaking</span>
-                        </>
-                      )}
-                    </Button>
+                            <span className="font-medium text-xs sm:text-sm">Recording...</span>
+                          </>
+                        ) : (
+                          <>
+                            <MicrophoneIcon isRecording={false} size={20} />
+                            <span className="font-medium text-xs sm:text-sm">Click to start speaking</span>
+                          </>
+                        )}
+                      </Button>
+                      
+                      {/* Hint Button and Settings - 1/3 width */}
+                      <div className="flex items-center justify-center" style={{ flexBasis: '33.333%' }}>
+                        <ConversationHelpHintButton
+                          isHelpReady={isHelpReady}
+                          isHelpEnabled={helpSettings.help_enabled}
+                          isLoading={isHelpLoading}
+                          helpLanguage={helpSettings.help_language}
+                          onToggleHelp={(enabled) => updateHelpSettings({ help_enabled: enabled })}
+                          onChangeLanguage={(language) => updateHelpSettings({ help_language: language })}
+                          onShowHelp={showHelpModal}
+                          className="relative"
+                          sessionEnded={mobileSessionEnded || sessionCompleted || isPaused || conversationTimeUp}
+                        />
+                      </div>
+                    </div>
                     
                     {/* Error message */}
                     {localError && (

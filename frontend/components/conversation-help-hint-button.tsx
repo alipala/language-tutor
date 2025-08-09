@@ -114,7 +114,7 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
     // Get viewport dimensions
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const buttonSize = 60; // Approximate button width including settings
+    const buttonSize = 65; // Approximate button width including settings (48px hint + 8px gap + 36px settings = ~65px)
     
     // Constrain to viewport bounds
     const constrainedX = Math.max(0, Math.min(viewportWidth - buttonSize, newX));
@@ -228,15 +228,6 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
 
       {/* Main Button */}
       <div className="flex items-center gap-2">
-        {/* Settings Button */}
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200"
-          title="AI Help Settings"
-        >
-          <Settings className="w-4 h-4 text-gray-600" />
-        </button>
-
         {/* Main Hint Button */}
         <button
           onClick={isHelpEnabled && isHelpReady && !sessionEnded ? onShowHelp : undefined}
@@ -290,6 +281,15 @@ const ConversationHelpHintButton: React.FC<ConversationHelpHintButtonProps> = ({
               )}
             </>
           )}
+        </button>
+
+        {/* Settings Button */}
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200"
+          title="AI Help Settings"
+        >
+          <Settings className="w-4 h-4 text-gray-600" />
         </button>
       </div>
 
