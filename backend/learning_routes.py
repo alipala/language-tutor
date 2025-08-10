@@ -848,33 +848,23 @@ async def save_session_summary(
             # CRITICAL FIX: Track subscription usage for both sessions AND minutes
             try:
                 from subscription_service import SubscriptionService
-                from models import UsageTrackingRequest, SpeakingTimeTrackingRequest
+                from models import SpeakingTimeTrackingRequest
                 
-                # Track session usage (existing logic)
-                usage_request = UsageTrackingRequest(
-                    user_id=str(current_user.id),
-                    usage_type="practice_session"
-                )
-                
-                usage_tracked = await SubscriptionService.track_usage(usage_request)
-                if usage_tracked:
-                    print(f"[SESSION_SUMMARY] ✅ Tracked practice session usage for user {current_user.id}")
-                else:
-                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track practice session usage (may have exceeded limit)")
-                
-                # MISSING PIECE: Track speaking minutes usage
+                # FIXED: Use track_speaking_time with session_completed=True
+                # This will track BOTH the speaking minutes AND increment the session counter
+                # No need to call track_usage separately as it would double-count sessions
                 speaking_time_request = SpeakingTimeTrackingRequest(
                     user_id=str(current_user.id),
                     speaking_minutes=duration_minutes,
-                    session_completed=True  # Learning plan sessions are always completed when saved
+                    session_completed=True  # This will increment both minutes AND session count
                 )
                 
-                minutes_tracked = await SubscriptionService.track_speaking_time(speaking_time_request)
-                if minutes_tracked:
-                    print(f"[SESSION_SUMMARY] ✅ Tracked speaking time usage: {duration_minutes} minutes for user {current_user.id}")
-                    print(f"[SESSION_SUMMARY] ✅ User subscription minutes counter updated")
+                tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
+                if tracking_success:
+                    print(f"[SESSION_SUMMARY] ✅ Tracked learning plan session: {duration_minutes} minutes + 1 session for user {current_user.id}")
+                    print(f"[SESSION_SUMMARY] ✅ User subscription counters updated (both minutes and sessions)")
                 else:
-                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track speaking time usage")
+                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track subscription usage - user may have exceeded limits")
                     
             except Exception as usage_error:
                 print(f"[SESSION_SUMMARY] ⚠️ Warning: Failed to track subscription usage: {str(usage_error)}")
