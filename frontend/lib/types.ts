@@ -7,6 +7,9 @@ export interface RealtimeMessage {
   isComplete?: boolean; // Flag to indicate if this is a complete message (not a partial update)
 }
 
+// Microphone states for the recording button
+export type MicrophoneState = 'idle' | 'recording' | 'muted';
+
 export interface RealtimeEvent {
   type: string;
   [key: string]: any;

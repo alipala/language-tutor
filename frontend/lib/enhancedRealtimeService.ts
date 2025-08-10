@@ -1333,6 +1333,109 @@ export class EnhancedRealtimeService {
   }
 
   /**
+   * NEW: Mute user microphone (different from AI self-hearing prevention)
+   */
+  public muteUserMicrophone(): boolean {
+    try {
+      console.log('🔇 [USER_MUTE] Muting user microphone on request');
+      
+      if (!this.localStream) {
+        console.warn('⚠️ [USER_MUTE] No local stream available');
+        return false;
+      }
+      
+      const audioTracks = this.localStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.warn('⚠️ [USER_MUTE] No audio tracks found');
+        return false;
+      }
+      
+      // Mute all audio tracks
+      audioTracks.forEach((track, index) => {
+        if (track.readyState === 'live') {
+          track.enabled = false;
+          console.log(`🔇 [USER_MUTE] Track ${index} (${track.label}) muted by user`);
+        }
+      });
+      
+      // Emit custom event for UI feedback
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('user-microphone-muted', {
+          detail: {
+            timestamp: Date.now(),
+            reason: 'User requested mute'
+          }
+        });
+        window.dispatchEvent(event);
+      }
+      
+      console.log('✅ [USER_MUTE] User microphone muted successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ [USER_MUTE] Error muting user microphone:', error);
+      return false;
+    }
+  }
+
+  /**
+   * NEW: Unmute user microphone
+   */
+  public unmuteUserMicrophone(): boolean {
+    try {
+      console.log('🔊 [USER_MUTE] Unmuting user microphone on request');
+      
+      if (!this.localStream) {
+        console.warn('⚠️ [USER_MUTE] No local stream available');
+        return false;
+      }
+      
+      const audioTracks = this.localStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.warn('⚠️ [USER_MUTE] No audio tracks found');
+        return false;
+      }
+      
+      // Unmute all audio tracks
+      audioTracks.forEach((track, index) => {
+        if (track.readyState === 'live') {
+          track.enabled = true;
+          console.log(`🔊 [USER_MUTE] Track ${index} (${track.label}) unmuted by user`);
+        }
+      });
+      
+      // Emit custom event for UI feedback
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('user-microphone-unmuted', {
+          detail: {
+            timestamp: Date.now(),
+            reason: 'User requested unmute'
+          }
+        });
+        window.dispatchEvent(event);
+      }
+      
+      console.log('✅ [USER_MUTE] User microphone unmuted successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ [USER_MUTE] Error unmuting user microphone:', error);
+      return false;
+    }
+  }
+
+  /**
+   * NEW: Check if user microphone is currently muted
+   */
+  public isUserMicrophoneMuted(): boolean {
+    if (!this.localStream) return true;
+    
+    const audioTracks = this.localStream.getAudioTracks();
+    if (audioTracks.length === 0) return true;
+    
+    // Check if any track is enabled (not muted)
+    return !audioTracks.some(track => track.enabled && track.readyState === 'live');
+  }
+
+  /**
    * Get comprehensive muting diagnostics
    */
   public getMutingDiagnostics(): any {
@@ -1355,7 +1458,9 @@ export class EnhancedRealtimeService {
           readyState: track.readyState
         })) : [],
       semantic_controller_diagnostics: this.semanticMuteController ? 
-        this.semanticMuteController.getDiagnostics() : null
+        this.semanticMuteController.getDiagnostics() : null,
+      // NEW: User mute status
+      user_microphone_muted: this.isUserMicrophoneMuted()
     };
   }
 
