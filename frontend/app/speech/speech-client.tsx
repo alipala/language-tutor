@@ -25,7 +25,7 @@ function useIsDesktop() {
 }
 import { Button } from '@/components/ui/button';
 import { useRealtime } from '@/lib/useRealtime';
-import { RealtimeMessage } from '@/lib/types';
+import { RealtimeMessage, MicrophoneState } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { isAuthenticated } from '@/lib/auth-utils';
@@ -357,7 +357,13 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     getFormattedConversationHistory,
     pauseConversation,      // NEW
     resumeConversation,     // NEW
-    isPaused: isRealtimePaused  // NEW - renamed to avoid conflict
+    isPaused: isRealtimePaused,  // NEW - renamed to avoid conflict
+    // NEW: Microphone state management
+    microphoneState,
+    isUserMuted,
+    muteMicrophone,
+    unmuteMicrophone,
+    toggleMicrophone
   } = useRealtime();
   
   // Track user speaking state for modal fade-out - only when modal is open
@@ -2062,44 +2068,92 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     
                     {/* Desktop Recording Button - Under Analysis Section */}
                     <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 px-3 sm:px-4 lg:px-6 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
-                      <Button
-                        type="button"
-                        onClick={(e) => handleToggleRecording(e)}
-                        onTouchStart={(e) => e.preventDefault()}
-                        aria-label={isRecording ? "Stop recording" : "Start recording"}
-                        className={`w-full py-3 sm:py-4 relative flex items-center justify-center gap-2 sm:gap-3 transition-all duration-300 rounded-lg ${isRecording 
-                          ? 'bg-[#F75A5A] hover:bg-[#E55252]' 
-                          : (!isAuthenticated() && conversationTimeUp) 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
-                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis || conversationTimeUp}
-                      >
-                        {isAttemptingToRecord ? (
-                          <>
-                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-medium text-white">Initializing microphone...</span>
-                          </>
-                        ) : isRecording ? (
-                          <>
-                            <div className="relative h-6 w-6 flex items-center justify-center">
-                              <div className="audio-wave">
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
+                      <div className="flex items-center gap-3">
+                        {/* Main Recording Button - 2/3 width */}
+                        <Button
+                          type="button"
+                          onClick={(e) => {
+                            // Only allow clicking when idle (not recording)
+                            if (microphoneState === 'idle') {
+                              handleToggleRecording(e);
+                            }
+                          }}
+                          onTouchStart={(e) => e.preventDefault()}
+                          aria-label={microphoneState === 'idle' ? "Start recording" : microphoneState === 'recording' ? "Recording in progress" : "Recording (muted)"}
+                          className={`flex-1 py-3 sm:py-4 relative flex items-center justify-center gap-2 sm:gap-3 transition-all duration-300 rounded-lg ${
+                            microphoneState === 'recording' && !isUserMuted
+                              ? 'bg-[#F75A5A] cursor-default' 
+                              : microphoneState === 'muted'
+                                ? 'bg-orange-500 cursor-default'
+                                : (!isAuthenticated() && conversationTimeUp) 
+                                  ? 'bg-gray-400 cursor-not-allowed' 
+                                  : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
+                            ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
+                          disabled={isAttemptingToRecord || isReviewingAnalysis || conversationTimeUp || microphoneState !== 'idle'}
+                        >
+                          {isAttemptingToRecord ? (
+                            <>
+                              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span className="font-medium text-white">Initializing microphone...</span>
+                            </>
+                          ) : microphoneState === 'recording' && !isUserMuted ? (
+                            <>
+                              <div className="relative h-6 w-6 flex items-center justify-center">
+                                <div className="audio-wave">
+                                  <span className="audio-wave-bar"></span>
+                                  <span className="audio-wave-bar"></span>
+                                  <span className="audio-wave-bar"></span>
+                                  <span className="audio-wave-bar"></span>
+                                  <span className="audio-wave-bar"></span>
+                                </div>
                               </div>
-                            </div>
-                            <span className="font-medium text-white">Recording...</span>
-                          </>
-                        ) : (
-                          <>
-                            <MicrophoneIcon isRecording={false} size={20} />
-                            <span className="font-medium text-gray-800">Click to start speaking</span>
-                          </>
+                              <span className="font-medium text-white">Recording...</span>
+                            </>
+                          ) : microphoneState === 'muted' ? (
+                            <>
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                              </svg>
+                              <span className="font-medium text-white">Muted</span>
+                            </>
+                          ) : (
+                            <>
+                              <MicrophoneIcon isRecording={false} size={20} />
+                              <span className="font-medium text-gray-800">Click to start speaking</span>
+                            </>
+                          )}
+                        </Button>
+                        
+                        {/* Mute Toggle Button - 1/3 width - Only show when recording */}
+                        {(microphoneState === 'recording' || microphoneState === 'muted') && (
+                          <Button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              toggleMicrophone();
+                            }}
+                            aria-label={isUserMuted ? "Unmute microphone" : "Mute microphone"}
+                            className={`px-4 py-3 sm:py-4 flex items-center justify-center gap-2 transition-all duration-300 rounded-lg ${
+                              isUserMuted 
+                                ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                                : 'bg-green-500 hover:bg-green-600 text-white'
+                            }`}
+                            title={isUserMuted ? "Click to unmute your microphone" : "Click to mute your microphone"}
+                          >
+                            {isUserMuted ? (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              </svg>
+                            )}
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                       
                       {/* Error message */}
                       {localError && (
@@ -2322,29 +2376,36 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                 {/* Mobile Recording Button - Under Conversation Section */}
                 <div className="lg:hidden mt-4">
                   <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
-                    {/* Main button row with 2/3 + 1/3 layout */}
-                    <div className="flex items-center gap-3">
-                      {/* Recording Button - 2/3 width */}
+                    {/* Main button row with flexible layout */}
+                    <div className="flex items-center gap-2">
+                      {/* Recording Button - Main button */}
                       <Button
                         type="button"
-                        onClick={(e) => handleToggleRecording(e)}
+                        onClick={(e) => {
+                          // Only allow clicking when idle (not recording)
+                          if (microphoneState === 'idle') {
+                            handleToggleRecording(e);
+                          }
+                        }}
                         onTouchStart={(e) => e.preventDefault()}
-                        aria-label={isRecording ? "Stop recording" : "Start recording"}
-                        className={`flex-1 py-4 relative flex items-center justify-center gap-2 transition-all duration-300 rounded-lg text-sm font-semibold ${isRecording 
-                          ? 'bg-[#F75A5A] hover:bg-[#E55252] text-white' 
-                          : (!isAuthenticated() && conversationTimeUp) 
-                            ? 'bg-gray-400 cursor-not-allowed text-white' 
-                            : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
+                        aria-label={microphoneState === 'idle' ? "Start recording" : microphoneState === 'recording' ? "Recording in progress" : "Recording (muted)"}
+                        className={`flex-1 py-4 relative flex items-center justify-center gap-2 transition-all duration-300 rounded-lg text-sm font-semibold ${
+                          microphoneState === 'recording' && !isUserMuted
+                            ? 'bg-[#F75A5A] cursor-default text-white' 
+                            : microphoneState === 'muted'
+                              ? 'bg-orange-500 cursor-default text-white'
+                              : (!isAuthenticated() && conversationTimeUp) 
+                                ? 'bg-gray-400 cursor-not-allowed text-white' 
+                                : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
                           ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                          disabled={isAttemptingToRecord || isRecording || isReviewingAnalysis || conversationTimeUp}
-                        style={{ flexBasis: '66.666%' }}
+                        disabled={isAttemptingToRecord || isReviewingAnalysis || conversationTimeUp || microphoneState !== 'idle'}
                       >
                         {isAttemptingToRecord ? (
                           <>
                             <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-medium text-xs sm:text-sm">Initializing...</span>
+                            <span className="font-medium text-xs">Initializing...</span>
                           </>
-                        ) : isRecording ? (
+                        ) : microphoneState === 'recording' && !isUserMuted ? (
                           <>
                             <div className="relative h-5 w-5 flex items-center justify-center">
                               <div className="audio-wave">
@@ -2355,18 +2416,55 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                 <span className="audio-wave-bar"></span>
                               </div>
                             </div>
-                            <span className="font-medium text-xs sm:text-sm">Recording...</span>
+                            <span className="font-medium text-xs">Recording...</span>
+                          </>
+                        ) : microphoneState === 'muted' ? (
+                          <>
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                            </svg>
+                            <span className="font-medium text-xs">Muted</span>
                           </>
                         ) : (
                           <>
-                            <MicrophoneIcon isRecording={false} size={20} />
-                            <span className="font-medium text-xs sm:text-sm">Click to start speaking</span>
+                            <MicrophoneIcon isRecording={false} size={18} />
+                            <span className="font-medium text-xs">Start speaking</span>
                           </>
                         )}
                       </Button>
                       
-                      {/* Hint Button and Settings - 1/3 width */}
-                      <div className="flex items-center justify-center" style={{ flexBasis: '33.333%' }}>
+                      {/* Mute Toggle Button - Only show when recording */}
+                      {(microphoneState === 'recording' || microphoneState === 'muted') && (
+                        <Button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleMicrophone();
+                          }}
+                          aria-label={isUserMuted ? "Unmute microphone" : "Mute microphone"}
+                          className={`px-3 py-4 flex items-center justify-center transition-all duration-300 rounded-lg ${
+                            isUserMuted 
+                              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                              : 'bg-green-500 hover:bg-green-600 text-white'
+                          }`}
+                          title={isUserMuted ? "Tap to unmute" : "Tap to mute"}
+                        >
+                          {isUserMuted ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                          )}
+                        </Button>
+                      )}
+                      
+                      {/* Hint Button - Always show */}
+                      <div className="flex items-center justify-center">
                         <ConversationHelpHintButton
                           isHelpReady={isHelpReady}
                           isHelpEnabled={helpSettings.help_enabled}

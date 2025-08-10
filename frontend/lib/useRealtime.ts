@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import enhancedRealtimeService from './enhancedRealtimeService';
-import { RealtimeMessage, RealtimeEvent, RealtimeTextDeltaEvent, RealtimeAudioTranscriptionEvent } from './types';
+import { RealtimeMessage, RealtimeEvent, RealtimeTextDeltaEvent, RealtimeAudioTranscriptionEvent, MicrophoneState } from './types';
 
 // Enhanced conversation memory interface
 interface ConversationMemory {
@@ -213,6 +213,10 @@ export function useRealtime() {
   const [messages, setMessages] = useState<RealtimeMessage[]>([]);
   const [conversationMemory, setConversationMemory] = useState<ConversationMemory | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  
+  // NEW: Microphone state management
+  const [microphoneState, setMicrophoneState] = useState<MicrophoneState>('idle');
+  const [isUserMuted, setIsUserMuted] = useState(false);
   
   const retryCountRef = useRef(0);
   const maxRetries = 3;
@@ -526,6 +530,63 @@ export function useRealtime() {
     return enhancedRealtimeService.getPauseDuration();
   }, []);
 
+  // NEW: Microphone mute/unmute functions
+  const muteMicrophone = useCallback((): boolean => {
+    if (!isBrowser || !isConnected) return false;
+    
+    try {
+      console.log('🔇 [MICROPHONE_MUTE] User requested microphone mute');
+      const success = enhancedRealtimeService.muteUserMicrophone();
+      if (success) {
+        setIsUserMuted(true);
+        setMicrophoneState('muted');
+        console.log('✅ [MICROPHONE_MUTE] Microphone muted successfully');
+      }
+      return success;
+    } catch (err) {
+      console.error('❌ [MICROPHONE_MUTE] Error muting microphone:', err);
+      setError(err instanceof Error ? err.message : 'Failed to mute microphone');
+      return false;
+    }
+  }, [isBrowser, isConnected]);
+
+  const unmuteMicrophone = useCallback((): boolean => {
+    if (!isBrowser || !isConnected) return false;
+    
+    try {
+      console.log('🔊 [MICROPHONE_MUTE] User requested microphone unmute');
+      const success = enhancedRealtimeService.unmuteUserMicrophone();
+      if (success) {
+        setIsUserMuted(false);
+        setMicrophoneState('recording');
+        console.log('✅ [MICROPHONE_MUTE] Microphone unmuted successfully');
+      }
+      return success;
+    } catch (err) {
+      console.error('❌ [MICROPHONE_MUTE] Error unmuting microphone:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unmute microphone');
+      return false;
+    }
+  }, [isBrowser, isConnected]);
+
+  const toggleMicrophone = useCallback((): boolean => {
+    if (isUserMuted) {
+      return unmuteMicrophone();
+    } else {
+      return muteMicrophone();
+    }
+  }, [isUserMuted, muteMicrophone, unmuteMicrophone]);
+
+  // Update microphone state when recording state changes
+  useEffect(() => {
+    if (isRecording && !isUserMuted) {
+      setMicrophoneState('recording');
+    } else if (!isRecording && !isConnected) {
+      setMicrophoneState('idle');
+      setIsUserMuted(false);
+    }
+  }, [isRecording, isUserMuted, isConnected]);
+
   // Clear error
   const clearError = useCallback(() => {
     setError(null);
@@ -548,12 +609,21 @@ export function useRealtime() {
     error,
     messages,
     conversationMemory,
+    // NEW: Microphone state properties
+    microphoneState,
+    isUserMuted,
+    // Functions
     initialize,
     startConversation,
     pauseConversation,      // NEW
     resumeConversation,     // NEW
     stopConversation,
     toggleConversation,     // For backward compatibility
+    // NEW: Microphone control functions
+    muteMicrophone,
+    unmuteMicrophone,
+    toggleMicrophone,
+    // Utility functions
     getFormattedConversationHistory,
     isPausedState,          // NEW
     getPauseDuration,       // NEW
