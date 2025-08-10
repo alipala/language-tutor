@@ -49,6 +49,9 @@ export class EnhancedRealtimeService {
   private mobile_optimization_active: boolean = false;
   private echo_cancellation_level: number = 3; // Maximum level
   
+  // ✅ NEW: User manual mute state tracking
+  private user_manually_muted: boolean = false;
+  
   // ✅ PHASE 1: Reduced aggressive timing controls
   private readonly PREEMPTIVE_MUTE_DELAY = 100; // Wait 100ms before muting
   private readonly MOBILE_SAFETY_BUFFER = 0; // Reduced mobile buffer
@@ -358,10 +361,15 @@ export class EnhancedRealtimeService {
       console.log('🔊 [ENHANCED] Post-connection - Remote audio enabled for AI speech');
     }
     
-    // ✅ CRITICAL: Initialize semantic mute controller if not already done
-    if (!this.semanticMuteController && this.localStream) {
-      this.initializeSemanticMuteController();
-    }
+      // ✅ CRITICAL: Initialize semantic mute controller if not already done
+      if (!this.semanticMuteController && this.localStream) {
+        this.initializeSemanticMuteController();
+      }
+      
+      // ✅ NEW: Set up user manual mute checker for semantic controller
+      if (this.semanticMuteController) {
+        this.semanticMuteController.setUserManualMuteChecker(() => this.user_manually_muted);
+      }
   }
 
   /**
@@ -601,6 +609,8 @@ export class EnhancedRealtimeService {
       
       if (muteControllerInitialized) {
         console.log('✅ [ENHANCED] SemanticMuteController initialized successfully');
+        // ✅ NEW: Set up user manual mute checker
+        this.semanticMuteController.setUserManualMuteChecker(() => this.user_manually_muted);
       } else {
         console.warn('⚠️ [ENHANCED] SemanticMuteController initialization failed, using fallback');
         this.semanticMuteController = null;
@@ -736,6 +746,12 @@ export class EnhancedRealtimeService {
     // Clear all pending operations
     this.clearAllDelayedOperations();
     
+    // ✅ CRITICAL: Check if user has manually muted their microphone
+    if (this.user_manually_muted) {
+      console.log(`🔇 [ENHANCED] SKIPPING IMMEDIATE UNMUTE - User has manually muted microphone`);
+      return;
+    }
+    
     // ✅ IMMEDIATE: Hardware-level track unmuting
     this.muteViaTrackEnabled(false);
     
@@ -771,6 +787,13 @@ export class EnhancedRealtimeService {
     
     this.fallback_mute_timeout = setTimeout(() => {
       console.log(`🔊 [ENHANCED] EXECUTING DELAYED UNMUTE: ${reason}`);
+      
+      // ✅ CRITICAL: Check if user has manually muted their microphone
+      if (this.user_manually_muted) {
+        console.log(`🔇 [ENHANCED] SKIPPING UNMUTE - User has manually muted microphone`);
+        this.fallback_mute_timeout = null;
+        return;
+      }
       
       // Double-check AI speaking state before unmuting
       if (!this.ai_is_speaking) {
@@ -1350,6 +1373,9 @@ export class EnhancedRealtimeService {
         return false;
       }
       
+      // ✅ CRITICAL: Set user manual mute flag
+      this.user_manually_muted = true;
+      
       // Mute all audio tracks
       audioTracks.forEach((track, index) => {
         if (track.readyState === 'live') {
@@ -1394,6 +1420,9 @@ export class EnhancedRealtimeService {
         console.warn('⚠️ [USER_MUTE] No audio tracks found');
         return false;
       }
+      
+      // ✅ CRITICAL: Clear user manual mute flag
+      this.user_manually_muted = false;
       
       // Unmute all audio tracks
       audioTracks.forEach((track, index) => {

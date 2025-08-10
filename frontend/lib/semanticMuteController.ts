@@ -24,6 +24,9 @@ export class SemanticMuteController {
   private readonly AI_SPEECH_TAIL_PROTECTION = 100; // Reduced from 500ms
   private readonly FADE_DURATION = 50; // 50ms fade to prevent audio pops
   
+  // ✅ NEW: Function to check if user has manually muted
+  private userManualMuteChecker: (() => boolean) | null = null;
+  
   constructor() {
     this.state = {
       isMuted: false,
@@ -36,6 +39,14 @@ export class SemanticMuteController {
     console.log('🔇 [SEMANTIC_MUTE] Controller initialized with semantic VAD optimizations');
   }
   
+  /**
+   * ✅ NEW: Set user manual mute checker function
+   */
+  public setUserManualMuteChecker(checker: () => boolean): void {
+    this.userManualMuteChecker = checker;
+    console.log('✅ [SEMANTIC_MUTE] User manual mute checker set');
+  }
+
   /**
    * Initialize the mute controller with a media stream
    */
@@ -114,6 +125,14 @@ export class SemanticMuteController {
     
     this.state.delayedUnmuteTimeout = setTimeout(() => {
       console.log('🔊 [SEMANTIC_MUTE] Executing delayed unmute');
+      
+      // ✅ CRITICAL: Check if user has manually muted their microphone
+      if (this.userManualMuteChecker && this.userManualMuteChecker()) {
+        console.log('🔇 [SEMANTIC_MUTE] SKIPPING UNMUTE - User has manually muted microphone');
+        this.state.delayedUnmuteTimeout = null;
+        return;
+      }
+      
       this.applyMute(false);
       this.state.delayedUnmuteTimeout = null;
     }, totalDelay);
@@ -124,6 +143,12 @@ export class SemanticMuteController {
    */
   public ensureUnmutedForUserSpeech(reason: string = 'User speech detected'): void {
     console.log(`🔊 [SEMANTIC_MUTE] Ensuring unmuted for user speech: ${reason}`);
+    
+    // ✅ CRITICAL: Check if user has manually muted their microphone
+    if (this.userManualMuteChecker && this.userManualMuteChecker()) {
+      console.log('🔇 [SEMANTIC_MUTE] SKIPPING UNMUTE - User has manually muted microphone');
+      return;
+    }
     
     // Clear any pending delayed unmute operations
     this.clearDelayedUnmute();
