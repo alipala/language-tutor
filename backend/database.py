@@ -3,14 +3,17 @@ import sys
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 
-# Load environment variables - prioritize .env.local for development
+# Load environment variables - prioritize .env for production credentials
 import os
-if os.path.exists('.env.local'):
+if os.path.exists('.env'):
+    load_dotenv('.env')
+    print("Loaded .env for production")
+elif os.path.exists('.env.local'):
     load_dotenv('.env.local')
     print("Loaded .env.local for local development")
 else:
     load_dotenv()
-    print("Loaded .env for production")
+    print("Loaded default .env")
 
 # Debug Railway environment
 if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true":
@@ -114,6 +117,20 @@ async def init_db():
         await users_collection.create_index("email", unique=True)
         
         print("Database indexes initialized successfully")
+        
+        # Initialize world building system if enabled
+        try:
+            from utils.feature_flags import feature_flags
+            if feature_flags.is_world_building_enabled():
+                print("🌍 [WORLD_BUILDING] Feature enabled, initializing system...")
+                from utils.world_building_helpers import world_building_helpers
+                await world_building_helpers.initialize_world_building_system()
+            else:
+                print("🌍 [WORLD_BUILDING] Feature disabled, skipping initialization")
+        except Exception as wb_error:
+            print(f"⚠️ [WORLD_BUILDING] Error initializing world building system: {str(wb_error)}")
+            # Don't fail the entire database initialization if world building fails
+            
     except Exception as e:
         print(f"ERROR initializing database indexes: {str(e)}")
         print("The application may not function correctly without database access")

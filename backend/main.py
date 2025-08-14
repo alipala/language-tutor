@@ -149,6 +149,23 @@ app.include_router(voice_sample_router)
 from conversation_help_routes import router as conversation_help_router
 app.include_router(conversation_help_router)
 
+# Include world building routes (Phase 2 API endpoints)
+try:
+    from utils.feature_flags import feature_flags
+    if feature_flags.is_world_building_enabled():
+        print("🌍 [WORLD_BUILDING] Feature enabled, including API routes...")
+        from world_building_routes import router as world_building_router, invitation_router
+        from contribution_routes import router as contribution_router
+        app.include_router(world_building_router)
+        app.include_router(invitation_router)
+        app.include_router(contribution_router)
+        print("✅ [WORLD_BUILDING] API routes included successfully")
+        print("✅ [WORLD_BUILDING] Contribution management routes included successfully")
+    else:
+        print("🌍 [WORLD_BUILDING] Feature disabled, skipping API routes")
+except Exception as e:
+    print(f"⚠️ [WORLD_BUILDING] Error including routes: {str(e)}")
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
@@ -421,6 +438,9 @@ class TutorSessionRequest(BaseModel):
     assessment_data: Optional[Dict[str, Any]] = None  # Assessment data from speaking assessment
     research_data: Optional[str] = None  # Pre-researched data for custom topics
     conversation_history: Optional[str] = None  # Previous conversation context for reconnections
+    # Story world integration parameters
+    world_id: Optional[str] = None  # Story world ID for collaborative storytelling
+    session_type: Optional[str] = None  # "practice", "contribution", "review"
 
 # Define a new model for custom topic prompts
 class CustomTopicRequest(BaseModel):
@@ -566,10 +586,40 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             )
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
         
-        # ✅ Build universal instructions that work on all browsers
-        instructions = build_universal_instructions(request)
+        # ✅ Check if this is a story world session
+        world_id = getattr(request, 'world_id', None)
+        session_type = getattr(request, 'session_type', None)
         
-        print(f"✅ [UNIVERSAL] Instructions created: {len(instructions)} characters")
+        if world_id and current_user:
+            print(f"🌍 [STORY_VOICE] Story world session detected: {world_id}")
+            print(f"🌍 [STORY_VOICE] Session type: {session_type}")
+            
+            # Import story voice service
+            from services.story_voice_service import StoryVoiceService
+            
+            # Get story-enhanced configuration
+            story_config = await StoryVoiceService.get_story_voice_session_config(
+                world_id=world_id,
+                user_id=str(current_user.id),
+                session_type=session_type or "contribution"
+            )
+            
+            if "error" in story_config:
+                raise HTTPException(status_code=400, detail=story_config["error"])
+            
+            # Build story-enhanced instructions
+            base_instructions = build_universal_instructions(request)
+            story_enhancement = story_config.get("enhanced_prompt", "")
+            instructions = base_instructions + "\n\n" + story_enhancement
+            
+            print(f"✅ [STORY_VOICE] Story-enhanced instructions created: {len(instructions)} characters")
+            print(f"🎭 [STORY_VOICE] Story: {story_config['story_context']['world_title']}")
+            print(f"🎬 [STORY_VOICE] Session type: {story_config['session_type']}")
+            
+        else:
+            # ✅ Build universal instructions that work on all browsers
+            instructions = build_universal_instructions(request)
+            print(f"✅ [UNIVERSAL] Standard instructions created: {len(instructions)} characters")
         
         # 🎤 Get user's preferred voice fresh from database to ensure latest selection
         preferred_voice = "alloy"  # Default voice

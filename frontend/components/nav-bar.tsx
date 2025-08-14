@@ -6,8 +6,9 @@ import { useAuth } from '@/lib/auth';
 import { useNavigation } from '@/lib/navigation';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { Logo } from './logo';
-import { Crown, Star, Zap } from 'lucide-react';
+import { Crown, Star, Zap, Globe } from 'lucide-react';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
+import { worldBuildingAPI } from '@/lib/world-building-api';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -24,6 +25,9 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
+
+  // World building feature state
+  const [worldBuildingEnabled, setWorldBuildingEnabled] = useState(false);
 
   // Notification state
   const [unreadCount, setUnreadCount] = useState(0);
@@ -114,6 +118,21 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  // Check world building feature availability
+  useEffect(() => {
+    const checkWorldBuildingFeature = async () => {
+      try {
+        const enabled = await worldBuildingAPI.checkFeatureEnabled();
+        setWorldBuildingEnabled(enabled);
+      } catch (error) {
+        console.error('Error checking world building feature:', error);
+        setWorldBuildingEnabled(false);
+      }
+    };
+
+    checkWorldBuildingFeature();
+  }, []);
   
 
   // Helper function to get plan display info
@@ -365,6 +384,18 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   >
                     Your Dashboard
                   </button>
+                  {worldBuildingEnabled && (
+                    <button
+                      onClick={() => {
+                        navigateTo('/worlds');
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10 flex items-center gap-2"
+                    >
+                      <Globe className="h-4 w-4" />
+                      <span>Discover Worlds</span>
+                    </button>
+                  )}
                   <button
                     onClick={handleNotificationsNavigation}
                     className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10 flex items-center justify-between"

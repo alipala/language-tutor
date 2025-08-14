@@ -9,6 +9,7 @@ const ConditionalFooter: React.FC = () => {
   // Hide footer on speech page and other full-screen pages
   const hideFooterPaths = [
     '/speech',
+    '/story-conversation',
     '/assessment/speaking',
     '/loading-modal-demo'
   ];
