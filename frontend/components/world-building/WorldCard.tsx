@@ -25,7 +25,7 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200 hover:border-[#4ECFBF]/50 group"
+      className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer hover:border-[#4ECFBF]/50"
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-100">

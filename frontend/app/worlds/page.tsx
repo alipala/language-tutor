@@ -265,14 +265,16 @@ export default function WorldsDiscoveryPage() {
   return (
     <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#FFD63A]/10 navbar-compensated">
       <div className="flex min-h-screen">
-        {/* Fixed Left Sidebar - Filters */}
+        {/* Fixed Left Sidebar - Filters - Positioned lower to align with content */}
         <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200">
-          <div className="sticky top-20">
-            <WorldFiltersComponent
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onClose={() => {}} // No close needed since it's always visible
-            />
+          <div className="pt-8">
+            <div className="sticky top-28">
+              <WorldFiltersComponent
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                onClose={() => {}} // No close needed since it's always visible
+              />
+            </div>
           </div>
         </div>
 
@@ -290,7 +292,7 @@ export default function WorldsDiscoveryPage() {
               </p>
             </div>
 
-            {/* Search Bar */}
+            {/* Search Bar - Fixed placeholder text color */}
             <div className="max-w-2xl mx-auto mb-8">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -299,7 +301,7 @@ export default function WorldsDiscoveryPage() {
                   placeholder="Search story worlds..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent placeholder:text-gray-500"
                 />
               </div>
             </div>
