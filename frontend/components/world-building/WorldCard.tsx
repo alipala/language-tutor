@@ -62,15 +62,35 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
 
       {/* Content */}
       <div className="p-4">
-        {/* Genre and Focus */}
-        <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
-          <div className="flex items-center gap-1">
+        {/* Genre, Focus, and Status */}
+        <div className="flex items-center gap-3 mb-3 text-sm flex-wrap">
+          <div className="flex items-center gap-1 text-gray-600">
             <span>{genreInfo?.icon}</span>
             <span>{genreInfo?.label}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 text-gray-600">
             <BookOpen className="h-4 w-4" />
             <span className="capitalize">{world.learning_objectives.primary_focus}</span>
+          </div>
+          {/* Status Indicator with Text */}
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+            world.status === 'active' ? 'bg-green-100 text-green-700' :
+            world.status === 'paused' ? 'bg-yellow-100 text-yellow-700' :
+            world.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+            'bg-gray-100 text-gray-700'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              world.status === 'active' ? 'bg-green-500' :
+              world.status === 'paused' ? 'bg-yellow-500' :
+              world.status === 'completed' ? 'bg-blue-500' :
+              'bg-gray-500'
+            }`} />
+            <span className="capitalize">
+              {world.status === 'active' ? 'Active' :
+               world.status === 'paused' ? 'Paused' :
+               world.status === 'completed' ? 'Completed' :
+               'Inactive'}
+            </span>
           </div>
         </div>
 
@@ -108,15 +128,6 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
         </button>
       </div>
 
-      {/* Status Indicator */}
-      <div className="absolute top-2 right-2">
-        <div className={`w-3 h-3 rounded-full ${
-          world.status === 'active' ? 'bg-green-400' :
-          world.status === 'paused' ? 'bg-yellow-400' :
-          world.status === 'completed' ? 'bg-blue-400' :
-          'bg-gray-400'
-        }`} title={`Status: ${world.status}`} />
-      </div>
 
       {/* Tags */}
       {world.tags.length > 0 && (
