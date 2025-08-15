@@ -379,6 +379,110 @@ export default function WorldsDiscoveryPage() {
               </div>
             )}
 
+            {/* Enhanced Pagination - Top */}
+            {activeTab === 'discover' && totalPages > 1 && !searchLoading && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-8">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  {/* Results Summary */}
+                  <div className="text-sm text-gray-600">
+                    Showing {((currentPage - 1) * 12) + 1} to {Math.min(currentPage * 12, totalWorlds)} of {totalWorlds} worlds
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  <div className="flex items-center gap-2">
+                    {/* First Page */}
+                    {currentPage > 3 && (
+                      <>
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-gray-900"
+                        >
+                          1
+                        </button>
+                        {currentPage > 4 && (
+                          <span className="px-2 text-gray-400">...</span>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={!hasPrev}
+                      className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Previous
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                              pageNum === currentPage
+                                ? 'bg-[#4ECFBF] text-white shadow-md'
+                                : 'border border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Next Button */}
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={!hasNext}
+                      className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Next
+                    </button>
+                    
+                    {/* Last Page */}
+                    {currentPage < totalPages - 2 && (
+                      <>
+                        {currentPage < totalPages - 3 && (
+                          <span className="px-2 text-gray-400">...</span>
+                        )}
+                        <button
+                          onClick={() => handlePageChange(totalPages)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-gray-900"
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Quick Jump */}
+                  {totalPages > 10 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-gray-600">Go to:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          const page = parseInt(e.target.value);
+                          if (page >= 1 && page <= totalPages) {
+                            handlePageChange(page);
+                          }
+                        }}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
+                      />
+                      <span className="text-gray-600">of {totalPages}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Loading State */}
             {searchLoading && (
               <div className="text-center py-8">
