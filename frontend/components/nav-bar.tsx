@@ -289,19 +289,40 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
-          {/* Navigation items for all users */}
+          {/* Navigation items */}
           <div className="flex items-center space-x-6 mr-4">
-            {/* Stories menu item - always visible when world building is enabled */}
-            {worldBuildingEnabled && (
+            {/* Story Worlds menu item - only visible for guest users when world building is enabled */}
+            {worldBuildingEnabled && !user && (
               <button
                 onClick={() => {
                   navigateTo('/worlds');
                   setIsMenuOpen(false);
                 }}
-                className="text-white/90 hover:text-[#4ECFBF] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#4ECFBF]/70 hover:bg-[#4ECFBF]/10 hover:shadow-lg flex items-center gap-2"
+                className="group relative text-white/90 hover:text-white transition-all duration-500 font-medium px-4 py-2 rounded-lg overflow-hidden flex items-center gap-2 hover:scale-105 transform"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}
               >
-                <Globe className="h-4 w-4" />
-                <span>Stories</span>
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                {/* Sparkle animation overlay */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className="absolute top-1 left-2 w-1 h-1 bg-yellow-300 rounded-full animate-ping"></div>
+                  <div className="absolute top-3 right-3 w-1 h-1 bg-blue-300 rounded-full animate-ping" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="absolute bottom-2 left-1/2 w-1 h-1 bg-purple-300 rounded-full animate-ping" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+                
+                {/* Icon with rotation animation */}
+                <Globe className="h-5 w-5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
+                
+                {/* Text with subtle glow */}
+                <span className="relative z-10 group-hover:drop-shadow-sm">Story Worlds</span>
+                
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
               </button>
             )}
             
