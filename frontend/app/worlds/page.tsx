@@ -371,11 +371,6 @@ export default function WorldsDiscoveryPage() {
                 <p className="text-gray-800">
                   {searchLoading ? 'Searching...' : `${totalWorlds} worlds found`}
                 </p>
-                {totalPages > 1 && (
-                  <p className="text-gray-800">
-                    Page {currentPage} of {totalPages}
-                  </p>
-                )}
               </div>
             )}
 
