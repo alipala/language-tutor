@@ -13,6 +13,7 @@ import { worldBuildingAPI } from '@/lib/world-building-api';
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
   const [isLandingPage, setIsLandingPage] = useState(false);
+  const [isOnWorldsPage, setIsOnWorldsPage] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavHidden, setIsNavHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -63,6 +64,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsLandingPage(window.location.pathname === '/');
+      setIsOnWorldsPage(window.location.pathname === '/worlds');
       
       // Detect mobile device
       const checkMobile = () => {
@@ -291,8 +293,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         <div className="hidden md:flex items-center space-x-6">
           {/* Navigation items */}
           <div className="flex items-center space-x-6 mr-4">
-            {/* Story Worlds menu item - only visible for guest users when world building is enabled */}
-            {worldBuildingEnabled && !user && (
+            {/* Story Worlds menu item - only visible for guest users when world building is enabled and not on worlds page */}
+            {worldBuildingEnabled && !user && !isOnWorldsPage && (
               <button
                 onClick={() => {
                   navigateTo('/worlds');
