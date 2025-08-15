@@ -14,7 +14,8 @@ from models.world_building_models import (
     CollaborationQueueInDB, CollaborationQueueCreate, CollaborationQueueResponse,
     WorldCheckpointInDB, WorldCheckpointCreate, WorldCheckpointResponse,
     WorldListRequest, WorldListResponse, ContributionListRequest, ContributionListResponse,
-    WorldStatusEnum, InvitationStatusEnum, QueueStatusEnum
+    WorldStatusEnum, InvitationStatusEnum, QueueStatusEnum, ContributionOrderEnum,
+    WorldState, LearningObjectives, CollaborationSettings, Statistics
 )
 
 class WorldBuildingService:
@@ -120,28 +121,69 @@ class WorldBuildingService:
         alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '')
         return ''.join(secrets.choice(alphabet) for _ in range(8))
     
-    async def create_world(self, world_data: StoryWorldCreate, creator_id: str) -> StoryWorldResponse:
+    async def create_world(self, world_data: StoryWorldCreate) -> StoryWorldResponse:
         """Create a new story world"""
         try:
-            # Convert creator_id to ObjectId
-            creator_object_id = ObjectId(creator_id)
+            # Convert creator_id to ObjectId (it's already set in world_data by the route)
+            creator_object_id = ObjectId(world_data.creator_id)
             
-            # Create world document
+            # Convert flattened structure to nested structure for database
+            world_state = WorldState(
+                current_plot_point=world_data.current_plot_point,
+                active_characters=world_data.characters,
+                locations=world_data.locations,
+                important_items=world_data.important_items
+            )
+            
+            learning_objectives = LearningObjectives(
+                primary_focus=world_data.primary_focus,
+                target_structures=world_data.target_structures,
+                vocabulary_themes=world_data.vocabulary_themes
+            )
+            
+            collaboration_settings = CollaborationSettings(
+                max_contributors=world_data.max_contributors,
+                session_duration_minutes=world_data.session_duration_minutes,
+                requires_approval=world_data.requires_approval,
+                contribution_order=ContributionOrderEnum.SEQUENTIAL
+            )
+            
+            # Create world document with nested structure
             world_doc = StoryWorldInDB(
-                **world_data.dict(),
+                title=world_data.title,
+                description=world_data.description,
                 creator_id=creator_object_id,
-                contributors=[creator_object_id]  # Creator is automatically a contributor
+                language=world_data.language,
+                target_level=world_data.target_level,
+                genre=world_data.genre,
+                privacy_setting=world_data.privacy_setting,
+                world_state=world_state,
+                learning_objectives=learning_objectives,
+                collaboration_settings=collaboration_settings,
+                statistics=Statistics(),
+                contributors=[creator_object_id],  # Creator is automatically a contributor
+                status=world_data.status,
+                tags=world_data.tags,
+                featured=False
             )
             
             # Insert into database
-            result = await self.story_worlds.insert_one(world_doc.dict(by_alias=True))
+            result = await self.story_worlds.insert_one(world_doc.dict())
             
             # Retrieve the created world
             created_world = await self.story_worlds.find_one({"_id": result.inserted_id})
             
+            # Convert ObjectId to string for response model while preserving nested structures
+            world_dict = dict(created_world)
+            # Convert _id to id since StoryWorldResponse now expects id field
+            world_dict["id"] = str(world_dict["_id"])
+            del world_dict["_id"]  # Remove the original _id
+            world_dict["creator_id"] = str(world_dict["creator_id"])
+            world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+            
             print(f"✅ [WORLD_BUILDING] Created world '{world_data.title}' with ID: {result.inserted_id}")
             
-            return StoryWorldResponse(**created_world)
+            return StoryWorldResponse(**world_dict)
             
         except Exception as e:
             print(f"❌ [WORLD_BUILDING] Error creating world: {str(e)}")
@@ -232,6 +274,20 @@ class WorldBuildingService:
                 del world_dict["_id"]  # Remove the original _id
                 world_dict["creator_id"] = str(world_dict["creator_id"])
                 world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+                
+                # Add creator name by looking up the user
+                creator_id = world_dict["creator_id"]
+                try:
+                    # Try to find user by string ID first, then ObjectId
+                    user = await database.users.find_one({"_id": creator_id})
+                    if not user:
+                        user = await database.users.find_one({"_id": ObjectId(creator_id)})
+                    
+                    world_dict["creator_name"] = user.get("name", "Anonymous") if user else "Anonymous"
+                except Exception as e:
+                    print(f"⚠️ [WORLD_BUILDING] Error getting creator name: {str(e)}")
+                    world_dict["creator_name"] = "Anonymous"
+                
                 world_responses.append(StoryWorldResponse(**world_dict))
             
             has_more = (request.offset + len(worlds)) < total_count
@@ -246,35 +302,6 @@ class WorldBuildingService:
             print(f"❌ [WORLD_BUILDING] Error listing worlds: {str(e)}")
             raise
     
-    async def update_world(self, world_id: str, update_data: StoryWorldUpdate, user_id: str) -> Optional[StoryWorldResponse]:
-        """Update a story world (only by creator)"""
-        try:
-            # Check if user is the creator
-            world = await self.story_worlds.find_one({
-                "_id": ObjectId(world_id),
-                "creator_id": ObjectId(user_id)
-            })
-            
-            if not world:
-                return None
-            
-            # Prepare update data
-            update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
-            update_dict["updated_at"] = datetime.utcnow()
-            
-            # Update the world
-            await self.story_worlds.update_one(
-                {"_id": ObjectId(world_id)},
-                {"$set": update_dict}
-            )
-            
-            # Return updated world
-            updated_world = await self.story_worlds.find_one({"_id": ObjectId(world_id)})
-            return StoryWorldResponse(**updated_world)
-            
-        except Exception as e:
-            print(f"❌ [WORLD_BUILDING] Error updating world: {str(e)}")
-            raise
     
     async def create_invitation(self, invitation_data: WorldInvitationCreate, inviter_id: str) -> WorldInvitationResponse:
         """Create a world invitation"""
@@ -314,7 +341,7 @@ class WorldBuildingService:
             )
             
             # Insert invitation
-            result = await self.world_invitations.insert_one(invitation_doc.dict(by_alias=True))
+            result = await self.world_invitations.insert_one(invitation_doc.dict())
             
             # Return created invitation
             created_invitation = await self.world_invitations.find_one({"_id": result.inserted_id})
@@ -414,7 +441,7 @@ class WorldBuildingService:
             )
             
             # Insert contribution
-            result = await self.story_contributions.insert_one(contribution_doc.dict(by_alias=True))
+            result = await self.story_contributions.insert_one(contribution_doc.dict())
             
             # Update world statistics and last contribution time
             await self.story_worlds.update_one(
@@ -496,7 +523,7 @@ class WorldBuildingService:
             )
             
             # Insert checkpoint
-            result = await self.world_checkpoints.insert_one(checkpoint_doc.dict(by_alias=True))
+            result = await self.world_checkpoints.insert_one(checkpoint_doc.dict())
             
             # Return created checkpoint
             created_checkpoint = await self.world_checkpoints.find_one({"_id": result.inserted_id})
@@ -628,6 +655,25 @@ class WorldBuildingService:
                 del world_dict["_id"]  # Remove the original _id
                 world_dict["creator_id"] = str(world_dict["creator_id"])
                 world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+                
+                # Add creator name by looking up the user
+                creator_id = world_dict["creator_id"]
+                try:
+                    # Try to find user by ObjectId first (most common), then string
+                    user = None
+                    try:
+                        user = await database.users.find_one({"_id": ObjectId(creator_id)})
+                    except:
+                        pass
+                    
+                    if not user:
+                        user = await database.users.find_one({"_id": creator_id})
+                    
+                    world_dict["creator_name"] = user.get("name", "Anonymous") if user else "Anonymous"
+                except Exception as e:
+                    print(f"⚠️ [WORLD_BUILDING] Error getting creator name: {str(e)}")
+                    world_dict["creator_name"] = "Anonymous"
+                
                 world_responses.append(StoryWorldResponse(**world_dict))
             
             has_more = (request.offset + len(worlds)) < total_count
@@ -774,6 +820,329 @@ class WorldBuildingService:
             
         except Exception as e:
             print(f"❌ [WORLD_BUILDING] Error getting trending worlds: {str(e)}")
+            raise
+
+    # Additional missing methods that routes are calling
+    async def update_world(self, world_id: str, update_data: StoryWorldUpdate) -> Optional[StoryWorldResponse]:
+        """Update a story world - simplified version for route compatibility"""
+        try:
+            # Prepare update data
+            update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+            update_dict["updated_at"] = datetime.utcnow()
+            
+            # Update the world
+            result = await self.story_worlds.update_one(
+                {"_id": ObjectId(world_id)},
+                {"$set": update_dict}
+            )
+            
+            if result.modified_count == 0:
+                return None
+            
+            # Return updated world
+            updated_world = await self.story_worlds.find_one({"_id": ObjectId(world_id)})
+            if not updated_world:
+                return None
+                
+            # Convert ObjectId to string for response model while preserving nested structures
+            world_dict = dict(updated_world)
+            world_dict["id"] = str(world_dict["_id"])  # Use 'id' instead of '_id'
+            del world_dict["_id"]  # Remove the original _id
+            world_dict["creator_id"] = str(world_dict["creator_id"])
+            world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+            
+            return StoryWorldResponse(**world_dict)
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error updating world: {str(e)}")
+            raise
+
+    async def delete_world(self, world_id: str) -> bool:
+        """Delete a story world"""
+        try:
+            result = await self.story_worlds.delete_one({"_id": ObjectId(world_id)})
+            return result.deleted_count > 0
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error deleting world: {str(e)}")
+            raise
+
+    async def get_user_created_worlds(self, user_id: str, status: Optional[str] = None, 
+                                    limit: int = 20, offset: int = 0) -> WorldListResponse:
+        """Get worlds created by a specific user"""
+        try:
+            from bson import ObjectId
+            
+            # Handle both string and ObjectId formats for creator_id
+            query_filter = {
+                "$or": [
+                    {"creator_id": user_id},  # String format
+                    {"creator_id": ObjectId(user_id)}  # ObjectId format
+                ]
+            }
+            
+            if status:
+                query_filter["status"] = status
+            
+            # Get total count
+            total_count = await self.story_worlds.count_documents(query_filter)
+            
+            # Get worlds with pagination
+            cursor = self.story_worlds.find(query_filter).sort("created_at", -1)
+            cursor = cursor.skip(offset).limit(limit)
+            
+            worlds = await cursor.to_list(limit)
+            
+            # Convert to response models with proper ObjectId handling
+            world_responses = []
+            for world in worlds:
+                world_dict = dict(world)
+                world_dict["id"] = str(world_dict["_id"])
+                del world_dict["_id"]
+                world_dict["creator_id"] = str(world_dict["creator_id"])
+                world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+                
+                # Add creator name by looking up the user
+                creator_id = world_dict["creator_id"]
+                try:
+                    from database import database
+                    from bson import ObjectId
+                    
+                    # Try to find user by ObjectId first (most common), then string
+                    user = None
+                    try:
+                        user = await database.users.find_one({"_id": ObjectId(creator_id)})
+                    except:
+                        pass
+                    
+                    if not user:
+                        user = await database.users.find_one({"_id": creator_id})
+                    
+                    world_dict["creator_name"] = user.get("name", "Anonymous") if user else "Anonymous"
+                except Exception as e:
+                    print(f"⚠️ [WORLD_BUILDING] Error getting creator name: {str(e)}")
+                    world_dict["creator_name"] = "Anonymous"
+                
+                world_responses.append(StoryWorldResponse(**world_dict))
+            
+            has_more = (offset + len(worlds)) < total_count
+            
+            return WorldListResponse(
+                worlds=world_responses,
+                total_count=total_count,
+                has_more=has_more
+            )
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error getting user created worlds: {str(e)}")
+            raise
+
+    async def get_user_contributing_worlds(self, user_id: str, limit: int = 20, offset: int = 0) -> WorldListResponse:
+        """Get worlds the user is contributing to"""
+        try:
+            query_filter = {
+                "contributors": ObjectId(user_id),
+                "creator_id": {"$ne": ObjectId(user_id)}  # Exclude worlds they created
+            }
+            
+            # Get total count
+            total_count = await self.story_worlds.count_documents(query_filter)
+            
+            # Get worlds with pagination
+            cursor = self.story_worlds.find(query_filter).sort("updated_at", -1)
+            cursor = cursor.skip(offset).limit(limit)
+            
+            worlds = await cursor.to_list(limit)
+            
+            # Convert to response models with proper ObjectId handling
+            world_responses = []
+            for world in worlds:
+                world_dict = dict(world)
+                world_dict["id"] = str(world_dict["_id"])
+                del world_dict["_id"]
+                world_dict["creator_id"] = str(world_dict["creator_id"])
+                world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+                world_responses.append(StoryWorldResponse(**world_dict))
+            
+            has_more = (offset + len(worlds)) < total_count
+            
+            return WorldListResponse(
+                worlds=world_responses,
+                total_count=total_count,
+                has_more=has_more
+            )
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error getting user contributing worlds: {str(e)}")
+            raise
+
+    async def get_user_bookmarked_worlds(self, user_id: str, limit: int = 20, offset: int = 0) -> WorldListResponse:
+        """Get worlds bookmarked by the user - placeholder implementation"""
+        try:
+            # This would require a bookmarks collection/field - returning empty for now
+            return WorldListResponse(
+                worlds=[],
+                total_count=0,
+                has_more=False
+            )
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error getting user bookmarked worlds: {str(e)}")
+            raise
+
+    async def join_world(self, world_id: str, user_id: str, invitation_code: Optional[str] = None) -> Optional[StoryWorldResponse]:
+        """Join a world as a contributor"""
+        try:
+            # Check if world exists
+            world = await self.story_worlds.find_one({"_id": ObjectId(world_id)})
+            if not world:
+                return None
+            
+            user_object_id = ObjectId(user_id)
+            
+            # Check if user is already a contributor
+            if user_object_id in world.get("contributors", []):
+                return None  # Already a contributor
+            
+            # Check if world has reached max contributors
+            max_contributors = world.get("max_contributors", 10)
+            current_contributors = len(world.get("contributors", []))
+            
+            if current_contributors >= max_contributors:
+                return None  # World is full
+            
+            # Add user to contributors
+            await self.story_worlds.update_one(
+                {"_id": ObjectId(world_id)},
+                {
+                    "$addToSet": {"contributors": user_object_id},
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            # Return updated world
+            updated_world = await self.story_worlds.find_one({"_id": ObjectId(world_id)})
+            
+            # Convert ObjectId to string for response model
+            world_dict = dict(updated_world)
+            world_dict["id"] = str(world_dict["_id"])
+            del world_dict["_id"]
+            world_dict["creator_id"] = str(world_dict["creator_id"])
+            world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+            
+            return StoryWorldResponse(**world_dict)
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error joining world: {str(e)}")
+            raise
+
+    async def leave_world(self, world_id: str, user_id: str) -> Optional[StoryWorldResponse]:
+        """Leave a world (contributors only, not creator)"""
+        try:
+            # Check if world exists and user is not the creator
+            world = await self.story_worlds.find_one({
+                "_id": ObjectId(world_id),
+                "creator_id": {"$ne": ObjectId(user_id)}
+            })
+            
+            if not world:
+                return None
+            
+            # Remove user from contributors
+            await self.story_worlds.update_one(
+                {"_id": ObjectId(world_id)},
+                {
+                    "$pull": {"contributors": ObjectId(user_id)},
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            # Return updated world
+            updated_world = await self.story_worlds.find_one({"_id": ObjectId(world_id)})
+            
+            # Convert ObjectId to string for response model
+            world_dict = dict(updated_world)
+            world_dict["id"] = str(world_dict["_id"])
+            del world_dict["_id"]
+            world_dict["creator_id"] = str(world_dict["creator_id"])
+            world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+            
+            return StoryWorldResponse(**world_dict)
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error leaving world: {str(e)}")
+            raise
+
+    async def get_collaboration_queue(self, world_id: str) -> Dict[str, Any]:
+        """Get collaboration queue for a world - placeholder implementation"""
+        try:
+            # This would require proper queue implementation - returning basic structure for now
+            return {
+                "world_id": world_id,
+                "queue": [],
+                "current_contributor": None,
+                "next_scheduled": None
+            }
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error getting collaboration queue: {str(e)}")
+            raise
+
+    async def reserve_collaboration_slot(self, world_id: str, user_id: str, slot_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Reserve a collaboration slot - placeholder implementation"""
+        try:
+            # This would require proper queue implementation - returning basic structure for now
+            return {
+                "world_id": world_id,
+                "user_id": user_id,
+                "slot_data": slot_data,
+                "reserved_at": datetime.utcnow().isoformat(),
+                "status": "reserved"
+            }
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error reserving collaboration slot: {str(e)}")
+            raise
+
+
+    async def get_invitation_by_code(self, code: str) -> Optional[WorldInvitationResponse]:
+        """Get invitation by code"""
+        try:
+            invitation = await self.world_invitations.find_one({
+                "invitation_code": code,
+                "expires_at": {"$gt": datetime.utcnow()}
+            })
+            
+            if not invitation:
+                return None
+            
+            # Convert ObjectId to string for response
+            invitation_dict = dict(invitation)
+            invitation_dict["id"] = str(invitation_dict["_id"])
+            del invitation_dict["_id"]
+            invitation_dict["world_id"] = str(invitation_dict["world_id"])
+            invitation_dict["inviter_id"] = str(invitation_dict["inviter_id"])
+            
+            return WorldInvitationResponse(**invitation_dict)
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error getting invitation by code: {str(e)}")
+            raise
+
+
+    async def get_user_invitations(self, user_id: str, status: Optional[str] = None, 
+                                 limit: int = 20, offset: int = 0) -> Dict[str, Any]:
+        """Get invitations for a user - placeholder implementation"""
+        try:
+            # This would require proper invitation implementation - returning basic structure for now
+            return {
+                "invitations": [],
+                "total_count": 0,
+                "has_more": False
+            }
+            
+        except Exception as e:
+            print(f"❌ [WORLD_BUILDING] Error getting user invitations: {str(e)}")
             raise
 
 # Global service instance

@@ -179,11 +179,36 @@ class StoryWorldBase(BaseModel):
     tags: List[str] = Field(default_factory=list)
     featured: bool = False
 
-class StoryWorldCreate(StoryWorldBase):
-    pass
+class StoryWorldCreate(BaseModel):
+    title: str = Field(..., max_length=100)
+    description: str = Field(..., max_length=500)
+    creator_id: Optional[PyObjectId] = None  # Set by the route
+    language: LanguageEnum
+    target_level: TargetLevelEnum
+    genre: GenreEnum
+    privacy_setting: PrivacySettingEnum = PrivacySettingEnum.PUBLIC
+    
+    # Story content fields (flattened from world_state)
+    current_plot_point: str = Field(..., max_length=1000)
+    characters: List[Character] = Field(default_factory=list)
+    locations: List[Location] = Field(default_factory=list)
+    important_items: List[ImportantItem] = Field(default_factory=list)
+    
+    # Learning fields (flattened from learning_objectives)
+    primary_focus: PrimaryFocusEnum = PrimaryFocusEnum.VOCABULARY
+    target_structures: List[str] = Field(default_factory=list)
+    vocabulary_themes: List[str] = Field(default_factory=list)
+    
+    # Collaboration fields (flattened from collaboration_settings)
+    max_contributors: int = Field(default=6, ge=2, le=10)
+    session_duration_minutes: int = Field(default=15, ge=5, le=30)
+    requires_approval: bool = False
+    
+    # Optional fields
+    tags: List[str] = Field(default_factory=list)
+    status: WorldStatusEnum = WorldStatusEnum.ACTIVE
 
 class StoryWorldInDB(StoryWorldBase):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_contribution_at: Optional[datetime] = None
@@ -194,7 +219,8 @@ class StoryWorldInDB(StoryWorldBase):
         json_encoders = {ObjectId: str}
 
 class StoryWorldResponse(StoryWorldBase):
-    id: str = Field(..., alias="_id")
+    id: str
+    creator_name: Optional[str] = None  # Added for frontend display
     created_at: datetime
     updated_at: datetime
     last_contribution_at: Optional[datetime] = None

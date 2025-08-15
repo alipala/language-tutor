@@ -8,9 +8,9 @@ const nextConfig = {
       exclude: ['error'] // Keep console.error for critical error logging
     } : false,
   },
-  // Enable static export for Railway deployment
-  output: 'export', // Use static export for Railway deployment
-  distDir: 'out', // Output to 'out' directory for static files
+  // Dynamic rendering for user-generated content (Railway supports this)
+  // output: 'export', // Disabled - incompatible with dynamic user-generated content
+  // distDir: 'out', // Not needed for dynamic rendering
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',

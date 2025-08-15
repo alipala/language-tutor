@@ -6,6 +6,7 @@ import { worldBuildingAPI, type StoryWorld, type WorldFilters } from '@/lib/worl
 import WorldCard from '@/components/world-building/WorldCard';
 import WorldFiltersComponent from '@/components/world-building/WorldFilters';
 import WorldDetailsModal from '@/components/world-building/WorldDetailsModal';
+import StoryCreationModal from '@/components/world-building/StoryCreationModal';
 import { Search, Filter, Globe, Sparkles, TrendingUp } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -36,6 +37,7 @@ export default function WorldsDiscoveryPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedWorld, setSelectedWorld] = useState<StoryWorld | null>(null);
   const [activeTab, setActiveTab] = useState<'discover' | 'featured' | 'trending'>('discover');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   
   // Filters state
   const [filters, setFilters] = useState<WorldFilters>({
@@ -215,6 +217,21 @@ export default function WorldsDiscoveryPage() {
     setSelectedWorld(world);
   };
 
+  // Handle story creation
+  const handleCreateStory = () => {
+    setShowCreateModal(true);
+  };
+
+  // Handle story creation success
+  const handleStoryCreated = (worldId: string) => {
+    setShowCreateModal(false);
+    // Refresh the worlds list to show the new story
+    loadWorlds(1);
+    setCurrentPage(1);
+    // Stay on the main worlds page - don't navigate to individual world
+    // The newly created story will appear in the list after refresh
+  };
+
   // Get current worlds to display based on active tab
   const getCurrentWorlds = () => {
     switch (activeTab) {
@@ -273,6 +290,9 @@ export default function WorldsDiscoveryPage() {
                 filters={filters}
                 onFiltersChange={handleFiltersChange}
                 onClose={() => {}} // No close needed since it's always visible
+                isAuthenticated={!!user}
+                onCreateStory={handleCreateStory}
+                currentUserId={user?._id}
               />
             </div>
           </div>
@@ -447,7 +467,7 @@ export default function WorldsDiscoveryPage() {
                       <>
                         <button
                           onClick={() => handlePageChange(1)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-gray-900"
                         >
                           1
                         </button>
@@ -461,7 +481,7 @@ export default function WorldsDiscoveryPage() {
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={!hasPrev}
-                      className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 hover:text-gray-900"
                     >
                       Previous
                     </button>
@@ -477,7 +497,7 @@ export default function WorldsDiscoveryPage() {
                             className={`px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                               pageNum === currentPage
                                 ? 'bg-[#4ECFBF] text-white shadow-md'
-                                : 'border border-gray-300 hover:bg-gray-50'
+                                : 'border border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900'
                             }`}
                           >
                             {pageNum}
@@ -490,7 +510,7 @@ export default function WorldsDiscoveryPage() {
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={!hasNext}
-                      className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 hover:text-gray-900"
                     >
                       Next
                     </button>
@@ -503,7 +523,7 @@ export default function WorldsDiscoveryPage() {
                         )}
                         <button
                           onClick={() => handlePageChange(totalPages)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-gray-900"
                         >
                           {totalPages}
                         </button>
@@ -546,6 +566,13 @@ export default function WorldsDiscoveryPage() {
           onClose={() => setSelectedWorld(null)}
         />
       )}
+
+      {/* Story Creation Modal */}
+      <StoryCreationModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleStoryCreated}
+      />
     </div>
   );
 }

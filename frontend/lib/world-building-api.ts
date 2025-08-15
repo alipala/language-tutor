@@ -65,6 +65,7 @@ export interface WorldFilters {
   session_duration_max?: number;
   sort_by?: 'created_at' | 'updated_at' | 'popularity' | 'rating';
   sort_order?: 'asc' | 'desc';
+  creator_id?: string;
 }
 
 export interface WorldDiscoveryResponse {
@@ -171,6 +172,9 @@ export class WorldBuildingAPI {
     if (filters.status?.length) {
       filters.status.forEach(status => params.append('status', status));
     }
+    if (filters.creator_id) {
+      params.append('creator_id', filters.creator_id);
+    }
 
     const response = await this.makeRequest<{worlds: StoryWorld[], total_count: number, has_more: boolean}>(`/discover?${params.toString()}`);
     
@@ -219,6 +223,14 @@ export class WorldBuildingAPI {
     return this.makeRequest<StoryWorld>(`/${worldId}`);
   }
 
+  // Join a world as a contributor
+  async joinWorld(worldId: string, userId: string): Promise<StoryWorld> {
+    return this.makeRequest<StoryWorld>(`/${worldId}/join`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    });
+  }
+
   // Get featured worlds
   async getFeaturedWorlds(limit: number = 6): Promise<StoryWorld[]> {
     const params = new URLSearchParams();
@@ -235,6 +247,74 @@ export class WorldBuildingAPI {
     
     const response = await this.makeRequest<{worlds: StoryWorld[], total_count: number, has_more: boolean}>(`/trending?${params.toString()}`);
     return response.worlds || [];
+  }
+
+  // Create a new story world
+  async createStoryWorld(worldData: {
+    title: string;
+    description: string;
+    language: string;
+    target_level: string;
+    genre: string;
+    privacy_setting: string;
+    current_plot_point: string;
+    characters: Array<{
+      name: string;
+      role: string;
+      description: string;
+    }>;
+    locations: Array<{
+      name: string;
+      description: string;
+    }>;
+    important_items: Array<{
+      name: string;
+      significance: string;
+    }>;
+    primary_focus: string;
+    target_structures: string[];
+    vocabulary_themes: string[];
+    max_contributors: number;
+    session_duration_minutes: number;
+    requires_approval: boolean;
+    tags: string[];
+  }): Promise<{success: boolean; world_id: string; message: string}> {
+    // Send flat structure that matches the backend StoryWorldCreate model
+    const payload = {
+      title: worldData.title,
+      description: worldData.description,
+      language: worldData.language,
+      target_level: worldData.target_level,
+      genre: worldData.genre,
+      privacy_setting: worldData.privacy_setting,
+      // Flattened story content fields
+      current_plot_point: worldData.current_plot_point,
+      characters: worldData.characters,
+      locations: worldData.locations,
+      important_items: worldData.important_items,
+      // Flattened learning fields
+      primary_focus: worldData.primary_focus,
+      target_structures: worldData.target_structures,
+      vocabulary_themes: worldData.vocabulary_themes,
+      // Flattened collaboration fields
+      max_contributors: worldData.max_contributors,
+      session_duration_minutes: worldData.session_duration_minutes,
+      requires_approval: worldData.requires_approval,
+      // Optional fields
+      tags: worldData.tags,
+      status: 'active'
+    };
+
+    const response = await this.makeRequest<StoryWorld>('/create', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      success: true,
+      world_id: response.id,
+      message: 'Story world created successfully!'
+    };
   }
 
   // ============================================================================

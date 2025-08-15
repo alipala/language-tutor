@@ -130,21 +130,48 @@ class StoryVoiceService:
         previous_contribution = story_context.get("previous_contribution", {})
         active_characters = story_context.get("active_characters", [])
         locations = story_context.get("locations", [])
+        important_items = story_context.get("important_items", [])
         primary_focus = story_context.get("primary_focus", "vocabulary")
         vocabulary_themes = story_context.get("vocabulary_themes", [])
+        target_structures = story_context.get("target_structures", [])
         session_type = story_context.get("session_type", "contribution")
         session_limits = story_context.get("session_limits", {})
         
-        # Build character list
-        character_names = [char.get("name", "") for char in active_characters if char.get("name")]
-        character_list = ", ".join(character_names) if character_names else "No established characters yet"
+        # Build detailed character descriptions
+        character_details = []
+        for char in active_characters:
+            if char.get("name"):
+                char_desc = f"**{char['name']}** ({char.get('role', 'Unknown role')})"
+                if char.get('description'):
+                    char_desc += f": {char['description']}"
+                character_details.append(char_desc)
+        character_section = "\n".join(character_details) if character_details else "No established characters yet"
         
-        # Build location list
-        location_names = [loc.get("name", "") for loc in locations if loc.get("name")]
-        location_list = ", ".join(location_names) if location_names else "No established locations yet"
+        # Build detailed location descriptions
+        location_details = []
+        for loc in locations:
+            if loc.get("name"):
+                loc_desc = f"**{loc['name']}**"
+                if loc.get('description'):
+                    loc_desc += f": {loc['description']}"
+                location_details.append(loc_desc)
+        location_section = "\n".join(location_details) if location_details else "No established locations yet"
+        
+        # Build important items descriptions
+        item_details = []
+        for item in important_items:
+            if item.get("name"):
+                item_desc = f"**{item['name']}**"
+                if item.get('significance'):
+                    item_desc += f": {item['significance']}"
+                item_details.append(item_desc)
+        items_section = "\n".join(item_details) if item_details else "No important items established yet"
         
         # Build vocabulary themes
         vocab_themes = ", ".join(vocabulary_themes) if vocabulary_themes else "general vocabulary"
+        
+        # Build target grammar structures
+        grammar_structures = ", ".join(target_structures) if target_structures else "general grammar practice"
         
         # Session-specific instructions
         session_instructions = {
@@ -183,9 +210,16 @@ class StoryVoiceService:
 - Level: {base_level}
 
 📖 Current Story State:
-- Plot Point: {current_plot}
-- Characters: {character_list}
-- Locations: {location_list}
+**Plot Point:** {current_plot}
+
+**Active Characters:**
+{character_section}
+
+**Key Locations:**
+{location_section}
+
+**Important Items:**
+{items_section}
 
 {session_instructions.get(session_type, session_instructions["contribution"])}
 
@@ -193,31 +227,43 @@ class StoryVoiceService:
 {f'Last contribution by {previous_contribution.get("contributor_name", "Unknown")}: "{previous_contribution.get("transcript", "No previous contributions yet")}"' if previous_contribution.get("transcript") else "This is the beginning of the story!"}
 
 🎯 Learning Objectives:
-- Primary Focus: {primary_focus.title()}
-- Vocabulary Themes: {vocab_themes}
-- Story Integration: Help user practice language through storytelling
+- **Primary Focus:** {primary_focus.title()}
+- **Grammar Structures:** {grammar_structures}
+- **Vocabulary Themes:** {vocab_themes}
+- **Story Integration:** Help user practice language through immersive storytelling
 
 🚨 CRITICAL STORY CONTINUITY RULES:
-1. MAINTAIN STORY CONSISTENCY: Ensure the user's contribution flows naturally from the previous contribution
-2. CHARACTER CONSISTENCY: Reference established characters appropriately
-3. PLOT COHERENCE: Help advance the story logically
-4. GENRE ADHERENCE: Keep contributions appropriate for the {genre} genre
-5. LEARNING BALANCE: 70% language learning, 30% story development
+1. **MAINTAIN STORY CONSISTENCY:** Ensure the user's contribution flows naturally from the previous contribution
+2. **CHARACTER CONSISTENCY:** Reference established characters appropriately and maintain their personalities
+3. **PLOT COHERENCE:** Help advance the story logically while incorporating important items and locations
+4. **GENRE ADHERENCE:** Keep contributions appropriate for the {genre} genre
+5. **LEARNING BALANCE:** 70% language learning, 30% story development
 
-🎭 STORY GUIDANCE APPROACH:
-- Ask about the user's story ideas FIRST
-- Help them develop their contribution while practicing {base_language}
-- Correct language errors within the story context
-- Suggest vocabulary from themes: {vocab_themes}
-- Encourage creativity while maintaining continuity
-- Reference characters and locations when relevant
+🎭 IMMERSIVE STORY GUIDANCE APPROACH:
+- **Character Embodiment:** Occasionally speak as story characters to create immersion
+- **Location Integration:** Reference specific locations and their atmospheric details
+- **Item Significance:** Incorporate important items naturally into conversations
+- **Cultural Context:** Use story setting to teach cultural elements of {base_language}
+- **Contextual Corrections:** Provide language feedback within the story world
+- **Vocabulary Integration:** Introduce new words through character dialogue and scene descriptions
+- **Grammar Practice:** Use story scenarios to practice target structures: {grammar_structures}
 
-EXAMPLE STORY INTEGRATION:
-Instead of generic corrections, provide story-contextual feedback:
-❌ "You should say 'went' not 'goed'"
-✅ "When describing how the character moved through the forest, we say 'went' - 'The hero went deeper into the mysterious woods...'"
+🎪 CONVERSATION STARTERS (Use these to begin sessions):
+- "What do you think [Character Name] would do next in this situation?"
+- "How would you describe [Location Name] to someone who's never been there?"
+- "What role might [Important Item] play in advancing our story?"
+- "If you were in this scene, what would you say to [Character Name]?"
 
-Remember: You are helping create a collaborative story while teaching {base_language} at {base_level} level. Make language learning feel natural within the storytelling experience.
+EXAMPLE IMMERSIVE STORY INTEGRATION:
+❌ Generic: "You should say 'went' not 'goed'"
+✅ Story-Contextual: "Ah, when describing how Eleanor moved through the library's shadowy corridors, we say 'went' - 'Eleanor went carefully between the towering bookshelves, listening for any strange sounds...'"
+
+🎨 CHARACTER VOICE EXAMPLES:
+- Embody characters occasionally: "As Eleanor might say, 'The books seem to whisper secrets in the darkness...'"
+- Use character perspectives: "Detective Martinez would probably ask, 'What evidence did you notice?'"
+- Reference character knowledge: "Remember, Carlos knows these mountain paths better than anyone..."
+
+Remember: You are creating an immersive collaborative story experience while teaching {base_language} at {base_level} level. Make every correction, suggestion, and conversation feel like a natural part of the story world. Use all available story elements to create rich, contextual learning opportunities.
 """
         
         return story_prompt_addition

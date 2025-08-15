@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import { WorldFilters as WorldFiltersType, LANGUAGE_OPTIONS, LEVEL_OPTIONS, GENRE_OPTIONS, SORT_OPTIONS } from '@/lib/world-building-api';
-import { X, ChevronDown, ChevronUp, Filter, Sparkles, Globe, Target, Palette, Clock, ArrowUpDown } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Filter, Sparkles, Globe, Target, Palette, Clock, ArrowUpDown, Plus, PenTool, User } from 'lucide-react';
 
 interface WorldFiltersProps {
   filters: WorldFiltersType;
   onFiltersChange: (filters: WorldFiltersType) => void;
   onClose: () => void;
+  isAuthenticated?: boolean;
+  onCreateStory?: () => void;
+  currentUserId?: string;
 }
 
-export default function WorldFilters({ filters, onFiltersChange }: WorldFiltersProps) {
+export default function WorldFilters({ filters, onFiltersChange, isAuthenticated = false, onCreateStory, currentUserId }: WorldFiltersProps) {
   const [expandedSections, setExpandedSections] = useState({
     language: false,
     level: false,
@@ -107,6 +110,51 @@ export default function WorldFilters({ filters, onFiltersChange }: WorldFiltersP
           </button>
         )}
       </div>
+
+      {/* Create Story Section - Only for authenticated users */}
+      {isAuthenticated && onCreateStory && (
+        <div className="p-4 border-b border-gray-100">
+          <button
+            onClick={onCreateStory}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white rounded-lg font-medium hover:from-[#3a9e92] hover:to-[#2d7a6e] transition-all duration-300 shadow-lg group"
+          >
+            <div className="flex items-center gap-2">
+              <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
+              <PenTool className="h-4 w-4" />
+            </div>
+            <span className="text-sm font-semibold">Create New Story</span>
+          </button>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Start your own collaborative story world
+          </p>
+        </div>
+      )}
+
+      {/* My Stories Filter - Only for authenticated users */}
+      {isAuthenticated && (
+        <div className="p-4 border-b border-gray-100">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={filters.creator_id === currentUserId}
+              onChange={(e) => onFiltersChange({
+                ...filters,
+                creator_id: e.target.checked ? currentUserId : undefined
+              })}
+              className="w-4 h-4 rounded text-[#4ECFBF] focus:ring-[#4ECFBF] focus:ring-offset-0"
+            />
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-[#4ECFBF]" />
+              <span className="text-sm font-medium text-gray-900 group-hover:text-[#4ECFBF] transition-colors">
+                My Stories Only
+              </span>
+            </div>
+          </label>
+          <p className="text-xs text-gray-500 ml-7 mt-1">
+            Show only stories you created
+          </p>
+        </div>
+      )}
 
       {/* Compact Filter Sections */}
       <div className="p-4 space-y-3">

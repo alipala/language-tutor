@@ -37,6 +37,25 @@ async def check_world_building_enabled():
             detail="World building feature is not available"
         )
 
+# Add optional authentication for world details - allows guest access to public worlds
+from fastapi.security import HTTPAuthorizationCredentials
+
+async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
+    """Get current user if authenticated, otherwise return None"""
+    await check_world_building_enabled()
+    
+    if not credentials:
+        return None
+    
+    try:
+        # Use the correct auth function
+        from auth import get_optional_current_user
+        user = await get_optional_current_user(credentials.credentials)
+        return user
+    except Exception as e:
+        print(f"⚠️ [WORLD_BUILDING] Error in optional auth: {str(e)}")
+        return None
+
 # Authorization dependencies
 async def get_verified_user(current_user: UserResponse = Depends(get_current_user)):
     """Get current user and verify they're authenticated"""
@@ -91,13 +110,30 @@ async def discover_worlds(
     language: Optional[str] = Query(None, description="Filter by language"),
     target_level: Optional[str] = Query(None, description="Filter by CEFR level"),
     genre: Optional[str] = Query(None, description="Filter by genre"),
+    creator_id: Optional[str] = Query(None, description="Filter by creator ID"),
     limit: int = Query(20, ge=1, le=100, description="Number of results"),
-    offset: int = Query(0, ge=0, description="Pagination offset")
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    current_user: Optional[UserResponse] = Depends(get_optional_user)
 ):
     """Browse public worlds with filtering - accessible to all users"""
     try:
         # Check if feature is enabled
         await check_world_building_enabled()
+        
+        # If creator_id is provided, use get_user_created_worlds method
+        if creator_id:
+            # Ensure user can only filter by their own creator_id unless they're admin
+            if current_user and str(current_user.id) == str(creator_id):
+                worlds = await world_building_service.get_user_created_worlds(
+                    user_id=creator_id,
+                    status="active",  # Only show active stories for now
+                    limit=limit,
+                    offset=offset
+                )
+                return worlds
+            else:
+                # Return empty result if trying to filter by someone else's creator_id
+                return WorldListResponse(worlds=[], total_count=0, has_more=False)
         
         request = WorldListRequest(
             language=language,
@@ -173,15 +209,24 @@ async def get_trending_worlds(
 # 2. WORLD MANAGEMENT ENDPOINTS
 # ============================================================================
 
-@router.post("", response_model=StoryWorldResponse, status_code=201)
+@router.post("/create", response_model=StoryWorldResponse, status_code=201)
 async def create_world(
     world_data: StoryWorldCreate,
-    current_user: UserResponse = Depends(check_subscription_access)
+    current_user: UserResponse = Depends(get_verified_user)
 ):
     """Create a new collaborative story world"""
     try:
         # Set creator_id from authenticated user
         world_data.creator_id = current_user.id
+        
+        # Check subscription access but allow creation for development
+        subscription_check = await user_integration_service.check_subscription_limits(current_user.id)
+        
+        # For development, we'll allow creation even without subscription but log the status
+        if not subscription_check.get("has_access", False):
+            print(f"⚠️ [WORLD_BUILDING] User {current_user.id} creating world without active subscription: {subscription_check.get('reason', 'Unknown reason')}")
+            # In production, you might want to uncomment the line below:
+            # raise HTTPException(status_code=403, detail=f"Subscription required: {subscription_check.get('reason', 'Access denied')}")
         
         # Create the world
         world = await world_building_service.create_world(world_data)
@@ -189,35 +234,19 @@ async def create_world(
         if not world:
             raise HTTPException(status_code=400, detail="Failed to create world")
         
-        # Increment user's session usage
-        await user_integration_service.increment_session_usage(current_user.id)
+        # Increment user's session usage (optional for development)
+        try:
+            await user_integration_service.increment_session_usage(current_user.id)
+        except Exception as session_error:
+            print(f"⚠️ [WORLD_BUILDING] Failed to increment session usage: {str(session_error)}")
         
         return world
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating world: {str(e)}")
 
-# Add optional authentication for world details - allows guest access to public worlds
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Union
-
-async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
-    """Get current user if authenticated, otherwise return None"""
-    await check_world_building_enabled()
-    
-    if not credentials:
-        return None
-    
-    try:
-        # Try to get user from token
-        from auth import verify_token
-        user_data = verify_token(credentials.credentials)
-        if user_data:
-            return UserResponse(**user_data)
-    except:
-        pass
-    
-    return None
 
 @router.get("/{world_id}", response_model=StoryWorldResponse)
 async def get_world(
