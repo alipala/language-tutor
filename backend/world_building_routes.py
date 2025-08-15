@@ -5,7 +5,7 @@ RESTful API endpoints for collaborative world building feature
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from fastapi.security import HTTPBearer
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # Import existing auth dependencies
@@ -277,12 +277,15 @@ async def get_world(
 
 @router.put("/{world_id}", response_model=StoryWorldResponse)
 async def update_world(
-    world_update: StoryWorldUpdate,
+    world_update: Dict[str, Any],
     world_id: str = Path(..., description="World ID"),
     current_user: UserResponse = Depends(get_verified_user)
 ):
     """Update a world (creator only)"""
     try:
+        print(f"🔧 [WORLD_BUILDING] Update request for world {world_id} by user {current_user.id}")
+        print(f"🔧 [WORLD_BUILDING] Update data: {world_update}")
+        
         # Get existing world to check permissions
         existing_world = await world_building_service.get_world(world_id)
         
@@ -293,17 +296,19 @@ async def update_world(
         if existing_world.creator_id != current_user.id:
             raise HTTPException(status_code=403, detail="Only the creator can update this world")
         
-        # Update the world
+        # Update the world with raw dictionary
         updated_world = await world_building_service.update_world(world_id, world_update)
         
         if not updated_world:
             raise HTTPException(status_code=400, detail="Failed to update world")
         
+        print(f"✅ [WORLD_BUILDING] Successfully updated world {world_id}")
         return updated_world
         
     except HTTPException:
         raise
     except Exception as e:
+        print(f"❌ [WORLD_BUILDING] Error updating world: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating world: {str(e)}")
 
 @router.delete("/{world_id}", status_code=204)

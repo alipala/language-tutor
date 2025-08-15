@@ -413,6 +413,67 @@ export class WorldBuildingAPI {
   }
 
   /**
+   * Update an existing story world
+   */
+  async updateStoryWorld(worldId: string, updateData: {
+    title?: string;
+    description?: string;
+    language?: string;
+    target_level?: string;
+    genre?: string;
+    privacy_setting?: string;
+    current_plot_point?: string;
+    characters?: Array<{
+      name: string;
+      role: string;
+      description: string;
+    }>;
+    locations?: Array<{
+      name: string;
+      description: string;
+    }>;
+    important_items?: Array<{
+      name: string;
+      significance: string;
+    }>;
+    primary_focus?: string;
+    target_structures?: string[];
+    vocabulary_themes?: string[];
+    max_contributors?: number;
+    session_duration_minutes?: number;
+    requires_approval?: boolean;
+    tags?: string[];
+    status?: string;
+  }): Promise<StoryWorld> {
+    // Send flat structure that matches the backend StoryWorldUpdate model
+    const payload = {
+      ...(updateData.title !== undefined && { title: updateData.title }),
+      ...(updateData.description !== undefined && { description: updateData.description }),
+      ...(updateData.language !== undefined && { language: updateData.language }),
+      ...(updateData.target_level !== undefined && { target_level: updateData.target_level }),
+      ...(updateData.genre !== undefined && { genre: updateData.genre }),
+      ...(updateData.privacy_setting !== undefined && { privacy_setting: updateData.privacy_setting }),
+      ...(updateData.current_plot_point !== undefined && { current_plot_point: updateData.current_plot_point }),
+      ...(updateData.characters !== undefined && { characters: updateData.characters }),
+      ...(updateData.locations !== undefined && { locations: updateData.locations }),
+      ...(updateData.important_items !== undefined && { important_items: updateData.important_items }),
+      ...(updateData.primary_focus !== undefined && { primary_focus: updateData.primary_focus }),
+      ...(updateData.target_structures !== undefined && { target_structures: updateData.target_structures }),
+      ...(updateData.vocabulary_themes !== undefined && { vocabulary_themes: updateData.vocabulary_themes }),
+      ...(updateData.max_contributors !== undefined && { max_contributors: updateData.max_contributors }),
+      ...(updateData.session_duration_minutes !== undefined && { session_duration_minutes: updateData.session_duration_minutes }),
+      ...(updateData.requires_approval !== undefined && { requires_approval: updateData.requires_approval }),
+      ...(updateData.tags !== undefined && { tags: updateData.tags }),
+      ...(updateData.status !== undefined && { status: updateData.status })
+    };
+
+    return this.makeRequest<StoryWorld>(`/${worldId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /**
    * Helper method to check if a world supports voice integration
    */
   async canUseVoiceIntegration(worldId: string): Promise<boolean> {

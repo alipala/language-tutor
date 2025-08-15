@@ -217,6 +217,20 @@ export default function WorldsDiscoveryPage() {
     setSelectedWorld(world);
   };
 
+  // Handle world update from modal
+  const handleWorldUpdate = (updatedWorld: StoryWorld) => {
+    // Update the world in all relevant arrays
+    const updateWorldInArray = (worldArray: StoryWorld[]) => 
+      worldArray.map(world => world.id === updatedWorld.id ? updatedWorld : world);
+
+    setWorlds(prev => updateWorldInArray(prev));
+    setFeaturedWorlds(prev => updateWorldInArray(prev));
+    setTrendingWorlds(prev => updateWorldInArray(prev));
+    
+    // Update the selected world to reflect changes in the modal
+    setSelectedWorld(updatedWorld);
+  };
+
   // Handle story creation
   const handleCreateStory = () => {
     setShowCreateModal(true);
@@ -655,6 +669,7 @@ export default function WorldsDiscoveryPage() {
           world={selectedWorld}
           isOpen={!!selectedWorld}
           onClose={() => setSelectedWorld(null)}
+          onUpdate={handleWorldUpdate}
         />
       )}
 

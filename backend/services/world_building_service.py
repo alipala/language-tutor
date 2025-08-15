@@ -823,12 +823,62 @@ class WorldBuildingService:
             raise
 
     # Additional missing methods that routes are calling
-    async def update_world(self, world_id: str, update_data: StoryWorldUpdate) -> Optional[StoryWorldResponse]:
-        """Update a story world - simplified version for route compatibility"""
+    async def update_world(self, world_id: str, update_data: Dict[str, Any]) -> Optional[StoryWorldResponse]:
+        """Update a story world with flattened structure support"""
         try:
-            # Prepare update data
-            update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
-            update_dict["updated_at"] = datetime.utcnow()
+            print(f"🔧 [WORLD_BUILDING] Updating world {world_id} with data: {update_data}")
+            
+            # Prepare the update document
+            update_dict = {"updated_at": datetime.utcnow()}
+            
+            # Handle simple fields
+            simple_fields = ['title', 'description', 'language', 'target_level', 'genre', 'privacy_setting', 'status', 'tags']
+            for field in simple_fields:
+                if field in update_data and update_data[field] is not None:
+                    update_dict[field] = update_data[field]
+            
+            # Handle nested world_state fields
+            world_state_updates = {}
+            if 'current_plot_point' in update_data and update_data['current_plot_point'] is not None:
+                world_state_updates['current_plot_point'] = update_data['current_plot_point']
+            if 'characters' in update_data and update_data['characters'] is not None:
+                world_state_updates['active_characters'] = update_data['characters']
+            if 'locations' in update_data and update_data['locations'] is not None:
+                world_state_updates['locations'] = update_data['locations']
+            if 'important_items' in update_data and update_data['important_items'] is not None:
+                world_state_updates['important_items'] = update_data['important_items']
+            
+            # Apply world_state updates using dot notation
+            for key, value in world_state_updates.items():
+                update_dict[f"world_state.{key}"] = value
+            
+            # Handle nested learning_objectives fields
+            learning_updates = {}
+            if 'primary_focus' in update_data and update_data['primary_focus'] is not None:
+                learning_updates['primary_focus'] = update_data['primary_focus']
+            if 'target_structures' in update_data and update_data['target_structures'] is not None:
+                learning_updates['target_structures'] = update_data['target_structures']
+            if 'vocabulary_themes' in update_data and update_data['vocabulary_themes'] is not None:
+                learning_updates['vocabulary_themes'] = update_data['vocabulary_themes']
+            
+            # Apply learning_objectives updates using dot notation
+            for key, value in learning_updates.items():
+                update_dict[f"learning_objectives.{key}"] = value
+            
+            # Handle nested collaboration_settings fields
+            collaboration_updates = {}
+            if 'max_contributors' in update_data and update_data['max_contributors'] is not None:
+                collaboration_updates['max_contributors'] = update_data['max_contributors']
+            if 'session_duration_minutes' in update_data and update_data['session_duration_minutes'] is not None:
+                collaboration_updates['session_duration_minutes'] = update_data['session_duration_minutes']
+            if 'requires_approval' in update_data and update_data['requires_approval'] is not None:
+                collaboration_updates['requires_approval'] = update_data['requires_approval']
+            
+            # Apply collaboration_settings updates using dot notation
+            for key, value in collaboration_updates.items():
+                update_dict[f"collaboration_settings.{key}"] = value
+            
+            print(f"🔧 [WORLD_BUILDING] Final update dict: {update_dict}")
             
             # Update the world
             result = await self.story_worlds.update_one(
@@ -836,13 +886,19 @@ class WorldBuildingService:
                 {"$set": update_dict}
             )
             
-            if result.modified_count == 0:
+            print(f"🔧 [WORLD_BUILDING] Update result: matched={result.matched_count}, modified={result.modified_count}")
+            
+            if result.matched_count == 0:
+                print(f"❌ [WORLD_BUILDING] World {world_id} not found")
                 return None
             
             # Return updated world
             updated_world = await self.story_worlds.find_one({"_id": ObjectId(world_id)})
             if not updated_world:
+                print(f"❌ [WORLD_BUILDING] Could not retrieve updated world {world_id}")
                 return None
+                
+            print(f"✅ [WORLD_BUILDING] Successfully updated world {world_id}")
                 
             # Convert ObjectId to string for response model while preserving nested structures
             world_dict = dict(updated_world)
@@ -850,6 +906,24 @@ class WorldBuildingService:
             del world_dict["_id"]  # Remove the original _id
             world_dict["creator_id"] = str(world_dict["creator_id"])
             world_dict["contributors"] = [str(contrib_id) for contrib_id in world_dict.get("contributors", [])]
+            
+            # Add creator name by looking up the user
+            creator_id = world_dict["creator_id"]
+            try:
+                # Try to find user by ObjectId first (most common), then string
+                user = None
+                try:
+                    user = await database.users.find_one({"_id": ObjectId(creator_id)})
+                except:
+                    pass
+                
+                if not user:
+                    user = await database.users.find_one({"_id": creator_id})
+                
+                world_dict["creator_name"] = user.get("name", "Anonymous") if user else "Anonymous"
+            except Exception as e:
+                print(f"⚠️ [WORLD_BUILDING] Error getting creator name: {str(e)}")
+                world_dict["creator_name"] = "Anonymous"
             
             return StoryWorldResponse(**world_dict)
             
