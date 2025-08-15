@@ -365,14 +365,6 @@ export default function WorldsDiscoveryPage() {
               </div>
             </div>
 
-            {/* Results Info */}
-            {activeTab === 'discover' && (
-              <div className="flex justify-between items-center mb-6">
-                <p className="text-gray-800">
-                  {searchLoading ? 'Searching...' : `${totalWorlds} worlds found`}
-                </p>
-              </div>
-            )}
 
             {/* Enhanced Pagination - Top */}
             {activeTab === 'discover' && totalPages > 1 && !searchLoading && (
