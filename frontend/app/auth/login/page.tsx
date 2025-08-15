@@ -128,6 +128,15 @@ export default function LoginPage() {
       return;
     }
     
+    // Check if user was trying to access a story world
+    const redirectAfterLogin = sessionStorage.getItem('redirectAfterLogin');
+    if (redirectAfterLogin) {
+      console.log(`Redirecting to story world: ${redirectAfterLogin}`);
+      sessionStorage.removeItem('redirectAfterLogin'); // Clean up
+      router.push(redirectAfterLogin);
+      return;
+    }
+    
     // Navigate to the appropriate page after transition completes
     const pendingLearningPlanId = sessionStorage.getItem('pendingLearningPlanId');
     const redirectTarget = pendingLearningPlanId ? '/speech' : '/';

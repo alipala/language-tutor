@@ -289,35 +289,52 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
-          {/* Landing page navigation items - only show when not logged in */}
-          {isLandingPage && !user && (
-            <div className="flex items-center space-x-6 mr-4">
-              <button 
-                onClick={() => scrollToSection('features')}
-                className="text-white/90 hover:text-[#FFD63A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFD63A]/70 hover:bg-[#FFD63A]/10 hover:shadow-lg"
+          {/* Navigation items for all users */}
+          <div className="flex items-center space-x-6 mr-4">
+            {/* Stories menu item - always visible when world building is enabled */}
+            {worldBuildingEnabled && (
+              <button
+                onClick={() => {
+                  navigateTo('/worlds');
+                  setIsMenuOpen(false);
+                }}
+                className="text-white/90 hover:text-[#4ECFBF] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#4ECFBF]/70 hover:bg-[#4ECFBF]/10 hover:shadow-lg flex items-center gap-2"
               >
-                Features
+                <Globe className="h-4 w-4" />
+                <span>Stories</span>
               </button>
-              <button 
-                onClick={() => scrollToSection('how-it-works')}
-                className="text-white/90 hover:text-[#F75A5A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#F75A5A]/70 hover:bg-[#F75A5A]/10 hover:shadow-lg"
-              >
-                How It Works
-              </button>
-              <button 
-                onClick={() => scrollToSection('pricing')}
-                className="text-white/90 hover:text-[#FFA955] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFA955]/70 hover:bg-[#FFA955]/10 hover:shadow-lg"
-              >
-                Pricing
-              </button>
-              <button 
-                onClick={() => scrollToSection('faq')}
-                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 hover:shadow-lg"
-              >
-                FAQ
-              </button>
-            </div>
-          )}
+            )}
+            
+            {/* Landing page navigation items - only show when not logged in and on landing page */}
+            {isLandingPage && !user && (
+              <>
+                <button 
+                  onClick={() => scrollToSection('features')}
+                  className="text-white/90 hover:text-[#FFD63A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFD63A]/70 hover:bg-[#FFD63A]/10 hover:shadow-lg"
+                >
+                  Features
+                </button>
+                <button 
+                  onClick={() => scrollToSection('how-it-works')}
+                  className="text-white/90 hover:text-[#F75A5A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#F75A5A]/70 hover:bg-[#F75A5A]/10 hover:shadow-lg"
+                >
+                  How It Works
+                </button>
+                <button 
+                  onClick={() => scrollToSection('pricing')}
+                  className="text-white/90 hover:text-[#FFA955] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFA955]/70 hover:bg-[#FFA955]/10 hover:shadow-lg"
+                >
+                  Pricing
+                </button>
+                <button 
+                  onClick={() => scrollToSection('faq')}
+                  className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 hover:shadow-lg"
+                >
+                  FAQ
+                </button>
+              </>
+            )}
+          </div>
           
           
           {/* User Menu (when logged in) or Loading State */}

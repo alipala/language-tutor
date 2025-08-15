@@ -92,11 +92,13 @@ async def discover_worlds(
     target_level: Optional[str] = Query(None, description="Filter by CEFR level"),
     genre: Optional[str] = Query(None, description="Filter by genre"),
     limit: int = Query(20, ge=1, le=100, description="Number of results"),
-    offset: int = Query(0, ge=0, description="Pagination offset"),
-    current_user: UserResponse = Depends(get_verified_user)
+    offset: int = Query(0, ge=0, description="Pagination offset")
 ):
-    """Browse public worlds with filtering"""
+    """Browse public worlds with filtering - accessible to all users"""
     try:
+        # Check if feature is enabled
+        await check_world_building_enabled()
+        
         request = WorldListRequest(
             language=language,
             target_level=target_level,
@@ -139,11 +141,13 @@ async def search_worlds(
 
 @router.get("/featured", response_model=WorldListResponse)
 async def get_featured_worlds(
-    limit: int = Query(10, ge=1, le=50, description="Number of results"),
-    current_user: UserResponse = Depends(get_verified_user)
+    limit: int = Query(10, ge=1, le=50, description="Number of results")
 ):
-    """Get featured worlds"""
+    """Get featured worlds - accessible to all users"""
     try:
+        # Check if feature is enabled
+        await check_world_building_enabled()
+        
         worlds = await world_building_service.get_featured_worlds(limit)
         return worlds
         
@@ -152,11 +156,13 @@ async def get_featured_worlds(
 
 @router.get("/trending", response_model=WorldListResponse)
 async def get_trending_worlds(
-    limit: int = Query(10, ge=1, le=50, description="Number of results"),
-    current_user: UserResponse = Depends(get_verified_user)
+    limit: int = Query(10, ge=1, le=50, description="Number of results")
 ):
-    """Get trending worlds based on recent activity"""
+    """Get trending worlds based on recent activity - accessible to all users"""
     try:
+        # Check if feature is enabled
+        await check_world_building_enabled()
+        
         worlds = await world_building_service.get_trending_worlds(limit)
         return worlds
         
@@ -191,12 +197,34 @@ async def create_world(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating world: {str(e)}")
 
+# Add optional authentication for world details - allows guest access to public worlds
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Union
+
+async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
+    """Get current user if authenticated, otherwise return None"""
+    await check_world_building_enabled()
+    
+    if not credentials:
+        return None
+    
+    try:
+        # Try to get user from token
+        from auth import verify_token
+        user_data = verify_token(credentials.credentials)
+        if user_data:
+            return UserResponse(**user_data)
+    except:
+        pass
+    
+    return None
+
 @router.get("/{world_id}", response_model=StoryWorldResponse)
 async def get_world(
     world_id: str = Path(..., description="World ID"),
-    current_user: UserResponse = Depends(get_verified_user)
+    current_user: Optional[UserResponse] = Depends(get_optional_user)
 ):
-    """Get details of a specific world"""
+    """Get details of a specific world - public worlds accessible to all users"""
     try:
         world = await world_building_service.get_world(world_id)
         
@@ -204,8 +232,11 @@ async def get_world(
             raise HTTPException(status_code=404, detail="World not found")
         
         # Check privacy permissions
-        if world.privacy_setting == "private" and world.creator_id != current_user.id:
-            if current_user.id not in world.contributors:
+        if world.privacy_setting == "private":
+            if not current_user:
+                raise HTTPException(status_code=401, detail="Authentication required for private worlds")
+            
+            if world.creator_id != current_user.id and current_user.id not in world.contributors:
                 raise HTTPException(status_code=403, detail="Access denied to private world")
         
         return world

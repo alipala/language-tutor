@@ -156,11 +156,14 @@ try:
         print("🌍 [WORLD_BUILDING] Feature enabled, including API routes...")
         from world_building_routes import router as world_building_router, invitation_router
         from contribution_routes import router as contribution_router
+        from educational_scaffolding_routes import router as educational_scaffolding_router
         app.include_router(world_building_router)
         app.include_router(invitation_router)
         app.include_router(contribution_router)
+        app.include_router(educational_scaffolding_router)
         print("✅ [WORLD_BUILDING] API routes included successfully")
         print("✅ [WORLD_BUILDING] Contribution management routes included successfully")
+        print("✅ [WORLD_BUILDING] Educational scaffolding routes included successfully")
     else:
         print("🌍 [WORLD_BUILDING] Feature disabled, skipping API routes")
 except Exception as e:

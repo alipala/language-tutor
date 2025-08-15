@@ -36,6 +36,15 @@ export default function StoryConversationPage() {
       console.log('[StoryConversationPage] Found world ID in URL:', worldParam);
       setWorldId(worldParam);
 
+      // Check if user is authenticated - if not, redirect to login with world context
+      if (!authLoading && !user) {
+        console.log('[StoryConversationPage] Guest user attempting to access story conversation, redirecting to login');
+        // Store the intended destination in sessionStorage
+        sessionStorage.setItem('redirectAfterLogin', `/story-conversation?world=${worldParam}`);
+        window.location.href = '/auth/login';
+        return;
+      }
+
       try {
         // Fetch world details
         const worldData = await worldBuildingAPI.getWorldDetails(worldParam);

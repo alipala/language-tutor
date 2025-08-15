@@ -73,6 +73,17 @@ try:
     learning_plans_collection = database.learning_plans
     notifications_collection = database.notifications
     user_notifications_collection = database.user_notifications
+    
+    # World Building collections (Phase 2)
+    story_worlds_collection = database.story_worlds
+    story_contributions_collection = database.story_contributions
+    world_invitations_collection = database.world_invitations
+    collaboration_queue_collection = database.collaboration_queue
+    world_checkpoints_collection = database.world_checkpoints
+    
+    # Educational Scaffolding collections (Phase 6)
+    story_learning_metrics_collection = database.story_learning_metrics
+    user_story_achievements_collection = database.user_story_achievements
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
