@@ -9,6 +9,7 @@ import WorldDetailsModal from '@/components/world-building/WorldDetailsModal';
 import StoryCreationModal from '@/components/world-building/StoryCreationModal';
 import { Search, Filter, Globe, Sparkles, TrendingUp } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import SoundWaveLoader from '@/components/sound-wave-loader';
 
 export default function WorldsDiscoveryPage() {
   const { user } = useAuth();
@@ -261,13 +262,13 @@ export default function WorldsDiscoveryPage() {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#4ECFBF]/10 to-[#FFD63A]/10">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF] mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading story worlds...</p>
-          </div>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#4ECFBF]/10 to-[#FFD63A]/10">
+        <SoundWaveLoader 
+          size="lg"
+          color="#4ECFBF"
+          text="Loading story worlds..."
+          subtext="Discovering immersive storytelling experiences"
+        />
       </div>
     );
   }
@@ -487,8 +488,11 @@ export default function WorldsDiscoveryPage() {
             {/* Loading State */}
             {searchLoading && (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4ECFBF] mx-auto mb-2"></div>
-                <p className="text-gray-600">Loading worlds...</p>
+                <SoundWaveLoader 
+                  size="md"
+                  color="#4ECFBF"
+                  text="Loading worlds..."
+                />
               </div>
             )}
 
