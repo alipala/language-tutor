@@ -25,7 +25,7 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
   return (
     <div 
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer hover:border-[#4ECFBF]/50"
+      className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer hover:border-[#4ECFBF]/50 flex flex-col h-full"
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
@@ -60,8 +60,8 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
         </p>
       </div>
 
-      {/* Content */}
-      <div className="p-4">
+      {/* Content - Flexible area that grows */}
+      <div className="p-4 flex-grow flex flex-col">
         {/* Genre, Focus, and Status */}
         <div className="flex items-center gap-3 mb-3 text-sm flex-wrap">
           <div className="flex items-center gap-1 text-gray-600">
@@ -94,17 +94,19 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
           </div>
         </div>
 
-        {/* Current Plot Point */}
-        {world.world_state.current_plot_point && (
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 mb-1">Current Scene:</p>
-            <p className="text-sm text-gray-700 italic line-clamp-2">
-              "{world.world_state.current_plot_point}"
-            </p>
-          </div>
-        )}
+        {/* Current Plot Point - Flexible content area */}
+        <div className="flex-grow">
+          {world.world_state.current_plot_point && (
+            <div className="mb-3">
+              <p className="text-xs text-gray-500 mb-1">Current Scene:</p>
+              <p className="text-sm text-gray-700 italic line-clamp-2">
+                "{world.world_state.current_plot_point}"
+              </p>
+            </div>
+          )}
+        </div>
 
-        {/* Statistics */}
+        {/* Statistics - Fixed position from bottom */}
         <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
           <div className="flex items-center gap-1">
             <Users className="h-4 w-4" />
@@ -116,20 +118,19 @@ export default function WorldCard({ world, onClick }: WorldCardProps) {
           </div>
         </div>
 
-        {/* Creator and Date */}
+        {/* Creator and Date - Fixed position from bottom */}
         <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
           <span>by {world.creator_name || 'Anonymous'}</span>
           <span>{createdDate}</span>
         </div>
 
-        {/* Action Button */}
+        {/* Action Button - Always at bottom */}
         <button className="w-full bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-2 px-4 rounded-lg font-medium hover:from-[#3a9e92] hover:to-[#2d7a6e] transition-all duration-300 group-hover:shadow-md">
           Preview World
         </button>
       </div>
 
-
-      {/* Tags */}
+      {/* Tags - Fixed at bottom */}
       {world.tags.length > 0 && (
         <div className="px-4 pb-4">
           <div className="flex flex-wrap gap-1">
