@@ -508,7 +508,7 @@ export default function WorldsDiscoveryPage() {
             {/* Worlds Grid */}
             {!searchLoading && !error && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 items-stretch">
                   {getCurrentWorlds().map((world) => (
                     <WorldCard
                       key={world.id}
