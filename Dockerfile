@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
     libgdk-pixbuf-xlib-2.0-0 \
-    libgdk-pixbuf2.0-dev \
+    libgdk-pixbuf-xlib-2.0-dev \
     libffi-dev \
     shared-mime-info \
     libcairo2 \
