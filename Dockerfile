@@ -14,18 +14,14 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
+    libgdk-pixbuf2.0-dev \
     libffi-dev \
     shared-mime-info \
     libcairo2 \
     libcairo-gobject2 \
     libglib2.0-0 \
     libgtk-3-0 \
-    libgdk-pixbuf-2.0-0 \
-    libpango-1.0-0 \
-    libcairo-gobject2 \
-    libgtk-3-0 \
-    libgdk-pixbuf-2.0-0 \
     fontconfig \
     fonts-dejavu-core \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
