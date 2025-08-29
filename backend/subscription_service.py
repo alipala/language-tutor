@@ -22,8 +22,94 @@ def get_user_query(user_id: str):
     except:
         return {"_id": user_id}
 
+class DurationTrackingSafeguards:
+    """Integrated safeguards for duration tracking data integrity"""
+    
+    @staticmethod
+    async def validate_user_data_change(user_id: str, old_data: Dict, new_data: Dict) -> Dict[str, Any]:
+        """
+        Validate that a user data change is reasonable and safe
+        Returns validation result with warnings/errors
+        """
+        validation_result = {
+            "is_valid": True,
+            "warnings": [],
+            "errors": [],
+            "recommendations": []
+        }
+        
+        old_minutes = old_data.get('practice_minutes_used', 0)
+        new_minutes = new_data.get('practice_minutes_used', 0)
+        old_sessions = old_data.get('practice_sessions_used', 0)
+        new_sessions = new_data.get('practice_sessions_used', 0)
+        
+        # Check for suspicious data resets
+        if old_minutes > 10 and new_minutes == 0:
+            validation_result["errors"].append(
+                f"DANGEROUS: Resetting minutes from {old_minutes} to 0 - this looks like data corruption!"
+            )
+            validation_result["is_valid"] = False
+            
+        if old_sessions > 2 and new_sessions == 0:
+            validation_result["errors"].append(
+                f"DANGEROUS: Resetting sessions from {old_sessions} to 0 - this looks like data corruption!"
+            )
+            validation_result["is_valid"] = False
+        
+        # Check for unrealistic increases
+        minutes_increase = new_minutes - old_minutes
+        if minutes_increase > 500:  # More than 8+ hours in one update
+            validation_result["warnings"].append(
+                f"Large minutes increase: +{minutes_increase:.2f} minutes - please verify this is correct"
+            )
+            
+        sessions_increase = new_sessions - old_sessions
+        if sessions_increase > 50:  # More than 50 sessions in one update
+            validation_result["warnings"].append(
+                f"Large sessions increase: +{sessions_increase} sessions - please verify this is correct"
+            )
+        
+        # Check for negative values
+        if new_minutes < 0:
+            validation_result["errors"].append("Minutes cannot be negative")
+            validation_result["is_valid"] = False
+            
+        if new_sessions < 0:
+            validation_result["errors"].append("Sessions cannot be negative")
+            validation_result["is_valid"] = False
+        
+        # Check for reasonable ratios
+        if new_sessions > 0 and new_minutes > 0:
+            avg_minutes_per_session = new_minutes / new_sessions
+            if avg_minutes_per_session > 60:  # More than 1 hour per session
+                validation_result["warnings"].append(
+                    f"High average session duration: {avg_minutes_per_session:.1f} min/session"
+                )
+            elif avg_minutes_per_session < 1:  # Less than 1 minute per session
+                validation_result["warnings"].append(
+                    f"Low average session duration: {avg_minutes_per_session:.1f} min/session"
+                )
+        
+        return validation_result
+    
+    @staticmethod
+    async def create_audit_trail(user_id: str, user_email: str, old_data: Dict, new_data: Dict, reason: str) -> Dict[str, Any]:
+        """Create audit trail for duration changes"""
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "user_id": str(user_id),
+            "user_email": user_email,
+            "reason": reason,
+            "old_minutes": old_data.get("practice_minutes_used", 0),
+            "new_minutes": new_data.get("practice_minutes_used", 0),
+            "old_sessions": old_data.get("practice_sessions_used", 0),
+            "new_sessions": new_data.get("practice_sessions_used", 0),
+            "minutes_diff": new_data.get("practice_minutes_used", 0) - old_data.get("practice_minutes_used", 0),
+            "sessions_diff": new_data.get("practice_sessions_used", 0) - old_data.get("practice_sessions_used", 0)
+        }
+
 class SubscriptionService:
-    """Comprehensive subscription business logic service"""
+    """Enhanced subscription business logic service with integrated safeguards"""
     
     # Define subscription plans according to requirements
     SUBSCRIPTION_PLANS = {
@@ -280,10 +366,10 @@ class SubscriptionService:
                 }}
             )
         
-        # Get current usage
-        sessions_used = user_data.get("practice_sessions_used", 0)
-        assessments_used = user_data.get("assessments_used", 0)
-        minutes_used = user_data.get("practice_minutes_used", 0.0)
+        # Get current usage with safeguards
+        sessions_used = max(0, user_data.get("practice_sessions_used", 0))  # Ensure non-negative
+        assessments_used = max(0, user_data.get("assessments_used", 0))  # Ensure non-negative
+        minutes_used = max(0.0, user_data.get("practice_minutes_used", 0.0))  # Ensure non-negative
         
         # Calculate remaining
         sessions_remaining = sessions_limit - sessions_used if sessions_limit != -1 else -1
@@ -310,10 +396,16 @@ class SubscriptionService:
     
     @classmethod
     async def track_usage(cls, request: UsageTrackingRequest) -> bool:
-        """Track usage of practice sessions or assessments"""
+        """Track usage of practice sessions or assessments with enhanced safeguards"""
         try:
             user_id = request.user_id
             usage_type = request.usage_type
+            
+            # Get current user data for validation
+            user = await database["users"].find_one(get_user_query(user_id))
+            if not user:
+                logger.error(f"User {user_id} not found for usage tracking")
+                return False
             
             # Get current subscription status
             status = await cls.get_user_subscription_status(user_id)
@@ -328,15 +420,61 @@ class SubscriptionService:
                     logger.warning(f"User {user_id} exceeded assessment limit")
                     return False
             
-            # Update usage counter
+            # Prepare data for validation
+            old_data = {
+                "practice_sessions_used": user.get("practice_sessions_used", 0),
+                "assessments_used": user.get("assessments_used", 0)
+            }
+            
+            # Calculate new values
+            if usage_type == "practice_session":
+                new_sessions = old_data["practice_sessions_used"] + 1
+                new_assessments = old_data["assessments_used"]
+            else:
+                new_sessions = old_data["practice_sessions_used"]
+                new_assessments = old_data["assessments_used"] + 1
+            
+            new_data = {
+                "practice_sessions_used": new_sessions,
+                "assessments_used": new_assessments
+            }
+            
+            # Validate the change
+            validation = await DurationTrackingSafeguards.validate_user_data_change(user_id, old_data, new_data)
+            
+            if not validation["is_valid"]:
+                logger.error(f"❌ Usage tracking validation failed for user {user_id}: {validation['errors']}")
+                return False
+            
+            if validation["warnings"]:
+                logger.warning(f"⚠️ Usage tracking warnings for user {user_id}: {validation['warnings']}")
+            
+            # Create audit trail
+            audit_data = await DurationTrackingSafeguards.create_audit_trail(
+                user_id, user.get('email', 'unknown'), old_data, new_data, f"track_{usage_type}"
+            )
+            
+            # Update usage counter with audit trail
             update_field = "practice_sessions_used" if usage_type == "practice_session" else "assessments_used"
             
             await database["users"].update_one(
                 get_user_query(user_id),
-                {"$inc": {update_field: 1}}
+                {
+                    "$inc": {update_field: 1},
+                    "$set": {
+                        "last_usage_update": datetime.utcnow().isoformat(),
+                        "last_usage_update_reason": f"track_{usage_type}"
+                    },
+                    "$push": {
+                        "usage_audit_trail": {
+                            "$each": [audit_data],
+                            "$slice": -10  # Keep last 10 changes
+                        }
+                    }
+                }
             )
             
-            logger.info(f"Tracked {usage_type} usage for user {user_id}")
+            logger.info(f"✅ Tracked {usage_type} usage for user {user.get('email', user_id)}")
             return True
             
         except Exception as e:
@@ -345,11 +483,25 @@ class SubscriptionService:
     
     @classmethod
     async def track_speaking_time(cls, request: SpeakingTimeTrackingRequest) -> bool:
-        """Track speaking time and optionally increment session count"""
+        """Track speaking time and optionally increment session count with enhanced safeguards"""
         try:
             user_id = request.user_id
             speaking_minutes = request.speaking_minutes
             session_completed = request.session_completed
+            
+            # Get current user data for validation
+            user = await database["users"].find_one(get_user_query(user_id))
+            if not user:
+                logger.error(f"User {user_id} not found for speaking time tracking")
+                return False
+            
+            # Validate speaking minutes input
+            if speaking_minutes < 0:
+                logger.error(f"❌ Invalid speaking minutes: {speaking_minutes} (cannot be negative)")
+                return False
+            
+            if speaking_minutes > 120:  # More than 2 hours in one session
+                logger.warning(f"⚠️ Very long session: {speaking_minutes} minutes for user {user.get('email', user_id)}")
             
             # Get current subscription status to check minute limits
             status = await cls.get_user_subscription_status(user_id)
@@ -359,15 +511,58 @@ class SubscriptionService:
                 logger.warning(f"User {user_id} has no speaking time remaining: {status.limits.minutes_remaining} minutes")
                 # Still track the time but warn about limit
             
+            # Prepare data for validation
+            old_data = {
+                "practice_minutes_used": user.get("practice_minutes_used", 0.0),
+                "practice_sessions_used": user.get("practice_sessions_used", 0)
+            }
+            
+            # Calculate new values
+            new_minutes = old_data["practice_minutes_used"] + speaking_minutes
+            new_sessions = old_data["practice_sessions_used"] + (1 if session_completed else 0)
+            
+            new_data = {
+                "practice_minutes_used": new_minutes,
+                "practice_sessions_used": new_sessions
+            }
+            
+            # Validate the change
+            validation = await DurationTrackingSafeguards.validate_user_data_change(user_id, old_data, new_data)
+            
+            if not validation["is_valid"]:
+                logger.error(f"❌ Speaking time tracking validation failed for user {user_id}: {validation['errors']}")
+                return False
+            
+            if validation["warnings"]:
+                logger.warning(f"⚠️ Speaking time tracking warnings for user {user_id}: {validation['warnings']}")
+            
+            # Create audit trail
+            reason = f"track_speaking_time_{speaking_minutes:.2f}min_session_{'completed' if session_completed else 'partial'}"
+            audit_data = await DurationTrackingSafeguards.create_audit_trail(
+                user_id, user.get('email', 'unknown'), old_data, new_data, reason
+            )
+            
             # Always track speaking minutes
-            update_data = {"$inc": {"practice_minutes_used": speaking_minutes}}
+            update_data = {
+                "$inc": {"practice_minutes_used": speaking_minutes},
+                "$set": {
+                    "last_speaking_time_update": datetime.utcnow().isoformat(),
+                    "last_speaking_time_update_reason": reason
+                },
+                "$push": {
+                    "speaking_time_audit_trail": {
+                        "$each": [audit_data],
+                        "$slice": -10  # Keep last 10 changes
+                    }
+                }
+            }
             
             # Only increment session count if session was completed (5+ minutes + saved)
             if session_completed:
                 update_data["$inc"]["practice_sessions_used"] = 1
-                logger.info(f"Session completed for user {user_id}: +1 session, +{speaking_minutes} minutes")
+                logger.info(f"✅ Session completed for user {user.get('email', user_id)}: +1 session, +{speaking_minutes:.2f} minutes")
             else:
-                logger.info(f"Partial session for user {user_id}: +0 sessions, +{speaking_minutes} minutes")
+                logger.info(f"✅ Partial session for user {user.get('email', user_id)}: +0 sessions, +{speaking_minutes:.2f} minutes")
             
             await database["users"].update_one(
                 get_user_query(user_id),
@@ -471,20 +666,49 @@ class SubscriptionService:
                     grammar_improvements=learning_plan.get("grammar_improvements", [])
                 )
                 
-                # Update user with preservation data
-                await database["users"].update_one(
-                    get_user_query(user_id),
-                    {"$set": {
-                        "learning_plan_preserved": True,
-                        "learning_plan_data": preservation_data.plan_data,
-                        "learning_plan_progress": preservation_data.progress_data,
-                        "subscription_plan": "try_learn",  # Revert to free tier
-                        "practice_sessions_used": 0,  # Reset usage for free tier
-                        "assessments_used": 0
-                    }}
-                )
+                # Update user with preservation data (with safeguards)
+                user = await database["users"].find_one(get_user_query(user_id))
+                if user:
+                    old_data = {
+                        "practice_sessions_used": user.get("practice_sessions_used", 0),
+                        "assessments_used": user.get("assessments_used", 0),
+                        "practice_minutes_used": user.get("practice_minutes_used", 0.0)
+                    }
+                    
+                    new_data = {
+                        "practice_sessions_used": 0,  # Reset for free tier
+                        "assessments_used": 0,  # Reset for free tier
+                        "practice_minutes_used": 0.0  # Reset for free tier
+                    }
+                    
+                    # Create audit trail for preservation
+                    audit_data = await DurationTrackingSafeguards.create_audit_trail(
+                        user_id, user.get('email', 'unknown'), old_data, new_data, "learning_plan_preservation"
+                    )
+                    
+                    await database["users"].update_one(
+                        get_user_query(user_id),
+                        {
+                            "$set": {
+                                "learning_plan_preserved": True,
+                                "learning_plan_data": preservation_data.plan_data,
+                                "learning_plan_progress": preservation_data.progress_data,
+                                "subscription_plan": "try_learn",  # Revert to free tier
+                                "practice_sessions_used": 0,  # Reset usage for free tier
+                                "assessments_used": 0,
+                                "practice_minutes_used": 0.0,
+                                "preservation_date": datetime.utcnow().isoformat()
+                            },
+                            "$push": {
+                                "preservation_audit_trail": {
+                                    "$each": [audit_data],
+                                    "$slice": -5  # Keep last 5 preservation events
+                                }
+                            }
+                        }
+                    )
                 
-                logger.info(f"Learning plan preserved for user {user_id}")
+                logger.info(f"✅ Learning plan preserved for user {user.get('email', user_id)}")
                 return True
             
             return False
@@ -534,8 +758,32 @@ Resubscribe to unlock:
     
     @classmethod
     async def reset_monthly_usage(cls, user_id: str) -> bool:
-        """Reset monthly usage counters (called by scheduled task)"""
+        """Reset monthly usage counters with enhanced safeguards (called by scheduled task)"""
         try:
+            # Get current user data for validation
+            user = await database["users"].find_one(get_user_query(user_id))
+            if not user:
+                logger.error(f"User {user_id} not found for monthly reset")
+                return False
+            
+            # Prepare data for validation
+            old_data = {
+                "practice_sessions_used": user.get("practice_sessions_used", 0),
+                "assessments_used": user.get("assessments_used", 0),
+                "practice_minutes_used": user.get("practice_minutes_used", 0.0)
+            }
+            
+            new_data = {
+                "practice_sessions_used": 0,
+                "assessments_used": 0,
+                "practice_minutes_used": 0.0
+            }
+            
+            # Create audit trail for monthly reset
+            audit_data = await DurationTrackingSafeguards.create_audit_trail(
+                user_id, user.get('email', 'unknown'), old_data, new_data, "monthly_usage_reset"
+            )
+            
             now = datetime.utcnow()
             next_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             if now.month == 12:
@@ -545,16 +793,25 @@ Resubscribe to unlock:
             
             await database["users"].update_one(
                 get_user_query(user_id),
-                {"$set": {
-                    "practice_sessions_used": 0,
-                    "assessments_used": 0,
-                    "practice_minutes_used": 0.0,  # NEW: Reset minute usage
-                    "current_period_start": now.replace(day=1, hour=0, minute=0, second=0, microsecond=0),
-                    "current_period_end": next_month
-                }}
+                {
+                    "$set": {
+                        "practice_sessions_used": 0,
+                        "assessments_used": 0,
+                        "practice_minutes_used": 0.0,  # NEW: Reset minute usage
+                        "current_period_start": now.replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+                        "current_period_end": next_month,
+                        "last_monthly_reset": datetime.utcnow().isoformat()
+                    },
+                    "$push": {
+                        "monthly_reset_audit_trail": {
+                            "$each": [audit_data],
+                            "$slice": -12  # Keep last 12 monthly resets
+                        }
+                    }
+                }
             )
             
-            logger.info(f"Reset monthly usage for user {user_id}")
+            logger.info(f"✅ Reset monthly usage for user {user.get('email', user_id)}")
             return True
             
         except Exception as e:
@@ -570,3 +827,82 @@ Resubscribe to unlock:
     def get_all_plans(cls) -> Dict[str, SubscriptionPlan]:
         """Get all available subscription plans"""
         return cls.SUBSCRIPTION_PLANS
+    
+    @classmethod
+    async def safe_update_user_duration(cls, user_id: str, new_minutes: float, new_sessions: int, 
+                                      reason: str, bypass_validation: bool = False) -> Dict[str, Any]:
+        """
+        Safely update user duration data with validation and logging
+        This is the main entry point for any manual duration updates
+        """
+        try:
+            # Get current user data
+            user = await database["users"].find_one(get_user_query(user_id))
+            if not user:
+                return {"success": False, "error": "User not found"}
+            
+            old_data = {
+                "practice_minutes_used": user.get('practice_minutes_used', 0),
+                "practice_sessions_used": user.get('practice_sessions_used', 0)
+            }
+            
+            new_data = {
+                "practice_minutes_used": new_minutes,
+                "practice_sessions_used": new_sessions
+            }
+            
+            # Validate the change
+            if not bypass_validation:
+                validation = await DurationTrackingSafeguards.validate_user_data_change(user_id, old_data, new_data)
+                
+                if not validation["is_valid"]:
+                    logger.error(f"❌ Validation failed for user {user_id}: {validation['errors']}")
+                    return {
+                        "success": False, 
+                        "error": "Validation failed", 
+                        "validation": validation
+                    }
+                
+                if validation["warnings"]:
+                    logger.warning(f"⚠️ Validation warnings for user {user_id}: {validation['warnings']}")
+            
+            # Create audit trail
+            audit_data = await DurationTrackingSafeguards.create_audit_trail(
+                user_id, user.get('email', 'unknown'), old_data, new_data, reason
+            )
+            
+            # Update user data
+            update_result = await database["users"].update_one(
+                get_user_query(user_id),
+                {
+                    "$set": {
+                        "practice_minutes_used": new_minutes,
+                        "practice_sessions_used": new_sessions,
+                        "last_duration_update": datetime.utcnow().isoformat(),
+                        "last_duration_update_reason": reason
+                    },
+                    "$push": {
+                        "duration_audit_trail": {
+                            "$each": [audit_data],
+                            "$slice": -10  # Keep last 10 changes
+                        }
+                    }
+                }
+            )
+            
+            if update_result.modified_count > 0:
+                logger.info(f"✅ Successfully updated user {user.get('email', user_id)}: "
+                          f"{old_data['practice_minutes_used']:.2f}→{new_minutes:.2f} min, "
+                          f"{old_data['practice_sessions_used']}→{new_sessions} sessions")
+                
+                return {
+                    "success": True,
+                    "audit_data": audit_data,
+                    "validation": validation if not bypass_validation else None
+                }
+            else:
+                return {"success": False, "error": "Database update failed"}
+                
+        except Exception as e:
+            logger.error(f"❌ Error updating user duration: {e}")
+            return {"success": False, "error": str(e)}
