@@ -813,9 +813,6 @@ export default function ProfilePage() {
                           <Tooltip 
                             content="🎯 Your monthly speaking time allowance. This is what determines access to practice sessions. Complete unlimited sessions within your time limit!" 
                             position="top"
-                            variant="info"
-                            showIcon={true}
-                            delay={200}
                           >
                             <span className="font-medium cursor-help border-b border-dotted border-white/50 hover:border-white/80 transition-colors">Speaking Time</span>
                           </Tooltip>
@@ -829,9 +826,6 @@ export default function ProfilePage() {
                           <Tooltip 
                             content="📊 Number of practice sessions completed this month. Sessions are tracked for progress but don't limit access - only speaking time matters for billing." 
                             position="top"
-                            variant="success"
-                            showIcon={true}
-                            delay={200}
                           >
                             <span className="font-medium cursor-help border-b border-dotted border-white/30 hover:border-white/60 transition-colors">Sessions Completed</span>
                           </Tooltip>
