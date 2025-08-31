@@ -1,0 +1,38 @@
+🔍 VERIFYING COMPLETED SESSION TRACKING
+============================================================
+📊 Expected: Dutch A1 session, 5:57 duration, 41 messages
+👤 User ID: 688921c268819565ef1ce3dc
+📋 Plan ID: e45effa0-38be-4666-8588-fd1d1ce183f0
+============================================================
+👤 CHECKING USER RECORD UPDATES:
+----------------------------------------
+   📧 Email: alipala.ist@gmail.com
+   📊 CURRENT USAGE:
+      - practice_sessions_used: 1
+      - practice_minutes_used: 0.00
+      - assessments_used: 1
+   📋 Duration audit trail: 2 entries
+      Latest entry: 2025-08-29T15:46:44.521122
+      Reason: correction_zero_usage_current_subscription_period
+      Minutes diff: -5.25
+      Sessions diff: -1
+
+📚 CHECKING LEARNING PLAN SESSION:
+----------------------------------------
+   ✅ Found learning plan by ID: e45effa0-38be-4666-8588-fd1d1ce183f0
+   Total sessions: 0
+💬 CHECKING CONVERSATION SESSIONS:
+----------------------------------------
+   Found 1 conversation sessions
+   ⚠️  No recent conversation sessions found
+
+🎯 VERIFICATION SUMMARY:
+============================================================
+📊 EXPECTED vs ACTUAL:
+   Expected duration: ~5.95 minutes
+   Expected messages: 41
+   Expected session increment: +1
+
+   Current sessions used: 1
+   Current minutes used: 0.00
+   ❌ NO USAGE RECORDED - SESSION TRACKING MAY NOT BE WORKING
