@@ -582,17 +582,15 @@ class SubscriptionService:
             status = await cls.get_user_subscription_status(user_id)
             
             if feature_type == "practice_session":
-                # Check minute limits first (more restrictive)
+                # FIXED: Only check minute limits - session count is just for tracking
+                # We give users "150 minutes speaking regardless of practice session OR learning plan session"
                 if status.limits and status.limits.minutes_remaining is not None and status.limits.minutes_remaining <= 0:
                     if status.limits.minutes_limit == -1:
                         # Unlimited plan
                         return True, ""
                     return False, f"No speaking time remaining this {status.period}. You have used {status.limits.minutes_used:.1f} of {status.limits.minutes_limit} minutes. Upgrade to continue learning!"
                 
-                # Then check session limits (for backward compatibility)
-                if status.limits and status.limits.sessions_remaining == 0:
-                    return False, f"You've used all {status.limits.sessions_limit} practice sessions for this {status.period}. Upgrade to continue learning!"
-                
+                # Session count is tracked but doesn't block access - only minutes matter
                 return True, ""
             
             elif feature_type == "assessment":

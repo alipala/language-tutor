@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip } from '@/components/ui/tooltip';
 import { AssessmentCard } from '@/components/assessment-card';
 import AssessmentLearningPlanCard from '@/components/assessment-learning-plan-card';
 import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
@@ -807,18 +808,24 @@ export default function ProfilePage() {
                     
                     {!subscriptionLoading && subscriptionStatus?.limits && (
                       <div className="space-y-1 md:space-y-3">
+                        {/* PRIMARY: Speaking Time (what actually matters for limits) */}
                         <div className="flex justify-between text-white text-xs md:text-base">
-                          <span className="font-medium">Sessions</span>
-                          <span className="font-bold text-sm md:text-lg">
-                            {subscriptionStatus.limits.is_unlimited ? '∞' : 
-                             `${subscriptionStatus.limits.sessions_remaining}/${subscriptionStatus.limits.sessions_limit}`}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-white text-xs md:text-base">
-                          <span className="font-medium">Speaking Time</span>
+                          <Tooltip content="Your monthly speaking time allowance. This is what determines access to practice sessions." position="top">
+                            <span className="font-medium cursor-help border-b border-dotted border-white/50">Speaking Time</span>
+                          </Tooltip>
                           <span className="font-bold text-sm md:text-lg">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
                              `${Math.round(subscriptionStatus.limits.minutes_remaining || 0)} min left`}
+                          </span>
+                        </div>
+                        {/* SECONDARY: Sessions (for tracking only) */}
+                        <div className="flex justify-between text-white/80 text-xs md:text-sm">
+                          <Tooltip content="Number of practice sessions completed this month. Sessions are tracked for progress but don't limit access." position="top">
+                            <span className="font-medium cursor-help border-b border-dotted border-white/30">Sessions Completed</span>
+                          </Tooltip>
+                          <span className="font-medium">
+                            {subscriptionStatus.limits.is_unlimited ? '∞' : 
+                             `${subscriptionStatus.limits.sessions_used || 0} completed`}
                           </span>
                         </div>
                         <div className="flex justify-between text-white text-xs md:text-base">
