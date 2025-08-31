@@ -33,7 +33,8 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "",
     description: "Perfect for exploring AI language learning",
     features: [
-      { text: "3 practice sessions (5 minutes each) monthly", included: true },
+      { text: "15 minutes monthly speaking time", included: true },
+      { text: "Sessions tracked for progress (unlimited)", included: true },
       { text: "1 speaking assessment monthly", included: true },
       { text: "Basic progress tracking", included: true },
       { text: "Core conversation topics only", included: true },
@@ -50,7 +51,8 @@ const monthlyPlans: PricingCard[] = [
     description: "Ideal for serious language learners",
     features: [
       { text: "🎉 7-day free trial included", included: true },
-      { text: "30 practice sessions (5 minutes each) monthly", included: true },
+      { text: "150 minutes monthly speaking time", included: true },
+      { text: "Sessions tracked for progress (unlimited)", included: true },
       { text: "2 speaking assessments monthly", included: true },
       { text: "Advanced progress tracking", included: true },
       { text: "Learning plan progression", included: true },
@@ -92,7 +94,8 @@ const annualPlans: PricingCard[] = [
     priceNote: "",
     description: "Perfect for exploring AI language learning",
     features: [
-      { text: "3 practice sessions (5 minutes each) monthly", included: true },
+      { text: "15 minutes monthly speaking time", included: true },
+      { text: "Sessions tracked for progress (unlimited)", included: true },
       { text: "1 speaking assessment monthly", included: true },
       { text: "Basic progress tracking", included: true },
       { text: "Core conversation topics only", included: true },
@@ -111,7 +114,8 @@ const annualPlans: PricingCard[] = [
     monthlyEquivalent: "Only $16.67/month",
     description: "Ideal for serious language learners",
     features: [
-      { text: "360 practice sessions (5 minutes each) annually", included: true },
+      { text: "1,800 minutes annually speaking time", included: true },
+      { text: "Sessions tracked for progress (unlimited)", included: true },
       { text: "24 speaking assessments annually", included: true },
       { text: "Advanced progress tracking", included: true },
       { text: "Learning plan progression", included: true },
