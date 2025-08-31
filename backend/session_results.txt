@@ -1,0 +1,56 @@
+🔍 FOCUSED SEARCH: LEARNING_PLANS COLLECTION
+============================================================
+👤 User ID: 688921c268819565ef1ce3dc
+📧 Email: alipala.ist@gmail.com
+
+🎓 SEARCHING LEARNING_PLANS COLLECTION:
+--------------------------------------------------
+✅ Found 3 learning plans with string user_id
+
+📚 ANALYZING 3 LEARNING PLANS:
+============================================================
+
+📋 Plan 1: Plan 1
+   ID: 688b531449449925afb0d481
+   Language: dutch
+   Level: Unknown
+   Total sessions in plan: 0
+   📊 Completed sessions: 0
+   ⏱️  Total minutes: 0.00
+
+📋 Plan 2: Plan 2
+   ID: 68976d2223991d68793118ad
+   Language: english
+   Level: Unknown
+   Total sessions in plan: 0
+   📊 Completed sessions: 0
+   ⏱️  Total minutes: 0.00
+
+📋 Plan 3: Plan 3
+   ID: 68a03c210b308d5557da1664
+   Language: english
+   Level: Unknown
+   Total sessions in plan: 0
+   📊 Completed sessions: 0
+   ⏱️  Total minutes: 0.00
+
+💬 CHECKING CONVERSATION_SESSIONS COLLECTION:
+--------------------------------------------------
+Found 1 standalone conversation sessions
+   Session 1: 0.00 min on 2025-07-29 21:14:44.463000
+
+============================================================
+🎯 FINAL RESULTS:
+============================================================
+🎯 TOTAL CONVERSATION MINUTES: 0.00
+📊 TOTAL CONVERSATION SESSIONS: 1
+🇳🇱 Dutch sessions: 0
+🇬🇧 English sessions: 0
+
+🔍 COMPARISON WITH SCREENSHOT:
+   Expected: 11 sessions (10 Dutch + 1 English B2)
+   Found: 1 sessions
+   Dutch found: 0 (expected: 10)
+   English found: 0 (expected: 1)
+   ❌ SESSION COUNT MISMATCH!
+   Difference: 10 sessions

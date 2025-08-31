@@ -745,17 +745,36 @@ async def save_session_summary(
     Also tracks speaking minutes for the learning plan
     """
     try:
+        print(f"[SESSION_SUMMARY] 🎯 Starting session save for plan_id: {plan_id}")
+        print(f"[SESSION_SUMMARY] 👤 User: {current_user.id} ({getattr(current_user, 'email', 'N/A')})")
+        
         # Find the learning plan
         learning_plan = await learning_plans_collection.find_one({"id": plan_id})
         
         if not learning_plan:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Learning plan not found"
-            )
+            print(f"[SESSION_SUMMARY] ❌ Learning plan not found with id: {plan_id}")
+            # Try to find by _id as fallback
+            try:
+                from bson import ObjectId
+                learning_plan = await learning_plans_collection.find_one({"_id": ObjectId(plan_id)})
+                if learning_plan:
+                    print(f"[SESSION_SUMMARY] ✅ Found learning plan by _id: {plan_id}")
+                else:
+                    print(f"[SESSION_SUMMARY] ❌ Learning plan not found by _id either: {plan_id}")
+            except:
+                pass
+            
+            if not learning_plan:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Learning plan not found with id: {plan_id}"
+                )
+        
+        print(f"[SESSION_SUMMARY] ✅ Found learning plan: {learning_plan.get('language', 'N/A')} - {learning_plan.get('proficiency_level', 'N/A')}")
         
         # Check if the plan belongs to the current user
         if learning_plan.get("user_id") and learning_plan.get("user_id") != str(current_user.id):
+            print(f"[SESSION_SUMMARY] ❌ Permission denied: plan user_id {learning_plan.get('user_id')} != current user {current_user.id}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to update this learning plan"
@@ -771,12 +790,17 @@ async def save_session_summary(
         week_index = (session_number - 1) // sessions_per_week  # 0-based week index
         session_in_week = ((session_number - 1) % sessions_per_week) + 1  # 1-based session in week
         
-        print(f"[SESSION_SUMMARY] Saving session {session_number} to Week {week_index + 1}, Session {session_in_week}")
+        print(f"[SESSION_SUMMARY] 📊 Session calculation:")
+        print(f"[SESSION_SUMMARY]    Current completed: {current_completed}")
+        print(f"[SESSION_SUMMARY]    New session number: {session_number}")
+        print(f"[SESSION_SUMMARY]    Week index: {week_index}")
+        print(f"[SESSION_SUMMARY]    Session in week: {session_in_week}")
         
         # Get the weekly schedule
         weekly_schedule = learning_plan.get("plan_content", {}).get("weekly_schedule", [])
         
         if week_index >= len(weekly_schedule):
+            print(f"[SESSION_SUMMARY] ❌ Session {session_number} exceeds available weeks ({len(weekly_schedule)})")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Session {session_number} exceeds available weeks in the plan"
@@ -789,14 +813,38 @@ async def save_session_summary(
         if 'session_details' not in week:
             week['session_details'] = []
         
+        # Track speaking minutes if provided in request
+        duration_minutes = 0.0
+        if request and request.duration_minutes:
+            duration_minutes = request.duration_minutes
+            print(f"[SESSION_SUMMARY] 🕐 Duration from request: {duration_minutes} minutes")
+        else:
+            # Default to 5 minutes if no duration provided (typical session length)
+            duration_minutes = 5.0
+            print(f"[SESSION_SUMMARY] 🕐 No duration provided, defaulting to {duration_minutes} minutes")
+        
         # Create session detail object
         session_detail = {
             "session_number": session_in_week,
             "global_session_number": session_number,
             "summary": session_summary,
             "completed_at": datetime.utcnow().isoformat(),
-            "status": "completed"
+            "status": "completed",
+            "duration_minutes": duration_minutes
         }
+        
+        # Add request details if available
+        if request:
+            if request.language:
+                session_detail["language"] = request.language
+            if request.level:
+                session_detail["level"] = request.level
+            if request.topic:
+                session_detail["topic"] = request.topic
+            if request.messages:
+                session_detail["message_count"] = len(request.messages)
+        
+        print(f"[SESSION_SUMMARY] 📝 Session detail created: {session_detail}")
         
         # Add to session_details
         week['session_details'].append(session_detail)
@@ -807,19 +855,6 @@ async def save_session_summary(
         # Calculate new progress
         new_completed = session_number
         progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
-        
-        # Track speaking minutes if provided in request
-        duration_minutes = 0.0
-        if request and request.duration_minutes:
-            duration_minutes = request.duration_minutes
-            print(f"[SESSION_SUMMARY] 🕐 Tracking {duration_minutes} minutes of speaking time")
-        else:
-            # Default to 5 minutes if no duration provided (typical session length)
-            duration_minutes = 5.0
-            print(f"[SESSION_SUMMARY] 🕐 No duration provided, defaulting to {duration_minutes} minutes")
-        
-        # Add duration to session detail for future reference
-        session_detail["duration_minutes"] = duration_minutes
         
         # Update practice minutes used in learning plan
         current_minutes_used = learning_plan.get("practice_minutes_used", 0.0)
@@ -834,7 +869,10 @@ async def save_session_summary(
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        print(f"[SESSION_SUMMARY] 📊 Updated learning plan minutes: {current_minutes_used} → {new_minutes_used}")
+        print(f"[SESSION_SUMMARY] 📊 Learning plan update:")
+        print(f"[SESSION_SUMMARY]    Sessions: {current_completed} → {new_completed}")
+        print(f"[SESSION_SUMMARY]    Minutes: {current_minutes_used} → {new_minutes_used}")
+        print(f"[SESSION_SUMMARY]    Progress: {progress_percentage:.1f}%")
         
         result = await learning_plans_collection.update_one(
             {"_id": learning_plan["_id"]},
@@ -842,17 +880,17 @@ async def save_session_summary(
         )
         
         if result.modified_count > 0:
-            print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
-            print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+            print(f"[SESSION_SUMMARY] ✅ Learning plan updated successfully")
             
             # CRITICAL FIX: Track subscription usage for both sessions AND minutes
             try:
                 from subscription_service import SubscriptionService
                 from models import SpeakingTimeTrackingRequest
                 
+                print(f"[SESSION_SUMMARY] 🔄 Tracking subscription usage...")
+                
                 # FIXED: Use track_speaking_time with session_completed=True
                 # This will track BOTH the speaking minutes AND increment the session counter
-                # No need to call track_usage separately as it would double-count sessions
                 speaking_time_request = SpeakingTimeTrackingRequest(
                     user_id=str(current_user.id),
                     speaking_minutes=duration_minutes,
@@ -861,38 +899,51 @@ async def save_session_summary(
                 
                 tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
                 if tracking_success:
-                    print(f"[SESSION_SUMMARY] ✅ Tracked learning plan session: {duration_minutes} minutes + 1 session for user {current_user.id}")
-                    print(f"[SESSION_SUMMARY] ✅ User subscription counters updated (both minutes and sessions)")
+                    print(f"[SESSION_SUMMARY] ✅ Subscription tracking successful:")
+                    print(f"[SESSION_SUMMARY]    User: {getattr(current_user, 'email', current_user.id)}")
+                    print(f"[SESSION_SUMMARY]    Minutes tracked: {duration_minutes}")
+                    print(f"[SESSION_SUMMARY]    Session completed: True")
+                    print(f"[SESSION_SUMMARY]    Both counters updated")
                 else:
-                    print(f"[SESSION_SUMMARY] ⚠️ Failed to track subscription usage - user may have exceeded limits")
+                    print(f"[SESSION_SUMMARY] ⚠️ Subscription tracking failed - user may have exceeded limits")
+                    # Don't fail the session save, but log the issue
                     
             except Exception as usage_error:
                 print(f"[SESSION_SUMMARY] ⚠️ Warning: Failed to track subscription usage: {str(usage_error)}")
+                import traceback
+                traceback.print_exc()
                 # Don't fail the entire operation if usage tracking fails
                 # The session summary is still saved successfully
             
+            print(f"[SESSION_SUMMARY] 🎉 Session summary saved successfully!")
             return {
                 "success": True,
                 "message": "Session summary saved successfully",
                 "session_number": session_number,
                 "week": week_index + 1,
                 "session_in_week": session_in_week,
-                "progress_percentage": progress_percentage
+                "progress_percentage": progress_percentage,
+                "duration_minutes": duration_minutes
             }
         else:
+            print(f"[SESSION_SUMMARY] ❌ Failed to update learning plan in database")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to save session summary"
             )
             
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
+        print(f"[SESSION_SUMMARY] ❌ Unexpected error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error saving session summary: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error saving session summary: {str(e)}"
-        )
-
-@router.post("/save-assessment", response_model=UserResponse)
+        )@router.post("/save-assessment", response_model=UserResponse)
 async def save_assessment_data(
     assessment: SpeakingAssessmentData,
     current_user: UserResponse = Depends(get_current_user)
