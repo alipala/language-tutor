@@ -810,8 +810,14 @@ export default function ProfilePage() {
                       <div className="space-y-1 md:space-y-3">
                         {/* PRIMARY: Speaking Time (what actually matters for limits) */}
                         <div className="flex justify-between text-white text-xs md:text-base">
-                          <Tooltip content="Your monthly speaking time allowance. This is what determines access to practice sessions." position="top">
-                            <span className="font-medium cursor-help border-b border-dotted border-white/50">Speaking Time</span>
+                          <Tooltip 
+                            content="🎯 Your monthly speaking time allowance. This is what determines access to practice sessions. Complete unlimited sessions within your time limit!" 
+                            position="top"
+                            variant="info"
+                            showIcon={true}
+                            delay={200}
+                          >
+                            <span className="font-medium cursor-help border-b border-dotted border-white/50 hover:border-white/80 transition-colors">Speaking Time</span>
                           </Tooltip>
                           <span className="font-bold text-sm md:text-lg">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
@@ -820,8 +826,14 @@ export default function ProfilePage() {
                         </div>
                         {/* SECONDARY: Sessions (for tracking only) */}
                         <div className="flex justify-between text-white/80 text-xs md:text-sm">
-                          <Tooltip content="Number of practice sessions completed this month. Sessions are tracked for progress but don't limit access." position="top">
-                            <span className="font-medium cursor-help border-b border-dotted border-white/30">Sessions Completed</span>
+                          <Tooltip 
+                            content="📊 Number of practice sessions completed this month. Sessions are tracked for progress but don't limit access - only speaking time matters for billing." 
+                            position="top"
+                            variant="success"
+                            showIcon={true}
+                            delay={200}
+                          >
+                            <span className="font-medium cursor-help border-b border-dotted border-white/30 hover:border-white/60 transition-colors">Sessions Completed</span>
                           </Tooltip>
                           <span className="font-medium">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
