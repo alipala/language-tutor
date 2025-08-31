@@ -47,7 +47,7 @@ export function Tooltip({
             bg-gray-900 
             rounded-md 
             shadow-lg
-            whitespace-nowrap
+            max-w-xs
             ${positionClasses[position]}
           `}
         >
