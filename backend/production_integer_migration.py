@@ -9,6 +9,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 from bson import ObjectId
 import json
+from typing import Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class ProductionIntegerMigration:
     """Safe migration of production data to integer calculations"""
