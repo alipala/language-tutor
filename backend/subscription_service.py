@@ -309,7 +309,7 @@ class SubscriptionService:
         period: str, 
         user_data: Dict[str, Any]
     ) -> SubscriptionLimits:
-        """Calculate subscription limits and current usage"""
+        """Calculate subscription limits and current usage with dashboard fix validation"""
         
         plan = cls.SUBSCRIPTION_PLANS.get(plan_id, cls.SUBSCRIPTION_PLANS["try_learn"])
         
@@ -366,10 +366,56 @@ class SubscriptionService:
                 }}
             )
         
-        # Get current usage with safeguards
-        sessions_used = max(0, user_data.get("practice_sessions_used", 0))  # Ensure non-negative
+        # DASHBOARD FIX: Calculate actual usage from session data to prevent discrepancies
+        try:
+            # Import the dashboard fix module
+            from subscription_service_dashboard_fix import DashboardCalculationFix
+            
+            # Get actual usage from session data (source of truth)
+            actual_usage = await DashboardCalculationFix.calculate_actual_usage_from_sessions(
+                user_id, period_start, period_end
+            )
+            
+            # Get user record data for comparison
+            user_record_minutes = user_data.get("practice_minutes_used", 0.0)
+            user_record_sessions = user_data.get("practice_sessions_used", 0)
+            
+            # Check for discrepancy and auto-correct if needed
+            minutes_discrepancy = abs(user_record_minutes - actual_usage["total_minutes"])
+            sessions_discrepancy = abs(user_record_sessions - actual_usage["total_sessions"])
+            
+            if minutes_discrepancy > 0.1 or sessions_discrepancy > 0:  # 0.1 minute tolerance
+                logger.warning(f"⚠️ Dashboard calculation discrepancy detected for user {user_id}: "
+                             f"User record: {user_record_minutes:.2f} min/{user_record_sessions} sessions, "
+                             f"Actual: {actual_usage['total_minutes']:.2f} min/{actual_usage['total_sessions']} sessions")
+                
+                # Auto-correct the user record to prevent dashboard showing wrong values
+                await database["users"].update_one(
+                    get_user_query(user_id),
+                    {
+                        "$set": {
+                            "practice_minutes_used": actual_usage["total_minutes"],
+                            "practice_sessions_used": actual_usage["total_sessions"],
+                            "last_auto_correction": datetime.utcnow().isoformat(),
+                            "auto_correction_reason": "subscription_service_dashboard_fix"
+                        }
+                    }
+                )
+                
+                logger.info(f"✅ Auto-corrected user record for user {user_id} to prevent dashboard discrepancy")
+            
+            # Use actual session data for calculations (not potentially stale user record)
+            sessions_used = max(0, actual_usage["total_sessions"])
+            minutes_used = max(0.0, actual_usage["total_minutes"])
+            
+        except Exception as e:
+            logger.error(f"Dashboard fix calculation failed for user {user_id}: {str(e)}")
+            # Fallback to user record data if session calculation fails
+            sessions_used = max(0, user_data.get("practice_sessions_used", 0))
+            minutes_used = max(0.0, user_data.get("practice_minutes_used", 0.0))
+        
+        # Get assessments usage (not affected by dashboard fix)
         assessments_used = max(0, user_data.get("assessments_used", 0))  # Ensure non-negative
-        minutes_used = max(0.0, user_data.get("practice_minutes_used", 0.0))  # Ensure non-negative
         
         # Calculate remaining
         sessions_remaining = sessions_limit - sessions_used if sessions_limit != -1 else -1
