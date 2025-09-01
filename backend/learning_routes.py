@@ -813,15 +813,28 @@ async def save_session_summary(
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # Track speaking minutes if provided in request
-        duration_minutes = 0.0
+        # ENHANCED: Smart duration calculation - always integer, never decimal
         if request and request.duration_minutes:
-            duration_minutes = request.duration_minutes
-            print(f"[SESSION_SUMMARY] 🕐 Duration from request: {duration_minutes} minutes")
+            # If user provided duration, round to nearest integer (no decimals allowed)
+            raw_duration = request.duration_minutes
+            if raw_duration >= 5.0:
+                # Complete session: always 5 minutes
+                duration_minutes = 5
+                session_status = "completed"
+                print(f"[SESSION_SUMMARY] ✅ Complete session: {raw_duration} → {duration_minutes} minutes")
+            else:
+                # Early exit: round to nearest integer (1-4 minutes)
+                duration_minutes = max(1, int(round(raw_duration)))
+                session_status = "partial"
+                print(f"[SESSION_SUMMARY] ⏰ Early exit: {raw_duration} → {duration_minutes} minutes")
         else:
-            # Default to 5 minutes if no duration provided (typical session length)
-            duration_minutes = 5.0
-            print(f"[SESSION_SUMMARY] 🕐 No duration provided, defaulting to {duration_minutes} minutes")
+            # Default: complete session
+            duration_minutes = 5
+            session_status = "completed"
+            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes")
+        
+        # Add completion timestamp for subscription period tracking
+        completion_timestamp = datetime.utcnow()
         
         # Create session detail object
         session_detail = {
