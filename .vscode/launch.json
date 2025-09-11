@@ -26,6 +26,15 @@
       "runtimeArgs": [
         "--user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1"
       ]
+    },
+    {
+      "name": "Debug Backend (Custom Server)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/run_with_venv.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/backend"
     }
   ]
 }
