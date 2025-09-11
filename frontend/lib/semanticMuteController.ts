@@ -212,49 +212,76 @@ export class SemanticMuteController {
     if (this.state.delayedUnmuteTimeout) {
       clearTimeout(this.state.delayedUnmuteTimeout);
       this.state.delayedUnmuteTimeout = null;
-      console.log('⏹️ [SEMANTIC_MUTE] Cleared pending delayed unmute');
+      console.log('[SEMANTIC_MUTE] Cleared pending delayed unmute');
     }
   }
   
   /**
-   * ✅ PHASE 1: Less aggressive semantic VAD event handling
+   * LAYER 2: Semantic VAD Event Handler (Backup Controller)
+   * 
+   * PURPOSE: Software-level backup muting system using audio gain control
+   * ROLE: Independent fallback if hardware-level muting fails
+   * CONTROL: Audio Context gain nodes (software level)
+   * 
+   * This is part of the TRIPLE-LAYER REDUNDANCY architecture:
+   * - Layer 1: Hardware track.enabled control (EnhancedRealtimeService)
+   * - Layer 2: Software gain control (THIS controller)
+   * - Layer 3: Emergency timeout safety nets
    */
   public handleRealtimeEvent(event: any): void {
     switch (event.type) {
-      // ✅ PHASE 1: Only mute on actual audio start, not preemptive
+      // AI STARTS SPEAKING: Delayed mute to prevent cutting off speech start
       case 'response.audio.start':
-        console.log('🔇 [SEMANTIC_MUTE] Audio started - DELAYED MUTE');
-        // Add small delay to prevent cutting off beginning of AI speech
+        console.log('[SEMANTIC_MUTE] Audio started - DELAYED MUTE');
+        
+        // WHY DELAY: Prevents cutting off the very beginning of AI speech
+        // MECHANISM: Software-level gain reduction after 100ms
+        // BACKUP FOR: Hardware track.enabled muting in Layer 1
         setTimeout(() => {
           this.muteForAISpeech('OpenAI audio response started');
         }, 100);
         break;
         
+      // AI FINISHES SPEAKING: Schedule intelligent unmute with semantic buffer
       case 'response.audio.done':
+        // WHY SCHEDULED: Prevents immediate unmute that could cause feedback
+        // MECHANISM: Semantic processing buffer + tail protection
+        // BACKUP FOR: Layer 1 delayed unmute system
         this.scheduleUnmuteAfterAISpeech('OpenAI audio response completed');
         break;
         
+      // USER STARTS SPEAKING: Immediate unmute for conversation flow
       case 'input_audio_buffer.speech_started':
+        // WHY IMMEDIATE: User needs to interrupt AI without delay
+        // MECHANISM: Instant gain restoration for natural conversation
+        // BACKUP FOR: Layer 1 immediate unmute system
         this.ensureUnmutedForUserSpeech('User speech detected by semantic VAD');
         break;
         
+      // AI CONTINUES SPEAKING: Ensure mute state during audio chunks
       case 'response.audio.delta':
-        // Ensure we stay muted during AI speech chunks
+        // WHY CHECK STATE: Catch any unmute failures during AI speech
+        // MECHANISM: Verify and enforce muted state during audio streaming
+        // BACKUP FOR: Layer 1 continuous mute enforcement
         if (!this.state.isMuted) {
-          this.muteForAISpeech('AI audio delta received');
+          console.log('[SEMANTIC_MUTE] BACKUP MUTE: Layer 1 failed, Layer 2 engaging');
+          this.muteForAISpeech('AI audio delta received - backup mute engaged');
         }
         break;
         
+      // USER STOPS SPEAKING: Maintain state for natural conversation flow
       case 'input_audio_buffer.speech_stopped':
-        // Don't immediately mute when user stops speaking
-        // Let semantic VAD and natural conversation flow handle this
-        console.log('👤 [SEMANTIC_MUTE] User speech stopped - maintaining current mute state');
+        // WHY NO IMMEDIATE MUTE: Allows natural conversation pauses
+        // MECHANISM: Let semantic VAD determine next action based on context
+        // PHILOSOPHY: Don't interrupt natural conversation rhythm
+        console.log('[SEMANTIC_MUTE] User speech stopped - maintaining current mute state');
+        // Note: Muting will happen when AI starts speaking again
         break;
         
       default:
-        // Log other events for debugging
+        // DEBUG: Log unhandled audio events for system monitoring
         if (event.type.includes('audio') || event.type.includes('speech')) {
-          console.log(`🎵 [SEMANTIC_MUTE] Unhandled audio event: ${event.type}`);
+          console.log(`[SEMANTIC_MUTE] Unhandled audio event: ${event.type}`);
         }
         break;
     }
