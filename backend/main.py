@@ -618,7 +618,7 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             }
         }
         
-        print("✅ [UNIVERSAL] Sending ephemeral token request to OpenAI...")
+        print("[UNIVERSAL] Sending ephemeral token request to OpenAI...")
         
         async with httpx.AsyncClient() as http_client:
             response = await http_client.post(
@@ -633,15 +633,15 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         
         if response.status_code != 200:
             error_text = response.text
-            print(f"❌ OpenAI API error: {error_text}")
+            print(f"OpenAI API error: {error_text}")
             raise HTTPException(status_code=response.status_code, detail=error_text)
         
         result = response.json()
-        print(f"✅ [UNIVERSAL] Ephemeral token created successfully")
+        print(f"[UNIVERSAL] Ephemeral token created successfully")
         return result
         
     except Exception as e:
-        print(f"❌ [UNIVERSAL] Error: {str(e)}")
+        print(f"[UNIVERSAL] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def build_universal_instructions(request: TutorSessionRequest) -> str:

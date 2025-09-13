@@ -179,13 +179,13 @@ export class EnhancedRealtimeService {
   }
   
   /**
-   * ✅ ENHANCED: Set up WebRTC connection with BULLETPROOF mobile optimization
+   * Set up WebRTC connection with mobile optimization
    */
   private setupWebRTC(): boolean {
     try {
-      console.log('🔧 [ENHANCED] Setting up WebRTC with bulletproof mobile optimization...');
+      console.log('[ENHANCED] Setting up WebRTC with bulletproof mobile optimization...');
       
-      // ✅ CRITICAL: Enhanced STUN/TURN servers for mobile reliability
+      // Enhanced STUN/TURN servers for mobile reliability
       const iceServers = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
@@ -194,7 +194,7 @@ export class EnhancedRealtimeService {
         { urls: 'stun:stun4.l.google.com:19302' }
       ];
       
-      // ✅ ENHANCED: Mobile-optimized RTCConfiguration
+      // Mobile-optimized RTCConfiguration
       const rtcConfig: RTCConfiguration = {
         iceServers,
         iceCandidatePoolSize: 10, // Increased for mobile reliability
@@ -207,11 +207,11 @@ export class EnhancedRealtimeService {
       
       // Set up audio handling with enhanced mobile support
       this.peerConnection.ontrack = (e) => {
-        console.log('🎵 [ENHANCED] Received remote track', e.streams);
+        console.log('[ENHANCED] Received remote track', e.streams);
         if (this.audioElement && e.streams && e.streams[0]) {
           this.audioElement.srcObject = e.streams[0];
           
-          // ✅ PHASE 1: Don't mute remote audio - let user hear AI
+          // PHASE 1: Don't mute remote audio - let user hear AI
           this.audioElement.muted = false;
           this.audioElement.volume = 1.0; // Full volume for AI speech
           console.log('[ENHANCED] Remote audio enabled for AI speech');
@@ -969,9 +969,9 @@ export class EnhancedRealtimeService {
    */
   public async connect(): Promise<boolean> {
     try {
-      console.log('🚀 [ENHANCED] Connecting to OpenAI with bulletproof muting...');
+      console.log('[ENHANCED] Connecting to OpenAI with muting...');
       if (!this.peerConnection) {
-        console.error('❌ [ENHANCED] Peer connection not initialized');
+        console.error('[ENHANCED] Peer connection not initialized');
         return false;
       }
       
@@ -983,30 +983,30 @@ export class EnhancedRealtimeService {
       // Set connection timeout (longer for mobile)
       const timeout = this.mobile_optimization_active ? 20000 : 15000;
       this.connectionAttemptTimeout = setTimeout(() => {
-        console.error('⏰ [ENHANCED] Connection attempt timed out');
+        console.error('[ENHANCED] Connection attempt timed out');
         this.disconnect();
       }, timeout);
       
       // Make sure data channel is created before creating the offer
       if (!this.dataChannel || this.dataChannel.readyState === 'closed') {
-        console.log('🔄 [ENHANCED] Creating new data channel before offer...');
+        console.log('[ENHANCED] Creating new data channel before offer...');
         try {
           this.dataChannel = this.peerConnection.createDataChannel('oai-events', {
             ordered: true,
             maxRetransmits: this.mobile_optimization_active ? 5 : 3
           });
           
-          console.log('✅ [ENHANCED] Data channel created successfully');
+          console.log('[ENHANCED] Data channel created successfully');
           
           this.dataChannel.onopen = () => {
-            console.log('✅ [ENHANCED] Data channel opened');
+            console.log('[ENHANCED] Data channel opened');
             this.isConnected = true;
             this.enforcePostConnectionMuting();
             if (this.onConnectedCallback) this.onConnectedCallback();
           };
           
           this.dataChannel.onclose = () => {
-            console.log('❌ [ENHANCED] Data channel closed');
+            console.log('[ENHANCED] Data channel closed');
             this.isConnected = false;
             if (this.onDisconnectedCallback) this.onDisconnectedCallback();
           };
@@ -1018,7 +1018,7 @@ export class EnhancedRealtimeService {
                 this.handleEnhancedRealtimeEvent(eventData);
                 this.onMessageCallback(eventData);
               } catch (error) {
-                console.error('❌ [ENHANCED] Error parsing message:', error);
+                console.error('[ENHANCED] Error parsing message:', error);
               }
             }
           };
@@ -1027,13 +1027,13 @@ export class EnhancedRealtimeService {
           const delay = this.mobile_optimization_active ? 400 : 200;
           await new Promise(resolve => setTimeout(resolve, delay));
         } catch (channelError) {
-          console.error('❌ [ENHANCED] Error creating data channel:', channelError);
+          console.error('[ENHANCED] Error creating data channel:', channelError);
           return false;
         }
       }
       
       // Create offer
-      console.log('📝 [ENHANCED] Creating offer...');
+      console.log('[ENHANCED] Creating offer...');
       let completeOffer: RTCSessionDescriptionInit | null = null;
       
       try {
@@ -1041,9 +1041,9 @@ export class EnhancedRealtimeService {
           offerToReceiveAudio: true
         });
         
-        console.log('📝 [ENHANCED] Setting local description...');
+        console.log('[ENHANCED] Setting local description...');
         await this.peerConnection.setLocalDescription(offer);
-        console.log('✅ [ENHANCED] Local description set successfully');
+        console.log('[ENHANCED] Local description set successfully');
         
         // Add a delay after setting local description (longer for mobile)
         const delay = this.mobile_optimization_active ? 500 : 300;
@@ -1053,18 +1053,18 @@ export class EnhancedRealtimeService {
         console.log('🧊 [ENHANCED] Waiting for ICE gathering to complete...');
         completeOffer = await this.waitForIceComplete();
         if (!completeOffer) {
-          console.error('❌ [ENHANCED] Failed to gather ICE candidates');
+          console.error('[ENHANCED] Failed to gather ICE candidates');
           return false;
         }
         
         console.log('✅ [ENHANCED] ICE gathering completed successfully');
       } catch (offerError) {
-        console.error('❌ [ENHANCED] Error creating or processing offer:', offerError);
+        console.error('[ENHANCED] Error creating or processing offer:', offerError);
         return false;
       }
       
       // Send offer to OpenAI
-      console.log('📤 [ENHANCED] Sending offer to OpenAI...');
+      console.log('[ENHANCED] Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
       const model = 'gpt-4o-realtime-preview-2024-12-17';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
@@ -1078,12 +1078,12 @@ export class EnhancedRealtimeService {
       
       if (!sdpResponse.ok) {
         const errorText = await sdpResponse.text();
-        console.error('❌ [ENHANCED] Error connecting to OpenAI:', errorText);
+        console.error('[ENHANCED] Error connecting to OpenAI:', errorText);
         return false;
       }
       
       // Set remote description
-      console.log('📝 [ENHANCED] Setting remote description...');
+      console.log('[ENHANCED] Setting remote description...');
       const answer = {
         type: 'answer' as RTCSdpType,
         sdp: await sdpResponse.text(),
@@ -1174,11 +1174,11 @@ export class EnhancedRealtimeService {
    * Start a conversation with OpenAI - Enhanced implementation
    */
   public async startConversation(instructions?: string): Promise<boolean> {
-    console.log('🚀 [ENHANCED] Starting conversation with bulletproof approach...');
+    console.log('[ENHANCED] Starting conversation with bulletproof approach...');
     
     // If we have conversation instructions (for resuming), we need to get a new ephemeral key
     if (instructions) {
-      console.log('📝 [ENHANCED] Conversation instructions provided - getting new ephemeral key with context');
+      console.log('[ENHANCED] Conversation instructions provided - getting new ephemeral key with context');
       
       const newToken = await this.getEphemeralKey(
         this.currentLanguage, 
@@ -1190,23 +1190,23 @@ export class EnhancedRealtimeService {
       );
       
       if (!newToken) {
-        console.error('❌ [ENHANCED] Failed to get new ephemeral key with conversation history');
+        console.error('[ENHANCED] Failed to get new ephemeral key with conversation history');
         return false;
       }
       
       this.ephemeralKey = newToken;
-      console.log('✅ [ENHANCED] Updated ephemeral key with conversation context');
+      console.log('[ENHANCED] Updated ephemeral key with conversation context');
     }
     
     // Check if data channel is ready
     if (!this.dataChannel) {
-      console.error('❌ [ENHANCED] Data channel not initialized');
+      console.error('[ENHANCED] Data channel not initialized');
       return false;
     }
     
     // Wait for data channel to be ready (longer timeout for mobile)
     if (this.dataChannel.readyState !== 'open') {
-      console.log('⏳ [ENHANCED] Data channel not open, waiting before starting conversation...');
+      console.log('[ENHANCED] Data channel not open, waiting before starting conversation...');
       
       try {
         const timeout = this.mobile_optimization_active ? 12000 : 8000;
@@ -1696,12 +1696,12 @@ export class EnhancedRealtimeService {
       console.log('================================================================================');
       
       if (!language || !level) {
-        console.error('❌ [ENHANCED] Missing language or level parameters');
+        console.error('[ENHANCED] Missing language or level parameters');
         throw new Error('Language and level are required parameters');
       }
       
       let endpoint = `${this.backendUrl}/api/realtime/token`;
-      console.log('📤 [ENHANCED] Fetching ephemeral key from:', endpoint);
+      console.log('[ENHANCED] Fetching ephemeral key from:', endpoint);
       
       let researchData = null;
       if (topic === 'custom') {
@@ -1709,22 +1709,22 @@ export class EnhancedRealtimeService {
         if (storedResearchData) {
           try {
             const parsedResearch = JSON.parse(storedResearchData);
-            console.log('🔍 [ENHANCED] Parsed research data structure:', parsedResearch);
+            console.log('[ENHANCED] Parsed research data structure:', parsedResearch);
             
             if (parsedResearch.research) {
               researchData = parsedResearch.research;
-              console.log('✅ [ENHANCED] Retrieved research data from "research" field:', researchData.length, 'characters');
+              console.log('[ENHANCED] Retrieved research data from "research" field:', researchData.length, 'characters');
             } else if (parsedResearch.research_content) {
               researchData = parsedResearch.research_content;
-              console.log('✅ [ENHANCED] Retrieved research data from "research_content" field:', researchData.length, 'characters');
+              console.log('[ENHANCED] Retrieved research data from "research_content" field:', researchData.length, 'characters');
             } else {
-              console.log('⚠️ [ENHANCED] No research data found in expected fields. Available fields:', Object.keys(parsedResearch));
+              console.log('[ENHANCED] No research data found in expected fields. Available fields:', Object.keys(parsedResearch));
             }
           } catch (error) {
-            console.error('❌ [ENHANCED] Error parsing research data:', error);
+            console.error('[ENHANCED] Error parsing research data:', error);
           }
         } else {
-          console.log('⚠️ [ENHANCED] No research data found in session storage for custom topic');
+          console.log('[ENHANCED] No research data found in session storage for custom topic');
         }
       }
       
@@ -1749,15 +1749,15 @@ export class EnhancedRealtimeService {
           const voiceData = await voiceResponse.json();
           if (voiceData.voice) {
             selectedVoice = voiceData.voice;
-            console.log('🎤 [ENHANCED] Using user preferred voice:', selectedVoice);
+            console.log('[ENHANCED] Using user preferred voice:', selectedVoice);
           } else {
-            console.log('🎤 [ENHANCED] No voice preference found, using default:', selectedVoice);
+            console.log('[ENHANCED] No voice preference found, using default:', selectedVoice);
           }
         } else {
-          console.log('🎤 [ENHANCED] Failed to get voice preference (status:', voiceResponse.status, '), using default:', selectedVoice);
+          console.log('[ENHANCED] Failed to get voice preference (status:', voiceResponse.status, '), using default:', selectedVoice);
         }
       } catch (voiceError) {
-        console.log('🎤 [ENHANCED] Error fetching voice preference, using default:', selectedVoice, voiceError);
+        console.log('[ENHANCED] Error fetching voice preference, using default:', selectedVoice, voiceError);
       }
 
       const requestBody = {
@@ -1772,14 +1772,14 @@ export class EnhancedRealtimeService {
       };
       
       if (assessmentData) {
-        console.log('📊 [ENHANCED] Including assessment data in token request');
+        console.log('[ENHANCED] Including assessment data in token request');
       }
       
       if (topic === 'custom' && userPrompt) {
-        console.log('🎯 [ENHANCED] Using custom topic with user prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
+        console.log('[ENHANCED] Using custom topic with user prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
       }
       
-      console.log('📋 [ENHANCED] Request body:', JSON.stringify(requestBody));
+      console.log('[ENHANCED] Request body:', JSON.stringify(requestBody));
       
       let realEndpointError: any = null;
       
