@@ -37,22 +37,22 @@ export class EnhancedRealtimeService {
   private pauseStartTime: number | null = null;
   private semanticMuteController: SemanticMuteController | null = null;
   
-  // ✅ ENHANCED: Triple-layer muting system
+  // ENHANCED: Triple-layer muting system
   private ai_is_speaking: boolean = false;
   private fallback_mute_timeout: NodeJS.Timeout | null = null;
   private emergency_mute_timeout: NodeJS.Timeout | null = null;
   private fallback_protection_enabled: boolean = true;
   private last_ai_speech_event: string = '';
   
-  // ✅ NEW: Pre-emptive muting before connection
+  // Pre-emptive muting before connection
   private pre_connection_mute_active: boolean = false;
   private mobile_optimization_active: boolean = false;
   private echo_cancellation_level: number = 3; // Maximum level
   
-  // ✅ NEW: User manual mute state tracking
+  // User manual mute state tracking
   private user_manually_muted: boolean = false;
   
-  // ✅ PHASE 1: Reduced aggressive timing controls
+  // PHASE 1: Reduced aggressive timing controls
   private readonly PREEMPTIVE_MUTE_DELAY = 100; // Wait 100ms before muting
   private readonly MOBILE_SAFETY_BUFFER = 0; // Reduced mobile buffer
   private readonly EMERGENCY_MUTE_THRESHOLD = 50; // Emergency trigger time
@@ -63,14 +63,14 @@ export class EnhancedRealtimeService {
       this.audioElement = new Audio();
       this.audioElement.autoplay = true;
       
-      // ✅ CRITICAL: Detect mobile browsers for enhanced optimization
+      // Detect mobile browsers for enhanced optimization
       this.mobile_optimization_active = this.isMobileBrowser();
-      console.log('🔧 [ENHANCED] Mobile optimization:', this.mobile_optimization_active ? 'ACTIVE' : 'DISABLED');
+      console.log('[ENHANCED] Mobile optimization:', this.mobile_optimization_active ? 'ACTIVE' : 'DISABLED');
     }
   }
 
   /**
-   * ✅ CRITICAL: Detect mobile browsers for enhanced optimization
+   * Detect mobile browsers for enhanced optimization
    */
   private isMobileBrowser(): boolean {
     if (typeof window === 'undefined') return false;
@@ -139,7 +139,7 @@ export class EnhancedRealtimeService {
         }
       }
       
-      console.log('🌐 Using backend URL:', this.backendUrl);
+      console.log(' Using backend URL:', this.backendUrl);
       
       // Test the connection to the backend first
       try {
@@ -147,13 +147,13 @@ export class EnhancedRealtimeService {
           credentials: 'same-origin'
         });
         if (!testResponse.ok) {
-          console.error('❌ Backend connection test failed:', await testResponse.text());
+          console.error(' Backend connection test failed:', await testResponse.text());
           return false;
         }
         const testData = await testResponse.json();
-        console.log('✅ Backend connection test successful:', testData.message);
+        console.log(' Backend connection test successful:', testData.message);
       } catch (err) {
-        console.error('❌ Error connecting to backend:', err);
+        console.error('Error connecting to backend:', err);
         return false;
       }
       
@@ -161,19 +161,19 @@ export class EnhancedRealtimeService {
         // Get ephemeral key from backend with language and level if provided
         const token = await this.getEphemeralKey(language, level, topic, userPrompt, assessmentData);
         if (!token) {
-          console.error('❌ Failed to get ephemeral key (empty token)');
+          console.error(' Failed to get ephemeral key (empty token)');
           return false;
         }
         
-        console.log('✅ Ephemeral key obtained successfully');
+        console.log(' Ephemeral key obtained successfully');
         this.ephemeralKey = token;
         return true;
       } catch (err) {
-        console.error('❌ Error getting ephemeral key:', err);
+        console.error(' Error getting ephemeral key:', err);
         return false;
       }
     } catch (error) {
-      console.error('❌ Error initializing enhanced realtime service:', error);
+      console.error(' Error initializing enhanced realtime service:', error);
       return false;
     }
   }
@@ -214,7 +214,7 @@ export class EnhancedRealtimeService {
           // ✅ PHASE 1: Don't mute remote audio - let user hear AI
           this.audioElement.muted = false;
           this.audioElement.volume = 1.0; // Full volume for AI speech
-          console.log('🔊 [ENHANCED] Remote audio enabled for AI speech');
+          console.log('[ENHANCED] Remote audio enabled for AI speech');
           
           //  Set up audio element for mobile optimization
           if (this.mobile_optimization_active) {
@@ -251,7 +251,7 @@ export class EnhancedRealtimeService {
       });
       
       this.dataChannel.onopen = () => {
-        console.log('✅ [ENHANCED] Data channel opened');
+        console.log('[ENHANCED] Data channel opened');
         this.isConnected = true;
         
         // CRITICAL: Final muting enforcement after data channel opens
@@ -401,7 +401,7 @@ export class EnhancedRealtimeService {
   }
   
   /**
-   * ✅ ENHANCED: Request microphone access with BULLETPROOF mobile optimization
+   * ENHANCED: Request microphone access with BULLETPROOF mobile optimization
    */
   public async startMicrophone(): Promise<boolean> {
     try {
@@ -664,7 +664,6 @@ export class EnhancedRealtimeService {
         
         // WHY DELAY: Prevents cutting off the very beginning of AI speech
         // MECHANISM: Hardware-level track.enabled = false after 100ms
-        // CONTROLS: Layer 2 (semantic) + Layer 3 (emergency timeout)
         setTimeout(() => {
           this.executeImmediateMute('AI audio response started');
         }, this.PREEMPTIVE_MUTE_DELAY); 
@@ -728,8 +727,6 @@ export class EnhancedRealtimeService {
 
     // LAYER 2 ACTIVATION: Trigger backup semantic controller for redundancy
     // PURPOSE: If Layer 1 (hardware) fails, Layer 2 (software) continues working
-    // MECHANISM: Independent software-level gain control system
-    // REDUNDANCY: Triple-layer approach ensures 99.9% reliability
     if (this.semanticMuteController) {
       try {
         this.semanticMuteController.handleRealtimeEvent(eventData);

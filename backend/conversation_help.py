@@ -135,9 +135,8 @@ INSTANT_RESPONSE_TEMPLATES = {
 
 async def generate_conversation_help_fast(request: ConversationHelpRequest) -> Optional[ConversationHelpResponse]:
     """
-    AI-POWERED CONVERSATION RESCUE SYSTEM - 80% Cost Reduction Implementation
-    
-    INNOVATION: Ultra-fast contextual help generation with smart optimization
+    CONVERSATION RESCUE SYSTEM
+    INNOVATION: Contextual help generation with optimization
     PROBLEM SOLVED: Expensive, slow conversation assistance that breaks user flow
     SOLUTION: Intelligent prompt compression + GPT-4o-mini + smart caching
     """
@@ -160,18 +159,18 @@ async def generate_conversation_help_fast(request: ConversationHelpRequest) -> O
             return None
         print(f"VALIDATION PASSED: AI response is valid")
         
-        #  PHASE 3: Smart truncation algorithm for speed optimization
-        print(f"\n PHASE 3: Smart truncation algorithm")
+        #  PHASE 3: Truncation algorithm for speed optimization
+        print(f"\n PHASE 3: Truncation of AI response")
         print(f"   - Original AI response length: {len(request.ai_response)} characters")
         # PURPOSE: Reduce token usage by 70% while preserving context quality
         # MECHANISM: Intelligent sentence boundary detection + semantic preservation
         def smart_truncate(text: str, max_length: int = 100) -> str:
-            # OPTIMIZATION: Return immediately if text is already short
+            # Return immediately if text is already short
             if len(text) <= max_length:
-                print(f"   - Text already short enough, no truncation needed")
+                print(f" Text already short enough, no truncation needed")
                 return text
             
-            # INTELLIGENCE: Try to cut at natural sentence boundaries
+            # Try to cut at natural sentence boundaries
             truncated = text[:max_length]
             last_period = truncated.rfind('.')      # Find last complete sentence
             last_question = truncated.rfind('?')    # Find last complete question

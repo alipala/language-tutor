@@ -19,12 +19,12 @@ export class SemanticMuteController {
   private audioTracks: MediaStreamTrack[] = [];
   private state: SemanticMuteState;
   
-  // ✅ PHASE 1: Reduced semantic VAD delays
+  // PHASE 1: Reduced semantic VAD delays
   private readonly SEMANTIC_PROCESSING_DELAY = 100; // Reduced from 300ms
   private readonly AI_SPEECH_TAIL_PROTECTION = 100; // Reduced from 500ms
   private readonly FADE_DURATION = 50; // 50ms fade to prevent audio pops
   
-  // ✅ NEW: Function to check if user has manually muted
+  // Function to check if user has manually muted
   private userManualMuteChecker: (() => boolean) | null = null;
   
   constructor() {
@@ -36,15 +36,15 @@ export class SemanticMuteController {
       lastMuteReason: 'initialized'
     };
     
-    console.log('🔇 [SEMANTIC_MUTE] Controller initialized with semantic VAD optimizations');
+    console.log('[SEMANTIC_MUTE] Controller initialized with semantic VAD optimizations');
   }
   
   /**
-   * ✅ NEW: Set user manual mute checker function
+   * Set user manual mute checker function
    */
   public setUserManualMuteChecker(checker: () => boolean): void {
     this.userManualMuteChecker = checker;
-    console.log('✅ [SEMANTIC_MUTE] User manual mute checker set');
+    console.log('[SEMANTIC_MUTE] User manual mute checker set');
   }
 
   /**
@@ -52,13 +52,13 @@ export class SemanticMuteController {
    */
   public async initialize(mediaStream: MediaStream): Promise<boolean> {
     try {
-      console.log('🔇 [SEMANTIC_MUTE] Initializing with media stream...');
+      console.log('[SEMANTIC_MUTE] Initializing with media stream...');
       
       this.mediaStream = mediaStream;
       this.audioTracks = mediaStream.getAudioTracks();
       
       if (this.audioTracks.length === 0) {
-        console.error('❌ [SEMANTIC_MUTE] No audio tracks found in media stream');
+        console.error('[SEMANTIC_MUTE] No audio tracks found in media stream');
         return false;
       }
       
@@ -110,7 +110,7 @@ export class SemanticMuteController {
    * Delayed unmuting after AI speech ends (with semantic processing buffer)
    */
   public scheduleUnmuteAfterAISpeech(reason: string = 'AI speech ended'): void {
-    console.log(`🔊 [SEMANTIC_MUTE] Scheduling delayed unmute: ${reason}`);
+    console.log(`[SEMANTIC_MUTE] Scheduling delayed unmute: ${reason}`);
     
     this.state.isAISpeaking = false;
     this.state.lastMuteReason = `delayed unmute: ${reason}`;
@@ -121,14 +121,14 @@ export class SemanticMuteController {
     // Calculate total delay: semantic processing + AI speech tail protection
     const totalDelay = this.SEMANTIC_PROCESSING_DELAY + this.AI_SPEECH_TAIL_PROTECTION;
     
-    console.log(`⏱️ [SEMANTIC_MUTE] Unmuting in ${totalDelay}ms (semantic processing + tail protection)`);
+    console.log(`[SEMANTIC_MUTE] Unmuting in ${totalDelay}ms (semantic processing + tail protection)`);
     
     this.state.delayedUnmuteTimeout = setTimeout(() => {
-      console.log('🔊 [SEMANTIC_MUTE] Executing delayed unmute');
+      console.log('[SEMANTIC_MUTE] Executing delayed unmute');
       
-      // ✅ CRITICAL: Check if user has manually muted their microphone
+      // CRITICAL: Check if user has manually muted their microphone
       if (this.userManualMuteChecker && this.userManualMuteChecker()) {
-        console.log('🔇 [SEMANTIC_MUTE] SKIPPING UNMUTE - User has manually muted microphone');
+        console.log('[SEMANTIC_MUTE] SKIPPING UNMUTE - User has manually muted microphone');
         this.state.delayedUnmuteTimeout = null;
         return;
       }
@@ -142,11 +142,11 @@ export class SemanticMuteController {
    * Ensure unmuted state for user speech (semantic VAD detected user speaking)
    */
   public ensureUnmutedForUserSpeech(reason: string = 'User speech detected'): void {
-    console.log(`🔊 [SEMANTIC_MUTE] Ensuring unmuted for user speech: ${reason}`);
+    console.log(`[SEMANTIC_MUTE] Ensuring unmuted for user speech: ${reason}`);
     
-    // ✅ CRITICAL: Check if user has manually muted their microphone
+    // CRITICAL: Check if user has manually muted their microphone
     if (this.userManualMuteChecker && this.userManualMuteChecker()) {
-      console.log('🔇 [SEMANTIC_MUTE] SKIPPING UNMUTE - User has manually muted microphone');
+      console.log('[SEMANTIC_MUTE] SKIPPING UNMUTE - User has manually muted microphone');
       return;
     }
     
