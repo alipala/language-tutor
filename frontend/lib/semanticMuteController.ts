@@ -94,7 +94,7 @@ export class SemanticMuteController {
    * Immediate muting when AI starts speaking (dual-layer approach)
    */
   public muteForAISpeech(reason: string = 'AI speaking'): void {
-    console.log(`🔇 [SEMANTIC_MUTE] Immediate mute for AI speech: ${reason}`);
+    console.log(`[SEMANTIC_MUTE] Immediate mute for AI speech: ${reason}`);
     
     this.state.isAISpeaking = true;
     this.state.lastMuteReason = reason;
@@ -165,13 +165,13 @@ export class SemanticMuteController {
    */
   private applyMute(shouldMute: boolean): void {
     const action = shouldMute ? 'Muting' : 'Unmuting';
-    console.log(`🎛️ [SEMANTIC_MUTE] ${action} with dual-layer approach...`);
+    console.log(`[SEMANTIC_MUTE] ${action} with dual-layer approach...`);
     
     // Layer 1: MediaStreamTrack.enabled (immediate hardware-level muting)
     this.audioTracks.forEach((track, index) => {
       if (track.readyState === 'live') {
         track.enabled = !shouldMute;
-        console.log(`🎤 [SEMANTIC_MUTE] Track ${index} enabled: ${!shouldMute}`);
+        console.log(`[SEMANTIC_MUTE] Track ${index} enabled: ${!shouldMute}`);
       }
     });
     
@@ -298,7 +298,7 @@ export class SemanticMuteController {
    * Force mute/unmute (for emergency situations)
    */
   public forceMute(shouldMute: boolean, reason: string): void {
-    console.log(`🚨 [SEMANTIC_MUTE] Force ${shouldMute ? 'mute' : 'unmute'}: ${reason}`);
+    console.log(`[SEMANTIC_MUTE] Force ${shouldMute ? 'mute' : 'unmute'}: ${reason}`);
     
     this.clearDelayedUnmute();
     this.state.lastMuteReason = `force: ${reason}`;

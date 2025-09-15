@@ -405,29 +405,29 @@ export class EnhancedRealtimeService {
    */
   public async startMicrophone(): Promise<boolean> {
     try {
-      console.log('🎤 [ENHANCED] Requesting microphone access with bulletproof mobile optimization...');
+      console.log('[ENHANCED] Requesting microphone access with bulletproof mobile optimization...');
       if (typeof window === 'undefined') return false;
       
       // Set up WebRTC if not already done
       if (!this.peerConnection) {
-        console.log('🌐 [ENHANCED] Setting up WebRTC connection first...');
+        console.log('[ENHANCED] Setting up WebRTC connection first...');
         const setupSuccess = this.setupWebRTC();
         if (!setupSuccess) {
-          console.error('❌ [ENHANCED] Failed to set up WebRTC connection');
+          console.error('[ENHANCED] Failed to set up WebRTC connection');
           return false;
         }
         
-        // ✅ ENHANCED: Longer delay for mobile browsers to ensure WebRTC is ready
+        // ENHANCED: Longer delay for mobile browsers to ensure WebRTC is ready
         const delay = this.mobile_optimization_active ? 500 : 300;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
       
       // Release any existing stream to avoid resource leaks
       if (this.localStream) {
-        console.log('🧹 [ENHANCED] Releasing existing media stream...');
+        console.log('[ENHANCED] Releasing existing media stream...');
         this.localStream.getTracks().forEach(track => {
           track.stop();
-          console.log(`🛑 Stopped track: ${track.kind}`);
+          console.log(`Stopped track: ${track.kind}`);
         });
         this.localStream = null;
         
@@ -501,7 +501,7 @@ export class EnhancedRealtimeService {
         }
       };
       
-      console.log('[ENHANCED] Requesting user media with BULLETPROOF constraints:', JSON.stringify(constraints));
+      console.log('[ENHANCED] Requesting user media with constraints:', JSON.stringify(constraints));
       
       try {
         // Longer timeout for mobile browsers
@@ -536,9 +536,9 @@ export class EnhancedRealtimeService {
           };
           
           this.localStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
-          console.log('✅ [ENHANCED] Microphone access granted on second attempt');
+          console.log('[ENHANCED] Microphone access granted on second attempt');
         } catch (retryError) {
-          console.error('❌ [ENHANCED] Second attempt to get user media failed:', retryError);
+          console.error('[ENHANCED] Second attempt to get user media failed:', retryError);
           throw retryError;
         }
       }
