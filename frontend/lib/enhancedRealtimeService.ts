@@ -373,14 +373,14 @@ export class EnhancedRealtimeService {
   }
 
   /**
-   * ✅ NEW: Handle mobile-specific ICE connection failures
+   * Handle mobile-specific ICE connection failures
    */
   private handleMobileICEFailure(): void {
-    console.log('📱 [ENHANCED] Handling mobile ICE failure...');
+    console.log('[ENHANCED] Handling mobile ICE failure...');
     
-    // ✅ NEW: ICE restart for mobile networks
+    // ICE restart for mobile networks
     if (this.peerConnection && this.peerConnection.restartIce) {
-      console.log('🔄 [ENHANCED] Restarting ICE for mobile network recovery');
+      console.log('[ENHANCED] Restarting ICE for mobile network recovery');
       this.peerConnection.restartIce();
     }
   }
@@ -397,7 +397,7 @@ export class EnhancedRealtimeService {
         console.log(`[ENHANCED] Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         this.connect();
       }
-    }, 2000 * this.reconnectAttempts); // Exponential backoff
+    }, 2000 * this.reconnectAttempts); // Linear backoff
   }
   
   /**
@@ -440,7 +440,7 @@ export class EnhancedRealtimeService {
       // Strategy: Maximum Cross-Browser Echo Cancellation with Mobile Optimization
       const constraints = {
         audio: {
-          // Maximum echo cancellation for ALL browsers(Universal Standards Layer)
+          // Maximum optimization for ALL browsers(Universal Standards Layer)
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
