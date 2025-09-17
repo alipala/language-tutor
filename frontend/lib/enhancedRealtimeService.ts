@@ -338,12 +338,12 @@ export class EnhancedRealtimeService {
   }
 
   /**
-   * ✅ CRITICAL: Enforce muting after WebRTC connection is established
+   * CRITICAL: Enforce muting after WebRTC connection is established
    */
   private enforcePostConnectionMuting(): void {
-    console.log('🔇 [ENHANCED] Enforcing post-connection muting...');
+    console.log('[ENHANCED] Enforcing post-connection muting...');
     
-    // ✅ CRITICAL: Ensure all audio tracks are muted
+    // CRITICAL: Ensure all audio tracks are muted
     if (this.localStream) {
       const audioTracks = this.localStream.getAudioTracks();
       audioTracks.forEach((track, index) => {
@@ -354,19 +354,19 @@ export class EnhancedRealtimeService {
       });
     }
     
-    // ✅ PHASE 1: Don't mute remote audio - user needs to hear AI
+    // PHASE 1: Don't mute remote audio - user needs to hear AI
     if (this.audioElement) {
       this.audioElement.muted = false;
       this.audioElement.volume = 1.0;
       console.log('🔊 [ENHANCED] Post-connection - Remote audio enabled for AI speech');
     }
     
-      // ✅ CRITICAL: Initialize semantic mute controller if not already done
+      // CRITICAL: Initialize semantic mute controller if not already done
       if (!this.semanticMuteController && this.localStream) {
         this.initializeSemanticMuteController();
       }
       
-      // ✅ NEW: Set up user manual mute checker for semantic controller
+      // Set up user manual mute checker for semantic controller
       if (this.semanticMuteController) {
         this.semanticMuteController.setUserManualMuteChecker(() => this.user_manually_muted);
       }
@@ -547,11 +547,11 @@ export class EnhancedRealtimeService {
       if (this.peerConnection && this.localStream) {
         const audioTracks = this.localStream.getAudioTracks();
         if (audioTracks.length === 0) {
-          console.error('❌ [ENHANCED] No audio tracks found in media stream');
+          console.error('[ENHANCED] No audio tracks found in media stream');
           return false;
         }
         
-        console.log('🎵 [ENHANCED] Adding audio track to peer connection', audioTracks[0].label);
+        console.log('[ENHANCED] Adding audio track to peer connection', audioTracks[0].label);
         
         try {
           const sender = this.peerConnection.addTrack(audioTracks[0], this.localStream);
@@ -560,7 +560,7 @@ export class EnhancedRealtimeService {
           // CRITICAL: IMMEDIATE muting of all tracks before any audio can leak
           audioTracks.forEach((track, index) => {
             track.enabled = false; // Start muted
-            console.log(`🔇 [ENHANCED] Track ${index} IMMEDIATELY muted on creation`);
+            console.log(`[ENHANCED] Track ${index} IMMEDIATELY muted on creation`);
           });
           
           // ENHANCED: Initialize SemanticMuteController with retry mechanism
@@ -600,7 +600,7 @@ export class EnhancedRealtimeService {
    */
   private async initializeSemanticMuteController(): Promise<void> {
     if (!this.localStream) {
-      console.warn('⚠️ [ENHANCED] Cannot initialize SemanticMuteController - no local stream');
+      console.warn('[ENHANCED] Cannot initialize SemanticMuteController - no local stream');
       return;
     }
 
@@ -658,58 +658,44 @@ export class EnhancedRealtimeService {
     console.log(`[ENHANCED] Processing event: ${eventData.type}`);
     
     switch (eventData.type) {
-      // AI STARTS SPEAKING: Delayed hardware mute to prevent speech cutoff
       case 'response.audio.start': // AI starts talking → DELAYED MUTE (100ms)
         console.log('[ENHANCED] AI audio started - DELAYED MUTE');
         
         // WHY DELAY: Prevents cutting off the very beginning of AI speech
-        // MECHANISM: Hardware-level track.enabled = false after 100ms
         setTimeout(() => {
           this.executeImmediateMute('AI audio response started');
         }, this.PREEMPTIVE_MUTE_DELAY); 
         
         break;
 
-      // AI CONTINUES SPEAKING: Ensure hardware mute during audio streaming
       case 'response.audio.delta': // AI continues talking → ENSURE MUTED
         // WHY CHECK STATE: Catch any hardware unmute failures during AI speech
-        // MECHANISM: Verify and enforce hardware muted state during streaming
-        // CONTROLS: Layer 2 backup if this layer fails
         if (!this.ai_is_speaking) {
           console.log('[ENHANCED] AI audio delta - ENSURING MUTED');
           this.executeImmediateMute('AI audio delta received');
         }
         break;
 
-      // AI FINISHES SPEAKING: Schedule intelligent hardware unmute with protection
       case 'response.audio.done': // AI stops talking → DELAYED UNMUTE
         console.log('[ENHANCED] AI audio done - SCHEDULING FASTER UNMUTE');
         // WHY SCHEDULED: Prevents immediate unmute that could cause feedback
-        // MECHANISM: Hardware unmute with semantic processing buffer + tail protection
-        // CONTROLS: Layer 2 (semantic backup) + Layer 3 (emergency safety)
         this.scheduleDelayedUnmute('AI audio response completed');
         break;
 
       case 'response.done': // AI response complete → DELAYED UNMUTE
         console.log('[ENHANCED] Response done - SCHEDULING FASTER UNMUTE');
         // WHY SCHEDULED: Complete response may have trailing audio processing
-        // MECHANISM: Hardware unmute with full conversation context awareness
-        // CONTROLS: Layer 2 (semantic backup) + Layer 3 (emergency safety)
         this.scheduleDelayedUnmute('AI response completed');
         break;
 
-      // USER STARTS SPEAKING: Immediate hardware unmute for conversation flow
       case 'input_audio_buffer.speech_started': // User starts → IMMEDIATE UNMUTE
         console.log('[ENHANCED] User speech started - IMMEDIATE UNMUTE');
         // WHY IMMEDIATE: User needs to interrupt AI without delay for natural conversation
-        // MECHANISM: Instant hardware track.enabled = true for real-time interaction
-        // CONTROLS: Layer 2 (semantic backup) for redundancy
         this.executeImmediateUnmute('User speech detected');
         
         break;
 
-      // USER STOPS SPEAKING: Maintain state for natural conversation rhythm
-      case 'input_audio_buffer.speech_stopped': // User stops → MAINTAIN STATE
+      case 'input_audio_buffer.speech_stopped': // User stops
         console.log('[ENHANCED] User speech stopped - MAINTAINING STATE');
         // WHY NO IMMEDIATE MUTE: Allows natural conversation pauses and thinking time
         // PHILOSOPHY: Don't interrupt natural conversation flow with aggressive muting

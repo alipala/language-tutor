@@ -198,7 +198,6 @@ async def generate_conversation_help_fast(request: ConversationHelpRequest) -> O
         print(f"   - Truncated length: {len(truncated_response)} characters")
         print(f"   - Reduction: {(1 - len(truncated_response)/len(request.ai_response))*100:.1f}%")
         
-        # PHASE 5: Ultra-minimal prompt engineering for maximum speed
         print(f"\n PHASE 5: Prompt engineering")
         # INNOVATION: Compressed prompt that maintains quality while reducing tokens by 80%
         # TECHNIQUE: Direct JSON specification + minimal context + clear instructions
