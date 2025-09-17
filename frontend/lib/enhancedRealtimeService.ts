@@ -555,39 +555,39 @@ export class EnhancedRealtimeService {
         
         try {
           const sender = this.peerConnection.addTrack(audioTracks[0], this.localStream);
-          console.log('✅ [ENHANCED] Track added successfully, sender created:', sender ? 'Yes' : 'No');
+          console.log('[ENHANCED] Track added successfully, sender created:', sender ? 'Yes' : 'No');
           
-          // ✅ CRITICAL: IMMEDIATE muting of all tracks before any audio can leak
+          // CRITICAL: IMMEDIATE muting of all tracks before any audio can leak
           audioTracks.forEach((track, index) => {
             track.enabled = false; // Start muted
             console.log(`🔇 [ENHANCED] Track ${index} IMMEDIATELY muted on creation`);
           });
           
-          // ✅ ENHANCED: Initialize SemanticMuteController with retry mechanism
+          // ENHANCED: Initialize SemanticMuteController with retry mechanism
           await this.initializeSemanticMuteController();
           
-          // ✅ ENHANCED: Longer delay after adding track for mobile browsers
+          // ENHANCED: Longer delay after adding track for mobile browsers
           const delay = this.mobile_optimization_active ? 400 : 200;
           await new Promise(resolve => setTimeout(resolve, delay));
           return true;
         } catch (trackError) {
-          console.error('❌ [ENHANCED] Error adding track to peer connection:', trackError);
+          console.error('[ENHANCED] Error adding track to peer connection:', trackError);
           return false;
         }
       }
       
       return false;
     } catch (error) {
-      console.error('❌ [ENHANCED] Error starting microphone:', error);
+      console.error('[ENHANCED] Error starting microphone:', error);
       
       // Specific error handling for common issues
       if (error instanceof DOMException) {
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          console.error('🚫 [ENHANCED] Microphone permission denied by user');
+          console.error('[ENHANCED] Microphone permission denied by user');
         } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-          console.error('🔍 [ENHANCED] No microphone found on this device');
+          console.error('[ENHANCED] No microphone found on this device');
         } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-          console.error('🔒 [ENHANCED] Microphone is already in use by another application');
+          console.error('[ENHANCED] Microphone is already in use by another application');
         }
       }
       
@@ -596,7 +596,7 @@ export class EnhancedRealtimeService {
   }
 
   /**
-   * ✅ ENHANCED: Initialize SemanticMuteController with retry mechanism
+   * ENHANCED: Initialize SemanticMuteController with retry mechanism
    */
   private async initializeSemanticMuteController(): Promise<void> {
     if (!this.localStream) {
@@ -609,35 +609,35 @@ export class EnhancedRealtimeService {
       const muteControllerInitialized = await this.semanticMuteController.initialize(this.localStream);
       
       if (muteControllerInitialized) {
-        console.log('✅ [ENHANCED] SemanticMuteController initialized successfully');
-        // ✅ NEW: Set up user manual mute checker
+        console.log('[ENHANCED] SemanticMuteController initialized successfully');
+        // NEW: Set up user manual mute checker
         this.semanticMuteController.setUserManualMuteChecker(() => this.user_manually_muted);
       } else {
-        console.warn('⚠️ [ENHANCED] SemanticMuteController initialization failed, using fallback');
+        console.warn('[ENHANCED] SemanticMuteController initialization failed, using fallback');
         this.semanticMuteController = null;
         
-        // ✅ NEW: Retry mechanism for mobile browsers
+        // NEW: Retry mechanism for mobile browsers
         if (this.mobile_optimization_active) {
-          console.log('🔄 [ENHANCED] Retrying SemanticMuteController initialization for mobile...');
+          console.log('[ENHANCED] Retrying SemanticMuteController initialization for mobile...');
           await new Promise(resolve => setTimeout(resolve, 500));
           
           try {
             this.semanticMuteController = new SemanticMuteController();
             const retryResult = await this.semanticMuteController.initialize(this.localStream);
             if (retryResult) {
-              console.log('✅ [ENHANCED] SemanticMuteController initialized on retry');
+              console.log('[ENHANCED] SemanticMuteController initialized on retry');
             } else {
-              console.warn('⚠️ [ENHANCED] SemanticMuteController retry failed, continuing without it');
+              console.warn('[ENHANCED] SemanticMuteController retry failed, continuing without it');
               this.semanticMuteController = null;
             }
           } catch (retryError) {
-            console.error('❌ [ENHANCED] SemanticMuteController retry error:', retryError);
+            console.error('[ENHANCED] SemanticMuteController retry error:', retryError);
             this.semanticMuteController = null;
           }
         }
       }
     } catch (muteError) {
-      console.error('❌ [ENHANCED] Error initializing SemanticMuteController:', muteError);
+      console.error('[ENHANCED] Error initializing SemanticMuteController:', muteError);
       this.semanticMuteController = null;
     }
   }

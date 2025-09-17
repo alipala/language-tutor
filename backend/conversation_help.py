@@ -162,8 +162,8 @@ async def generate_conversation_help_fast(request: ConversationHelpRequest) -> O
         #  PHASE 3: Truncation algorithm for speed optimization
         print(f"\n PHASE 3: Truncation of AI response")
         print(f"   - Original AI response length: {len(request.ai_response)} characters")
-        # PURPOSE: Reduce token usage by 70% while preserving context quality
-        # MECHANISM: Intelligent sentence boundary detection + semantic preservation
+        # PURPOSE: Reduce token usage while preserving context quality
+        # MECHANISM: Sentence boundary detection + semantic preservation
         def smart_truncate(text: str, max_length: int = 100) -> str:
             # Return immediately if text is already short
             if len(text) <= max_length:
@@ -192,7 +192,7 @@ async def generate_conversation_help_fast(request: ConversationHelpRequest) -> O
             print(f"   - Using hard truncation at {max_length} characters")
             return text[:max_length] + "..."
 
-        # PHASE 4: Apply intelligent truncation for 70% token reduction
+        # PHASE 4: Apply truncation for 70% token reduction
         truncated_response = smart_truncate(request.ai_response, 100)
         print(f"   - Truncated response: \"{truncated_response}\"")
         print(f"   - Truncated length: {len(truncated_response)} characters")
