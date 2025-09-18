@@ -75,17 +75,17 @@ export class SemanticMuteController {
           // Set initial gain to 1.0 (unmuted)
           this.gainNode.gain.setValueAtTime(1.0, this.audioContext.currentTime);
           
-          console.log('✅ [SEMANTIC_MUTE] Web Audio API initialized successfully');
+          console.log('[SEMANTIC_MUTE] Web Audio API initialized successfully');
         } catch (audioError) {
-          console.warn('⚠️ [SEMANTIC_MUTE] Web Audio API initialization failed:', audioError);
+          console.warn('[SEMANTIC_MUTE] Web Audio API initialization failed:', audioError);
           // Continue without Web Audio API - will use track.enabled only
         }
       }
       
-      console.log(`✅ [SEMANTIC_MUTE] Initialized with ${this.audioTracks.length} audio tracks`);
+      console.log(`[SEMANTIC_MUTE] Initialized with ${this.audioTracks.length} audio tracks`);
       return true;
     } catch (error) {
-      console.error('❌ [SEMANTIC_MUTE] Initialization failed:', error);
+      console.error('[SEMANTIC_MUTE] Initialization failed:', error);
       return false;
     }
   }
