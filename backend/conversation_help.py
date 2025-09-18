@@ -149,7 +149,6 @@ def smart_truncate(text: str, max_length: int = 100) -> str:
         print(f" Text already short enough, no truncation needed")
         return text
     
-    # Try to cut at natural sentence boundaries
     truncated = text[:max_length]
     last_period = truncated.rfind('.')      # Find last complete sentence
     last_question = truncated.rfind('?')    # Find last complete question
@@ -167,7 +166,6 @@ def smart_truncate(text: str, max_length: int = 100) -> str:
         print(f"Truncating at word boundary (position {last_space})")
         return text[:last_space] + "..."
     
-    # FALLBACK: Hard truncation with ellipsis
     print(f"Using hard truncation at {max_length} characters")
     return text[:max_length] + "..."
 
@@ -198,7 +196,7 @@ def generate_help_prompt(truncated_response: str, request: ConversationHelpReque
     """
     print(f"\n PHASE 5: Prompt engineering")
     
-    # TECHNIQUE: Direct JSON specification + minimal context + clear instructions
+    # Direct JSON specification + minimal context + clear instructions
     prompt = f"""AI tutor said: "{truncated_response}"
     Target language: {request.target_language}
     Student level: {request.proficiency_level}
