@@ -78,7 +78,7 @@ export class EnhancedRealtimeService {
     const userAgent = window.navigator.userAgent.toLowerCase();
     const mobileKeywords = [
       'iphone', 'ipad', 'ipod', 'android', 'mobile', 'phone', 
-      'tablet', 'touch', 'webos', 'blackberry'
+      'tablet', 'touch', 'webos', 'iemobile', 'opera mini'
     ];
     
     return mobileKeywords.some(keyword => userAgent.includes(keyword));
