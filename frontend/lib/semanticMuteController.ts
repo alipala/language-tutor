@@ -186,7 +186,7 @@ export class SemanticMuteController {
       this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, currentTime);
       this.gainNode.gain.linearRampToValueAtTime(targetGain, currentTime + fadeDuration);
       
-      console.log(`🎚️ [SEMANTIC_MUTE] Gain ramping to ${targetGain} over ${this.FADE_DURATION}ms`);
+      console.log(`[SEMANTIC_MUTE] Gain ramping to ${targetGain} over ${this.FADE_DURATION}ms`);
     }
     
     this.state.isMuted = shouldMute;
