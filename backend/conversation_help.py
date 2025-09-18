@@ -136,7 +136,6 @@ INSTANT_RESPONSE_TEMPLATES = {
 # 1. Truncation
 def smart_truncate(text: str, max_length: int = 100) -> str:
     """
-     Truncate text while preserving semantic meaning.
     1. First checking if text is already short enough
     2. Trying to cut at natural sentence boundaries (periods, questions, exclamations)
     3. Falling back to word boundaries if sentence boundaries aren't optimal
@@ -180,7 +179,6 @@ def validate_help_request(request: ConversationHelpRequest) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    print(f"\n PHASE 2: Input validation")
     if not request.ai_response or not request.ai_response.strip():
         print(f"VALIDATION FAILED: Empty AI response - returning None")
         return False
@@ -217,17 +215,11 @@ def generate_help_prompt(truncated_response: str, request: ConversationHelpReque
 # 4. API call function
 async def call_openai_api(prompt: str) -> tuple:
     """
-    Call the OpenAI API with settings.
-        
-    Returns:
-        Tuple of (response, duration, start_time)
+    Sending request to OpenAI with the settings.
     """
-    print(f"\n PHASE 6: Sending request to OpenAI API")
     
     # PHASE 6: Maximum speed OpenAI API call with cost optimization
-    # MODEL: GPT-4o-mini for 80% cost reduction vs GPT-4
-    print(f"Timeout: 10 seconds (for user experience)")
-    
+    # MODEL: GPT-4o-mini for 80% cost reduction vs GPT-4    
     start_time = datetime.utcnow()
     print(f"API call started at: {start_time.strftime('%H:%M:%S.%f')[:-3]}")
     
@@ -247,20 +239,14 @@ async def call_openai_api(prompt: str) -> tuple:
     
     return response, duration, start_time
 
-
 # 5. Response validation function
 def validate_api_response(response) -> bool:
     """
-    Validate the OpenAI API response with early exit patterns.
-    
-    This function checks if the response has a valid structure with choices, message, and content.
+    Validate the OpenAI API response.
+
+    Check if the response has choices, message, and content.
     It implements early exit patterns to avoid processing invalid responses.
-    
-    Args:
-        response: The API response to validate
         
-    Returns:
-        True if valid, False otherwise
     """    
     # PHASE 7: Response validation with early exit patterns
     if not response.choices or not response.choices[0].message or not response.choices[0].message.content:
@@ -279,12 +265,9 @@ def clean_json_response(content: str) -> str:
     1. Removing code block markers (```json, ```)
     2. Stripping whitespace
     3. Tracking content length changes for debugging
-    
-    Args:
-        content: The raw content from the API
         
     Returns:
-        Cleaned JSON string ready for parsing
+        Cleaned JSON ready for parsing
     """
     print(f"\  PHASE 9: JSON cleaning")
     # PURPOSE: Handle various JSON formatting from OpenAI responses
@@ -316,13 +299,6 @@ def parse_and_build_response(content: str, start_time: datetime) -> Optional[Con
     3. Builds structured response objects
     4. Limits to 2 responses for optimal UX
     5. Creates the final ConversationHelpResponse
-    
-    Args:
-        content: The cleaned JSON content
-        start_time: The start time for duration calculation
-        
-    Returns:
-        ConversationHelpResponse object or None if parsing fails
     """
     print(f"\n PHASE 10: JSON parsing")
     try:
@@ -332,7 +308,6 @@ def parse_and_build_response(content: str, start_time: datetime) -> Optional[Con
         
         # PHASE 11: Extract responses with flexible key handling
         print(f"\n PHASE 11: Extract responses")
-        # FLEXIBILITY: Handle different response key formats from OpenAI
         responses_key = "responses" if "responses" in help_data else "suggested_responses"
         print(f"   - Using key: '{responses_key}' for responses")
         raw_responses = help_data.get(responses_key, [])
@@ -396,13 +371,7 @@ def parse_and_build_response(content: str, start_time: datetime) -> Optional[Con
 
 # 8. Main function for help generation
 async def generate_conversation_help_fast(request: ConversationHelpRequest) -> Optional[ConversationHelpResponse]:
-    """
-    CONVERSATION RESCUE SYSTEM
-    PROBLEM SOLVED: Expensive, slow conversation assistance that breaks user flow
-
-    """
     try:
-        print(f"\n========== START DEBUGGING ==========")
         # PHASE 2: Validate input
         if not validate_help_request(request):
             return None
