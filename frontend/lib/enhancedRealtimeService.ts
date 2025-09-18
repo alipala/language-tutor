@@ -116,7 +116,7 @@ export class EnhancedRealtimeService {
       if (language) {
         this.currentLanguage = language.toLowerCase();
         this.currentLanguageIsoCode = this.getLanguageIsoCode(this.currentLanguage);
-        console.log('🌐 Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
+        console.log('Language set for transcription:', this.currentLanguage, 'ISO code:', this.currentLanguageIsoCode);
       }
       if (level) {
         this.currentLevel = level;
