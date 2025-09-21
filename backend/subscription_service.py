@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-import logging
 import stripe
 import os
 from database import database
@@ -10,8 +9,8 @@ from models import (
 )
 from bson import ObjectId
 
-# Initialize logger first
-logger = logging.getLogger(__name__)
+# Import production-safe logging
+from logging_config import logger
 
 # Import validation modules
 try:
