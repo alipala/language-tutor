@@ -76,10 +76,12 @@ async def generate_help_content(
         if current_user:
             print(f"[CONVERSATION_HELP] 📊 Tracking usage for user: {current_user.id}")
             try:
+                # CRITICAL FIX: Don't track duration for help generation - only for session completion
                 await track_help_usage(
                     user_id=current_user.id,
                     help_type="help_generated",
-                    language=request.target_language
+                    language=request.target_language,
+                    duration_minutes=0.0  # Help generation doesn't consume speaking time
                 )
                 print(f"[CONVERSATION_HELP] ✅ Usage tracked successfully")
             except Exception as track_error:
@@ -202,14 +204,67 @@ async def track_help_system_usage(
         
         help_type = usage_data.get("help_type", "unknown")
         language = usage_data.get("language", "unknown")
+        duration_minutes = usage_data.get("duration_minutes", 0.0)
         
-        success = await track_help_usage(user_id, help_type, language)
+        success = await track_help_usage(user_id, help_type, language, duration_minutes)
         
         return {"success": success}
         
     except Exception as e:
         print(f"[CONVERSATION_HELP] Error tracking usage: {str(e)}")
         # Don't raise an error for analytics tracking failures
+        return {"success": False, "error": str(e)}
+
+@router.post("/complete-session")
+async def complete_conversation_session(
+    session_data: Dict[str, Any],
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
+):
+    """
+    CRITICAL FIX: Track session completion with proper duration and subscription usage
+    This endpoint should be called when a conversation session ends
+    """
+    try:
+        if not current_user:
+            print(f"[CONVERSATION_HELP] ⚠️ Session completion called for guest user - no subscription tracking")
+            return {"success": False, "message": "Guest users don't have subscription tracking"}
+        
+        user_id = current_user.id
+        duration_minutes = session_data.get("duration_minutes", 0.0)
+        language = session_data.get("language", "unknown")
+        
+        print(f"[CONVERSATION_HELP] 🎯 Session completion for user {user_id}")
+        print(f"[CONVERSATION_HELP] 📊 Duration: {duration_minutes} minutes")
+        print(f"[CONVERSATION_HELP] 🌍 Language: {language}")
+        
+        # Validate duration
+        if duration_minutes <= 0:
+            print(f"[CONVERSATION_HELP] ❌ Invalid duration: {duration_minutes}")
+            return {"success": False, "message": "Invalid session duration"}
+        
+        # Track the session completion with duration
+        success = await track_help_usage(
+            user_id=user_id,
+            help_type="session_completed",
+            language=language,
+            duration_minutes=duration_minutes
+        )
+        
+        if success:
+            print(f"[CONVERSATION_HELP] ✅ Session completion tracked successfully")
+            return {
+                "success": True,
+                "message": f"Session completed: {duration_minutes} minutes tracked",
+                "duration_minutes": duration_minutes
+            }
+        else:
+            print(f"[CONVERSATION_HELP] ❌ Failed to track session completion")
+            return {"success": False, "message": "Failed to track session completion"}
+        
+    except Exception as e:
+        print(f"[CONVERSATION_HELP] ❌ Error completing session: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"success": False, "error": str(e)}
 
 @router.get("/analytics")

@@ -308,23 +308,56 @@ async def update_user_help_settings(user_id: str, settings: Dict[str, Any]) -> b
         print(f"Error updating user help settings: {e}")
         return False
 
-async def track_help_usage(user_id: str, help_type: str, language: str) -> bool:
+async def track_help_usage(user_id: str, help_type: str, language: str, duration_minutes: float = 0.0) -> bool:
     """
-    Track help system usage for analytics
+    Track help system usage for analytics with proper duration tracking
     """
     try:
         from database import database
         
         analytics_collection = database.conversation_help_analytics
         
+        # VALIDATION: Prevent meaningless 0-duration sessions from cluttering the database
+        if help_type in ["session_completed", "conversation_ended"] and duration_minutes <= 0:
+            print(f"[CONVERSATION_HELP] ⚠️ Rejecting {help_type} with invalid duration: {duration_minutes}")
+            return False
+        
         usage_doc = {
             "user_id": user_id,
             "help_type": help_type,  # "modal_opened", "response_used", "vocabulary_clicked", etc.
             "language": language,
+            "duration_minutes": duration_minutes,  # CRITICAL FIX: Add duration tracking
+            "created_at": datetime.utcnow(),  # Use created_at for consistency
             "timestamp": datetime.utcnow()
         }
         
         result = await analytics_collection.insert_one(usage_doc)
+        
+        # CRITICAL FIX: If this is a completed session with duration > 0, update subscription usage
+        if duration_minutes > 0 and help_type in ["session_completed", "conversation_ended"]:
+            print(f"[CONVERSATION_HELP] 🔄 Session completed with {duration_minutes} minutes - updating subscription usage")
+            
+            try:
+                from subscription_service import SubscriptionService
+                from models import SpeakingTimeTrackingRequest
+                
+                # Track subscription usage for sessions with actual duration
+                speaking_time_request = SpeakingTimeTrackingRequest(
+                    user_id=user_id,
+                    speaking_minutes=duration_minutes,
+                    session_completed=True  # This will increment both minutes AND session count
+                )
+                
+                tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
+                if tracking_success:
+                    print(f"[CONVERSATION_HELP] ✅ Subscription usage updated: {duration_minutes} minutes for user {user_id}")
+                else:
+                    print(f"[CONVERSATION_HELP] ⚠️ Subscription tracking failed - user may have exceeded limits")
+                    
+            except Exception as subscription_error:
+                print(f"[CONVERSATION_HELP] ⚠️ Failed to update subscription usage: {subscription_error}")
+                # Don't fail the analytics tracking if subscription update fails
+        
         return result.acknowledged
     
     except Exception as e:
