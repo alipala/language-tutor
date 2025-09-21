@@ -10,6 +10,9 @@ from models import (
 )
 from bson import ObjectId
 
+# Initialize logger first
+logger = logging.getLogger(__name__)
+
 # Import validation modules
 try:
     from validation.auto_corrector import AutoCorrector
@@ -23,8 +26,6 @@ except ImportError as e:
 
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-logger = logging.getLogger(__name__)
 
 def get_user_query(user_id: str):
     """Helper function to handle both UUID and ObjectId formats"""

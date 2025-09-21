@@ -71,6 +71,6 @@ ENV PORT=3001
 EXPOSE 3001
 
 # Command to run the application
-# Use a more direct approach to start the application
+# Use the same approach as nixpacks.toml for consistency
 WORKDIR /app/backend
-CMD ["python3", "-c", "import os, uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', '3001')))"]
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-3001}"]
