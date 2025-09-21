@@ -606,7 +606,7 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
             "input_audio_transcription": {
-                "model": "whisper-1"
+                "model": "gpt-4o-transcribe"
             },
             "turn_detection": {
                 "type": "server_vad",
