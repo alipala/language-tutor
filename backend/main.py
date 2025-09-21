@@ -2020,7 +2020,7 @@ async def generate_mock_token(request: TutorSessionRequest):
         mock_response = {
             "id": "sess_mock_test_session",
             "object": "realtime.session",
-            "model": "gpt-4o-realtime-preview-2024-12-17",
+            "model": "gpt-realtime",
             "expires_at": 1234567890,
             "client_secret": {
                 "value": "ek_mock_test_key_for_development",
