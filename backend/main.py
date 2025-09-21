@@ -603,16 +603,18 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
-            "input_audio_format": "pcm16",
-            "output_audio_format": "pcm16",
             "input_audio_transcription": {
-                "model": "gpt-4o-transcribe"
+                "model": "gpt-4o-transcribe" if os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true" else "whisper-1",  # 🚀 CONFIGURABLE: Use environment variable to control model
+                "language": get_language_iso_code(request.language) if request.language else "en"
             },
             "turn_detection": {
-                "type": "server_vad",
-                "threshold": 0.5,
-                "prefix_padding_ms": 300,
-                "silence_duration_ms": 500
+                "type": "semantic_vad",
+                "eagerness": "low",
+                "create_response": True,
+                "interrupt_response": True
+            },
+            "input_audio_noise_reduction": {
+                "type": "near_field"  # Focus on learner's voice for semantic analysis
             }
         }
         

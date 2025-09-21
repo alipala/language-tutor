@@ -124,16 +124,14 @@ Use your natural {request.voice_id} voice with your {voice_info['personality']} 
             "voice": request.voice_id,
             "instructions": instructions,
             "modalities": ["audio", "text"],
-            "input_audio_format": "pcm16",
-            "output_audio_format": "pcm16",
             "input_audio_transcription": {
                 "model": "gpt-4o-transcribe"
             },
             "turn_detection": {
-                "type": "server_vad",
-                "threshold": 0.5,
-                "prefix_padding_ms": 300,
-                "silence_duration_ms": 500
+                "type": "semantic_vad",
+                "eagerness": "low",
+                "create_response": True,
+                "interrupt_response": True
             }
         }
         
