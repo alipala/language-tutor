@@ -1007,7 +1007,7 @@ export class EnhancedRealtimeService {
       // Send offer to OpenAI
       console.log('📤 [ENHANCED] Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-12-17';
+      const model = 'gpt-realtime';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: completeOffer.sdp,

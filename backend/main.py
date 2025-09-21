@@ -599,7 +599,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # ✅ Create ephemeral token with complete configuration
         # This approach works reliably on desktop AND mobile browsers
         payload = {
-            "model": "gpt-4o-realtime-preview-2024-12-17",
+            "type": "realtime",
+            "model": "gpt-realtime",
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],

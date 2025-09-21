@@ -120,7 +120,8 @@ Use your natural {request.voice_id} voice with your {voice_info['personality']} 
 """
         # Create ephemeral token for voice sample generation
         payload = {
-            "model": "gpt-4o-realtime-preview-2024-12-17",
+            "type": "realtime",
+            "model": "gpt-realtime",
             "voice": request.voice_id,
             "instructions": instructions,
             "modalities": ["audio", "text"],
