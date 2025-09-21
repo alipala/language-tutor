@@ -10,6 +10,17 @@ from models import (
 )
 from bson import ObjectId
 
+# Import validation modules
+try:
+    from validation.auto_corrector import AutoCorrector
+    from validation.subscription_validator import SubscriptionValidator
+    from validation.session_validator import SessionValidator
+    VALIDATION_AVAILABLE = True
+    logger.info("✅ Validation modules imported successfully")
+except ImportError as e:
+    VALIDATION_AVAILABLE = False
+    logger.warning(f"⚠️ Validation modules not available: {str(e)}")
+
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -177,11 +188,30 @@ class SubscriptionService:
     
     @classmethod
     async def get_user_subscription_status(cls, user_id: str) -> SubscriptionStatus:
-        """Get comprehensive subscription status for a user"""
+        """Get comprehensive subscription status for a user with integrated validation"""
         try:
             user = await database["users"].find_one(get_user_query(user_id))
             if not user:
                 return SubscriptionStatus()
+            
+            # VALIDATION ENHANCEMENT: Run automatic validation checks before calculation
+            if VALIDATION_AVAILABLE:
+                try:
+                    # Run comprehensive validation and auto-fix if needed
+                    validation_result = await AutoCorrector.validate_and_fix_user(user_id, auto_fix=True)
+                    
+                    if validation_result.get("fixes") and validation_result["fixes"].get("overall_success"):
+                        logger.info(f"[VALIDATION] Auto-fixed issues for user {user_id} during status check")
+                        # Re-fetch user data after fixes
+                        user = await database["users"].find_one(get_user_query(user_id))
+                    
+                    validation_status = validation_result.get("validation", {}).get("overall_status", "unknown")
+                    if validation_status not in ["healthy", "fixable"]:
+                        logger.warning(f"[VALIDATION] User {user_id} has validation issues: {validation_status}")
+                        
+                except Exception as validation_error:
+                    logger.error(f"[VALIDATION] Validation failed for user {user_id}: {str(validation_error)}")
+                    # Continue with normal flow even if validation fails
             
             # Check if subscription is expired
             now = datetime.utcnow()
