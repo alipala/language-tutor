@@ -120,11 +120,12 @@ Use your natural {request.voice_id} voice with your {voice_info['personality']} 
 """
         # Create ephemeral token for voice sample generation
         payload = {
-            "type": "realtime",
             "model": "gpt-realtime",
             "voice": request.voice_id,
             "instructions": instructions,
             "modalities": ["audio", "text"],
+            "input_audio_format": "pcm16",
+            "output_audio_format": "pcm16",
             "input_audio_transcription": {
                 "model": "whisper-1"
             },
@@ -132,7 +133,7 @@ Use your natural {request.voice_id} voice with your {voice_info['personality']} 
                 "type": "server_vad",
                 "threshold": 0.5,
                 "prefix_padding_ms": 300,
-                "silence_duration_ms": 1000
+                "silence_duration_ms": 500
             }
         }
         

@@ -596,26 +596,23 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"🎤 [VOICE] Request voice: {request.voice}")
         print(f"🎤 [VOICE] Selected voice: {selected_voice}")
         
-        # ✅ Create ephemeral token with complete configuration
+        # ✅ Create ephemeral token with complete configuration for gpt-realtime
         # This approach works reliably on desktop AND mobile browsers
         payload = {
-            "type": "realtime",
             "model": "gpt-realtime",
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
+            "input_audio_format": "pcm16",
+            "output_audio_format": "pcm16",
             "input_audio_transcription": {
-                "model": "gpt-4o-transcribe" if os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true" else "whisper-1",  # 🚀 CONFIGURABLE: Use environment variable to control model
-                "language": get_language_iso_code(request.language) if request.language else "en"
+                "model": "whisper-1"
             },
             "turn_detection": {
-                "type": "semantic_vad",
-                "eagerness": "low",
-                "create_response": True,
-                "interrupt_response": True
-            },
-            "input_audio_noise_reduction": {
-                "type": "near_field"  # Focus on learner's voice for semantic analysis
+                "type": "server_vad",
+                "threshold": 0.5,
+                "prefix_padding_ms": 300,
+                "silence_duration_ms": 500
             }
         }
         
