@@ -333,30 +333,19 @@ async def track_help_usage(user_id: str, help_type: str, language: str, duration
         
         result = await analytics_collection.insert_one(usage_doc)
         
-        # CRITICAL FIX: If this is a completed session with duration > 0, update subscription usage
+        # DISABLED TO PREVENT DOUBLE COUNTING - Tracking happens in stripe_routes.py /track-speaking-time
+        # The frontend calls the tracking endpoint directly, so we don't need to track here
+        # This was causing sessions to be counted twice (once here, once in stripe_routes)
         if duration_minutes > 0 and help_type in ["session_completed", "conversation_ended"]:
-            print(f"[CONVERSATION_HELP] 🔄 Session completed with {duration_minutes} minutes - updating subscription usage")
+            print(f"[CONVERSATION_HELP] ℹ️ Session completed with {duration_minutes} minutes")
+            print(f"[CONVERSATION_HELP] ℹ️ Subscription tracking disabled here to prevent double counting")
+            print(f"[CONVERSATION_HELP] ℹ️ Tracking will be handled by stripe_routes.py /track-speaking-time")
             
-            try:
-                from subscription_service import SubscriptionService
-                from models import SpeakingTimeTrackingRequest
-                
-                # Track subscription usage for sessions with actual duration
-                speaking_time_request = SpeakingTimeTrackingRequest(
-                    user_id=user_id,
-                    speaking_minutes=duration_minutes,
-                    session_completed=True  # This will increment both minutes AND session count
-                )
-                
-                tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
-                if tracking_success:
-                    print(f"[CONVERSATION_HELP] ✅ Subscription usage updated: {duration_minutes} minutes for user {user_id}")
-                else:
-                    print(f"[CONVERSATION_HELP] ⚠️ Subscription tracking failed - user may have exceeded limits")
-                    
-            except Exception as subscription_error:
-                print(f"[CONVERSATION_HELP] ⚠️ Failed to update subscription usage: {subscription_error}")
-                # Don't fail the analytics tracking if subscription update fails
+            # Set tracking_success to True without actually tracking to prevent double counting
+            subscription_tracked = True
+            
+            # Log that we're skipping duplicate tracking
+            print(f"[CONVERSATION_HELP] ✅ Skipped duplicate tracking for user {user_id}")
         
         return result.acknowledged
     
