@@ -859,24 +859,24 @@ async def save_session_summary(
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # CORRECTED: Always use INTEGER minutes - no floating point values
+        # CRITICAL FIX: ENFORCE EXACTLY 5.0 minutes for ALL completed sessions
         if request and request.duration_minutes:
             raw_duration = request.duration_minutes
             if raw_duration >= 5.0:
-                # Complete session: ALWAYS exactly 5 minutes (integer)
-                duration_minutes = 5
+                # Complete session: ALWAYS exactly 5.0 minutes (float for consistency)
+                duration_minutes = 5.0
                 session_status = "completed"
-                print(f"[SESSION_SUMMARY] ✅ Complete session: {raw_duration} → {duration_minutes} minutes (INTEGER)")
+                print(f"[SESSION_SUMMARY] ✅ Complete session: {raw_duration} → {duration_minutes} minutes (ENFORCED 5.0)")
             else:
-                # Early exit: round to nearest integer (1-4 minutes)
-                duration_minutes = max(1, int(round(raw_duration)))
+                # Early exit: round to nearest integer but still as float
+                duration_minutes = float(max(1, int(round(raw_duration))))
                 session_status = "partial"
-                print(f"[SESSION_SUMMARY] ⏰ Early exit: {raw_duration} → {duration_minutes} minutes (INTEGER)")
+                print(f"[SESSION_SUMMARY] ⏰ Early exit: {raw_duration} → {duration_minutes} minutes")
         else:
-            # Default: complete session is ALWAYS exactly 5 minutes (integer)
-            duration_minutes = 5
+            # Default: complete session is ALWAYS exactly 5.0 minutes
+            duration_minutes = 5.0
             session_status = "completed"
-            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes (INTEGER)")
+            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes (ENFORCED 5.0)")
         
         # Add completion timestamp for subscription period tracking
         completion_timestamp = datetime.utcnow()
