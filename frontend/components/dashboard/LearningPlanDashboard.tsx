@@ -289,16 +289,64 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
         {/* Upgrade Prompt for Free Users */}
         <UpgradePrompt className="mb-8" />
 
-        {/* Plans Grid - Dynamic centering based on number of plans */}
+        {/* Mobile: Horizontal Scrolling Carousel */}
+        <div className="block md:hidden mb-8">
+          <motion.div
+            className="flex gap-4 overflow-x-auto scrollbar-hide px-4 -mx-4 snap-x snap-mandatory"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {plans.map((plan, index) => (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 * index }}
+                className="flex-shrink-0 w-80 snap-center"
+              >
+                <LearningPlanCard
+                  plan={plan}
+                  progressStats={progressStats}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+          
+          {/* Mobile Scroll Indicator */}
+          {plans.length > 1 && (
+            <div className="flex justify-center mt-4 space-x-2">
+              {plans.map((_, index) => (
+                <div
+                  key={index}
+                  className="w-2 h-2 rounded-full bg-gray-300"
+                />
+              ))}
+            </div>
+          )}
+          
+          {/* Mobile Swipe Hint */}
+          {plans.length > 1 && (
+            <p className="text-center text-sm text-gray-500 mt-2">
+              👈 Swipe to see all your learning plans 👉
+            </p>
+          )}
+        </div>
+
+        {/* Desktop: Grid Layout */}
         <motion.div
-          className={`gap-6 mb-8 ${
+          className={`hidden md:flex gap-6 mb-8 ${
             plans.length === 1 
-              ? 'flex justify-center' 
+              ? 'justify-center' 
               : plans.length === 2 
-                ? 'flex justify-center flex-wrap max-w-4xl mx-auto' 
+                ? 'justify-center flex-wrap max-w-4xl mx-auto' 
                 : plans.length === 4
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-                  : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                  ? 'md:grid md:grid-cols-2 lg:grid-cols-4'
+                  : 'md:grid md:grid-cols-2 lg:grid-cols-3'
           }`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
