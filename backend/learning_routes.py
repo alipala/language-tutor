@@ -264,12 +264,28 @@ async def create_learning_plan(
                             "Explore artistic and literary language"
                         ]
                 
+                # CRITICAL FIX: Initialize session_details array properly
+                session_details = []
+                sessions_per_week = 2  # Default 2 sessions per week
+                
+                # Create placeholder session objects for each session in the week
+                for session_idx in range(sessions_per_week):
+                    session_details.append({
+                        "session_number": session_idx + 1,
+                        "focus": focus,
+                        "completed_at": None,
+                        "duration_minutes": None,
+                        "session_summary": None,
+                        "status": "pending"
+                    })
+                
                 weekly_schedule.append({
                     "week": week,
                     "focus": focus,
                     "activities": activities,
                     "sessions_completed": 0,
-                    "total_sessions": 2  # 2 sessions per week
+                    "total_sessions": sessions_per_week,
+                    "session_details": session_details  # CRITICAL: Properly initialized session_details
                 })
             
             return weekly_schedule
@@ -375,19 +391,22 @@ async def create_learning_plan(
         # We're using the mock plan content defined above
         # No need to call OpenAI API or parse the response
         
-        # Calculate total sessions based on duration
-        def calculate_total_sessions(duration_months: int) -> int:
-            """Calculate total sessions based on duration"""
-            session_mapping = {
-                1: 8,   # 1 month = 4 weeks, 8 sessions
-                2: 16,  # 2 months = 8 weeks, 16 sessions
-                3: 24,  # 3 months = 12 weeks, 24 sessions
-                6: 48,  # 6 months = 24 weeks, 48 sessions
-                12: 96  # 12 months = 48 weeks, 96 sessions
-            }
-            return session_mapping.get(duration_months, duration_months * 8)  # Default: 8 sessions per month
+        # CORRECTED: Calculate total sessions from actual weekly schedule structure
+        def calculate_total_sessions_from_schedule(weekly_schedule: list) -> int:
+            """Calculate total sessions from the actual weekly schedule structure"""
+            total = 0
+            for week in weekly_schedule:
+                session_details = week.get("session_details", [])
+                total += len(session_details)
+            return total
         
-        total_sessions = calculate_total_sessions(plan_request.duration_months)
+        # Calculate total sessions from the generated weekly schedule
+        total_sessions = calculate_total_sessions_from_schedule(weekly_schedule)
+        
+        print(f"[LEARNING_PLAN] ✅ Generated weekly schedule:")
+        print(f"[LEARNING_PLAN]    Total weeks: {len(weekly_schedule)}")
+        print(f"[LEARNING_PLAN]    Total sessions: {total_sessions}")
+        print(f"[LEARNING_PLAN]    Sessions per week: 2")
         
         # Create a new learning plan
         from datetime import datetime
