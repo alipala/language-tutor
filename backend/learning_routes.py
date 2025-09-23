@@ -6,6 +6,7 @@ import openai
 import uuid
 import logging
 from datetime import datetime
+from bson import ObjectId
 from auth import get_current_user
 from models import UserResponse
 from database import database, users_collection
@@ -449,14 +450,40 @@ async def create_learning_plan(
             )
             print(f"Updated user profile with assessment data for user {current_user.id} (language: {plan_request.language}, level: {plan_request.proficiency_level})")
             
-            # IMPORTANT: Track assessment usage for subscription limits
-            # This was the missing piece causing the bug!
+            # IMPORTANT: Track assessment usage for subscription limits (PERIOD-AWARE)
+            # Only increment if this assessment is in the current subscription period
             try:
-                await users_collection.update_one(
-                    {"_id": current_user.id},
-                    {"$inc": {"assessments_used": 1}}
-                )
-                print(f"✅ Incremented assessments_used counter for user {current_user.id}")
+                # Get user's current subscription period
+                user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+                current_period_start = user_doc.get("current_period_start") if user_doc else None
+                
+                if current_period_start:
+                    # Convert to naive datetime for comparison
+                    if current_period_start.tzinfo:
+                        period_start_naive = current_period_start.replace(tzinfo=None)
+                    else:
+                        period_start_naive = current_period_start
+                    
+                    # Check if current assessment is in the current period
+                    current_time = datetime.utcnow()
+                    
+                    if current_time >= period_start_naive:
+                        # Assessment is in current period, increment counter
+                        await users_collection.update_one(
+                            {"_id": ObjectId(current_user.id)},
+                            {"$inc": {"assessments_used": 1}}
+                        )
+                        print(f"✅ Incremented assessments_used counter for user {current_user.id} (current period)")
+                    else:
+                        print(f"ℹ️ Assessment outside current period for user {current_user.id} - counter not incremented")
+                else:
+                    # No subscription period found, increment anyway (fallback)
+                    await users_collection.update_one(
+                        {"_id": ObjectId(current_user.id)},
+                        {"$inc": {"assessments_used": 1}}
+                    )
+                    print(f"⚠️ No subscription period found for user {current_user.id} - incremented counter anyway")
+                    
             except Exception as e:
                 print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
                 # Don't fail the entire operation if usage tracking fails
@@ -1021,14 +1048,39 @@ async def save_assessment_data(
         # Log the update
         print(f"Updated user profile with assessment data for user {user_id} (modified count: {result.modified_count})")
         
-        # IMPORTANT: Track assessment usage for subscription limits
-        # This ensures the assessment counter is properly updated
+        # IMPORTANT: Track assessment usage for subscription limits (PERIOD-AWARE)
+        # Only increment if this assessment is in the current subscription period
         try:
-            usage_result = await users_collection.update_one(
-                {"_id": user_id},
-                {"$inc": {"assessments_used": 1}}
-            )
-            print(f"✅ Incremented assessments_used counter for user {user_id} (modified count: {usage_result.modified_count})")
+            # Get user's current subscription period
+            current_period_start = user.get("current_period_start") if user else None
+            
+            if current_period_start:
+                # Convert to naive datetime for comparison
+                if current_period_start.tzinfo:
+                    period_start_naive = current_period_start.replace(tzinfo=None)
+                else:
+                    period_start_naive = current_period_start
+                
+                # Check if current assessment is in the current period
+                current_time = datetime.utcnow()
+                
+                if current_time >= period_start_naive:
+                    # Assessment is in current period, increment counter
+                    usage_result = await users_collection.update_one(
+                        {"_id": ObjectId(user_id) if isinstance(user_id, str) else user_id},
+                        {"$inc": {"assessments_used": 1}}
+                    )
+                    print(f"✅ Incremented assessments_used counter for user {user_id} (current period) (modified count: {usage_result.modified_count})")
+                else:
+                    print(f"ℹ️ Assessment outside current period for user {user_id} - counter not incremented")
+            else:
+                # No subscription period found, increment anyway (fallback)
+                usage_result = await users_collection.update_one(
+                    {"_id": ObjectId(user_id) if isinstance(user_id, str) else user_id},
+                    {"$inc": {"assessments_used": 1}}
+                )
+                print(f"⚠️ No subscription period found for user {user_id} - incremented counter anyway (modified count: {usage_result.modified_count})")
+                
         except Exception as e:
             print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
             # Don't fail the entire operation if usage tracking fails
