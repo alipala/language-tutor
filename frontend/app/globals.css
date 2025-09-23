@@ -50,6 +50,34 @@
     scrollbar-color: rgba(78, 207, 191, 0.5) rgba(78, 207, 191, 0.1);
   }
   
+  /* Hide scrollbar for mobile carousel */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+  
+  /* Smooth scrolling for mobile carousel */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+  
+  /* Snap scrolling for mobile carousel */
+  .snap-x {
+    scroll-snap-type: x mandatory;
+  }
+  
+  .snap-mandatory {
+    scroll-snap-type: x mandatory;
+  }
+  
+  .snap-center {
+    scroll-snap-align: center;
+  }
+  
   /* Microphone button animations */
   .mic-btn-ring {
     border-radius: 50%;
