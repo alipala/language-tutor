@@ -123,8 +123,11 @@ async def save_conversation(
         else:
             print(f"[PROGRESS] Skipping enhanced analysis - session doesn't meet criteria")
         
-        # Determine if session is streak eligible (5+ minutes)
-        is_streak_eligible = request.duration_minutes >= 5.0
+        # CORRECTED: Use integer duration for streak eligibility
+        integer_duration = 5 if request.duration_minutes >= 5.0 else max(1, int(round(request.duration_minutes)))
+        is_streak_eligible = integer_duration >= 5
+        
+        print(f"[PROGRESS] Streak eligibility based on INTEGER duration: {request.duration_minutes} → {integer_duration} minutes, eligible: {is_streak_eligible}")
         
         # Check if there's an existing session for this user today with the same language/level/topic
         today = datetime.utcnow().date()
@@ -146,15 +149,20 @@ async def save_conversation(
             # Update existing session
             print(f"[PROGRESS] Updating existing session: {existing_session['_id']}")
             
+            # CORRECTED: Enforce INTEGER minutes for conversation updates too
+            integer_duration = 5 if request.duration_minutes >= 5.0 else max(1, int(round(request.duration_minutes)))
+            
             update_data = {
                 "messages": [msg.dict() for msg in conversation_messages],
-                "duration_minutes": request.duration_minutes,
+                "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
                 "message_count": len(conversation_messages),
                 "summary": summary,
                 "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "updated_at": datetime.utcnow()
             }
+            
+            print(f"[PROGRESS] Update duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
             
             result = await conversation_sessions_collection.update_one(
                 {"_id": existing_session["_id"]},
@@ -178,13 +186,16 @@ async def save_conversation(
             # Create new session
             print(f"[PROGRESS] Creating new conversation session")
             
+            # CORRECTED: Enforce INTEGER minutes for regular conversations too
+            integer_duration = 5 if request.duration_minutes >= 5.0 else max(1, int(round(request.duration_minutes)))
+            
             session_dict = {
                 "user_id": current_user.id,
                 "language": request.language,
                 "level": request.level,
                 "topic": request.topic,
                 "messages": [msg.dict() for msg in conversation_messages],
-                "duration_minutes": request.duration_minutes,
+                "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
                 "message_count": len(conversation_messages),
                 "summary": summary,
                 "enhanced_analysis": enhanced_analysis,
@@ -192,6 +203,8 @@ async def save_conversation(
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
+            
+            print(f"[PROGRESS] Duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
             
             result = await conversation_sessions_collection.insert_one(session_dict)
             
@@ -772,6 +785,9 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
         if 'session_details' not in week:
             week['session_details'] = []
         
+        # CORRECTED: Enforce INTEGER minutes - no floating point values
+        integer_duration = 5 if duration_minutes >= 5.0 else max(1, int(round(duration_minutes)))
+        
         # Create session detail object
         session_detail = {
             "session_number": session_in_week,
@@ -779,9 +795,11 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
             "summary": session_summary,
             "completed_at": datetime.utcnow().isoformat(),
             "status": "completed",
-            "duration_minutes": duration_minutes,
+            "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
             "message_count": len(conversation_messages)
         }
+        
+        print(f"[SESSION_SUMMARY] Duration enforced as INTEGER: {duration_minutes} → {integer_duration} minutes")
         
         # Add to session_details
         week['session_details'].append(session_detail)

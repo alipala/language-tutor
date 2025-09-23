@@ -813,25 +813,24 @@ async def save_session_summary(
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # ENHANCED: Smart duration calculation - always integer, never decimal
+        # CORRECTED: Always use INTEGER minutes - no floating point values
         if request and request.duration_minutes:
-            # If user provided duration, round to nearest integer (no decimals allowed)
             raw_duration = request.duration_minutes
             if raw_duration >= 5.0:
-                # Complete session: always 5 minutes
+                # Complete session: ALWAYS exactly 5 minutes (integer)
                 duration_minutes = 5
                 session_status = "completed"
-                print(f"[SESSION_SUMMARY] ✅ Complete session: {raw_duration} → {duration_minutes} minutes")
+                print(f"[SESSION_SUMMARY] ✅ Complete session: {raw_duration} → {duration_minutes} minutes (INTEGER)")
             else:
                 # Early exit: round to nearest integer (1-4 minutes)
                 duration_minutes = max(1, int(round(raw_duration)))
                 session_status = "partial"
-                print(f"[SESSION_SUMMARY] ⏰ Early exit: {raw_duration} → {duration_minutes} minutes")
+                print(f"[SESSION_SUMMARY] ⏰ Early exit: {raw_duration} → {duration_minutes} minutes (INTEGER)")
         else:
-            # Default: complete session
+            # Default: complete session is ALWAYS exactly 5 minutes (integer)
             duration_minutes = 5
             session_status = "completed"
-            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes")
+            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes (INTEGER)")
         
         # Add completion timestamp for subscription period tracking
         completion_timestamp = datetime.utcnow()
@@ -902,11 +901,11 @@ async def save_session_summary(
                 
                 print(f"[SESSION_SUMMARY] 🔄 Tracking subscription usage...")
                 
-                # FIXED: Use track_speaking_time with session_completed=True
-                # This will track BOTH the speaking minutes AND increment the session counter
+                # CORRECTED: Pass integer minutes but convert to float for API compatibility
+                # Sessions are ALWAYS integer minutes (5, 4, 3, 2, 1) - never decimals
                 speaking_time_request = SpeakingTimeTrackingRequest(
                     user_id=str(current_user.id),
-                    speaking_minutes=duration_minutes,
+                    speaking_minutes=float(duration_minutes),  # Convert integer to float for API
                     session_completed=True  # This will increment both minutes AND session count
                 )
                 
