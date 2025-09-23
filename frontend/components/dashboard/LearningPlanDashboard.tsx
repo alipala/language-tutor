@@ -110,8 +110,8 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
         statsData = await statsResponse.json();
       }
       
-      // Show max 3 plans on dashboard
-      setPlans(plansData.slice(0, 3));
+      // Show all learning plans - no artificial limit
+      setPlans(plansData);
       setProgressStats(statsData);
       
     } catch (error) {
@@ -291,12 +291,14 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
 
         {/* Plans Grid - Dynamic centering based on number of plans */}
         <motion.div
-          className={`gap-6 mb-8 flex ${
+          className={`gap-6 mb-8 ${
             plans.length === 1 
-              ? 'justify-center' 
+              ? 'flex justify-center' 
               : plans.length === 2 
-                ? 'justify-center flex-wrap max-w-4xl mx-auto' 
-                : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                ? 'flex justify-center flex-wrap max-w-4xl mx-auto' 
+                : plans.length === 4
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+                  : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
           }`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
