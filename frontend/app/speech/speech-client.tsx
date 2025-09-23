@@ -1672,45 +1672,121 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [user, conversationStartTime]);
   
-  // Enhanced browser navigation protection with mobile support and heartbeat
+  // BULLETPROOF browser navigation protection with comprehensive mobile support
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Auto-save conversation and track speaking time for partial sessions
-      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
-        // Calculate duration for partial session
-        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
-        
-        // Only track if session is meaningful (>30 seconds)
-        if (durationMinutes > 0.5) {
-          console.log('[PARTIAL_SESSION] Auto-saving partial session on page unload:', durationMinutes.toFixed(1), 'minutes');
+    // Bulletproof session saving function with multiple fallbacks
+    const saveSessionWithFallbacks = async (exitType: string, isSync: boolean = false) => {
+      if (!user || !processedMessages.length || sessionCompleted || !conversationStartTime) {
+        return false;
+      }
+
+      const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+      
+      // Only save meaningful sessions (>30 seconds)
+      if (durationMinutes <= 0.5) {
+        return false;
+      }
+
+      console.log(`[BULLETPROOF_EXIT] Saving ${exitType} session:`, durationMinutes.toFixed(1), 'minutes');
+      
+      const integerDuration = durationMinutes >= 5.0 ? 5 : Math.max(1, Math.round(durationMinutes));
+      
+      const messagesToSave = processedMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp || new Date().toISOString()
+      }));
+      
+      const conversationData = {
+        language,
+        level,
+        topic,
+        messages: messagesToSave,
+        duration_minutes: integerDuration,
+        learning_plan_id: null,
+        conversation_type: 'practice',
+        exit_type: exitType,
+        session_id: `${user._id}_${conversationStartTime}`,
+        timestamp: Date.now()
+      };
+      
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+
+      // Strategy 1: sendBeacon (most reliable for page unload)
+      if (navigator.sendBeacon && !isSync) {
+        try {
+          const blob = new Blob([JSON.stringify(conversationData)], { type: 'application/json' });
+          const success = navigator.sendBeacon(
+            `${window.location.origin}/api/progress/save-conversation`,
+            blob
+          );
           
-          // Enhanced tracking with fallback mechanisms
-          const token = localStorage.getItem('token');
-          const trackingData = {
-            speaking_minutes: durationMinutes,
-            session_completed: false, // Mark as partial session
-            token: token, // Include token for authentication
-            exit_type: 'beforeunload',
-            timestamp: Date.now()
-          };
-          
-          // Primary: sendBeacon (most reliable)
-          if (token && navigator.sendBeacon) {
-            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
-            const success = navigator.sendBeacon(
-              `${window.location.origin}/api/stripe/track-speaking-time`,
-              blob
-            );
-            console.log('[PARTIAL_SESSION] Beacon sent:', success);
-          } else if (token) {
-            // Fallback: localStorage backup for network failure resilience
-            const backupKey = `session_backup_${Date.now()}`;
-            localStorage.setItem(backupKey, JSON.stringify(trackingData));
-            console.log('[PARTIAL_SESSION] Stored backup in localStorage:', backupKey);
+          if (success) {
+            console.log(`[BULLETPROOF_EXIT] ✅ Beacon saved ${exitType}:`, `${integerDuration}min`);
+            // Mark as saved to prevent duplicate saves
+            sessionStorage.setItem(`session_saved_${conversationStartTime}`, 'true');
+            return true;
           }
+        } catch (error) {
+          console.error(`[BULLETPROOF_EXIT] Beacon failed for ${exitType}:`, error);
         }
-        
-        // Still show warning for user experience
+      }
+
+      // Strategy 2: Synchronous fetch (for immediate exits)
+      if (isSync) {
+        try {
+          const response = await fetch(`${window.location.origin}/api/progress/save-conversation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(conversationData),
+            keepalive: true // Keep request alive even if page unloads
+          });
+
+          if (response.ok) {
+            console.log(`[BULLETPROOF_EXIT] ✅ Sync fetch saved ${exitType}:`, `${integerDuration}min`);
+            sessionStorage.setItem(`session_saved_${conversationStartTime}`, 'true');
+            return true;
+          }
+        } catch (error) {
+          console.error(`[BULLETPROOF_EXIT] Sync fetch failed for ${exitType}:`, error);
+        }
+      }
+
+      // Strategy 3: localStorage backup (always as fallback)
+      const backupKey = `session_backup_${Date.now()}_${exitType}`;
+      const backupData = {
+        ...conversationData,
+        token: token,
+        backup_reason: `${exitType}_fallback`,
+        retry_count: 0,
+        max_retries: 3
+      };
+      
+      try {
+        localStorage.setItem(backupKey, JSON.stringify(backupData));
+        console.log(`[BULLETPROOF_EXIT] 💾 Backup stored for ${exitType}:`, backupKey, `${integerDuration}min`);
+        return true;
+      } catch (error) {
+        console.error(`[BULLETPROOF_EXIT] ❌ Even localStorage backup failed for ${exitType}:`, error);
+        return false;
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Check if already saved to prevent duplicates
+      if (conversationStartTime && sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+        return;
+      }
+
+      // Attempt immediate save
+      saveSessionWithFallbacks('beforeunload', false);
+      
+      // Show warning for user experience
+      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
         e.preventDefault();
         e.returnValue = '';
         return '';
@@ -1718,114 +1794,97 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      // Auto-track speaking time for partial sessions BEFORE showing modal
+      // Check if already saved to prevent duplicates
+      if (conversationStartTime && sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+        e.preventDefault();
+        window.history.pushState(null, '', window.location.href);
+        setShowLeaveModal(true);
+        return;
+      }
+
+      // Attempt immediate save before showing modal
       if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
-        // Calculate duration for partial session
-        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
-        
-        // Only track if session is meaningful (>30 seconds)
-        if (durationMinutes > 0.5) {
-          console.log('[PARTIAL_SESSION] Auto-saving partial session on back button:', durationMinutes.toFixed(1), 'minutes');
-          
-          // Enhanced tracking with fallback mechanisms
-          const token = localStorage.getItem('token');
-          const trackingData = {
-            speaking_minutes: durationMinutes,
-            session_completed: false, // Mark as partial session
-            token: token, // Include token for authentication
-            exit_type: 'popstate',
-            timestamp: Date.now()
-          };
-          
-          // Primary: sendBeacon (most reliable)
-          if (token && navigator.sendBeacon) {
-            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
-            const success = navigator.sendBeacon(
-              `${window.location.origin}/api/stripe/track-speaking-time`,
-              blob
-            );
-            console.log('[PARTIAL_SESSION] Back button beacon sent:', success);
-          } else if (token) {
-            // Fallback: localStorage backup
-            const backupKey = `session_backup_${Date.now()}`;
-            localStorage.setItem(backupKey, JSON.stringify(trackingData));
-            console.log('[PARTIAL_SESSION] Stored backup in localStorage:', backupKey);
-          }
-        }
+        saveSessionWithFallbacks('popstate', true); // Use sync save for immediate response
         
         // Then handle the navigation prevention
         e.preventDefault();
-        // Push the current state back to prevent navigation
         window.history.pushState(null, '', window.location.href);
-        // Show our custom modal instead
         setShowLeaveModal(true);
       }
     };
 
-    // Mobile-specific event handlers for better mobile browser support
+    // BULLETPROOF mobile-specific event handlers
     const handleVisibilityChange = () => {
-      if (document.hidden && user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
-        // Mobile app switching or tab switching
-        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
-        
-        if (durationMinutes > 0.5) {
-          console.log('[PARTIAL_SESSION] Mobile visibility change - potential exit:', durationMinutes.toFixed(1), 'minutes');
-          
-          const token = localStorage.getItem('token');
-          const trackingData = {
-            speaking_minutes: durationMinutes,
-            session_completed: false,
-            token: token,
-            exit_type: 'visibility_change',
-            timestamp: Date.now()
-          };
-          
-          // Use sendBeacon for mobile reliability
-          if (token && navigator.sendBeacon) {
-            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
-            navigator.sendBeacon(`${window.location.origin}/api/stripe/track-speaking-time`, blob);
-          } else if (token) {
-            // Fallback: localStorage backup
-            const backupKey = `session_backup_${Date.now()}`;
-            localStorage.setItem(backupKey, JSON.stringify(trackingData));
-          }
+      if (document.hidden) {
+        // Check if already saved
+        if (conversationStartTime && sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+          return;
         }
+        saveSessionWithFallbacks('visibility_change', false);
       }
     };
 
     const handlePageHide = (e: PageTransitionEvent) => {
-      // Additional mobile browser support
-      if (user && processedMessages.length > 0 && !sessionCompleted && conversationStartTime) {
-        const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
-        
-        if (durationMinutes > 0.5) {
-          console.log('[PARTIAL_SESSION] Page hide event - mobile exit:', durationMinutes.toFixed(1), 'minutes');
-          
-          const token = localStorage.getItem('token');
-          const trackingData = {
-            speaking_minutes: durationMinutes,
-            session_completed: false,
-            token: token,
-            exit_type: 'pagehide',
-            timestamp: Date.now()
-          };
-          
-          if (token && navigator.sendBeacon) {
-            const blob = new Blob([JSON.stringify(trackingData)], { type: 'application/json' });
-            navigator.sendBeacon(`${window.location.origin}/api/stripe/track-speaking-time`, blob);
-          } else if (token) {
-            const backupKey = `session_backup_${Date.now()}`;
-            localStorage.setItem(backupKey, JSON.stringify(trackingData));
-          }
-        }
+      // Check if already saved
+      if (conversationStartTime && sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+        return;
+      }
+      saveSessionWithFallbacks('pagehide', false);
+    };
+
+    // NEW: Additional bulletproof mobile events
+    const handleFreeze = () => {
+      console.log('[BULLETPROOF_EXIT] Page freeze detected - mobile app backgrounded');
+      if (conversationStartTime && !sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+        saveSessionWithFallbacks('freeze', false);
       }
     };
 
-    // Add all event listeners
+    const handleResume = () => {
+      console.log('[BULLETPROOF_EXIT] Page resume detected - mobile app foregrounded');
+      // Clear any pending saves since user is back
+    };
+
+    const handleOrientationChange = () => {
+      // Some mobile browsers trigger this on app switch
+      console.log('[BULLETPROOF_EXIT] Orientation change - potential mobile exit');
+      if (conversationStartTime && !sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+        // Delay to avoid false positives from actual orientation changes
+        setTimeout(() => {
+          if (document.hidden) {
+            saveSessionWithFallbacks('orientation_change', false);
+          }
+        }, 1000);
+      }
+    };
+
+    const handleOnline = () => {
+      console.log('[BULLETPROOF_EXIT] Network restored - attempting backup recovery');
+      // Trigger backup recovery when network comes back
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('network-restored'));
+      }, 1000);
+    };
+
+    const handleOffline = () => {
+      console.log('[BULLETPROOF_EXIT] Network lost - ensuring localStorage backup');
+      if (conversationStartTime && !sessionStorage.getItem(`session_saved_${conversationStartTime}`)) {
+        saveSessionWithFallbacks('offline', false);
+      }
+    };
+
+    // Add ALL event listeners for bulletproof coverage
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
+    
+    // NEW: Additional bulletproof mobile events
+    document.addEventListener('freeze', handleFreeze);
+    document.addEventListener('resume', handleResume);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     // Push a state to handle back button (only if session not completed)
     if (user && processedMessages.length > 0 && !sessionCompleted) {
@@ -1837,6 +1896,11 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('freeze', handleFreeze);
+      document.removeEventListener('resume', handleResume);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, [user, processedMessages.length, sessionCompleted, conversationStartTime]);
   
