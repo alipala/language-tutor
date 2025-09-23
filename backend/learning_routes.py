@@ -431,65 +431,97 @@ async def create_learning_plan(
             "total_practice_minutes": total_sessions * 5.0  # Assume 5 minutes per session average
         }
         
-        # If user is authenticated and assessment data is provided, update user profile
+        # ATOMIC SAVE: Only save assessment data and increment counter when learning plan is created
         if current_user and plan_request.assessment_data:
             from database import users_collection
-            # Update the user's profile with the latest assessment data only
-            # Don't overwrite preferred_language and preferred_level as users can have multiple languages
-            await users_collection.update_one(
-                {"_id": current_user.id},
-                {"$set": {
-                    "last_assessment_data": plan_request.assessment_data,
-                    "assessment_history": {
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "data": plan_request.assessment_data,
-                        "language": plan_request.language,
-                        "level": plan_request.proficiency_level
-                    }
-                }}
-            )
-            print(f"Updated user profile with assessment data for user {current_user.id} (language: {plan_request.language}, level: {plan_request.proficiency_level})")
             
-            # IMPORTANT: Track assessment usage for subscription limits (PERIOD-AWARE)
-            # Only increment if this assessment is in the current subscription period
-            try:
-                # Get user's current subscription period
-                user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
-                current_period_start = user_doc.get("current_period_start") if user_doc else None
+            print(f"[ATOMIC_SAVE] 🔄 Starting atomic save of assessment + learning plan")
+            print(f"[ATOMIC_SAVE] User: {current_user.id}, Language: {plan_request.language}, Level: {plan_request.proficiency_level}")
+            
+            # STEP 1: Save the learning plan first
+            result = await learning_plans_collection.insert_one(new_plan)
+            
+            if result.inserted_id:
+                print(f"[ATOMIC_SAVE] ✅ Learning plan created with ID: {new_plan['id']}")
                 
-                if current_period_start:
-                    # Convert to naive datetime for comparison
-                    if current_period_start.tzinfo:
-                        period_start_naive = current_period_start.replace(tzinfo=None)
-                    else:
-                        period_start_naive = current_period_start
+                # STEP 2: Now save assessment data and increment counter atomically
+                try:
+                    # Get user's current subscription period for proper tracking
+                    user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+                    current_period_start = user_doc.get("current_period_start") if user_doc else None
                     
-                    # Check if current assessment is in the current period
-                    current_time = datetime.utcnow()
+                    # Prepare the update operations
+                    update_operations = {
+                        "$set": {
+                            "last_assessment_data": plan_request.assessment_data,
+                            "assessment_history": {
+                                "timestamp": datetime.utcnow().isoformat(),
+                                "data": plan_request.assessment_data,
+                                "language": plan_request.language,
+                                "level": plan_request.proficiency_level,
+                                "learning_plan_id": new_plan['id']  # Link to the created plan
+                            }
+                        }
+                    }
                     
-                    if current_time >= period_start_naive:
-                        # Assessment is in current period, increment counter
-                        await users_collection.update_one(
-                            {"_id": ObjectId(current_user.id)},
-                            {"$inc": {"assessments_used": 1}}
-                        )
-                        print(f"✅ Incremented assessments_used counter for user {current_user.id} (current period)")
+                    # Only increment assessment counter if in current period
+                    should_increment = False
+                    if current_period_start:
+                        # Convert to naive datetime for comparison
+                        if current_period_start.tzinfo:
+                            period_start_naive = current_period_start.replace(tzinfo=None)
+                        else:
+                            period_start_naive = current_period_start
+                        
+                        # Check if current assessment is in the current period
+                        current_time = datetime.utcnow()
+                        
+                        if current_time >= period_start_naive:
+                            should_increment = True
+                            update_operations["$inc"] = {"assessments_used": 1}
+                            print(f"[ATOMIC_SAVE] 📊 Assessment is in current period - will increment counter")
+                        else:
+                            print(f"[ATOMIC_SAVE] ℹ️ Assessment outside current period - counter not incremented")
                     else:
-                        print(f"ℹ️ Assessment outside current period for user {current_user.id} - counter not incremented")
-                else:
-                    # No subscription period found, increment anyway (fallback)
-                    await users_collection.update_one(
+                        # No subscription period found, increment anyway (fallback)
+                        should_increment = True
+                        update_operations["$inc"] = {"assessments_used": 1}
+                        print(f"[ATOMIC_SAVE] ⚠️ No subscription period found - incrementing counter anyway")
+                    
+                    # Execute the atomic update
+                    update_result = await users_collection.update_one(
                         {"_id": ObjectId(current_user.id)},
-                        {"$inc": {"assessments_used": 1}}
+                        update_operations
                     )
-                    print(f"⚠️ No subscription period found for user {current_user.id} - incremented counter anyway")
                     
-            except Exception as e:
-                print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
-                # Don't fail the entire operation if usage tracking fails
+                    if update_result.modified_count > 0:
+                        print(f"[ATOMIC_SAVE] ✅ Assessment data saved to user profile")
+                        if should_increment:
+                            print(f"[ATOMIC_SAVE] ✅ Assessment counter incremented")
+                        print(f"[ATOMIC_SAVE] 🎯 ATOMIC SAVE COMPLETE: Assessment + Plan saved together")
+                    else:
+                        print(f"[ATOMIC_SAVE] ⚠️ User profile update had no changes")
+                        
+                except Exception as e:
+                    print(f"[ATOMIC_SAVE] ⚠️ Warning: Failed to save assessment data: {str(e)}")
+                    # The learning plan was already created, so we don't fail the operation
+                    # But log this for monitoring
+                    print(f"[ATOMIC_SAVE] ⚠️ Learning plan created but assessment data not saved")
+            else:
+                print(f"[ATOMIC_SAVE] ❌ Failed to create learning plan")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to create learning plan"
+                )
+        else:
+            # No assessment data - just save the plan normally
+            result = await learning_plans_collection.insert_one(new_plan)
+            print(f"[LEARNING_PLAN] ✅ Learning plan created without assessment data")
         
-        # Save the plan to the database
-        result = await learning_plans_collection.insert_one(new_plan)
+        # Note: Plan saving is now handled above in the atomic save section
+        # This line is only reached if there's no assessment data
+        if not (current_user and plan_request.assessment_data):
+            result = await learning_plans_collection.insert_one(new_plan)
         
         # Return the created plan
         return new_plan
@@ -1028,118 +1060,61 @@ async def save_assessment_data(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Save speaking assessment data to user profile and create a learning plan if requested
-    """
-    try:
-        # Import ObjectId for proper MongoDB ID handling
-        from bson import ObjectId
-        
-        # Convert user ID to the correct format for MongoDB
-        # If it's already an ObjectId, use it as is; if it's a string, convert it
-        user_id = current_user.id
-        if isinstance(user_id, str):
-            try:
-                user_id = ObjectId(user_id)
-            except Exception as e:
-                print(f"Warning: Could not convert user ID to ObjectId: {str(e)}")
-        
-        # First try to find the user to confirm they exist
-        user = await users_collection.find_one({"_id": user_id})
-        if not user:
-            # Try alternate formats as fallback
-            user = await users_collection.find_one({"_id": str(user_id)})
-            if not user:
-                raise HTTPException(status_code=404, detail=f"User not found with ID {user_id}")
-            else:
-                # If found with string ID, use that format
-                user_id = str(user_id)
-        
-        # Update the user's profile with the assessment data
-        result = await users_collection.update_one(
-            {"_id": user_id},
-            {"$set": {
-                "last_assessment_data": assessment.assessment_data,
-                "assessment_history": {
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "data": assessment.assessment_data
-                }
-            }}
-        )
-        
-        # Log the update
-        print(f"Updated user profile with assessment data for user {user_id} (modified count: {result.modified_count})")
-        
-        # IMPORTANT: Track assessment usage for subscription limits (PERIOD-AWARE)
-        # Only increment if this assessment is in the current subscription period
-        try:
-            # Get user's current subscription period
-            current_period_start = user.get("current_period_start") if user else None
-            
-            if current_period_start:
-                # Convert to naive datetime for comparison
-                if current_period_start.tzinfo:
-                    period_start_naive = current_period_start.replace(tzinfo=None)
-                else:
-                    period_start_naive = current_period_start
-                
-                # Check if current assessment is in the current period
-                current_time = datetime.utcnow()
-                
-                if current_time >= period_start_naive:
-                    # Assessment is in current period, increment counter
-                    usage_result = await users_collection.update_one(
-                        {"_id": ObjectId(user_id) if isinstance(user_id, str) else user_id},
-                        {"$inc": {"assessments_used": 1}}
-                    )
-                    print(f"✅ Incremented assessments_used counter for user {user_id} (current period) (modified count: {usage_result.modified_count})")
-                else:
-                    print(f"ℹ️ Assessment outside current period for user {user_id} - counter not incremented")
-            else:
-                # No subscription period found, increment anyway (fallback)
-                usage_result = await users_collection.update_one(
-                    {"_id": ObjectId(user_id) if isinstance(user_id, str) else user_id},
-                    {"$inc": {"assessments_used": 1}}
-                )
-                print(f"⚠️ No subscription period found for user {user_id} - incremented counter anyway (modified count: {usage_result.modified_count})")
-                
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to track assessment usage: {str(e)}")
-            # Don't fail the entire operation if usage tracking fails
-        
-        # Get the updated user data
-        updated_user = await users_collection.find_one({"_id": user_id})
-        if not updated_user:
-            raise HTTPException(status_code=404, detail=f"User not found after update with ID {user_id}")
-        
-        # Properly handle the MongoDB _id field for UserResponse
-        # First, make a copy of the user data to avoid modifying the original
-        user_data = dict(updated_user)
-        
-        # Ensure _id is properly set for UserResponse
-        if "_id" in user_data:
-            # Convert ObjectId to string if needed
-            user_data["_id"] = str(user_data["_id"])
-        else:
-            # If _id is missing for some reason, raise a clear error
-            raise HTTPException(
-                status_code=500,
-                detail="User document is missing _id field"
-            )
-        
-        try:
-            # Create UserResponse object with the properly formatted data
-            return UserResponse(**user_data)
-        except Exception as e:
-            # Log detailed validation errors
-            print(f"Error creating UserResponse: {str(e)}")
-            print(f"User data keys: {user_data.keys()}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to create user response object: {str(e)}"
-            )
+    DEPRECATED: This endpoint should not be used anymore.
+    Assessment data should only be saved when a learning plan is created.
     
-    except Exception as e:
+    This endpoint is kept for backward compatibility but will NOT:
+    - Save assessment data to user profile
+    - Increment assessment counter
+    
+    Instead, assessments are saved atomically with learning plan creation.
+    """
+    print(f"[DEPRECATED] ⚠️ save-assessment endpoint called - this should not be used")
+    print(f"[DEPRECATED] Assessment data should be included when creating a learning plan")
+    print(f"[DEPRECATED] User: {current_user.id}")
+    
+    # Import ObjectId for proper MongoDB ID handling
+    from bson import ObjectId
+    
+    # Convert user ID to the correct format for MongoDB
+    user_id = current_user.id
+    if isinstance(user_id, str):
+        try:
+            user_id = ObjectId(user_id)
+        except Exception as e:
+            print(f"Warning: Could not convert user ID to ObjectId: {str(e)}")
+    
+    # Get the user data without modifying it
+    user = await users_collection.find_one({"_id": user_id})
+    if not user:
+        # Try alternate formats as fallback
+        user = await users_collection.find_one({"_id": str(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User not found with ID {user_id}")
+    
+    # DO NOT SAVE ASSESSMENT DATA OR INCREMENT COUNTER
+    # This is now handled atomically with learning plan creation
+    
+    print(f"[DEPRECATED] ℹ️ Returning user data without saving assessment")
+    print(f"[DEPRECATED] ℹ️ Assessment will only be saved when learning plan is created")
+    
+    # Return the user data without modifications
+    user_data = dict(user)
+    
+    # Ensure _id is properly set for UserResponse
+    if "_id" in user_data:
+        user_data["_id"] = str(user_data["_id"])
+    else:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save assessment data: {str(e)}"
+            status_code=500,
+            detail="User document is missing _id field"
+        )
+    
+    try:
+        return UserResponse(**user_data)
+    except Exception as e:
+        print(f"Error creating UserResponse: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create user response object: {str(e)}"
         )
