@@ -242,9 +242,13 @@ async def create_customer_portal_session(
 async def get_subscription_status(
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get comprehensive subscription status using SubscriptionService"""
+    """Get comprehensive subscription status using OptimizedSubscriptionService"""
     try:
-        status = await SubscriptionService.get_user_subscription_status(current_user.id)
+        # Import the optimized service
+        from subscription_service_optimized import OptimizedSubscriptionService
+        
+        # Use the optimized version for better performance
+        status = await OptimizedSubscriptionService.get_user_subscription_status_optimized(current_user.id)
         return status.dict()
     except Exception as e:
         logger.error(f"Error getting subscription status: {str(e)}")
