@@ -532,7 +532,28 @@ class SubscriptionService:
         """Track speaking time and optionally increment session count with enhanced safeguards"""
         try:
             user_id = request.user_id
+            
+            # BULLETPROOF FIX: Ensure INTEGER tracking
             speaking_minutes = request.speaking_minutes
+            
+            # 1. Convert to integer if float
+            if isinstance(speaking_minutes, float):
+                speaking_minutes = round(speaking_minutes)
+                logger.warning(f"Converted float duration {request.speaking_minutes} to integer {speaking_minutes}")
+            
+            # 2. Cap at 5 minutes maximum (frontend counter issue protection)
+            if speaking_minutes > 5:
+                logger.warning(f"Capping duration from {speaking_minutes} to 5 minutes (max allowed)")
+                speaking_minutes = 5
+            
+            # 3. Minimum 1 minute for any session
+            if speaking_minutes < 1:
+                speaking_minutes = 1
+                logger.warning(f"Setting minimum duration to 1 minute")
+            
+            # 4. Ensure it's an integer
+            speaking_minutes = int(speaking_minutes)
+            
             session_completed = request.session_completed
             
             # Get current user data for validation

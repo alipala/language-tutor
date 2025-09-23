@@ -789,6 +789,7 @@ async def save_session_summary(
     """
     Save a session summary to the correct week in the learning plan structure
     Also tracks speaking minutes for the learning plan
+    UNIFIED TRACKING: Ensures both learning plan and subscription usage are tracked
     """
     try:
         print(f"[SESSION_SUMMARY] 🎯 Starting session save for plan_id: {plan_id}")
@@ -859,24 +860,42 @@ async def save_session_summary(
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # CRITICAL FIX: ENFORCE EXACTLY 5.0 minutes for ALL completed sessions
+        # BULLETPROOF FIX: Ensure INTEGER tracking for all sessions
         if request and request.duration_minutes:
-            raw_duration = request.duration_minutes
-            if raw_duration >= 5.0:
-                # Complete session: ALWAYS exactly 5.0 minutes (float for consistency)
-                duration_minutes = 5.0
-                session_status = "completed"
-                print(f"[SESSION_SUMMARY] ✅ Complete session: {raw_duration} → {duration_minutes} minutes (ENFORCED 5.0)")
+            # Convert to float first to handle any input type
+            raw_duration = float(request.duration_minutes)
+            
+            # BULLETPROOF INTEGER ENFORCEMENT
+            # 1. Cap at 5 minutes maximum (frontend counter issue protection)
+            if raw_duration > 5:
+                duration_minutes = 5
+                print(f"[SESSION_SUMMARY] ⚠️ Capping duration from {raw_duration} to 5 minutes (max allowed)")
             else:
-                # Early exit: round to nearest integer but still as float
-                duration_minutes = float(max(1, int(round(raw_duration))))
+                # 2. Round to nearest integer
+                duration_minutes = round(raw_duration)
+                if duration_minutes != raw_duration:
+                    print(f"[SESSION_SUMMARY] 🔄 Converted float {raw_duration} to integer {duration_minutes}")
+            
+            # 3. Minimum 1 minute for any session
+            if duration_minutes < 1:
+                duration_minutes = 1
+                print(f"[SESSION_SUMMARY] ⚠️ Setting minimum duration to 1 minute")
+            
+            # 4. Ensure it's an integer
+            duration_minutes = int(duration_minutes)
+            
+            # Determine session status based on integer duration
+            if duration_minutes >= 5:
+                session_status = "completed"
+                print(f"[SESSION_SUMMARY] ✅ Complete session: {duration_minutes} minutes (INTEGER)")
+            else:
                 session_status = "partial"
-                print(f"[SESSION_SUMMARY] ⏰ Early exit: {raw_duration} → {duration_minutes} minutes")
+                print(f"[SESSION_SUMMARY] ⏰ Partial session: {duration_minutes} minutes (INTEGER)")
         else:
-            # Default: complete session is ALWAYS exactly 5.0 minutes
-            duration_minutes = 5.0
+            # Default: 5 minutes for a complete session (INTEGER)
+            duration_minutes = 5
             session_status = "completed"
-            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes (ENFORCED 5.0)")
+            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes (INTEGER)")
         
         # Add completion timestamp for subscription period tracking
         completion_timestamp = datetime.utcnow()
@@ -886,9 +905,10 @@ async def save_session_summary(
             "session_number": session_in_week,
             "global_session_number": session_number,
             "summary": session_summary,
-            "completed_at": datetime.utcnow().isoformat(),
-            "status": "completed",
-            "duration_minutes": duration_minutes
+            "completed_at": completion_timestamp.isoformat(),
+            "status": session_status,
+            "duration_minutes": duration_minutes,
+            "subscription_tracked": False  # Will be set to True after tracking
         }
         
         # Add request details if available
@@ -918,19 +938,53 @@ async def save_session_summary(
         current_minutes_used = learning_plan.get("practice_minutes_used", 0.0)
         new_minutes_used = current_minutes_used + duration_minutes
         
+        # UNIFIED TRACKING: Track subscription usage BEFORE updating learning plan
+        subscription_tracked = False
+        try:
+            from subscription_service import SubscriptionService
+            from models import SpeakingTimeTrackingRequest
+            
+            print(f"[SESSION_SUMMARY] 🔄 UNIFIED TRACKING: Updating subscription usage...")
+            
+            # Track with actual duration and mark as completed if >= 5 minutes
+            speaking_time_request = SpeakingTimeTrackingRequest(
+                user_id=str(current_user.id),
+                speaking_minutes=duration_minutes,
+                session_completed=(duration_minutes >= 5.0)  # Only count as session if 5+ minutes
+            )
+            
+            tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
+            if tracking_success:
+                subscription_tracked = True
+                session_detail["subscription_tracked"] = True
+                print(f"[SESSION_SUMMARY] ✅ UNIFIED TRACKING successful:")
+                print(f"[SESSION_SUMMARY]    User: {getattr(current_user, 'email', current_user.id)}")
+                print(f"[SESSION_SUMMARY]    Minutes tracked: {duration_minutes}")
+                print(f"[SESSION_SUMMARY]    Session counted: {duration_minutes >= 5.0}")
+                print(f"[SESSION_SUMMARY]    Subscription usage updated correctly")
+            else:
+                print(f"[SESSION_SUMMARY] ⚠️ UNIFIED TRACKING failed - user may have exceeded limits")
+                
+        except Exception as usage_error:
+            print(f"[SESSION_SUMMARY] ⚠️ UNIFIED TRACKING error: {str(usage_error)}")
+            import traceback
+            traceback.print_exc()
+        
         # Update the learning plan
         update_fields = {
             "plan_content.weekly_schedule": weekly_schedule,
             "completed_sessions": new_completed,
             "progress_percentage": progress_percentage,
             "practice_minutes_used": new_minutes_used,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.utcnow().isoformat(),
+            "last_subscription_sync": completion_timestamp.isoformat() if subscription_tracked else None
         }
         
         print(f"[SESSION_SUMMARY] 📊 Learning plan update:")
         print(f"[SESSION_SUMMARY]    Sessions: {current_completed} → {new_completed}")
         print(f"[SESSION_SUMMARY]    Minutes: {current_minutes_used} → {new_minutes_used}")
         print(f"[SESSION_SUMMARY]    Progress: {progress_percentage:.1f}%")
+        print(f"[SESSION_SUMMARY]    Subscription tracked: {subscription_tracked}")
         
         result = await learning_plans_collection.update_one(
             {"_id": learning_plan["_id"]},
@@ -939,41 +993,7 @@ async def save_session_summary(
         
         if result.modified_count > 0:
             print(f"[SESSION_SUMMARY] ✅ Learning plan updated successfully")
-            
-            # CRITICAL FIX: Track subscription usage for both sessions AND minutes
-            try:
-                from subscription_service import SubscriptionService
-                from models import SpeakingTimeTrackingRequest
-                
-                print(f"[SESSION_SUMMARY] 🔄 Tracking subscription usage...")
-                
-                # CORRECTED: Pass integer minutes but convert to float for API compatibility
-                # Sessions are ALWAYS integer minutes (5, 4, 3, 2, 1) - never decimals
-                speaking_time_request = SpeakingTimeTrackingRequest(
-                    user_id=str(current_user.id),
-                    speaking_minutes=float(duration_minutes),  # Convert integer to float for API
-                    session_completed=True  # This will increment both minutes AND session count
-                )
-                
-                tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
-                if tracking_success:
-                    print(f"[SESSION_SUMMARY] ✅ Subscription tracking successful:")
-                    print(f"[SESSION_SUMMARY]    User: {getattr(current_user, 'email', current_user.id)}")
-                    print(f"[SESSION_SUMMARY]    Minutes tracked: {duration_minutes}")
-                    print(f"[SESSION_SUMMARY]    Session completed: True")
-                    print(f"[SESSION_SUMMARY]    Both counters updated")
-                else:
-                    print(f"[SESSION_SUMMARY] ⚠️ Subscription tracking failed - user may have exceeded limits")
-                    # Don't fail the session save, but log the issue
-                    
-            except Exception as usage_error:
-                print(f"[SESSION_SUMMARY] ⚠️ Warning: Failed to track subscription usage: {str(usage_error)}")
-                import traceback
-                traceback.print_exc()
-                # Don't fail the entire operation if usage tracking fails
-                # The session summary is still saved successfully
-            
-            print(f"[SESSION_SUMMARY] 🎉 Session summary saved successfully!")
+            print(f"[SESSION_SUMMARY] 🎉 Session summary saved with UNIFIED TRACKING!")
             return {
                 "success": True,
                 "message": "Session summary saved successfully",
@@ -981,7 +1001,8 @@ async def save_session_summary(
                 "week": week_index + 1,
                 "session_in_week": session_in_week,
                 "progress_percentage": progress_percentage,
-                "duration_minutes": duration_minutes
+                "duration_minutes": duration_minutes,
+                "subscription_tracked": subscription_tracked
             }
         else:
             print(f"[SESSION_SUMMARY] ❌ Failed to update learning plan in database")
