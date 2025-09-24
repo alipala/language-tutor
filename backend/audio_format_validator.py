@@ -57,12 +57,21 @@ class AudioFormatValidator:
                 "file_size": file_size,
                 "detected_format": format_info.get("format"),
                 "mime_type": format_info.get("mime_type"),
-                "is_supported": format_info.get("is_supported", False)
+                "is_supported": format_info.get("is_supported", True)  # Default to True for unknown formats
             }
             
-            if not format_info.get("is_supported"):
+            # Only block explicitly unsupported formats (like OGG, FLAC)
+            # Let "unknown" formats pass through - OpenAI will handle them
+            explicitly_unsupported = format_info.get("format") in ["ogg", "flac"]
+            
+            if explicitly_unsupported:
                 supported_list = ", ".join(AudioFormatValidator.SUPPORTED_FORMATS)
-                return False, f"Unsupported audio format: {format_info.get('format', 'unknown')}. Supported: {supported_list}", metadata
+                return False, f"Unsupported audio format: {format_info.get('format')}. Supported: {supported_list}", metadata
+            
+            # Allow unknown formats to pass through - they might be valid
+            if format_info.get("format") == "unknown":
+                logger.info(f"Unknown audio format detected ({file_size} bytes) - allowing OpenAI to process")
+                metadata["is_supported"] = True  # Let it through
             
             return True, "Valid audio format", metadata
             
