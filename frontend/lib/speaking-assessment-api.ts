@@ -141,42 +141,16 @@ const DEFAULT_PROMPTS: SpeakingPrompt = {
 };
 
 // Function to fetch speaking prompts from the backend
-// Function to save speaking assessment data to user profile
+// DEPRECATED: Assessment data is now saved atomically when creating a learning plan
+// This function is kept for backward compatibility but does nothing
 export const saveSpeakingAssessment = async (
   assessmentData: SpeakingAssessmentResult
 ): Promise<boolean> => {
-  try {
-    // Get the API URL and auth token
-    const apiUrl = getApiUrl();
-    const token = getAuthToken();
-    
-    if (!token) {
-      console.error('No auth token available, cannot save assessment data');
-      return false;
-    }
-    
-    // Make the API request
-    const response = await fetch(`${apiUrl}/learning/save-assessment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ assessment_data: assessmentData })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error saving assessment data: ${response.status} ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log('Assessment data saved successfully:', data);
-    return true;
-  } catch (error) {
-    console.error('Error saving speaking assessment data:', error);
-    return false;
-  }
+  console.log('⚠️ [DEPRECATED] saveSpeakingAssessment called - assessment data will be saved when creating learning plan');
+  console.log('Assessment data will be automatically saved when the user creates a learning plan');
+  
+  // Always return true since the assessment will be saved later with the learning plan
+  return true;
 };
 
 export const fetchSpeakingPrompts = async (

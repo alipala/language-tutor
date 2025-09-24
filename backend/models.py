@@ -277,7 +277,7 @@ class SubscriptionStatus(BaseModel):
     trial_days_remaining: Optional[int] = None
 
 class UsageTrackingRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None  # Will be set automatically from authenticated user
     usage_type: str  # 'practice_session' or 'assessment'
     duration_minutes: Optional[float] = None
 
