@@ -57,6 +57,9 @@ class SentenceAssessmentResponse(BaseModel):
 
 # Helper function for speech recognition using OpenAI's audio transcription with gpt-4o-transcribe and fallback
 async def recognize_speech(audio_base64: str, language: str) -> str:
+    # Import the audio format validator
+    from audio_format_validator import AudioFormatValidator
+    
     # 🎛️ Configuration: Allow switching between models via environment variable
     USE_GPT4O_TRANSCRIBE = os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true"
     
@@ -71,15 +74,30 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
     }
     speech_language = language_map.get(language.lower(), "en")
     
-    # Decode audio
+    # ROBUST AUDIO FORMAT VALIDATION
+    print(f"🔍 [AUDIO_VALIDATION] Validating audio format for {language} transcription...")
+    
+    # Validate the audio format before processing
+    is_valid, error_message, metadata = AudioFormatValidator.validate_audio_data(audio_base64)
+    
+    if not is_valid:
+        print(f"❌ [AUDIO_VALIDATION] {error_message}")
+        print(f"📊 [AUDIO_VALIDATION] Metadata: {metadata}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid audio format: {error_message}. Please record in a supported format (MP3, WAV, M4A, WebM)."
+        )
+    
+    print(f"✅ [AUDIO_VALIDATION] Audio format validated: {metadata.get('detected_format', 'unknown')} ({metadata.get('file_size', 0)} bytes)")
+    
+    # Decode audio data
     audio_data = base64.b64decode(audio_base64)
     
-    # Save to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio:
-        temp_audio.write(audio_data)
-        temp_audio_path = temp_audio.name
-    
+    # Create temporary file with proper extension
+    temp_audio_path = None
     try:
+        temp_audio_path, _ = AudioFormatValidator.create_temp_audio_file(audio_data, metadata)
+        
         # Create OpenAI client using helper function
         client = create_openai_client()
         
@@ -87,11 +105,10 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
         with open(temp_audio_path, "rb") as audio_file:
             if USE_GPT4O_TRANSCRIBE:
                 try:
-                    # 🚀 NEW: Try gpt-4o-transcribe first for better multilingual accuracy
+                    # 🚀 FIXED: gpt-4o-transcribe with proper parameters (no language param!)
                     transcript = client.audio.transcriptions.create(
                         model="gpt-4o-transcribe",
                         file=audio_file,
-                        language=speech_language,
                         response_format="text",
                         prompt=f"This is a {language} language learning conversation. Focus on accurate transcription of student speech for language assessment."
                     )
@@ -125,13 +142,23 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
                 print(f"✅ [TRANSCRIPTION] Used whisper-1 (GPT-4o transcribe disabled) for {language} transcription")
                 return transcript
     
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is (these are validation errors)
+        raise
     except Exception as e:
         print(f"❌ [TRANSCRIPTION] Error in speech recognition: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Speech recognition failed: {str(e)}")
+        # Provide more specific error message based on the error type
+        if "format" in str(e).lower() or "decode" in str(e).lower():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Audio format error: The audio file could not be processed. Please try recording again in a supported format (MP3, WAV, M4A, WebM)."
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Speech recognition failed: {str(e)}")
     finally:
-        # Clean up temp file
-        if os.path.exists(temp_audio_path):
-            os.unlink(temp_audio_path)
+        # Clean up temp file using validator's cleanup method
+        if temp_audio_path:
+            AudioFormatValidator.cleanup_temp_file(temp_audio_path)
 
 # Helper function for sentence analysis using OpenAI
 async def analyze_sentence(text: str, language: str, level: str, exercise_type: str, target_grammar: Optional[List[str]] = None) -> Dict:
