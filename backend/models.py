@@ -284,6 +284,7 @@ class UsageTrackingRequest(BaseModel):
 # NEW: Speaking time tracking request
 class SpeakingTimeTrackingRequest(BaseModel):
     user_id: str
+    session_id: str  # Unique identifier for the session (conversation/session UUID)
     speaking_minutes: float
     session_completed: bool = False  # True if session was completed (5+ minutes + saved)
     
