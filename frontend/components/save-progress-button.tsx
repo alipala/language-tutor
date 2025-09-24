@@ -107,12 +107,15 @@ export default function SaveProgressButton({
         timestamp: msg.timestamp || new Date().toISOString()
       }));
 
+      // Cap duration at 5.0 minutes before sending to backend
+      const cappedDuration = Math.min(durationMinutes, 5.0);
+
       console.log('[SAVE_PROGRESS] Saving PRACTICE MODE conversation:', {
         language,
         level,
         topic,
         messageCount: messagesToSave.length,
-        duration: durationMinutes,
+        duration: cappedDuration,
         isPracticeMode: true
       });
 
@@ -128,7 +131,7 @@ export default function SaveProgressButton({
           level,
           topic,
           messages: messagesToSave,
-          duration_minutes: durationMinutes,
+          duration_minutes: cappedDuration,
           learning_plan_id: null, // Explicitly mark as practice mode
           conversation_type: 'practice'
         })
