@@ -1819,7 +1819,7 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
             prompt=request.prompt
         )
         
-        # 🔥 CRITICAL FIX: Track assessment usage for authenticated users
+        # 🔥 CRITICAL FIX: Track assessment usage AND save assessment data for authenticated users
         if current_user:
             try:
                 print(f"[ASSESSMENT_TRACKING] Tracking assessment usage for user {current_user.id}")
@@ -1827,6 +1827,8 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 # Import the subscription service to track usage
                 from subscription_service import SubscriptionService
                 from models import UsageTrackingRequest
+                from database import users_collection
+                from bson import ObjectId
                 
                 # Create usage tracking request
                 usage_request = UsageTrackingRequest(
@@ -1841,6 +1843,23 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                     print(f"[ASSESSMENT_TRACKING] ✅ Successfully tracked assessment usage for user {current_user.id}")
                 else:
                     print(f"[ASSESSMENT_TRACKING] ⚠️ Usage tracking returned false for user {current_user.id}")
+                
+                # 🔥 CRITICAL FIX 2: Save assessment data to user record for learning plan creation
+                try:
+                    print(f"[ASSESSMENT_TRACKING] Saving assessment data to user record")
+                    
+                    result = await users_collection.update_one(
+                        {"_id": ObjectId(current_user.id)},
+                        {"$set": {"last_assessment_data": assessment}}
+                    )
+                    
+                    if result.modified_count > 0:
+                        print(f"[ASSESSMENT_TRACKING] ✅ Assessment data saved to user record")
+                    else:
+                        print(f"[ASSESSMENT_TRACKING] ⚠️ Failed to save assessment data to user record")
+                        
+                except Exception as save_error:
+                    print(f"[ASSESSMENT_TRACKING] ❌ Error saving assessment data: {str(save_error)}")
                     
             except Exception as tracking_error:
                 print(f"[ASSESSMENT_TRACKING] ❌ Error tracking assessment usage: {str(tracking_error)}")
