@@ -27,6 +27,7 @@ from auth import get_current_user, get_optional_current_user_from_request
 from models import UserResponse, UsageTrackingRequest, SpeakingTimeTrackingRequest
 from database import database
 from subscription_service import SubscriptionService
+from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
 
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
@@ -332,11 +333,12 @@ async def track_speaking_time(
         # Log the tracking request
         logger.info(f"[SPEAKING_TIME] Tracking {request.speaking_minutes:.1f} minutes for user {current_user.id}, session_completed: {request.session_completed}")
         
-        success = await SubscriptionService.track_speaking_time(request)
+        # 🔥 BULLETPROOF FIX: Use atomic tracking to prevent race conditions
+        success = await BulletproofTracker.track_speaking_time_atomic(request)
         if success:
             return {"success": True, "message": "Speaking time tracked successfully"}
         else:
-            return {"success": False, "message": "Failed to track speaking time"}
+            return {"success": False, "message": "Failed to track speaking time or insufficient balance"}
     except Exception as e:
         logger.error(f"Error tracking speaking time: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
