@@ -1332,6 +1332,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
+            user_id: user._id,
+            session_id: `${user._id}_${conversationStartTime}`,
             speaking_minutes: durationMinutes,
             session_completed: durationMinutes >= 5 // Only count as completed session if >= 5 minutes
           })
@@ -1633,6 +1635,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                       'Authorization': `Bearer ${backupData.token}`
                     },
                     body: JSON.stringify({
+                      user_id: user._id,
+                      session_id: `${user._id}_${backupData.timestamp}`,
                       speaking_minutes: backupData.speaking_minutes,
                       session_completed: backupData.session_completed || false,
                       recovery_mode: true,

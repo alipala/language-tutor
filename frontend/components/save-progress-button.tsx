@@ -145,6 +145,34 @@ export default function SaveProgressButton({
       const result = await response.json();
       console.log('[SAVE_PROGRESS] ✅ Practice mode conversation saved successfully:', result);
 
+      // 🚨 CRITICAL FIX: Track speaking time for subscription limits
+      try {
+        console.log('[SAVE_PROGRESS] Tracking speaking time for subscription limits');
+        const speakingTimeResponse = await fetch(`${getApiUrl()}/api/stripe/track-speaking-time`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            user_id: user._id,
+            session_id: `${user._id}_${conversationStartTime}`,
+            speaking_minutes: cappedDuration,
+            session_completed: cappedDuration >= 5 // Only count as completed session if >= 5 minutes
+          })
+        });
+
+        if (speakingTimeResponse.ok) {
+          const speakingTimeResult = await speakingTimeResponse.json();
+          console.log('[SAVE_PROGRESS] ✅ Speaking time tracked:', speakingTimeResult);
+        } else {
+          const speakingTimeError = await speakingTimeResponse.json();
+          console.warn('[SAVE_PROGRESS] ⚠️ Failed to track speaking time:', speakingTimeError);
+        }
+      } catch (speakingTimeError) {
+        console.error('[SAVE_PROGRESS] ❌ Error tracking speaking time:', speakingTimeError);
+      }
+
       setSaveState('saved');
       setLastSaveTime(now);
       setCooldownTime(60); // 1-minute cooldown

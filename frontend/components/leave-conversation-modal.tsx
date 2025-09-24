@@ -122,6 +122,34 @@ export default function LeaveConversationModal({
 
       if (response.ok) {
         console.log('[LEAVE_MODAL] ✅ Practice mode conversation saved successfully before leaving');
+        
+        // 🚨 CRITICAL FIX: Track speaking time for subscription limits
+        try {
+          console.log('[LEAVE_MODAL] Tracking speaking time for subscription limits');
+          const speakingTimeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stripe/track-speaking-time`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              user_id: user._id,
+              session_id: `${user._id}_${conversationStartTime}`,
+              speaking_minutes: durationMinutes,
+              session_completed: durationMinutes >= 5 // Only count as completed session if >= 5 minutes
+            })
+          });
+
+          if (speakingTimeResponse.ok) {
+            const speakingTimeResult = await speakingTimeResponse.json();
+            console.log('[LEAVE_MODAL] ✅ Speaking time tracked:', speakingTimeResult);
+          } else {
+            const speakingTimeError = await speakingTimeResponse.json();
+            console.warn('[LEAVE_MODAL] ⚠️ Failed to track speaking time:', speakingTimeError);
+          }
+        } catch (speakingTimeError) {
+          console.error('[LEAVE_MODAL] ❌ Error tracking speaking time:', speakingTimeError);
+        }
       } else {
         console.error('[LEAVE_MODAL] ❌ Failed to save conversation before leaving');
       }
