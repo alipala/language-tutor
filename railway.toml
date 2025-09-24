@@ -1,11 +1,9 @@
 [build]
 builder = "nixpacks"
-# Force rebuild with static export enabled
-buildCommand = "pip install -r backend/requirements.txt && npm --prefix frontend install && npm --prefix frontend run build"
 
 [deploy]
 workdir = "backend"
-startCommand = "./start.sh"
+startCommand = "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-3001}"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
