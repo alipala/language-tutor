@@ -134,7 +134,7 @@ export default function LeaveConversationModal({
             },
             body: JSON.stringify({
               user_id: user._id,
-              session_id: `${user._id}_${conversationStartTime}`,
+              session_id: `${user._id}_${conversationStartTime || Date.now()}`,
               speaking_minutes: durationMinutes,
               session_completed: durationMinutes >= 5 // Only count as completed session if >= 5 minutes
             })

@@ -156,7 +156,7 @@ export default function SaveProgressButton({
           },
           body: JSON.stringify({
             user_id: user._id,
-            session_id: `${user._id}_${conversationStartTime}`,
+            session_id: `${user._id}_${conversationStartTime || Date.now()}`,
             speaking_minutes: cappedDuration,
             session_completed: cappedDuration >= 5 // Only count as completed session if >= 5 minutes
           })
