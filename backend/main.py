@@ -1795,7 +1795,7 @@ async def assess_sentence_construction(request: SentenceAssessmentRequest):
 
 # Add endpoint for speaking assessment
 @app.post("/api/speaking/assess", response_model=SpeakingAssessmentResponse)
-async def assess_speaking(request: SpeakingAssessmentRequest):
+async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     try:
         # Transcribe audio if provided
         recognized_text = None
@@ -1819,6 +1819,37 @@ async def assess_speaking(request: SpeakingAssessmentRequest):
             prompt=request.prompt
         )
         
+        # 🔥 CRITICAL FIX: Track assessment usage for authenticated users
+        if current_user:
+            try:
+                print(f"[ASSESSMENT_TRACKING] Tracking assessment usage for user {current_user.id}")
+                
+                # Import the subscription service to track usage
+                from subscription_service import SubscriptionService
+                from models import UsageTrackingRequest
+                
+                # Create usage tracking request
+                usage_request = UsageTrackingRequest(
+                    user_id=current_user.id,
+                    usage_type="assessment",
+                    duration_minutes=None  # Assessments don't have duration tracking
+                )
+                
+                # Track the usage
+                success = await SubscriptionService.track_usage(usage_request)
+                if success:
+                    print(f"[ASSESSMENT_TRACKING] ✅ Successfully tracked assessment usage for user {current_user.id}")
+                else:
+                    print(f"[ASSESSMENT_TRACKING] ⚠️ Usage tracking returned false for user {current_user.id}")
+                    
+            except Exception as tracking_error:
+                print(f"[ASSESSMENT_TRACKING] ❌ Error tracking assessment usage: {str(tracking_error)}")
+                # Don't fail the assessment if usage tracking fails
+                pass
+        else:
+            print(f"[ASSESSMENT_TRACKING] ℹ️ No authenticated user - skipping usage tracking")
+        
+        print(f"Successfully analyzed speaking proficiency")
         return assessment
         
     except HTTPException:
