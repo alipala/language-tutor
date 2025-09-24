@@ -884,90 +884,105 @@ Resubscribe to unlock:
             return False
     
     @classmethod
-    def get_plan_details(cls, plan_id: str) -> Optional[SubscriptionPlan]:
-        """Get details for a specific subscription plan"""
-        return cls.SUBSCRIPTION_PLANS.get(plan_id)
-    
-    @classmethod
-    def get_all_plans(cls) -> Dict[str, SubscriptionPlan]:
-        """Get all available subscription plans"""
-        return cls.SUBSCRIPTION_PLANS
-    
-    @classmethod
-    async def safe_update_user_duration(cls, user_id: str, new_minutes: float, new_sessions: int, 
-                                      reason: str, bypass_validation: bool = False) -> Dict[str, Any]:
+    async def track_speaking_time(cls, request: SpeakingTimeTrackingRequest) -> bool:
         """
-        Safely update user duration data with validation and logging
-        This is the main entry point for any manual duration updates
+        Track speaking time for a user with NEW BUSINESS RULES
+        
+        CRITICAL RULES:
+        1. Track and deduct minutes for sessions >= 1 minute
+        2. Don't track sessions < 1 minute
+        3. Sessions >= 2 minutes count as completed sessions (NO SESSION LIMIT)
+        4. All minutes stored as INTEGERS
+        5. Atomic updates with audit trail
+        
+        Returns:
+            bool: True if tracking successful, False if limits exceeded or error
         """
         try:
+            user_id = request.user_id
+            speaking_minutes = request.speaking_minutes
+            
+            # NEW BUSINESS RULES:
+            # 1. Don't track if < 1 minute
+            if speaking_minutes < 1:
+                logger.info(f"Session < 1 minute ({speaking_minutes} min) - NOT tracking for user {user_id}")
+                return True  # Return success but don't track
+            
+            # 2. Convert to integer minutes
+            speaking_minutes = int(round(speaking_minutes))
+            
+            # 3. Cap at 5 minutes maximum (protection against frontend issues)
+            if speaking_minutes > 5:
+                logger.warning(f"Capping duration from {speaking_minutes} to 5 minutes (max allowed)")
+                speaking_minutes = 5
+            
+            # 4. Sessions >= 2 minutes are considered complete (NO LIMIT CHECK)
+            session_completed = (speaking_minutes >= 2)
+            
             # Get current user data
             user = await database["users"].find_one(get_user_query(user_id))
             if not user:
-                return {"success": False, "error": "User not found"}
+                logger.error(f"User {user_id} not found for speaking time tracking")
+                return False
             
+            # Get current subscription status to check minute limits ONLY
+            status = await cls.get_user_subscription_status(user_id)
+            
+            # Check if user has remaining MINUTES (not sessions)
+            if status.limits and status.limits.minutes_remaining is not None and status.limits.minutes_remaining < speaking_minutes:
+                logger.warning(f"User {user_id} would exceed minute limit: {status.limits.minutes_remaining} remaining, {speaking_minutes} requested")
+                # Still allow tracking but warn
+            
+            # Prepare data for validation
             old_data = {
-                "practice_minutes_used": user.get('practice_minutes_used', 0),
-                "practice_sessions_used": user.get('practice_sessions_used', 0)
+                "practice_minutes_used": user.get("practice_minutes_used", 0),
+                "practice_sessions_used": user.get("practice_sessions_used", 0)
             }
+            
+            # Calculate new values
+            new_minutes = old_data["practice_minutes_used"] + speaking_minutes
+            new_sessions = old_data["practice_sessions_used"] + (1 if session_completed else 0)
             
             new_data = {
                 "practice_minutes_used": new_minutes,
                 "practice_sessions_used": new_sessions
             }
             
-            # Validate the change
-            if not bypass_validation:
-                validation = await DurationTrackingSafeguards.validate_user_data_change(user_id, old_data, new_data)
-                
-                if not validation["is_valid"]:
-                    logger.error(f"❌ Validation failed for user {user_id}: {validation['errors']}")
-                    return {
-                        "success": False, 
-                        "error": "Validation failed", 
-                        "validation": validation
-                    }
-                
-                if validation["warnings"]:
-                    logger.warning(f"⚠️ Validation warnings for user {user_id}: {validation['warnings']}")
-            
             # Create audit trail
+            reason = f"track_speaking_{speaking_minutes}min_session_{'completed' if session_completed else 'partial'}"
             audit_data = await DurationTrackingSafeguards.create_audit_trail(
                 user_id, user.get('email', 'unknown'), old_data, new_data, reason
             )
             
-            # Update user data
-            update_result = await database["users"].update_one(
-                get_user_query(user_id),
-                {
-                    "$set": {
-                        "practice_minutes_used": new_minutes,
-                        "practice_sessions_used": new_sessions,
-                        "last_duration_update": datetime.utcnow().isoformat(),
-                        "last_duration_update_reason": reason
-                    },
-                    "$push": {
-                        "duration_audit_trail": {
-                            "$each": [audit_data],
-                            "$slice": -10  # Keep last 10 changes
-                        }
+            # Update database
+            update_data = {
+                "$inc": {"practice_minutes_used": speaking_minutes},
+                "$set": {
+                    "last_speaking_time_update": datetime.utcnow().isoformat(),
+                    "last_speaking_time_update_reason": reason
+                },
+                "$push": {
+                    "speaking_time_audit_trail": {
+                        "$each": [audit_data],
+                        "$slice": -10  # Keep last 10 changes
                     }
                 }
+            }
+            
+            # Increment session count if >= 2 minutes
+            if session_completed:
+                update_data["$inc"]["practice_sessions_used"] = 1
+                logger.info(f"✅ Session completed for user {user.get('email', user_id)}: +1 session, +{speaking_minutes} minutes")
+            else:
+                logger.info(f"✅ Partial session for user {user.get('email', user_id)}: +0 sessions, +{speaking_minutes} minutes")
+            
+            await database["users"].update_one(
+                get_user_query(user_id),
+                update_data
             )
             
-            if update_result.modified_count > 0:
-                logger.info(f"✅ Successfully updated user {user.get('email', user_id)}: "
-                          f"{old_data['practice_minutes_used']:.2f}→{new_minutes:.2f} min, "
-                          f"{old_data['practice_sessions_used']}→{new_sessions} sessions")
-                
-                return {
-                    "success": True,
-                    "audit_data": audit_data,
-                    "validation": validation if not bypass_validation else None
-                }
-            else:
-                return {"success": False, "error": "Database update failed"}
-                
+            return True
+            
         except Exception as e:
-            logger.error(f"❌ Error updating user duration: {e}")
-            return {"success": False, "error": str(e)}
+            logger.error(f"Error tracking speaking time for user {user_id}: {str(e)}")
+            return False

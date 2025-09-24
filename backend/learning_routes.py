@@ -970,37 +970,61 @@ async def save_session_summary(
         current_minutes_used = learning_plan.get("practice_minutes_used", 0.0)
         new_minutes_used = current_minutes_used + duration_minutes
         
-        # UNIFIED TRACKING: Track subscription usage BEFORE updating learning plan
+        # UNIFIED TRACKING: Track subscription usage FIRST (CRITICAL: Must happen before learning plan update)
         subscription_tracked = False
+        session_counted = False
+        
         try:
             from subscription_service import SubscriptionService
             from models import SpeakingTimeTrackingRequest
             
-            print(f"[SESSION_SUMMARY] 🔄 UNIFIED TRACKING: Updating subscription usage...")
+            print(f"[SESSION_SUMMARY] 🔄 UNIFIED TRACKING: Updating subscription usage FIRST...")
+            
+            # NEW BUSINESS RULES:
+            # 1. Sessions >= 2 minutes count as completed
+            # 2. Always track minutes >= 1 minute
+            # 3. Don't track < 1 minute
+            is_session_complete = (duration_minutes >= 2)
             
             # Track with actual duration and mark as completed if >= 5 minutes
             speaking_time_request = SpeakingTimeTrackingRequest(
                 user_id=str(current_user.id),
                 speaking_minutes=duration_minutes,
-                session_completed=(duration_minutes >= 5.0)  # Only count as session if 5+ minutes
+                session_completed=is_session_complete
             )
             
+            # CRITICAL: Track subscription BEFORE updating learning plan
             tracking_success = await SubscriptionService.track_speaking_time(speaking_time_request)
+            
             if tracking_success:
                 subscription_tracked = True
+                session_counted = is_session_complete
                 session_detail["subscription_tracked"] = True
+                session_detail["session_counted"] = session_counted
+                
                 print(f"[SESSION_SUMMARY] ✅ UNIFIED TRACKING successful:")
                 print(f"[SESSION_SUMMARY]    User: {getattr(current_user, 'email', current_user.id)}")
                 print(f"[SESSION_SUMMARY]    Minutes tracked: {duration_minutes}")
-                print(f"[SESSION_SUMMARY]    Session counted: {duration_minutes >= 5.0}")
+                print(f"[SESSION_SUMMARY]    Session counted: {session_counted}")
+                print(f"[SESSION_SUMMARY]    Minutes deducted from remaining balance")
                 print(f"[SESSION_SUMMARY]    Subscription usage updated correctly")
             else:
                 print(f"[SESSION_SUMMARY] ⚠️ UNIFIED TRACKING failed - user may have exceeded limits")
+                # CRITICAL: If subscription tracking fails, don't update learning plan
+                # This prevents discrepancy between systems
+                raise Exception("Subscription tracking failed - cannot complete session")
                 
         except Exception as usage_error:
-            print(f"[SESSION_SUMMARY] ⚠️ UNIFIED TRACKING error: {str(usage_error)}")
+            print(f"[SESSION_SUMMARY] ❌ UNIFIED TRACKING error: {str(usage_error)}")
             import traceback
             traceback.print_exc()
+            
+            # CRITICAL: If subscription tracking fails, abort the entire operation
+            # This ensures consistency between learning plan and subscription tracking
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to track session: {str(usage_error)}"
+            )
         
         # Update the learning plan
         update_fields = {
