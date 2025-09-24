@@ -1728,6 +1728,25 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           
           if (success) {
             console.log(`[BULLETPROOF_EXIT] ✅ Beacon saved ${exitType}:`, `${integerDuration}min`);
+            
+            // 🚨 CRITICAL FIX: Also track speaking time via beacon
+            try {
+              const speakingTimeData = {
+                user_id: user._id,
+                session_id: `${user._id}_${conversationStartTime}`,
+                speaking_minutes: durationMinutes,
+                session_completed: durationMinutes >= 5
+              };
+              const speakingTimeBlob = new Blob([JSON.stringify(speakingTimeData)], { type: 'application/json' });
+              const speakingTimeSuccess = navigator.sendBeacon(
+                `${window.location.origin}/api/stripe/track-speaking-time`,
+                speakingTimeBlob
+              );
+              console.log(`[BULLETPROOF_EXIT] ✅ Speaking time beacon:`, speakingTimeSuccess, `${durationMinutes.toFixed(1)}min`);
+            } catch (speakingTimeError) {
+              console.error(`[BULLETPROOF_EXIT] Speaking time beacon failed:`, speakingTimeError);
+            }
+            
             // Mark as saved to prevent duplicate saves
             sessionStorage.setItem(`session_saved_${conversationStartTime}`, 'true');
             return true;
@@ -1752,6 +1771,33 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
 
           if (response.ok) {
             console.log(`[BULLETPROOF_EXIT] ✅ Sync fetch saved ${exitType}:`, `${integerDuration}min`);
+            
+            // 🚨 CRITICAL FIX: Also track speaking time via sync fetch
+            try {
+              const speakingTimeResponse = await fetch(`${window.location.origin}/api/stripe/track-speaking-time`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  user_id: user._id,
+                  session_id: `${user._id}_${conversationStartTime}`,
+                  speaking_minutes: durationMinutes,
+                  session_completed: durationMinutes >= 5
+                }),
+                keepalive: true
+              });
+              
+              if (speakingTimeResponse.ok) {
+                console.log(`[BULLETPROOF_EXIT] ✅ Speaking time sync tracked:`, `${durationMinutes.toFixed(1)}min`);
+              } else {
+                console.warn(`[BULLETPROOF_EXIT] ⚠️ Speaking time sync failed:`, speakingTimeResponse.status);
+              }
+            } catch (speakingTimeError) {
+              console.error(`[BULLETPROOF_EXIT] Speaking time sync error:`, speakingTimeError);
+            }
+            
             sessionStorage.setItem(`session_saved_${conversationStartTime}`, 'true');
             return true;
           }
