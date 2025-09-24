@@ -1678,6 +1678,69 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   
   // BULLETPROOF browser navigation protection with comprehensive mobile support
   useEffect(() => {
+    // 🚨 EMERGENCY FIX: Logo navigation detection
+    const handleNavigationClicks = (e: Event) => {
+      if (!user || !conversationStartTime || sessionCompleted) return;
+      
+      const target = e.target as HTMLElement;
+      const clickedElement = target.closest('a, [href], button[onClick], [role="button"]');
+      
+      if (clickedElement) {
+        const href = clickedElement.getAttribute('href');
+        const onclick = clickedElement.getAttribute('onclick');
+        const textContent = clickedElement.textContent?.toLowerCase() || '';
+        const className = clickedElement.className?.toLowerCase() || '';
+        
+        // Detect navigation attempts (logo clicks, home links, etc.)
+        const isNavigationClick = href && (
+          href === '/' || 
+          href.includes('home') || 
+          href.includes('dashboard') ||
+          href.startsWith('http') ||
+          textContent.includes('home') ||
+          textContent.includes('mytaco') ||
+          className.includes('logo') ||
+          clickedElement.tagName.toLowerCase() === 'img'
+        );
+        
+        if (isNavigationClick || onclick) {
+          console.log('[NAVIGATION_INTERCEPT] Detected navigation click:', {
+            href,
+            textContent: textContent.substring(0, 30),
+            className: className.substring(0, 30),
+            tagName: clickedElement.tagName
+          });
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Save session immediately before navigation
+          const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+          console.log(`[NAVIGATION_INTERCEPT] Saving session before navigation: ${durationMinutes.toFixed(1)}min`);
+          
+          // Use synchronous save for immediate navigation
+          saveSessionWithFallbacks('navigation_intercept', true).then(() => {
+            // Navigate after save completes
+            setTimeout(() => {
+              if (href === '/') {
+                router.push('/');
+              } else if (href) {
+                window.location.href = href;
+              }
+            }, 200);
+          });
+        }
+      }
+    };
+
+    // Add click listener with capture phase to catch ALL clicks first
+    document.addEventListener('click', handleNavigationClicks, true);
+    
+    // Cleanup function
+    const cleanup = () => {
+      document.removeEventListener('click', handleNavigationClicks, true);
+    };
+
     // Bulletproof session saving function with multiple fallbacks
     const saveSessionWithFallbacks = async (exitType: string, isSync: boolean = false) => {
       if (!user || !processedMessages.length || sessionCompleted || !conversationStartTime) {
@@ -1942,6 +2005,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
 
     return () => {
+      // Clean up navigation click interceptor first
+      cleanup();
+      
+      // Clean up other event listeners
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
