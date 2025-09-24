@@ -1620,12 +1620,12 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             try {
               const backupData = JSON.parse(localStorage.getItem(backupKey) || '{}');
               
-              // Validate backup data
-              if (backupData.token && backupData.speaking_minutes && backupData.timestamp) {
+              // Validate backup data - use duration_minutes from conversationData
+              if (backupData.token && backupData.duration_minutes && backupData.timestamp) {
                 // Check if backup is recent (within last 24 hours)
                 const backupAge = Date.now() - backupData.timestamp;
                 if (backupAge < 24 * 60 * 60 * 1000) { // 24 hours
-                  console.log('[BACKUP_RECOVERY] Recovering session:', backupKey, `${backupData.speaking_minutes}min`);
+                  console.log('[BACKUP_RECOVERY] Recovering session:', backupKey, `${backupData.duration_minutes}min`);
                   
                   // Attempt to send the backup data to the server
                   const response = await fetch(`${window.location.origin}/api/stripe/track-speaking-time`, {
@@ -1637,7 +1637,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     body: JSON.stringify({
                       user_id: user._id,
                       session_id: `${user._id}_${backupData.timestamp || Date.now()}`,
-                      speaking_minutes: backupData.speaking_minutes,
+                      speaking_minutes: backupData.duration_minutes,
                       session_completed: backupData.session_completed || false,
                       recovery_mode: true,
                       original_timestamp: backupData.timestamp,
