@@ -12,17 +12,6 @@ from bson import ObjectId
 # Import production-safe logging
 from logging_config import logger
 
-# Import validation modules
-try:
-    from validation.auto_corrector import AutoCorrector
-    from validation.subscription_validator import SubscriptionValidator
-    from validation.session_validator import SessionValidator
-    VALIDATION_AVAILABLE = True
-    logger.info("✅ Validation modules imported successfully")
-except ImportError as e:
-    VALIDATION_AVAILABLE = False
-    logger.warning(f"⚠️ Validation modules not available: {str(e)}")
-
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -194,24 +183,8 @@ class SubscriptionService:
             if not user:
                 return SubscriptionStatus()
             
-            # VALIDATION ENHANCEMENT: Run automatic validation checks before calculation
-            if VALIDATION_AVAILABLE:
-                try:
-                    # Run comprehensive validation and auto-fix if needed
-                    validation_result = await AutoCorrector.validate_and_fix_user(user_id, auto_fix=True)
-                    
-                    if validation_result.get("fixes") and validation_result["fixes"].get("overall_success"):
-                        logger.info(f"[VALIDATION] Auto-fixed issues for user {user_id} during status check")
-                        # Re-fetch user data after fixes
-                        user = await database["users"].find_one(get_user_query(user_id))
-                    
-                    validation_status = validation_result.get("validation", {}).get("overall_status", "unknown")
-                    if validation_status not in ["healthy", "fixable"]:
-                        logger.warning(f"[VALIDATION] User {user_id} has validation issues: {validation_status}")
-                        
-                except Exception as validation_error:
-                    logger.error(f"[VALIDATION] Validation failed for user {user_id}: {str(validation_error)}")
-                    # Continue with normal flow even if validation fails
+            # Skip validation for now - focus on core functionality
+            logger.info(f"Getting subscription status for user {user_id}")
             
             # Check if subscription is expired
             now = datetime.utcnow()
@@ -772,17 +745,13 @@ Resubscribe to unlock:
     @classmethod
     async def track_speaking_time(cls, request: SpeakingTimeTrackingRequest) -> bool:
         """
-        UPDATED: Track speaking time using the new Unified Session Tracking system
-        
-        This method now uses the improved unified tracking approach that implements
-        all business rules correctly and prevents double counting.
+        🔥 BULLETPROOF: Track speaking time with atomic deduction and proper limit enforcement
         """
         try:
-            # Import the improved service 
-            from improved_subscription_service import ImprovedSubscriptionService
+            from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
             
-            # Delegate to the improved implementation
-            return await ImprovedSubscriptionService.track_speaking_time(request)
+            # Use the bulletproof implementation
+            return await BulletproofTracker.track_speaking_time_atomic(request)
             
         except Exception as e:
             logger.error(f"Error in track_speaking_time: {str(e)}")

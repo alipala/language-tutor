@@ -454,29 +454,12 @@ async def create_learning_plan(
                     }
                 }
                 
-                # Only increment assessment counter if in current period
-                should_increment = False
-                if current_period_start:
-                    # Convert to naive datetime for comparison
-                    if current_period_start.tzinfo:
-                        period_start_naive = current_period_start.replace(tzinfo=None)
-                    else:
-                        period_start_naive = current_period_start
-                    
-                    # Check if current assessment is in the current period
-                    current_time = datetime.utcnow()
-                    
-                    if current_time >= period_start_naive:
-                        should_increment = True
-                        update_operations["$inc"] = {"assessments_used": 1}
-                        print(f"[ATOMIC_SAVE] 📊 Assessment is in current period - will increment counter")
-                    else:
-                        print(f"[ATOMIC_SAVE] ℹ️ Assessment outside current period - counter not incremented")
-                else:
-                    # No subscription period found, increment anyway (fallback)
-                    should_increment = True
-                    update_operations["$inc"] = {"assessments_used": 1}
-                    print(f"[ATOMIC_SAVE] ⚠️ No subscription period found - incrementing counter anyway")
+                # 🔥 CRITICAL FIX: Always increment assessment counter for authenticated users
+                # This fixes the bug where assessments were created but limits not decremented
+                should_increment = True
+                update_operations["$inc"] = {"assessments_used": 1}
+                print(f"[ATOMIC_SAVE] 🔥 CRITICAL FIX: Always incrementing assessment counter")
+                print(f"[ATOMIC_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
                 
                 # Execute the atomic update
                 update_result = await users_collection.update_one(
