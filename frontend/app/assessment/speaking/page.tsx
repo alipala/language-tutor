@@ -4,16 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNavigation } from '@/lib/navigation';
 import { useAuth } from '@/lib/auth';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import NavBar from '@/components/nav-bar';
 import SpeakingAssessment from '@/components/speaking-assessment';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 import { SpeakingAssessmentResult } from '@/lib/speaking-assessment-api';
 import { verifyBackendConnectivity } from '@/lib/healthCheck';
+import { Lock, ArrowLeft } from 'lucide-react';
 
 export default function SpeakingAssessmentPage() {
   const router = useRouter();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { subscriptionStatus, loading: subscriptionLoading, refreshSubscriptionStatus } = useSubscriptionStatus();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +24,19 @@ export default function SpeakingAssessmentPage() {
   
   // State for leave confirmation modal
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+
+  // Check if assessments are available
+  const assessmentsRemaining = subscriptionStatus?.limits?.assessments_remaining ?? 0;
+  const assessmentsLimit = subscriptionStatus?.limits?.assessments_limit ?? 0;
+  const isAssessmentBlocked = user && assessmentsRemaining === 0; // Only block for authenticated users
+
+  console.log('[SpeakingAssessmentPage] Assessment boundary check:', {
+    user: !!user,
+    assessmentsRemaining,
+    assessmentsLimit,
+    isAssessmentBlocked,
+    subscriptionStatus
+  });
 
   // Handle back button navigation with confirmation modal
   useEffect(() => {
@@ -184,6 +200,47 @@ export default function SpeakingAssessmentPage() {
                 >
                   Start Over
                 </button>
+              </div>
+            </div>
+          ) : isAssessmentBlocked ? (
+            /* Assessment Blocked UI */
+            <div className="flex-1 flex items-center justify-center">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Lock className="h-8 w-8 text-red-300" />
+                </div>
+                
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  Assessment Limit Reached
+                </h2>
+                
+                <p className="text-white/80 mb-6 leading-relaxed">
+                  You have used all your assessments ({assessmentsLimit}/{assessmentsLimit}) for this subscription period. 
+                  Upgrade your plan to get more assessments and continue improving your language skills.
+                </p>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => router.push('/profile')}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                  >
+                    Upgrade Plan
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="w-full bg-white/20 hover:bg-white/30 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Dashboard
+                  </button>
+                </div>
+                
+                <div className="mt-6 p-4 bg-white/5 rounded-lg">
+                  <p className="text-sm text-white/60">
+                    💡 <strong>Tip:</strong> You can still practice conversations without limits!
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
