@@ -507,49 +507,77 @@ async def create_learning_plan(
             
             print(f"[ATOMIC_SAVE] ✅ Learning plan created with ID: {created_plan['id']}")
             
-            # STEP 2: Now save assessment data and increment counter atomically
+            # STEP 2: 🔥 IDEMPOTENT ASSESSMENT SAVE - Prevent Double Increments
             try:
-                # Get user's current subscription period for proper tracking
+                # Generate unique assessment ID to prevent duplicates
+                assessment_timestamp = datetime.utcnow().isoformat()
+                assessment_id = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}_{assessment_timestamp}"
+                
+                print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_id}")
+                
+                # Check if this assessment was already processed
                 user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
-                current_period_start = user_doc.get("current_period_start") if user_doc else None
+                existing_assessment_history = user_doc.get("assessment_history", {})
                 
-                # Prepare the update operations
-                update_operations = {
-                    "$set": {
-                        "last_assessment_data": plan_request.assessment_data,
-                        "assessment_history": {
-                            "timestamp": datetime.utcnow().isoformat(),
-                            "data": plan_request.assessment_data,
-                            "language": plan_request.language,
-                            "level": plan_request.proficiency_level,
-                            "learning_plan_id": created_plan['id']  # Link to the created plan
-                        }
-                    }
-                }
-                
-                # 🔥 CRITICAL FIX: Always increment assessment counter for authenticated users
-                # This fixes the bug where assessments were created but limits not decremented
-                should_increment = True
-                update_operations["$inc"] = {"assessments_used": 1}
-                print(f"[ATOMIC_SAVE] 🔥 CRITICAL FIX: Always incrementing assessment counter")
-                print(f"[ATOMIC_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
-                
-                # Execute the atomic update
-                update_result = await users_collection.update_one(
-                    {"_id": ObjectId(current_user.id)},
-                    update_operations
-                )
-                
-                if update_result.modified_count > 0:
-                    print(f"[ATOMIC_SAVE] ✅ Assessment data saved to user profile")
-                    if should_increment:
-                        print(f"[ATOMIC_SAVE] ✅ Assessment counter incremented")
-                    print(f"[ATOMIC_SAVE] 🎯 ATOMIC SAVE COMPLETE: Assessment + Plan saved together")
+                # Check if we already have an assessment for this learning plan
+                if (existing_assessment_history and 
+                    existing_assessment_history.get("learning_plan_id") == created_plan['id']):
+                    print(f"[IDEMPOTENT_SAVE] ⚠️ Assessment already exists for learning plan {created_plan['id']}")
+                    print(f"[IDEMPOTENT_SAVE] ✅ Skipping duplicate assessment increment")
+                    new_plan = created_plan
                 else:
-                    print(f"[ATOMIC_SAVE] ⚠️ User profile update had no changes")
+                    # This is a new assessment - proceed with increment
+                    print(f"[IDEMPOTENT_SAVE] ✅ New assessment detected - proceeding with increment")
                     
-                # Update new_plan with the created plan data for return
-                new_plan = created_plan
+                    # Prepare the update operations with idempotency protection
+                    update_operations = {
+                        "$set": {
+                            "last_assessment_data": plan_request.assessment_data,
+                            "assessment_history": {
+                                "assessment_id": assessment_id,
+                                "timestamp": assessment_timestamp,
+                                "data": plan_request.assessment_data,
+                                "language": plan_request.language,
+                                "level": plan_request.proficiency_level,
+                                "learning_plan_id": created_plan['id']  # Link to the created plan
+                            }
+                        },
+                        "$inc": {"assessments_used": 1}  # Increment counter atomically
+                    }
+                    
+                    print(f"[IDEMPOTENT_SAVE] 🔥 IDEMPOTENT FIX: Incrementing assessment counter with duplicate protection")
+                    print(f"[IDEMPOTENT_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
+                    
+                    # Execute the atomic update with conditional check
+                    update_result = await users_collection.update_one(
+                        {
+                            "_id": ObjectId(current_user.id),
+                            # Ensure we don't double-increment if assessment_history already has this plan
+                            "$or": [
+                                {"assessment_history": {"$exists": False}},
+                                {"assessment_history.learning_plan_id": {"$ne": created_plan['id']}}
+                            ]
+                        },
+                        update_operations
+                    )
+                    
+                    if update_result.modified_count > 0:
+                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment data saved to user profile")
+                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (idempotent)")
+                        print(f"[IDEMPOTENT_SAVE] 🎯 IDEMPOTENT SAVE COMPLETE: Assessment + Plan saved together")
+                    else:
+                        print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - possible duplicate detected")
+                        
+                        # Double-check if this was due to duplicate protection
+                        fresh_user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+                        fresh_history = fresh_user.get("assessment_history", {})
+                        if fresh_history.get("learning_plan_id") == created_plan['id']:
+                            print(f"[IDEMPOTENT_SAVE] ✅ Duplicate protection worked - assessment already exists")
+                        else:
+                            print(f"[IDEMPOTENT_SAVE] ❌ Unexpected update failure")
+                    
+                    # Update new_plan with the created plan data for return
+                    new_plan = created_plan
                     
             except Exception as e:
                 print(f"[ATOMIC_SAVE] ⚠️ Warning: Failed to save assessment data: {str(e)}")
