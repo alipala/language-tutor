@@ -203,26 +203,35 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {/* Main Action Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12 max-w-5xl mx-auto">
           {/* AI Learning Plan Card - Enhanced with Assessment Limit UX */}
-          <div className={`group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg transition-all duration-300 flex flex-col h-full cursor-pointer ${
+          <div className={`group relative overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-lg transition-all duration-300 flex flex-col h-full cursor-pointer ${
             !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
-              ? 'opacity-75 hover:opacity-90 hover:shadow-lg' 
+              ? 'opacity-90 hover:opacity-100 hover:shadow-lg' 
               : 'hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1'
           }`}>
-            {/* Assessment Limit Badge - Top Right Corner */}
-            {!subscriptionLoading && subscriptionStatus?.limits && !subscriptionStatus.limits.is_unlimited && (
-              <div className="absolute top-3 right-3 z-20">
-                {subscriptionStatus.limits.assessments_remaining === 0 ? (
-                  <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center space-x-1">
-                    <Lock className="w-3 h-3" />
-                    <span>0/{subscriptionStatus.limits.assessments_limit}</span>
-                  </div>
-                ) : (
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                    {subscriptionStatus.limits.assessments_remaining}/{subscriptionStatus.limits.assessments_limit}
-                  </div>
-                )}
+            {/* Assessment Limit Banner - Top of Card */}
+            {!subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited && (
+              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white px-4 py-2 text-center relative">
+                <div className="flex items-center justify-center space-x-2">
+                  <Lock className="w-4 h-4" />
+                  <span className="text-sm font-semibold">
+                    You've used all {subscriptionStatus.limits.assessments_limit} assessments for your current subscription. Upgrade to continue creating personalized learning plans.
+                  </span>
+                </div>
+                {/* Subtle pattern overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10"></div>
               </div>
             )}
+
+            {/* Assessment Status Indicator - Subtle Top Band for Active Users */}
+            {!subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining > 0 && !subscriptionStatus.limits.is_unlimited && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100 px-4 py-2 text-center">
+                <span className="text-xs font-medium text-green-700">
+                  {subscriptionStatus.limits.assessments_remaining} of {subscriptionStatus.limits.assessments_limit} assessments remaining this month
+                </span>
+              </div>
+            )}
+
+            <div className="p-6">
 
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
@@ -258,21 +267,6 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                 Perfect for structured, goal-oriented language learning.
               </p>
 
-              {/* Assessment Limit Warning */}
-              {!subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited && (
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 mb-4">
-                  <div className="flex items-start space-x-2">
-                    <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-amber-800 mb-1">Assessment Limit Reached</p>
-                      <p className="text-xs text-amber-700">
-                        You've used all {subscriptionStatus.limits.assessments_limit} assessments for this month. 
-                        Upgrade to continue creating personalized learning plans.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Visual Learning Journey */}
               <div className={`rounded-xl p-4 mb-4 flex-grow ${
@@ -470,6 +464,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                   Upgrade Plan
                 </Button>
               )}
+            </div>
+
             </div>
 
             {/* Subtle background decoration */}
