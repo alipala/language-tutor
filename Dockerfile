@@ -94,6 +94,8 @@ ENV PORT=3001
 # Expose the port
 EXPOSE 3001
 
+# Make startup script executable
+RUN chmod +x /app/start.sh
+
 # Command to run the application
-WORKDIR /app/backend
-CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-3001}"]
+CMD ["/app/start.sh"]
