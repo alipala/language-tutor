@@ -1,15 +1,32 @@
-# Use Python for the backend and Node.js for frontend build
-# Updated to fix domain configuration for mytacoai.com
-FROM python:3.11-slim
+# Alternative Dockerfile using Ubuntu base to avoid Docker Hub auth issues
+# Use Ubuntu instead of python:3.11-slim to avoid Docker Hub rate limiting
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV NODE_MAJOR=20
 
 # Set working directory
 WORKDIR /app
 
-# Install Node.js for frontend build AND WeasyPrint system dependencies
+# Install system dependencies including Python 3.11, Node.js, and WeasyPrint dependencies
 RUN apt-get update && apt-get install -y \
-    nodejs \
-    npm \
+    software-properties-common \
     curl \
+    wget \
+    gnupg \
+    ca-certificates \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
+    python3-pip \
+    nodejs \
+    build-essential \
     # WeasyPrint system dependencies
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
@@ -24,18 +41,21 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     fontconfig \
     fonts-dejavu-core \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Create symlinks for python3.11
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3.11 /usr/bin/python
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip setuptools wheel
 
 # Copy the entire project
 COPY . .
 
 # Install Python backend dependencies with exact versions
-# First install pymongo and motor with specific versions to ensure compatibility
 RUN pip install --no-cache-dir pymongo==4.6.1 motor==3.3.2
-# Then install the rest of the requirements
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Install frontend dependencies and build
