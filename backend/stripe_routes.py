@@ -300,9 +300,9 @@ async def get_subscription_status(
                 "sessions_limit": -1,  # Unlimited sessions
                 "sessions_used": practice_sessions_used,
                 "sessions_remaining": -1,
-                "assessments_limit": 5,  # 5 assessments per period
+                "assessments_limit": 2,  # 2 assessments per period (CORRECTED!)
                 "assessments_used": assessments_used,
-                "assessments_remaining": max(0, 5 - assessments_used)
+                "assessments_remaining": max(0, 2 - assessments_used)
             }
             
             logger.info(f"[SUBSCRIPTION_STATUS] ✅ Fluency Builder: {minutes_remaining}/{minutes_limit} minutes remaining")
