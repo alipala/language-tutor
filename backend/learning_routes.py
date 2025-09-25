@@ -82,7 +82,7 @@ async def get_learning_goals():
 @router.post("/plan", response_model=LearningPlan)
 async def create_learning_plan(
     plan_request: LearningPlanRequest,
-    current_user: Optional[UserResponse] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Create a custom learning plan based on user's proficiency level, goals, and duration.
