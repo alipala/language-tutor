@@ -82,21 +82,39 @@ class BulletproofSubscriptionServiceNoTransactions:
                 logger.error(f"[BULLETPROOF_TRACKING] ❌ User document not found: {user_object_id}")
                 return False
             
-            # Step 4: Check subscription limits
-            current_remaining = user_doc.get("speaking_time_remaining", 150)  # Default 150 minutes
+            # Step 4: Get subscription details and calculate remaining minutes
             subscription_status = user_doc.get("subscription_status", "free")
+            subscription_plan = user_doc.get("subscription_plan", "try_learn")
+            subscription_period = user_doc.get("subscription_period", "monthly")
+            practice_minutes_used = user_doc.get("practice_minutes_used", 0.0)
             
+            # Calculate subscription limits based on plan
+            if subscription_plan == "team_mastery":
+                minutes_limit = -1  # Unlimited
+                current_remaining = float('inf')  # Infinite remaining
+            elif subscription_plan == "fluency_builder":
+                if subscription_period == "annual":
+                    minutes_limit = 1800  # 1800 minutes annually
+                else:
+                    minutes_limit = 150   # 150 minutes monthly
+                current_remaining = max(0, minutes_limit - practice_minutes_used)
+            else:  # try_learn
+                minutes_limit = 15    # 15 minutes monthly
+                current_remaining = max(0, minutes_limit - practice_minutes_used)
+            
+            logger.info(f"[BULLETPROOF_TRACKING] Plan: {subscription_plan} ({subscription_period})")
+            logger.info(f"[BULLETPROOF_TRACKING] Limit: {minutes_limit}, Used: {practice_minutes_used}")
             logger.info(f"[BULLETPROOF_TRACKING] Current remaining: {current_remaining} minutes")
             logger.info(f"[BULLETPROOF_TRACKING] Subscription: {subscription_status}")
             
-            # Step 5: Calculate deduction
-            if subscription_status == "active":
-                # Unlimited for active subscribers - don't deduct
-                new_remaining = current_remaining
+            # Step 5: Calculate deduction based on correct business rules
+            if subscription_plan == "team_mastery":
+                # Team Mastery has unlimited minutes - don't deduct
+                new_practice_minutes_used = practice_minutes_used
                 deducted_amount = 0
-                logger.info(f"[BULLETPROOF_TRACKING] Active subscriber - no deduction needed")
+                logger.info(f"[BULLETPROOF_TRACKING] Team Mastery (unlimited) - no deduction needed")
             else:
-                # Check if user has enough minutes
+                # ALL OTHER PLANS (including active fluency_builder) need minute deduction
                 if current_remaining < speaking_minutes:
                     logger.warning(f"[BULLETPROOF_TRACKING] ⚠️ Not enough minutes remaining: {current_remaining} < {speaking_minutes}")
                     # Record failed attempt
@@ -115,10 +133,13 @@ class BulletproofSubscriptionServiceNoTransactions:
                     })
                     return False
                 
-                # Deduct for free users
+                # Deduct minutes for all limited plans (try_learn, fluency_builder monthly/annual)
+                new_practice_minutes_used = practice_minutes_used + speaking_minutes
+                deducted_amount = speaking_minutes
                 new_remaining = max(0, current_remaining - speaking_minutes)
-                deducted_amount = current_remaining - new_remaining
-                logger.info(f"[BULLETPROOF_TRACKING] Deducting {deducted_amount} minutes: {current_remaining} → {new_remaining}")
+                logger.info(f"[BULLETPROOF_TRACKING] Deducting {deducted_amount} minutes")
+                logger.info(f"[BULLETPROOF_TRACKING] Minutes used: {practice_minutes_used} → {new_practice_minutes_used}")
+                logger.info(f"[BULLETPROOF_TRACKING] Remaining: {current_remaining} → {new_remaining}")
             
             # Step 6: Create tracking record FIRST (before user update for better safety)
             tracking_record = {
@@ -140,21 +161,22 @@ class BulletproofSubscriptionServiceNoTransactions:
             tracking_id = tracking_result.inserted_id
             logger.info(f"[BULLETPROOF_TRACKING] Created tracking record: {tracking_id}")
             
-            # Step 7: Update user's speaking time with conditional update to prevent race conditions
-            user_update_result = await users_collection.update_one(
-                {
-                    "_id": user_object_id,
-                    "speaking_time_remaining": current_remaining  # 🔥 Only update if balance hasn't changed
-                },
-                {
-                    "$set": {
-                        "speaking_time_remaining": new_remaining
+            # Step 7: Update user's practice minutes with conditional update to prevent race conditions
+            if subscription_plan == "team_mastery":
+                # For unlimited plans, just create tracking record without updating user
+                user_update_result = type('MockResult', (), {'modified_count': 1})()  # Mock success
+            else:
+                user_update_result = await users_collection.update_one(
+                    {
+                        "_id": user_object_id,
+                        "practice_minutes_used": practice_minutes_used  # 🔥 Only update if usage hasn't changed
                     },
-                    "$inc": {
-                        "speaking_minutes_used": deducted_amount
+                    {
+                        "$set": {
+                            "practice_minutes_used": new_practice_minutes_used
+                        }
                     }
-                }
-            )
+                )
             
             if user_update_result.modified_count == 0:
                 logger.warning(f"[BULLETPROOF_TRACKING] ⚠️ User update failed - balance may have changed concurrently")
