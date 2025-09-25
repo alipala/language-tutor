@@ -60,7 +60,7 @@ def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = N
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(hours=8)  # 8 hour sessions for admins
+        expire = datetime.utcnow() + timedelta(hours=8)  # 8 hour sessions for admin
     
     to_encode.update({"exp": expire, "type": "admin"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
