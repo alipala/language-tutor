@@ -325,9 +325,10 @@ async def track_speaking_time(
         
         # Create request object
         request = SpeakingTimeTrackingRequest(
+            user_id=current_user.id,
+            session_id=data.get('session_id', f"fallback_{current_user.id}_{int(data.get('speaking_minutes', 0) * 1000)}"),
             speaking_minutes=data.get('speaking_minutes', 0.0),
-            session_completed=data.get('session_completed', False),
-            user_id=current_user.id
+            session_completed=data.get('session_completed', False)
         )
         
         # Log the tracking request
