@@ -11,4 +11,4 @@ restartPolicyMaxRetries = 10
 
 [nixpacks]
 nodejs-version = "20"
-python-version = "3.11.9"
+python-version = "3.11"
