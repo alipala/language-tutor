@@ -82,11 +82,11 @@ async def get_learning_goals():
 @router.post("/plan", response_model=LearningPlan)
 async def create_learning_plan(
     plan_request: LearningPlanRequest,
-    current_user: Optional[UserResponse] = None
+    current_user: Optional[UserResponse] = Depends(get_current_user)
 ):
     """
     Create a custom learning plan based on user's proficiency level, goals, and duration.
-    Authentication is optional - if authenticated, the plan will be associated with the user.
+    Authentication is required for assessment data processing.
     """
     # Get OpenAI API key from environment
     openai_api_key = os.getenv("OPENAI_API_KEY")
