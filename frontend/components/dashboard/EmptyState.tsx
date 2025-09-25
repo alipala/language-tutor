@@ -29,7 +29,9 @@ import {
   Rocket,
   MapPin,
   Compass,
-  X
+  X,
+  Crown,
+  Lock
 } from 'lucide-react';
 import UpgradePrompt from '@/components/upgrade-prompt';
 
@@ -43,6 +45,50 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  // Fetch subscription status
+  const fetchSubscriptionStatus = async () => {
+    setSubscriptionLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('[EMPTY_STATE] No token found for subscription status fetch');
+        setSubscriptionLoading(false);
+        return;
+      }
+
+      console.log('[EMPTY_STATE] Fetching subscription status...');
+      const response = await fetch('/api/stripe/subscription-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('[EMPTY_STATE] Subscription status response:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[EMPTY_STATE] Subscription status data:', data);
+        setSubscriptionStatus(data);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[EMPTY_STATE] Subscription status error:', errorData);
+      }
+    } catch (error) {
+      console.error('[EMPTY_STATE] Error fetching subscription status:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  // Load subscription status on mount
+  useEffect(() => {
+    fetchSubscriptionStatus();
+  }, []);
 
   // Check for checkout success
   useEffect(() => {
@@ -156,12 +202,40 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
         {/* Main Action Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12 max-w-5xl mx-auto">
-          {/* AI Learning Plan Card */}
-          <div className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 flex flex-col h-full cursor-pointer">
+          {/* AI Learning Plan Card - Enhanced with Assessment Limit UX */}
+          <div className={`group relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-6 shadow-lg transition-all duration-300 flex flex-col h-full cursor-pointer ${
+            !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+              ? 'opacity-75 hover:opacity-90 hover:shadow-lg' 
+              : 'hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1'
+          }`}>
+            {/* Assessment Limit Badge - Top Right Corner */}
+            {!subscriptionLoading && subscriptionStatus?.limits && !subscriptionStatus.limits.is_unlimited && (
+              <div className="absolute top-3 right-3 z-20">
+                {subscriptionStatus.limits.assessments_remaining === 0 ? (
+                  <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
+                    <span>0/{subscriptionStatus.limits.assessments_limit}</span>
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                    {subscriptionStatus.limits.assessments_remaining}/{subscriptionStatus.limits.assessments_limit}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Award className="w-6 h-6 text-purple-600" />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                    ? 'bg-gray-100' 
+                    : 'bg-purple-100'
+                }`}>
+                  <Award className={`w-6 h-6 ${
+                    !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                      ? 'text-gray-500' 
+                      : 'text-purple-600'
+                  }`} />
                 </div>
                 <div className="text-right">
                   <div className="text-gray-500 text-xs">Perfect for</div>
@@ -169,98 +243,246 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                 </div>
               </div>
               
-              <h3 className="text-xl font-bold text-gray-800 mb-3">AI Learning Plan</h3>
-              <p className="text-gray-600 text-sm leading-relaxed" style={{ minHeight: '3rem', marginBottom: '1rem' }}>
+              <h3 className={`text-xl font-bold mb-3 ${
+                !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                  ? 'text-gray-600' 
+                  : 'text-gray-800'
+              }`}>AI Learning Plan</h3>
+              
+              <p className={`text-sm leading-relaxed mb-4 ${
+                !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                  ? 'text-gray-500' 
+                  : 'text-gray-600'
+              }`} style={{ minHeight: '3rem' }}>
                 Get a personalized AI-adaptive learning plan based on your speaking assessment. 
                 Perfect for structured, goal-oriented language learning.
               </p>
 
+              {/* Assessment Limit Warning */}
+              {!subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-start space-x-2">
+                    <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-amber-800 mb-1">Assessment Limit Reached</p>
+                      <p className="text-xs text-amber-700">
+                        You've used all {subscriptionStatus.limits.assessments_limit} assessments for this month. 
+                        Upgrade to continue creating personalized learning plans.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Visual Learning Journey */}
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 mb-4 flex-grow">
+              <div className={`rounded-xl p-4 mb-4 flex-grow ${
+                !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                  ? 'bg-gradient-to-r from-gray-50 to-gray-100' 
+                  : 'bg-gradient-to-r from-purple-50 to-indigo-50'
+              }`}>
                 <div className="text-center mb-3">
-                  <h4 className="text-sm font-bold text-purple-800 mb-1">Your Learning Journey</h4>
-                  <p className="text-xs text-purple-600">Personalized AI-powered path</p>
+                  <h4 className={`text-sm font-bold mb-1 ${
+                    !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                      ? 'text-gray-600' 
+                      : 'text-purple-800'
+                  }`}>Your Learning Journey</h4>
+                  <p className={`text-xs ${
+                    !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                      ? 'text-gray-500' 
+                      : 'text-purple-600'
+                  }`}>Personalized AI-powered path</p>
                 </div>
                 
                 {/* Visual Journey Steps */}
                 <div className="flex items-center justify-between relative">
                   {/* Connection Line */}
-                  <div className="absolute top-6 left-6 right-6 h-0.5 bg-gradient-to-r from-purple-200 via-purple-300 to-purple-200"></div>
+                  <div className={`absolute top-6 left-6 right-6 h-0.5 ${
+                    !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                      ? 'bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200' 
+                      : 'bg-gradient-to-r from-purple-200 via-purple-300 to-purple-200'
+                  }`}></div>
                   
                   {/* Step 1: Language Selection */}
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg mb-2">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg mb-2 ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gradient-to-br from-gray-300 to-gray-400' 
+                        : 'bg-gradient-to-br from-purple-400 to-purple-500'
+                    }`}>
                       <Languages className="w-6 h-6 text-white" />
                     </div>
-                    <span className="text-xs font-medium text-purple-700">Choose</span>
+                    <span className={`text-xs font-medium ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>Choose</span>
                   </div>
                   
                   {/* Step 2: Speaking Assessment */}
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg mb-2">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg mb-2 ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gradient-to-br from-gray-400 to-gray-500' 
+                        : 'bg-gradient-to-br from-purple-500 to-indigo-500'
+                    }`}>
                       <Mic className="w-6 h-6 text-white" />
                     </div>
-                    <span className="text-xs font-medium text-purple-700">Speak</span>
+                    <span className={`text-xs font-medium ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>Speak</span>
                   </div>
                   
                   {/* Step 3: AI Analysis */}
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg mb-2">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg mb-2 ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gradient-to-br from-gray-500 to-gray-600' 
+                        : 'bg-gradient-to-br from-indigo-500 to-blue-500'
+                    }`}>
                       <Brain className="w-6 h-6 text-white" />
                     </div>
-                    <span className="text-xs font-medium text-purple-700">Analyze</span>
+                    <span className={`text-xs font-medium ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>Analyze</span>
                   </div>
                   
                   {/* Step 4: Learning Plan */}
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center shadow-lg mb-2">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg mb-2 ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gradient-to-br from-gray-600 to-gray-700' 
+                        : 'bg-gradient-to-br from-blue-500 to-teal-500'
+                    }`}>
                       <Rocket className="w-6 h-6 text-white" />
                     </div>
-                    <span className="text-xs font-medium text-purple-700">Learn</span>
+                    <span className={`text-xs font-medium ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>Learn</span>
                   </div>
                 </div>
                 
                 {/* Key Benefits */}
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-purple-200 rounded-full flex items-center justify-center">
-                      <Clock className="w-2.5 h-2.5 text-purple-600" />
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gray-200' 
+                        : 'bg-purple-200'
+                    }`}>
+                      <Clock className={`w-2.5 h-2.5 ${
+                        !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                          ? 'text-gray-500' 
+                          : 'text-purple-600'
+                      }`} />
                     </div>
-                    <span className="text-xs text-purple-700">5-10 min</span>
+                    <span className={`text-xs ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>5-10 min</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-purple-200 rounded-full flex items-center justify-center">
-                      <Target className="w-2.5 h-2.5 text-purple-600" />
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gray-200' 
+                        : 'bg-purple-200'
+                    }`}>
+                      <Target className={`w-2.5 h-2.5 ${
+                        !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                          ? 'text-gray-500' 
+                          : 'text-purple-600'
+                      }`} />
                     </div>
-                    <span className="text-xs text-purple-700">CEFR Level</span>
+                    <span className={`text-xs ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>CEFR Level</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-purple-200 rounded-full flex items-center justify-center">
-                      <Lightbulb className="w-2.5 h-2.5 text-purple-600" />
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gray-200' 
+                        : 'bg-purple-200'
+                    }`}>
+                      <Lightbulb className={`w-2.5 h-2.5 ${
+                        !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                          ? 'text-gray-500' 
+                          : 'text-purple-600'
+                      }`} />
                     </div>
-                    <span className="text-xs text-purple-700">AI Insights</span>
+                    <span className={`text-xs ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>AI Insights</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-purple-200 rounded-full flex items-center justify-center">
-                      <MapPin className="w-2.5 h-2.5 text-purple-600" />
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'bg-gray-200' 
+                        : 'bg-purple-200'
+                    }`}>
+                      <MapPin className={`w-2.5 h-2.5 ${
+                        !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                          ? 'text-gray-500' 
+                          : 'text-purple-600'
+                      }`} />
                     </div>
-                    <span className="text-xs text-purple-700">Custom Plan</span>
+                    <span className={`text-xs ${
+                      !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                        ? 'text-gray-500' 
+                        : 'text-purple-700'
+                    }`}>Custom Plan</span>
                   </div>
                 </div>
               </div>
 
-              <Button
-                onClick={handleTakeAssessment}
-                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white py-2 px-4 rounded-lg font-medium transition-all duration-300 text-sm shadow-md hover:shadow-lg mt-auto"
-              >
-                <Mic className="w-4 h-4 mr-2" />
-                Start Assessment
-              </Button>
+              {/* Dynamic Button Based on Assessment Limits */}
+              {subscriptionLoading ? (
+                <Button
+                  disabled
+                  className="w-full bg-gray-300 text-gray-500 py-2 px-4 rounded-lg font-medium text-sm mt-auto cursor-not-allowed"
+                >
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                  Loading...
+                </Button>
+              ) : !subscriptionStatus?.limits || subscriptionStatus.limits.is_unlimited || subscriptionStatus.limits.assessments_remaining > 0 ? (
+                <Button
+                  onClick={handleTakeAssessment}
+                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white py-2 px-4 rounded-lg font-medium transition-all duration-300 text-sm shadow-md hover:shadow-lg mt-auto"
+                >
+                  <Mic className="w-4 h-4 mr-2" />
+                  Start Assessment
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => router.push('/profile?tab=settings')}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white py-2 px-4 rounded-lg font-medium transition-all duration-300 text-sm shadow-md hover:shadow-lg mt-auto"
+                >
+                  <Crown className="w-4 h-4 mr-2" />
+                  Upgrade Plan
+                </Button>
+              )}
             </div>
 
             {/* Subtle background decoration */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full -translate-y-12 translate-x-12 opacity-50"></div>
-            <div className="absolute bottom-0 left-0 w-16 h-16 bg-purple-50 rounded-full translate-y-8 -translate-x-8 opacity-30"></div>
+            <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-12 translate-x-12 opacity-50 ${
+              !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                ? 'bg-gray-100' 
+                : 'bg-purple-50'
+            }`}></div>
+            <div className={`absolute bottom-0 left-0 w-16 h-16 rounded-full translate-y-8 -translate-x-8 opacity-30 ${
+              !subscriptionLoading && subscriptionStatus?.limits && subscriptionStatus.limits.assessments_remaining === 0 && !subscriptionStatus.limits.is_unlimited
+                ? 'bg-gray-100' 
+                : 'bg-purple-50'
+            }`}></div>
           </div>
 
           {/* Quick Practice Card */}
