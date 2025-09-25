@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import os
 import openai
 import uuid
 import logging
+import json
 from datetime import datetime
 from bson import ObjectId
 from auth import get_current_user
@@ -81,13 +82,81 @@ async def get_learning_goals():
 
 @router.post("/plan", response_model=LearningPlan)
 async def create_learning_plan(
-    plan_request: LearningPlanRequest,
+    request_data: dict,  # 🔥 CRITICAL FIX: Accept raw dict first for flexible validation
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Create a custom learning plan based on user's proficiency level, goals, and duration.
     Authentication is required for assessment data processing.
+    🔥 FIXED: Now handles missing required fields and different request formats gracefully
     """
+    
+    # 🔥 CRITICAL FIX: Debug logging to see exactly what frontend sends
+    print(f"[LEARNING_PLAN_DEBUG] 🔍 Raw request data received:")
+    print(f"[LEARNING_PLAN_DEBUG] {json.dumps(request_data, indent=2, default=str)}")
+    
+    # STEP 1: Handle different request formats that frontend might send
+    plan_request_data = None
+    
+    # Check if request is wrapped in 'plan_request' or 'planRequest'
+    if 'plan_request' in request_data:
+        plan_request_data = request_data['plan_request']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Found wrapped request in 'plan_request'")
+    elif 'planRequest' in request_data:
+        plan_request_data = request_data['planRequest']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Found wrapped request in 'planRequest'")
+    else:
+        plan_request_data = request_data.copy()
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Using direct request data")
+    
+    # STEP 2: Handle assessment_data that might be at root level
+    if 'assessment_data' in request_data and 'assessment_data' not in plan_request_data:
+        plan_request_data['assessment_data'] = request_data['assessment_data']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Moved assessment_data from root to plan_request_data")
+    
+    # STEP 3: 🔥 CRITICAL FIX: Fill in missing required fields with smart defaults
+    
+    # Language: Default to english if missing
+    if 'language' not in plan_request_data or not plan_request_data['language']:
+        plan_request_data['language'] = 'english'
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Added default language: english")
+    
+    # Proficiency Level: Try to get from assessment, otherwise default to B1
+    if 'proficiency_level' not in plan_request_data or not plan_request_data['proficiency_level']:
+        assessment_data = plan_request_data.get('assessment_data', {})
+        recommended_level = assessment_data.get('recommended_level')
+        
+        if recommended_level:
+            plan_request_data['proficiency_level'] = recommended_level
+            print(f"[LEARNING_PLAN_DEBUG] ✅ Set proficiency_level from assessment: {recommended_level}")
+        else:
+            plan_request_data['proficiency_level'] = 'B1'
+            print(f"[LEARNING_PLAN_DEBUG] ✅ Added default proficiency_level: B1")
+    
+    # Goals: Default to common learning goals if missing
+    if 'goals' not in plan_request_data or not plan_request_data['goals']:
+        plan_request_data['goals'] = ['daily', 'travel']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Added default goals: ['daily', 'travel']")
+    
+    # Duration: Default to 3 months if missing
+    if 'duration_months' not in plan_request_data or not plan_request_data['duration_months']:
+        plan_request_data['duration_months'] = 3
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Added default duration_months: 3")
+    
+    # STEP 4: Validate the corrected request
+    try:
+        plan_request = LearningPlanRequest(**plan_request_data)
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Request validation successful after fixes")
+        print(f"[LEARNING_PLAN_DEBUG] Final request: language={plan_request.language}, level={plan_request.proficiency_level}, goals={plan_request.goals}, duration={plan_request.duration_months}")
+    except ValidationError as e:
+        print(f"[LEARNING_PLAN_DEBUG] ❌ Request validation still failed after fixes: {e}")
+        print(f"[LEARNING_PLAN_DEBUG] Final plan_request_data: {plan_request_data}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid plan request format after applying fixes: {str(e)}. Please ensure all required fields are provided."
+        )
+    
+    print(f"[LEARNING_PLAN_DEBUG] 🎯 Proceeding with plan creation...")
     # Get OpenAI API key from environment
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
