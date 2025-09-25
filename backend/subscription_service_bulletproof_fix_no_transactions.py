@@ -199,6 +199,25 @@ class BulletproofSubscriptionServiceNoTransactions:
                 }}
             )
             
+            # Step 9: 🔥 CRITICAL FIX: Increment session counter for completed sessions
+            if session_completed and deducted_amount > 0:
+                try:
+                    session_counter_result = await users_collection.update_one(
+                        {"_id": user_object_id},
+                        {"$inc": {"practice_sessions_used": 1}}
+                    )
+                    
+                    if session_counter_result.modified_count > 0:
+                        logger.info(f"[BULLETPROOF_TRACKING] ✅ Session counter incremented for completed session")
+                    else:
+                        logger.warning(f"[BULLETPROOF_TRACKING] ⚠️ Failed to increment session counter")
+                        
+                except Exception as session_error:
+                    logger.error(f"[BULLETPROOF_TRACKING] ❌ Error incrementing session counter: {str(session_error)}")
+                    # Don't fail the entire operation if session counting fails
+            else:
+                logger.info(f"[BULLETPROOF_TRACKING] ℹ️ Session not completed or no deduction - not counting session")
+            
             logger.info(f"[BULLETPROOF_TRACKING] ✅ SUCCESS: Deducted {deducted_amount} minutes")
             logger.info(f"[BULLETPROOF_TRACKING] ✅ User {user_id}: {current_remaining} → {new_remaining} minutes")
             
