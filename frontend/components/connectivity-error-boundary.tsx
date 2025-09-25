@@ -8,7 +8,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
-import { getConnectivityMonitor, ConnectivityStatus } from '@/lib/connectivity-monitor';
+import { getRobustConnectivityMonitor, ConnectivityStatus } from '@/lib/connectivity-monitor-robust';
 
 interface Props {
   children: ReactNode;
@@ -26,7 +26,7 @@ interface State {
 }
 
 export class ConnectivityErrorBoundary extends Component<Props, State> {
-  private connectivityMonitor = getConnectivityMonitor();
+  private connectivityMonitor = getRobustConnectivityMonitor();
   private unsubscribeConnectivity: (() => void) | null = null;
 
   constructor(props: Props) {
@@ -363,7 +363,7 @@ export function withConnectivityErrorBoundary<P extends object>(
  * Simple connectivity status indicator component
  */
 export function ConnectivityIndicator({ className }: { className?: string }) {
-  const { status } = useConnectivityMonitor();
+  const { status } = useRobustConnectivityMonitor();
   
   if (status.isConnected) {
     return null; // Don't show anything when connected
@@ -384,7 +384,7 @@ export function ConnectivityIndicator({ className }: { className?: string }) {
   );
 }
 
-// Import the hook from connectivity-monitor
-import { useConnectivityMonitor } from '@/lib/connectivity-monitor';
+// Import the hook from robust connectivity-monitor
+import { useRobustConnectivityMonitor } from '@/lib/connectivity-monitor-robust';
 
 export default ConnectivityErrorBoundary;

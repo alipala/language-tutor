@@ -1261,38 +1261,38 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       const { getApiUrl } = await import('@/lib/api-utils');
       const token = localStorage.getItem('token');
       
-      // If this is a learning plan session, use the session summary endpoint
-      if (planParam) {
-        console.log('[AUTO_SAVE] 📚 This is a learning plan session - using session summary endpoint');
-        
-        // Generate a session summary for the learning plan
-        const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
-        
-        // Save session summary to learning plan using the correct endpoint
-        const summaryResponse = await fetch(`${getApiUrl()}/api/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            messages: messagesToSave,
-            duration_minutes: durationMinutes,
-            language: language,
-            level: level,
-            topic: topic
-          })
-        });
+        // If this is a learning plan session, use the session summary endpoint
+        if (planParam) {
+          console.log('[AUTO_SAVE] 📚 This is a learning plan session - using session summary endpoint');
+          
+          // Generate a session summary for the learning plan
+          const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
+          
+          // Save session summary to learning plan using the correct endpoint
+          const summaryResponse = await fetch(`${getApiUrl()}/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              messages: messagesToSave,
+              duration_minutes: durationMinutes,
+              language: language,
+              level: level,
+              topic: topic
+            })
+          });
 
-        if (!summaryResponse.ok) {
-          const errorData = await summaryResponse.json();
-          throw new Error(errorData.detail || 'Failed to save learning plan session');
+          if (!summaryResponse.ok) {
+            const errorData = await summaryResponse.json();
+            throw new Error(errorData.detail || 'Failed to save learning plan session');
+          }
+
+          const summaryResult = await summaryResponse.json();
+          console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
+          return;
         }
-
-        const summaryResult = await summaryResponse.json();
-        console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
-        return;
-      }
 
       // This is a practice mode conversation - save to conversation history
       console.log('[AUTO_SAVE] 💬 This is a practice session - saving to conversation history');

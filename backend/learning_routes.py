@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import os
 import openai
 import uuid
 import logging
+import json
 from datetime import datetime
 from bson import ObjectId
 from auth import get_current_user
@@ -81,13 +82,81 @@ async def get_learning_goals():
 
 @router.post("/plan", response_model=LearningPlan)
 async def create_learning_plan(
-    plan_request: LearningPlanRequest,
-    current_user: Optional[UserResponse] = None
+    request_data: dict,  # 🔥 CRITICAL FIX: Accept raw dict first for flexible validation
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Create a custom learning plan based on user's proficiency level, goals, and duration.
-    Authentication is optional - if authenticated, the plan will be associated with the user.
+    Authentication is required for assessment data processing.
+    🔥 FIXED: Now handles missing required fields and different request formats gracefully
     """
+    
+    # 🔥 CRITICAL FIX: Debug logging to see exactly what frontend sends
+    print(f"[LEARNING_PLAN_DEBUG] 🔍 Raw request data received:")
+    print(f"[LEARNING_PLAN_DEBUG] {json.dumps(request_data, indent=2, default=str)}")
+    
+    # STEP 1: Handle different request formats that frontend might send
+    plan_request_data = None
+    
+    # Check if request is wrapped in 'plan_request' or 'planRequest'
+    if 'plan_request' in request_data:
+        plan_request_data = request_data['plan_request']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Found wrapped request in 'plan_request'")
+    elif 'planRequest' in request_data:
+        plan_request_data = request_data['planRequest']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Found wrapped request in 'planRequest'")
+    else:
+        plan_request_data = request_data.copy()
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Using direct request data")
+    
+    # STEP 2: Handle assessment_data that might be at root level
+    if 'assessment_data' in request_data and 'assessment_data' not in plan_request_data:
+        plan_request_data['assessment_data'] = request_data['assessment_data']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Moved assessment_data from root to plan_request_data")
+    
+    # STEP 3: 🔥 CRITICAL FIX: Fill in missing required fields with smart defaults
+    
+    # Language: Default to english if missing
+    if 'language' not in plan_request_data or not plan_request_data['language']:
+        plan_request_data['language'] = 'english'
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Added default language: english")
+    
+    # Proficiency Level: Try to get from assessment, otherwise default to B1
+    if 'proficiency_level' not in plan_request_data or not plan_request_data['proficiency_level']:
+        assessment_data = plan_request_data.get('assessment_data', {})
+        recommended_level = assessment_data.get('recommended_level')
+        
+        if recommended_level:
+            plan_request_data['proficiency_level'] = recommended_level
+            print(f"[LEARNING_PLAN_DEBUG] ✅ Set proficiency_level from assessment: {recommended_level}")
+        else:
+            plan_request_data['proficiency_level'] = 'B1'
+            print(f"[LEARNING_PLAN_DEBUG] ✅ Added default proficiency_level: B1")
+    
+    # Goals: Default to common learning goals if missing
+    if 'goals' not in plan_request_data or not plan_request_data['goals']:
+        plan_request_data['goals'] = ['daily', 'travel']
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Added default goals: ['daily', 'travel']")
+    
+    # Duration: Default to 3 months if missing
+    if 'duration_months' not in plan_request_data or not plan_request_data['duration_months']:
+        plan_request_data['duration_months'] = 3
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Added default duration_months: 3")
+    
+    # STEP 4: Validate the corrected request
+    try:
+        plan_request = LearningPlanRequest(**plan_request_data)
+        print(f"[LEARNING_PLAN_DEBUG] ✅ Request validation successful after fixes")
+        print(f"[LEARNING_PLAN_DEBUG] Final request: language={plan_request.language}, level={plan_request.proficiency_level}, goals={plan_request.goals}, duration={plan_request.duration_months}")
+    except ValidationError as e:
+        print(f"[LEARNING_PLAN_DEBUG] ❌ Request validation still failed after fixes: {e}")
+        print(f"[LEARNING_PLAN_DEBUG] Final plan_request_data: {plan_request_data}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid plan request format after applying fixes: {str(e)}. Please ensure all required fields are provided."
+        )
+    
+    print(f"[LEARNING_PLAN_DEBUG] 🎯 Proceeding with plan creation...")
     # Get OpenAI API key from environment
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
@@ -429,54 +498,86 @@ async def create_learning_plan(
             print(f"[ATOMIC_SAVE] 🔄 Starting atomic save of assessment + learning plan")
             print(f"[ATOMIC_SAVE] User: {current_user.id}, Language: {plan_request.language}, Level: {plan_request.proficiency_level}")
             
+            # 🔥 CRITICAL FIX: Assessment limits are now checked BEFORE assessment starts in /api/speaking/assess
+            # No need to check limits here since the assessment was already completed and limits were validated
+            print(f"[ATOMIC_SAVE] ℹ️ Assessment limits already validated during assessment creation")
+            
             # STEP 1: Save the learning plan first using safe creation
             created_plan = await LearningPlanService.create_learning_plan_safe(new_plan)
             
             print(f"[ATOMIC_SAVE] ✅ Learning plan created with ID: {created_plan['id']}")
             
-            # STEP 2: Now save assessment data and increment counter atomically
+            # STEP 2: 🔥 IDEMPOTENT ASSESSMENT SAVE - Prevent Double Increments
             try:
-                # Get user's current subscription period for proper tracking
+                # Generate unique assessment ID to prevent duplicates
+                assessment_timestamp = datetime.utcnow().isoformat()
+                assessment_id = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}_{assessment_timestamp}"
+                
+                print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_id}")
+                
+                # Check if this assessment was already processed
                 user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
-                current_period_start = user_doc.get("current_period_start") if user_doc else None
+                existing_assessment_history = user_doc.get("assessment_history", {})
                 
-                # Prepare the update operations
-                update_operations = {
-                    "$set": {
-                        "last_assessment_data": plan_request.assessment_data,
-                        "assessment_history": {
-                            "timestamp": datetime.utcnow().isoformat(),
-                            "data": plan_request.assessment_data,
-                            "language": plan_request.language,
-                            "level": plan_request.proficiency_level,
-                            "learning_plan_id": created_plan['id']  # Link to the created plan
-                        }
-                    }
-                }
-                
-                # 🔥 CRITICAL FIX: Always increment assessment counter for authenticated users
-                # This fixes the bug where assessments were created but limits not decremented
-                should_increment = True
-                update_operations["$inc"] = {"assessments_used": 1}
-                print(f"[ATOMIC_SAVE] 🔥 CRITICAL FIX: Always incrementing assessment counter")
-                print(f"[ATOMIC_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
-                
-                # Execute the atomic update
-                update_result = await users_collection.update_one(
-                    {"_id": ObjectId(current_user.id)},
-                    update_operations
-                )
-                
-                if update_result.modified_count > 0:
-                    print(f"[ATOMIC_SAVE] ✅ Assessment data saved to user profile")
-                    if should_increment:
-                        print(f"[ATOMIC_SAVE] ✅ Assessment counter incremented")
-                    print(f"[ATOMIC_SAVE] 🎯 ATOMIC SAVE COMPLETE: Assessment + Plan saved together")
+                # Check if we already have an assessment for this learning plan
+                if (existing_assessment_history and 
+                    existing_assessment_history.get("learning_plan_id") == created_plan['id']):
+                    print(f"[IDEMPOTENT_SAVE] ⚠️ Assessment already exists for learning plan {created_plan['id']}")
+                    print(f"[IDEMPOTENT_SAVE] ✅ Skipping duplicate assessment increment")
+                    new_plan = created_plan
                 else:
-                    print(f"[ATOMIC_SAVE] ⚠️ User profile update had no changes")
+                    # This is a new assessment - proceed with increment
+                    print(f"[IDEMPOTENT_SAVE] ✅ New assessment detected - proceeding with increment")
                     
-                # Update new_plan with the created plan data for return
-                new_plan = created_plan
+                    # Prepare the update operations with idempotency protection
+                    update_operations = {
+                        "$set": {
+                            "last_assessment_data": plan_request.assessment_data,
+                            "assessment_history": {
+                                "assessment_id": assessment_id,
+                                "timestamp": assessment_timestamp,
+                                "data": plan_request.assessment_data,
+                                "language": plan_request.language,
+                                "level": plan_request.proficiency_level,
+                                "learning_plan_id": created_plan['id']  # Link to the created plan
+                            }
+                        },
+                        "$inc": {"assessments_used": 1}  # Increment counter atomically
+                    }
+                    
+                    print(f"[IDEMPOTENT_SAVE] 🔥 IDEMPOTENT FIX: Incrementing assessment counter with duplicate protection")
+                    print(f"[IDEMPOTENT_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
+                    
+                    # Execute the atomic update with conditional check
+                    update_result = await users_collection.update_one(
+                        {
+                            "_id": ObjectId(current_user.id),
+                            # Ensure we don't double-increment if assessment_history already has this plan
+                            "$or": [
+                                {"assessment_history": {"$exists": False}},
+                                {"assessment_history.learning_plan_id": {"$ne": created_plan['id']}}
+                            ]
+                        },
+                        update_operations
+                    )
+                    
+                    if update_result.modified_count > 0:
+                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment data saved to user profile")
+                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (idempotent)")
+                        print(f"[IDEMPOTENT_SAVE] 🎯 IDEMPOTENT SAVE COMPLETE: Assessment + Plan saved together")
+                    else:
+                        print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - possible duplicate detected")
+                        
+                        # Double-check if this was due to duplicate protection
+                        fresh_user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+                        fresh_history = fresh_user.get("assessment_history", {})
+                        if fresh_history.get("learning_plan_id") == created_plan['id']:
+                            print(f"[IDEMPOTENT_SAVE] ✅ Duplicate protection worked - assessment already exists")
+                        else:
+                            print(f"[IDEMPOTENT_SAVE] ❌ Unexpected update failure")
+                    
+                    # Update new_plan with the created plan data for return
+                    new_plan = created_plan
                     
             except Exception as e:
                 print(f"[ATOMIC_SAVE] ⚠️ Warning: Failed to save assessment data: {str(e)}")

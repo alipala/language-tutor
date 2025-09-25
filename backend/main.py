@@ -133,6 +133,10 @@ app.include_router(stripe_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include health ping routes
+from health_ping_routes import router as health_ping_router
+app.include_router(health_ping_router)
+
 # Include share routes
 from share_routes import router as share_router
 app.include_router(share_router)
@@ -148,6 +152,10 @@ app.include_router(voice_sample_router)
 # Include conversation help routes
 from conversation_help_routes import router as conversation_help_router
 app.include_router(conversation_help_router)
+
+# Include session heartbeat routes
+from session_heartbeat_routes import router as session_heartbeat_router
+app.include_router(session_heartbeat_router)
 
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
@@ -1813,6 +1821,31 @@ async def assess_sentence_construction(request: SentenceAssessmentRequest):
 @app.post("/api/speaking/assess", response_model=SpeakingAssessmentResponse)
 async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     try:
+        # 🔥 CRITICAL FIX: Check assessment limits BEFORE processing the assessment
+        if current_user:
+            try:
+                print(f"[ASSESSMENT_LIMIT_CHECK] 🔍 Checking assessment limits for user {current_user.id}")
+                
+                from subscription_service import SubscriptionService
+                can_access, access_message = await SubscriptionService.can_access_feature(current_user.id, "assessment")
+                
+                if not can_access:
+                    print(f"[ASSESSMENT_LIMIT_CHECK] ❌ Assessment blocked: {access_message}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=access_message
+                    )
+                
+                print(f"[ASSESSMENT_LIMIT_CHECK] ✅ Assessment limit check passed")
+                
+            except HTTPException:
+                # Re-raise HTTP exceptions (limit exceeded)
+                raise
+            except Exception as limit_error:
+                print(f"[ASSESSMENT_LIMIT_CHECK] ❌ Error checking limits: {str(limit_error)}")
+                # Continue with assessment if limit check fails (don't block user)
+                pass
+        
         # Transcribe audio if provided
         recognized_text = None
         if request.audio_base64:
@@ -1836,6 +1869,7 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
         )
         
         # 🔥 CRITICAL FIX: Track assessment usage AND save assessment data for authenticated users
+        # NOTE: We already checked limits above, so this should succeed
         if current_user:
             try:
                 print(f"[ASSESSMENT_TRACKING] Tracking assessment usage for user {current_user.id}")
