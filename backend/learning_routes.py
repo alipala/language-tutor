@@ -498,18 +498,9 @@ async def create_learning_plan(
             print(f"[ATOMIC_SAVE] 🔄 Starting atomic save of assessment + learning plan")
             print(f"[ATOMIC_SAVE] User: {current_user.id}, Language: {plan_request.language}, Level: {plan_request.proficiency_level}")
             
-            # 🔥 CRITICAL FIX: Check assessment limits BEFORE creating assessment
-            from subscription_service import SubscriptionService
-            can_access, access_message = await SubscriptionService.can_access_feature(current_user.id, "assessment")
-            
-            if not can_access:
-                print(f"[ATOMIC_SAVE] ❌ Assessment blocked: {access_message}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=access_message
-                )
-            
-            print(f"[ATOMIC_SAVE] ✅ Assessment limit check passed")
+            # 🔥 CRITICAL FIX: Assessment limits are now checked BEFORE assessment starts in /api/speaking/assess
+            # No need to check limits here since the assessment was already completed and limits were validated
+            print(f"[ATOMIC_SAVE] ℹ️ Assessment limits already validated during assessment creation")
             
             # STEP 1: Save the learning plan first using safe creation
             created_plan = await LearningPlanService.create_learning_plan_safe(new_plan)
