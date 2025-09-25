@@ -228,28 +228,87 @@ async def save_conversation(
 
 @router.get("/stats")
 async def get_progress_stats(current_user: UserResponse = Depends(get_current_user)):
-    """Get user's conversation statistics"""
+    """🔥 FIXED: Get user's conversation statistics INCLUDING learning plan sessions"""
     try:
-        print(f"[PROGRESS] Getting stats for user {current_user.id}")
+        print(f"[PROGRESS] 🔥 FIXED: Getting stats for user {current_user.id}")
         
-        # Get all user's sessions
+        # 🔥 CRITICAL FIX: Include BOTH conversation sessions AND learning plan sessions
+        
+        # Get conversation sessions (practice sessions)
         sessions_cursor = conversation_sessions_collection.find({"user_id": current_user.id})
-        sessions = await sessions_cursor.to_list(length=None)
+        conversation_sessions = await sessions_cursor.to_list(length=None)
         
-        # Calculate basic stats
-        total_sessions = len(sessions)
-        total_minutes = sum(session.get('duration_minutes', 0) for session in sessions)
+        conversation_total_sessions = len(conversation_sessions)
+        conversation_total_minutes = sum(session.get('duration_minutes', 0) for session in conversation_sessions)
         
-        # Calculate streak
+        print(f"[PROGRESS] 📝 Conversation sessions: {conversation_total_sessions} sessions, {conversation_total_minutes} minutes")
+        
+        # Get learning plan sessions
+        from database import database
+        learning_plans_collection = database["learning_plans"]
+        learning_plans_cursor = learning_plans_collection.find({"user_id": current_user.id})
+        learning_plans = await learning_plans_cursor.to_list(length=None)
+        
+        learning_plan_total_sessions = 0
+        learning_plan_total_minutes = 0.0
+        
+        for plan in learning_plans:
+            plan_sessions = plan.get("completed_sessions", 0)
+            plan_minutes = plan.get("practice_minutes_used", 0.0)
+            learning_plan_total_sessions += plan_sessions
+            learning_plan_total_minutes += plan_minutes
+            
+            print(f"[PROGRESS] 📚 Learning plan {plan.get('language', 'unknown')}: {plan_sessions} sessions, {plan_minutes} minutes")
+        
+        print(f"[PROGRESS] 📚 Learning plan totals: {learning_plan_total_sessions} sessions, {learning_plan_total_minutes} minutes")
+        
+        # 🔥 UNIFIED TOTALS: Combine both types of sessions
+        total_sessions = conversation_total_sessions + learning_plan_total_sessions
+        total_minutes = conversation_total_minutes + learning_plan_total_minutes
+        
+        print(f"[PROGRESS] 🎯 UNIFIED TOTALS: {total_sessions} sessions, {total_minutes} minutes")
+        
+        # Calculate streak (still based on conversation sessions for now)
         current_streak, longest_streak = await calculate_streaks(current_user.id)
         
-        # Calculate sessions this week/month
+        # Calculate sessions this week/month (include both types)
         now = datetime.utcnow()
         week_start = now - timedelta(days=7)
         month_start = now - timedelta(days=30)
         
-        sessions_this_week = len([s for s in sessions if s.get('created_at', datetime.min) >= week_start])
-        sessions_this_month = len([s for s in sessions if s.get('created_at', datetime.min) >= month_start])
+        # Count conversation sessions in time periods
+        conversation_sessions_this_week = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= week_start])
+        conversation_sessions_this_month = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= month_start])
+        
+        # Count learning plan sessions in time periods (approximate based on updated_at)
+        learning_plan_sessions_this_week = 0
+        learning_plan_sessions_this_month = 0
+        
+        for plan in learning_plans:
+            plan_updated = plan.get('updated_at')
+            if plan_updated:
+                if isinstance(plan_updated, str):
+                    try:
+                        plan_updated = datetime.fromisoformat(plan_updated.replace('Z', '+00:00')).replace(tzinfo=None)
+                    except:
+                        plan_updated = datetime.min
+                
+                if plan_updated >= week_start:
+                    # Estimate sessions this week (could be more precise with session_details)
+                    recent_sessions = min(plan.get("completed_sessions", 0), 2)  # Max 2 sessions per week
+                    learning_plan_sessions_this_week += recent_sessions
+                
+                if plan_updated >= month_start:
+                    # Estimate sessions this month
+                    recent_sessions = plan.get("completed_sessions", 0)
+                    learning_plan_sessions_this_month += recent_sessions
+        
+        # Combine totals
+        sessions_this_week = conversation_sessions_this_week + learning_plan_sessions_this_week
+        sessions_this_month = conversation_sessions_this_month + learning_plan_sessions_this_month
+        
+        print(f"[PROGRESS] 📊 This week: {sessions_this_week} sessions ({conversation_sessions_this_week} conversation + {learning_plan_sessions_this_week} learning plan)")
+        print(f"[PROGRESS] 📊 This month: {sessions_this_month} sessions ({conversation_sessions_this_month} conversation + {learning_plan_sessions_this_month} learning plan)")
         
         stats = ConversationStats(
             total_sessions=total_sessions,
@@ -260,7 +319,7 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
             sessions_this_month=sessions_this_month
         )
         
-        print(f"[PROGRESS] ✅ Stats calculated: {stats.dict()}")
+        print(f"[PROGRESS] ✅ FIXED STATS calculated: {stats.dict()}")
         return stats
         
     except Exception as e:

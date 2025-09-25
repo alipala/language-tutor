@@ -243,14 +243,100 @@ async def create_customer_portal_session(
 async def get_subscription_status(
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get comprehensive subscription status using OptimizedSubscriptionService"""
+    """🔥 FIXED: Get comprehensive subscription status with CORRECT minute calculation"""
     try:
-        # Import the optimized service
-        from subscription_service_optimized import OptimizedSubscriptionService
+        # 🔥 CRITICAL FIX: Calculate minutes directly from user's practice_minutes_used
+        # This ensures frontend shows the SAME minutes as the bulletproof tracking system
         
-        # Use the optimized version for better performance
-        status = await OptimizedSubscriptionService.get_user_subscription_status_optimized(current_user.id)
-        return status.dict()
+        from bson import ObjectId
+        
+        # Get user document directly from database
+        user_doc = await database["users"].find_one({"_id": ObjectId(current_user.id)})
+        if not user_doc:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get subscription details
+        subscription_status = user_doc.get("subscription_status", "free")
+        subscription_plan = user_doc.get("subscription_plan", "try_learn")
+        subscription_period = user_doc.get("subscription_period", "monthly")
+        practice_minutes_used = user_doc.get("practice_minutes_used", 0.0)
+        practice_sessions_used = user_doc.get("practice_sessions_used", 0)
+        assessments_used = user_doc.get("assessments_used", 0)
+        
+        logger.info(f"[SUBSCRIPTION_STATUS] 🔥 FIXED CALCULATION for user {current_user.id}")
+        logger.info(f"[SUBSCRIPTION_STATUS] Plan: {subscription_plan} ({subscription_period})")
+        logger.info(f"[SUBSCRIPTION_STATUS] Minutes used: {practice_minutes_used}")
+        logger.info(f"[SUBSCRIPTION_STATUS] Sessions used: {practice_sessions_used}")
+        
+        # Calculate limits based on subscription plan (SAME logic as bulletproof tracker)
+        if subscription_plan == "team_mastery":
+            # Team Mastery: Unlimited everything
+            limits = {
+                "is_unlimited": True,
+                "minutes_limit": -1,
+                "minutes_used": practice_minutes_used,
+                "minutes_remaining": -1,
+                "sessions_limit": -1,
+                "sessions_used": practice_sessions_used,
+                "sessions_remaining": -1,
+                "assessments_limit": -1,
+                "assessments_used": assessments_used,
+                "assessments_remaining": -1
+            }
+        elif subscription_plan == "fluency_builder":
+            # Fluency Builder: Limited minutes and assessments, unlimited sessions
+            if subscription_period == "annual":
+                minutes_limit = 1800  # 1800 minutes annually
+            else:
+                minutes_limit = 150   # 150 minutes monthly
+            
+            minutes_remaining = max(0, minutes_limit - practice_minutes_used)
+            
+            limits = {
+                "is_unlimited": False,
+                "minutes_limit": minutes_limit,
+                "minutes_used": practice_minutes_used,
+                "minutes_remaining": minutes_remaining,
+                "sessions_limit": -1,  # Unlimited sessions
+                "sessions_used": practice_sessions_used,
+                "sessions_remaining": -1,
+                "assessments_limit": 5,  # 5 assessments per period
+                "assessments_used": assessments_used,
+                "assessments_remaining": max(0, 5 - assessments_used)
+            }
+            
+            logger.info(f"[SUBSCRIPTION_STATUS] ✅ Fluency Builder: {minutes_remaining}/{minutes_limit} minutes remaining")
+        else:  # try_learn
+            # Try & Learn: Limited everything
+            minutes_remaining = max(0, 15 - practice_minutes_used)
+            
+            limits = {
+                "is_unlimited": False,
+                "minutes_limit": 15,
+                "minutes_used": practice_minutes_used,
+                "minutes_remaining": minutes_remaining,
+                "sessions_limit": 3,
+                "sessions_used": practice_sessions_used,
+                "sessions_remaining": max(0, 3 - practice_sessions_used),
+                "assessments_limit": 1,
+                "assessments_used": assessments_used,
+                "assessments_remaining": max(0, 1 - assessments_used)
+            }
+        
+        # Build response with correct data
+        response = {
+            "status": subscription_status,
+            "plan": subscription_plan,
+            "period": subscription_period,
+            "limits": limits,
+            "is_in_trial": user_doc.get("is_in_trial", False),
+            "trial_end_date": user_doc.get("trial_end_date"),
+            "trial_days_remaining": None  # Could calculate if needed
+        }
+        
+        logger.info(f"[SUBSCRIPTION_STATUS] ✅ FIXED: Frontend will now show correct minutes!")
+        return response
+        
     except Exception as e:
         logger.error(f"Error getting subscription status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
