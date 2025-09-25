@@ -153,6 +153,10 @@ app.include_router(voice_sample_router)
 from conversation_help_routes import router as conversation_help_router
 app.include_router(conversation_help_router)
 
+# Include session heartbeat routes
+from session_heartbeat_routes import router as session_heartbeat_router
+app.include_router(session_heartbeat_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
