@@ -338,11 +338,12 @@ if os.getenv("ENVIRONMENT") == "development":
 async def test_endpoint():
     return {"message": "Language Tutor API is running"}
 
-# Simple, fast health check endpoint that doesn't depend on external services
+# Enhanced health check endpoint with comprehensive error handling
 @app.get("/health")
 @app.get("/api/health")  # Add an additional route to match frontend expectations
 async def health_check():
     import time
+    import platform
     
     try:
         # Current timestamp
@@ -352,19 +353,8 @@ async def health_check():
         environment = os.getenv("ENVIRONMENT", "production")
         is_railway = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true"
         
-        # Simple health status - don't check database or external services for speed
-        health_status = {
-            "status": "ok",
-            "timestamp": current_time,
-            "environment": environment,
-            "railway": is_railway,
-            "port": os.getenv("PORT", "3001"),
-            "service": "language-tutor-backend",
-            "python_version": "3.11"
-        }
-        
         # Quick configuration checks (no network calls)
-        health_status["openai_configured"] = os.getenv("OPENAI_API_KEY") is not None
+        openai_configured = os.getenv("OPENAI_API_KEY") is not None
         
         # Check if MongoDB URL is configured (don't test connection)
         mongodb_configured = False
@@ -372,18 +362,70 @@ async def health_check():
             if os.getenv(var_name):
                 mongodb_configured = True
                 break
-        health_status["mongodb_configured"] = mongodb_configured
         
+        # Enhanced health status with both flat and nested structure for compatibility
+        health_status = {
+            "status": "ok",
+            "timestamp": current_time,
+            "environment": environment,
+            "railway": is_railway,
+            "port": os.getenv("PORT", "3001"),
+            "service": "language-tutor-backend",
+            "python_version": "3.11",
+            "openai_configured": openai_configured,
+            "mongodb_configured": mongodb_configured,
+            "version": "1.0.0",
+            "uptime": current_time,
+            # Add nested system_info for backward compatibility with legacy frontend code
+            "system_info": {
+                "python_version": "3.11",
+                "platform": platform.system(),
+                "timestamp": current_time,
+                "environment": environment,
+                "railway": is_railway
+            },
+            "api_routes": [
+                "/api/health",
+                "/api/test",
+                "/api/realtime/token",
+                "/api/speaking/assess",
+                "/api/sentence/assess",
+                "/auth/login",
+                "/auth/signup"
+            ]
+        }
+        
+        print(f"[HEALTH_CHECK] ✅ Health check successful: {health_status['status']}")
         return health_status
         
     except Exception as e:
+        error_message = str(e)
+        print(f"[HEALTH_CHECK] ❌ Health check error: {error_message}")
+        
         # Even if there's an error, return a 200 status so Railway doesn't think the service is down
-        return {
+        # But provide both flat and nested error information
+        error_response = {
             "status": "error",
-            "error": str(e),
+            "error": error_message,
             "timestamp": time.time(),
-            "service": "language-tutor-backend"
+            "service": "language-tutor-backend",
+            "environment": os.getenv("ENVIRONMENT", "production"),
+            "railway": os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true",
+            "port": os.getenv("PORT", "3001"),
+            "python_version": "3.11",
+            "openai_configured": False,
+            "mongodb_configured": False,
+            # Add nested system_info for backward compatibility
+            "system_info": {
+                "python_version": "3.11",
+                "platform": "unknown",
+                "timestamp": time.time(),
+                "environment": os.getenv("ENVIRONMENT", "production"),
+                "railway": os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true"
+            }
         }
+        
+        return error_response
 
 # Define models for request validation
 class TutorSessionRequest(BaseModel):
