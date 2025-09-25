@@ -828,7 +828,7 @@ export default function ProfilePage() {
                           <span className="font-medium">Assessments</span>
                           <span className="font-bold text-sm md:text-lg">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
-                             `${subscriptionStatus.limits.assessments_remaining}/${subscriptionStatus.limits.assessments_limit}`}
+                             `${subscriptionStatus.limits.assessments_used}/${subscriptionStatus.limits.assessments_limit}`}
                           </span>
                         </div>
                       </div>
