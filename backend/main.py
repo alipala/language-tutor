@@ -133,6 +133,10 @@ app.include_router(stripe_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include health ping routes
+from health_ping_routes import router as health_ping_router
+app.include_router(health_ping_router)
+
 # Include share routes
 from share_routes import router as share_router
 app.include_router(share_router)
