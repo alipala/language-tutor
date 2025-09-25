@@ -218,6 +218,12 @@ class BulletproofSubscriptionServiceNoTransactions:
             else:
                 logger.info(f"[BULLETPROOF_TRACKING] ℹ️ Session not completed or no deduction - not counting session")
             
+            # Step 10: 🔥 NEW FIX: Create conversation_session for frontend display
+            if session_completed and deducted_amount > 0:
+                await BulletproofTracker.create_conversation_session_for_billing(
+                    user_id, session_id, speaking_minutes, session_completed
+                )
+            
             logger.info(f"[BULLETPROOF_TRACKING] ✅ SUCCESS: Deducted {deducted_amount} minutes")
             logger.info(f"[BULLETPROOF_TRACKING] ✅ User {user_id}: {current_remaining} → {new_remaining} minutes")
             
@@ -252,6 +258,86 @@ class BulletproofSubscriptionServiceNoTransactions:
         except Exception as e:
             logger.error(f"[BULLETPROOF_TRACKING] Error getting remaining time: {str(e)}")
             return None
+    
+    @staticmethod
+    async def create_conversation_session_for_billing(user_id: str, session_id: str, minutes: float, session_completed: bool):
+        """🔥 BILLING BRIDGE: Create conversation_session record when billing tracking occurs"""
+        try:
+            from bson import ObjectId
+            from datetime import datetime
+            
+            # Only create conversation sessions for completed sessions (>=2 minutes)
+            if not session_completed or minutes < 2.0:
+                logger.info(f"[BILLING_BRIDGE] Skipping conversation session - not completed or too short: {minutes} min")
+                return
+            
+            # Convert user_id to ObjectId (use same logic as main tracking)
+            user_object_id = None
+            users_collection = database["users"]
+            
+            # Try ObjectId first
+            try:
+                user_object_id = ObjectId(user_id)
+                user_doc = await users_collection.find_one({"_id": user_object_id})
+                if not user_doc:
+                    user_object_id = None
+            except:
+                user_object_id = None
+            
+            # Fallback to string ID
+            if not user_object_id:
+                user_doc = await users_collection.find_one({"_id": user_id})
+                if user_doc:
+                    user_object_id = user_id
+            
+            if not user_object_id:
+                logger.error(f"[BILLING_BRIDGE] ❌ User not found for conversation session: {user_id}")
+                return
+            
+            # Check if conversation session already exists for this session_id
+            conversation_sessions_collection = database["conversation_sessions"]
+            existing_session = await conversation_sessions_collection.find_one({
+                "user_id": user_object_id,
+                "session_id": session_id
+            })
+            
+            if existing_session:
+                logger.info(f"[BILLING_BRIDGE] Conversation session already exists for {session_id}")
+                return
+            
+            # Create conversation session document
+            integer_minutes = min(5, max(2, int(round(minutes))))  # Enforce 2-5 minute range
+            
+            session_doc = {
+                "user_id": user_object_id,
+                "session_id": session_id,  # Link to billing session
+                "language": "english",  # Default - could be enhanced later
+                "level": "B1",  # Default - could be enhanced later  
+                "topic": f"Practice Session ({integer_minutes} min)",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Practice session tracked by billing system",
+                        "timestamp": datetime.utcnow()
+                    }
+                ],
+                "duration_minutes": integer_minutes,
+                "message_count": 1,
+                "summary": f"Practice session - {integer_minutes} minutes",
+                "enhanced_analysis": None,
+                "is_streak_eligible": integer_minutes >= 5,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "source": "billing_tracker"  # Mark as created by billing system
+            }
+            
+            # Insert the conversation session
+            result = await conversation_sessions_collection.insert_one(session_doc)
+            logger.info(f"[BILLING_BRIDGE] ✅ Created conversation session {result.inserted_id} for billing session {session_id}")
+            
+        except Exception as e:
+            logger.error(f"[BILLING_BRIDGE] ❌ Error creating conversation session: {str(e)}")
+            # Don't raise - this is supplementary functionality
 
 # Export the fixed service
 BulletproofTracker = BulletproofSubscriptionServiceNoTransactions
