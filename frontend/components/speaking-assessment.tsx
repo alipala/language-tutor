@@ -1010,22 +1010,7 @@ export default function SpeakingAssessment({
         </div>
       )}
       
-      {/* Error Message*/}
-      {error && (
-        <div className="bg-[#FFF8F8] border border-[#F75A5A] rounded-lg p-6 mb-6 shadow-md">
-          <div className="flex items-center space-x-3 text-[#F75A5A]">
-            <AlertCircle className="h-6 w-6" />
-            <h3 className="text-lg font-semibold">Error</h3>
-          </div>
-          <p className="mt-2 text-[#333333]">{error}</p>
-          <Button 
-            onClick={() => setError('')}
-            className="mt-4 bg-white hover:bg-gray-100 text-[#F75A5A] px-4 py-2 rounded-md text-sm font-medium shadow-md transition-all duration-300 border border-[#F75A5A]/30"
-          >
-            Dismiss
-          </Button>
-        </div>
-      )}
+      {/* Error messages are now handled by the top-right notification system */}
       
       {/* Manual Level Selection button removed*/}
       

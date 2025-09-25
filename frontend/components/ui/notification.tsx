@@ -44,28 +44,70 @@ export default function Notification({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-400" />;
+        return <CheckCircle className={`h-5 w-5 ${getIconColor()}`} />;
       case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-400" />;
+        return <AlertCircle className={`h-5 w-5 ${getIconColor()}`} />;
       case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-400" />;
+        return <AlertCircle className={`h-5 w-5 ${getIconColor()}`} />;
       case 'info':
       default:
-        return <Info className="h-5 w-5 text-blue-400" />;
+        return <Info className={`h-5 w-5 ${getIconColor()}`} />;
     }
   };
 
   const getBackgroundColor = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-900/90 border-green-700';
+        return 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200 shadow-emerald-100/50';
       case 'error':
-        return 'bg-red-900/90 border-red-700';
+        return 'bg-gradient-to-r from-rose-50 to-pink-50 border-rose-200 shadow-rose-100/50';
       case 'warning':
-        return 'bg-yellow-900/90 border-yellow-700';
+        return 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-amber-100/50';
       case 'info':
       default:
-        return 'bg-blue-900/90 border-blue-700';
+        return 'bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200 shadow-teal-100/50';
+    }
+  };
+
+  const getTextColor = () => {
+    switch (type) {
+      case 'success':
+        return 'text-emerald-800';
+      case 'error':
+        return 'text-rose-800';
+      case 'warning':
+        return 'text-amber-800';
+      case 'info':
+      default:
+        return 'text-teal-800';
+    }
+  };
+
+  const getIconColor = () => {
+    switch (type) {
+      case 'success':
+        return 'text-emerald-600';
+      case 'error':
+        return 'text-rose-600';
+      case 'warning':
+        return 'text-amber-600';
+      case 'info':
+      default:
+        return 'text-teal-600';
+    }
+  };
+
+  const getProgressColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-emerald-400';
+      case 'error':
+        return 'bg-rose-400';
+      case 'warning':
+        return 'bg-amber-400';
+      case 'info':
+      default:
+        return 'bg-teal-400';
     }
   };
 
@@ -83,11 +125,11 @@ export default function Notification({
             {getIcon()}
           </div>
           <div className="ml-3 flex-1">
-            <p className="text-sm font-medium text-white">{message}</p>
+            <p className={`text-sm font-medium ${getTextColor()}`}>{message}</p>
           </div>
           <div className="ml-4 flex-shrink-0 flex">
             <button
-              className="bg-transparent rounded-md inline-flex text-gray-400 hover:text-gray-200 focus:outline-none"
+              className={`bg-transparent rounded-md inline-flex ${getTextColor()} hover:opacity-70 focus:outline-none transition-opacity`}
               onClick={() => {
                 setIsVisible(false);
                 setTimeout(onClose, 300);
@@ -99,9 +141,9 @@ export default function Notification({
           </div>
         </div>
         {autoClose && (
-          <div className="h-1 bg-gray-700 rounded-b-lg overflow-hidden">
+          <div className="h-1 bg-white/20 rounded-b-lg overflow-hidden">
             <div 
-              className={`h-full ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`}
+              className={`h-full ${getProgressColor()}`}
               style={{ 
                 width: '100%', 
                 animation: `shrink ${duration}ms linear forwards` 
