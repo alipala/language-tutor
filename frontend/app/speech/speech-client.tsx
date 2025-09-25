@@ -1604,6 +1604,154 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     };
   }, [user, conversationStartTime, sessionCompleted, conversationTimeUp, language, level, processedMessages.length]);
 
+  // Bulletproof session saving function with multiple fallbacks - MOVED TO COMPONENT LEVEL
+  const saveSessionWithFallbacks = useCallback(async (exitType: string, isSync: boolean = false) => {
+    if (!user || !processedMessages.length || sessionCompleted || !conversationStartTime) {
+      return false;
+    }
+
+    const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+    
+    // Only save meaningful sessions (>30 seconds)
+    if (durationMinutes <= 0.5) {
+      return false;
+    }
+
+    console.log(`[BULLETPROOF_EXIT] Saving ${exitType} session:`, durationMinutes.toFixed(1), 'minutes');
+    
+    const integerDuration = durationMinutes >= 5.0 ? 5 : Math.max(1, Math.round(durationMinutes));
+    
+    const messagesToSave = processedMessages.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp || new Date().toISOString()
+    }));
+    
+    const conversationData = {
+      language,
+      level,
+      topic,
+      messages: messagesToSave,
+      duration_minutes: integerDuration,
+      learning_plan_id: null,
+      conversation_type: 'practice',
+      exit_type: exitType,
+      session_id: `${user._id}_${conversationStartTime}`,
+      timestamp: Date.now()
+    };
+    
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+
+    // Strategy 1: sendBeacon (most reliable for page unload)
+    if (navigator.sendBeacon && !isSync) {
+      try {
+        const blob = new Blob([JSON.stringify(conversationData)], { type: 'application/json' });
+        const success = navigator.sendBeacon(
+          `${window.location.origin}/api/progress/save-conversation`,
+          blob
+        );
+        
+        if (success) {
+          console.log(`[BULLETPROOF_EXIT] ✅ Beacon saved ${exitType}:`, `${integerDuration}min`);
+          
+          // Also track speaking time via beacon
+          try {
+            const speakingTimeData = {
+              user_id: user._id,
+              session_id: `${user._id}_${conversationStartTime || Date.now()}`,
+              speaking_minutes: durationMinutes,
+              session_completed: durationMinutes >= 5
+            };
+            const speakingTimeBlob = new Blob([JSON.stringify(speakingTimeData)], { type: 'application/json' });
+            const speakingTimeSuccess = navigator.sendBeacon(
+              `${window.location.origin}/api/stripe/track-speaking-time`,
+              speakingTimeBlob
+            );
+            console.log(`[BULLETPROOF_EXIT] ✅ Speaking time beacon:`, speakingTimeSuccess, `${durationMinutes.toFixed(1)}min`);
+          } catch (speakingTimeError) {
+            console.error(`[BULLETPROOF_EXIT] Speaking time beacon failed:`, speakingTimeError);
+          }
+          
+          // Mark as saved to prevent duplicate saves
+          sessionStorage.setItem(`session_saved_${conversationStartTime}`, 'true');
+          return true;
+        }
+      } catch (error) {
+        console.error(`[BULLETPROOF_EXIT] Beacon failed for ${exitType}:`, error);
+      }
+    }
+
+    // Strategy 2: Synchronous fetch (for immediate exits)
+    if (isSync) {
+      try {
+        const response = await fetch(`${window.location.origin}/api/progress/save-conversation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(conversationData),
+          keepalive: true // Keep request alive even if page unloads
+        });
+
+        if (response.ok) {
+          console.log(`[BULLETPROOF_EXIT] ✅ Sync fetch saved ${exitType}:`, `${integerDuration}min`);
+          
+          // Also track speaking time via sync fetch
+          try {
+            const speakingTimeResponse = await fetch(`${window.location.origin}/api/stripe/track-speaking-time`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                user_id: user._id,
+                session_id: `${user._id}_${conversationStartTime || Date.now()}`,
+                speaking_minutes: durationMinutes,
+                session_completed: durationMinutes >= 5
+              }),
+              keepalive: true
+            });
+            
+            if (speakingTimeResponse.ok) {
+              console.log(`[BULLETPROOF_EXIT] ✅ Speaking time sync tracked:`, `${durationMinutes.toFixed(1)}min`);
+            } else {
+              console.warn(`[BULLETPROOF_EXIT] ⚠️ Speaking time sync failed:`, speakingTimeResponse.status);
+            }
+          } catch (speakingTimeError) {
+            console.error(`[BULLETPROOF_EXIT] Speaking time sync error:`, speakingTimeError);
+          }
+          
+          sessionStorage.setItem(`session_saved_${conversationStartTime}`, 'true');
+          return true;
+        }
+      } catch (error) {
+        console.error(`[BULLETPROOF_EXIT] Sync fetch failed for ${exitType}:`, error);
+      }
+    }
+
+    // Strategy 3: localStorage backup (always as fallback)
+    const backupKey = `session_backup_${Date.now()}_${exitType}`;
+    const backupData = {
+      ...conversationData,
+      token: token,
+      backup_reason: `${exitType}_fallback`,
+      retry_count: 0,
+      max_retries: 3
+    };
+    
+    try {
+      localStorage.setItem(backupKey, JSON.stringify(backupData));
+      console.log(`[BULLETPROOF_EXIT] 💾 Backup stored for ${exitType}:`, backupKey, `${integerDuration}min`);
+      return true;
+    } catch (error) {
+      console.error(`[BULLETPROOF_EXIT] ❌ Even localStorage backup failed for ${exitType}:`, error);
+      return false;
+    }
+  }, [user, processedMessages, sessionCompleted, conversationStartTime, language, level, topic]);
+
   // localStorage backup recovery system
   useEffect(() => {
     // Check for and recover any backup session data on component mount
@@ -2021,8 +2169,33 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     };
   }, [user, processedMessages.length, sessionCompleted, conversationStartTime]);
   
-  // Handle leave conversation
-  const handleLeaveConversation = () => {
+  // Handle leave conversation - FIXED: Now saves session before navigation
+  const handleLeaveConversation = async () => {
+    console.log('[MODAL_EXIT] User confirmed leave via modal - saving session first');
+    
+    // 🔧 CRITICAL FIX: Save session before navigation using existing bulletproof system
+    if (user && processedMessages.length > 0 && conversationStartTime && !sessionCompleted) {
+      const durationMinutes = (Date.now() - conversationStartTime) / (1000 * 60);
+      
+      // Only save meaningful sessions (>30 seconds)
+      if (durationMinutes > 0.5) {
+        console.log(`[MODAL_EXIT] Saving ${durationMinutes.toFixed(1)}min session before dashboard navigation`);
+        
+        try {
+          // Use the existing bulletproof session saving system with sync mode for immediate response
+          const saveResult = await saveSessionWithFallbacks('modal_confirmation', true);
+          console.log('[MODAL_EXIT] Session save result:', saveResult);
+        } catch (error) {
+          console.error('[MODAL_EXIT] Error saving session:', error);
+          // Continue with navigation even if save fails (user intent is clear)
+        }
+      } else {
+        console.log('[MODAL_EXIT] Session too short to save:', durationMinutes.toFixed(1), 'minutes');
+      }
+    } else {
+      console.log('[MODAL_EXIT] No active session to save - proceeding with navigation');
+    }
+    
     // Navigate away from the conversation
     router.push('/');
   };
