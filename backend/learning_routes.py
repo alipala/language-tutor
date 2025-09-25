@@ -954,65 +954,61 @@ async def save_session_summary(
         current_minutes_used = learning_plan.get("practice_minutes_used", 0.0)
         new_minutes_used = current_minutes_used + duration_minutes
         
-        # IMPROVED UNIFIED TRACKING: Use new unified session tracker
+        # 🔥 CRITICAL FIX: Call the fixed /api/stripe/track-speaking-time endpoint
+        # This ensures learning plan sessions use the same fixed minute deduction logic
         subscription_tracked = False
         session_counted = False
         
         try:
-            from improved_subscription_service import UnifiedSessionTracker
+            from models import SpeakingTimeTrackingRequest
+            from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
             
-            print(f"[SESSION_SUMMARY] 🔄 IMPROVED UNIFIED TRACKING: Using new unified system...")
+            print(f"[SESSION_SUMMARY] 🔥 CRITICAL FIX: Using fixed bulletproof tracking system...")
             
             # Generate session ID for learning plan session
             import uuid
             learning_plan_session_id = f"learning_plan_{plan_id}_{session_number}_{uuid.uuid4()}"
             
-            # Use the unified session tracker
-            tracking_result = await UnifiedSessionTracker.track_session_unified(
+            # Create tracking request (same as /api/stripe/track-speaking-time endpoint)
+            tracking_request = SpeakingTimeTrackingRequest(
                 user_id=str(current_user.id),
                 session_id=learning_plan_session_id,
-                duration_minutes=duration_minutes,
-                session_type="learning_plan",
-                learning_plan_id=plan_id
+                speaking_minutes=duration_minutes,
+                session_completed=duration_minutes >= 2  # Same business rules as practice sessions
             )
             
-            if tracking_result["success"]:
-                if tracking_result.get("already_tracked"):
-                    subscription_tracked = True
-                    session_counted = False  # Already handled
-                    print(f"[SESSION_SUMMARY] ✅ Session already tracked (idempotent)")
-                elif tracking_result.get("not_tracked"):
-                    subscription_tracked = True  # Still success
-                    session_counted = False
-                    print(f"[SESSION_SUMMARY] ℹ️ Session not tracked: {tracking_result['reason']}")
-                else:
-                    subscription_tracked = True
-                    session_counted = tracking_result.get("session_complete", False)
-                    print(f"[SESSION_SUMMARY] ✅ IMPROVED UNIFIED TRACKING successful:")
-                    print(f"[SESSION_SUMMARY]    User: {getattr(current_user, 'email', current_user.id)}")
-                    print(f"[SESSION_SUMMARY]    Duration tracked: {tracking_result.get('duration_tracked')} minutes")
-                    print(f"[SESSION_SUMMARY]    Session complete: {session_counted}")
-                    print(f"[SESSION_SUMMARY]    Total minutes: {tracking_result.get('total_minutes')}")
-                    print(f"[SESSION_SUMMARY]    Total sessions: {tracking_result.get('total_sessions')}")
+            print(f"[SESSION_SUMMARY] 📋 Tracking request:")
+            print(f"[SESSION_SUMMARY]    User: {current_user.id}")
+            print(f"[SESSION_SUMMARY]    Session ID: {learning_plan_session_id}")
+            print(f"[SESSION_SUMMARY]    Duration: {duration_minutes} minutes")
+            print(f"[SESSION_SUMMARY]    Completed: {tracking_request.session_completed}")
+            
+            # Use the SAME bulletproof tracking system as /api/stripe/track-speaking-time
+            tracking_success = await BulletproofTracker.track_speaking_time_atomic(tracking_request)
+            
+            if tracking_success:
+                subscription_tracked = True
+                session_counted = tracking_request.session_completed
+                print(f"[SESSION_SUMMARY] ✅ BULLETPROOF TRACKING successful:")
+                print(f"[SESSION_SUMMARY]    User: {getattr(current_user, 'email', current_user.id)}")
+                print(f"[SESSION_SUMMARY]    Duration tracked: {duration_minutes} minutes")
+                print(f"[SESSION_SUMMARY]    Session complete: {session_counted}")
+                print(f"[SESSION_SUMMARY]    Using SAME system as practice sessions!")
                 
                 session_detail["subscription_tracked"] = True
                 session_detail["session_counted"] = session_counted
             else:
-                if tracking_result.get("limits_exceeded"):
-                    print(f"[SESSION_SUMMARY] ❌ Subscription limits exceeded: {tracking_result['error']}")
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Subscription limit exceeded: {tracking_result['error']}"
-                    )
-                else:
-                    print(f"[SESSION_SUMMARY] ❌ IMPROVED UNIFIED TRACKING failed: {tracking_result['error']}")
-                    raise Exception(f"Session tracking failed: {tracking_result['error']}")
+                print(f"[SESSION_SUMMARY] ❌ BULLETPROOF TRACKING failed - insufficient balance or limits exceeded")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Subscription limit exceeded - not enough minutes remaining"
+                )
                 
         except HTTPException:
             # Re-raise HTTP exceptions as-is
             raise
         except Exception as usage_error:
-            print(f"[SESSION_SUMMARY] ❌ IMPROVED UNIFIED TRACKING error: {str(usage_error)}")
+            print(f"[SESSION_SUMMARY] ❌ BULLETPROOF TRACKING error: {str(usage_error)}")
             import traceback
             traceback.print_exc()
             
