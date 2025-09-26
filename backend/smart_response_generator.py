@@ -208,33 +208,35 @@ class SmartResponseGenerator:
         time_budget: float
     ) -> ResponseStrategy:
         """
-        Intelligent strategy selection based on context and constraints.
-        Prioritizes quality while respecting time constraints.
+        COMPLETELY CONTEXT-AWARE strategy selection.
+        NO MORE IRRELEVANT TEMPLATE RESPONSES!
         """
         
-        # Strategy 1: Learning Plan Enhanced (for custom learning plan sessions)
-        if learning_plan_context and context_analysis.confidence_score > 0.6:
-            if time_budget >= 6.0:  # Need time for learning plan integration
-                return ResponseStrategy.LEARNING_PLAN_ENHANCED
+        print(f"[STRATEGY_SELECTION] Intent: {context_analysis.intent.value}, Confidence: {context_analysis.confidence_score:.2f}")
+        print(f"[STRATEGY_SELECTION] Complexity: {context_analysis.complexity_level}/10")
+        print(f"[STRATEGY_SELECTION] Time budget: {time_budget}s")
         
-        # Strategy 2: GPT-4o Smart (for complex pedagogical situations)
-        if (context_analysis.complexity_level >= 7 and 
-            context_analysis.confidence_score > 0.7 and 
-            time_budget >= 5.0):
+        # Strategy 1: Learning Plan Enhanced (for custom learning plan sessions)
+        if learning_plan_context and time_budget >= 5.0:
+            print(f"[STRATEGY_SELECTION] → LEARNING_PLAN_ENHANCED (has learning plan context)")
+            return ResponseStrategy.LEARNING_PLAN_ENHANCED
+        
+        # Strategy 2: GPT-4o Smart (for complex situations that need deep understanding)
+        if context_analysis.complexity_level >= 6 and time_budget >= 5.0:
+            print(f"[STRATEGY_SELECTION] → GPT4O_SMART (high complexity: {context_analysis.complexity_level})")
             return ResponseStrategy.GPT4O_SMART
         
-        # Strategy 3: Template Fast (for predictable intents - lowered threshold for reliability)
-        if (context_analysis.confidence_score > 0.5 and 
-            context_analysis.intent in self.intent_response_templates and
-            context_analysis.detected_language in ["english", "dutch", "spanish", "french", "german", "portuguese", "italian"]):
+        # Strategy 3: NEVER USE TEMPLATES UNLESS 100% CONFIDENT AND RELEVANT
+        # Only use templates for extremely high confidence (>0.9) and very simple, predictable cases
+        if (context_analysis.confidence_score > 0.9 and 
+            context_analysis.intent in [ConversationIntent.ENCOURAGEMENT] and  # Only for very simple cases
+            context_analysis.complexity_level <= 3):
+            print(f"[STRATEGY_SELECTION] → TEMPLATE_FAST (ultra-high confidence: {context_analysis.confidence_score:.2f})")
             return ResponseStrategy.TEMPLATE_FAST
         
-        # Strategy 4: Template Fast fallback (for any recognized intent with supported language)
-        if (context_analysis.intent in self.intent_response_templates and
-            context_analysis.detected_language in ["english", "dutch", "spanish"]):
-            return ResponseStrategy.TEMPLATE_FAST
-        
-        # Strategy 5: GPT-4o-mini Standard (only when templates aren't available)
+        # Strategy 4: DEFAULT - Always use GPT-4o-mini for context-aware responses
+        # This ensures we ALWAYS get contextually relevant responses
+        print(f"[STRATEGY_SELECTION] → GPT4O_MINI_STANDARD (context-aware generation)")
         return ResponseStrategy.GPT4O_MINI_STANDARD
     
     async def _generate_response_by_strategy(
@@ -485,21 +487,37 @@ Respond in JSON:
         request: ConversationHelpRequest,
         context: ResponseGenerationContext
     ) -> ConversationHelpResponse:
-        """Generate standard response using GPT-4o-mini (improved version of current system)"""
+        """Generate HIGHLY CONTEXT-AWARE response using GPT-4o-mini"""
         
-        print(f"[GPT4O_MINI] 🔄 Generating standard response")
+        print(f"[GPT4O_MINI] 🔄 Generating CONTEXT-AWARE response")
         
-        # Enhanced prompt with context analysis
-        enhanced_prompt = f"""AI tutor said: "{request.ai_response[:250]}"
+        # ULTRA-DETAILED prompt for maximum context awareness
+        enhanced_prompt = f"""You are helping a language student respond to their AI tutor. Analyze what the tutor ACTUALLY said and provide PERFECT contextual responses.
 
-Context: {context.context_analysis.intent.value} in {context.context_analysis.lesson_phase.value} phase
-Target language: {request.target_language}
-Student level: {request.proficiency_level}
-Help language: {request.user_language}
+AI TUTOR'S EXACT WORDS: "{request.ai_response}"
 
-Generate 2 contextual responses that match the teaching moment:
+CRITICAL ANALYSIS REQUIRED:
+- What is the tutor asking the student to do?
+- What specific feedback or instruction did they give?
+- What should the student's natural response be?
+- Is the tutor asking for repetition, correction, new content, or something else?
 
-{{"summary": "brief summary in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits the context"}}]}}"""
+CONTEXT:
+- Target language: {request.target_language}
+- Student level: {request.proficiency_level}
+- Help language: {request.user_language}
+- Detected intent: {context.context_analysis.intent.value}
+- Lesson phase: {context.context_analysis.lesson_phase.value}
+- Key phrases: {', '.join(context.context_analysis.key_phrases)}
+
+Generate 2 PERFECT responses that:
+1. Directly address what the tutor said
+2. Are appropriate for the specific teaching moment
+3. Help the student engage naturally with the lesson
+4. Match the proficiency level and context
+
+RESPOND IN JSON:
+{{"summary": "what the tutor is asking in {request.user_language}", "responses": [{{"text": "perfect contextual response in {request.target_language}", "pronunciation": "accurate phonetic guide", "explanation": "why this response perfectly fits what the tutor said"}}]}}"""
         
         try:
             response = client.chat.completions.create(
