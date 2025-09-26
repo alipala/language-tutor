@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, Dict, Any
 from datetime import datetime
+import asyncio
 from auth import get_current_user, get_optional_current_user_from_request
 from models import UserResponse
 from conversation_help import (
@@ -78,36 +79,64 @@ async def generate_help_content(
             session_type="general"
         )
         
-        # Generate context-aware help (NO FALLBACKS - pure intelligent responses)
+        # 🔄 Try context-aware system with robust fallback
         print(f"[CONVERSATION_HELP] 🔄 Calling context-aware generation system...")
-        context_result = await generate_conversation_help_context_aware(enhanced_request)
+        context_result = None
         
-        if context_result is None:
-            print(f"[CONVERSATION_HELP] ❌ Context-aware system failed - returning error (no generic responses)")
-            raise HTTPException(
-                status_code=503,
-                detail="Context-aware help system temporarily unavailable. Please try again."
+        try:
+            context_result = await asyncio.wait_for(
+                generate_conversation_help_context_aware(enhanced_request),
+                timeout=6.0
             )
+        except Exception as e:
+            print(f"[CONVERSATION_HELP] ⚠️ Context-aware system failed: {e}")
+            context_result = None
         
-        # Convert context-aware result to ConversationHelpResponse format
-        help_response = ConversationHelpResponse(
-            ai_response_summary=context_result.get("ai_response_summary", "The AI provided guidance."),
-            suggested_responses=[
-                SuggestedResponse(
-                    text=resp.get("text", ""),
-                    pronunciation=resp.get("pronunciation", ""),
-                    difficulty_level=resp.get("difficulty_level", request.proficiency_level),
-                    explanation=resp.get("explanation", "")
-                ) for resp in context_result.get("suggested_responses", [])
-            ],
-            vocabulary_highlights=context_result.get("vocabulary_highlights", []),
-            grammar_tips=context_result.get("grammar_tips", []),
-            generated_at=context_result.get("generated_at", datetime.utcnow())
-        )
-        
-        print(f"[CONVERSATION_HELP] ✅ Context-aware help generated successfully!")
-        print(f"[CONVERSATION_HELP] 🎯 Intent detected: {context_result.get('context_analysis', {}).get('tutor_intent', 'UNKNOWN')}")
-        print(f"[CONVERSATION_HELP] 🎓 Teaching phase: {context_result.get('context_analysis', {}).get('teaching_phase', 'unknown')}")
+        # If context-aware fails, use the original fast system
+        if context_result is None:
+            print(f"[CONVERSATION_HELP] 🏃 Falling back to original fast system...")
+            
+            # Convert to original request format
+            original_request = ConversationHelpRequest(
+                ai_response=request.ai_response,
+                conversation_context=request.conversation_context,
+                target_language=request.target_language,
+                user_language=request.user_language,
+                proficiency_level=request.proficiency_level,
+                topic=request.topic
+            )
+            
+            # Use original fast system as fallback
+            fast_result = await generate_conversation_help_fast(original_request)
+            
+            if fast_result:
+                print(f"[CONVERSATION_HELP] ✅ Fast fallback system succeeded")
+                help_response = fast_result
+            else:
+                print(f"[CONVERSATION_HELP] ❌ All systems failed - returning error")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Conversation help system temporarily unavailable. Please try again."
+                )
+        else:
+            # Context-aware system succeeded - convert result
+            help_response = ConversationHelpResponse(
+                ai_response_summary=context_result.get("ai_response_summary", "The AI provided guidance."),
+                suggested_responses=[
+                    SuggestedResponse(
+                        text=resp.get("text", ""),
+                        pronunciation=resp.get("pronunciation", ""),
+                        difficulty_level=resp.get("difficulty_level", request.proficiency_level),
+                        explanation=resp.get("explanation", "")
+                    ) for resp in context_result.get("suggested_responses", [])
+                ],
+                vocabulary_highlights=context_result.get("vocabulary_highlights", []),
+                grammar_tips=context_result.get("grammar_tips", []),
+                generated_at=context_result.get("generated_at", datetime.utcnow())
+            )
+            print(f"[CONVERSATION_HELP] ✅ Context-aware system succeeded!")
+            print(f"[CONVERSATION_HELP] 🎯 Intent detected: {context_result.get('context_analysis', {}).get('tutor_intent', 'UNKNOWN')}")
+            print(f"[CONVERSATION_HELP]  Teaching phase: {context_result.get('context_analysis', {}).get('teaching_phase', 'unknown')}")
         
         # Track usage analytics if user is authenticated
         if current_user:
