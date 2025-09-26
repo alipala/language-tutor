@@ -14,6 +14,8 @@ from conversation_help import (
     track_help_usage,
     INSTANT_RESPONSE_TEMPLATES
 )
+from smart_response_generator import smart_response_generator
+from learning_plan_context_provider import LearningPlanContextProvider, UserContextProvider
 
 router = APIRouter(prefix="/api/conversation-help", tags=["conversation-help"])
 
@@ -23,113 +25,192 @@ async def generate_help_content(
     current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
 ):
     """
-    Generate conversation help content based on AI tutor's response
+    🚀 ENHANCED: Generate contextually intelligent conversation help content.
+    
+    Handles ALL conversation types:
+    - Custom learning plan sessions (rich context)
+    - Practice conversations (standard context) 
+    - Guest users (minimal context)
+    - All edge cases with graceful fallbacks
+    
+    Uses smart model selection and intent detection for relevant suggestions.
     """
     try:
-        print(f"[CONVERSATION_HELP] 🚀 Starting help generation...")
-        print(f"[CONVERSATION_HELP] AI response: {request.ai_response[:100]}...")
-        print(f"[CONVERSATION_HELP] Target language: {request.target_language}")
-        print(f"[CONVERSATION_HELP] User language: {request.user_language}")
-        print(f"[CONVERSATION_HELP] Proficiency level: {request.proficiency_level}")
-        print(f"[CONVERSATION_HELP] Topic: {request.topic}")
-        print(f"[CONVERSATION_HELP] Conversation context length: {len(request.conversation_context)}")
+        print(f"[CONVERSATION_HELP_V2] 🚀 Starting ENHANCED help generation...")
+        print(f"[CONVERSATION_HELP_V2] AI response: {request.ai_response[:100]}...")
+        print(f"[CONVERSATION_HELP_V2] Target language: {request.target_language}")
+        print(f"[CONVERSATION_HELP_V2] User language: {request.user_language}")
+        print(f"[CONVERSATION_HELP_V2] Proficiency level: {request.proficiency_level}")
+        print(f"[CONVERSATION_HELP_V2] User authenticated: {current_user is not None}")
         
         # Validate required fields
         if not request.ai_response or not request.ai_response.strip():
-            print(f"[CONVERSATION_HELP] ❌ Empty AI response, returning 204")
+            print(f"[CONVERSATION_HELP_V2] ❌ Empty AI response, returning 204")
             from fastapi import Response
             return Response(status_code=204)
         
         if not request.target_language or not request.user_language:
-            print(f"[CONVERSATION_HELP] ❌ Missing language parameters")
+            print(f"[CONVERSATION_HELP_V2] ❌ Missing language parameters")
             raise HTTPException(status_code=400, detail="Missing required language parameters")
         
-        # Generate help content using ultra-fast method
-        print(f"[CONVERSATION_HELP] 🔄 Calling generate_conversation_help_fast...")
-        help_response = await generate_conversation_help_fast(request)
-        print(f"[CONVERSATION_HELP] 📥 Received response from generate_conversation_help_fast: {help_response is not None}")
+        # Create user context (works for both registered and guest users)
+        user_context = UserContextProvider.create_user_context(
+            target_language=request.target_language,
+            proficiency_level=request.proficiency_level,
+            user_language=request.user_language,
+            is_guest=(current_user is None)
+        )
         
-        # Check if we got a valid response
-        if help_response is None:
-            print(f"[CONVERSATION_HELP] ❌ Fast generation returned None, trying fallback...")
-            
-            # Use instant fallback templates
-            templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
-            level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
-            
-            help_response = ConversationHelpResponse(
-                ai_response_summary=f"The AI tutor provided guidance in {request.target_language}.",
-                suggested_responses=[
-                    SuggestedResponse(
-                        text=template["text"],
-                        pronunciation=template["pronunciation"],
-                        difficulty_level="beginner",
-                        explanation=template["explanation"]
-                    ) for template in level_templates[:2]
-                ],
-                vocabulary_highlights=[],
-                grammar_tips=[]
-            )
-            print(f"[CONVERSATION_HELP] ✅ Using fallback template responses")
+        print(f"[CONVERSATION_HELP_V2] User context: {user_context['context_type']}")
+        
+        # Generate help using smart response generator
+        # NOTE: No learning plan context for practice conversations - this is intentional
+        help_response = await smart_response_generator.generate_smart_response(
+            request=request,
+            learning_plan_context=None,  # Practice conversations have no learning plan context
+            user_context=user_context,
+            time_budget=7.0
+        )
         
         # Track usage analytics if user is authenticated
         if current_user:
-            print(f"[CONVERSATION_HELP] 📊 Tracking usage for user: {current_user.id}")
+            print(f"[CONVERSATION_HELP_V2] 📊 Tracking usage for user: {current_user.id}")
             try:
-                # CRITICAL FIX: Don't track duration for help generation - only for session completion
                 await track_help_usage(
                     user_id=current_user.id,
-                    help_type="help_generated",
+                    help_type="help_generated_v2",
                     language=request.target_language,
-                    duration_minutes=0.0  # Help generation doesn't consume speaking time
+                    duration_minutes=0.0
                 )
-                print(f"[CONVERSATION_HELP] ✅ Usage tracked successfully")
+                print(f"[CONVERSATION_HELP_V2] ✅ Usage tracked successfully")
             except Exception as track_error:
-                print(f"[CONVERSATION_HELP] ⚠️ Failed to track usage: {track_error}")
-                # Don't fail the request if tracking fails
+                print(f"[CONVERSATION_HELP_V2] ⚠️ Failed to track usage: {track_error}")
         
-        print(f"[CONVERSATION_HELP] ✅ Successfully generated contextual help content")
-        print(f"[CONVERSATION_HELP] 📤 Returning response with {len(help_response.suggested_responses)} suggestions")
+        print(f"[CONVERSATION_HELP_V2] ✅ Successfully generated ENHANCED contextual help")
+        print(f"[CONVERSATION_HELP_V2] 📤 Returning response with {len(help_response.suggested_responses)} suggestions")
         return help_response
         
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        print(f"[CONVERSATION_HELP] ❌ CRITICAL ERROR generating help content:")
-        print(f"[CONVERSATION_HELP] ❌ Error type: {type(e).__name__}")
-        print(f"[CONVERSATION_HELP] ❌ Error message: {str(e)}")
-        print(f"[CONVERSATION_HELP] ❌ Error details: {repr(e)}")
-        
-        # Import traceback for detailed error logging
+        print(f"[CONVERSATION_HELP_V2] ❌ CRITICAL ERROR: {str(e)}")
         import traceback
-        print(f"[CONVERSATION_HELP] ❌ Full traceback:")
         traceback.print_exc()
         
-        # Return fallback response instead of 500 error
-        print(f"[CONVERSATION_HELP] 🔄 Generating fallback response...")
-        fallback_response = ConversationHelpResponse(
-            ai_response_summary=f"The AI tutor just spoke in {request.target_language}. They provided guidance to help you practice.",
+        # Fallback to original system
+        print(f"[CONVERSATION_HELP_V2] 🔄 Falling back to original system...")
+        try:
+            fallback_response = await generate_conversation_help_fast(request)
+            if fallback_response:
+                return fallback_response
+        except Exception as fallback_error:
+            print(f"[CONVERSATION_HELP_V2] ❌ Fallback also failed: {str(fallback_error)}")
+        
+        # Ultimate emergency fallback
+        templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
+        level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
+        
+        return ConversationHelpResponse(
+            ai_response_summary=f"The AI tutor provided guidance in {request.target_language}.",
             suggested_responses=[
-                {
-                    "text": "I understand" if request.target_language == "english" else "Ik begrijp het" if request.target_language == "dutch" else "Entiendo",
-                    "pronunciation": "aɪ ˌʌndərˈstænd" if request.target_language == "english" else "ɪk bəˈɣrɛip ət" if request.target_language == "dutch" else "en-tjen-do",
-                    "difficulty_level": "beginner",
-                    "explanation": "A simple way to show you understand"
-                },
-                {
-                    "text": "Can you repeat that?" if request.target_language == "english" else "Kun je dat herhalen?" if request.target_language == "dutch" else "¿Puedes repetir eso?",
-                    "pronunciation": "kæn ju rɪˈpit ðæt" if request.target_language == "english" else "kʏn jə dɑt hərˈhaːlə" if request.target_language == "dutch" else "pwe-des re-pe-tir e-so",
-                    "difficulty_level": "beginner",
-                    "explanation": "Ask for repetition if you didn't catch everything"
-                }
+                SuggestedResponse(
+                    text=template["text"],
+                    pronunciation=template["pronunciation"],
+                    difficulty_level="beginner",
+                    explanation=template["explanation"]
+                ) for template in level_templates[:2]
             ],
             vocabulary_highlights=[],
             grammar_tips=[]
         )
+
+@router.post("/generate-with-learning-plan", response_model=ConversationHelpResponse)
+async def generate_help_with_learning_plan_context(
+    request: ConversationHelpRequest,
+    plan_id: Optional[str] = None,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
+):
+    """
+    🎯 NEW: Generate conversation help with learning plan context integration.
+    
+    This endpoint is specifically for custom learning plan sessions where we have
+    rich context about the user's learning objectives, current focus, and progress.
+    
+    For practice conversations without learning plans, use the standard /generate endpoint.
+    """
+    try:
+        print(f"[LEARNING_PLAN_HELP] 🎯 Starting learning plan enhanced help generation...")
+        print(f"[LEARNING_PLAN_HELP] Plan ID: {plan_id}")
+        print(f"[LEARNING_PLAN_HELP] User authenticated: {current_user is not None}")
         
-        print(f"[CONVERSATION_HELP] ✅ Returning fallback response")
-        return fallback_response
+        # Validate required fields
+        if not request.ai_response or not request.ai_response.strip():
+            print(f"[LEARNING_PLAN_HELP] ❌ Empty AI response, returning 204")
+            from fastapi import Response
+            return Response(status_code=204)
+        
+        if not request.target_language or not request.user_language:
+            print(f"[LEARNING_PLAN_HELP] ❌ Missing language parameters")
+            raise HTTPException(status_code=400, detail="Missing required language parameters")
+        
+        # Create user context
+        user_context = UserContextProvider.create_user_context(
+            target_language=request.target_language,
+            proficiency_level=request.proficiency_level,
+            user_language=request.user_language,
+            is_guest=(current_user is None)
+        )
+        
+        # Get learning plan context if available
+        learning_plan_context = None
+        if current_user and plan_id:
+            learning_plan_context = await LearningPlanContextProvider.get_session_context(
+                user_id=current_user.id,
+                plan_id=plan_id
+            )
+            
+            if learning_plan_context:
+                print(f"[LEARNING_PLAN_HELP] ✅ Learning plan context loaded")
+                print(f"[LEARNING_PLAN_HELP] Current focus: {learning_plan_context.get('current_focus', 'N/A')}")
+            else:
+                print(f"[LEARNING_PLAN_HELP] ⚠️ No learning plan context available")
+        else:
+            print(f"[LEARNING_PLAN_HELP] ⚠️ Missing user or plan_id for learning plan context")
+        
+        # Generate help using smart response generator with learning plan context
+        help_response = await smart_response_generator.generate_smart_response(
+            request=request,
+            learning_plan_context=learning_plan_context,
+            user_context=user_context,
+            time_budget=7.0
+        )
+        
+        # Track usage analytics
+        if current_user:
+            try:
+                await track_help_usage(
+                    user_id=current_user.id,
+                    help_type="learning_plan_help_generated",
+                    language=request.target_language,
+                    duration_minutes=0.0
+                )
+                print(f"[LEARNING_PLAN_HELP] ✅ Usage tracked successfully")
+            except Exception as track_error:
+                print(f"[LEARNING_PLAN_HELP] ⚠️ Failed to track usage: {track_error}")
+        
+        print(f"[LEARNING_PLAN_HELP] ✅ Successfully generated learning plan enhanced help")
+        return help_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[LEARNING_PLAN_HELP] ❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Fallback to standard generation without learning plan context
+        print(f"[LEARNING_PLAN_HELP] 🔄 Falling back to standard generation...")
+        return await generate_help_content(request, current_user)
 
 @router.get("/settings", response_model=UserHelpSettings)
 async def get_help_settings(
