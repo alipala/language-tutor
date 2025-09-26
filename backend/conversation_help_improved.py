@@ -6,7 +6,7 @@ Production-ready implementation with 7-second performance constraint
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 from pydantic import BaseModel, Field
-from openai import OpenAI
+from openai import AsyncOpenAI
 import os
 import json
 import httpx
@@ -17,9 +17,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
+# Initialize Async OpenAI client
 api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
+client = AsyncOpenAI(api_key=api_key)
 
 # Enhanced Data Models
 class TutorIntent(BaseModel):
@@ -115,16 +115,13 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
     try:
         # Use GPT-4o for better reasoning, with timeout for performance
         response = await asyncio.wait_for(
-            asyncio.create_task(
-                client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "developer", "content": intent_prompt}
-                    ],
-                    temperature=0.1,
-                    max_tokens=150,
-                    timeout=3  # 3-second max for this call
-                )
+            client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "developer", "content": intent_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=150
             ),
             timeout=3.0
         )
@@ -334,18 +331,15 @@ async def generate_contextual_responses(
     try:
         # Generate responses with timeout
         response = await asyncio.wait_for(
-            asyncio.create_task(
-                client.chat.completions.create(
-                    model="gpt-4o",  # Use GPT-4o for better contextual understanding
-                    messages=[
-                        {"role": "developer", "content": context_prompt}
-                    ],
-                    temperature=0.2,
-                    max_tokens=600,
-                    timeout=5
-                )
+            client.chat.completions.create(
+                model="gpt-4o",  # Use GPT-4o for better contextual understanding
+                messages=[
+                    {"role": "developer", "content": context_prompt}
+                ],
+                temperature=0.2,
+                max_tokens=600
             ),
-            timeout=5.0
+            timeout=4.0
         )
         
         content = response.choices[0].message.content.strip()
