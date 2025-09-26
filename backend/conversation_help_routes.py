@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, Dict, Any
+from datetime import datetime
 from auth import get_current_user, get_optional_current_user_from_request
 from models import UserResponse
 from conversation_help import (
@@ -13,6 +14,13 @@ from conversation_help import (
     update_user_help_settings,
     track_help_usage,
     INSTANT_RESPONSE_TEMPLATES
+)
+
+# Import the new context-aware system
+from conversation_help_improved import (
+    EnhancedConversationHelpRequest,
+    generate_conversation_help_hybrid,
+    generate_conversation_help_context_aware
 )
 
 router = APIRouter(prefix="/api/conversation-help", tags=["conversation-help"])
@@ -44,33 +52,62 @@ async def generate_help_content(
             print(f"[CONVERSATION_HELP] ❌ Missing language parameters")
             raise HTTPException(status_code=400, detail="Missing required language parameters")
         
-        # Generate help content using ultra-fast method
-        print(f"[CONVERSATION_HELP] 🔄 Calling generate_conversation_help_fast...")
-        help_response = await generate_conversation_help_fast(request)
-        print(f"[CONVERSATION_HELP] 📥 Received response from generate_conversation_help_fast: {help_response is not None}")
+        # 🚀 NEW: Use context-aware conversation help system
+        print(f"[CONVERSATION_HELP] 🎯 Using CONTEXT-AWARE system - NO generic fallbacks!")
         
-        # Check if we got a valid response
-        if help_response is None:
-            print(f"[CONVERSATION_HELP] ❌ Fast generation returned None, trying fallback...")
-            
-            # Use instant fallback templates
-            templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
-            level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
-            
-            help_response = ConversationHelpResponse(
-                ai_response_summary=f"The AI tutor provided guidance in {request.target_language}.",
-                suggested_responses=[
-                    SuggestedResponse(
-                        text=template["text"],
-                        pronunciation=template["pronunciation"],
-                        difficulty_level="beginner",
-                        explanation=template["explanation"]
-                    ) for template in level_templates[:2]
-                ],
-                vocabulary_highlights=[],
-                grammar_tips=[]
+        # Create enhanced request with learning plan context (if available from session)
+        learning_context = None
+        if hasattr(request, 'learning_plan_context') and request.learning_plan_context:
+            learning_context = request.learning_plan_context
+        elif request.topic:
+            # Extract learning context from topic if available
+            learning_context = {
+                'objective': f'Practice {request.topic}',
+                'focus_area': request.topic,
+                'target_skills': 'Conversation and comprehension'
+            }
+        
+        enhanced_request = EnhancedConversationHelpRequest(
+            ai_response=request.ai_response,
+            conversation_context=request.conversation_context,
+            target_language=request.target_language,
+            user_language=request.user_language,
+            proficiency_level=request.proficiency_level,
+            topic=request.topic,
+            learning_plan_context=learning_context,  # NOW IMPLEMENTED
+            session_type="general"
+        )
+        
+        # Generate context-aware help (NO FALLBACKS - pure intelligent responses)
+        print(f"[CONVERSATION_HELP] 🔄 Calling context-aware generation system...")
+        context_result = await generate_conversation_help_context_aware(enhanced_request)
+        
+        if context_result is None:
+            print(f"[CONVERSATION_HELP] ❌ Context-aware system failed - returning error (no generic responses)")
+            raise HTTPException(
+                status_code=503,
+                detail="Context-aware help system temporarily unavailable. Please try again."
             )
-            print(f"[CONVERSATION_HELP] ✅ Using fallback template responses")
+        
+        # Convert context-aware result to ConversationHelpResponse format
+        help_response = ConversationHelpResponse(
+            ai_response_summary=context_result.get("ai_response_summary", "The AI provided guidance."),
+            suggested_responses=[
+                SuggestedResponse(
+                    text=resp.get("text", ""),
+                    pronunciation=resp.get("pronunciation", ""),
+                    difficulty_level=resp.get("difficulty_level", request.proficiency_level),
+                    explanation=resp.get("explanation", "")
+                ) for resp in context_result.get("suggested_responses", [])
+            ],
+            vocabulary_highlights=context_result.get("vocabulary_highlights", []),
+            grammar_tips=context_result.get("grammar_tips", []),
+            generated_at=context_result.get("generated_at", datetime.utcnow())
+        )
+        
+        print(f"[CONVERSATION_HELP] ✅ Context-aware help generated successfully!")
+        print(f"[CONVERSATION_HELP] 🎯 Intent detected: {context_result.get('context_analysis', {}).get('tutor_intent', 'UNKNOWN')}")
+        print(f"[CONVERSATION_HELP] 🎓 Teaching phase: {context_result.get('context_analysis', {}).get('teaching_phase', 'unknown')}")
         
         # Track usage analytics if user is authenticated
         if current_user:
@@ -106,30 +143,12 @@ async def generate_help_content(
         print(f"[CONVERSATION_HELP] ❌ Full traceback:")
         traceback.print_exc()
         
-        # Return fallback response instead of 500 error
-        print(f"[CONVERSATION_HELP] 🔄 Generating fallback response...")
-        fallback_response = ConversationHelpResponse(
-            ai_response_summary=f"The AI tutor just spoke in {request.target_language}. They provided guidance to help you practice.",
-            suggested_responses=[
-                {
-                    "text": "I understand" if request.target_language == "english" else "Ik begrijp het" if request.target_language == "dutch" else "Entiendo",
-                    "pronunciation": "aɪ ˌʌndərˈstænd" if request.target_language == "english" else "ɪk bəˈɣrɛip ət" if request.target_language == "dutch" else "en-tjen-do",
-                    "difficulty_level": "beginner",
-                    "explanation": "A simple way to show you understand"
-                },
-                {
-                    "text": "Can you repeat that?" if request.target_language == "english" else "Kun je dat herhalen?" if request.target_language == "dutch" else "¿Puedes repetir eso?",
-                    "pronunciation": "kæn ju rɪˈpit ðæt" if request.target_language == "english" else "kʏn jə dɑt hərˈhaːlə" if request.target_language == "dutch" else "pwe-des re-pe-tir e-so",
-                    "difficulty_level": "beginner",
-                    "explanation": "Ask for repetition if you didn't catch everything"
-                }
-            ],
-            vocabulary_highlights=[],
-            grammar_tips=[]
+        # NO GENERIC FALLBACKS - Return service error instead
+        print(f"[CONVERSATION_HELP] ❌ Critical system failure - no generic responses allowed")
+        raise HTTPException(
+            status_code=503,
+            detail="Context-aware help system encountered an error. Please try again."
         )
-        
-        print(f"[CONVERSATION_HELP] ✅ Returning fallback response")
-        return fallback_response
 
 @router.get("/settings", response_model=UserHelpSettings)
 async def get_help_settings(
