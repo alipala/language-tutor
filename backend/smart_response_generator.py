@@ -223,13 +223,18 @@ class SmartResponseGenerator:
             time_budget >= 5.0):
             return ResponseStrategy.GPT4O_SMART
         
-        # Strategy 3: Template Fast (for high-confidence, predictable intents)
-        if (context_analysis.confidence_score > 0.8 and 
+        # Strategy 3: Template Fast (for predictable intents - lowered threshold for reliability)
+        if (context_analysis.confidence_score > 0.5 and 
             context_analysis.intent in self.intent_response_templates and
+            context_analysis.detected_language in ["english", "dutch", "spanish", "french", "german", "portuguese", "italian"]):
+            return ResponseStrategy.TEMPLATE_FAST
+        
+        # Strategy 4: Template Fast fallback (for any recognized intent with supported language)
+        if (context_analysis.intent in self.intent_response_templates and
             context_analysis.detected_language in ["english", "dutch", "spanish"]):
             return ResponseStrategy.TEMPLATE_FAST
         
-        # Strategy 4: GPT-4o-mini Standard (default for most cases)
+        # Strategy 5: GPT-4o-mini Standard (only when templates aren't available)
         return ResponseStrategy.GPT4O_MINI_STANDARD
     
     async def _generate_response_by_strategy(
@@ -336,8 +341,8 @@ JSON format:
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": enhanced_prompt}],
                 temperature=0.2,
-                max_tokens=500,
-                timeout=5.0
+                max_tokens=400,
+                timeout=3.0  # Reduced timeout for faster fallback
             )
             
             if response.choices and response.choices[0].message and response.choices[0].message.content:
