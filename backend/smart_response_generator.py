@@ -599,7 +599,7 @@ RESPOND IN JSON:
         ai_response_lower = request.ai_response.lower()
         
         # Create contextual responses based on what the AI tutor is asking
-        if "describe" in ai_response_lower and "morning" in ai_response_lower:
+        if ("describe" in ai_response_lower and "morning" in ai_response_lower) or ("morning routine" in ai_response_lower):
             # Morning routine description
             suggested_responses = [
                 SuggestedResponse(
