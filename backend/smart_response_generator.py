@@ -529,8 +529,8 @@ RESPOND IN JSON:
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": enhanced_prompt}],
                 temperature=0.1,
-                max_tokens=400,
-                timeout=4.0
+                max_tokens=300,  # Reduced for faster response
+                timeout=2.5  # Much shorter timeout
             )
             
             if response.choices and response.choices[0].message and response.choices[0].message.content:
@@ -561,8 +561,8 @@ RESPOND IN JSON:
         except Exception as e:
             print(f"[GPT4O_MINI] ❌ Standard generation failed: {str(e)}")
         
-        # Final fallback to templates
-        return await self._generate_template_response(request, context)
+        # Final fallback to CONTEXTUAL emergency response
+        return self._create_emergency_fallback_response(request)
     
     def _clean_json_content(self, content: str) -> str:
         """Clean JSON content from API response"""
@@ -591,25 +591,94 @@ RESPOND IN JSON:
         return intent_summaries.get(analysis.intent, f"The AI tutor provided guidance in {request.target_language}.")
     
     def _create_emergency_fallback_response(self, request: ConversationHelpRequest) -> ConversationHelpResponse:
-        """Create emergency fallback response for critical errors"""
+        """Create CONTEXTUAL emergency fallback response for critical errors"""
         
-        print(f"[EMERGENCY_FALLBACK] 🚨 Creating emergency fallback response")
+        print(f"[EMERGENCY_FALLBACK] 🚨 Creating CONTEXTUAL emergency fallback response")
         
-        # Use basic templates from original system
-        templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
-        level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
+        # Analyze the AI tutor's request to create contextual fallbacks
+        ai_response_lower = request.ai_response.lower()
         
-        suggested_responses = [
-            SuggestedResponse(
-                text=template["text"],
-                pronunciation=template["pronunciation"],
-                difficulty_level="beginner",
-                explanation=template["explanation"]
-            ) for template in level_templates[:2]
-        ]
+        # Create contextual responses based on what the AI tutor is asking
+        if "describe" in ai_response_lower and "morning" in ai_response_lower:
+            # Morning routine description
+            suggested_responses = [
+                SuggestedResponse(
+                    text="I wake up, brush my teeth, and get ready for the day",
+                    pronunciation="aɪ weɪk ʌp, brʌʃ maɪ tiθ, ænd gɛt ˈrɛdi fɔr ðə deɪ",
+                    difficulty_level=request.proficiency_level,
+                    explanation="A simple morning routine description"
+                ),
+                SuggestedResponse(
+                    text="In the morning, I wash my face and have breakfast",
+                    pronunciation="ɪn ðə ˈmɔrnɪŋ, aɪ wɑʃ maɪ feɪs ænd hæv ˈbrɛkfəst",
+                    difficulty_level=request.proficiency_level,
+                    explanation="Another way to describe morning activities"
+                )
+            ]
+        elif "vocabulary" in ai_response_lower or "word" in ai_response_lower:
+            # Vocabulary practice
+            if "thoroughly" in ai_response_lower:
+                suggested_responses = [
+                    SuggestedResponse(
+                        text="I clean my room thoroughly every week",
+                        pronunciation="aɪ klin maɪ rum ˈθɜroʊli ˈɛvri wik",
+                        difficulty_level=request.proficiency_level,
+                        explanation="Using 'thoroughly' to mean completely or carefully"
+                    ),
+                    SuggestedResponse(
+                        text="She studied the lesson thoroughly",
+                        pronunciation="ʃi ˈstʌdid ðə ˈlɛsən ˈθɜroʊli",
+                        difficulty_level=request.proficiency_level,
+                        explanation="Another example of using 'thoroughly' in context"
+                    )
+                ]
+            else:
+                suggested_responses = [
+                    SuggestedResponse(
+                        text="That's a useful new word to learn",
+                        pronunciation="ðæts ə ˈjusfəl nu wɜrd tu lɜrn",
+                        difficulty_level=request.proficiency_level,
+                        explanation="Acknowledging new vocabulary"
+                    ),
+                    SuggestedResponse(
+                        text="I'll try to use this word in conversation",
+                        pronunciation="aɪl traɪ tu juz ðɪs wɜrd ɪn ˌkɑnvərˈseɪʃən",
+                        difficulty_level=request.proficiency_level,
+                        explanation="Showing intent to practice new vocabulary"
+                    )
+                ]
+        elif "sentence structure" in ai_response_lower or "grammar" in ai_response_lower:
+            # Grammar correction
+            suggested_responses = [
+                SuggestedResponse(
+                    text="I usually brush my teeth, wash my face, and then help my children",
+                    pronunciation="aɪ ˈjuʒuəli brʌʃ maɪ tiθ, wɑʃ maɪ feɪs, ænd ðɛn hɛlp maɪ ˈʧɪldrən",
+                    difficulty_level=request.proficiency_level,
+                    explanation="Better sentence structure with proper coordination"
+                ),
+                SuggestedResponse(
+                    text="Every morning, I brush my teeth and wash my face before helping the kids",
+                    pronunciation="ˈɛvri ˈmɔrnɪŋ, aɪ brʌʃ maɪ tiθ ænd wɑʃ maɪ feɪs bɪˈfɔr ˈhɛlpɪŋ ðə kɪdz",
+                    difficulty_level=request.proficiency_level,
+                    explanation="Alternative structure using time sequence"
+                )
+            ]
+        else:
+            # Generic contextual responses
+            templates = INSTANT_RESPONSE_TEMPLATES.get(request.target_language, INSTANT_RESPONSE_TEMPLATES["english"])
+            level_templates = templates.get(request.proficiency_level, templates.get("beginner", templates[list(templates.keys())[0]]))
+            
+            suggested_responses = [
+                SuggestedResponse(
+                    text=template["text"],
+                    pronunciation=template["pronunciation"],
+                    difficulty_level=request.proficiency_level,
+                    explanation=template["explanation"]
+                ) for template in level_templates[:2]
+            ]
         
         return ConversationHelpResponse(
-            ai_response_summary=f"The AI tutor provided guidance in {request.target_language}.",
+            ai_response_summary=f"The AI tutor is asking you to practice {request.target_language}.",
             suggested_responses=suggested_responses,
             vocabulary_highlights=[],
             grammar_tips=[]
