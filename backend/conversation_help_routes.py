@@ -86,7 +86,7 @@ async def generate_help_content(
         try:
             context_result = await asyncio.wait_for(
                 generate_conversation_help_context_aware(enhanced_request),
-                timeout=6.0
+                timeout=10.0  # INCREASED: Give context-aware system 10 seconds for quality responses
             )
         except Exception as e:
             print(f"[CONVERSATION_HELP] ⚠️ Context-aware system failed: {e}")

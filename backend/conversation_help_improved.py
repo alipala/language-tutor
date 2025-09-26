@@ -329,7 +329,7 @@ async def generate_contextual_responses(
     context_prompt = build_context_aware_prompt(request, intent)
     
     try:
-        # Generate responses with timeout
+        # Generate responses with extended timeout for quality responses
         response = await asyncio.wait_for(
             client.chat.completions.create(
                 model="gpt-4o",  # Use GPT-4o for better contextual understanding
@@ -337,9 +337,9 @@ async def generate_contextual_responses(
                     {"role": "developer", "content": context_prompt}
                 ],
                 temperature=0.2,
-                max_tokens=600
+                max_tokens=400  # Reduced for speed while maintaining quality
             ),
-            timeout=4.0
+            timeout=8.0  # INCREASED: Give GPT-4o enough time for quality responses
         )
         
         content = response.choices[0].message.content.strip()
@@ -358,8 +358,18 @@ async def generate_contextual_responses(
         
         return response_data
         
-    except (asyncio.TimeoutError, json.JSONDecodeError, Exception) as e:
-        print(f"[RESPONSE_GEN] ⚠️ Response generation failed: {e}")
+    except asyncio.TimeoutError as e:
+        print(f"[RESPONSE_GEN] ⏰ TIMEOUT after 8 seconds - GPT-4o needs more processing time")
+        print(f"[RESPONSE_GEN] ⏰ This is expected for complex contextual analysis")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"[RESPONSE_GEN] ❌ JSON parsing failed: {e}")
+        print(f"[RESPONSE_GEN] ❌ Raw content may be malformed")
+        return None
+    except Exception as e:
+        print(f"[RESPONSE_GEN] ❌ Unexpected error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 async def generate_conversation_help_context_aware(request: EnhancedConversationHelpRequest) -> Optional[Dict]:
