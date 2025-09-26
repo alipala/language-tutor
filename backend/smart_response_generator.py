@@ -492,32 +492,37 @@ Respond in JSON:
         print(f"[GPT4O_MINI] 🔄 Generating CONTEXT-AWARE response")
         
         # ULTRA-DETAILED prompt for maximum context awareness
-        enhanced_prompt = f"""You are helping a language student respond to their AI tutor. Analyze what the tutor ACTUALLY said and provide PERFECT contextual responses.
+        enhanced_prompt = f"""You are helping a language student respond to their AI tutor. The student needs ACTUAL RESPONSES they can say in the target language.
 
 AI TUTOR'S EXACT WORDS: "{request.ai_response}"
 
-CRITICAL ANALYSIS REQUIRED:
-- What is the tutor asking the student to do?
-- What specific feedback or instruction did they give?
-- What should the student's natural response be?
-- Is the tutor asking for repetition, correction, new content, or something else?
+CRITICAL ANALYSIS:
+- What is the tutor asking the student to SAY or DO?
+- If asking to describe something, provide actual descriptions
+- If asking to repeat, provide the actual content to repeat
+- If asking to correct, provide the corrected version
+- If asking for practice, provide actual practice content
+
+EXAMPLES:
+- If tutor says "describe your morning routine": Return actual morning routine descriptions
+- If tutor says "repeat after me: hello": Return "hello" and variations
+- If tutor says "correct this sentence": Return the corrected sentence
+- If tutor says "try using different words": Return actual content with different vocabulary
 
 CONTEXT:
 - Target language: {request.target_language}
 - Student level: {request.proficiency_level}
 - Help language: {request.user_language}
-- Detected intent: {context.context_analysis.intent.value}
-- Lesson phase: {context.context_analysis.lesson_phase.value}
-- Key phrases: {', '.join(context.context_analysis.key_phrases)}
+- Key phrases from tutor: {', '.join(context.context_analysis.key_phrases)}
 
-Generate 2 PERFECT responses that:
-1. Directly address what the tutor said
-2. Are appropriate for the specific teaching moment
-3. Help the student engage naturally with the lesson
-4. Match the proficiency level and context
+Generate 2 ACTUAL RESPONSES the student can say in {request.target_language}:
+1. Direct responses to what the tutor is asking for
+2. Appropriate content for the proficiency level
+3. Natural language the student would actually speak
+4. NOT meta-responses about what they will do
 
 RESPOND IN JSON:
-{{"summary": "what the tutor is asking in {request.user_language}", "responses": [{{"text": "perfect contextual response in {request.target_language}", "pronunciation": "accurate phonetic guide", "explanation": "why this response perfectly fits what the tutor said"}}]}}"""
+{{"summary": "what the tutor is asking for in {request.user_language}", "responses": [{{"text": "actual response content in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this content fits the tutor's request"}}]}}"""
         
         try:
             response = client.chat.completions.create(
