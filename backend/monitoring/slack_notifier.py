@@ -54,7 +54,7 @@ class SlackNotifier:
         self.cache_duration = timedelta(minutes=5)  # Dedupe window
         
         # Alert thresholds
-        self.performance_threshold = float(os.getenv("PERFORMANCE_THRESHOLD", "5.0"))  # seconds
+        self.performance_threshold = float(os.getenv("PERFORMANCE_THRESHOLD", "10.0"))  # seconds
         self.error_rate_threshold = float(os.getenv("ERROR_RATE_THRESHOLD", "10.0"))  # percentage
         
         print(f"[SLACK_NOTIFIER] Initialized for {self.environment} environment")
