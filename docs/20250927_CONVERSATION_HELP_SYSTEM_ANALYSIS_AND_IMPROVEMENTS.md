@@ -79,7 +79,7 @@ The conversation help system has been comprehensively tested across 6 languages 
 
 ### Testing Infrastructure
 - **API Endpoint:** `https://staging-env.up.railway.app/api/conversation-help/generate`
-- **Timeout Settings:** 15 seconds (with graceful fallback)
+- **Timeout Settings:** 10 seconds (production), 15 seconds (testing - for thorough analysis)
 - **Quality Analysis:** 8-category scoring system
 - **Performance Monitoring:** Response time distribution and error tracking
 
@@ -189,14 +189,14 @@ User Input → AI Tutor Response → Conversation Help API → GPT-4o-mini → Q
 
 ### API Configuration
 - **Model:** GPT-4o-mini
-- **Timeout:** 15 seconds
+- **Timeout:** 10 seconds (production setting)
 - **Temperature:** 0.1 (low for consistency)
 - **Max Tokens:** 400
 - **Context Window:** Last 6 messages
 
 ### Error Handling
 - **Graceful Degradation:** Fallback to template responses
-- **Timeout Management:** 15-second limit with fallback
+- **Timeout Management:** 10-second limit with fallback
 - **Quality Validation:** Multi-category scoring system
 - **Logging:** Comprehensive error tracking and performance monitoring
 
