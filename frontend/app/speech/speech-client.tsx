@@ -2692,7 +2692,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                         isUserMuted={isUserMuted}
                         isAttemptingToRecord={isAttemptingToRecord}
                         conversationTimeUp={conversationTimeUp}
-                        isAuthenticated={isAuthenticated}
+                        isAuthenticated={isAuthenticated()}
                         onToggleRecording={handleToggleRecording}
                         onToggleMicrophone={toggleMicrophone}
                         className="flex-1"
