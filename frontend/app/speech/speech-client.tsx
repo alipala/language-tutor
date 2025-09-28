@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 
 // Custom hook for responsive detection
 function useIsDesktop() {
@@ -2447,100 +2448,28 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     
                     {/* Desktop Recording Button - Under Analysis Section */}
                     <div className="hidden lg:block sticky bottom-0 left-0 right-0 w-full mt-auto py-3 px-3 sm:px-4 lg:px-6 bg-transparent border-t border-slate-700/30 backdrop-blur-sm z-10">
-                      <div className="flex items-center gap-3">
-                        {/* Main Recording Button - 2/3 width */}
-                        <Button
-                          type="button"
-                          onClick={(e) => {
-                            // Only allow clicking when idle (not recording)
-                            if (microphoneState === 'idle') {
-                              handleToggleRecording(e);
-                            }
-                          }}
-                          onTouchStart={(e) => e.preventDefault()}
-                          aria-label={microphoneState === 'idle' ? "Start recording" : microphoneState === 'recording' ? "Recording in progress" : "Recording (muted)"}
-                          className={`flex-1 py-3 sm:py-4 relative flex items-center justify-center gap-2 sm:gap-3 transition-all duration-300 rounded-lg ${
-                            microphoneState === 'recording' && !isUserMuted
-                              ? 'bg-[#F75A5A] cursor-default' 
-                              : microphoneState === 'muted'
-                                ? 'bg-orange-500 cursor-default'
-                                : (!isAuthenticated() && conversationTimeUp) 
-                                  ? 'bg-gray-400 cursor-not-allowed' 
-                                  : 'bg-[#FFD63A] hover:bg-[#ECC235]'} 
-                            ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                          disabled={isAttemptingToRecord || isReviewingAnalysis || conversationTimeUp || microphoneState !== 'idle'}
-                        >
-                          {isAttemptingToRecord ? (
-                            <>
-                              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span className="font-medium text-white">Initializing microphone...</span>
-                            </>
-                          ) : microphoneState === 'recording' && !isUserMuted ? (
-                            <>
-                              <div className="relative h-6 w-6 flex items-center justify-center">
-                                <div className="audio-wave">
-                                  <span className="audio-wave-bar"></span>
-                                  <span className="audio-wave-bar"></span>
-                                  <span className="audio-wave-bar"></span>
-                                  <span className="audio-wave-bar"></span>
-                                  <span className="audio-wave-bar"></span>
-                                </div>
-                              </div>
-                              <span className="font-medium text-white">Recording...</span>
-                            </>
-                          ) : microphoneState === 'muted' ? (
-                            <>
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                              </svg>
-                              <span className="font-medium text-white">Muted</span>
-                            </>
-                          ) : (
-                            <>
-                              <MicrophoneIcon isRecording={false} size={20} />
-                              <span className="font-medium text-gray-800">Click to start speaking</span>
-                            </>
-                          )}
-                        </Button>
-                        
-                        {/* Mute Toggle Button - 1/3 width - Only show when recording */}
-                        {(microphoneState === 'recording' || microphoneState === 'muted') && (
-                          <Button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              toggleMicrophone();
-                            }}
-                            aria-label={isUserMuted ? "Unmute microphone" : "Mute microphone"}
-                            className={`px-4 py-3 sm:py-4 flex items-center justify-center gap-2 transition-all duration-300 rounded-lg ${
-                              isUserMuted 
-                                ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                                : 'bg-green-500 hover:bg-green-600 text-white'
-                            }`}
-                            title={isUserMuted ? "Click to unmute your microphone" : "Click to mute your microphone"}
-                          >
-                            {isUserMuted ? (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                              </svg>
-                            ) : (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                              </svg>
-                            )}
-                          </Button>
-                        )}
+                      <div className="flex items-center justify-center">
+                        {/* Main Recording Button - Full width */}
+                        <AnimatedRecordingButton
+                          microphoneState={microphoneState}
+                          isUserMuted={isUserMuted}
+                          isAttemptingToRecord={isAttemptingToRecord}
+                          conversationTimeUp={conversationTimeUp}
+                          isAuthenticated={isAuthenticated()}
+                          onToggleRecording={handleToggleRecording}
+                          onToggleMicrophone={toggleMicrophone}
+                          className="w-full"
+                          disabled={isAttemptingToRecord || isReviewingAnalysis || conversationTimeUp}
+                        />
                       </div>
-                      
+
                       {/* Error message */}
                       {localError && (
                         <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-red-200 max-w-md text-center mx-auto">
                           <p>{localError}</p>
                         </div>
                       )}
-                      
+
                     </div>
                   </div>
                   
@@ -2758,89 +2687,19 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     {/* Main button row with flexible layout */}
                     <div className="flex items-center gap-2">
                       {/* Recording Button - Main button */}
-                      <Button
-                        type="button"
-                        onClick={(e) => {
-                          // Only allow clicking when idle (not recording)
-                          if (microphoneState === 'idle') {
-                            handleToggleRecording(e);
-                          }
-                        }}
-                        onTouchStart={(e) => e.preventDefault()}
-                        aria-label={microphoneState === 'idle' ? "Start recording" : microphoneState === 'recording' ? "Recording in progress" : "Recording (muted)"}
-                        className={`flex-1 py-4 relative flex items-center justify-center gap-2 transition-all duration-300 rounded-lg text-sm font-semibold ${
-                          microphoneState === 'recording' && !isUserMuted
-                            ? 'bg-[#F75A5A] cursor-default text-white' 
-                            : microphoneState === 'muted'
-                              ? 'bg-orange-500 cursor-default text-white'
-                              : (!isAuthenticated() && conversationTimeUp) 
-                                ? 'bg-gray-400 cursor-not-allowed text-white' 
-                                : 'bg-[#FFD63A] hover:bg-[#ECC235] text-gray-800'} 
-                          ${isAttemptingToRecord ? 'opacity-80 cursor-wait' : 'opacity-100'}`}
-                        disabled={isAttemptingToRecord || isReviewingAnalysis || conversationTimeUp || microphoneState !== 'idle'}
-                      >
-                        {isAttemptingToRecord ? (
-                          <>
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-medium text-xs">Initializing...</span>
-                          </>
-                        ) : microphoneState === 'recording' && !isUserMuted ? (
-                          <>
-                            <div className="relative h-5 w-5 flex items-center justify-center">
-                              <div className="audio-wave">
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                                <span className="audio-wave-bar"></span>
-                              </div>
-                            </div>
-                            <span className="font-medium text-xs">Recording...</span>
-                          </>
-                        ) : microphoneState === 'muted' ? (
-                          <>
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                            </svg>
-                            <span className="font-medium text-xs">Muted</span>
-                          </>
-                        ) : (
-                          <>
-                            <MicrophoneIcon isRecording={false} size={18} />
-                            <span className="font-medium text-xs">Start speaking</span>
-                          </>
-                        )}
-                      </Button>
+                      <AnimatedRecordingButton
+                        microphoneState={microphoneState}
+                        isUserMuted={isUserMuted}
+                        isAttemptingToRecord={isAttemptingToRecord}
+                        conversationTimeUp={conversationTimeUp}
+                        isAuthenticated={isAuthenticated()}
+                        onToggleRecording={handleToggleRecording}
+                        onToggleMicrophone={toggleMicrophone}
+                        className="flex-1"
+                        disabled={isAttemptingToRecord || isReviewingAnalysis || conversationTimeUp}
+                      />
                       
-                      {/* Mute Toggle Button - Only show when recording */}
-                      {(microphoneState === 'recording' || microphoneState === 'muted') && (
-                        <Button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            toggleMicrophone();
-                          }}
-                          aria-label={isUserMuted ? "Unmute microphone" : "Mute microphone"}
-                          className={`px-3 py-4 flex items-center justify-center transition-all duration-300 rounded-lg ${
-                            isUserMuted 
-                              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                              : 'bg-green-500 hover:bg-green-600 text-white'
-                          }`}
-                          title={isUserMuted ? "Tap to unmute" : "Tap to mute"}
-                        >
-                          {isUserMuted ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                            </svg>
-                          )}
-                        </Button>
-                      )}
+
                       
                       {/* Hint Button - Always show */}
                       <div className="flex items-center justify-center">
@@ -2930,6 +2789,467 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         type={timeoutNotification.type}
       />
     </main>
+  );
+}
+
+// Enhanced Animated Recording Button Component with Glassmorphism Design
+interface AnimatedRecordingButtonProps {
+  microphoneState: 'idle' | 'recording' | 'muted';
+  isUserMuted: boolean;
+  isAttemptingToRecord: boolean;
+  conversationTimeUp: boolean;
+  isAuthenticated: boolean;
+  onToggleRecording: (e: React.MouseEvent) => void;
+  onToggleMicrophone: () => void;
+  className?: string;
+  disabled?: boolean;
+}
+
+function AnimatedRecordingButton({
+  microphoneState,
+  isUserMuted,
+  isAttemptingToRecord,
+  conversationTimeUp,
+  isAuthenticated,
+  onToggleRecording,
+  onToggleMicrophone,
+  className = '',
+  disabled = false
+}: AnimatedRecordingButtonProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [clickRipple, setClickRipple] = useState<{ x: number; y: number; id: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const glowAnimation = useAnimation();
+  const rippleId = useRef(0);
+
+  // Start glow pulse animation for recording state
+  useEffect(() => {
+    if (microphoneState === 'recording' && !isUserMuted) {
+      glowAnimation.set({ opacity: 0.6, scale: 1 });
+      glowAnimation.start({
+        opacity: [0.6, 1, 0.6],
+        scale: [1, 1.05, 1],
+        transition: {
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }
+      });
+    } else {
+      glowAnimation.stop();
+      glowAnimation.set({ opacity: 0, scale: 1 });
+    }
+  }, [microphoneState, isUserMuted, glowAnimation]);
+
+  // Handle click ripple effect
+  const handleClick = (e: React.MouseEvent) => {
+    if (disabled) return;
+
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const currentRippleId = rippleId.current++;
+      setClickRipple({ x, y, id: currentRippleId });
+
+      setTimeout(() => {
+        setClickRipple(null);
+      }, 600);
+    }
+
+    // Handle different actions based on current state
+    if (microphoneState === 'idle') {
+      onToggleRecording(e);
+    } else if (microphoneState === 'recording') {
+      onToggleMicrophone();
+    } else if (microphoneState === 'muted') {
+      onToggleMicrophone();
+    }
+  };
+
+  // Get gradient colors based on state
+  const getGradientColors = () => {
+    switch (microphoneState) {
+      case 'recording':
+        return !isUserMuted
+          ? 'from-emerald-400 via-emerald-500 to-teal-500'
+          : 'from-rose-400 via-rose-500 to-red-500';
+      case 'muted':
+        return 'from-rose-400 via-rose-500 to-red-500';
+      default:
+        return 'from-blue-500 to-indigo-600';
+    }
+  };
+
+  // Get glow colors based on state
+  const getGlowColor = () => {
+    switch (microphoneState) {
+      case 'recording':
+        return !isUserMuted
+          ? 'rgba(16, 185, 129, 0.6)'
+          : 'rgba(251, 113, 133, 0.6)';
+      case 'muted':
+        return 'rgba(251, 113, 133, 0.6)';
+      default:
+        return 'rgba(59, 130, 246, 0.6)';
+    }
+  };
+
+  // Get button text based on state
+  const getButtonText = () => {
+    if (microphoneState === 'recording' && !isUserMuted) {
+      return 'Speaking - Tap to mute';
+    }
+    if (microphoneState === 'muted') {
+      return 'Muted - Tap to unmute';
+    }
+    if (!isAuthenticated && conversationTimeUp) {
+      return 'Time limit reached';
+    }
+    return 'Start Speaking';
+  };
+
+  // Animated Loading Dots Component
+  const AnimatedLoadingDots = () => {
+    return (
+      <span className="inline-flex">
+        <motion.span
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
+        >
+          .
+        </motion.span>
+        <motion.span
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+        >
+          .
+        </motion.span>
+        <motion.span
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: 0.8 }}
+        >
+          .
+        </motion.span>
+      </span>
+    );
+  };
+
+  return (
+    <div className={`relative ${className}`}>
+      {/* Animated Glow Background */}
+      <motion.div
+        className="absolute inset-0 rounded-2xl opacity-0"
+        style={{
+          background: `radial-gradient(circle, ${getGlowColor()} 0%, transparent 70%)`,
+          filter: 'blur(16px)',
+        }}
+        animate={glowAnimation}
+      />
+
+      {/* Glassmorphism Backdrop */}
+      <motion.div
+        className="absolute inset-0 rounded-2xl backdrop-blur-xl"
+        style={{
+          background: `linear-gradient(135deg,
+            rgba(255,255,255,0.15) 0%,
+            rgba(255,255,255,0.08) 50%,
+            rgba(255,255,255,0.05) 100%)`,
+          border: `1px solid rgba(255,255,255,0.25)`,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.2)`,
+        }}
+        animate={{
+          borderColor: `rgba(255,255,255,${isHovered && microphoneState === 'idle' ? 0.35 : 0.25})`,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,${isHovered && microphoneState === 'idle' ? 0.3 : 0.2})`,
+        }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      />
+
+      {/* Main Button */}
+      <motion.button
+        ref={buttonRef}
+        onClick={handleClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        disabled={disabled || isAttemptingToRecord || conversationTimeUp}
+        className={`
+          relative w-full h-12 sm:h-10 px-6 rounded-2xl overflow-hidden flex items-center justify-center
+          bg-gradient-to-br ${getGradientColors()}
+          ${disabled || isAttemptingToRecord || conversationTimeUp
+            ? 'cursor-not-allowed opacity-60'
+            : 'cursor-pointer'}
+          transition-all duration-500 ease-out
+          transform-style-preserve-3d
+          focus:outline-none focus:ring-2 focus:ring-white/50
+          shadow-2xl
+        `}
+        whileHover={!disabled && !isAttemptingToRecord && !conversationTimeUp ? {
+          scale: 1.05,
+          rotateX: 2,
+          boxShadow: `0 32px 64px -12px ${getGlowColor()}, 0 0 0 1px rgba(255,255,255,0.3), inset 0 1px 0 rgba(255,255,255,0.4)`,
+          background: `linear-gradient(135deg,
+            ${microphoneState === 'recording' && !isUserMuted
+              ? 'rgba(16, 185, 129, 0.98), rgba(20, 184, 166, 0.98)'
+              : microphoneState === 'muted'
+                ? 'rgba(251, 113, 133, 0.98), rgba(239, 68, 68, 0.98)'
+                : 'rgba(59, 130, 246, 0.98), rgba(139, 92, 246, 0.98)'
+            })`,
+        } : {}}
+        whileTap={microphoneState === 'idle' ? {
+          scale: 0.98,
+        } : {}}
+        style={{
+          willChange: 'transform, box-shadow',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        {/* Animated Border Gradient */}
+        <motion.div
+          className="absolute inset-0 rounded-2xl"
+          style={{
+            background: `linear-gradient(45deg,
+              ${microphoneState === 'recording' && !isUserMuted
+                ? 'rgba(16, 185, 129, 0.9), rgba(20, 184, 166, 0.9)'
+                : microphoneState === 'muted'
+                  ? 'rgba(251, 113, 133, 0.9), rgba(239, 68, 68, 0.9)'
+                  : 'rgba(59, 130, 246, 0.9), rgba(139, 92, 246, 0.9)'
+              })`,
+            padding: '2px',
+          }}
+          animate={{
+            background: [
+              `linear-gradient(45deg,
+                ${microphoneState === 'recording' && !isUserMuted
+                  ? 'rgba(16, 185, 129, 0.9), rgba(20, 184, 166, 0.9)'
+                  : microphoneState === 'muted'
+                    ? 'rgba(251, 113, 133, 0.9), rgba(239, 68, 68, 0.9)'
+                    : 'rgba(59, 130, 246, 0.9), rgba(139, 92, 246, 0.9)'
+                })`,
+              `linear-gradient(135deg,
+                ${microphoneState === 'recording' && !isUserMuted
+                  ? 'rgba(20, 184, 166, 0.9), rgba(16, 185, 129, 0.9)'
+                  : microphoneState === 'muted'
+                    ? 'rgba(239, 68, 68, 0.9), rgba(251, 113, 133, 0.9)'
+                    : 'rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9)'
+                })`,
+              `linear-gradient(225deg,
+                ${microphoneState === 'recording' && !isUserMuted
+                  ? 'rgba(16, 185, 129, 0.9), rgba(20, 184, 166, 0.9)'
+                  : microphoneState === 'muted'
+                    ? 'rgba(251, 113, 133, 0.9), rgba(239, 68, 68, 0.9)'
+                    : 'rgba(59, 130, 246, 0.9), rgba(139, 92, 246, 0.9)'
+                })`,
+              `linear-gradient(315deg,
+                ${microphoneState === 'recording' && !isUserMuted
+                  ? 'rgba(20, 184, 166, 0.9), rgba(16, 185, 129, 0.9)'
+                  : microphoneState === 'muted'
+                    ? 'rgba(239, 68, 68, 0.9), rgba(251, 113, 133, 0.9)'
+                    : 'rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9)'
+                })`,
+            ],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+
+        {/* Inner Shadow Overlay */}
+        <div
+          className="absolute inset-0 rounded-2xl opacity-20"
+          style={{
+            background: `linear-gradient(135deg, rgba(0,0,0,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)`,
+          }}
+        />
+
+        {/* Button Content Container */}
+        <div className="relative z-10 flex items-center justify-center gap-3">
+          {/* Animated Icon */}
+          <AnimatePresence mode="wait">
+            {isAttemptingToRecord ? (
+              <motion.div
+                key="loading-icon"
+                initial={{ opacity: 0, scale: 0.8, rotate: -180 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: 180 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="w-5 h-5 flex items-center justify-center"
+              >
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              </motion.div>
+            ) : microphoneState === 'recording' && !isUserMuted ? (
+              <motion.div
+                key="speaking-icon"
+                initial={{ opacity: 0, scale: 0.8, rotate: -180 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: 180 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="w-5 h-5 flex items-center justify-center"
+              >
+                <EnhancedSoundWaveVisualizer />
+              </motion.div>
+            ) : microphoneState === 'muted' ? (
+              <motion.svg
+                key="muted-icon"
+                initial={{ opacity: 0, scale: 0.8, rotate: -180 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: 180 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line strokeLinecap="round" strokeLinejoin="round" x1="12" y1="19" x2="12" y2="22" />
+                <line strokeLinecap="round" strokeLinejoin="round" x1="8" y1="22" x2="16" y2="22" />
+                <line strokeLinecap="round" strokeLinejoin="round" x1="6" y1="6" x2="18" y2="18" />
+              </motion.svg>
+            ) : (
+              <motion.svg
+                key="idle-icon"
+                initial={{ opacity: 0, scale: 0.8, rotate: -180 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: 180 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line strokeLinecap="round" strokeLinejoin="round" x1="12" y1="19" x2="12" y2="22" />
+                <line strokeLinecap="round" strokeLinejoin="round" x1="8" y1="22" x2="16" y2="22" />
+              </motion.svg>
+            )}
+          </AnimatePresence>
+
+          {/* Animated Text */}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={isAttemptingToRecord ? 'initializing' : getButtonText()}
+              initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className="font-normal text-white text-base"
+            >
+              {isAttemptingToRecord ? (
+                <>
+                  Initializing
+                  <AnimatedLoadingDots />
+                </>
+              ) : (
+                getButtonText()
+              )}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+
+        {/* Click Ripple Effect */}
+        <AnimatePresence>
+          {clickRipple && (
+            <motion.div
+              key={clickRipple.id}
+              initial={{
+                opacity: 0.7,
+                scale: 0,
+                x: clickRipple.x - 24,
+                y: clickRipple.y - 24
+              }}
+              animate={{
+                opacity: 0,
+                scale: 6,
+                x: clickRipple.x - 24,
+                y: clickRipple.y - 24
+              }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute w-12 h-12 bg-white/40 rounded-full pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Breathing Animation for Recording State */}
+        {microphoneState === 'recording' && !isUserMuted && (
+          <motion.div
+            className="absolute inset-0 rounded-2xl"
+            animate={{
+              scale: [1, 1.03, 1],
+              opacity: [0.8, 1, 0.8],
+            }}
+            transition={{
+              duration: 2.5,
+              repeat: Infinity,
+              ease: [0.4, 0, 0.6, 1]
+            }}
+          />
+        )}
+
+
+      </motion.button>
+    </div>
+  );
+}
+
+// Enhanced Sound Wave Visualizer Component with Advanced Animation
+function EnhancedSoundWaveVisualizer() {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      {[0, 1, 2, 3, 4].map((index) => (
+        <motion.div
+          key={index}
+          className="bg-white rounded-full"
+          style={{
+            width: '3px',
+            minHeight: '6px',
+          }}
+          animate={{
+            height: [6, 18, 6],
+            opacity: [0.7, 1, 0.7],
+          }}
+          transition={{
+            duration: 1.2,
+            repeat: Infinity,
+            delay: index * 0.15,
+            ease: [0.4, 0, 0.6, 1]
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Sound Wave Visualizer Component
+function SoundWaveVisualizer() {
+  return (
+    <div className="flex items-center justify-center gap-0.5">
+      {[0, 1, 2, 3, 4].map((index) => (
+        <motion.span
+          key={index}
+          className="bg-white rounded-full w-0.5"
+          animate={{
+            height: [4, 12, 4],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            delay: index * 0.1,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '2px',
+            minHeight: '4px',
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
