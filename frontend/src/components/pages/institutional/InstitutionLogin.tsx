@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { institutionService } from '../../../services/institutionService';
 import Link from 'next/link';
@@ -14,6 +14,20 @@ export const InstitutionLogin: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check if user is already authenticated on mount
+  useEffect(() => {
+    const token = localStorage.getItem('institution_token');
+    const institutionId = localStorage.getItem('institution_id');
+    
+    if (token && institutionId) {
+      // Already authenticated, redirect to dashboard
+      router.push('/institution/dashboard');
+    } else {
+      setIsCheckingAuth(false);
+    }
+  }, [router]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -45,10 +59,15 @@ export const InstitutionLogin: React.FC = () => {
         password: formData.password
       });
 
+      // Clear any old session data first
+      sessionStorage.clear();
+      
+      // Set new authentication data
       localStorage.setItem('institution_token', result.access_token);
       localStorage.setItem('institution_id', result.institution_id);
-      // Institution name and code will be fetched by dashboard
-      router.push('/institution/dashboard');
+      
+      // Use window.location.href for hard navigation to prevent cache issues
+      window.location.href = '/institution/dashboard';
     } catch (error: any) {
       setApiError(
         error.response?.data?.detail || 'Login failed. Please check your credentials.'
@@ -63,6 +82,18 @@ export const InstitutionLogin: React.FC = () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
+
+  // Show loading state while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 pt-24">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 pt-24">

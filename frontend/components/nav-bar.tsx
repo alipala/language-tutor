@@ -62,13 +62,20 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   // Check if we're on the landing page and detect mobile
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const checkInstitutionUser = () => {
+        const institutionToken = localStorage.getItem('institution_token');
+        const institutionNameStored = localStorage.getItem('institution_name');
+        setIsInstitutionUser(!!institutionToken);
+        setInstitutionName(institutionNameStored || 'Institution');
+      };
+      
       setIsLandingPage(window.location.pathname === '/');
       
-      // Check if user is institution admin
-      const institutionToken = localStorage.getItem('institution_token');
-      const institutionNameStored = localStorage.getItem('institution_name');
-      setIsInstitutionUser(!!institutionToken);
-      setInstitutionName(institutionNameStored || 'Institution');
+      // Check initially
+      checkInstitutionUser();
+      
+      // Re-check on path change (for navigation)
+      const intervalId = setInterval(checkInstitutionUser, 500);
       
       // Detect mobile device
       const checkMobile = () => {
@@ -110,6 +117,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       return () => {
         window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', checkMobile);
+        clearInterval(intervalId);
       };
     }
   }, [lastScrollY, isMobile]);
@@ -166,13 +174,37 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, [isMenuOpen]);
 
   const handleLogout = () => {
-    logout();
-    // Close the confirmation dialog
-    setShowLogoutConfirm(false);
-    // Close the menu
-    setIsMenuOpen(false);
-    // Navigate to home page after logout
-    window.location.href = '/';
+    // Comprehensive session cleanup
+    if (isInstitutionUser) {
+      // Institution user logout
+      localStorage.removeItem('institution_token');
+      localStorage.removeItem('institution_id');
+      localStorage.removeItem('institution_name');
+      localStorage.removeItem('institution_code');
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Close dialogs
+      setShowLogoutConfirm(false);
+      setIsMenuOpen(false);
+      
+      // Redirect to institution login
+      window.location.href = '/institution/login';
+    } else {
+      // Regular user logout
+      logout(); // This already handles localStorage token removal
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Close dialogs
+      setShowLogoutConfirm(false);
+      setIsMenuOpen(false);
+      
+      // Navigate to home page
+      window.location.href = '/';
+    }
   };
 
   // Handle profile navigation with confirmation if on speech page
@@ -371,13 +403,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                     </button>
                     <button
                       onClick={() => {
-                        localStorage.removeItem('institution_token');
-                        localStorage.removeItem('institution_id');
-                        localStorage.removeItem('institution_name');
-                        localStorage.removeItem('institution_code');
-                        setShowLogoutConfirm(false);
+                        setShowLogoutConfirm(true);
                         setIsMenuOpen(false);
-                        window.location.href = '/institution/login';
                       }}
                       className="block w-full text-left px-4 py-3 text-sm text-[#e74c3c] font-medium hover:bg-[#e74c3c]/10"
                     >

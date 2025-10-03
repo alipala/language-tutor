@@ -32,6 +32,8 @@ interface Learner {
 
 export const InstitutionDashboard: React.FC = () => {
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [institutionName, setInstitutionName] = useState('');
   const [institutionCode, setInstitutionCode] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
@@ -46,7 +48,56 @@ export const InstitutionDashboard: React.FC = () => {
   const [period, setPeriod] = useState('30');
   const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners'>('overview');
 
+  // Authentication check - runs on mount and whenever localStorage changes
   useEffect(() => {
+    const checkAuthentication = () => {
+      const token = localStorage.getItem('institution_token');
+      const institutionId = localStorage.getItem('institution_id');
+      
+      if (!token || !institutionId) {
+        // Not authenticated - redirect to login
+        router.push('/institution/login');
+        return false;
+      }
+      
+      return true;
+    };
+
+    // Initial check
+    const authenticated = checkAuthentication();
+    setIsAuthenticated(authenticated);
+    setIsLoading(false);
+
+    // Set up interval to continuously check authentication
+    // This prevents access via browser back button after logout
+    const authCheckInterval = setInterval(() => {
+      const authenticated = checkAuthentication();
+      if (!authenticated) {
+        setIsAuthenticated(false);
+        clearInterval(authCheckInterval);
+      }
+    }, 500);
+
+    // Listen for storage events (logout in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'institution_token' && !e.newValue) {
+        // Token was removed - user logged out
+        router.push('/institution/login');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(authCheckInterval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [router]);
+
+  useEffect(() => {
+    // Only load data if authenticated
+    if (!isAuthenticated) return;
+
     // Load institution data
     const code = localStorage.getItem('institution_code') || '';
     const name = localStorage.getItem('institution_name') || 'Your Institution';
@@ -56,7 +107,7 @@ export const InstitutionDashboard: React.FC = () => {
     // TODO: Fetch real data from API
     // For now, using mock data
     loadDashboardData();
-  }, [period]);
+  }, [period, isAuthenticated]);
 
   const loadDashboardData = () => {
     // Mock data - replace with API calls
@@ -151,6 +202,23 @@ export const InstitutionDashboard: React.FC = () => {
     // Show toast notification
   };
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
 
@@ -182,7 +250,7 @@ export const InstitutionDashboard: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             <button
