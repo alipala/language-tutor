@@ -2301,6 +2301,23 @@ if frontend_build_path.exists():
             return FileResponse(responsible_ai_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Responsible AI page not found")
     
+    # Institution routes (App Router pages)
+    @app.get("/institution/signup")
+    async def serve_institution_signup():
+        signup_file = frontend_build_path / "institution" / "signup.html"
+        if signup_file.exists():
+            return FileResponse(signup_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Institution signup page not found")
+    
+    @app.get("/institution/login")
+    async def serve_institution_login():
+        login_file = frontend_build_path / "institution" / "login.html"
+        if login_file.exists():
+            return FileResponse(login_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Institution login page not found")
+    
+    print("✅ Added institution route handlers for App Router pages")
+    
     # Add admin panel route
     @app.get("/_admin")
     async def serve_admin_panel():
