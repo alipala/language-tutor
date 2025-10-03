@@ -47,6 +47,7 @@ export const InstitutionLogin: React.FC = () => {
 
       localStorage.setItem('institution_token', result.access_token);
       localStorage.setItem('institution_id', result.institution_id);
+      // Institution name and code will be fetched by dashboard
       router.push('/institution/dashboard');
     } catch (error: any) {
       setApiError(
@@ -66,7 +67,7 @@ export const InstitutionLogin: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 pt-24">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-gray-900">
           {/* Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full mb-4">

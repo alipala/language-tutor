@@ -24,6 +24,7 @@ export const InstitutionSignup: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -56,7 +57,15 @@ export const InstitutionSignup: React.FC = () => {
       const result = await institutionService.signup(formData);
       localStorage.setItem('institution_code', result.institution_code);
       localStorage.setItem('institution_id', result.institution_id);
-      router.push('/institution/signup-success');
+      localStorage.setItem('institution_name', formData.name);
+      
+      // Show success animation
+      setShowSuccess(true);
+      
+      // Redirect to dashboard after animation
+      setTimeout(() => {
+        router.push('/institution/dashboard');
+      }, 2000);
     } catch (error: any) {
       setApiError(error.response?.data?.detail || 'Signup failed. Please try again.');
       setIsSubmitting(false);
@@ -70,10 +79,32 @@ export const InstitutionSignup: React.FC = () => {
     }
   };
 
+  // Success animation screen
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-green-100 rounded-full mb-6 animate-bounce">
+            <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Account Created!</h2>
+          <p className="text-gray-600 mb-4">Redirecting to your dashboard...</p>
+          <div className="flex justify-center space-x-1">
+            <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 pt-24">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-gray-900">
           {/* Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full mb-4">
