@@ -292,12 +292,6 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 Pricing
               </button>
               <button 
-                onClick={() => scrollToSection('for-schools')}
-                className="text-white/90 hover:text-[#4ECFBF] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#4ECFBF]/70 hover:bg-[#4ECFBF]/10 hover:shadow-lg"
-              >
-                For Schools
-              </button>
-              <button 
                 onClick={() => scrollToSection('faq')}
                 className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 hover:shadow-lg"
               >

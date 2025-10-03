@@ -132,11 +132,9 @@ const Footer: React.FC = () => {
       ]
     },
     {
-      title: "For Institutions",
+      title: "For Schools",
       links: [
-        { name: "School Signup", href: "/institution/signup", icon: Users },
-        { name: "School Login", href: "/institution/login", icon: Globe },
-        { name: "Institution Dashboard", href: "/institution/dashboard", icon: TrendingUp }
+        { name: "School Access", href: "/institution/login", icon: Users }
       ]
     },
     {

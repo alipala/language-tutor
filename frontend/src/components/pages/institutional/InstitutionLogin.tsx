@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { institutionService } from '../../../services/institutionService';
-import './InstitutionLogin.css';
+import Link from 'next/link';
 
 export const InstitutionLogin: React.FC = () => {
   const router = useRouter();
@@ -45,11 +45,8 @@ export const InstitutionLogin: React.FC = () => {
         password: formData.password
       });
 
-      // Store authentication token
       localStorage.setItem('institution_token', result.access_token);
       localStorage.setItem('institution_id', result.institution_id);
-
-      // Navigate to institution dashboard
       router.push('/institution/dashboard');
     } catch (error: any) {
       setApiError(
@@ -61,73 +58,102 @@ export const InstitutionLogin: React.FC = () => {
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   return (
-    <div className="institution-login-page">
-      <div className="login-container">
-        <div className="login-header">
-          <h1>Institution Login</h1>
-          <p>Access your institution dashboard</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">School Login</h1>
+            <p className="text-gray-600 text-sm">Access your institution dashboard</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Admin Email */}
+            <div>
+              <label htmlFor="admin_email" className="block text-sm font-medium text-gray-700 mb-1">
+                Admin Email
+              </label>
+              <input
+                id="admin_email"
+                type="email"
+                value={formData.admin_email}
+                onChange={(e) => handleChange('admin_email', e.target.value)}
+                placeholder="admin@institution.edu"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent ${
+                  errors.admin_email ? 'border-red-500' : 'border-gray-300'
+                }`}
+                autoComplete="email"
+              />
+              {errors.admin_email && (
+                <p className="text-red-500 text-xs mt-1">{errors.admin_email}</p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleChange('password', e.target.value)}
+                placeholder="Enter your password"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent ${
+                  errors.password ? 'border-red-500' : 'border-gray-300'
+                }`}
+                autoComplete="current-password"
+              />
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            {/* API Error */}
+            {apiError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm">{apiError}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Logging in...' : 'Login'}
+            </button>
+
+            {/* Links */}
+            <div className="space-y-2 text-center text-sm">
+              <p className="text-gray-600">
+                Don't have an account?{' '}
+                <Link href="/institution/signup" className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium">
+                  Sign up here
+                </Link>
+              </p>
+              <p>
+                <Link href="/institution/forgot-password" className="text-gray-600 hover:text-gray-800">
+                  Forgot password?
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
-
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="admin_email">Admin Email</label>
-            <input
-              id="admin_email"
-              type="email"
-              value={formData.admin_email}
-              onChange={(e) => handleChange('admin_email', e.target.value)}
-              placeholder="admin@institution.edu"
-              className={errors.admin_email ? 'error' : ''}
-              autoComplete="email"
-            />
-            {errors.admin_email && (
-              <span className="error-text">{errors.admin_email}</span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => handleChange('password', e.target.value)}
-              placeholder="Enter your password"
-              className={errors.password ? 'error' : ''}
-              autoComplete="current-password"
-            />
-            {errors.password && (
-              <span className="error-text">{errors.password}</span>
-            )}
-          </div>
-
-          {apiError && <div className="api-error">{apiError}</div>}
-
-          <button
-            type="submit"
-            className="submit-button"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Logging in...' : 'Login'}
-          </button>
-
-          <div className="form-footer">
-            <p className="signup-link">
-              Don't have an account?{' '}
-              <a href="/institution/signup">Sign up here</a>
-            </p>
-            <p className="forgot-password-link">
-              <a href="/institution/forgot-password">Forgot password?</a>
-            </p>
-          </div>
-        </form>
       </div>
     </div>
   );
