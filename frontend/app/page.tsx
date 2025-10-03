@@ -603,6 +603,94 @@ export default function Home() {
           {/* Pricing Section - New Subscription Plans Component */}
           <SubscriptionPlans />
 
+          {/* For Schools Section */}
+          <section id="for-schools" className="landing-section landing-third">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <div className="max-w-4xl mx-auto">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
+                  For Schools & Institutions
+                </h2>
+                <p className="text-white/90 text-lg mb-12 text-center max-w-2xl mx-auto">
+                  Empower your students with AI-powered language learning. Manage learners, track progress, and provide personalized language education at scale.
+                </p>
+                
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-2xl border border-white/30">
+                  <div className="grid md:grid-cols-2 gap-8 mb-8">
+                    {/* Features */}
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <svg className="w-8 h-8 mr-3 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        What You Get
+                      </h3>
+                      <ul className="space-y-4">
+                        <li className="flex items-start">
+                          <svg className="w-5 h-5 text-[#4ECFBF] mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-gray-700">Centralized dashboard for managing multiple learners</span>
+                        </li>
+                        <li className="flex items-start">
+                          <svg className="w-5 h-5 text-[#4ECFBF] mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-gray-700">Real-time progress tracking and analytics</span>
+                        </li>
+                        <li className="flex items-start">
+                          <svg className="w-5 h-5 text-[#4ECFBF] mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-gray-700">Bulk enrollment and user management</span>
+                        </li>
+                        <li className="flex items-start">
+                          <svg className="w-5 h-5 text-[#4ECFBF] mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-gray-700">Dedicated support for educational institutions</span>
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    {/* Image/Visual */}
+                    <div className="flex items-center justify-center">
+                      <div className="bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-2xl p-8 text-white text-center shadow-xl">
+                        <svg className="w-24 h-24 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <h4 className="text-2xl font-bold mb-2">Transform Your Institution</h4>
+                        <p className="text-white/90">Join schools worldwide using AI-powered language learning</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* CTA Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t border-gray-200">
+                    <a
+                      href="/institution/signup"
+                      className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Create School Account
+                    </a>
+                    <a
+                      href="/institution/login"
+                      className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                      School Login
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* Final Section with FAQ */}
           <section id="faq" className="landing-section landing-third">
             <div className="section-background"></div>
