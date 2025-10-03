@@ -1,0 +1,261 @@
+/* Professional B2B Institution Login - Consistent with Signup */
+
+.institution-login-page {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.login-container {
+  max-width: 500px;
+  width: 100%;
+}
+
+/* Login Header */
+.login-header {
+  text-align: center;
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #4ECFBF 0%, #45B7D1 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(78, 207, 191, 0.2);
+}
+
+.login-header h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.login-header p {
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Login Form */
+.login-form {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: 2px solid #4ECFBF;
+  padding: 2.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.75rem;
+}
+
+.form-group:last-of-type {
+  margin-bottom: 2rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 2px solid rgba(78, 207, 191, 0.3);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.form-group input::placeholder {
+  color: rgba(78, 207, 191, 0.5);
+  font-weight: 400;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4ECFBF;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(78, 207, 191, 0.1);
+  color: #1e293b;
+}
+
+.form-group input.error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.02);
+}
+
+.form-group input.error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: block;
+  font-weight: 500;
+}
+
+.api-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid #ef4444;
+  color: #dc2626;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.submit-button {
+  width: 100%;
+  background: linear-gradient(135deg, #4ECFBF 0%, #45B7D1 100%);
+  color: #ffffff;
+  border: none;
+  padding: 1.25rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(78, 207, 191, 0.3);
+  letter-spacing: 0.025em;
+  margin-bottom: 1.5rem;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(78, 207, 191, 0.4);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Form Footer */
+.form-footer {
+  text-align: center;
+}
+
+.signup-link,
+.forgot-password-link {
+  color: #64748b;
+  font-size: 0.9375rem;
+  margin: 0.5rem 0;
+}
+
+.signup-link a,
+.forgot-password-link a {
+  color: #4ECFBF;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.signup-link a:hover,
+.forgot-password-link a:hover {
+  color: #45B7D1;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-container {
+    max-width: 100%;
+  }
+
+  .login-header {
+    padding: 2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+  }
+
+  .login-header h1 {
+    font-size: 1.875rem;
+  }
+
+  .login-header p {
+    font-size: 1rem;
+  }
+
+  .login-form {
+    padding: 2rem 1.5rem;
+  }
+
+  .form-group input {
+    padding: 0.875rem 1rem;
+  }
+
+  .submit-button {
+    padding: 1rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .institution-login-page {
+    padding: 1rem 0.5rem;
+  }
+
+  .login-header {
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+  }
+
+  .login-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .login-header p {
+    font-size: 0.9375rem;
+  }
+
+  .login-form {
+    padding: 1.5rem 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    font-size: 0.875rem;
+  }
+
+  .form-group input {
+    font-size: 1rem; /* Prevent zoom on iOS */
+  }
+
+  .submit-button {
+    font-size: 1rem;
+  }
+
+  .signup-link,
+  .forgot-password-link {
+    font-size: 0.875rem;
+  }
+}
+
+/* Focus visible for accessibility */
+.submit-button:focus-visible {
+  outline: 3px solid #4ECFBF;
+  outline-offset: 2px;
+}
