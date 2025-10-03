@@ -157,6 +157,10 @@ app.include_router(conversation_help_router)
 from session_heartbeat_routes import router as session_heartbeat_router
 app.include_router(session_heartbeat_router)
 
+# Include consent routes
+from app.consent.routes import router as consent_router
+app.include_router(consent_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
