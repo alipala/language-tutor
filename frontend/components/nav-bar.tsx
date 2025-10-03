@@ -22,6 +22,10 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
+  // Institution user detection
+  const [isInstitutionUser, setIsInstitutionUser] = useState(false);
+  const [institutionName, setInstitutionName] = useState('');
+  
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
 
@@ -59,6 +63,12 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsLandingPage(window.location.pathname === '/');
+      
+      // Check if user is institution admin
+      const institutionToken = localStorage.getItem('institution_token');
+      const institutionNameStored = localStorage.getItem('institution_name');
+      setIsInstitutionUser(!!institutionToken);
+      setInstitutionName(institutionNameStored || 'Institution');
       
       // Detect mobile device
       const checkMobile = () => {
@@ -309,6 +319,72 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 <div className="w-6 h-6 bg-white/20 rounded-full animate-pulse"></div>
                 <div className="w-16 h-4 bg-white/20 rounded animate-pulse"></div>
                 <div className="w-4 h-4 bg-white/20 rounded animate-pulse"></div>
+              </div>
+            </div>
+          ) : isInstitutionUser ? (
+            <div className="flex items-center space-x-2">
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="text-white/80 hover:text-white transition-all duration-300 relative"
+                >
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <span className="font-medium text-lg">{institutionName}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                
+                {/* Institution Dropdown Menu */}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-md rounded-md shadow-lg py-1 z-10 border border-white/30">
+                    <button
+                      onClick={() => {
+                        window.location.href = '/institution/dashboard';
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        // TODO: Implement settings page
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Settings
+                    </button>
+                    <button
+                      onClick={() => {
+                        // TODO: Implement billing page
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Billing
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem('institution_token');
+                        localStorage.removeItem('institution_id');
+                        localStorage.removeItem('institution_name');
+                        localStorage.removeItem('institution_code');
+                        setShowLogoutConfirm(false);
+                        setIsMenuOpen(false);
+                        window.location.href = '/institution/login';
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#e74c3c] font-medium hover:bg-[#e74c3c]/10"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : user ? (
