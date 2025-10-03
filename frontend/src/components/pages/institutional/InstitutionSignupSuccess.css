@@ -1,0 +1,366 @@
+/* Professional Success Page - Consistent with Main App */
+
+.institution-success-page {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.success-container {
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Success Icon Animation */
+.success-icon {
+  margin: 0 auto 2rem;
+  width: 120px;
+  height: 120px;
+}
+
+.checkmark {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 3;
+  stroke: #4ECFBF;
+  stroke-miterlimit: 10;
+  box-shadow: inset 0px 0px 0px #4ECFBF;
+  animation: fill 0.4s ease-in-out 0.4s forwards, scale 0.3s ease-in-out 0.9s both;
+}
+
+.checkmark-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 3;
+  stroke-miterlimit: 10;
+  stroke: #4ECFBF;
+  fill: none;
+  animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark-check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  stroke: #4ECFBF;
+  animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+
+@keyframes stroke {
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes scale {
+  0%, 100% {
+    transform: none;
+  }
+  50% {
+    transform: scale3d(1.1, 1.1, 1);
+  }
+}
+
+@keyframes fill {
+  100% {
+    box-shadow: inset 0px 0px 0px 60px rgba(78, 207, 191, 0.1);
+  }
+}
+
+/* Success Message */
+.success-container h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.success-message {
+  font-size: 1.25rem;
+  color: #64748b;
+  margin-bottom: 3rem;
+  font-weight: 500;
+}
+
+/* Institution Code Section */
+.institution-code-section {
+  background: linear-gradient(135deg, rgba(78, 207, 191, 0.1) 0%, rgba(69, 183, 209, 0.1) 100%);
+  border: 2px solid #4ECFBF;
+  border-radius: 16px;
+  padding: 2.5rem;
+  margin-bottom: 3rem;
+}
+
+.institution-code-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+}
+
+.code-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.institution-code {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #4ECFBF;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2em;
+  background: #ffffff;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  border: 2px solid #4ECFBF;
+  box-shadow: 0 4px 12px rgba(78, 207, 191, 0.2);
+}
+
+.copy-button {
+  background: #4ECFBF;
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-button:hover {
+  background: #45B7D1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(78, 207, 191, 0.3);
+}
+
+.copy-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.code-info {
+  color: #64748b;
+  font-size: 0.9375rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Next Steps */
+.next-steps {
+  margin-bottom: 3rem;
+}
+
+.next-steps h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 2rem;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.step-card {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.step-card:hover {
+  border-color: #4ECFBF;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(78, 207, 191, 0.15);
+}
+
+.step-number {
+  width: 3rem;
+  height: 3rem;
+  background: linear-gradient(135deg, #4ECFBF 0%, #45B7D1 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 auto 1rem;
+  box-shadow: 0 4px 12px rgba(78, 207, 191, 0.3);
+}
+
+.step-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.step-card p {
+  color: #64748b;
+  font-size: 0.9375rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #4ECFBF 0%, #45B7D1 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(78, 207, 191, 0.3);
+}
+
+.primary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(78, 207, 191, 0.4);
+}
+
+.secondary-button {
+  background: white;
+  color: #4ECFBF;
+  border: 2px solid #4ECFBF;
+  padding: 1rem 2.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.secondary-button:hover {
+  background: rgba(78, 207, 191, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Support Section */
+.support-section {
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.help-link {
+  color: #4ECFBF;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.help-link:hover {
+  color: #45B7D1;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .success-container h1 {
+    font-size: 2rem;
+  }
+
+  .success-message {
+    font-size: 1.125rem;
+  }
+
+  .institution-code-section {
+    padding: 2rem 1.5rem;
+  }
+
+  .institution-code {
+    font-size: 1.5rem;
+    padding: 0.875rem 1.5rem;
+    letter-spacing: 0.15em;
+  }
+
+  .steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .primary-button,
+  .secondary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .success-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .checkmark {
+    width: 80px;
+    height: 80px;
+  }
+
+  .success-container h1 {
+    font-size: 1.75rem;
+  }
+
+  .institution-code-section h2 {
+    font-size: 1.25rem;
+  }
+
+  .institution-code {
+    font-size: 1.25rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .step-card {
+    padding: 1.5rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .action-buttons,
+  .copy-button {
+    display: none;
+  }
+
+  .institution-code-section {
+    border: 2px solid #000;
+    background: none;
+  }
+
+  .institution-code {
+    color: #000;
+    border-color: #000;
+  }
+
+  .success-icon {
+    display: none;
+  }
+}

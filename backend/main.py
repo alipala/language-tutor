@@ -2316,6 +2316,13 @@ if frontend_build_path.exists():
             return FileResponse(login_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Institution login page not found")
     
+    @app.get("/institution/signup-success")
+    async def serve_institution_signup_success():
+        success_file = frontend_build_path / "institution" / "signup-success.html"
+        if success_file.exists():
+            return FileResponse(success_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Institution signup success page not found")
+    
     print("✅ Added institution route handlers for App Router pages")
     
     # Add admin panel route
