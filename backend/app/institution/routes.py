@@ -89,6 +89,26 @@ async def login_institution(
         **admin_data
     )
 
+@router.get("/{institution_id}",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_institution(
+    institution_id: str,
+    db = Depends(lambda: database)
+) -> Dict[str, Any]:
+    """
+    Get institution details
+    """
+    service = InstitutionService(db)
+    institution = await service.get_institution(institution_id)
+    
+    if not institution:
+        raise HTTPException(
+            status_code=404,
+            detail="Institution not found"
+        )
+    
+    return institution
+
 @router.get("/stats/{institution_id}",
             dependencies=[Depends(check_feature_enabled)])
 async def get_institution_stats(

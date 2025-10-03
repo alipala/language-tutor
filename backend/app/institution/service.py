@@ -107,6 +107,28 @@ class InstitutionService:
             "subscription_plan": institution["subscription_plan"]
         }
 
+    async def get_institution(self, institution_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get institution details by ID
+        """
+        from bson import ObjectId
+        
+        try:
+            institution = await self.institutions.find_one({"_id": ObjectId(institution_id)})
+        except Exception:
+            # Invalid ObjectId format
+            return None
+        
+        if not institution:
+            return None
+        
+        # Convert ObjectId to string and remove password
+        institution["id"] = str(institution["_id"])
+        del institution["_id"]
+        del institution["admin_password"]  # Never return password
+        
+        return institution
+
     async def get_institution_stats(self, institution_id: str) -> Dict[str, Any]:
         """
         Get institution statistics

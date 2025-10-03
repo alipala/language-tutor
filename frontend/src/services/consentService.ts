@@ -3,7 +3,7 @@
  */
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export interface ConsentStatus {
   has_consent: boolean;

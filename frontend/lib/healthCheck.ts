@@ -53,13 +53,13 @@ function getApiUrl(baseUrl?: string): string {
   // Server-side rendering: use backend URL from environment
   if (typeof window === 'undefined') {
     // During SSR, use the backend URL from environment
-    return process.env.BACKEND_URL || 'http://localhost:8000';
+    return process.env.BACKEND_URL || 'http://127.0.0.1:8000';
   }
   
   // Client-side: Handle localhost and 127.0.0.1 cases
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8000';
+    return 'http://127.0.0.1:8000';
   }
   
   // For production, try to use the same origin
@@ -73,7 +73,7 @@ function getApiUrl(baseUrl?: string): string {
   }
   
   // Default fallback for client-side
-  return 'http://localhost:8000';
+  return 'http://127.0.0.1:8000';
 }
 
 /**

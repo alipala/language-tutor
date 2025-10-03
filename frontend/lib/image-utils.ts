@@ -5,7 +5,7 @@ export async function shortenImageUrl(openaiImageUrl: string): Promise<string> {
     // Determine the API base URL
     const apiUrl = process.env.NODE_ENV === 'production' 
       ? 'https://mytacoai.com' 
-      : 'http://localhost:8000';
+      : 'http://127.0.0.1:8000';
     
     const response = await fetch(`${apiUrl}/api/shorten-image`, {
       method: 'POST',
@@ -40,5 +40,5 @@ export async function shortenImageUrl(openaiImageUrl: string): Promise<string> {
 export function getApiUrl(): string {
   return process.env.NODE_ENV === 'production' 
     ? 'https://mytacoai.com' 
-    : 'http://localhost:8000';
+    : 'http://127.0.0.1:8000';
 }
