@@ -10,6 +10,12 @@ export default function EmailVerificationPage() {
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
+    if (!searchParams) {
+      setVerificationStatus('error');
+      setIsVerifying(false);
+      return;
+    }
+    
     const token = searchParams.get('token');
     
     if (!token) {
