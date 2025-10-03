@@ -21,6 +21,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isInstitutionMenuOpen, setIsInstitutionMenuOpen] = useState(false);
   
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
@@ -147,13 +148,16 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       if (isMenuOpen && !target.closest('.user-menu-container') && !target.closest('.mobile-menu-container')) {
         setIsMenuOpen(false);
       }
+      if (isInstitutionMenuOpen && !target.closest('.institution-menu-container')) {
+        setIsInstitutionMenuOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isInstitutionMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -387,7 +391,53 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
               </div>
             </div>
           ) : (
-            <div className="flex items-center">
+            <div className="flex items-center space-x-3">
+              {/* For Schools Dropdown */}
+              <div className="relative institution-menu-container">
+                <button
+                  onClick={() => setIsInstitutionMenuOpen(!isInstitutionMenuOpen)}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/10 border border-white/30 hover:bg-white/20 transition-all duration-300 text-white/90 hover:text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span className="font-medium">For Schools</span>
+                  <svg className={`w-4 h-4 transition-transform ${isInstitutionMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Institution Dropdown Menu */}
+                {isInstitutionMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-md rounded-md shadow-lg py-1 z-10 border border-white/30">
+                    <div className="px-4 py-2 border-b border-gray-200">
+                      <p className="text-xs text-gray-500 font-medium">INSTITUTIONAL ACCESS</p>
+                    </div>
+                    <Link
+                      href="/institution/signup"
+                      onClick={() => setIsInstitutionMenuOpen(false)}
+                      className="block px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10 flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Create School Account</span>
+                    </Link>
+                    <Link
+                      href="/institution/login"
+                      onClick={() => setIsInstitutionMenuOpen(false)}
+                      className="block px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10 flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                      <span>School Login</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+              
+              {/* Regular Login Button */}
               <button
                 onClick={() => navigateTo('/auth/login')}
                 className="login-button px-4 py-2 rounded-lg transition-all duration-300"
@@ -494,6 +544,37 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             </>
           ) : (
             <>
+              {/* Institution Menu Items for Mobile */}
+              <div className="px-4 py-2 mx-2 border-b border-white/10">
+                <p className="text-xs text-white/60 font-medium uppercase tracking-wide">For Schools</p>
+              </div>
+              <Link
+                href="/institution/signup"
+                onClick={() => setIsMenuOpen(false)}
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Create School Account</span>
+              </Link>
+              <Link
+                href="/institution/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                <span>School Login</span>
+              </Link>
+              
+              <div className="border-t border-white/10 mx-2 my-2"></div>
+              
+              {/* Individual Learner Login */}
+              <div className="px-4 py-2 mx-2 border-b border-white/10">
+                <p className="text-xs text-white/60 font-medium uppercase tracking-wide">Individual Learners</p>
+              </div>
               <button
                 onClick={() => {
                   navigateTo('/auth/login');
