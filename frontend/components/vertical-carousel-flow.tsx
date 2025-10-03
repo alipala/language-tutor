@@ -132,7 +132,7 @@ export default function VerticalCarouselFlow() {
 
   // Handle mode parameter on component mount
   useEffect(() => {
-    const mode = searchParams.get('mode');
+    const mode = searchParams?.get('mode');
     if (mode === 'assessment' || mode === 'practice') {
       setSkipChoiceStep(true);
       setPreselectedMode(mode);

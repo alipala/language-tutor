@@ -16,7 +16,7 @@ export default function EmailVerificationPage() {
       return;
     }
     
-    const token = searchParams.get('token');
+    const token = searchParams?.get('token');
     
     if (!token) {
       setVerificationStatus('error');

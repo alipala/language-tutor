@@ -92,7 +92,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   // Check for checkout success
   useEffect(() => {
-    const checkoutSuccess = searchParams.get('checkout');
+    const checkoutSuccess = searchParams?.get('checkout');
     if (checkoutSuccess === 'success') {
       setShowSuccessNotification(true);
       // Clear the URL parameter

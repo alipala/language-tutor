@@ -125,7 +125,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
 
   // Check for checkout success
   useEffect(() => {
-    const checkoutSuccess = searchParams.get('checkout');
+    const checkoutSuccess = searchParams?.get('checkout');
     if (checkoutSuccess === 'success') {
       setShowSuccessNotification(true);
       // Clear the URL parameter
