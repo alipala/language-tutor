@@ -169,6 +169,10 @@ app.include_router(institution_router)
 from app.tutor.routes import router as tutor_router
 app.include_router(tutor_router)
 
+# Include learner routes
+from app.learner.routes import router as learner_router
+app.include_router(learner_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
