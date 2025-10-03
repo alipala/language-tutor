@@ -37,17 +37,6 @@ const nextConfig = {
   staticPageGenerationTimeout: 180,
   // Compress responses for better performance
   compress: true,
-  // Exclude src/pages from Pages Router (using App Router instead)
-  pageExtensions: ['page.tsx', 'page.ts', 'page.jsx', 'page.js'],
-  // Ignore certain directories during build
-  webpack: (config, { isServer }) => {
-    // Ignore src/pages since we're using App Router
-    config.module.rules.push({
-      test: /src\/pages\//,
-      loader: 'ignore-loader',
-    });
-    return config;
-  },
 }
 
 module.exports = nextConfig

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AddLearnerModal } from '../../components/admin/AddLearnerModal';
-import { BulkImportModal } from '../../components/admin/BulkImportModal';
+import { AddLearnerModal } from '../../../components/admin/AddLearnerModal';
+import { BulkImportModal } from '../../../components/admin/BulkImportModal';
 import './LearnerManagement.css';
 
 interface Learner {

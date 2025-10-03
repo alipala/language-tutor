@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { institutionService, InstitutionSignupData } from '../../services/institutionService';
+import { institutionService, InstitutionSignupData } from '../../../services/institutionService';
 import './InstitutionSignup.css';
 
 const PLANS = [

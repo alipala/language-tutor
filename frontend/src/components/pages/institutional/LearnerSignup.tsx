@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ConsentScreen } from '../../components/institutional/ConsentScreen';
+import { ConsentScreen } from '../../../components/institutional/ConsentScreen';
 import './LearnerSignup.css';
 
 interface SignupFormData {
