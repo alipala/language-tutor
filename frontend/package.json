@@ -28,6 +28,7 @@
     "framer-motion": "12.6.2",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
+    "papaparse": "^5.5.3",
     "react": "^18.2.0",
     "react-chatbotify": "^2.1.0",
     "react-dom": "^18.2.0",
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
+    "@types/papaparse": "^5.3.16",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.16",
