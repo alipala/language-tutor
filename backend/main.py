@@ -161,6 +161,10 @@ app.include_router(session_heartbeat_router)
 from app.consent.routes import router as consent_router
 app.include_router(consent_router)
 
+# Include institution routes
+from app.institution.routes import router as institution_router
+app.include_router(institution_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
