@@ -3,7 +3,7 @@ from typing import List
 from app.learner.service import LearnerService
 from app.learner.schemas import *
 from app.config.feature_flags import feature_flags
-from app.db.database import get_database
+from database import get_database
 
 router = APIRouter(prefix="/api/v1/learners", tags=["learners"])
 
