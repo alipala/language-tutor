@@ -139,7 +139,7 @@ export const InstitutionLogin: React.FC = () => {
             </button>
 
             {/* Links */}
-            <div className="space-y-2 text-center text-sm">
+            <div className="space-y-3 text-center text-sm">
               <p className="text-gray-600">
                 Don't have an account?{' '}
                 <Link href="/institution/signup" className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium">
@@ -147,7 +147,7 @@ export const InstitutionLogin: React.FC = () => {
                 </Link>
               </p>
               <p>
-                <Link href="/institution/forgot-password" className="text-gray-600 hover:text-gray-800">
+                <Link href="/institution/forgot-password" className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium underline">
                   Forgot password?
                 </Link>
               </p>
