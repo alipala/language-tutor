@@ -1,5 +1,5 @@
-import { InstitutionDashboard } from '@/src/components/pages/institutional/InstitutionDashboard';
+import { InstitutionDashboardComplete } from '@/src/components/pages/institutional/InstitutionDashboardComplete';
 
 export default function DashboardPage() {
-  return <InstitutionDashboard />;
+  return <InstitutionDashboardComplete />;
 }

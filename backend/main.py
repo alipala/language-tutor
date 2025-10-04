@@ -163,7 +163,9 @@ app.include_router(consent_router)
 
 # Include institution routes
 from app.institution.routes import router as institution_router
+from app.institution.dashboard_routes import router as dashboard_router
 app.include_router(institution_router)
+app.include_router(dashboard_router)
 
 # Include tutor routes
 from app.tutor.routes import router as tutor_router
