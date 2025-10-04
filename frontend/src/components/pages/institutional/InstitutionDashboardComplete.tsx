@@ -29,6 +29,7 @@ interface Tutor {
   learner_count: number;
   learners: Learner[];
   permissions: string[];
+  is_active: boolean;
 }
 
 interface Learner {
@@ -42,6 +43,7 @@ interface Learner {
   enrollment_method: string;
   consent_given: boolean;
   enrolled_at: string;
+  is_active: boolean;
   progress?: {
     percentage: number;
     completed_sessions: number;
@@ -82,6 +84,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filterLevel, setFilterLevel] = useState('all');
   const [filterTutor, setFilterTutor] = useState('all');
   const [filterProgress, setFilterProgress] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('active'); // Status filter for learners
+  const [filterTutorStatus, setFilterTutorStatus] = useState('active'); // Status filter for tutors
   const [filterTutorSpecialization, setFilterTutorSpecialization] = useState('all');
   const [filterTutorLearnerCount, setFilterTutorLearnerCount] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
@@ -179,6 +183,14 @@ export const InstitutionDashboardComplete: React.FC = () => {
       );
     }
     
+    // Status filter
+    if (filterTutorStatus === 'active') {
+      filtered = filtered.filter(t => t.is_active === true);
+    } else if (filterTutorStatus === 'inactive') {
+      filtered = filtered.filter(t => t.is_active === false);
+    }
+    // 'all' shows both active and inactive
+    
     if (filterTutorSpecialization !== 'all') {
       filtered = filtered.filter(t => 
         t.specializations && t.specializations.includes(filterTutorSpecialization)
@@ -199,7 +211,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     setFilteredTutors(filtered);
     setTutorsPage(1); // Reset to first page when filters change
-  }, [tutors, tutorSearchQuery, filterTutorSpecialization, filterTutorLearnerCount]);
+  }, [tutors, tutorSearchQuery, filterTutorSpecialization, filterTutorLearnerCount, filterTutorStatus]);
 
   // Filter learners based on search and filters
   useEffect(() => {
@@ -211,6 +223,14 @@ export const InstitutionDashboardComplete: React.FC = () => {
         l.email.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+    
+    // Status filter
+    if (filterStatus === 'active') {
+      filtered = filtered.filter(l => l.is_active === true);
+    } else if (filterStatus === 'inactive') {
+      filtered = filtered.filter(l => l.is_active === false);
+    }
+    // 'all' shows both active and inactive
     
     if (filterLanguage !== 'all') {
       filtered = filtered.filter(l => l.language === filterLanguage);
@@ -233,7 +253,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     setFilteredLearners(filtered);
     setLearnersPage(1); // Reset to first page when filters change
-  }, [learners, searchQuery, filterLanguage, filterLevel, filterTutor, filterProgress]);
+  }, [learners, searchQuery, filterLanguage, filterLevel, filterTutor, filterProgress, filterStatus]);
 
   const loadAllData = async () => {
     try {
@@ -327,19 +347,21 @@ export const InstitutionDashboardComplete: React.FC = () => {
     }
   };
 
-  const handleRemoveTutor = async (tutorId: string) => {
+  const handleReactivateTutor = async (tutorId: string) => {
+    const tutor = tutors.find(t => t.id === tutorId);
+    
     setConfirmation({
       show: true,
-      title: 'Remove Tutor?',
-      message: 'Are you sure you want to remove this tutor? This action cannot be undone.',
-      confirmText: 'Remove',
+      title: '✅ Reactivate Tutor?',
+      message: `Reactivate ${tutor?.name || 'this tutor'}? They will regain access and can be assigned to learners again.`,
+      confirmText: 'Yes, Reactivate',
       cancelText: 'Cancel',
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
           const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/${tutorId}`, {
-            method: 'DELETE',
+          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
+            method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
 
@@ -348,7 +370,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               show: true,
               type: 'success',
               title: 'Success!',
-              message: 'Tutor removed successfully!'
+              message: 'Tutor reactivated successfully! They can now access the platform.'
             });
             loadAllData();
           } else {
@@ -356,16 +378,68 @@ export const InstitutionDashboardComplete: React.FC = () => {
               show: true,
               type: 'error',
               title: 'Error',
-              message: 'Failed to remove tutor'
+              message: 'Failed to reactivate tutor'
             });
           }
         } catch (error) {
-          console.error('Error removing tutor:', error);
+          console.error('Error reactivating tutor:', error);
           setNotification({
             show: true,
             type: 'error',
             title: 'Error',
-            message: 'Failed to remove tutor'
+            message: 'Failed to reactivate tutor'
+          });
+        }
+      }
+    });
+  };
+
+  const handleDeactivateTutor = async (tutorId: string) => {
+    const tutor = tutors.find(t => t.id === tutorId);
+    const hasLearners = tutor && tutor.learner_count > 0;
+    
+    setConfirmation({
+      show: true,
+      title: hasLearners ? '⏸️ Deactivate Tutor with Assigned Learners?' : '⏸️ Temporarily Deactivate Tutor?',
+      message: hasLearners 
+        ? `${tutor.name} has ${tutor.learner_count} learner${tutor.learner_count > 1 ? 's' : ''} assigned. Deactivating this tutor will unassign all their learners (they'll become "Unassigned"). The tutor account will be preserved and can be reactivated later. Are you sure you want to proceed?`
+        : `Deactivate ${tutor?.name || 'this tutor'}? This will temporarily suspend their access while preserving their account. You can reactivate them later.`,
+      confirmText: 'Yes, Deactivate',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('institution_token');
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (response.ok) {
+            setNotification({
+              show: true,
+              type: 'success',
+              title: 'Success!',
+              message: hasLearners 
+                ? `Tutor deactivated and ${tutor.learner_count} learner${tutor.learner_count > 1 ? 's have' : ' has'} been unassigned.`
+                : 'Tutor deactivated successfully!'
+            });
+            loadAllData();
+          } else {
+            setNotification({
+              show: true,
+              type: 'error',
+              title: 'Error',
+              message: 'Failed to deactivate tutor'
+            });
+          }
+        } catch (error) {
+          console.error('Error deactivating tutor:', error);
+          setNotification({
+            show: true,
+            type: 'error',
+            title: 'Error',
+            message: 'Failed to deactivate tutor'
           });
         }
       }
@@ -413,11 +487,16 @@ export const InstitutionDashboardComplete: React.FC = () => {
   };
 
   const handleDeactivateLearner = async (learnerId: string) => {
+    const learner = learners.find(l => l.id === learnerId);
+    const hasProgress = learner && learner.progress && learner.progress.completed_sessions > 0;
+    
     setConfirmation({
       show: true,
-      title: 'Deactivate Learner?',
-      message: 'Are you sure you want to deactivate this learner? They will lose access to the platform.',
-      confirmText: 'Deactivate',
+      title: '⏸️ Temporarily Deactivate Learner?',
+      message: hasProgress
+        ? `${learner.name} has completed ${learner.progress?.completed_sessions} session${learner.progress && learner.progress.completed_sessions > 1 ? 's' : ''} (${learner.progress?.percentage}% progress). Deactivating will temporarily suspend their access while preserving all progress data. You can reactivate them at any time to resume from where they left off.`
+        : `Deactivate ${learner?.name || 'this learner'}? This will temporarily suspend their platform access while preserving their account. You can reactivate them later.`,
+      confirmText: 'Yes, Deactivate',
       cancelText: 'Cancel',
       onConfirm: async () => {
         try {
@@ -451,6 +530,53 @@ export const InstitutionDashboardComplete: React.FC = () => {
             type: 'error',
             title: 'Error',
             message: 'Failed to deactivate learner'
+          });
+        }
+      }
+    });
+  };
+
+  const handleReactivateLearner = async (learnerId: string) => {
+    const learner = learners.find(l => l.id === learnerId);
+    
+    setConfirmation({
+      show: true,
+      title: '✅ Reactivate Learner?',
+      message: `Reactivate ${learner?.name || 'this learner'}? They will regain full platform access and can resume their learning from where they left off.`,
+      confirmText: 'Yes, Reactivate',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('institution_token');
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (response.ok) {
+            setNotification({
+              show: true,
+              type: 'success',
+              title: 'Success!',
+              message: 'Learner reactivated successfully! They can now access the platform.'
+            });
+            loadAllData();
+          } else {
+            setNotification({
+              show: true,
+              type: 'error',
+              title: 'Error',
+              message: 'Failed to reactivate learner'
+            });
+          }
+        } catch (error) {
+          console.error('Error reactivating learner:', error);
+          setNotification({
+            show: true,
+            type: 'error',
+            title: 'Error',
+            message: 'Failed to reactivate learner'
           });
         }
       }
@@ -850,6 +976,15 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 className="flex-1 min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
               />
               <select
+                value={filterTutorStatus}
+                onChange={(e) => setFilterTutorStatus(e.target.value)}
+                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+              >
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+                <option value="all">All Statuses</option>
+              </select>
+              <select
                 value={filterTutorSpecialization}
                 onChange={(e) => setFilterTutorSpecialization(e.target.value)}
                 className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
@@ -908,10 +1043,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 </thead>
                 <tbody className="divide-y">
                   {paginatedTutors.map(tutor => (
-                    <tr key={tutor.id}>
+                    <tr key={tutor.id} className={!tutor.is_active ? 'bg-gray-100 border-l-4 border-gray-400' : ''}>
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-gray-900">{tutor.name}</p>
+                          <p className={`font-medium ${!tutor.is_active ? 'text-gray-500' : 'text-gray-900'}`}>
+                            {tutor.name}
+                          </p>
                           <p className="text-sm text-gray-500">{tutor.email}</p>
                         </div>
                       </td>
@@ -952,12 +1089,21 @@ export const InstitutionDashboardComplete: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleRemoveTutor(tutor.id)}
-                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
-                        >
-                          Remove
-                        </button>
+                        {tutor.is_active ? (
+                          <button
+                            onClick={() => handleDeactivateTutor(tutor.id)}
+                            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleReactivateTutor(tutor.id)}
+                            className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
+                          >
+                            Reactivate
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1022,6 +1168,15 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 className="flex-1 min-w-[200px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
               />
               <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+              >
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+                <option value="all">All Statuses</option>
+              </select>
+              <select
                 value={filterLanguage}
                 onChange={(e) => setFilterLanguage(e.target.value)}
                 className="px-4 py-2 border rounded-lg text-gray-900"
@@ -1081,10 +1236,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 </thead>
                 <tbody className="divide-y">
                   {paginatedLearners.map(learner => (
-                    <tr key={learner.id}>
+                    <tr key={learner.id} className={!learner.is_active ? 'bg-gray-100 border-l-4 border-gray-400' : ''}>
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-gray-900">{learner.name}</p>
+                          <p className={`font-medium ${!learner.is_active ? 'text-gray-500' : 'text-gray-900'}`}>
+                            {learner.name}
+                          </p>
                           <p className="text-sm text-gray-500">{learner.email}</p>
                         </div>
                       </td>
@@ -1145,8 +1302,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           {learner.consent_given ? (
                             <button
                               onClick={() => handleViewLearnerDetails(learner)}
-                              className="inline-flex items-center px-4 py-2 bg-[#4ECFBF] text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all shadow-sm hover:shadow-md"
-                              title="Full access - consent given"
+                              disabled={!learner.is_active}
+                              className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
+                                learner.is_active
+                                  ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] hover:shadow-md'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                              title={learner.is_active ? "Full access - consent given" : "Learner is inactive"}
                             >
                               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -1156,8 +1318,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => handleViewLearnerDetails(learner)}
-                              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 rounded-lg text-sm font-medium hover:from-orange-200 hover:to-amber-200 transition-all border-2 border-orange-300"
-                              title="Limited access - consent required"
+                              disabled={!learner.is_active}
+                              className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                learner.is_active
+                                  ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 hover:from-orange-200 hover:to-amber-200 border-2 border-orange-300'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-400'
+                              }`}
+                              title={learner.is_active ? "Limited access - consent required" : "Learner is inactive"}
                             >
                               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1165,12 +1332,21 @@ export const InstitutionDashboardComplete: React.FC = () => {
                               View Details
                             </button>
                           )}
-                          <button
-                            onClick={() => handleDeactivateLearner(learner.id)}
-                            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
-                          >
-                            Deactivate
-                          </button>
+                          {learner.is_active ? (
+                            <button
+                              onClick={() => handleDeactivateLearner(learner.id)}
+                              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
+                            >
+                              Deactivate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleReactivateLearner(learner.id)}
+                              className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
+                            >
+                              Reactivate
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

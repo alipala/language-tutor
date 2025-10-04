@@ -144,16 +144,16 @@ async def get_level_distribution(institution_id: str) -> Dict[str, Any]:
             dependencies=[Depends(check_feature_enabled)])
 async def get_tutors(institution_id: str) -> Dict[str, Any]:
     """
-    Get all tutors for an institution with their assigned learners
+    Get all tutors for an institution with their assigned learners (including inactive)
     OPTIMIZED: Uses aggregation pipeline to avoid N+1 queries
     """
     try:
         # Single aggregation pipeline - MUCH faster!
+        # NOTE: Returns ALL tutors (active and inactive)
         pipeline = [
             {
                 "$match": {
-                    "institution_id": institution_id,
-                    "is_active": True
+                    "institution_id": institution_id
                 }
             },
             {
@@ -231,6 +231,7 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
                 "specializations": tutor.get("specializations", []),
                 "learner_count": len(learner_details),
                 "learners": learner_details,
+                "is_active": tutor.get("is_active", True),  # Include is_active field
                 "created_at": tutor.get("created_at")
             })
         
@@ -300,7 +301,7 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
                dependencies=[Depends(check_feature_enabled)])
 async def remove_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
     """
-    Remove/deactivate a tutor
+    Remove/deactivate a tutor (DEPRECATED - use deactivate_tutor instead)
     """
     try:
         # Deactivate tutor instead of deleting
@@ -318,6 +319,80 @@ async def remove_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to remove tutor: {str(e)}")
+
+
+@router.post("/{institution_id}/tutors/deactivate/{tutor_id}",
+             dependencies=[Depends(check_feature_enabled)])
+async def deactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
+    """
+    Deactivate a tutor and unassign all their learners
+    This is a reversible operation that:
+    1. Marks the tutor as inactive (preserves account data)
+    2. Unassigns all learners from this tutor (they become "Unassigned")
+    3. Allows future reactivation
+    """
+    try:
+        # 1. Deactivate the tutor
+        tutor_result = await database.tutors.update_one(
+            {"_id": ObjectId(tutor_id), "institution_id": institution_id},
+            {"$set": {"is_active": False, "deactivated_at": datetime.utcnow()}}
+        )
+        
+        if tutor_result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Tutor not found")
+        
+        # 2. Unassign all learners from this tutor
+        learners_result = await database.institutional_learners.update_many(
+            {
+                "institution_id": institution_id,
+                "tutor_id": tutor_id,
+                "is_active": True
+            },
+            {
+                "$set": {
+                    "tutor_id": None,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        unassigned_count = learners_result.modified_count
+        
+        return {
+            "message": "Tutor deactivated successfully",
+            "unassigned_learners": unassigned_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to deactivate tutor: {str(e)}")
+
+
+@router.post("/{institution_id}/tutors/reactivate/{tutor_id}",
+             dependencies=[Depends(check_feature_enabled)])
+async def reactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
+    """
+    Reactivate a previously deactivated tutor
+    """
+    try:
+        result = await database.tutors.update_one(
+            {"_id": ObjectId(tutor_id), "institution_id": institution_id},
+            {
+                "$set": {"is_active": True, "reactivated_at": datetime.utcnow()},
+                "$unset": {"deactivated_at": ""}
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Tutor not found")
+        
+        return {"message": "Tutor reactivated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reactivate tutor: {str(e)}")
 
 
 @router.put("/{institution_id}/tutors/{tutor_id}/permissions",
@@ -355,16 +430,16 @@ async def update_tutor_permissions(
             dependencies=[Depends(check_feature_enabled)])
 async def get_learners(institution_id: str) -> Dict[str, Any]:
     """
-    Get all learners for an institution with progress data
+    Get all learners for an institution with progress data (including deactivated)
     OPTIMIZED: Uses aggregation pipeline to avoid N+1 queries
     """
     try:
         # Single aggregation pipeline - MUCH faster than N+1 queries!
+        # NOTE: Returns ALL learners (active and inactive)
         pipeline = [
             {
                 "$match": {
-                    "institution_id": institution_id,
-                    "is_active": True
+                    "institution_id": institution_id
                 }
             },
             {
@@ -532,7 +607,7 @@ async def assign_learner_to_tutor(
              dependencies=[Depends(check_feature_enabled)])
 async def deactivate_learner(institution_id: str, learner_id: str) -> Dict[str, Any]:
     """
-    Deactivate/archive a learner
+    Deactivate/archive a learner (reversible operation)
     """
     try:
         result = await database.institutional_learners.update_one(
@@ -549,6 +624,32 @@ async def deactivate_learner(institution_id: str, learner_id: str) -> Dict[str, 
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to deactivate learner: {str(e)}")
+
+
+@router.post("/{institution_id}/learners/reactivate/{learner_id}",
+             dependencies=[Depends(check_feature_enabled)])
+async def reactivate_learner(institution_id: str, learner_id: str) -> Dict[str, Any]:
+    """
+    Reactivate a previously deactivated learner
+    """
+    try:
+        result = await database.institutional_learners.update_one(
+            {"_id": ObjectId(learner_id), "institution_id": institution_id},
+            {
+                "$set": {"is_active": True, "reactivated_at": datetime.utcnow()},
+                "$unset": {"deactivated_at": ""}
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Learner not found")
+        
+        return {"message": "Learner reactivated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reactivate learner: {str(e)}")
 
 
 @router.post("/{institution_id}/learners/bulk-import",
