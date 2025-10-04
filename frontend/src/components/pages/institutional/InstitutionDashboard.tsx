@@ -220,7 +220,7 @@ export const InstitutionDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gray-50 pt-20">
 
       {/* Institution Code Banner */}
       {institutionCode && (
@@ -297,7 +297,7 @@ export const InstitutionDashboard: React.FC = () => {
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent text-gray-900 bg-white"
               >
                 <option value="7">Last 7 Days</option>
                 <option value="30">Last 30 Days</option>

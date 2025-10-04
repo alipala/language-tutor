@@ -5,21 +5,14 @@ import { useRouter } from 'next/navigation';
 import { institutionService, InstitutionSignupData } from '../../../services/institutionService';
 import Link from 'next/link';
 
-const PLANS = [
-  { id: 'starter' as const, name: 'Starter', price: '$49/mo' },
-  { id: 'professional' as const, name: 'Professional', price: '$199/mo' },
-  { id: 'enterprise' as const, name: 'Enterprise', price: 'Custom' }
-];
-
 export const InstitutionSignup: React.FC = () => {
   const router = useRouter();
   const [formData, setFormData] = useState<InstitutionSignupData>({
     name: '',
-    domain: '',
+    institution_type: 'school',
     admin_email: '',
     admin_password: '',
-    admin_name: '',
-    subscription_plan: 'starter'
+    admin_name: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,28 +111,6 @@ export const InstitutionSignup: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Plan Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Plan</label>
-              <div className="grid grid-cols-3 gap-2">
-                {PLANS.map(plan => (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => handleChange('subscription_plan', plan.id)}
-                    className={`p-3 rounded-lg border-2 text-center transition-all ${
-                      formData.subscription_plan === plan.id
-                        ? 'border-[#4ECFBF] bg-[#4ECFBF]/10 text-[#4ECFBF]'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold">{plan.name}</div>
-                    <div className="text-xs mt-1">{plan.price}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Institution Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -158,19 +129,22 @@ export const InstitutionSignup: React.FC = () => {
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
 
-            {/* Domain (Optional) */}
+            {/* Institution Type */}
             <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
-                Domain (optional)
+              <label htmlFor="institution_type" className="block text-sm font-medium text-gray-700 mb-1">
+                Institution Type *
               </label>
-              <input
-                id="domain"
-                type="text"
-                value={formData.domain}
-                onChange={(e) => handleChange('domain', e.target.value)}
-                placeholder="e.g., lincoln-academy.edu"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
-              />
+              <select
+                id="institution_type"
+                value={formData.institution_type}
+                onChange={(e) => handleChange('institution_type', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent text-gray-900 bg-white"
+              >
+                <option value="school">School</option>
+                <option value="university">University</option>
+                <option value="language_center">Language Center</option>
+                <option value="corporate">Corporate</option>
+              </select>
             </div>
 
             {/* Admin Name */}

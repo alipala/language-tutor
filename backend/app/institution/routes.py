@@ -41,7 +41,7 @@ async def signup_institution(
             admin_email=signup_data.admin_email,
             admin_password=signup_data.admin_password,
             admin_name=signup_data.admin_name,
-            domain=signup_data.domain,
+            institution_type=signup_data.institution_type,
             subscription_plan=signup_data.subscription_plan
         )
 

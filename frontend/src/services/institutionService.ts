@@ -4,11 +4,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export interface InstitutionSignupData {
   name: string;
-  domain?: string;
+  institution_type: 'school' | 'university' | 'language_center' | 'corporate';
   admin_email: string;
   admin_password: string;
   admin_name: string;
-  subscription_plan: 'starter' | 'professional' | 'enterprise';
+  subscription_plan?: 'starter' | 'professional' | 'enterprise'; // Optional - managed by admin
 }
 
 export interface InstitutionLoginData {
@@ -43,10 +43,9 @@ export interface InstitutionStats {
 export interface Institution {
   id: string;
   name: string;
-  domain?: string;
+  institution_type: 'school' | 'university' | 'language_center' | 'corporate';
   admin_email: string;
   admin_name: string;
-  institution_type?: string;
   contact_phone?: string;
   website?: string;
   subscription_plan: string;

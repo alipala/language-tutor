@@ -33,7 +33,7 @@ class InstitutionService:
         admin_email: str,
         admin_password: str,
         admin_name: str,
-        domain: Optional[str] = None,
+        institution_type: str = "school",
         subscription_plan: str = "starter"
     ) -> Dict[str, Any]:
         """
@@ -62,7 +62,7 @@ class InstitutionService:
         # Create institution document
         institution = {
             "name": name,
-            "domain": domain,
+            "institution_type": institution_type,
             "admin_email": admin_email,
             "admin_password": self.hash_password(admin_password),
             "admin_name": admin_name,
