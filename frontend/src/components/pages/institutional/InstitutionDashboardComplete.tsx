@@ -70,6 +70,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filterLanguage, setFilterLanguage] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
   const [filterTutor, setFilterTutor] = useState('all');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Modal states for notifications and confirmations
   const [notification, setNotification] = useState<{
@@ -392,6 +393,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   };
 
   const handleExportLearners = async () => {
+    setIsExporting(true);
     try {
       const token = localStorage.getItem('institution_token');
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -416,6 +418,9 @@ export const InstitutionDashboardComplete: React.FC = () => {
           ].join(','))
         ].join('\n');
 
+        // Small delay for better UX
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         // Download
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -423,10 +428,31 @@ export const InstitutionDashboardComplete: React.FC = () => {
         a.href = url;
         a.download = `learners_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
+        
+        setNotification({
+          show: true,
+          type: 'success',
+          title: 'Export Successful!',
+          message: `Exported ${data.data.length} learners to CSV file.`
+        });
+      } else {
+        setNotification({
+          show: true,
+          type: 'error',
+          title: 'Export Failed',
+          message: 'Failed to export learners. Please try again.'
+        });
       }
     } catch (error) {
       console.error('Error exporting learners:', error);
-      alert('Failed to export learners');
+      setNotification({
+        show: true,
+        type: 'error',
+        title: 'Export Error',
+        message: 'An error occurred while exporting learners.'
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -661,9 +687,24 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 </button>
                 <button
                   onClick={handleExportLearners}
-                  className="px-6 py-3 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors"
+                  disabled={isExporting}
+                  className={`px-6 py-3 border-2 border-[#4ECFBF] rounded-lg transition-all ${
+                    isExporting
+                      ? 'bg-[#4ECFBF] text-white cursor-wait'
+                      : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'
+                  }`}
                 >
-                  📥 Export CSV
+                  {isExporting ? (
+                    <span className="flex items-center space-x-2">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Exporting...</span>
+                    </span>
+                  ) : (
+                    <span>📥 Export CSV</span>
+                  )}
                 </button>
               </div>
             </div>
@@ -854,7 +895,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {showImportCSVModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-xl max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4">Import Learners from CSV</h3>
+            <h3 className="text-xl font-bold mb-4 text-gray-900">Import Learners from CSV</h3>
             <p className="text-sm text-gray-600 mb-4">
               CSV format: name, email, language, level, tutor_email
             </p>
@@ -866,11 +907,11 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   handleImportCSV(e.target.files[0]);
                 }
               }}
-              className="w-full px-4 py-2 border rounded-lg mb-4"
+              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-900"
             />
             <button
               onClick={() => setShowImportCSVModal(false)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="w-full px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-medium transition-colors"
             >
               Cancel
             </button>
