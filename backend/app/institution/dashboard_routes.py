@@ -145,44 +145,83 @@ async def get_level_distribution(institution_id: str) -> Dict[str, Any]:
 async def get_tutors(institution_id: str) -> Dict[str, Any]:
     """
     Get all tutors for an institution with their assigned learners
+    OPTIMIZED: Uses aggregation pipeline to avoid N+1 queries
     """
     try:
-        # Get all tutors sorted by creation date (newest first)
-        tutors = await database.tutors.find({
-            "institution_id": institution_id,
-            "is_active": True
-        }).sort("created_at", -1).to_list(length=None)
+        # Single aggregation pipeline - MUCH faster!
+        pipeline = [
+            {
+                "$match": {
+                    "institution_id": institution_id,
+                    "is_active": True
+                }
+            },
+            {
+                "$sort": {"created_at": -1}
+            },
+            {
+                "$lookup": {
+                    "from": "institutional_learners",
+                    "let": {"tutor_id_str": {"$toString": "$_id"}},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$and": [
+                                        {"$eq": ["$tutor_id", "$$tutor_id_str"]},
+                                        {"$eq": ["$is_active", True]},
+                                        {"$eq": ["$institution_id", institution_id]}
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "$lookup": {
+                                "from": "users",
+                                "let": {"user_id_str": "$user_id"},
+                                "pipeline": [
+                                    {
+                                        "$match": {
+                                            "$expr": {
+                                                "$eq": [{"$toString": "$_id"}, "$$user_id_str"]
+                                            }
+                                        }
+                                    }
+                                ],
+                                "as": "user_data"
+                            }
+                        },
+                        {
+                            "$unwind": {
+                                "path": "$user_data",
+                                "preserveNullAndEmptyArrays": False
+                            }
+                        }
+                    ],
+                    "as": "assigned_learners"
+                }
+            }
+        ]
         
-        # For each tutor, get their assigned learners
+        tutors = await database.tutors.aggregate(pipeline).to_list(length=None)
+        
+        # Format results
         tutor_list = []
         for tutor in tutors:
             tutor_id = str(tutor["_id"])
             
-            # Get learner count and list
-            learners = await database.institutional_learners.find({
-                "institution_id": institution_id,
-                "tutor_id": tutor_id,
-                "is_active": True
-            }).to_list(length=None)
-            
-            # Get learner details
+            # Format learner details
             learner_details = []
-            for learner in learners:
-                user_id = learner.get("user_id")
-                if user_id:
-                    try:
-                        user = await database.users.find_one({"_id": ObjectId(user_id)})
-                        if user:
-                            learner_details.append({
-                                "user_id": str(user["_id"]),
-                                "name": user.get("name"),
-                                "email": user.get("email"),
-                                "language": user.get("preferred_language"),
-                                "level": user.get("preferred_level"),
-                                "enrolled_at": learner.get("enrolled_at")
-                            })
-                    except:
-                        pass
+            for learner in tutor.get("assigned_learners", []):
+                user = learner.get("user_data", {})
+                learner_details.append({
+                    "user_id": str(user.get("_id", "")),
+                    "name": user.get("name"),
+                    "email": user.get("email"),
+                    "language": user.get("preferred_language"),
+                    "level": user.get("preferred_level"),
+                    "enrolled_at": learner.get("enrolled_at")
+                })
             
             tutor_list.append({
                 "id": tutor_id,
@@ -190,7 +229,7 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
                 "email": tutor.get("email"),
                 "bio": tutor.get("bio"),
                 "specializations": tutor.get("specializations", []),
-                "learner_count": len(learners),
+                "learner_count": len(learner_details),
                 "learners": learner_details,
                 "created_at": tutor.get("created_at")
             })
@@ -317,86 +356,136 @@ async def update_tutor_permissions(
 async def get_learners(institution_id: str) -> Dict[str, Any]:
     """
     Get all learners for an institution with progress data
+    OPTIMIZED: Uses aggregation pipeline to avoid N+1 queries
     """
     try:
-        learners = await database.institutional_learners.find({
-            "institution_id": institution_id,
-            "is_active": True
-        }).to_list(length=None)
+        # Single aggregation pipeline - MUCH faster than N+1 queries!
+        pipeline = [
+            {
+                "$match": {
+                    "institution_id": institution_id,
+                    "is_active": True
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "users",
+                    "let": {"user_id_str": "$user_id"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$eq": [{"$toString": "$_id"}, "$$user_id_str"]
+                                }
+                            }
+                        }
+                    ],
+                    "as": "user_data"
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "learning_plans",
+                    "localField": "user_id",
+                    "foreignField": "user_id",
+                    "as": "learning_plan"
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "tutors",
+                    "let": {"tutor_id_str": "$tutor_id"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$eq": [{"$toString": "$_id"}, "$$tutor_id_str"]
+                                }
+                            }
+                        }
+                    ],
+                    "as": "tutor_data"
+                }
+            },
+            {
+                "$unwind": {
+                    "path": "$user_data",
+                    "preserveNullAndEmptyArrays": False
+                }
+            }
+        ]
+        
+        learners = await database.institutional_learners.aggregate(pipeline).to_list(length=None)
         
         learner_list = []
         for learner in learners:
-            user_id = learner.get("user_id")
-            if user_id:
-                try:
-                    user = await database.users.find_one({"_id": ObjectId(user_id)})
-                    if user:
-                        # Get tutor info
-                        tutor = None
-                        if learner.get("tutor_id"):
-                            tutor_doc = await database.tutors.find_one({"_id": ObjectId(learner["tutor_id"])})
-                            if tutor_doc:
-                                tutor = {
-                                    "id": str(tutor_doc["_id"]),
-                                    "name": tutor_doc.get("name"),
-                                    "email": tutor_doc.get("email")
-                                }
-                        
-                        # Get learning plan progress
-                        progress = None
-                        learning_plan = await database.learning_plans.find_one({"user_id": user_id})
-                        if learning_plan:
-                            percentage = learning_plan.get("progress_percentage", 0)
-                            completed = learning_plan.get("completed_sessions", 0)
-                            total = learning_plan.get("total_sessions", 16)
-                            
-                            # Categorize progress
-                            if percentage < 15:
-                                category = "Just Started"
-                                color = "green"
-                                emoji = "🟢"
-                            elif percentage < 35:
-                                category = "Early Progress"
-                                color = "blue"
-                                emoji = "🔵"
-                            elif percentage < 60:
-                                category = "Intermediate"
-                                color = "yellow"
-                                emoji = "🟡"
-                            elif percentage < 85:
-                                category = "Advanced"
-                                color = "orange"
-                                emoji = "🟠"
-                            else:
-                                category = "Nearly Complete"
-                                color = "red"
-                                emoji = "🔴"
-                            
-                            progress = {
-                                "percentage": round(percentage, 1),
-                                "completed_sessions": completed,
-                                "total_sessions": total,
-                                "category": category,
-                                "color": color,
-                                "emoji": emoji
-                            }
-                        
-                        learner_list.append({
-                            "id": str(learner["_id"]),
-                            "user_id": str(user["_id"]),
-                            "name": user.get("name"),
-                            "email": user.get("email"),
-                            "language": user.get("preferred_language"),
-                            "level": user.get("preferred_level"),
-                            "tutor": tutor,
-                            "enrollment_method": learner.get("enrollment_method"),
-                            "consent_given": learner.get("consent_given", False),
-                            "enrolled_at": learner.get("enrolled_at"),
-                            "is_active": learner.get("is_active", True),
-                            "progress": progress
-                        })
-                except:
-                    pass
+            user = learner.get("user_data", {})
+            
+            # Get tutor info
+            tutor = None
+            tutor_data = learner.get("tutor_data", [])
+            if tutor_data:
+                tutor_doc = tutor_data[0]
+                tutor = {
+                    "id": str(tutor_doc["_id"]),
+                    "name": tutor_doc.get("name"),
+                    "email": tutor_doc.get("email")
+                }
+            
+            # Get learning plan progress
+            progress = None
+            learning_plans = learner.get("learning_plan", [])
+            if learning_plans:
+                learning_plan = learning_plans[0]  # Get first plan
+                percentage = learning_plan.get("progress_percentage", 0)
+                completed = learning_plan.get("completed_sessions", 0)
+                total = learning_plan.get("total_sessions", 16)
+                
+                # Categorize progress
+                if percentage < 15:
+                    category = "Just Started"
+                    color = "green"
+                    emoji = "🟢"
+                elif percentage < 35:
+                    category = "Early Progress"
+                    color = "blue"
+                    emoji = "🔵"
+                elif percentage < 60:
+                    category = "Intermediate"
+                    color = "yellow"
+                    emoji = "🟡"
+                elif percentage < 85:
+                    category = "Advanced"
+                    color = "orange"
+                    emoji = "🟠"
+                else:
+                    category = "Nearly Complete"
+                    color = "red"
+                    emoji = "🔴"
+                
+                progress = {
+                    "percentage": round(percentage, 1),
+                    "completed_sessions": completed,
+                    "total_sessions": total,
+                    "category": category,
+                    "color": color,
+                    "emoji": emoji
+                }
+            
+            learner_list.append({
+                "id": str(learner["_id"]),
+                "user_id": user.get("_id") if isinstance(user.get("_id"), str) else str(user.get("_id", "")),
+                "name": user.get("name"),
+                "email": user.get("email"),
+                "language": user.get("preferred_language"),
+                "level": user.get("preferred_level"),
+                "tutor": tutor,
+                "enrollment_method": learner.get("enrollment_method"),
+                "consent_given": learner.get("consent_given", False),
+                "enrolled_at": learner.get("enrolled_at"),
+                "is_active": learner.get("is_active", True),
+                "progress": progress
+            })
         
         return {
             "total_learners": len(learner_list),
@@ -555,11 +644,12 @@ async def bulk_import_learners(
         raise HTTPException(status_code=500, detail=f"Failed to import learners: {str(e)}")
 
 
-@router.get("/{institution_id}/learners/{user_id}/details",
+@router.get("/{institution_id}/learners/{user_id}/comprehensive-details",
             dependencies=[Depends(check_feature_enabled)])
-async def get_learner_details(institution_id: str, user_id: str) -> Dict[str, Any]:
+async def get_comprehensive_learner_details(institution_id: str, user_id: str) -> Dict[str, Any]:
     """
-    Get detailed learning progress for a specific learner (requires consent)
+    Get comprehensive learner analytics with AI-generated insights
+    Includes ALL learning plans, sessions, assessments, and recommendations
     """
     try:
         # Check if learner belongs to institution
@@ -584,55 +674,90 @@ async def get_learner_details(institution_id: str, user_id: str) -> Dict[str, An
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Get learning plan
-        learning_plan = await database.learning_plans.find_one({'user_id': user_id})
+        # Get ALL learning plans
+        all_learning_plans = await database.learning_plans.find({'user_id': user_id}).to_list(length=None)
         
-        # Get conversation history (last 10 sessions)
-        conversations = await database.conversations.find({
+        # Get ALL conversation sessions
+        all_conversations = await database.conversations.find({
             'user_id': user_id
-        }).sort('created_at', -1).limit(10).to_list(length=None)
+        }).sort('created_at', -1).to_list(length=None)
         
         # Get subscription info
         subscription = await database.subscriptions.find_one({'user_id': user_id})
         
-        # Format learning plan for response
-        plan_data = None
-        if learning_plan:
-            plan_data = {
-                'progress_percentage': learning_plan.get('progress_percentage', 0),
-                'completed_sessions': learning_plan.get('completed_sessions', 0),
-                'total_sessions': learning_plan.get('total_sessions', 16),
-                'practice_minutes_used': learning_plan.get('practice_minutes_used', 0),
-                'total_practice_minutes': learning_plan.get('total_practice_minutes', 80),
-                'language': learning_plan.get('language'),
-                'proficiency_level': learning_plan.get('proficiency_level'),
-                'created_at': learning_plan.get('created_at')
+        # Get tutor info
+        tutor_info = None
+        if learner.get('tutor_id'):
+            tutor = await database.tutors.find_one({'_id': ObjectId(learner['tutor_id'])})
+            if tutor:
+                tutor_info = {
+                    'id': str(tutor['_id']),
+                    'name': tutor.get('name'),
+                    'email': tutor.get('email')
+                }
+        
+        # Calculate overall metrics
+        total_sessions = sum([plan.get('completed_sessions', 0) for plan in all_learning_plans])
+        total_minutes = sum([plan.get('practice_minutes_used', 0) for plan in all_learning_plans])
+        
+        # Format learning plans
+        formatted_plans = []
+        for plan in all_learning_plans:
+            formatted_plan = {
+                'id': plan.get('id'),
+                'language': plan.get('language'),
+                'proficiency_level': plan.get('proficiency_level'),
+                'progress_percentage': plan.get('progress_percentage', 0),
+                'completed_sessions': plan.get('completed_sessions', 0),
+                'total_sessions': plan.get('total_sessions', 16),
+                'practice_minutes_used': plan.get('practice_minutes_used', 0),
+                'total_practice_minutes': plan.get('total_practice_minutes', 80),
+                'created_at': plan.get('created_at').isoformat() if plan.get('created_at') else None,
+                'assessment_data': plan.get('assessment_data', {}),
+                'plan_content': {
+                    'title': plan.get('plan_content', {}).get('title'),
+                    'assessment_summary': plan.get('plan_content', {}).get('assessment_summary', {}),
+                    'learning_objectives': plan.get('plan_content', {}).get('learning_objectives', []),
+                    'weekly_schedule': plan.get('plan_content', {}).get('weekly_schedule', [])
+                },
+                'session_summaries': plan.get('session_summaries', [])
             }
+            formatted_plans.append(formatted_plan)
+        
+        # Format conversations
+        formatted_conversations = [
+            {
+                'id': str(conv['_id']),
+                'created_at': conv.get('created_at').isoformat() if conv.get('created_at') else None,
+                'duration_minutes': conv.get('duration_minutes', 0),
+                'message_count': len(conv.get('messages', [])),
+                'language': conv.get('language'),
+                'level': conv.get('level')
+            } for conv in all_conversations
+        ]
+        
+        # Generate AI Insights
+        ai_insights = generate_ai_insights(user, formatted_plans, formatted_conversations)
         
         return {
-            'user': {
+            'profile': {
                 'id': str(user['_id']),
                 'name': user.get('name'),
                 'email': user.get('email'),
-                'preferred_language': user.get('preferred_language'),
-                'preferred_level': user.get('preferred_level'),
-                'created_at': user.get('created_at').isoformat() if user.get('created_at') else None
+                'created_at': user.get('created_at').isoformat() if user.get('created_at') else None,
+                'total_sessions': total_sessions,
+                'total_minutes': total_minutes,
+                'languages_studied': list(set([plan['language'] for plan in formatted_plans]))
             },
-            'learning_plan': plan_data,
-            'recent_sessions': [
-                {
-                    'id': str(conv['_id']),
-                    'created_at': conv.get('created_at').isoformat() if conv.get('created_at') else None,
-                    'duration_minutes': conv.get('duration_minutes', 0),
-                    'message_count': len(conv.get('messages', [])),
-                    'language': conv.get('language'),
-                    'level': conv.get('level')
-                } for conv in conversations
-            ],
+            'all_learning_plans': formatted_plans,
+            'practice_sessions': formatted_conversations,
             'subscription': {
                 'status': subscription.get('status') if subscription else 'none',
-                'minutes_remaining': subscription.get('minutes_remaining', 0) if subscription else 0
+                'minutes_remaining': subscription.get('minutes_remaining', 0) if subscription else 0,
+                'plan_type': subscription.get('plan_type') if subscription else None
             } if subscription else None,
+            'tutor': tutor_info,
+            'ai_insights': ai_insights,
             'consent_given': learner.get('consent_given', False),
             'enrolled_at': learner.get('enrolled_at').isoformat() if learner.get('enrolled_at') else None
         }
@@ -640,7 +765,157 @@ async def get_learner_details(institution_id: str, user_id: str) -> Dict[str, An
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get learner details: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get comprehensive learner details: {str(e)}")
+
+
+def generate_ai_insights(user, learning_plans, conversations):
+    """Generate AI-powered insights from learner data"""
+    
+    total_sessions = sum([plan['completed_sessions'] for plan in learning_plans])
+    total_minutes = sum([plan['practice_minutes_used'] for plan in learning_plans])
+    
+    # Calculate average progress
+    avg_progress = sum([plan['progress_percentage'] for plan in learning_plans]) / len(learning_plans) if learning_plans else 0
+    
+    # Analyze session patterns
+    if conversations:
+        session_hours = []
+        for conv in conversations:
+            try:
+                if conv['created_at']:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(conv['created_at'].replace('Z', '+00:00'))
+                    session_hours.append(dt.hour)
+            except:
+                pass
+        
+        peak_hour = max(set(session_hours), key=session_hours.count) if session_hours else 12
+        learning_time = "morning" if peak_hour < 12 else "afternoon" if peak_hour < 17 else "evening"
+    else:
+        learning_time = "unknown"
+    
+    # Calculate progress rate
+    user_created = user.get('created_at')
+    if user_created:
+        try:
+            from datetime import datetime
+            days_active = (datetime.utcnow() - user_created).days
+            if days_active > 0:
+                sessions_per_week = (total_sessions / days_active) * 7
+            else:
+                sessions_per_week = total_sessions
+        except:
+            sessions_per_week = 1
+    else:
+        sessions_per_week = 1
+    
+    if sessions_per_week > 3:
+        progress_rate = "fast"
+        progress_description = "above average"
+    elif sessions_per_week > 1.5:
+        progress_rate = "moderate"
+        progress_description = "steady"
+    else:
+        progress_rate = "slow"
+        progress_description = "needs attention"
+    
+    # Engagement analysis
+    if sessions_per_week > 2:
+        consistency = "high"
+    elif sessions_per_week > 1:
+        consistency = "moderate"
+    else:
+        consistency = "low"
+    
+    # Multi-language insights
+    is_multi_language = len(learning_plans) > 1
+    
+    # Generate recommendations
+    recommendations = []
+    
+    for plan in learning_plans:
+        lang = plan['language'].title()
+        
+        # Low progress check
+        if plan['progress_percentage'] < 30:
+            recommendations.append(f"📈 Increase {lang} practice frequency to accelerate progress")
+        
+        # Check weak skills from assessment
+        if 'assessment_data' in plan and 'skill_scores' in plan['assessment_data']:
+            weak_skills = [
+                skill for skill, score in plan['assessment_data']['skill_scores'].items() 
+                if score < 60
+            ]
+            for skill in weak_skills[:2]:  # Top 2 weak skills
+                recommendations.append(f"🎯 Focus on improving {lang} {skill}")
+        
+        # Check areas for improvement
+        if 'assessment_data' in plan and 'areas_for_improvement' in plan['assessment_data']:
+            for area in plan['assessment_data']['areas_for_improvement'][:1]:
+                recommendations.append(f"💡 {lang}: {area}")
+    
+    # Consistency recommendation
+    if consistency == "low":
+        recommendations.append("⏰ Try to practice more regularly - aim for at least 2 sessions per week")
+    
+    # Multi-language recommendation
+    if is_multi_language:
+        recommendations.append("🌍 Balance practice time across both languages for optimal retention")
+    
+    # Overall summary
+    language_list = ", ".join([plan['language'].title() for plan in learning_plans])
+    summary = f"This learner is studying {language_list} with {progress_description} progress. "
+    summary += f"They have completed {total_sessions} practice sessions totaling {total_minutes} minutes. "
+    summary += f"Most active during {learning_time} hours with {consistency} consistency. "
+    
+    if is_multi_language:
+        summary += f"As a multi-language learner, they are developing skills across {len(learning_plans)} languages simultaneously."
+    
+    # Plan-specific insights
+    plan_insights = {}
+    for plan in learning_plans:
+        plan_id = plan['id']
+        lang = plan['language'].title()
+        progress = plan['progress_percentage']
+        
+        if progress < 20:
+            insight = f"Just getting started with {lang}. Early progress shows engagement."
+        elif progress < 50:
+            insight = f"Building foundation in {lang}. Keep the momentum going!"
+        elif progress < 80:
+            insight = f"Strong progress in {lang}. Approaching mastery of current level."
+        else:
+            insight = f"Excellent work in {lang}! Nearly completed the learning plan."
+        
+        # Add assessment-based insight
+        if 'assessment_data' in plan and 'strengths' in plan['assessment_data']:
+            strengths = plan['assessment_data'].get('strengths', [])
+            if strengths:
+                insight += f" Key strength: {strengths[0]}"
+        
+        plan_insights[plan_id] = insight
+    
+    return {
+        'overall_summary': summary,
+        'learning_style': {
+            'preferred_time': learning_time,
+            'type': 'multi-language' if is_multi_language else 'focused'
+        },
+        'progress_rate': {
+            'rate': progress_rate,
+            'description': progress_description,
+            'sessions_per_week': round(sessions_per_week, 1)
+        },
+        'engagement': {
+            'consistency': consistency,
+            'total_sessions': total_sessions,
+            'total_minutes': total_minutes,
+            'average_session_duration': round(total_minutes / total_sessions, 1) if total_sessions > 0 else 0
+        },
+        'recommendations': recommendations[:6],  # Top 6 recommendations
+        'plan_specific_insights': plan_insights,
+        'multi_language_learner': is_multi_language
+    }
 
 
 @router.get("/{institution_id}/learners/export",

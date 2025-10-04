@@ -56,6 +56,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [institutionId, setInstitutionId] = useState('');
   const [institutionName, setInstitutionName] = useState('');
   
@@ -435,7 +436,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       const token = localStorage.getItem('institution_token');
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const response = await fetch(
-        `${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/${learner.user_id}/details`,
+        `${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/${learner.user_id}/comprehensive-details`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -1306,7 +1307,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-              ) : selectedLearnerDetails ? (
+              ) : selectedLearnerDetails && selectedLearnerDetails.profile ? (
                 <div className="space-y-6">
                   {/* Profile Section */}
                   <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl">
@@ -1314,64 +1315,130 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Name</p>
-                        <p className="font-medium text-gray-900">{selectedLearnerDetails.user.name}</p>
+                        <p className="font-medium text-gray-900">{selectedLearnerDetails.profile?.name || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Email</p>
-                        <p className="font-medium text-gray-900">{selectedLearnerDetails.user.email}</p>
+                        <p className="font-medium text-gray-900">{selectedLearnerDetails.profile?.email || 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Language</p>
-                        <p className="font-medium text-gray-900">{selectedLearnerDetails.user.preferred_language}</p>
+                        <p className="text-sm text-gray-600">Total Sessions</p>
+                        <p className="font-medium text-gray-900">{selectedLearnerDetails.profile?.total_sessions || 0}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Level</p>
-                        <p className="font-medium text-gray-900">{selectedLearnerDetails.user.preferred_level}</p>
+                        <p className="text-sm text-gray-600">Total Minutes</p>
+                        <p className="font-medium text-gray-900">{selectedLearnerDetails.profile?.total_minutes || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Languages Studied</p>
+                        <p className="font-medium text-gray-900">
+                          {selectedLearnerDetails.profile?.languages_studied?.join(', ') || 'None'}
+                        </p>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Learning Plan Section */}
-                  {selectedLearnerDetails.learning_plan && (
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">📚 Learning Plan</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">Progress:</span>
-                          <span className="font-bold text-[#4ECFBF]">
-                            {selectedLearnerDetails.learning_plan.progress_percentage?.toFixed(1)}%
-                          </span>
+                  {/* All Learning Plans */}
+                  {selectedLearnerDetails.all_learning_plans && selectedLearnerDetails.all_learning_plans.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-gray-900">📚 Learning Plans</h3>
+                      {selectedLearnerDetails.all_learning_plans.map((plan: any, index: number) => (
+                        <div key={plan.id || index} className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
+                          <h4 className="text-md font-bold text-gray-900 mb-3">
+                            {plan.language?.charAt(0).toUpperCase() + plan.language?.slice(1)} {plan.proficiency_level}
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Progress:</span>
+                              <span className="font-bold text-[#4ECFBF]">
+                                {plan.progress_percentage?.toFixed(1) || 0}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Sessions Completed:</span>
+                              <span className="font-medium">
+                                {plan.completed_sessions || 0} / {plan.total_sessions || 16}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Practice Minutes Used:</span>
+                              <span className="font-medium">
+                                {plan.practice_minutes_used || 0} / {plan.total_practice_minutes || 80}
+                              </span>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div className="w-full bg-gray-200 rounded-full h-3 mt-4">
+                              <div 
+                                className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full transition-all"
+                                style={{ width: `${plan.progress_percentage || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">Sessions Completed:</span>
-                          <span className="font-medium">
-                            {selectedLearnerDetails.learning_plan.completed_sessions} / {selectedLearnerDetails.learning_plan.total_sessions}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">Practice Minutes Used:</span>
-                          <span className="font-medium">
-                            {selectedLearnerDetails.learning_plan.practice_minutes_used} / {selectedLearnerDetails.learning_plan.total_practice_minutes}
-                          </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* AI Insights */}
+                  {selectedLearnerDetails.ai_insights && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">🤖 AI-Generated Insights</h3>
+                      <div className="space-y-4">
+                        <p className="text-gray-700 leading-relaxed">
+                          {selectedLearnerDetails.ai_insights.overall_summary}
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                          <div>
+                            <p className="text-sm text-gray-600">Learning Style</p>
+                            <p className="font-medium text-gray-900 capitalize">
+                              {selectedLearnerDetails.ai_insights.learning_style?.preferred_time} learner
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Progress Rate</p>
+                            <p className="font-medium text-gray-900 capitalize">
+                              {selectedLearnerDetails.ai_insights.progress_rate?.rate}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Consistency</p>
+                            <p className="font-medium text-gray-900 capitalize">
+                              {selectedLearnerDetails.ai_insights.engagement?.consistency}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Sessions/Week</p>
+                            <p className="font-medium text-gray-900">
+                              {selectedLearnerDetails.ai_insights.progress_rate?.sessions_per_week}
+                            </p>
+                          </div>
                         </div>
                         
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-200 rounded-full h-3 mt-4">
-                          <div 
-                            className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full transition-all"
-                            style={{ width: `${selectedLearnerDetails.learning_plan.progress_percentage}%` }}
-                          ></div>
-                        </div>
+                        {selectedLearnerDetails.ai_insights.recommendations && 
+                         selectedLearnerDetails.ai_insights.recommendations.length > 0 && (
+                          <div className="pt-4 border-t">
+                            <p className="font-medium text-gray-900 mb-2">Recommendations:</p>
+                            <ul className="space-y-2">
+                              {selectedLearnerDetails.ai_insights.recommendations.map((rec: string, idx: number) => (
+                                <li key={idx} className="text-sm text-gray-700 pl-4">
+                                  {rec}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                   
                   {/* Recent Sessions */}
-                  {selectedLearnerDetails.recent_sessions.length > 0 && (
+                  {selectedLearnerDetails.practice_sessions && selectedLearnerDetails.practice_sessions.length > 0 && (
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl">
                       <h3 className="text-lg font-bold text-gray-900 mb-4">📝 Recent Sessions</h3>
                       <div className="space-y-3">
-                        {selectedLearnerDetails.recent_sessions.slice(0, 5).map((session: any, idx: number) => (
+                        {selectedLearnerDetails.practice_sessions.slice(0, 5).map((session: any, idx: number) => (
                           <div key={session.id} className="flex justify-between items-center p-3 bg-white rounded-lg">
                             <div>
                               <p className="font-medium text-gray-900">Session {idx + 1}</p>
