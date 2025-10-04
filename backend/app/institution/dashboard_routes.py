@@ -316,7 +316,7 @@ async def update_tutor_permissions(
             dependencies=[Depends(check_feature_enabled)])
 async def get_learners(institution_id: str) -> Dict[str, Any]:
     """
-    Get all learners for an institution
+    Get all learners for an institution with progress data
     """
     try:
         learners = await database.institutional_learners.find({
@@ -342,6 +342,45 @@ async def get_learners(institution_id: str) -> Dict[str, Any]:
                                     "email": tutor_doc.get("email")
                                 }
                         
+                        # Get learning plan progress
+                        progress = None
+                        learning_plan = await database.learning_plans.find_one({"user_id": user_id})
+                        if learning_plan:
+                            percentage = learning_plan.get("progress_percentage", 0)
+                            completed = learning_plan.get("completed_sessions", 0)
+                            total = learning_plan.get("total_sessions", 16)
+                            
+                            # Categorize progress
+                            if percentage < 15:
+                                category = "Just Started"
+                                color = "green"
+                                emoji = "🟢"
+                            elif percentage < 35:
+                                category = "Early Progress"
+                                color = "blue"
+                                emoji = "🔵"
+                            elif percentage < 60:
+                                category = "Intermediate"
+                                color = "yellow"
+                                emoji = "🟡"
+                            elif percentage < 85:
+                                category = "Advanced"
+                                color = "orange"
+                                emoji = "🟠"
+                            else:
+                                category = "Nearly Complete"
+                                color = "red"
+                                emoji = "🔴"
+                            
+                            progress = {
+                                "percentage": round(percentage, 1),
+                                "completed_sessions": completed,
+                                "total_sessions": total,
+                                "category": category,
+                                "color": color,
+                                "emoji": emoji
+                            }
+                        
                         learner_list.append({
                             "id": str(learner["_id"]),
                             "user_id": str(user["_id"]),
@@ -353,7 +392,8 @@ async def get_learners(institution_id: str) -> Dict[str, Any]:
                             "enrollment_method": learner.get("enrollment_method"),
                             "consent_given": learner.get("consent_given", False),
                             "enrolled_at": learner.get("enrolled_at"),
-                            "is_active": learner.get("is_active", True)
+                            "is_active": learner.get("is_active", True),
+                            "progress": progress
                         })
                 except:
                     pass

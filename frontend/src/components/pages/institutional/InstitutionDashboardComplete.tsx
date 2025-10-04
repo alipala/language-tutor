@@ -42,6 +42,14 @@ interface Learner {
   enrollment_method: string;
   consent_given: boolean;
   enrolled_at: string;
+  progress?: {
+    percentage: number;
+    completed_sessions: number;
+    total_sessions: number;
+    category: string;
+    color: string;
+    emoji: string;
+  };
 }
 
 export const InstitutionDashboardComplete: React.FC = () => {
@@ -70,7 +78,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filterLanguage, setFilterLanguage] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
   const [filterTutor, setFilterTutor] = useState('all');
+  const [filterProgress, setFilterProgress] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Pagination states
+  const [tutorsPage, setTutorsPage] = useState(1);
+  const [learnersPage, setLearnersPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Modal states for notifications and confirmations
   const [notification, setNotification] = useState<{
@@ -168,8 +182,16 @@ export const InstitutionDashboardComplete: React.FC = () => {
       filtered = filtered.filter(l => l.tutor?.id === filterTutor);
     }
     
+    if (filterProgress !== 'all') {
+      filtered = filtered.filter(l => {
+        if (!l.progress) return filterProgress === 'none';
+        return l.progress.category === filterProgress;
+      });
+    }
+    
     setFilteredLearners(filtered);
-  }, [learners, searchQuery, filterLanguage, filterLevel, filterTutor]);
+    setLearnersPage(1); // Reset to first page when filters change
+  }, [learners, searchQuery, filterLanguage, filterLevel, filterTutor, filterProgress]);
 
   const loadAllData = async () => {
     try {
@@ -523,6 +545,109 @@ export const InstitutionDashboardComplete: React.FC = () => {
     }]
   };
 
+  // Pagination logic
+  const paginatedTutors = tutors.slice(
+    (tutorsPage - 1) * itemsPerPage,
+    tutorsPage * itemsPerPage
+  );
+  const totalTutorPages = Math.ceil(tutors.length / itemsPerPage);
+
+  const paginatedLearners = filteredLearners.slice(
+    (learnersPage - 1) * itemsPerPage,
+    learnersPage * itemsPerPage
+  );
+  const totalLearnerPages = Math.ceil(filteredLearners.length / itemsPerPage);
+
+  // Pagination Component
+  const Pagination = ({ 
+    currentPage, 
+    totalPages,
+    totalItems,
+    onPageChange 
+  }: { 
+    currentPage: number; 
+    totalPages: number;
+    totalItems: number;
+    onPageChange: (page: number) => void;
+  }) => {
+    const getPageNumbers = () => {
+      const pages = [];
+      const showEllipsis = totalPages > 7;
+      
+      if (!showEllipsis) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (currentPage <= 3) {
+          pages.push(1, 2, 3, 4, '...', totalPages);
+        } else if (currentPage >= totalPages - 2) {
+          pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+        } else {
+          pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+        }
+      }
+      
+      return pages;
+    };
+
+    return (
+      <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+          <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
+          <span className="font-medium">{totalItems}</span> results
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-2 rounded-lg font-medium transition-all ${
+              currentPage === 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
+            }`}
+          >
+            Previous
+          </button>
+          
+          <div className="flex space-x-1">
+            {getPageNumbers().map((page, index) => (
+              page === '...' ? (
+                <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">...</span>
+              ) : (
+                <button
+                  key={page}
+                  onClick={() => onPageChange(page as number)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    currentPage === page
+                      ? 'bg-[#4ECFBF] text-white shadow-md'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border'
+                  }`}
+                >
+                  {page}
+                </button>
+              )
+            ))}
+          </div>
+          
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-2 rounded-lg font-medium transition-all ${
+              currentPage === totalPages
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -620,8 +745,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
               </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow">
-              {tutors.map(tutor => (
+            <div className="bg-white rounded-xl shadow overflow-hidden">
+              {paginatedTutors.map(tutor => (
                 <div key={tutor.id} className="p-6 border-b last:border-b-0">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -670,6 +795,16 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   </div>
                 </div>
               ))}
+              
+              {/* Pagination for Tutors */}
+              {totalTutorPages > 1 && (
+                <Pagination 
+                  currentPage={tutorsPage}
+                  totalPages={totalTutorPages}
+                  totalItems={tutors.length}
+                  onPageChange={setTutorsPage}
+                />
+              )}
             </div>
           </div>
         )}
@@ -710,13 +845,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow flex gap-4">
+            <div className="bg-white p-4 rounded-xl shadow flex gap-4 flex-wrap">
               <input
                 type="text"
                 placeholder="Search learners..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
+                className="flex-1 min-w-[200px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
               />
               <select
                 value={filterLanguage}
@@ -739,6 +874,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 ))}
               </select>
               <select
+                value={filterProgress}
+                onChange={(e) => setFilterProgress(e.target.value)}
+                className="px-4 py-2 border rounded-lg text-gray-900"
+              >
+                <option value="all">All Progress</option>
+                <option value="Just Started">🟢 Just Started</option>
+                <option value="Early Progress">🔵 Early Progress</option>
+                <option value="Intermediate">🟡 Intermediate</option>
+                <option value="Advanced">🟠 Advanced</option>
+                <option value="Nearly Complete">🔴 Nearly Complete</option>
+                <option value="none">No Progress Data</option>
+              </select>
+              <select
                 value={filterTutor}
                 onChange={(e) => setFilterTutor(e.target.value)}
                 className="px-4 py-2 border rounded-lg text-gray-900"
@@ -758,12 +906,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Language</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tutor</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredLearners.map(learner => (
+                  {paginatedLearners.map(learner => (
                     <tr key={learner.id}>
                       <td className="px-6 py-4">
                         <div>
@@ -773,6 +922,44 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-gray-700">{learner.language || 'Not set'}</td>
                       <td className="px-6 py-4 text-gray-700">{learner.level || 'Not set'}</td>
+                      <td className="px-6 py-4">
+                        {learner.progress ? (
+                          <div className="space-y-2">
+                            {/* Progress Bar */}
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-1">
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className={`h-2 rounded-full ${
+                                      learner.progress.color === 'green' ? 'bg-green-500' :
+                                      learner.progress.color === 'blue' ? 'bg-blue-500' :
+                                      learner.progress.color === 'yellow' ? 'bg-yellow-500' :
+                                      learner.progress.color === 'orange' ? 'bg-orange-500' :
+                                      'bg-red-500'
+                                    }`}
+                                    style={{ width: `${learner.progress.percentage}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                              <span className="text-sm font-medium text-gray-700 min-w-[45px]">
+                                {learner.progress.percentage}%
+                              </span>
+                            </div>
+                            {/* Session Count and Badge */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600">
+                                {learner.progress.completed_sessions}/{learner.progress.total_sessions} sessions
+                              </span>
+                              <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 flex items-center space-x-1">
+                                <span>{learner.progress.emoji}</span>
+                                <span>{learner.progress.category}</span>
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-500">No progress data</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         <select
                           value={learner.tutor?.id || ''}
@@ -788,7 +975,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => handleDeactivateLearner(learner.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
                         >
                           Deactivate
                         </button>
@@ -797,6 +984,16 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              
+              {/* Pagination for Learners */}
+              {totalLearnerPages > 1 && (
+                <Pagination 
+                  currentPage={learnersPage}
+                  totalPages={totalLearnerPages}
+                  totalItems={filteredLearners.length}
+                  onPageChange={setLearnersPage}
+                />
+              )}
             </div>
           </div>
         )}
