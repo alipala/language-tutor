@@ -747,7 +747,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Language Distribution */}
               <div className="bg-white p-6 rounded-xl shadow">
-                <h3 className="text-lg font-bold mb-4">Language Distribution</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Language Distribution</h3>
                 {languageDistribution.length > 0 ? (
                   <div className="h-64">
                     <Pie data={languageChartData} options={{ maintainAspectRatio: false }} />
@@ -759,7 +759,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
               {/* Level Distribution */}
               <div className="bg-white p-6 rounded-xl shadow">
-                <h3 className="text-lg font-bold mb-4">Proficiency Level Distribution</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Proficiency Level Distribution</h3>
                 {levelDistribution.length > 0 ? (
                   <div className="h-64">
                     <Bar data={levelChartData} options={{ maintainAspectRatio: false }} />
@@ -801,55 +801,89 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow overflow-hidden">
-              {paginatedTutors.map(tutor => (
-                <div key={tutor.id} className="p-6 border-b last:border-b-0">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900">{tutor.name}</h3>
-                      <p className="text-gray-600">{tutor.email}</p>
-                      <p className="text-sm text-gray-500 mt-2">{tutor.bio}</p>
-                      <p className="text-sm mt-2 text-gray-700">
-                        <span className="font-medium">Specializations:</span> {tutor.specializations.join(', ')}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        <span className="font-medium">Assigned Learners:</span> {tutor.learner_count}
-                      </p>
-                      
-                      {/* Show learners */}
-                      {tutor.learners && tutor.learners.length > 0 && (
-                        <div className="mt-4">
-                          <button
-                            onClick={() => setSelectedTutor(selectedTutor?.id === tutor.id ? null : tutor)}
-                            className="text-[#4ECFBF] text-sm"
-                          >
-                            {selectedTutor?.id === tutor.id ? 'Hide' : 'Show'} Learners →
-                          </button>
-                          
-                          {selectedTutor?.id === tutor.id && (
-                            <div className="mt-2 pl-4 border-l-2 border-[#4ECFBF]">
-                              {tutor.learners.slice(0, 5).map(learner => (
-                                <div key={learner.user_id} className="text-sm py-1 text-gray-700">
-                                  • {learner.name} ({learner.email})
-                                </div>
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tutor Info</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bio & Specializations</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learners</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {paginatedTutors.map(tutor => (
+                    <tr key={tutor.id}>
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{tutor.name}</p>
+                          <p className="text-sm text-gray-500">{tutor.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          {tutor.bio && (
+                            <p className="text-sm text-gray-700">{tutor.bio}</p>
+                          )}
+                          {tutor.specializations && tutor.specializations.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {tutor.specializations.map((spec, idx) => (
+                                <span 
+                                  key={idx}
+                                  className="inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700"
+                                >
+                                  {spec}
+                                </span>
                               ))}
-                              {tutor.learners.length > 5 && (
-                                <p className="text-sm text-gray-500">...and {tutor.learners.length - 5} more</p>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium text-gray-900">{tutor.learner_count}</span>
+                            <span className="text-sm text-gray-500">assigned</span>
+                          </div>
+                          {tutor.learners && tutor.learners.length > 0 && (
+                            <div>
+                              <button
+                                onClick={() => setSelectedTutor(selectedTutor?.id === tutor.id ? null : tutor)}
+                                className="text-[#4ECFBF] text-sm hover:text-[#3a9e92] font-medium"
+                              >
+                                {selectedTutor?.id === tutor.id ? '▼ Hide' : '▶ Show'} Learners
+                              </button>
+                              
+                              {selectedTutor?.id === tutor.id && (
+                                <div className="mt-2 pl-4 border-l-2 border-[#4ECFBF] space-y-1">
+                                  {tutor.learners.slice(0, 5).map(learner => (
+                                    <div key={learner.user_id} className="text-sm text-gray-700">
+                                      <span className="font-medium">{learner.name}</span>
+                                      <span className="text-gray-500 ml-2">({learner.email})</span>
+                                    </div>
+                                  ))}
+                                  {tutor.learners.length > 5 && (
+                                    <p className="text-sm text-gray-500 italic">
+                                      +{tutor.learners.length - 5} more
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => handleRemoveTutor(tutor.id)}
-                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleRemoveTutor(tutor.id)}
+                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               
               {/* Pagination for Tutors */}
               {totalTutorPages > 1 && (
