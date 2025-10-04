@@ -446,44 +446,75 @@ export const InstitutionDashboardComplete: React.FC = () => {
     });
   };
 
-  const handleAssignLearnerToTutor = async (learnerId: string, tutorId: string) => {
-    try {
-      const token = localStorage.getItem('institution_token');
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ learner_id: learnerId, tutor_id: tutorId })
-      });
-
-      if (response.ok) {
-        setNotification({
-          show: true,
-          type: 'success',
-          title: 'Success!',
-          message: 'Learner assigned successfully!'
-        });
-        loadAllData();
-      } else {
-        setNotification({
-          show: true,
-          type: 'error',
-          title: 'Error',
-          message: 'Failed to assign learner'
-        });
-      }
-    } catch (error) {
-      console.error('Error assigning learner:', error);
-      setNotification({
-        show: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to assign learner'
-      });
+  const handleAssignLearnerToTutor = async (learnerId: string, tutorId: string, learnerName: string, currentTutorName: string | null, newTutorName: string | null) => {
+    // Show confirmation modal
+    const isUnassigning = tutorId === '';
+    const isReassigning = currentTutorName && newTutorName;
+    
+    let title = '';
+    let message = '';
+    
+    if (isUnassigning) {
+      title = '🔄 Unassign Learner from Tutor?';
+      message = `Remove ${learnerName} from ${currentTutorName}? They will become "Unassigned" and can be assigned to a different tutor later.`;
+    } else if (isReassigning) {
+      title = '🔄 Reassign Learner to Different Tutor?';
+      message = `Move ${learnerName} from ${currentTutorName} to ${newTutorName}?`;
+    } else {
+      title = '✅ Assign Learner to Tutor?';
+      message = `Assign ${learnerName} to ${newTutorName}?`;
     }
+    
+    setConfirmation({
+      show: true,
+      title,
+      message,
+      confirmText: 'Yes, Confirm',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('institution_token');
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ learner_id: learnerId, tutor_id: tutorId })
+          });
+
+          if (response.ok) {
+            setNotification({
+              show: true,
+              type: 'success',
+              title: 'Success!',
+              message: isUnassigning 
+                ? 'Learner unassigned successfully!' 
+                : isReassigning
+                ? 'Learner reassigned successfully!'
+                : 'Learner assigned successfully!'
+            });
+            loadAllData();
+          } else {
+            setNotification({
+              show: true,
+              type: 'error',
+              title: 'Error',
+              message: 'Failed to assign learner'
+            });
+          }
+        } catch (error) {
+          console.error('Error assigning learner:', error);
+          setNotification({
+            show: true,
+            type: 'error',
+            title: 'Error',
+            message: 'Failed to assign learner'
+          });
+        }
+      }
+    });
   };
 
   const handleDeactivateLearner = async (learnerId: string) => {
@@ -1288,8 +1319,24 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       <td className="px-6 py-4">
                         <select
                           value={learner.tutor?.id || ''}
-                          onChange={(e) => handleAssignLearnerToTutor(learner.id, e.target.value)}
-                          className="px-3 py-1 border rounded text-sm text-gray-900 bg-white"
+                          onChange={(e) => {
+                            const newTutorId = e.target.value;
+                            const newTutor = tutors.find(t => t.id === newTutorId);
+                            const currentTutorName = learner.tutor?.name || null;
+                            const newTutorName = newTutor?.name || null;
+                            
+                            handleAssignLearnerToTutor(
+                              learner.id, 
+                              newTutorId, 
+                              learner.name,
+                              currentTutorName,
+                              newTutorName
+                            );
+                            
+                            // Reset dropdown to current value (will update after confirmation)
+                            e.target.value = learner.tutor?.id || '';
+                          }}
+                          className="px-3 py-1 border rounded text-sm text-gray-900 bg-white cursor-pointer hover:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-all"
                         >
                           <option value="">Unassigned</option>
                           {tutors.map(tutor => (
