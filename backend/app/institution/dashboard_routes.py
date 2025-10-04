@@ -555,6 +555,94 @@ async def bulk_import_learners(
         raise HTTPException(status_code=500, detail=f"Failed to import learners: {str(e)}")
 
 
+@router.get("/{institution_id}/learners/{user_id}/details",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_learner_details(institution_id: str, user_id: str) -> Dict[str, Any]:
+    """
+    Get detailed learning progress for a specific learner (requires consent)
+    """
+    try:
+        # Check if learner belongs to institution
+        learner = await database.institutional_learners.find_one({
+            'institution_id': institution_id,
+            'user_id': user_id,
+            'is_active': True
+        })
+        
+        if not learner:
+            raise HTTPException(status_code=404, detail="Learner not found")
+        
+        # Check consent
+        if not learner.get('consent_given', False):
+            raise HTTPException(
+                status_code=403, 
+                detail="Learner has not given consent to view detailed progress"
+            )
+        
+        # Get user info
+        user = await database.users.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get learning plan
+        learning_plan = await database.learning_plans.find_one({'user_id': user_id})
+        
+        # Get conversation history (last 10 sessions)
+        conversations = await database.conversations.find({
+            'user_id': user_id
+        }).sort('created_at', -1).limit(10).to_list(length=None)
+        
+        # Get subscription info
+        subscription = await database.subscriptions.find_one({'user_id': user_id})
+        
+        # Format learning plan for response
+        plan_data = None
+        if learning_plan:
+            plan_data = {
+                'progress_percentage': learning_plan.get('progress_percentage', 0),
+                'completed_sessions': learning_plan.get('completed_sessions', 0),
+                'total_sessions': learning_plan.get('total_sessions', 16),
+                'practice_minutes_used': learning_plan.get('practice_minutes_used', 0),
+                'total_practice_minutes': learning_plan.get('total_practice_minutes', 80),
+                'language': learning_plan.get('language'),
+                'proficiency_level': learning_plan.get('proficiency_level'),
+                'created_at': learning_plan.get('created_at')
+            }
+        
+        return {
+            'user': {
+                'id': str(user['_id']),
+                'name': user.get('name'),
+                'email': user.get('email'),
+                'preferred_language': user.get('preferred_language'),
+                'preferred_level': user.get('preferred_level'),
+                'created_at': user.get('created_at').isoformat() if user.get('created_at') else None
+            },
+            'learning_plan': plan_data,
+            'recent_sessions': [
+                {
+                    'id': str(conv['_id']),
+                    'created_at': conv.get('created_at').isoformat() if conv.get('created_at') else None,
+                    'duration_minutes': conv.get('duration_minutes', 0),
+                    'message_count': len(conv.get('messages', [])),
+                    'language': conv.get('language'),
+                    'level': conv.get('level')
+                } for conv in conversations
+            ],
+            'subscription': {
+                'status': subscription.get('status') if subscription else 'none',
+                'minutes_remaining': subscription.get('minutes_remaining', 0) if subscription else 0
+            } if subscription else None,
+            'consent_given': learner.get('consent_given', False),
+            'enrolled_at': learner.get('enrolled_at').isoformat() if learner.get('enrolled_at') else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get learner details: {str(e)}")
+
+
 @router.get("/{institution_id}/learners/export",
             dependencies=[Depends(check_feature_enabled)])
 async def export_learners(institution_id: str) -> Dict[str, Any]:
