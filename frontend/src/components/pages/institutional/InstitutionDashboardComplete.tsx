@@ -68,6 +68,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [tutors, setTutors] = useState<Tutor[]>([]);
   const [learners, setLearners] = useState<Learner[]>([]);
   const [filteredLearners, setFilteredLearners] = useState<Learner[]>([]);
+  const [filteredTutors, setFilteredTutors] = useState<Tutor[]>([]);
   
   // UI State
   const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners'>('overview');
@@ -76,14 +77,18 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tutorSearchQuery, setTutorSearchQuery] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
   const [filterTutor, setFilterTutor] = useState('all');
   const [filterProgress, setFilterProgress] = useState('all');
+  const [filterTutorSpecialization, setFilterTutorSpecialization] = useState('all');
+  const [filterTutorLearnerCount, setFilterTutorLearnerCount] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
   const [selectedLearnerDetails, setSelectedLearnerDetails] = useState<any>(null);
   const [showLearnerDetailsModal, setShowLearnerDetailsModal] = useState(false);
   const [loadingLearnerDetails, setLoadingLearnerDetails] = useState(false);
+  const [showTutorLearnersModal, setShowTutorLearnersModal] = useState(false);
   
   // Pagination states
   const [tutorsPage, setTutorsPage] = useState(1);
@@ -163,6 +168,39 @@ export const InstitutionDashboardComplete: React.FC = () => {
     }
   }, [isAuthenticated, institutionId]);
 
+  // Filter tutors based on search and filters
+  useEffect(() => {
+    let filtered = tutors;
+    
+    if (tutorSearchQuery) {
+      filtered = filtered.filter(t => 
+        t.name.toLowerCase().includes(tutorSearchQuery.toLowerCase()) ||
+        t.email.toLowerCase().includes(tutorSearchQuery.toLowerCase())
+      );
+    }
+    
+    if (filterTutorSpecialization !== 'all') {
+      filtered = filtered.filter(t => 
+        t.specializations && t.specializations.includes(filterTutorSpecialization)
+      );
+    }
+    
+    if (filterTutorLearnerCount !== 'all') {
+      if (filterTutorLearnerCount === 'none') {
+        filtered = filtered.filter(t => t.learner_count === 0);
+      } else if (filterTutorLearnerCount === 'low') {
+        filtered = filtered.filter(t => t.learner_count > 0 && t.learner_count <= 5);
+      } else if (filterTutorLearnerCount === 'medium') {
+        filtered = filtered.filter(t => t.learner_count > 5 && t.learner_count <= 15);
+      } else if (filterTutorLearnerCount === 'high') {
+        filtered = filtered.filter(t => t.learner_count > 15);
+      }
+    }
+    
+    setFilteredTutors(filtered);
+    setTutorsPage(1); // Reset to first page when filters change
+  }, [tutors, tutorSearchQuery, filterTutorSpecialization, filterTutorLearnerCount]);
+
   // Filter learners based on search and filters
   useEffect(() => {
     let filtered = learners;
@@ -227,6 +265,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       if (tutorsRes.ok) {
         const data = await tutorsRes.json();
         setTutors(data.tutors || []);
+        setFilteredTutors(data.tutors || []);
       }
 
       if (learnersRes.ok) {
@@ -419,18 +458,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
   };
 
   const handleViewLearnerDetails = async (learner: Learner) => {
+    setLoadingLearnerDetails(true);
+    setShowLearnerDetailsModal(true);
+    
+    // If no consent, show modal with message
     if (!learner.consent_given) {
-      setNotification({
-        show: true,
-        type: 'error',
-        title: 'Consent Required',
-        message: 'This learner has not given consent to view their detailed progress data.'
+      setSelectedLearnerDetails({
+        no_consent: true,
+        learner_name: learner.name
       });
+      setLoadingLearnerDetails(false);
       return;
     }
     
-    setLoadingLearnerDetails(true);
-    setShowLearnerDetailsModal(true);
     
     try {
       const token = localStorage.getItem('institution_token');
@@ -601,11 +641,11 @@ export const InstitutionDashboardComplete: React.FC = () => {
   };
 
   // Pagination logic
-  const paginatedTutors = tutors.slice(
+  const paginatedTutors = filteredTutors.slice(
     (tutorsPage - 1) * itemsPerPage,
     tutorsPage * itemsPerPage
   );
-  const totalTutorPages = Math.ceil(tutors.length / itemsPerPage);
+  const totalTutorPages = Math.ceil(filteredTutors.length / itemsPerPage);
 
   const paginatedLearners = filteredLearners.slice(
     (learnersPage - 1) * itemsPerPage,
@@ -800,6 +840,62 @@ export const InstitutionDashboardComplete: React.FC = () => {
               </button>
             </div>
 
+            {/* Tutors Filters */}
+            <div className="bg-white p-4 rounded-xl shadow flex gap-4 flex-wrap">
+              <input
+                type="text"
+                placeholder="🔍 Search tutors by name or email..."
+                value={tutorSearchQuery}
+                onChange={(e) => setTutorSearchQuery(e.target.value)}
+                className="flex-1 min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+              />
+              <select
+                value={filterTutorSpecialization}
+                onChange={(e) => setFilterTutorSpecialization(e.target.value)}
+                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+              >
+                <option value="all">All Specializations</option>
+                {Array.from(new Set(tutors.flatMap(t => t.specializations || []))).sort().map(spec => (
+                  <option key={spec} value={spec}>{spec}</option>
+                ))}
+              </select>
+              <select
+                value={filterTutorLearnerCount}
+                onChange={(e) => setFilterTutorLearnerCount(e.target.value)}
+                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+              >
+                <option value="all">All Workloads</option>
+                <option value="none">📭 No Learners (0)</option>
+                <option value="low">📦 Light Load (1-5)</option>
+                <option value="medium">📚 Medium Load (6-15)</option>
+                <option value="high">🔥 Heavy Load (15+)</option>
+              </select>
+              {(tutorSearchQuery || filterTutorSpecialization !== 'all' || filterTutorLearnerCount !== 'all') && (
+                <button
+                  onClick={() => {
+                    setTutorSearchQuery('');
+                    setFilterTutorSpecialization('all');
+                    setFilterTutorLearnerCount('all');
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  ✕ Clear Filters
+                </button>
+              )}
+            </div>
+
+            {/* Results Summary */}
+            <div className="flex justify-between items-center text-sm text-gray-600">
+              <span>
+                Showing <span className="font-semibold text-gray-900">{filteredTutors.length}</span> of <span className="font-semibold text-gray-900">{tutors.length}</span> tutors
+              </span>
+              {(tutorSearchQuery || filterTutorSpecialization !== 'all' || filterTutorLearnerCount !== 'all') && (
+                <span className="text-[#4ECFBF] font-medium">
+                  🔍 Filters Active
+                </span>
+              )}
+            </div>
+
             <div className="bg-white rounded-xl shadow overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -839,38 +935,21 @@ export const InstitutionDashboardComplete: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-900">{tutor.learner_count}</span>
-                            <span className="text-sm text-gray-500">assigned</span>
+                        {tutor.learner_count === 0 ? (
+                          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100">
+                            <span className="text-sm text-gray-500">📭 No learners</span>
                           </div>
-                          {tutor.learners && tutor.learners.length > 0 && (
-                            <div>
-                              <button
-                                onClick={() => setSelectedTutor(selectedTutor?.id === tutor.id ? null : tutor)}
-                                className="text-[#4ECFBF] text-sm hover:text-[#3a9e92] font-medium"
-                              >
-                                {selectedTutor?.id === tutor.id ? '▼ Hide' : '▶ Show'} Learners
-                              </button>
-                              
-                              {selectedTutor?.id === tutor.id && (
-                                <div className="mt-2 pl-4 border-l-2 border-[#4ECFBF] space-y-1">
-                                  {tutor.learners.slice(0, 5).map(learner => (
-                                    <div key={learner.user_id} className="text-sm text-gray-700">
-                                      <span className="font-medium">{learner.name}</span>
-                                      <span className="text-gray-500 ml-2">({learner.email})</span>
-                                    </div>
-                                  ))}
-                                  {tutor.learners.length > 5 && (
-                                    <p className="text-sm text-gray-500 italic">
-                                      +{tutor.learners.length - 5} more
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSelectedTutor(tutor);
+                              setShowTutorLearnersModal(true);
+                            }}
+                            className="inline-block px-4 py-2 bg-[#4ECFBF] text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all whitespace-nowrap"
+                          >
+                            View {tutor.learner_count} {tutor.learner_count === 1 ? 'Learner' : 'Learners'}
+                          </button>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -890,7 +969,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 <Pagination 
                   currentPage={tutorsPage}
                   totalPages={totalTutorPages}
-                  totalItems={tutors.length}
+                  totalItems={filteredTutors.length}
                   onPageChange={setTutorsPage}
                 />
               )}
@@ -1063,11 +1142,26 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          {learner.consent_given && (
+                          {learner.consent_given ? (
                             <button
                               onClick={() => handleViewLearnerDetails(learner)}
-                              className="px-4 py-2 bg-[#4ECFBF] text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all"
+                              className="inline-flex items-center px-4 py-2 bg-[#4ECFBF] text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all shadow-sm hover:shadow-md"
+                              title="Full access - consent given"
                             >
+                              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                              </svg>
+                              View Details
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleViewLearnerDetails(learner)}
+                              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 rounded-lg text-sm font-medium hover:from-orange-200 hover:to-amber-200 transition-all border-2 border-orange-300"
+                              title="Limited access - consent required"
+                            >
+                              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
                               View Details
                             </button>
                           )}
@@ -1308,6 +1402,101 @@ export const InstitutionDashboardComplete: React.FC = () => {
         </div>
       )}
 
+      {/* Tutor Learners Modal */}
+      {showTutorLearnersModal && selectedTutor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 transform transition-all animate-slideUp">
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    👥 {selectedTutor.name}'s Learners
+                  </h2>
+                  <p className="text-white/80 text-sm mt-1">
+                    {selectedTutor.learner_count} {selectedTutor.learner_count === 1 ? 'learner' : 'learners'} assigned
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowTutorLearnersModal(false);
+                    setSelectedTutor(null);
+                  }}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-3">
+                {selectedTutor.learners.map((learner, index) => (
+                  <div 
+                    key={learner.user_id}
+                    className="flex items-center space-x-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-[#4ECFBF]/5 hover:to-[#3a9e92]/5 transition-all border border-gray-200 hover:border-[#4ECFBF] group"
+                  >
+                    {/* Avatar */}
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform">
+                        {learner.name.charAt(0).toUpperCase()}
+                      </div>
+                    </div>
+                    
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="font-bold text-gray-900 truncate">{learner.name}</h3>
+                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
+                          #{index + 1}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{learner.email}</p>
+                      <div className="flex items-center space-x-3 mt-2">
+                        {learner.language && (
+                          <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                            🌍 {learner.language}
+                          </span>
+                        )}
+                        {learner.level && (
+                          <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                            📊 {learner.level}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Enrolled Date */}
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Enrolled</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        {learner.enrolled_at ? new Date(learner.enrolled_at).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 rounded-b-2xl border-t">
+              <button
+                onClick={() => {
+                  setShowTutorLearnersModal(false);
+                  setSelectedTutor(null);
+                }}
+                className="w-full px-6 py-3 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Learner Details Modal */}
       {showLearnerDetailsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -1340,6 +1529,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
+                </div>
+              ) : selectedLearnerDetails?.no_consent ? (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mb-6">
+                    <svg className="w-10 h-10 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">Consent Required</h3>
+                  <p className="text-gray-600 max-w-md">
+                    <strong>{selectedLearnerDetails.learner_name}</strong> has not given consent to view their detailed progress data. 
+                    Please ask the learner to provide consent through their dashboard settings.
+                  </p>
                 </div>
               ) : selectedLearnerDetails && selectedLearnerDetails.profile ? (
                 <div className="space-y-6">
@@ -1510,7 +1712,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-6">
+                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">No Data Available</h3>
+                  <p className="text-gray-600 max-w-md">
+                    This learner hasn't started any learning activities yet. Check back after they complete their first practice session.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
