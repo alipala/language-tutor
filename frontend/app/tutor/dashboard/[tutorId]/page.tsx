@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-// Use relative URLs to work with Next.js proxy
-const API_BASE_URL = '';
+// Use relative URLs with /api prefix to go through Next.js proxy
+const API_BASE_URL = '/api';
 
 // Comprehensive Learner Modal Component
 interface ComprehensiveLearnerModalProps {
