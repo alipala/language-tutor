@@ -43,11 +43,11 @@ const nextConfig = {
       : (process.env.BACKEND_URL || 'http://localhost:8000')
     console.log('[NEXT_CONFIG] Proxying /api/* to:', backendUrl)
     return [
-      // Only proxy /api/* routes to backend
-      // Pages like /tutor/login, /tutor/dashboard, /institution/login are served by Next.js
+      // Proxy /api/* routes to backend, stripping /api prefix
+      // Frontend calls /api/tutor/login → Backend receives /tutor/login
       {
         source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
+        destination: `${backendUrl}/:path*`,
       },
     ]
   },
