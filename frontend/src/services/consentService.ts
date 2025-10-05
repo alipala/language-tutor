@@ -2,8 +2,10 @@
  * Service for consent-related API calls
  */
 import axios from 'axios';
+import { getApiBaseUrl } from '../lib/api-config';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+// Don't call getApiBaseUrl() at module load - call it per request
+const getApiBase = () => getApiBaseUrl();
 
 export interface ConsentStatus {
   has_consent: boolean;
@@ -29,7 +31,7 @@ export const consentService = {
     institutionId: string
   ): Promise<ConsentStatus> {
     const response = await axios.get(
-      `${API_BASE}/api/v1/consent/status/${learnerId}/${institutionId}`
+      `${getApiBase()}/api/v1/consent/status/${learnerId}/${institutionId}`
     );
     return response.data;
   },
@@ -39,7 +41,7 @@ export const consentService = {
    */
   async grantConsent(data: ConsentGrantData): Promise<any> {
     const response = await axios.post(
-      `${API_BASE}/api/v1/consent/grant`,
+      `${getApiBase()}/api/v1/consent/grant`,
       data
     );
     return response.data;
@@ -53,7 +55,7 @@ export const consentService = {
     institutionId: string
   ): Promise<any> {
     const response = await axios.post(
-      `${API_BASE}/api/v1/consent/revoke`,
+      `${getApiBase()}/api/v1/consent/revoke`,
       {
         learner_id: learnerId,
         institution_id: institutionId

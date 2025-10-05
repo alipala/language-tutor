@@ -1,6 +1,8 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../lib/api-config';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+// Don't call getApiBaseUrl() at module load - call it per request
+const getApiBase = () => getApiBaseUrl();
 
 export interface InstitutionSignupData {
   name: string;
@@ -55,7 +57,7 @@ export interface Institution {
 export const institutionService = {
   async signup(data: InstitutionSignupData): Promise<InstitutionSignupResponse> {
     const response = await axios.post(
-      `${API_BASE}/api/v1/institution/signup`,
+      `${getApiBase()}/api/v1/institution/signup`,
       data
     );
     return response.data;
@@ -63,7 +65,7 @@ export const institutionService = {
 
   async login(data: InstitutionLoginData): Promise<InstitutionLoginResponse> {
     const response = await axios.post(
-      `${API_BASE}/api/v1/institution/login`,
+      `${getApiBase()}/api/v1/institution/login`,
       data
     );
     return response.data;
@@ -72,7 +74,7 @@ export const institutionService = {
   async getInstitution(institutionId: string): Promise<Institution> {
     const token = localStorage.getItem('institution_token');
     const response = await axios.get(
-      `${API_BASE}/api/v1/institution/${institutionId}`,
+      `${getApiBase()}/api/v1/institution/${institutionId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`
@@ -84,7 +86,7 @@ export const institutionService = {
 
   async getStats(institutionId: string): Promise<InstitutionStats> {
     const response = await axios.get(
-      `${API_BASE}/api/v1/institution/stats/${institutionId}`
+      `${getApiBase()}/api/v1/institution/stats/${institutionId}`
     );
     return response.data;
   }
