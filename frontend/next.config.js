@@ -38,11 +38,23 @@ const nextConfig = {
   // Proxy API requests to backend
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-    console.log('[NEXT_CONFIG] Proxying /api/* to:', backendUrl)
+    console.log('[NEXT_CONFIG] Proxying /api/*, /institution/*, /tutor/* to:', backendUrl)
     return [
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/institution/:path*',
+        destination: `${backendUrl}/institution/:path*`,
+      },
+      {
+        source: '/tutor/:path*',
+        destination: `${backendUrl}/tutor/:path*`,
+      },
+      {
+        source: '/auth/:path*',
+        destination: `${backendUrl}/auth/:path*`,
       },
     ]
   },
