@@ -25,6 +25,10 @@ class InstitutionService:
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify password against hash"""
+        # bcrypt has a 72-byte limit - truncate password if needed
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) > 72:
+            plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
         return pwd_context.verify(plain_password, hashed_password)
 
     async def create_institution(
