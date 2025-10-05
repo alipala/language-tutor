@@ -37,7 +37,10 @@ const nextConfig = {
   compress: true,
   // Proxy API requests to backend
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    // In Railway, backend runs on localhost:8000, frontend on the dynamic PORT
+    const backendUrl = process.env.NODE_ENV === 'production' 
+      ? 'http://localhost:8000'  // Fixed backend port in production
+      : (process.env.BACKEND_URL || 'http://localhost:8000')
     console.log('[NEXT_CONFIG] Proxying /api/*, /institution/*, /tutor/* to:', backendUrl)
     return [
       {
