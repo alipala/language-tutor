@@ -2418,15 +2418,7 @@ if False:  # Disabled - Next.js server handles frontend now
     
     print("✅ Added explicit route handlers for static pages, auth routes, and main application routes")
     
-    # Still mount StaticFiles for other assets like _next, images, etc.
-    app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
-else:
-    print(f"Warning: Frontend build directory not found at {frontend_build_path}")
-    
-    # Add a fallback route for the root path
-    @app.get("/")
-    async def root():
-        return {"message": "Language Tutor API is running", "frontend_build": "not found"}
+    # Note: StaticFiles mounting removed - using Next.js server mode instead
 
 if __name__ == "__main__":
     import uvicorn
