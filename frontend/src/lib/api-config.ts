@@ -11,9 +11,9 @@
 
 /**
  * Get the API base URL based on the current environment
- * This function MUST be called at runtime (not during build)
+ * This function MUST be called at runtime in the browser for each request
  */
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   // Only evaluate in browser context
   if (typeof window === 'undefined') {
     return ''; // SSR context: use relative paths
@@ -24,18 +24,16 @@ function getApiBaseUrl(): string {
                        window.location.hostname !== '127.0.0.1';
   
   if (isProduction) {
+    console.log('[API_CONFIG] Production detected, using relative paths through Next.js proxy');
     return ''; // Production: use relative paths through Next.js proxy
   }
   
   // Development: direct backend access
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const devUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  console.log('[API_CONFIG] Development detected, using:', devUrl);
+  return devUrl;
 }
 
-// Export as a getter to ensure runtime evaluation
+// For backward compatibility - but this evaluates at module load time
+// Components should preferably call getApiBaseUrl() directly
 export const API_BASE_URL = getApiBaseUrl();
-
-// Log only in browser
-if (typeof window !== 'undefined') {
-  console.log('[API_CONFIG] Environment:', window.location.hostname);
-  console.log('[API_CONFIG] Using API_BASE_URL:', API_BASE_URL || '(relative paths)');
-}

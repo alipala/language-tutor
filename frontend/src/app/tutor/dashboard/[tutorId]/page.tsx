@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-import { API_BASE_URL } from '../../../../lib/api-config';
+import { getApiBaseUrl } from '../../../../lib/api-config';
 
 interface LearningPlan {
   id: string;
@@ -110,7 +110,7 @@ export default function TutorDashboardPage() {
       queryParams.append('page', currentPage.toString());
       queryParams.append('per_page', perPage.toString());
 
-      const url = `${API_BASE_URL}/api/v1/tutor/dashboard/${tutorId}/learners?${queryParams.toString()}`;
+      const url = `${getApiBaseUrl()}/api/v1/tutor/dashboard/${tutorId}/learners?${queryParams.toString()}`;
       
       const response = await fetch(url, {
         headers: {
@@ -148,7 +148,7 @@ export default function TutorDashboardPage() {
 
   const loadAnalytics = async (token: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tutor/dashboard/${tutorId}/analytics`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/tutor/dashboard/${tutorId}/analytics`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -176,7 +176,7 @@ export default function TutorDashboardPage() {
     try {
       const token = localStorage.getItem('tutorToken');
       const response = await fetch(
-        `${API_BASE_URL}/api/v1/tutor/dashboard/${tutorId}/learner/${learner.user_id}/details`,
+        `${getApiBaseUrl()}/api/v1/tutor/dashboard/${tutorId}/learner/${learner.user_id}/details`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

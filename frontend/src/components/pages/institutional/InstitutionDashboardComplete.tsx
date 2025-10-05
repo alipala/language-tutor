@@ -1,6 +1,6 @@
 'use client';
 
-import { API_BASE_URL } from '../../../lib/api-config';
+import { getApiBaseUrl } from '../../../lib/api-config';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -153,7 +153,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   // Authentication check
   useEffect(() => {
     const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
     const instId = localStorage.getItem('institution_id');
     const instName = localStorage.getItem('institution_name');
     
@@ -261,7 +261,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const loadAllData = async () => {
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -304,7 +304,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const handleAddTutor = async () => {
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
       const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors`, {
         method: 'POST',
         headers: {
@@ -362,7 +362,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -412,7 +412,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -477,7 +477,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
             method: 'POST',
             headers: {
@@ -535,7 +535,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/deactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -582,7 +582,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -634,7 +634,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
       const response = await fetch(
         `${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/${learner.user_id}/comprehensive-details`,
         {
@@ -673,7 +673,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     setIsExporting(true);
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
       const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/export`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -736,7 +736,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const handleImportCSV = async (file: File) => {
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = API_BASE_URL;
+      const backendUrl = getApiBaseUrl();
       const formData = new FormData();
       formData.append('file', file);
 

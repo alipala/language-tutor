@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { API_BASE_URL } from '../../../lib/api-config';
+import { getApiBaseUrl } from '../../../lib/api-config';
 
 export default function TutorLoginPage() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function TutorLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tutor/login`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/tutor/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
