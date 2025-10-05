@@ -9,7 +9,7 @@ class InstitutionSignupRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=200)
     institution_type: str = Field(default="school")
     admin_email: EmailStr
-    admin_password: str = Field(..., min_length=8)
+    admin_password: str = Field(..., min_length=8, max_length=72, description="Password must be between 8-72 characters (bcrypt limit)")
     admin_name: str = Field(..., min_length=2, max_length=100)
     # Optional subscription plan - managed by MyTacoAI admin
     subscription_plan: Optional[str] = Field(default="starter")
@@ -41,7 +41,7 @@ class InstitutionSignupResponse(BaseModel):
 class InstitutionLoginRequest(BaseModel):
     """Schema for admin login"""
     admin_email: EmailStr
-    password: str
+    password: str = Field(..., max_length=72, description="Password max 72 characters (bcrypt limit)")
 
 class InstitutionLoginResponse(BaseModel):
     """Response after successful login"""
