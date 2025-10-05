@@ -4,10 +4,9 @@ Institution management business logic
 from datetime import datetime
 from typing import Dict, Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from passlib.context import CryptContext
+import hashlib
+import secrets
 from app.institution.utils import generate_institution_code
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class InstitutionService:
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -16,20 +15,42 @@ class InstitutionService:
         self.tutors = db.tutors
 
     def hash_password(self, password: str) -> str:
-        """Hash password using bcrypt"""
-        # bcrypt has a 72-byte limit, truncate if necessary
-        password_bytes = password.encode('utf-8')
-        if len(password_bytes) > 72:
-            password = password_bytes[:72].decode('utf-8', errors='ignore')
-        return pwd_context.hash(password)
+        """Hash password using hashlib (matching tutor auth)"""
+        # Generate random salt
+        salt = secrets.token_hex(8)
+        
+        # Hash password with salt
+        password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
+        
+        # Return in format: $salt$hash
+        return f"${salt}${password_hash}"
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify password against hash"""
-        # bcrypt has a 72-byte limit - truncate password if needed
-        password_bytes = plain_password.encode('utf-8')
-        if len(password_bytes) > 72:
-            plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
-        return pwd_context.verify(plain_password, hashed_password)
+        """Verify password against hash (matching tutor auth)"""
+        try:
+            parts = hashed_password.split('$')
+            
+            # Handle different password formats
+            if len(parts) == 3:
+                # Format: $salt$hash
+                salt = parts[1]
+                stored_hash = parts[2]
+            elif len(parts) == 4 and parts[0] == '' and parts[3] == '':
+                # Legacy format: $salt$hash$
+                salt = parts[1]
+                stored_hash = parts[2]
+            else:
+                print(f"[INSTITUTION_AUTH] Invalid password format: {len(parts)} parts")
+                return False
+            
+            # Hash the input password with the same salt
+            computed_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
+            
+            # Compare hashes
+            return computed_hash == stored_hash
+        except Exception as e:
+            print(f"[INSTITUTION_AUTH] Error in verify_password: {str(e)}")
+            return False
 
     async def create_institution(
         self,
