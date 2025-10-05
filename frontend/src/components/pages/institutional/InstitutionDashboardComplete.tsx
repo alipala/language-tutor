@@ -259,8 +259,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const loadAllData = async () => {
     try {
       const token = localStorage.getItem('institution_token');
-      import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -303,8 +301,6 @@ const backendUrl = API_BASE_URL;
   const handleAddTutor = async () => {
     try {
       const token = localStorage.getItem('institution_token');
-      import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
       const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors`, {
         method: 'POST',
         headers: {
@@ -363,7 +359,6 @@ const backendUrl = API_BASE_URL;
         try {
           const token = localStorage.getItem('institution_token');
           import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -414,7 +409,6 @@ const backendUrl = API_BASE_URL;
         try {
           const token = localStorage.getItem('institution_token');
           import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -480,7 +474,6 @@ const backendUrl = API_BASE_URL;
         try {
           const token = localStorage.getItem('institution_token');
           import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
             method: 'POST',
             headers: {
@@ -539,7 +532,6 @@ const backendUrl = API_BASE_URL;
         try {
           const token = localStorage.getItem('institution_token');
           import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/deactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -587,7 +579,6 @@ const backendUrl = API_BASE_URL;
         try {
           const token = localStorage.getItem('institution_token');
           import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -639,8 +630,6 @@ const backendUrl = API_BASE_URL;
     
     try {
       const token = localStorage.getItem('institution_token');
-      import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
       const response = await fetch(
         `${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/${learner.user_id}/comprehensive-details`,
         {
@@ -679,8 +668,6 @@ const backendUrl = API_BASE_URL;
     setIsExporting(true);
     try {
       const token = localStorage.getItem('institution_token');
-      import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
       const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/export`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -743,8 +730,6 @@ const backendUrl = API_BASE_URL;
   const handleImportCSV = async (file: File) => {
     try {
       const token = localStorage.getItem('institution_token');
-      import { API_BASE_URL } from "../../../lib/api-config";
-const backendUrl = API_BASE_URL;
       const formData = new FormData();
       formData.append('file', file);
 
