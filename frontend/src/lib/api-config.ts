@@ -12,6 +12,7 @@
 /**
  * Get the API base URL based on the current environment
  * This function MUST be called at runtime in the browser for each request
+ * IMPORTANT: Do NOT use process.env as it's baked in at build time!
  */
 export function getApiBaseUrl(): string {
   // Only evaluate in browser context
@@ -28,10 +29,9 @@ export function getApiBaseUrl(): string {
     return ''; // Production: use relative paths through Next.js proxy
   }
   
-  // Development: direct backend access
-  const devUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  console.log('[API_CONFIG] Development detected, using:', devUrl);
-  return devUrl;
+  // Development: direct backend access - hardcoded, no env vars!
+  console.log('[API_CONFIG] Development detected, using: http://localhost:8000');
+  return 'http://localhost:8000';
 }
 
 // For backward compatibility - but this evaluates at module load time
