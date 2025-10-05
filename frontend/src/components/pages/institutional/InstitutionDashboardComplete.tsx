@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../lib/api-config';
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -258,7 +259,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const loadAllData = async () => {
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -301,7 +303,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const handleAddTutor = async () => {
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
       const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors`, {
         method: 'POST',
         headers: {
@@ -359,7 +362,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -409,7 +413,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -474,7 +479,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
             method: 'POST',
             headers: {
@@ -532,7 +538,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/deactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -579,7 +586,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('institution_token');
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -631,7 +639,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
       const response = await fetch(
         `${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/${learner.user_id}/comprehensive-details`,
         {
@@ -670,7 +679,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
     setIsExporting(true);
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
       const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/export`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -733,7 +743,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const handleImportCSV = async (file: File) => {
     try {
       const token = localStorage.getItem('institution_token');
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      import { API_BASE_URL } from "../../../lib/api-config";
+const backendUrl = API_BASE_URL;
       const formData = new FormData();
       formData.append('file', file);
 
