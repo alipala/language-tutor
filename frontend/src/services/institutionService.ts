@@ -65,7 +65,7 @@ export const institutionService = {
 
   async login(data: InstitutionLoginData): Promise<InstitutionLoginResponse> {
     const response = await axios.post(
-      `${getApiBase()}/institution/login`,
+      `/api/institution/login`,
       data
     );
     return response.data;
