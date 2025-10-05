@@ -1,7 +1,8 @@
 /**
  * API Configuration for Frontend
+ * Copied from working main branch implementation (frontend/lib/api-utils.ts)
  * 
- * In production (Railway):
+ * In production (Railway/mytacoai.com):
  * - Use empty string '' for relative paths
  * - Next.js proxy will forward /api/* to backend
  * 
@@ -12,26 +13,24 @@
 /**
  * Get the API base URL based on the current environment
  * This function MUST be called at runtime in the browser for each request
- * IMPORTANT: Do NOT use process.env as it's baked in at build time!
  */
 export function getApiBaseUrl(): string {
-  // Only evaluate in browser context
-  if (typeof window === 'undefined') {
-    return ''; // SSR context: use relative paths
+  // Check if we're in a browser
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If we're on Railway or custom domain, use empty string (same domain)
+    if (hostname.includes('railway.app') || hostname === 'mytacoai.com') {
+      console.log(`Detected production deployment on ${hostname}, using same-origin API URL`);
+      return '';
+    }
+    // If we're not on localhost, use the same origin for API calls
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      console.log(`Detected production hostname ${hostname}, using same-origin API URL`);
+      return window.location.origin;
+    }
   }
-  
-  // Check if we're in production (not localhost)
-  const isProduction = window.location.hostname !== 'localhost' && 
-                       window.location.hostname !== '127.0.0.1';
-  
-  if (isProduction) {
-    console.log('[API_CONFIG] Production detected, using relative paths through Next.js proxy');
-    return ''; // Production: use relative paths through Next.js proxy
-  }
-  
-  // Development: direct backend access - hardcoded, no env vars!
-  console.log('[API_CONFIG] Development detected, using: http://localhost:8000');
-  return 'http://localhost:8000';
+  // Default to environment variable or localhost
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 }
 
 // For backward compatibility - but this evaluates at module load time
