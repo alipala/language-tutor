@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { getApiBaseUrl } from '../../../src/lib/api-config';
 
 export default function TutorLoginPage() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function TutorLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tutor/login`, {
+      const response = await fetch(`${getApiBaseUrl()}/tutor/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -552,7 +552,7 @@ export default function TutorDashboardPage() {
       queryParams.append('page', page.toString());
       queryParams.append('per_page', itemsPerPage.toString());
 
-      const url = `${API_BASE_URL}/api/v1/tutor/dashboard/${tutorId}/learners${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}/tutor/dashboard/${tutorId}/learners${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       
       const response = await fetch(url, {
         headers: {
@@ -586,7 +586,7 @@ export default function TutorDashboardPage() {
 
   const loadAnalytics = async (token: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tutor/dashboard/${tutorId}/analytics`, {
+      const response = await fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/analytics`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -614,7 +614,7 @@ export default function TutorDashboardPage() {
     try {
       const token = localStorage.getItem('tutorToken');
       const response = await fetch(
-        `${API_BASE_URL}/api/v1/tutor/dashboard/${tutorId}/learner/${learner.user_id}/details`,
+        `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/details`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
