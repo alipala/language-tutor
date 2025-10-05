@@ -41,23 +41,13 @@ const nextConfig = {
     const backendUrl = process.env.NODE_ENV === 'production' 
       ? 'http://localhost:8000'  // Fixed backend port in production
       : (process.env.BACKEND_URL || 'http://localhost:8000')
-    console.log('[NEXT_CONFIG] Proxying /api/*, /institution/*, /tutor/* to:', backendUrl)
+    console.log('[NEXT_CONFIG] Proxying /api/* to:', backendUrl)
     return [
+      // Only proxy /api/* routes to backend
+      // Pages like /tutor/login, /tutor/dashboard, /institution/login are served by Next.js
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
-      },
-      {
-        source: '/institution/:path*',
-        destination: `${backendUrl}/institution/:path*`,
-      },
-      {
-        source: '/tutor/:path*',
-        destination: `${backendUrl}/tutor/:path*`,
-      },
-      {
-        source: '/auth/:path*',
-        destination: `${backendUrl}/auth/:path*`,
       },
     ]
   },
