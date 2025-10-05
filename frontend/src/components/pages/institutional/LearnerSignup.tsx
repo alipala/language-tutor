@@ -60,7 +60,7 @@ export const LearnerSignup: React.FC = () => {
     setApiError(null);
 
     try {
-      const response = await fetch('/api/v1/learners/self-signup', {
+      const response = await fetch('/learners/self-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

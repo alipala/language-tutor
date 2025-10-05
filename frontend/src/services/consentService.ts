@@ -31,7 +31,7 @@ export const consentService = {
     institutionId: string
   ): Promise<ConsentStatus> {
     const response = await axios.get(
-      `${getApiBase()}/api/v1/consent/status/${learnerId}/${institutionId}`
+      `${getApiBase()}/consent/status/${learnerId}/${institutionId}`
     );
     return response.data;
   },
@@ -41,7 +41,7 @@ export const consentService = {
    */
   async grantConsent(data: ConsentGrantData): Promise<any> {
     const response = await axios.post(
-      `${getApiBase()}/api/v1/consent/grant`,
+      `${getApiBase()}/consent/grant`,
       data
     );
     return response.data;
@@ -55,7 +55,7 @@ export const consentService = {
     institutionId: string
   ): Promise<any> {
     const response = await axios.post(
-      `${getApiBase()}/api/v1/consent/revoke`,
+      `${getApiBase()}/consent/revoke`,
       {
         learner_id: learnerId,
         institution_id: institutionId

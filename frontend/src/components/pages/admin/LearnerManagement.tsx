@@ -26,7 +26,7 @@ export const LearnerManagement: React.FC<{ institutionId: string }> = ({
 
   const loadLearners = async () => {
     try {
-      const response = await fetch(`/api/v1/learners/institution/${institutionId}`);
+      const response = await fetch(`/learners/institution/${institutionId}`);
       if (!response.ok) {
         throw new Error('Failed to load learners');
       }

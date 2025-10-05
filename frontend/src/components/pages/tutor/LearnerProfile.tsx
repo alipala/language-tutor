@@ -29,7 +29,7 @@ export const LearnerProfile: React.FC = () => {
 
   const loadProfile = async () => {
     try {
-      const response = await fetch(`/api/v1/tutor/learner/${learnerId}`);
+      const response = await fetch(`/tutor/learner/${learnerId}`);
       if (!response.ok) {
         throw new Error('Failed to load profile');
       }

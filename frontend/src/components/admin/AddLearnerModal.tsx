@@ -26,7 +26,7 @@ export const AddLearnerModal: React.FC<AddLearnerModalProps> = ({
 
   const loadTutors = async () => {
     try {
-      const response = await fetch(`/api/v1/tutors/institution/${institutionId}`);
+      const response = await fetch(`/tutors/institution/${institutionId}`);
       if (!response.ok) {
         throw new Error('Failed to load tutors');
       }
@@ -43,7 +43,7 @@ export const AddLearnerModal: React.FC<AddLearnerModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/learners/enroll', {
+      const response = await fetch('/learners/enroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

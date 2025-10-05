@@ -19,7 +19,7 @@ export default function TutorLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/v1/tutor/login`, {
+      const response = await fetch(`${getApiBaseUrl()}/tutor/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

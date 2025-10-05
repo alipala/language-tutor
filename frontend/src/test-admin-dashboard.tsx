@@ -212,7 +212,7 @@ describe('Admin Dashboard Components', () => {
 
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
-          '/api/v1/learners/enroll',
+          '/learners/enroll',
           expect.objectContaining({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -91,7 +91,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             throw new Error('No valid rows found in CSV');
           }
 
-          const response = await fetch('/api/v1/learners/bulk-import', {
+          const response = await fetch('/learners/bulk-import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

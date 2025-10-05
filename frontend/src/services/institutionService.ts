@@ -57,7 +57,7 @@ export interface Institution {
 export const institutionService = {
   async signup(data: InstitutionSignupData): Promise<InstitutionSignupResponse> {
     const response = await axios.post(
-      `${getApiBase()}/api/v1/institution/signup`,
+      `${getApiBase()}/institution/signup`,
       data
     );
     return response.data;
@@ -65,7 +65,7 @@ export const institutionService = {
 
   async login(data: InstitutionLoginData): Promise<InstitutionLoginResponse> {
     const response = await axios.post(
-      `${getApiBase()}/api/v1/institution/login`,
+      `${getApiBase()}/institution/login`,
       data
     );
     return response.data;
@@ -74,7 +74,7 @@ export const institutionService = {
   async getInstitution(institutionId: string): Promise<Institution> {
     const token = localStorage.getItem('institution_token');
     const response = await axios.get(
-      `${getApiBase()}/api/v1/institution/${institutionId}`,
+      `${getApiBase()}/institution/${institutionId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`
@@ -86,7 +86,7 @@ export const institutionService = {
 
   async getStats(institutionId: string): Promise<InstitutionStats> {
     const response = await axios.get(
-      `${getApiBase()}/api/v1/institution/stats/${institutionId}`
+      `${getApiBase()}/institution/stats/${institutionId}`
     );
     return response.data;
   }

@@ -24,7 +24,7 @@ export const TutorDashboard: React.FC<{ tutorId: string }> = ({ tutorId }) => {
 
   const loadLearners = async () => {
     try {
-      const response = await fetch(`/api/v1/learners/tutor/${tutorId}`);
+      const response = await fetch(`/learners/tutor/${tutorId}`);
       if (!response.ok) {
         throw new Error('Failed to load learners');
       }

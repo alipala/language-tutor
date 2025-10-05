@@ -32,7 +32,7 @@ export const InstitutionForgotPassword: React.FC = () => {
     try {
       // TODO: Implement actual password reset API call
       // const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      // await fetch(`${apiUrl}/api/v1/institution/forgot-password`, {
+      // await fetch(`${apiUrl}/institution/forgot-password`, {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify({ admin_email: email })

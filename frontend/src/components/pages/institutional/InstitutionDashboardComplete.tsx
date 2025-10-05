@@ -269,10 +269,10 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
       // Load analytics
       const [langRes, levelRes, tutorsRes, learnersRes] = await Promise.all([
-        fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/analytics/language-distribution`, { headers }),
-        fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/analytics/level-distribution`, { headers }),
-        fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors`, { headers }),
-        fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners`, { headers })
+        fetch(`${backendUrl}/institution/dashboard/${institutionId}/analytics/language-distribution`, { headers }),
+        fetch(`${backendUrl}/institution/dashboard/${institutionId}/analytics/level-distribution`, { headers }),
+        fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors`, { headers }),
+        fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners`, { headers })
       ]);
 
       if (langRes.ok) {
@@ -305,7 +305,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     try {
       const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-      const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors`, {
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -363,7 +363,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
+          const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -413,7 +413,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
+          const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -478,7 +478,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
+          const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners/assign-tutor`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -536,7 +536,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/deactivate/${learnerId}`, {
+          const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners/deactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -583,7 +583,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-          const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
+          const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -636,7 +636,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
       const response = await fetch(
-        `${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/${learner.user_id}/comprehensive-details`,
+        `${backendUrl}/institution/dashboard/${institutionId}/learners/${learner.user_id}/comprehensive-details`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -674,7 +674,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     try {
       const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
-      const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/export`, {
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners/export`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -740,7 +740,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/bulk-import`, {
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners/bulk-import`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
