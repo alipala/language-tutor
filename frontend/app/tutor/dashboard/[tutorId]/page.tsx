@@ -504,6 +504,9 @@ export default function TutorDashboardPage() {
   const [learnerDetails, setLearnerDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'overview' | 'learners'>('overview');
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -771,33 +774,66 @@ export default function TutorDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Removed duplicate header - using global navigation instead */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Analytics Cards */}
-        {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">Total Learners</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">{analytics.total_assigned_learners}</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">On Track</div>
-              <div className="text-3xl font-bold text-green-600 mt-2">{analytics.active_learners}</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">At Risk</div>
-              <div className="text-3xl font-bold text-yellow-600 mt-2">{analytics.at_risk_learners}</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-sm font-medium text-gray-600">Avg Progress</div>
-              <div className="text-3xl font-bold text-blue-600 mt-2">{analytics.average_progress.toFixed(1)}%</div>
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-300 bg-white rounded-t-xl shadow-sm">
+            <nav className="flex px-6">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-4 px-8 font-semibold border-b-3 transition-all ${
+                  activeTab === 'overview'
+                    ? 'border-[#4ECFBF] text-[#4ECFBF] bg-[#4ECFBF]/5'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                📊 Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('learners')}
+                className={`py-4 px-8 font-semibold border-b-3 transition-all ${
+                  activeTab === 'learners'
+                    ? 'border-[#4ECFBF] text-[#4ECFBF] bg-[#4ECFBF]/5'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🎓 Learners {learners.length > 0 && `(${learners.length})`}
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && analytics && (
+          <div className="space-y-6">
+            {/* Hero Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="text-sm font-medium text-gray-600">Total Learners</div>
+                <div className="text-3xl font-bold text-gray-900 mt-2">{analytics.total_assigned_learners}</div>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="text-sm font-medium text-gray-600">On Track</div>
+                <div className="text-3xl font-bold text-green-600 mt-2">{analytics.active_learners}</div>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="text-sm font-medium text-gray-600">At Risk</div>
+                <div className="text-3xl font-bold text-yellow-600 mt-2">{analytics.at_risk_learners}</div>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="text-sm font-medium text-gray-600">Avg Progress</div>
+                <div className="text-3xl font-bold text-blue-600 mt-2">{analytics.average_progress.toFixed(1)}%</div>
+              </div>
             </div>
           </div>
         )}
 
+        {/* LEARNERS TAB */}
+        {activeTab === 'learners' && (
+          <>
+
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
@@ -868,17 +904,6 @@ export default function TutorDashboardPage() {
 
         {/* ENRICHED LEARNERS TABLE */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b bg-gradient-to-r from-[#4ECFBF]/5 to-[#3a9e92]/5">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">📚 Assigned Learners</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {learners.length} learner{learners.length !== 1 ? 's' : ''} • 
-                  Track progress, assess performance, and monitor engagement
-                </p>
-              </div>
-            </div>
-          </div>
 
           {loading ? (
             <div className="p-12 text-center">
@@ -897,29 +922,32 @@ export default function TutorDashboardPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-300">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Learner Info
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Learner
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Language & Level
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Language
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Progress & Sessions
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Progress
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Performance
+                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Sessions
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Activity Status
+                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Score
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Actions
+                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200">
                   {learners.map((learner, index) => {
                     const plan = learner.learning_plans[0];
                     if (!plan) return null;
@@ -937,181 +965,114 @@ export default function TutorDashboardPage() {
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                         }`}
                       >
-                        {/* Learner Info Column */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-4">
-                            {/* Avatar with Status Ring */}
-                            <div className="relative">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md ${
-                                isOnTrack ? 'bg-gradient-to-br from-green-400 to-green-600' :
-                                isAtRisk ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
-                                'bg-gradient-to-br from-gray-400 to-gray-600'
-                              }`}>
-                                {learner.name.charAt(0).toUpperCase()}
-                              </div>
-                              {/* Status Dot */}
-                              <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                                isOnTrack ? 'bg-green-500' :
-                                isAtRisk ? 'bg-yellow-500' :
-                                'bg-gray-400'
-                              }`} title={getStatusLabel(plan.progress_status)}></div>
+                        {/* COMPACT LEARNER - Single Row Design */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                              isOnTrack ? 'bg-green-500' : isAtRisk ? 'bg-yellow-500' : 'bg-gray-400'
+                            }`}>
+                              {learner.name.charAt(0).toUpperCase()}
                             </div>
-                            
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-bold text-gray-900 truncate">{learner.name}</p>
-                                {!hasConsent && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 border border-red-200" title="No consent given">
-                                    🔒
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-gray-900 text-sm truncate">{learner.name}</span>
+                                {!hasConsent && <span className="text-xs" title="No consent">🔒</span>}
                               </div>
-                              <p className="text-sm text-gray-600 truncate">{learner.email}</p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Enrolled: {new Date(learner.enrolled_at).toLocaleDateString()}
-                              </p>
+                              <p className="text-xs text-gray-500 truncate">{learner.email}</p>
                             </div>
                           </div>
                         </td>
 
-                        {/* Language & Level Column */}
-                        <td className="px-6 py-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl">
-                                {plan.language.toLowerCase() === 'english' ? '🇬🇧' :
-                                 plan.language.toLowerCase() === 'dutch' ? '🇳🇱' :
-                                 plan.language.toLowerCase() === 'spanish' ? '🇪🇸' :
-                                 plan.language.toLowerCase() === 'french' ? '🇫🇷' :
-                                 plan.language.toLowerCase() === 'german' ? '🇩🇪' : '🌍'}
-                              </span>
-                              <div className="font-medium text-gray-900 capitalize">{plan.language}</div>
-                            </div>
-                            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white shadow-sm">
-                              Level {plan.proficiency_level}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Progress & Sessions Column */}
-                        <td className="px-6 py-4">
-                          <div className="space-y-3">
-                            {/* Progress Bar */}
+                        {/* LANGUAGE & LEVEL - Compact */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">
+                              {plan.language.toLowerCase() === 'english' ? '🇬🇧' :
+                               plan.language.toLowerCase() === 'dutch' ? '🇳🇱' :
+                               plan.language.toLowerCase() === 'spanish' ? '🇪🇸' :
+                               plan.language.toLowerCase() === 'french' ? '🇫🇷' :
+                               plan.language.toLowerCase() === 'german' ? '🇩🇪' : '🌍'}
+                            </span>
                             <div>
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-xs font-medium text-gray-700">Plan Progress</span>
-                                <span className="text-xs font-bold text-[#4ECFBF]">{plan.progress_percentage.toFixed(0)}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                              <div className="font-medium text-gray-900 text-sm capitalize leading-tight">{plan.language}</div>
+                              <div className="text-xs text-[#4ECFBF] font-semibold">Level {plan.proficiency_level}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* PROGRESS - Inline Compact */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-[80px]">
+                              <div className="w-full bg-gray-200 rounded-full h-1.5">
                                 <div
-                                  className={`h-3 rounded-full transition-all duration-500 ${
-                                    isOnTrack ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                                    isAtRisk ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                                    'bg-gradient-to-r from-gray-400 to-gray-500'
+                                  className={`h-1.5 rounded-full ${
+                                    isOnTrack ? 'bg-green-500' : isAtRisk ? 'bg-yellow-500' : 'bg-gray-400'
                                   }`}
                                   style={{ width: `${plan.progress_percentage}%` }}
                                 ></div>
                               </div>
                             </div>
-
-                            {/* Session Stats */}
-                            <div className="flex items-center justify-between p-2 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg">
-                              <div className="text-center flex-1">
-                                <div className="text-xs text-gray-600">Completed</div>
-                                <div className="text-lg font-bold text-blue-700">{plan.completed_sessions}</div>
-                              </div>
-                              <div className="text-gray-400">/</div>
-                              <div className="text-center flex-1">
-                                <div className="text-xs text-gray-600">Total</div>
-                                <div className="text-lg font-bold text-gray-700">{plan.total_sessions}</div>
-                              </div>
-                            </div>
+                            <span className="text-sm font-bold text-gray-900 min-w-[38px] text-right">
+                              {plan.progress_percentage.toFixed(0)}%
+                            </span>
                           </div>
                         </td>
 
-                        {/* Performance Column */}
-                        <td className="px-6 py-4">
-                          <div className="space-y-2">
-                            {/* Assessment Score */}
-                            {plan.assessment_score > 0 ? (
-                              <div className="flex flex-col items-center justify-center p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
-                                <div className="text-xs text-gray-600 mb-1">Assessment Score</div>
-                                <div className={`text-3xl font-bold ${
-                                  plan.assessment_score >= 80 ? 'text-green-600' :
-                                  plan.assessment_score >= 60 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {plan.assessment_score}/100
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-500 italic p-3 bg-gray-50 rounded-lg text-center">
-                                No assessment yet
-                              </div>
-                            )}
-
-                            {/* Next Focus Area */}
-                            <div className="text-xs p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                              <div className="font-semibold text-yellow-900 mb-1">🎯 Next Focus:</div>
-                              <div className="text-gray-700 line-clamp-2">{plan.next_focus_area}</div>
-                            </div>
+                        {/* SESSIONS - Large Numbers */}
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</span>
+                            <span className="text-gray-400 font-medium">/</span>
+                            <span className="text-lg font-semibold text-gray-600">{plan.total_sessions}</span>
                           </div>
                         </td>
 
-                        {/* Activity Status Column */}
-                        <td className="px-6 py-4">
-                          <div className="space-y-2">
-                            {/* Status Badge */}
-                            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
-                              isOnTrack ? 'bg-green-100 text-green-800 border-2 border-green-300' :
-                              isAtRisk ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' :
-                              'bg-gray-100 text-gray-800 border-2 border-gray-300'
+                        {/* SCORE - Single Large Number */}
+                        <td className="px-4 py-2.5 text-center">
+                          {plan.assessment_score > 0 ? (
+                            <div className={`text-2xl font-bold ${
+                              plan.assessment_score >= 80 ? 'text-green-600' :
+                              plan.assessment_score >= 60 ? 'text-yellow-600' :
+                              'text-red-600'
                             }`}>
-                              {isOnTrack && '✅ On Track'}
-                              {isAtRisk && '⚠️ At Risk'}
-                              {isInactive && 'Inactive'}
+                              {plan.assessment_score}
                             </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
 
-                            {/* Last Activity */}
-                            <div className="text-xs space-y-1">
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <span>📅</span>
-                                <span>Last Active:</span>
-                              </div>
-                              <div className="font-medium text-gray-900">
-                                {plan.last_activity_date 
-                                  ? new Date(plan.last_activity_date).toLocaleDateString()
-                                  : 'No activity'
-                                }
-                              </div>
-                              {plan.days_since_activity !== undefined && plan.days_since_activity < 999 && (
-                                <div className={`text-xs ${
-                                  plan.days_since_activity <= 3 ? 'text-green-600' :
-                                  plan.days_since_activity <= 7 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {plan.days_since_activity === 0 ? 'Today!' :
-                                   plan.days_since_activity === 1 ? 'Yesterday' :
-                                   `${plan.days_since_activity} days ago`}
-                                </div>
-                              )}
-                            </div>
+                        {/* STATUS - Compact Icon + Days */}
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-lg">
+                              {isOnTrack ? '✅' : isAtRisk ? '⚠️' : '⏸️'}
+                            </span>
+                            {plan.days_since_activity < 999 && (
+                              <span className={`text-xs font-medium ${
+                                plan.days_since_activity <= 3 ? 'text-green-600' :
+                                plan.days_since_activity <= 7 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {plan.days_since_activity}d
+                              </span>
+                            )}
                           </div>
                         </td>
 
-                        {/* Actions Column */}
-                        <td className="px-6 py-4">
+                        {/* ACTION - Compact Button */}
+                        <td className="px-4 py-2.5 text-right">
                           <button
                             onClick={() => handleViewDetails(learner)}
                             disabled={!hasConsent}
-                            className={`w-full px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm whitespace-nowrap ${
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                               hasConsent
-                                ? 'bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white hover:shadow-md hover:scale-105 transform'
-                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92]'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             }`}
-                            title={hasConsent ? 'View detailed progress' : 'Learner has not given consent'}
                           >
-                            {hasConsent ? 'View Details' : 'No Access'}
+                            {hasConsent ? 'View' : 'Locked'}
                           </button>
                         </td>
                       </tr>
@@ -1125,6 +1086,8 @@ export default function TutorDashboardPage() {
           {/* Pagination */}
           {!loading && !error && learners.length > 0 && <Pagination />}
         </div>
+        </>
+        )}
       </div>
 
       {/* COMPREHENSIVE LEARNER PROGRESS MODAL */}
