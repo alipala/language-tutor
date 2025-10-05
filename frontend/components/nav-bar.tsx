@@ -26,6 +26,10 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const [isInstitutionUser, setIsInstitutionUser] = useState(false);
   const [institutionName, setInstitutionName] = useState('');
   
+  // Tutor user detection
+  const [isTutorUser, setIsTutorUser] = useState(false);
+  const [tutorName, setTutorName] = useState('');
+  
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
 
@@ -67,6 +71,12 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         const institutionNameStored = localStorage.getItem('institution_name');
         setIsInstitutionUser(!!institutionToken);
         setInstitutionName(institutionNameStored || 'Institution');
+        
+        // Check for tutor user
+        const tutorToken = localStorage.getItem('tutorToken');
+        const tutorNameStored = localStorage.getItem('tutorName');
+        setIsTutorUser(!!tutorToken);
+        setTutorName(tutorNameStored || 'Tutor');
       };
       
       setIsLandingPage(window.location.pathname === '/');
@@ -175,7 +185,24 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
   const handleLogout = () => {
     // Comprehensive session cleanup
-    if (isInstitutionUser) {
+    if (isTutorUser) {
+      // Tutor user logout
+      localStorage.removeItem('tutorToken');
+      localStorage.removeItem('tutorId');
+      localStorage.removeItem('tutorName');
+      localStorage.removeItem('tutorEmail');
+      localStorage.removeItem('institutionId');
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Close dialogs
+      setShowLogoutConfirm(false);
+      setIsMenuOpen(false);
+      
+      // Redirect to tutor login
+      window.location.href = '/tutor/login';
+    } else if (isInstitutionUser) {
       // Institution user logout
       localStorage.removeItem('institution_token');
       localStorage.removeItem('institution_id');
@@ -353,6 +380,50 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 <div className="w-4 h-4 bg-white/20 rounded animate-pulse"></div>
               </div>
             </div>
+          ) : isTutorUser ? (
+            <div className="flex items-center space-x-2">
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="text-white/80 hover:text-white transition-all duration-300 relative"
+                >
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="font-medium text-lg">{tutorName}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                
+                {/* Tutor Dropdown Menu */}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-md rounded-md shadow-lg py-1 z-10 border border-white/30">
+                    <button
+                      onClick={() => {
+                        const tutorId = localStorage.getItem('tutorId');
+                        window.location.href = `/tutor/dashboard/${tutorId}`;
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowLogoutConfirm(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#e74c3c] font-medium hover:bg-[#e74c3c]/10"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           ) : isInstitutionUser ? (
             <div className="flex items-center space-x-2">
               <div className="relative user-menu-container">
@@ -487,8 +558,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   </button>
                 </div>
               )}
-              </div>
             </div>
+          </div>
           ) : (
             <div className="flex items-center">
               <button

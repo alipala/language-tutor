@@ -1,1 +1,1 @@
-# Tutor management module
+# Tutor module for tutor dashboard functionality

@@ -249,21 +249,40 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
 async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Add a new tutor to the institution
+    NEW: Now includes password field for tutor login
     """
     try:
+        # Import password hashing function
+        from app.tutor.tutor_auth import get_password_hash, validate_password_strength
+        
         # Validate required fields
         if not tutor_data.get("name") or not tutor_data.get("email"):
             raise HTTPException(status_code=400, detail="Name and email are required")
+        
+        # NEW: Validate password if provided
+        password = tutor_data.get("password", "")
+        if not password:
+            raise HTTPException(status_code=400, detail="Password is required for tutor account")
+        
+        # Validate password strength
+        is_valid, message = validate_password_strength(password)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=message)
         
         # Check if tutor email already exists
         existing = await database.tutors.find_one({"email": tutor_data["email"]})
         if existing:
             raise HTTPException(status_code=400, detail="Tutor with this email already exists")
         
+        # Hash the password
+        hashed_password = get_password_hash(password)
+        
         # Create tutor document
         tutor = {
             "name": tutor_data["name"],
             "email": tutor_data["email"],
+            "hashed_password": hashed_password,  # NEW: Store hashed password
+            "first_login": True,  # NEW: Flag for password change requirement
             "institution_id": institution_id,
             "bio": tutor_data.get("bio", ""),
             "specializations": tutor_data.get("specializations", []),
@@ -276,7 +295,7 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
         
         # Convert ObjectId to string for JSON serialization
         tutor_response = {
-            "message": "Tutor added successfully",
+            "message": "Tutor added successfully. Initial password has been set.",
             "tutor_id": str(result.inserted_id),
             "tutor": {
                 "id": str(result.inserted_id),
@@ -285,6 +304,7 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
                 "bio": tutor["bio"],
                 "specializations": tutor["specializations"],
                 "permissions": tutor["permissions"],
+                "first_login": True,
                 "created_at": tutor["created_at"].isoformat() if tutor.get("created_at") else None
             }
         }
