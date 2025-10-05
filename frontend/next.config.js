@@ -9,8 +9,8 @@ const nextConfig = {
     } : false,
   },
   // Enable static export for Railway deployment
-  output: 'export', // Use static export for Railway deployment
-  distDir: 'out', // Output to 'out' directory for static files
+  // output: 'export', // Temporarily disabled for tutor dashboard development
+  // distDir: 'out', // Output to 'out' directory for static files
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',

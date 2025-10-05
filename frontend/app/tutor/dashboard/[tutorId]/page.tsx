@@ -985,10 +985,7 @@ export default function TutorDashboardPage() {
                                  plan.language.toLowerCase() === 'french' ? '🇫🇷' :
                                  plan.language.toLowerCase() === 'german' ? '🇩🇪' : '🌍'}
                               </span>
-                              <div>
-                                <div className="font-medium text-gray-900 capitalize">{plan.language}</div>
-                                <div className="text-xs text-gray-500">Target Language</div>
-                              </div>
+                              <div className="font-medium text-gray-900 capitalize">{plan.language}</div>
                             </div>
                             <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white shadow-sm">
                               Level {plan.proficiency_level}
