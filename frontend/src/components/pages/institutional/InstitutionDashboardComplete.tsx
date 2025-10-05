@@ -362,7 +362,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = API_BASE_URL;
-          import { API_BASE_URL } from "../../../lib/api-config";
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/reactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -413,7 +412,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = API_BASE_URL;
-          import { API_BASE_URL } from "../../../lib/api-config";
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/tutors/deactivate/${tutorId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -479,7 +477,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = API_BASE_URL;
-          import { API_BASE_URL } from "../../../lib/api-config";
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/assign-tutor`, {
             method: 'POST',
             headers: {
@@ -538,7 +535,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = API_BASE_URL;
-          import { API_BASE_URL } from "../../../lib/api-config";
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/deactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -586,7 +582,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
         try {
           const token = localStorage.getItem('institution_token');
       const backendUrl = API_BASE_URL;
-          import { API_BASE_URL } from "../../../lib/api-config";
           const response = await fetch(`${backendUrl}/api/v1/institution/dashboard/${institutionId}/learners/reactivate/${learnerId}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
