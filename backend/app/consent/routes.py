@@ -12,7 +12,7 @@ from app.consent.schemas import (
 from app.config.feature_flags import feature_flags
 from database import database
 
-router = APIRouter(prefix="/api/v1/consent", tags=["consent"])
+router = APIRouter(prefix="/consent", tags=["consent"])
 
 def check_feature_enabled():
     """Dependency to check if institutional features are enabled"""

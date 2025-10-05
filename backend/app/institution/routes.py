@@ -14,7 +14,7 @@ from app.config.feature_flags import feature_flags
 from database import database
 from auth import create_access_token
 
-router = APIRouter(prefix="/api/v1/institution", tags=["institution"])
+router = APIRouter(prefix="/institution", tags=["institution"])
 
 def check_feature_enabled():
     """Check if institutional features are enabled"""

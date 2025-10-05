@@ -5,7 +5,7 @@ from app.tutor.schemas import *
 from app.config.feature_flags import feature_flags
 from database import get_database
 
-router = APIRouter(prefix="/api/v1/tutors", tags=["tutors"])
+router = APIRouter(prefix="/tutors", tags=["tutors"])
 
 def check_feature_enabled():
     if not feature_flags.INSTITUTIONAL_FEATURES_ENABLED:

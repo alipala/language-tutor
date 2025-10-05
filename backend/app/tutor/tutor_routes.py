@@ -21,7 +21,7 @@ from app.tutor.tutor_auth import (
     validate_password_strength
 )
 
-router = APIRouter(prefix="/api/v1/tutor", tags=["tutor-dashboard"])
+router = APIRouter(prefix="/tutor", tags=["tutor-dashboard"])
 
 
 # ============================================================================
