@@ -797,7 +797,7 @@ export default function TutorDashboardPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                🎓 Learners {learners.length > 0 && `(${learners.length})`}
+                🎓 Learners {totalItems > 0 && `(${totalItems})`}
               </button>
             </nav>
           </div>
@@ -823,6 +823,75 @@ export default function TutorDashboardPage() {
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="text-sm font-medium text-gray-600">Avg Progress</div>
                 <div className="text-3xl font-bold text-blue-600 mt-2">{analytics.average_progress.toFixed(1)}%</div>
+              </div>
+            </div>
+
+            {/* Distribution Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Language Distribution */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">🌍 Language Distribution</h3>
+                <div className="space-y-3">
+                  {analytics.languages_taught && analytics.languages_taught.length > 0 ? (
+                    analytics.languages_taught.map((language) => {
+                      const count = learners.filter(l => 
+                        l.learning_plans[0]?.language.toLowerCase() === language.toLowerCase()
+                      ).length;
+                      const percentage = (count / analytics.total_assigned_learners) * 100;
+                      
+                      return (
+                        <div key={language}>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-700 capitalize">{language}</span>
+                            <span className="text-sm text-gray-500">{count} learners ({percentage.toFixed(0)}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-gray-500 text-sm">No language data available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Proficiency Level Distribution */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Proficiency Level Distribution</h3>
+                <div className="space-y-3">
+                  {analytics.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
+                    Object.entries(analytics.level_distribution)
+                      .sort(([a], [b]) => {
+                        const order = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+                        return order.indexOf(a) - order.indexOf(b);
+                      })
+                      .map(([level, count]) => {
+                        const percentage = ((count as number) / analytics.total_assigned_learners) * 100;
+                        
+                        return (
+                          <div key={level}>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700">{level}</span>
+                              <span className="text-sm text-gray-500">{count} learners ({percentage.toFixed(0)}%)</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <p className="text-gray-500 text-sm">No level data available</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

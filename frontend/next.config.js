@@ -8,9 +8,7 @@ const nextConfig = {
       exclude: ['error'] // Keep console.error for critical error logging
     } : false,
   },
-  // Enable static export for Railway deployment
-  // output: 'export', // Temporarily disabled for tutor dashboard development
-  // distDir: 'out', // Output to 'out' directory for static files
+  // Static export disabled - using Node.js server for dynamic routes
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',
