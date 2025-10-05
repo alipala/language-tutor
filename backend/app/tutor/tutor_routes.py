@@ -477,10 +477,16 @@ async def get_learner_details(
         # Get ALL learning plans
         all_learning_plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
         
-        # Get ALL conversation sessions
-        all_conversations = await database.conversations.find({
+        # Get ALL conversation sessions from BOTH collections
+        conversations = await database.conversations.find({
             "user_id": user_id
         }).sort("created_at", -1).to_list(length=None)
+        
+        conversation_sessions = await database.conversation_sessions.find({
+            "user_id": user_id
+        }).sort("created_at", -1).to_list(length=None)
+        
+        all_conversations = conversations + conversation_sessions
         
         # Get subscription info
         subscription = await database.subscriptions.find_one({"user_id": user_id})
