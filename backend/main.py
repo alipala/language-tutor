@@ -404,6 +404,7 @@ async def health_check():
             "python_version": "3.11",
             "openai_configured": openai_configured,
             "mongodb_configured": mongodb_configured,
+            "frontend_mode": "nextjs_server",  # Using Next.js server, not static export
             "version": "1.0.0",
             "uptime": current_time,
             # Add nested system_info for backward compatibility with legacy frontend code
@@ -2158,50 +2159,19 @@ async def generate_mock_token(request: TutorSessionRequest):
         print(f"❌ [MOCK] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount static files from frontend build - MUST be at the end after all API routes
+# Frontend is served by Next.js server (npm start), not by FastAPI
+# Backend only handles API routes
 print("="*80)
-print("🔧 STATIC FILE MOUNTING DEBUG")
+print("🔧 FRONTEND SERVING MODE")
+print("="*80)
+print("✅ Using Next.js server mode (not static export)")
+print("✅ Frontend will be served by Next.js on port 3001")
+print("✅ Backend API only handles /api/* routes")
 print("="*80)
 
-# Get the path to the frontend build directory
-# In Docker, we're running from /app/backend, so frontend/out is at /app/frontend/out
-if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production":
-    # In production (Railway), use absolute path from app root
-    frontend_build_path = Path("/app/frontend/out")
-    print("🚀 PRODUCTION MODE DETECTED")
-else:
-    # In development, use relative path
-    frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
-    print("🛠️ DEVELOPMENT MODE DETECTED")
-
-print(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
-print(f"Railway: {os.getenv('RAILWAY_ENVIRONMENT', 'false')}")
-print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not_set')}")
-print(f"Current working directory: {os.getcwd()}")
-print(f"__file__ location: {Path(__file__).parent}")
-print(f"Calculated frontend build path: {frontend_build_path}")
-print(f"Frontend build path exists: {frontend_build_path.exists()}")
-
-# Additional debugging - check if files exist
-if frontend_build_path.exists():
-    try:
-        all_files = list(frontend_build_path.iterdir())
-        print(f"Total files/dirs in build path: {len(all_files)}")
-        html_files = list(frontend_build_path.glob("*.html"))
-        print(f"HTML files found: {len(html_files)}")
-        print(f"First 5 HTML files: {[f.name for f in html_files[:5]]}")
-        
-        # Check specific files
-        for page in ["privacy.html", "terms.html", "cookies.html", "about.html"]:
-            page_path = frontend_build_path / page
-            print(f"  {page}: {'✅ EXISTS' if page_path.exists() else '❌ MISSING'}")
-    except Exception as e:
-        print(f"❌ Error listing files: {e}")
-else:
-    print("❌ Frontend build path does not exist!")
-
-# Only mount static files if the build directory exists
-if frontend_build_path.exists():
+# Note: We don't mount static files because Next.js server handles the frontend
+# The following code is kept for reference but not executed:
+if False:  # Disabled - Next.js server handles frontend now
     print(f"Mounting static files from: {frontend_build_path}")
     
     # List some files for debugging

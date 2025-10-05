@@ -34,38 +34,45 @@ async def get_language_distribution(institution_id: str) -> Dict[str, Any]:
     Get language distribution of learners in the institution
     """
     try:
-        # Get all learners for this institution
+        # Get all active learners for this institution
         learners = await database.institutional_learners.find({
             "institution_id": institution_id,
             "is_active": True
         }).to_list(length=None)
         
         # Get user IDs
-        user_ids = [ObjectId(l["user_id"]) for l in learners if l.get("user_id")]
+        user_ids = [l["user_id"] for l in learners if l.get("user_id")]
         
-        # Aggregate language distribution
+        if not user_ids:
+            return {
+                "total_learners": 0,
+                "distribution": []
+            }
+        
+        # Aggregate language distribution from learning plans with case normalization
         pipeline = [
-            {"$match": {"_id": {"$in": user_ids}}},
+            {"$match": {"user_id": {"$in": user_ids}}},
             {"$group": {
-                "_id": "$preferred_language",
+                "_id": {"$toLower": "$language"},  # Normalize to lowercase
                 "count": {"$sum": 1}
             }},
             {"$sort": {"count": -1}}
         ]
         
-        results = await database.users.aggregate(pipeline).to_list(length=None)
+        results = await database.learning_plans.aggregate(pipeline).to_list(length=None)
         
         # Format results
         distribution = []
         total = 0
         for result in results:
-            language = result["_id"] or "Not Set"
-            count = result["count"]
-            total += count
-            distribution.append({
-                "language": language,
-                "count": count
-            })
+            language = result["_id"]
+            if language:  # Skip None values
+                count = result["count"]
+                total += count
+                distribution.append({
+                    "language": language.capitalize(),  # Capitalize first letter
+                    "count": count
+                })
         
         # Add percentages
         for item in distribution:
@@ -87,29 +94,35 @@ async def get_level_distribution(institution_id: str) -> Dict[str, Any]:
     Get proficiency level distribution of learners
     """
     try:
-        # Get all learners for this institution
+        # Get all active learners for this institution
         learners = await database.institutional_learners.find({
             "institution_id": institution_id,
             "is_active": True
         }).to_list(length=None)
         
         # Get user IDs
-        user_ids = [ObjectId(l["user_id"]) for l in learners if l.get("user_id")]
+        user_ids = [l["user_id"] for l in learners if l.get("user_id")]
         
-        # Aggregate level distribution
+        if not user_ids:
+            return {
+                "total_learners": 0,
+                "distribution": []
+            }
+        
+        # Aggregate level distribution from learning plans
         pipeline = [
-            {"$match": {"_id": {"$in": user_ids}}},
+            {"$match": {"user_id": {"$in": user_ids}}},
             {"$group": {
-                "_id": "$preferred_level",
+                "_id": "$proficiency_level",
                 "count": {"$sum": 1}
             }},
-            {"$sort": {"_id": 1}}  # Sort by level (A1, A2, B1, B2, C1, C2)
+            {"$sort": {"_id": 1}}
         ]
         
-        results = await database.users.aggregate(pipeline).to_list(length=None)
+        results = await database.learning_plans.aggregate(pipeline).to_list(length=None)
         
         # Format results with proper ordering
-        level_order = ["A1", "A2", "B1", "B2", "C1", "C2", None]
+        level_order = ["A1", "A2", "B1", "B2", "C1", "C2"]
         distribution = []
         total = 0
         
@@ -119,7 +132,7 @@ async def get_level_distribution(institution_id: str) -> Dict[str, Any]:
                 count = matching[0]["count"]
                 total += count
                 distribution.append({
-                    "level": level or "Not Set",
+                    "level": level,
                     "count": count
                 })
         
