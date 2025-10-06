@@ -18,15 +18,15 @@ export function getApiBaseUrl(): string {
   // Check if we're in a browser
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    // If we're on Railway or custom domain, use empty string (same domain)
+    // If we're on Railway or custom domain, use /api prefix for Next.js proxy
     if (hostname.includes('railway.app') || hostname === 'mytacoai.com') {
-      console.log(`Detected production deployment on ${hostname}, using same-origin API URL`);
-      return '';
+      console.log(`Detected production deployment on ${hostname}, using /api prefix for Next.js proxy`);
+      return '/api';
     }
-    // If we're not on localhost, use the same origin for API calls
+    // If we're not on localhost, use /api prefix
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      console.log(`Detected production hostname ${hostname}, using same-origin API URL`);
-      return window.location.origin;
+      console.log(`Detected production hostname ${hostname}, using /api prefix`);
+      return '/api';
     }
   }
   // Default to environment variable or localhost
