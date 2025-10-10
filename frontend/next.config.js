@@ -41,13 +41,22 @@ const nextConfig = {
     const backendUrl = process.env.NODE_ENV === 'production' 
       ? 'http://localhost:8000'  // Fixed backend port in production
       : (process.env.BACKEND_URL || 'http://localhost:8000')
-    console.log('[NEXT_CONFIG] Proxying /api/* to:', backendUrl)
+    console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl)
     return [
-      // Proxy /api/* routes to backend, stripping /api prefix
-      // Frontend calls /api/tutor/login → Backend receives /tutor/login
+      // Proxy /api/* routes to backend (keep /api prefix)
       {
         source: '/api/:path*',
-        destination: `${backendUrl}/:path*`,
+        destination: `${backendUrl}/api/:path*`,
+      },
+      // Proxy /auth/* routes to backend (for Google OAuth)
+      {
+        source: '/auth/:path*',
+        destination: `${backendUrl}/auth/:path*`,
+      },
+      // Proxy /health/* routes to backend
+      {
+        source: '/health/:path*',
+        destination: `${backendUrl}/health/:path*`,
       },
     ]
   },
