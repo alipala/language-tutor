@@ -323,9 +323,22 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     <nav className={`main-navbar ${navbarClass}`}>
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
-        <Logo 
+        <Logo
           variant="full"
           onClick={() => {
+            // Redirect B2B users to their dashboards instead of homepage
+            if (isTutorUser) {
+              const tutorId = localStorage.getItem('tutorId');
+              if (tutorId) {
+                window.location.href = `/tutor/dashboard/${tutorId}`;
+                return;
+              }
+            } else if (isInstitutionUser) {
+              window.location.href = '/institution/dashboard';
+              return;
+            }
+
+            // For regular users, go to homepage
             // Clear navigation state before navigating to home
             // This prevents automatic redirection to level-selection
             navigation.clearNavigationState();
