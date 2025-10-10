@@ -4,8 +4,7 @@ Institution management business logic
 from datetime import datetime
 from typing import Dict, Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
-import hashlib
-import secrets
+import bcrypt
 from app.institution.utils import generate_institution_code
 
 class InstitutionService:
@@ -15,39 +14,18 @@ class InstitutionService:
         self.tutors = db.tutors
 
     def hash_password(self, password: str) -> str:
-        """Hash password using hashlib (matching tutor auth)"""
-        # Generate random salt
-        salt = secrets.token_hex(8)
-        
-        # Hash password with salt
-        password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
-        
-        # Return in format: $salt$hash
-        return f"${salt}${password_hash}"
+        """Hash password using bcrypt"""
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify password against hash (matching tutor auth)"""
+        """Verify password against bcrypt hash"""
         try:
-            parts = hashed_password.split('$')
-            
-            # Handle different password formats
-            if len(parts) == 3:
-                # Format: $salt$hash
-                salt = parts[1]
-                stored_hash = parts[2]
-            elif len(parts) == 4 and parts[0] == '' and parts[3] == '':
-                # Legacy format: $salt$hash$
-                salt = parts[1]
-                stored_hash = parts[2]
-            else:
-                print(f"[INSTITUTION_AUTH] Invalid password format: {len(parts)} parts")
-                return False
-            
-            # Hash the input password with the same salt
-            computed_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
-            
-            # Compare hashes
-            return computed_hash == stored_hash
+            return bcrypt.checkpw(
+                plain_password.encode('utf-8'),
+                hashed_password.encode('utf-8')
+            )
         except Exception as e:
             print(f"[INSTITUTION_AUTH] Error in verify_password: {str(e)}")
             return False
