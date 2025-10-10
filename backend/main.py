@@ -179,6 +179,10 @@ app.include_router(tutor_dashboard_router)
 from app.learner.routes import router as learner_router
 app.include_router(learner_router)
 
+# Include activation codes routes
+from activation_codes_routes import router as activation_codes_router
+app.include_router(activation_codes_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
