@@ -13,7 +13,7 @@ from fastapi.security import OAuth2PasswordBearer
 from bson import ObjectId
 from pydantic import BaseModel, EmailStr
 
-from database import database
+from database import database, tutors_collection
 
 # JWT Configuration (same as main auth but with different context)
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_hex(32))

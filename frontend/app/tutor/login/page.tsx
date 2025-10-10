@@ -14,6 +14,15 @@ export default function TutorLoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Pre-fill email from sessionStorage if available
+  React.useEffect(() => {
+    const b2bEmail = sessionStorage.getItem('b2bEmail');
+    if (b2bEmail) {
+      setEmail(b2bEmail);
+      sessionStorage.removeItem('b2bEmail'); // Clear it after use
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');

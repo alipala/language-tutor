@@ -20,7 +20,7 @@ export const InstitutionLogin: React.FC = () => {
   useEffect(() => {
     const token = localStorage.getItem('institution_token');
     const institutionId = localStorage.getItem('institution_id');
-    
+
     if (token && institutionId) {
       // Already authenticated, redirect to dashboard
       router.push('/institution/dashboard');
@@ -28,6 +28,15 @@ export const InstitutionLogin: React.FC = () => {
       setIsCheckingAuth(false);
     }
   }, [router]);
+
+  // Pre-fill email from sessionStorage if available
+  useEffect(() => {
+    const b2bEmail = sessionStorage.getItem('b2bEmail');
+    if (b2bEmail) {
+      setFormData(prev => ({ ...prev, admin_email: b2bEmail }));
+      sessionStorage.removeItem('b2bEmail'); // Clear it after use
+    }
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
