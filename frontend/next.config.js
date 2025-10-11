@@ -43,7 +43,17 @@ const nextConfig = {
       : (process.env.BACKEND_URL || 'http://localhost:8000')
     console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl)
     return [
-      // Proxy /api/* routes to backend (keep /api prefix)
+      // Proxy /api/institution/* to /institution/* (strip /api prefix for institution routes)
+      {
+        source: '/api/institution/:path*',
+        destination: `${backendUrl}/institution/:path*`,
+      },
+      // Proxy /api/tutor/* to /tutor/* (strip /api prefix for tutor routes)
+      {
+        source: '/api/tutor/:path*',
+        destination: `${backendUrl}/tutor/:path*`,
+      },
+      // Proxy /api/* routes to backend (keep /api prefix for other API routes)
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
@@ -57,6 +67,16 @@ const nextConfig = {
       {
         source: '/health/:path*',
         destination: `${backendUrl}/health/:path*`,
+      },
+      // Proxy /institution/* routes directly (for login pages)
+      {
+        source: '/institution/:path*',
+        destination: `${backendUrl}/institution/:path*`,
+      },
+      // Proxy /tutor/* routes directly (for login pages)
+      {
+        source: '/tutor/:path*',
+        destination: `${backendUrl}/tutor/:path*`,
       },
     ]
   },
