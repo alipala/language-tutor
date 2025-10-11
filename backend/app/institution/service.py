@@ -45,7 +45,7 @@ class InstitutionService:
         """
         # Validate activation code
         activation_codes = self.db.activation_codes
-        code_doc = await activation_codes.find_one({"code": activation_code})
+        code_doc = await activation_codes.find_one({"activation_code": activation_code})
         
         if not code_doc:
             raise ValueError("Invalid activation code")
@@ -96,7 +96,7 @@ class InstitutionService:
         
         # Mark activation code as used
         await activation_codes.update_one(
-            {"code": activation_code},
+            {"activation_code": activation_code},
             {
                 "$set": {
                     "status": "used",
