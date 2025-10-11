@@ -1,19 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { institutionService, InstitutionSignupData } from '../../../services/institutionService';
 import Link from 'next/link';
 
 export const InstitutionSignup: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState<InstitutionSignupData>({
     name: '',
     institution_type: 'school',
     admin_email: '',
     admin_password: '',
-    admin_name: ''
+    admin_name: '',
+    activation_code: ''
   });
+  
+  // Get activation code from URL parameter
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code) {
+      setFormData(prev => ({ ...prev, activation_code: code }));
+    }
+  }, [searchParams]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);

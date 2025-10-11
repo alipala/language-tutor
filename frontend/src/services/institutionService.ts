@@ -10,6 +10,7 @@ export interface InstitutionSignupData {
   admin_email: string;
   admin_password: string;
   admin_name: string;
+  activation_code: string; // Required - received via email invitation
   subscription_plan?: 'starter' | 'professional' | 'enterprise'; // Optional - managed by admin
 }
 
