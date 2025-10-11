@@ -60,7 +60,7 @@ export default function ProfilePage() {
 
   // Check for tab parameter in URL
   useEffect(() => {
-    const tab = searchParams.get('tab');
+    const tab = searchParams?.get('tab');
     if (tab && ['overview', 'progress', 'notifications', 'export', 'settings'].includes(tab)) {
       setActiveTab(tab);
     }
@@ -191,7 +191,7 @@ export default function ProfilePage() {
   const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
   
   // Check if user came from successful checkout
-  const checkoutSuccess = searchParams.get('checkout') === 'success';
+  const checkoutSuccess = searchParams?.get('checkout') === 'success';
   
   // Export loading states
   const [exportLoading, setExportLoading] = useState<Record<string, boolean>>({});

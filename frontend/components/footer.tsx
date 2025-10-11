@@ -132,6 +132,12 @@ const Footer: React.FC = () => {
       ]
     },
     {
+      title: "For Schools",
+      links: [
+        { name: "School Access", href: "/institution/login", icon: Users }
+      ]
+    },
+    {
       title: "Responsible AI",
       links: [
         { name: "What We Think", href: "/responsible-ai", icon: Shield }

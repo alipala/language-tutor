@@ -157,6 +157,32 @@ app.include_router(conversation_help_router)
 from session_heartbeat_routes import router as session_heartbeat_router
 app.include_router(session_heartbeat_router)
 
+# Include consent routes
+from app.consent.routes import router as consent_router
+app.include_router(consent_router)
+
+# Include institution routes
+from app.institution.routes import router as institution_router
+from app.institution.dashboard_routes import router as dashboard_router
+app.include_router(institution_router)
+app.include_router(dashboard_router)
+
+# Include tutor routes
+from app.tutor.routes import router as tutor_router
+app.include_router(tutor_router)
+
+# Include tutor dashboard routes (NEW: Authentication & Dashboard endpoints)
+from app.tutor.tutor_routes import router as tutor_dashboard_router
+app.include_router(tutor_dashboard_router)
+
+# Include learner routes
+from app.learner.routes import router as learner_router
+app.include_router(learner_router)
+
+# Include activation codes routes
+from activation_codes_routes import router as activation_codes_router
+app.include_router(activation_codes_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
@@ -382,6 +408,7 @@ async def health_check():
             "python_version": "3.11",
             "openai_configured": openai_configured,
             "mongodb_configured": mongodb_configured,
+            "frontend_mode": "nextjs_server",  # Using Next.js server, not static export
             "version": "1.0.0",
             "uptime": current_time,
             # Add nested system_info for backward compatibility with legacy frontend code
@@ -2136,50 +2163,19 @@ async def generate_mock_token(request: TutorSessionRequest):
         print(f"❌ [MOCK] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount static files from frontend build - MUST be at the end after all API routes
+# Frontend is served by Next.js server (npm start), not by FastAPI
+# Backend only handles API routes
 print("="*80)
-print("🔧 STATIC FILE MOUNTING DEBUG")
+print("🔧 FRONTEND SERVING MODE")
+print("="*80)
+print("✅ Using Next.js server mode (not static export)")
+print("✅ Frontend will be served by Next.js on port 3001")
+print("✅ Backend API only handles /api/* routes")
 print("="*80)
 
-# Get the path to the frontend build directory
-# In Docker, we're running from /app/backend, so frontend/out is at /app/frontend/out
-if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production":
-    # In production (Railway), use absolute path from app root
-    frontend_build_path = Path("/app/frontend/out")
-    print("🚀 PRODUCTION MODE DETECTED")
-else:
-    # In development, use relative path
-    frontend_build_path = Path(__file__).parent.parent / "frontend" / "out"
-    print("🛠️ DEVELOPMENT MODE DETECTED")
-
-print(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
-print(f"Railway: {os.getenv('RAILWAY_ENVIRONMENT', 'false')}")
-print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not_set')}")
-print(f"Current working directory: {os.getcwd()}")
-print(f"__file__ location: {Path(__file__).parent}")
-print(f"Calculated frontend build path: {frontend_build_path}")
-print(f"Frontend build path exists: {frontend_build_path.exists()}")
-
-# Additional debugging - check if files exist
-if frontend_build_path.exists():
-    try:
-        all_files = list(frontend_build_path.iterdir())
-        print(f"Total files/dirs in build path: {len(all_files)}")
-        html_files = list(frontend_build_path.glob("*.html"))
-        print(f"HTML files found: {len(html_files)}")
-        print(f"First 5 HTML files: {[f.name for f in html_files[:5]]}")
-        
-        # Check specific files
-        for page in ["privacy.html", "terms.html", "cookies.html", "about.html"]:
-            page_path = frontend_build_path / page
-            print(f"  {page}: {'✅ EXISTS' if page_path.exists() else '❌ MISSING'}")
-    except Exception as e:
-        print(f"❌ Error listing files: {e}")
-else:
-    print("❌ Frontend build path does not exist!")
-
-# Only mount static files if the build directory exists
-if frontend_build_path.exists():
+# Note: We don't mount static files because Next.js server handles the frontend
+# The following code is kept for reference but not executed:
+if False:  # Disabled - Next.js server handles frontend now
     print(f"Mounting static files from: {frontend_build_path}")
     
     # List some files for debugging
@@ -2284,6 +2280,30 @@ if frontend_build_path.exists():
         if responsible_ai_file.exists():
             return FileResponse(responsible_ai_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Responsible AI page not found")
+    
+    # Institution routes (App Router pages)
+    @app.get("/institution/signup")
+    async def serve_institution_signup():
+        signup_file = frontend_build_path / "institution" / "signup.html"
+        if signup_file.exists():
+            return FileResponse(signup_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Institution signup page not found")
+    
+    @app.get("/institution/login")
+    async def serve_institution_login():
+        login_file = frontend_build_path / "institution" / "login.html"
+        if login_file.exists():
+            return FileResponse(login_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Institution login page not found")
+    
+    @app.get("/institution/signup-success")
+    async def serve_institution_signup_success():
+        success_file = frontend_build_path / "institution" / "signup-success.html"
+        if success_file.exists():
+            return FileResponse(success_file, media_type="text/html")
+        raise HTTPException(status_code=404, detail="Institution signup success page not found")
+    
+    print("✅ Added institution route handlers for App Router pages")
     
     # Add admin panel route
     @app.get("/_admin")
@@ -2402,15 +2422,7 @@ if frontend_build_path.exists():
     
     print("✅ Added explicit route handlers for static pages, auth routes, and main application routes")
     
-    # Still mount StaticFiles for other assets like _next, images, etc.
-    app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
-else:
-    print(f"Warning: Frontend build directory not found at {frontend_build_path}")
-    
-    # Add a fallback route for the root path
-    @app.get("/")
-    async def root():
-        return {"message": "Language Tutor API is running", "frontend_build": "not found"}
+    # Note: StaticFiles mounting removed - using Next.js server mode instead
 
 if __name__ == "__main__":
     import uvicorn

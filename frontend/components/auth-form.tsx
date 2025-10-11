@@ -27,6 +27,26 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // B2B detection state
+  const [b2bUserType, setB2bUserType] = useState<'tutor' | 'institution' | null>(null);
+  const [b2bMessage, setB2bMessage] = useState<string | null>(null);
+  const [showB2BModal, setShowB2BModal] = useState(false);
+
+  // Handle manual redirect to B2B portal
+  const handleB2BRedirect = () => {
+    if (!b2bUserType) return;
+    
+    // Store email in sessionStorage to pre-fill on the B2B login page
+    sessionStorage.setItem('b2bEmail', email);
+    
+    // Navigate to appropriate portal
+    if (b2bUserType === 'tutor') {
+      router.push('/tutor/login');
+    } else if (b2bUserType === 'institution') {
+      router.push('/institution/login');
+    }
+  };
   
   // Form validation with user-friendly messages
   const validateForm = () => {
@@ -114,7 +134,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     setValidationErrors(errors);
   };
   
-  // Form submission
+  // Form submission with B2B check
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -125,6 +145,35 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       return;
     }
     
+    // For login, check if this is a B2B user BEFORE attempting login
+    if (type === 'login') {
+      try {
+        const response = await fetch('/api/auth/check-user-type', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.user_type !== 'learner' && data.redirect_url) {
+            // B2B user detected! Show modal instead of logging in
+            setB2bUserType(data.user_type);
+            setB2bMessage(data.message);
+            setShowB2BModal(true);
+            return; // Don't proceed with login
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user type:', error);
+        // On error, proceed with normal login attempt
+      }
+    }
+    
+    // Proceed with normal login/signup
     const data = type === 'login' 
       ? { email, password } 
       : { name, email, password };
@@ -182,12 +231,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               {type === 'login' ? 'Welcome Back' : 'Create Your Account'}
             </h2>
             <p className="text-gray-600 text-xs sm:text-sm">
-              {type === 'login' 
-                ? 'Sign in to continue your language learning journey' 
+              {type === 'login'
+                ? 'Sign in to continue your language learning journey'
                 : 'Join us and start learning languages today'
               }
             </p>
           </div>
+
 
         {/* Error Message */}
         {error && (
@@ -356,6 +406,80 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </div>
         </div>
       </div>
+
+      {/* B2B Detection Modal - Appears after form submission */}
+      {showB2BModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-slideUp">
+            {/* Icon with animation */}
+            <div className="flex justify-center mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center animate-bounce">
+                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                {b2bUserType === 'tutor' ? '👨‍🏫 Tutor Account' : '🏫 Institution Account'}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                We detected that <span className="font-semibold text-gray-900">{email}</span> is registered as {b2bUserType === 'tutor' ? 'a tutor' : 'an institution administrator'}.
+              </p>
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 text-left">
+                <p className="text-sm text-blue-800">
+                  <strong>Please use the dedicated {b2bUserType} portal</strong> to access your account and manage your {b2bUserType === 'tutor' ? 'students' : 'institution'}.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleB2BRedirect}
+                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <span>Go to {b2bUserType === 'tutor' ? 'Tutor' : 'Institution'} Portal</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowB2BModal(false)}
+                className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add animations */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

@@ -15,9 +15,9 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Get plan details from URL params
-  const planId = searchParams.get('plan');
-  const period = searchParams.get('period') || 'monthly';
-  const isGuest = searchParams.get('guest') === 'true';
+  const planId = searchParams?.get('plan');
+  const period = searchParams?.get('period') || 'monthly';
+  const isGuest = searchParams?.get('guest') === 'true';
 
   // Stripe price IDs from environment variables
   const STRIPE_PRICES = {

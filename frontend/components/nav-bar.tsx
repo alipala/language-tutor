@@ -22,6 +22,14 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
+  // Institution user detection
+  const [isInstitutionUser, setIsInstitutionUser] = useState(false);
+  const [institutionName, setInstitutionName] = useState('');
+  
+  // Tutor user detection
+  const [isTutorUser, setIsTutorUser] = useState(false);
+  const [tutorName, setTutorName] = useState('');
+  
   // Use shared subscription status hook
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
 
@@ -58,7 +66,26 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   // Check if we're on the landing page and detect mobile
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const checkInstitutionUser = () => {
+        const institutionToken = localStorage.getItem('institution_token');
+        const institutionNameStored = localStorage.getItem('institution_name');
+        setIsInstitutionUser(!!institutionToken);
+        setInstitutionName(institutionNameStored || 'Institution');
+        
+        // Check for tutor user
+        const tutorToken = localStorage.getItem('tutorToken');
+        const tutorNameStored = localStorage.getItem('tutorName');
+        setIsTutorUser(!!tutorToken);
+        setTutorName(tutorNameStored || 'Tutor');
+      };
+      
       setIsLandingPage(window.location.pathname === '/');
+      
+      // Check initially
+      checkInstitutionUser();
+      
+      // Re-check on path change (for navigation)
+      const intervalId = setInterval(checkInstitutionUser, 500);
       
       // Detect mobile device
       const checkMobile = () => {
@@ -100,6 +127,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       return () => {
         window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', checkMobile);
+        clearInterval(intervalId);
       };
     }
   }, [lastScrollY, isMobile]);
@@ -156,13 +184,54 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, [isMenuOpen]);
 
   const handleLogout = () => {
-    logout();
-    // Close the confirmation dialog
-    setShowLogoutConfirm(false);
-    // Close the menu
-    setIsMenuOpen(false);
-    // Navigate to home page after logout
-    window.location.href = '/';
+    // Comprehensive session cleanup
+    if (isTutorUser) {
+      // Tutor user logout
+      localStorage.removeItem('tutorToken');
+      localStorage.removeItem('tutorId');
+      localStorage.removeItem('tutorName');
+      localStorage.removeItem('tutorEmail');
+      localStorage.removeItem('institutionId');
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Close dialogs
+      setShowLogoutConfirm(false);
+      setIsMenuOpen(false);
+      
+      // Redirect to tutor login
+      window.location.href = '/tutor/login';
+    } else if (isInstitutionUser) {
+      // Institution user logout
+      localStorage.removeItem('institution_token');
+      localStorage.removeItem('institution_id');
+      localStorage.removeItem('institution_name');
+      localStorage.removeItem('institution_code');
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Close dialogs
+      setShowLogoutConfirm(false);
+      setIsMenuOpen(false);
+      
+      // Redirect to institution login
+      window.location.href = '/institution/login';
+    } else {
+      // Regular user logout
+      logout(); // This already handles localStorage token removal
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Close dialogs
+      setShowLogoutConfirm(false);
+      setIsMenuOpen(false);
+      
+      // Navigate to home page
+      window.location.href = '/';
+    }
   };
 
   // Handle profile navigation with confirmation if on speech page
@@ -254,9 +323,22 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     <nav className={`main-navbar ${navbarClass}`}>
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
-        <Logo 
+        <Logo
           variant="full"
           onClick={() => {
+            // Redirect B2B users to their dashboards instead of homepage
+            if (isTutorUser) {
+              const tutorId = localStorage.getItem('tutorId');
+              if (tutorId) {
+                window.location.href = `/tutor/dashboard/${tutorId}`;
+                return;
+              }
+            } else if (isInstitutionUser) {
+              window.location.href = '/institution/dashboard';
+              return;
+            }
+
+            // For regular users, go to homepage
             // Clear navigation state before navigating to home
             // This prevents automatic redirection to level-selection
             navigation.clearNavigationState();
@@ -309,6 +391,111 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 <div className="w-6 h-6 bg-white/20 rounded-full animate-pulse"></div>
                 <div className="w-16 h-4 bg-white/20 rounded animate-pulse"></div>
                 <div className="w-4 h-4 bg-white/20 rounded animate-pulse"></div>
+              </div>
+            </div>
+          ) : isTutorUser ? (
+            <div className="flex items-center space-x-2">
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="text-white/80 hover:text-white transition-all duration-300 relative"
+                >
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="font-medium text-lg">{tutorName}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                
+                {/* Tutor Dropdown Menu */}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-md rounded-md shadow-lg py-1 z-10 border border-white/30">
+                    <button
+                      onClick={() => {
+                        const tutorId = localStorage.getItem('tutorId');
+                        window.location.href = `/tutor/dashboard/${tutorId}`;
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowLogoutConfirm(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#e74c3c] font-medium hover:bg-[#e74c3c]/10"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : isInstitutionUser ? (
+            <div className="flex items-center space-x-2">
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="text-white/80 hover:text-white transition-all duration-300 relative"
+                >
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 transition-all duration-300">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <span className="font-medium text-lg">{institutionName}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                
+                {/* Institution Dropdown Menu */}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-md rounded-md shadow-lg py-1 z-10 border border-white/30">
+                    <button
+                      onClick={() => {
+                        window.location.href = '/institution/dashboard';
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        // TODO: Implement settings page
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Settings
+                    </button>
+                    <button
+                      onClick={() => {
+                        // TODO: Implement billing page
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
+                    >
+                      Billing
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowLogoutConfirm(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-sm text-[#e74c3c] font-medium hover:bg-[#e74c3c]/10"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : user ? (
@@ -384,8 +571,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                   </button>
                 </div>
               )}
-              </div>
             </div>
+          </div>
           ) : (
             <div className="flex items-center">
               <button
@@ -494,6 +681,37 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             </>
           ) : (
             <>
+              {/* Institution Menu Items for Mobile */}
+              <div className="px-4 py-2 mx-2 border-b border-white/10">
+                <p className="text-xs text-white/60 font-medium uppercase tracking-wide">For Schools</p>
+              </div>
+              <Link
+                href="/institution/signup"
+                onClick={() => setIsMenuOpen(false)}
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Create School Account</span>
+              </Link>
+              <Link
+                href="/institution/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                <span>School Login</span>
+              </Link>
+              
+              <div className="border-t border-white/10 mx-2 my-2"></div>
+              
+              {/* Individual Learner Login */}
+              <div className="px-4 py-2 mx-2 border-b border-white/10">
+                <p className="text-xs text-white/60 font-medium uppercase tracking-wide">Individual Learners</p>
+              </div>
               <button
                 onClick={() => {
                   navigateTo('/auth/login');

@@ -24,6 +24,8 @@ export default function LoginPage() {
 
   // Check for verification success parameter
   useEffect(() => {
+    if (!searchParams) return;
+    
     const verified = searchParams.get('verified');
     if (verified === 'true') {
       console.log('[LOGIN] Email verification success detected, showing toast');

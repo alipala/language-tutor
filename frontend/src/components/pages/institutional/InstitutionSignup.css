@@ -1,0 +1,470 @@
+/* Professional B2B Institutional Signup - Consistent with Main App */
+
+.institution-signup-page {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Hero Header - Professional B2B */
+.signup-header {
+  text-align: center;
+  padding: 3rem 2rem;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, #4ECFBF 0%, #45B7D1 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(78, 207, 191, 0.2);
+}
+
+.signup-header h1 {
+  font-size: 2.75rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.signup-header p {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Subscription Plans - B2B Professional */
+.plans-section {
+  margin-bottom: 3rem;
+}
+
+.plans-section h3 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 2.5rem;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.plan-card {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 2.5rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.plan-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(78, 207, 191, 0.15);
+  border-color: #4ECFBF;
+}
+
+.plan-card.selected {
+  border-color: #4ECFBF;
+  border-width: 3px;
+  background: linear-gradient(135deg, rgba(78, 207, 191, 0.05) 0%, rgba(69, 183, 209, 0.05) 100%);
+  box-shadow: 0 20px 40px rgba(78, 207, 191, 0.2);
+}
+
+.plan-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: #4ECFBF;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 10px rgba(78, 207, 191, 0.3);
+}
+
+.plan-card h4 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+}
+
+.plan-price {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #4ECFBF;
+  margin-bottom: 2rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plan-features li {
+  padding: 0.75rem 0;
+  color: #475569;
+  font-size: 1rem;
+  font-weight: 500;
+  position: relative;
+  padding-left: 2rem;
+  line-height: 1.5;
+}
+
+.plan-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #4ECFBF;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+/* Form Styling - Professional and Consistent */
+.signup-form {
+  max-width: 700px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: 2px solid #4ECFBF;
+  overflow: hidden;
+}
+
+.form-section {
+  padding: 2.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+}
+
+.form-section h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4ECFBF;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+}
+
+.form-section h3::before {
+  content: '';
+  width: 4px;
+  height: 1.5rem;
+  background: #4ECFBF;
+  border-radius: 2px;
+  margin-right: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1.75rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+}
+
+/* KEY FIX: Proper input text color and styling */
+.form-group input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 2px solid rgba(78, 207, 191, 0.3);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  color: #1e293b; /* Dark text for readability */
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.form-group input::placeholder {
+  color: rgba(78, 207, 191, 0.5);
+  font-weight: 400;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4ECFBF;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(78, 207, 191, 0.1);
+  color: #1e293b; /* Maintain dark text on focus */
+}
+
+.form-group input.error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.02);
+}
+
+.form-group input.error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: block;
+  font-weight: 500;
+}
+
+.api-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid #ef4444;
+  color: #dc2626;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin: 2rem 2.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.submit-button {
+  width: calc(100% - 5rem);
+  margin: 2rem 2.5rem 1.5rem;
+  background: linear-gradient(135deg, #4ECFBF 0%, #45B7D1 100%);
+  color: #ffffff;
+  border: none;
+  padding: 1.25rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(78, 207, 191, 0.3);
+  letter-spacing: 0.025em;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(78, 207, 191, 0.4);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-link {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9375rem;
+  padding: 0 2.5rem 2.5rem;
+  margin: 0;
+}
+
+.login-link a {
+  color: #4ECFBF;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.login-link a:hover {
+  color: #45B7D1;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .signup-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .signup-header {
+    padding: 2rem 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+  }
+
+  .signup-header h1 {
+    font-size: 2rem;
+  }
+
+  .signup-header p {
+    font-size: 1rem;
+  }
+
+  .plans-section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .plan-card {
+    padding: 2rem;
+  }
+
+  .plan-card h4 {
+    font-size: 1.5rem;
+  }
+
+  .plan-price {
+    font-size: 2rem;
+  }
+
+  .form-section {
+    padding: 2rem 1.5rem;
+  }
+
+  .form-section h3 {
+    font-size: 1.25rem;
+  }
+
+  .form-group input {
+    padding: 0.875rem 1rem;
+  }
+
+  .submit-button {
+    width: calc(100% - 3rem);
+    margin: 1.5rem 1.5rem 1rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .login-link {
+    padding: 0 1.5rem 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .signup-container {
+    padding: 1rem 0.5rem;
+  }
+
+  .signup-header {
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+  }
+
+  .signup-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .signup-header p {
+    font-size: 0.9375rem;
+  }
+
+  .plans-section h3 {
+    font-size: 1.25rem;
+  }
+
+  .plan-card {
+    padding: 1.5rem;
+  }
+
+  .plan-card h4 {
+    font-size: 1.25rem;
+  }
+
+  .plan-price {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .plan-features li {
+    font-size: 0.9375rem;
+    padding: 0.625rem 0;
+  }
+
+  .form-section {
+    padding: 1.5rem 1rem;
+  }
+
+  .form-section h3 {
+    font-size: 1.125rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    font-size: 0.875rem;
+  }
+
+  .form-group input {
+    font-size: 1rem; /* Prevent zoom on iOS */
+  }
+
+  .submit-button {
+    width: calc(100% - 2rem);
+    margin: 1.5rem 1rem 1rem;
+    font-size: 1rem;
+  }
+
+  .login-link {
+    padding: 0 1rem 1.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Focus visible for accessibility */
+.plan-card:focus-visible {
+  outline: 3px solid #4ECFBF;
+  outline-offset: 2px;
+}
+
+.submit-button:focus-visible {
+  outline: 3px solid #4ECFBF;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .signup-header {
+    background: none;
+    color: #000;
+  }
+
+  .plan-card.selected {
+    border-color: #000;
+  }
+
+  .submit-button {
+    display: none;
+  }
+}

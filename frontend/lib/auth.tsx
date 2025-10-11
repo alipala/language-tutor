@@ -178,9 +178,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.debug('Login response received');
 
       if (!response.ok) {
-        const errorData = await response.json();
-        logger.apiError('/auth/login', errorData);
-        throw new Error(errorData.detail || 'Login failed');
+        let errorMessage = 'Login failed';
+
+        try {
+          // Check if response is HTML
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) {
+            // HTML response (likely an error page)
+            console.warn('Received HTML error response instead of JSON. This may indicate a server configuration issue.');
+            errorMessage = 'Server error. Please try again or contact support if the issue persists.';
+          } else {
+            // Try to parse as JSON
+            const errorData = await response.json();
+            logger.apiError('/auth/login', errorData);
+            errorMessage = errorData.detail || errorMessage;
+          }
+        } catch (parseError: any) {
+          // Fallback if parsing fails
+          logger.apiError('/auth/login', { parseError: parseError?.message || 'Unknown parsing error', status: response.status });
+          errorMessage = `Login failed (Status: ${response.status}). Please try again.`;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

@@ -19,12 +19,16 @@ export default function Home() {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Institution/Tutor user detection
+  const [isInstitutionUser, setIsInstitutionUser] = useState(false);
+  const [isTutorUser, setIsTutorUser] = useState(false);
+
   // For automatic navigation if needed
   const [shouldAutoNavigate, setShouldAutoNavigate] = useState(false);
   const [maxRedirectAttempts] = useState(3);
   const redirectAttemptsRef = useRef(0);
-  
+
   // Video player state
   const [showVideo, setShowVideo] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -104,20 +108,31 @@ export default function Home() {
     }
   };
   
+  // Check for B2B user detection (Institution/Tutor)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const institutionToken = localStorage.getItem('institution_token');
+      const tutorToken = localStorage.getItem('tutorToken');
+      setIsInstitutionUser(!!institutionToken);
+      setIsTutorUser(!!tutorToken);
+    }
+  }, []);
+
   // Initial useEffect for auth checking and redirects
   useEffect(() => {
     // Only run in browser
     if (typeof window === 'undefined') return;
-    
+
     // Wait for auth to be checked
     if (authLoading) return;
-    
+
     // Log environment information for debugging
     console.log('Home page loaded at:', new Date().toISOString());
     console.log('Environment:', process.env.NODE_ENV);
     console.log('Auth status:', user ? 'Logged in' : 'Not logged in');
+    console.log('Institution user:', isInstitutionUser, 'Tutor user:', isTutorUser);
     console.log('Current pathname:', window.location.pathname);
-    
+
     // Check if we should continue with normal page loading
     if (shouldAutoNavigate) {
       handleAutomaticNavigation();
@@ -125,7 +140,7 @@ export default function Home() {
       // Clear loading state if we're not redirecting
       setIsLoading(false);
     }
-  }, [authLoading, user, shouldAutoNavigate]);
+  }, [authLoading, user, shouldAutoNavigate, isInstitutionUser, isTutorUser]);
 
   // Show dashboard for authenticated users
   if (!authLoading && user) {
@@ -167,45 +182,48 @@ export default function Home() {
                     <span className="block mb-2 text-gray-800">Hey there! 👋</span>
                     <span className="animated-gradient-text">Speak Fluently in 5 Minutes Daily</span>
                   </h1>
-                  
+
                   <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg font-medium">
                     Master any language through real-time AI conversations that adapt to your schedule. From beginner to confident speaker in weeks, not years.
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full">
-                    {/* PRIMARY BUTTON - Start Speaking Today */}
-                    <button
-                      onClick={() => window.location.href = '/flow'}
-                      className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                          <span>Loading...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Start Speaking Today</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                        </>
-                      )}
-                    </button>
-                    
-                    {/* SECONDARY BUTTON - See How It Works */}
-                    <button
-                      onClick={() => scrollToSection('how-it-works')}
-                      className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
-                    >
-                      <span>See How It Works</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    </button>
-                  </div>
-                  
+
+                  {/* Only show CTA buttons for non-B2B users (regular guests) */}
+                  {!isInstitutionUser && !isTutorUser && (
+                    <div className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full">
+                      {/* PRIMARY BUTTON - Start Speaking Today */}
+                      <button
+                        onClick={() => window.location.href = '/flow'}
+                        className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                            <span>Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Start Speaking Today</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+
+                      {/* SECONDARY BUTTON - See How It Works */}
+                      <button
+                        onClick={() => scrollToSection('how-it-works')}
+                        className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
+                      >
+                        <span>See How It Works</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-6 text-sm text-gray-600">
                     <div className="flex items-center">
                       <svg className="w-4 h-4 mr-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">

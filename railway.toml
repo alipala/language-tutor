@@ -3,10 +3,14 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "/app/start.sh"
-healthcheckPath = "/api/health"
+healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+[[deploy.environmentVariables]]
+name = "RAILWAY_HEALTHCHECK_PORT"
+value = "8000"
 
 [nixpacks]
 nodejs-version = "20"

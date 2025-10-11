@@ -32,6 +32,10 @@ class PasswordUpdateRequest(BaseModel):
     current_password: str
     new_password: str
 
+# Add email check request model
+class EmailCheckRequest(BaseModel):
+    email: str
+
 from auth import (
     authenticate_user, 
     create_access_token, 
@@ -50,9 +54,69 @@ from auth import (
     get_password_hash
 )
 from email_service import send_welcome_email
-from database import users_collection
+from database import users_collection, tutors_collection, institutions_collection
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+@router.post("/check-user-type")
+async def check_user_type(request: EmailCheckRequest):
+    """
+    Check if an email belongs to a tutor or institution admin
+    Returns the user type and appropriate login URL
+    """
+    try:
+        email = request.email.lower().strip()
+        print(f"[CHECK_USER_TYPE] Checking user type for email: {email}")
+        
+        # Check if collections are available
+        if tutors_collection is None or institutions_collection is None:
+            print(f"[CHECK_USER_TYPE] ⚠️ Collections not initialized, returning learner")
+            return {
+                "user_type": "learner",
+                "redirect_url": None,
+                "message": None
+            }
+        
+        # Check if email exists in tutors collection
+        print(f"[CHECK_USER_TYPE] Checking tutors collection...")
+        tutor = await tutors_collection.find_one({"email": email})
+        if tutor:
+            print(f"[CHECK_USER_TYPE] ✅ Found tutor account")
+            return {
+                "user_type": "tutor",
+                "redirect_url": "/tutor/login",
+                "message": "This email is registered as a tutor. Redirecting to tutor portal..."
+            }
+        
+        # Check if email exists in institutions collection as admin
+        print(f"[CHECK_USER_TYPE] Checking institutions collection...")
+        institution = await institutions_collection.find_one({"admin_email": email})
+        if institution:
+            print(f"[CHECK_USER_TYPE] ✅ Found institution account")
+            return {
+                "user_type": "institution",
+                "redirect_url": "/institution/login",
+                "message": "This email is registered as an institution administrator. Redirecting to institution portal..."
+            }
+        
+        # Regular user (or not found - don't reveal this for security)
+        print(f"[CHECK_USER_TYPE] No B2B account found, returning learner")
+        return {
+            "user_type": "learner",
+            "redirect_url": None,
+            "message": None
+        }
+        
+    except Exception as e:
+        print(f"[CHECK_USER_TYPE] ❌ Error checking user type: {str(e)}")
+        import traceback
+        print(f"[CHECK_USER_TYPE] Traceback: {traceback.format_exc()}")
+        # Return learner type on error to allow normal flow
+        return {
+            "user_type": "learner",
+            "redirect_url": None,
+            "message": None
+        }
 
 @router.post("/register", response_model=UserResponse)
 async def register(user: UserCreate):

@@ -82,8 +82,8 @@ ENV ENVIRONMENT=production
 # Build with increased memory allocation and production environment
 RUN NODE_OPTIONS="--max-old-space-size=4096" NODE_ENV=production npm run build
 
-# Verify the build output exists
-RUN ls -la /app/frontend/out/ || echo "Build output directory not found"
+# Verify the build output exists (.next for Node.js server, not out for static export)
+RUN ls -la /app/frontend/.next/ || echo "Build output directory not found"
 
 # Back to app directory
 WORKDIR /app

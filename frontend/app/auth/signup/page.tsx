@@ -21,8 +21,8 @@ export default function SignupPage() {
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
   
   // Check if user came from successful checkout
-  const checkoutSuccess = searchParams.get('checkout') === 'success';
-  const sessionId = searchParams.get('session_id');
+  const checkoutSuccess = searchParams?.get('checkout') === 'success';
+  const sessionId = searchParams?.get('session_id');
   
   // Sync auth state with local state
   useEffect(() => {

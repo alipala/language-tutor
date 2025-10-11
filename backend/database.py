@@ -70,6 +70,8 @@ try:
     learning_plans_collection = database.learning_plans
     notifications_collection = database.notifications
     user_notifications_collection = database.user_notifications
+    tutors_collection = database.tutors
+    institutions_collection = database.institutions
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -117,3 +119,10 @@ async def init_db():
     except Exception as e:
         print(f"ERROR initializing database indexes: {str(e)}")
         print("The application may not function correctly without database access")
+
+# Dependency injection function for FastAPI
+async def get_database():
+    """Get MongoDB database connection for FastAPI dependency injection"""
+    if database is None:
+        raise Exception("Database not initialized")
+    return database

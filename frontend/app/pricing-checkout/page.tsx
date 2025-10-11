@@ -15,8 +15,8 @@ export default function PricingCheckoutPage() {
   const { openPlanModal } = usePlanModal();
 
   useEffect(() => {
-    const planId = searchParams.get('plan');
-    const period = searchParams.get('period') === 'annual' ? 'annual' : 'monthly';
+    const planId = searchParams?.get('plan');
+    const period = searchParams?.get('period') === 'annual' ? 'annual' : 'monthly';
 
     // Open the plan modal with preselected plan/period if provided
     openPlanModal({ planId: planId || undefined, period });

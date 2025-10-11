@@ -8,9 +8,7 @@ const nextConfig = {
       exclude: ['error'] // Keep console.error for critical error logging
     } : false,
   },
-  // Enable static export for Railway deployment
-  output: 'export', // Use static export for Railway deployment
-  distDir: 'out', // Output to 'out' directory for static files
+  // Static export disabled - using Node.js server for dynamic routes
   trailingSlash: false, // Prevent redirect loops
   // Configure basePath for Railway deployment
   basePath: '',
@@ -37,6 +35,55 @@ const nextConfig = {
   staticPageGenerationTimeout: 180,
   // Compress responses for better performance
   compress: true,
+  // Proxy API requests to backend
+  async rewrites() {
+    // In Railway, backend runs on localhost:8000, frontend on the dynamic PORT
+    const backendUrl = process.env.NODE_ENV === 'production' 
+      ? 'http://localhost:8000'  // Fixed backend port in production
+      : (process.env.BACKEND_URL || 'http://localhost:8000')
+    console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl)
+    return [
+      // Proxy /api/institution/* to /institution/* (strip /api prefix for institution routes)
+      {
+        source: '/api/institution/:path*',
+        destination: `${backendUrl}/institution/:path*`,
+      },
+      // Proxy /api/tutor/* to /tutor/* (strip /api prefix for tutor routes)
+      {
+        source: '/api/tutor/:path*',
+        destination: `${backendUrl}/tutor/:path*`,
+      },
+      // Proxy /api/* routes to backend (keep /api prefix for other API routes)
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+      // Proxy /auth/* routes to backend (for Google OAuth)
+      {
+        source: '/auth/:path*',
+        destination: `${backendUrl}/auth/:path*`,
+      },
+      // Proxy /health/* routes to backend
+      {
+        source: '/health/:path*',
+        destination: `${backendUrl}/health/:path*`,
+      },
+      // Proxy /institution/login and /institution/signup to backend (NOT dashboard pages)
+      {
+        source: '/institution/login',
+        destination: `${backendUrl}/institution/login`,
+      },
+      {
+        source: '/institution/signup',
+        destination: `${backendUrl}/institution/signup`,
+      },
+      // Proxy /tutor/login to backend (NOT dashboard pages)
+      {
+        source: '/tutor/login',
+        destination: `${backendUrl}/tutor/login`,
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig

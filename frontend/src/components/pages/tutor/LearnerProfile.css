@@ -1,0 +1,205 @@
+/* Learner Profile Styles */
+.learner-profile {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.profile-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  color: white;
+}
+
+.profile-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.email {
+  font-size: 16px;
+  opacity: 0.9;
+  margin: 0 0 16px 0;
+}
+
+.level-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+}
+
+.profile-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.profile-sections section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.profile-sections h2 {
+  color: #1a202c;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Progress Section */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.metric {
+  text-align: center;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.metric h3 {
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  color: #2d3748;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Sessions Section */
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.session-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #f7fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.session-date {
+  min-width: 120px;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+.session-details {
+  flex: 1;
+}
+
+.session-details p {
+  margin: 4px 0;
+  color: #2d3748;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.session-details strong {
+  color: #4a5568;
+}
+
+/* Learning Plan Section */
+.learning-plan {
+  background: #f7fafc;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.learning-plan p {
+  margin: 8px 0;
+  color: #2d3748;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.learning-plan strong {
+  color: #4a5568;
+  font-weight: 600;
+}
+
+/* Loading and Error States */
+.loading, .error {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 16px;
+}
+
+.error {
+  color: #c53030;
+  background: #fed7d7;
+  border-radius: 8px;
+  border: 1px solid #feb2b2;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .learner-profile {
+    padding: 16px;
+  }
+
+  .profile-header {
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .profile-header h1 {
+    font-size: 24px;
+  }
+
+  .profile-sections {
+    gap: 20px;
+  }
+
+  .profile-sections section {
+    padding: 20px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-card {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .session-date {
+    min-width: auto;
+    text-align: center;
+  }
+}
