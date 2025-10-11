@@ -68,15 +68,19 @@ const nextConfig = {
         source: '/health/:path*',
         destination: `${backendUrl}/health/:path*`,
       },
-      // Proxy /institution/* routes directly (for login pages)
+      // Proxy /institution/login and /institution/signup to backend (NOT dashboard pages)
       {
-        source: '/institution/:path*',
-        destination: `${backendUrl}/institution/:path*`,
+        source: '/institution/login',
+        destination: `${backendUrl}/institution/login`,
       },
-      // Proxy /tutor/* routes directly (for login pages)
       {
-        source: '/tutor/:path*',
-        destination: `${backendUrl}/tutor/:path*`,
+        source: '/institution/signup',
+        destination: `${backendUrl}/institution/signup`,
+      },
+      // Proxy /tutor/login to backend (NOT dashboard pages)
+      {
+        source: '/tutor/login',
+        destination: `${backendUrl}/tutor/login`,
       },
     ]
   },
