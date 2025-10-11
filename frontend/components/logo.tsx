@@ -8,8 +8,8 @@ interface LogoProps {
 }
 
 export function Logo({ variant = 'full', context = 'navigation', className = '', onClick }: LogoProps) {
-  // Use the original mytaco.svg logo for all contexts
-  const logoSrc = '/logos/mytaco.svg';
+  // Use the new mytacologo.svg logo for all contexts
+  const logoSrc = '/logos/mytacologo.svg';
   
   if (variant === 'icon') {
     return (
