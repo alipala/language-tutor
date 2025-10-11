@@ -36,12 +36,26 @@ class InstitutionService:
         admin_email: str,
         admin_password: str,
         admin_name: str,
+        activation_code: str,
         institution_type: str = "school",
         subscription_plan: str = "starter"
     ) -> Dict[str, Any]:
         """
         Create new institution and admin account
         """
+        # Validate activation code
+        activation_codes = self.db.activation_codes
+        code_doc = await activation_codes.find_one({"code": activation_code})
+        
+        if not code_doc:
+            raise ValueError("Invalid activation code")
+        
+        if code_doc["status"] == "used":
+            raise ValueError("This activation code has already been used")
+        
+        if code_doc["status"] == "expired":
+            raise ValueError("This activation code has expired")
+        
         # Check if admin email already exists
         existing = await self.institutions.find_one({"admin_email": admin_email})
         if existing:
@@ -79,6 +93,19 @@ class InstitutionService:
         }
 
         result = await self.institutions.insert_one(institution)
+        
+        # Mark activation code as used
+        await activation_codes.update_one(
+            {"code": activation_code},
+            {
+                "$set": {
+                    "status": "used",
+                    "used_at": datetime.utcnow(),
+                    "used_by_institution_id": str(result.inserted_id),
+                    "used_by_email": admin_email
+                }
+            }
+        )
 
         return {
             "institution_id": str(result.inserted_id),

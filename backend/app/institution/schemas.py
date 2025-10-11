@@ -11,6 +11,7 @@ class InstitutionSignupRequest(BaseModel):
     admin_email: EmailStr
     admin_password: str = Field(..., min_length=8, max_length=72, description="Password must be between 8-72 characters (bcrypt limit)")
     admin_name: str = Field(..., min_length=2, max_length=100)
+    activation_code: str = Field(..., min_length=1, description="Activation code received via email")
     # Optional subscription plan - managed by MyTacoAI admin
     subscription_plan: Optional[str] = Field(default="starter")
 

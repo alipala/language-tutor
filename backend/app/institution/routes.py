@@ -41,6 +41,7 @@ async def signup_institution(
             admin_email=signup_data.admin_email,
             admin_password=signup_data.admin_password,
             admin_name=signup_data.admin_name,
+            activation_code=signup_data.activation_code,
             institution_type=signup_data.institution_type,
             subscription_plan=signup_data.subscription_plan
         )
