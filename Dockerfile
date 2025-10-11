@@ -64,6 +64,8 @@ RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 \
 # Upgrade pip with specific version
 RUN python3 -m pip install --no-cache-dir --upgrade pip==24.0 setuptools==69.5.1 wheel==0.43.0
 
+# Force cache bust for logo update
+ARG CACHEBUST=1
 # Copy the entire project
 COPY . .
 
