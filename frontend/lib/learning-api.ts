@@ -105,7 +105,7 @@ export interface LearningPlan {
 // Get learning goals
 export const getLearningGoals = async (): Promise<LearningGoal[]> => {
   const apiUrl = getApiUrl();
-  const response = await fetch(`${apiUrl}/learning/goals`, {
+  const response = await fetch(`${apiUrl}/api/learning/goals`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -149,7 +149,7 @@ export const createLearningPlan = async (planRequest: LearningPlanRequest): Prom
       options.credentials = 'include';
     }
     
-    const response = await fetch(`${apiUrl}/learning/plan`, options);
+    const response = await fetch(`${apiUrl}/api/learning/plan`, options);
 
     if (!response.ok) {
       // Handle different error status codes
@@ -207,7 +207,7 @@ export const getLearningPlan = async (planId: string): Promise<LearningPlan> => 
   }
   
   // For authenticated users, fetch the plan from the API
-  const response = await fetch(`${apiUrl}/learning/plan/${planId}`, {
+  const response = await fetch(`${apiUrl}/api/learning/plan/${planId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -233,7 +233,7 @@ export const assignPlanToUser = async (planId: string): Promise<LearningPlan> =>
     throw new Error('Authentication required to assign learning plan');
   }
   
-  const response = await fetch(`${apiUrl}/learning/plan/${planId}/assign`, {
+  const response = await fetch(`${apiUrl}/api/learning/plan/${planId}/assign`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -259,7 +259,7 @@ export const getUserLearningPlans = async (): Promise<LearningPlan[]> => {
     throw new Error('Authentication required to access user learning plans');
   }
   
-  const response = await fetch(`${apiUrl}/learning/plans`, {
+  const response = await fetch(`${apiUrl}/api/learning/plans`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
