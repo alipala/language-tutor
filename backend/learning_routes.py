@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize router
-router = APIRouter(prefix="/learning", tags=["learning"])
+router = APIRouter(prefix="/api/learning", tags=["learning"])
 
 # Models for learning goals and plans
 class LearningGoal(BaseModel):
