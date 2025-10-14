@@ -43,7 +43,8 @@ fi
 # Start frontend (Next.js server)
 cd /app/frontend
 echo "Starting Frontend Server on port $FRONTEND_PORT..."
-PORT=$FRONTEND_PORT npm start &
+# Next.js needs to listen on 0.0.0.0 to be accessible from outside the container
+PORT=$FRONTEND_PORT npm start -- -H 0.0.0.0 &
 FRONTEND_PID=$!
 
 # Wait for any process to exit
