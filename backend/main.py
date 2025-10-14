@@ -647,10 +647,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"🎤 [VOICE] Request voice: {request.voice}")
         print(f"🎤 [VOICE] Selected voice: {selected_voice}")
         
-        # ✅ Create ephemeral token with complete configuration for gpt-realtime
+        # ✅ Create ephemeral token with complete configuration for gpt-realtime-mini
         # This approach works reliably on desktop AND mobile browsers
         payload = {
-            "model": "gpt-realtime",
+            "model": "gpt-realtime-mini",
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
@@ -2147,7 +2147,7 @@ async def generate_mock_token(request: TutorSessionRequest):
         mock_response = {
             "id": "sess_mock_test_session",
             "object": "realtime.session",
-            "model": "gpt-realtime",
+            "model": "gpt-realtime-mini",
             "expires_at": 1234567890,
             "client_secret": {
                 "value": "ek_mock_test_key_for_development",
