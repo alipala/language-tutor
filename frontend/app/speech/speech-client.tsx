@@ -1265,12 +1265,15 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         // If this is a learning plan session, use the session summary endpoint
         if (planParam) {
           console.log('[AUTO_SAVE] 📚 This is a learning plan session - using session summary endpoint');
+          console.log('[AUTO_SAVE] Plan ID:', planParam);
+          console.log('[AUTO_SAVE] Duration:', durationMinutes.toFixed(1), 'minutes');
+          console.log('[AUTO_SAVE] Messages:', messagesToSave.length);
           
           // Generate a session summary for the learning plan
           const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
           
-          // Save session summary to learning plan using the correct endpoint
-          const summaryResponse = await fetch(`${getApiUrl()}/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
+          // 🔥 CRITICAL FIX: Send data in request body, not query parameters
+          const summaryResponse = await fetch(`${getApiUrl()}/api/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1286,12 +1289,15 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           });
 
           if (!summaryResponse.ok) {
-            const errorData = await summaryResponse.json();
-            throw new Error(errorData.detail || 'Failed to save learning plan session');
+            const errorText = await summaryResponse.text();
+            console.error('[AUTO_SAVE] ❌ Failed to save learning plan session:', summaryResponse.status, errorText);
+            throw new Error(`Failed to save learning plan session: ${summaryResponse.status} - ${errorText}`);
           }
 
           const summaryResult = await summaryResponse.json();
           console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
+          console.log('[AUTO_SAVE] ✅ Session number:', summaryResult.session_number);
+          console.log('[AUTO_SAVE] ✅ Progress:', summaryResult.progress_percentage, '%');
           return;
         }
 
