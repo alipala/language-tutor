@@ -40,50 +40,24 @@ async def session_heartbeat(request: Request):
         
         logger.info(f"[HEARTBEAT] Received heartbeat: {session_id} - {duration_minutes:.1f}min (status: {status})")
         
-        # 🔥 CRITICAL FIX: Save session and deduct minutes when threshold is reached
+        # 🔥 DOUBLE-COUNTING FIX: Heartbeat should NOT track sessions
+        # Session tracking is handled by:
+        # 1. learning_routes.py for learning plan sessions
+        # 2. Frontend saveConversationProgress() for practice sessions
+        # The heartbeat is ONLY for monitoring active sessions, not for tracking/deduction
+        
         if user_id and duration_minutes >= 5.0:
-            logger.info(f"[HEARTBEAT] 🎯 Session reached 5-minute threshold - processing deduction")
+            logger.info(f"[HEARTBEAT] 📊 Session reached 5-minute threshold: {session_id}")
+            logger.info(f"[HEARTBEAT] ℹ️ Tracking will be handled by session completion endpoint")
+            logger.info(f"[HEARTBEAT] ℹ️ Heartbeat is for monitoring only - no deduction here")
             
-            try:
-                # Create tracking request
-                tracking_request = SpeakingTimeTrackingRequest(
-                    user_id=user_id,
-                    session_id=session_id,
-                    speaking_minutes=duration_minutes,
-                    session_completed=True  # 5+ minutes = completed session
-                )
-                
-                # Call BulletproofTracker to deduct minutes atomically
-                tracking_success = await BulletproofTracker.track_speaking_time_atomic(tracking_request)
-                
-                if tracking_success:
-                    logger.info(f"[HEARTBEAT] ✅ Successfully tracked and deducted {duration_minutes:.1f} minutes for user {user_id}")
-                    return {
-                        "success": True,
-                        "message": "Heartbeat received and session saved",
-                        "minutes_deducted": duration_minutes,
-                        "session_saved": True,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                else:
-                    logger.warning(f"[HEARTBEAT] ⚠️ Failed to track speaking time for user {user_id}")
-                    return {
-                        "success": True,
-                        "message": "Heartbeat received but tracking failed",
-                        "minutes_deducted": 0,
-                        "session_saved": False,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    
-            except Exception as tracking_error:
-                logger.error(f"[HEARTBEAT] ❌ Error during tracking: {str(tracking_error)}")
-                # Return success for heartbeat but indicate tracking failure
-                return {
-                    "success": True,
-                    "message": "Heartbeat received but tracking error occurred",
-                    "error": str(tracking_error),
-                    "timestamp": datetime.utcnow().isoformat()
-                }
+            return {
+                "success": True,
+                "message": "Heartbeat received - session will be tracked on completion",
+                "duration_minutes": duration_minutes,
+                "monitoring_only": True,
+                "timestamp": datetime.utcnow().isoformat()
+            }
         else:
             # Session not yet at threshold - just acknowledge heartbeat
             if duration_minutes < 5.0:
