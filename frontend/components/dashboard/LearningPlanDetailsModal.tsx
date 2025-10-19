@@ -78,6 +78,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
   const completedSessions = plan.completed_sessions || 0;
   const totalSessions = plan.total_sessions || 24;
   const currentStreak = progressStats?.current_streak || 0;
+  const isCompleted = progress >= 100;
 
   // Parse plan content
   const planContent = plan.plan_content || {};
@@ -261,10 +262,24 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                   // Call the onContinueLearning callback
                   onContinueLearning();
                 }}
-                className="w-full bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white font-medium py-3 rounded-xl transition-all duration-300 shadow-md hover-shadow-lg"
+                disabled={isCompleted}
+                className={`w-full font-medium py-3 rounded-xl transition-all duration-300 shadow-md ${
+                  isCompleted 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white hover:shadow-lg'
+                }`}
               >
-                <Play className="h-4 w-4 mr-2" />
-                Continue Learning
+                {isCompleted ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Plan Completed
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Continue Learning
+                  </>
+                )}
               </Button>
             </div>
 
