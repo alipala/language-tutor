@@ -481,6 +481,26 @@ class CustomTopicRequest(BaseModel):
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: str  # The custom prompt from the user
 
+# Realtime Usage Data model
+class RealtimeUsageData(BaseModel):
+    user_id: Optional[str] = None
+    session_id: str
+    language: str
+    level: str
+    topic: Optional[str] = None
+    audio_input_tokens: int = 0
+    audio_output_tokens: int = 0
+    text_input_tokens: int = 0
+    text_output_tokens: int = 0
+    cached_input_audio_tokens: int = 0
+    cached_input_text_tokens: int = 0
+    total_tokens: int = 0
+    session_start: str
+    session_end: Optional[str] = None
+    session_duration_seconds: Optional[int] = None
+    estimated_cost: float = 0.0
+    model: str = "gpt-realtime-2025-08-28"
+
 # Initialize OpenAI client
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
@@ -688,6 +708,18 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             raise HTTPException(status_code=response.status_code, detail=error_text)
         
         result = response.json()
+        
+        # Log session creation
+        session_id = result.get('id', 'unknown')
+        print("="*80)
+        print(f"💰 [USAGE_LOG] SESSION CREATED")
+        print(f"Session ID: {session_id}")
+        print(f"User ID: {current_user.id if current_user else 'guest'}")
+        print(f"Language: {request.language}")
+        print(f"Level: {request.level}")
+        print(f"Timestamp: {datetime.now().isoformat()}")
+        print("="*80)
+        
         print(f"✅ [UNIVERSAL] Ephemeral token created successfully")
         return result
         
@@ -1125,6 +1157,117 @@ Start with: "{config['greeting']}"
 CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
         
         return instructions
+
+# Add endpoint for realtime usage logging
+@app.post("/api/realtime/usage-log")
+async def log_realtime_usage(
+    usage_data: RealtimeUsageData,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
+):
+    """Store realtime API usage data and calculate costs"""
+    try:
+        from database import usage_logs_collection
+        from datetime import datetime, timezone
+        
+        # Calculate costs based on OpenAI Realtime API pricing
+        # Audio input: $32/1M tokens ($0.40/1M cached)
+        # Audio output: $64/1M tokens
+        # Text input: $32/1M tokens ($0.40/1M cached)
+        # Text output: $64/1M tokens
+        
+        audio_input_cost = (usage_data.audio_input_tokens / 1_000_000) * 32.0
+        cached_audio_input_cost = (usage_data.cached_input_audio_tokens / 1_000_000) * 0.40
+        audio_output_cost = (usage_data.audio_output_tokens / 1_000_000) * 64.0
+        text_input_cost = (usage_data.text_input_tokens / 1_000_000) * 32.0
+        cached_text_input_cost = (usage_data.cached_input_text_tokens / 1_000_000) * 0.40
+        text_output_cost = (usage_data.text_output_tokens / 1_000_000) * 64.0
+        
+        total_cost = sum([
+            audio_input_cost,
+            cached_audio_input_cost,
+            audio_output_cost,
+            text_input_cost,
+            cached_text_input_cost,
+            text_output_cost
+        ])
+        
+        # Calculate cost per minute and tokens per minute
+        duration_minutes = usage_data.session_duration_seconds / 60 if usage_data.session_duration_seconds else 1
+        cost_per_minute = total_cost / duration_minutes if duration_minutes > 0 else 0
+        tokens_per_minute = usage_data.total_tokens / duration_minutes if duration_minutes > 0 else 0
+        
+        # Format duration
+        duration_min = usage_data.session_duration_seconds // 60
+        duration_sec = usage_data.session_duration_seconds % 60
+        duration_str = f"{duration_min} min {duration_sec} sec" if duration_min > 0 else f"{duration_sec} sec"
+        
+        # Log to console with detailed breakdown
+        print("="*80)
+        print(f"💰 [USAGE_LOG] SESSION COMPLETED")
+        print(f"Session ID: {usage_data.session_id}")
+        print(f"User ID: {current_user.id if current_user else usage_data.user_id or 'guest'}")
+        print(f"Language: {usage_data.language}")
+        print(f"Level: {usage_data.level}")
+        print(f"Duration: {usage_data.session_duration_seconds}s ({duration_str})")
+        print(f"Model: {usage_data.model}")
+        print("-"*80)
+        print(f"TOKEN USAGE:")
+        print(f"  Audio Input: {usage_data.audio_input_tokens:,} tokens")
+        print(f"  Audio Input (cached): {usage_data.cached_input_audio_tokens:,} tokens")
+        print(f"  Audio Output: {usage_data.audio_output_tokens:,} tokens")
+        print(f"  Text Input: {usage_data.text_input_tokens:,} tokens")
+        print(f"  Text Input (cached): {usage_data.cached_input_text_tokens:,} tokens")
+        print(f"  Text Output: {usage_data.text_output_tokens:,} tokens")
+        print(f"  TOTAL: {usage_data.total_tokens:,} tokens")
+        print("-"*80)
+        print(f"COST BREAKDOWN:")
+        print(f"  Audio Input: ${audio_input_cost:.4f}")
+        print(f"  Audio Input (cached): ${cached_audio_input_cost:.4f}")
+        print(f"  Audio Output: ${audio_output_cost:.4f}")
+        print(f"  Text Input: ${text_input_cost:.4f}")
+        print(f"  Text Input (cached): ${cached_text_input_cost:.4f}")
+        print(f"  Text Output: ${text_output_cost:.4f}")
+        print(f"  TOTAL COST: ${total_cost:.4f}")
+        print("-"*80)
+        print(f"Cost per minute: ${cost_per_minute:.4f}")
+        print(f"Tokens per minute: {tokens_per_minute:,.0f}")
+        print("="*80)
+        
+        # Save to database
+        usage_log_doc = {
+            "user_id": current_user.id if current_user else usage_data.user_id,
+            "session_id": usage_data.session_id,
+            "language": usage_data.language,
+            "level": usage_data.level,
+            "topic": usage_data.topic,
+            "audio_input_tokens": usage_data.audio_input_tokens,
+            "audio_output_tokens": usage_data.audio_output_tokens,
+            "text_input_tokens": usage_data.text_input_tokens,
+            "text_output_tokens": usage_data.text_output_tokens,
+            "cached_input_audio_tokens": usage_data.cached_input_audio_tokens,
+            "cached_input_text_tokens": usage_data.cached_input_text_tokens,
+            "total_tokens": usage_data.total_tokens,
+            "session_start": usage_data.session_start,
+            "session_end": usage_data.session_end,
+            "session_duration_seconds": usage_data.session_duration_seconds,
+            "total_cost": total_cost,
+            "model": usage_data.model,
+            "logged_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        result = await usage_logs_collection.insert_one(usage_log_doc)
+        
+        print(f"✅ [USAGE_LOG] Saved to database with ID: {result.inserted_id}")
+        
+        return {
+            "success": True,
+            "total_cost": total_cost,
+            "log_id": str(result.inserted_id)
+        }
+        
+    except Exception as e:
+        print(f"❌ [USAGE_LOG] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error logging usage: {str(e)}")
 
 # Add endpoint for custom topic research using web search
 @app.post("/api/custom-topic/research")
