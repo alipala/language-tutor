@@ -76,6 +76,16 @@ export class EnhancedRealtimeService {
     user_id: null as string | null
   };
 
+  // 🎯 STRATEGY 1: Conversation Truncation (30-40% savings)
+  private conversationBuffer: string[] = [];
+  private readonly MAX_CONVERSATION_ITEMS = 6; // Keep last 6 items (3 user + 3 AI exchanges)
+  private readonly MIN_ITEMS_BEFORE_TRUNCATION = 3; // Buffer minimum before truncation starts
+  
+  // 🎯 STRATEGY 2: Summarization (10-20% savings)
+  private transcriptBuffer: string = '';
+  private messageCount: number = 0;
+  private readonly SUMMARIZATION_INTERVAL = 6; // Summarize every 6 exchanges
+
   constructor() {
     // Only initialize Audio in browser environments
     if (typeof window !== 'undefined') {
@@ -294,14 +304,36 @@ export class EnhancedRealtimeService {
             // ✅ CRITICAL: Enhanced event handling with complete coverage
             this.handleEnhancedRealtimeEvent(eventData);
 
-            // Log specific details for transcription events
+            // 🎯 STRATEGY 1: Track conversation items for truncation
             if (eventData.type === 'conversation.item.created') {
               console.log('💬 Conversation item created:',
                 eventData.item?.role,
                 eventData.item?.content ? 'Content array present' : 'No content array',
                 eventData.item?.input ? 'Input present' : 'No input');
+              
+              // Add item ID to buffer and truncate if needed
+              this.handleConversationItemCreated(eventData);
             } else if (eventData.type === 'conversation.item.input_audio_transcription.completed') {
+              // 🎯 STRATEGY 2: Collect user transcripts
+              const transcript = eventData.transcript;
+              if (transcript) {
+                this.transcriptBuffer += `User: ${transcript}\n`;
+                this.messageCount++;
+                console.log('📝 [OPTIMIZATION] Collected user transcript, message count:', this.messageCount);
+              }
               console.log('📝 Transcription completed:', eventData.transcription?.text);
+            } else if (eventData.type === 'response.audio_transcript.done') {
+              // 🎯 STRATEGY 2: Collect AI transcripts
+              const aiTranscript = (eventData as any).transcript;
+              if (aiTranscript) {
+                this.transcriptBuffer += `AI: ${aiTranscript}\n`;
+                console.log('📝 [OPTIMIZATION] Collected AI transcript');
+                
+                // Check if we should summarize
+                if (this.messageCount > 0 && this.messageCount % this.SUMMARIZATION_INTERVAL === 0) {
+                  this.triggerSummarization();
+                }
+              }
             } else if (eventData.type === 'input_audio_buffer.speech_stopped') {
               // Emit user speaking completion event for conversation help modal hiding
               if (typeof window !== 'undefined') {
@@ -1601,6 +1633,101 @@ export class EnhancedRealtimeService {
   }
 
   /**
+   * 🎯 STRATEGY 1: Handle conversation item creation and truncation
+   */
+  private handleConversationItemCreated(eventData: any): void {
+    const itemId = eventData.item?.id;
+    if (!itemId) {
+      console.warn('⚠️ [TRUNCATION] No item ID in conversation.item.created event');
+      return;
+    }
+
+    // Add to buffer
+    this.conversationBuffer.push(itemId);
+    console.log(`📊 [TRUNCATION] Buffer size: ${this.conversationBuffer.length}/${this.MAX_CONVERSATION_ITEMS}`);
+
+    // Only truncate if we have more than MAX_ITEMS and we're not during active speech
+    if (this.conversationBuffer.length > this.MAX_CONVERSATION_ITEMS && 
+        this.conversationBuffer.length > this.MIN_ITEMS_BEFORE_TRUNCATION &&
+        !this.ai_is_speaking) {
+      
+      const itemsToRemove = this.conversationBuffer.slice(0, -this.MAX_CONVERSATION_ITEMS);
+      console.log(`✂️ [TRUNCATION] Removing ${itemsToRemove.length} old items to reduce cached tokens`);
+      
+      // Send deletion events for old items
+      itemsToRemove.forEach(id => {
+        const deleteEvent = {
+          type: 'conversation.item.delete',
+          item_id: id
+        };
+        
+        if (this.sendMessage(deleteEvent)) {
+          console.log(`🗑️ [TRUNCATION] Deleted conversation item: ${id}`);
+        } else {
+          console.warn(`⚠️ [TRUNCATION] Failed to delete item: ${id}`);
+        }
+      });
+
+      // Keep only the last MAX_ITEMS in buffer
+      this.conversationBuffer = this.conversationBuffer.slice(-this.MAX_CONVERSATION_ITEMS);
+      console.log(`✅ [TRUNCATION] Buffer trimmed to ${this.conversationBuffer.length} items`);
+      console.log(`💰 [TRUNCATION] Expected cached token reduction: ~${itemsToRemove.length * 2} items removed`);
+    }
+  }
+
+  /**
+   * 🎯 STRATEGY 2: Trigger summarization of conversation
+   */
+  private async triggerSummarization(): Promise<void> {
+    if (!this.transcriptBuffer || this.transcriptBuffer.trim().length === 0) {
+      console.warn('⚠️ [SUMMARIZATION] No transcript buffer to summarize');
+      return;
+    }
+
+    console.log(`📝 [SUMMARIZATION] Triggering summarization after ${this.messageCount} messages`);
+    console.log(`📝 [SUMMARIZATION] Transcript length: ${this.transcriptBuffer.length} characters`);
+
+    try {
+      // Call backend summarization endpoint
+      const response = await fetch(`${this.backendUrl}/api/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: this.transcriptBuffer }),
+        credentials: 'same-origin'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const summary = result.summary;
+        console.log(`✅ [SUMMARIZATION] Generated summary: ${summary}`);
+
+        // Update session instructions with summary (NOT conversation.item.create)
+        const baseInstructions = `You are a helpful language tutor for ${this.sessionMetadata.language} at ${this.sessionMetadata.level} level.`;
+        const updateEvent = {
+          type: 'session.update',
+          session: {
+            instructions: `${baseInstructions}\n\nPrevious conversation context: ${summary}`
+          }
+        };
+
+        if (this.sendMessage(updateEvent)) {
+          console.log('✅ [SUMMARIZATION] Session updated with summary');
+          console.log('💰 [SUMMARIZATION] Cleared transcript buffer to reduce future cached tokens');
+          
+          // Clear the transcript buffer
+          this.transcriptBuffer = '';
+        } else {
+          console.warn('⚠️ [SUMMARIZATION] Failed to send session.update');
+        }
+      } else {
+        console.error('❌ [SUMMARIZATION] Backend summarization failed:', await response.text());
+      }
+    } catch (error) {
+      console.error('❌ [SUMMARIZATION] Error during summarization:', error);
+    }
+  }
+
+  /**
    * Disconnect and clean up all resources
    */
   public disconnect(): void {
@@ -1677,6 +1804,11 @@ export class EnhancedRealtimeService {
       this.fallback_protection_enabled = true;
       this.last_ai_speech_event = '';
       this.pre_connection_mute_active = false;
+
+      // 🎯 OPTIMIZATION: Reset conversation tracking
+      this.conversationBuffer = [];
+      this.transcriptBuffer = '';
+      this.messageCount = 0;
 
       console.log('✅ [ENHANCED] Enhanced cleanup completed');
     } catch (e) {

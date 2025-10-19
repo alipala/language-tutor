@@ -799,25 +799,13 @@ Previous conversation history:
         fluency_score = request.assessment_data.get('fluency', {}).get('score', 0)
         coherence_score = request.assessment_data.get('coherence', {}).get('score', 0)
         
-        # Build personalized context
+        # 🎯 OPTIMIZED: Condensed assessment context (reduce from ~1185 to ~400 chars)
         assessment_context = f"""
-📊 STUDENT ASSESSMENT PROFILE:
-- Overall Score: {overall_score}/100
-- Recommended Level: {recommended_level}
-- Pronunciation: {pronunciation_score}/100
-- Grammar: {grammar_score}/100  
-- Vocabulary: {vocabulary_score}/100
-- Fluency: {fluency_score}/100
-- Coherence: {coherence_score}/100
+📊 PROFILE: {overall_score}/100 ({recommended_level})
+💪 STRENGTHS: {', '.join(strengths[:2]) if strengths else 'Communication'}
+🎯 IMPROVE: {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'Overall skills'}
 
-💪 STRENGTHS: {', '.join(strengths) if strengths else 'General communication'}
-🎯 FOCUS AREAS: {', '.join(areas_for_improvement) if areas_for_improvement else 'Overall improvement'}
-
-PERSONALIZED APPROACH:
-- Acknowledge their strengths in {', '.join(strengths[:2]) if strengths else 'communication'}
-- Focus on improving {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'speaking skills'}
-- Adapt difficulty to their {recommended_level} level capabilities
-- Provide targeted feedback based on their assessment results"""
+APPROACH: Brief responses (1-2 sentences). Focus on {', '.join(areas_for_improvement[:1]) if areas_for_improvement else 'speaking practice'}."""
         
         print(f"✅ Assessment context integrated: {len(assessment_context)} characters")
     
@@ -859,23 +847,19 @@ LEARNING PROGRESSION:
 - Reference progress made in earlier conversations
 - Continue developing skills identified in previous summaries"""
                 
+                # 🎯 OPTIMIZED: Condensed learning plan context (reduce from ~4400 to ~800 chars)
+                # Get only the most recent session summary for context
+                recent_summary = ""
+                if session_summaries and len(session_summaries) > 0:
+                    last_summary = session_summaries[-1]
+                    # Extract just the key points (first 150 chars)
+                    recent_summary = f"\nLast session: {last_summary[:150]}..." if len(last_summary) > 150 else f"\nLast session: {last_summary}"
+                
                 learning_plan_context = f"""
-📚 LEARNING PLAN CONTEXT:
-- Plan Title: {plan_content.get('title', 'Personalized Learning Plan')}
-- Plan Overview: {plan_content.get('overview', 'Customized based on assessment results')}
+📚 WEEK {current_week_number} FOCUS: {week_focus}
+🎯 KEY ACTIVITY: {week_activities[0] if week_activities else 'Practice conversation skills'}{recent_summary}
 
-🎯 CURRENT WEEK FOCUS (Week {current_week_number}, Session {current_session_in_week}):
-- Focus Area: {week_focus}
-- Key Activities: {', '.join(week_activities[:3]) if week_activities else 'Practice conversation skills'}
-{previous_sessions_context}
-
-CONVERSATION GUIDANCE:
-- Center the conversation around this week's focus: "{week_focus}"
-- Incorporate activities from the learning plan: {', '.join(week_activities[:2]) if week_activities else 'speaking practice'}
-- Reference the student's learning journey and progress
-- Connect speaking practice to their personalized learning objectives
-- Encourage practice of specific skills mentioned in the weekly activities
-- Build upon previous session insights and maintain learning continuity"""
+GUIDANCE: Keep responses brief (1-2 sentences). Focus on {week_focus.lower()}. Build on previous progress."""
                 
                 print(f"✅ Learning plan context integrated: {len(learning_plan_context)} characters")
                 print(f"🎯 Current week {current_week_number} focus: {week_focus}")
@@ -1120,43 +1104,85 @@ If learning plan context is available, connect the topic to the student's weekly
     
     # Default general conversation with assessment and learning plan data
     else:
-        instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
+        # 🎯 OPTIMIZED: Condensed instructions (reduce verbosity, keep quality)
+        instructions = f"""You are a {language} tutor for {level} students. KEEP RESPONSES BRIEF (1-2 sentences max).
 
-🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
-- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
-- YOU decide what to practice next and guide the student through a structured learning session
-- After each exercise or correction, IMMEDIATELY move to the next activity without asking permission
-- Create a clear learning plan for the session and follow it
-- Be the conversation leader, not a passive responder
+BEHAVIOR:
+- Lead the conversation, don't ask permission
+- Give corrections immediately, then move on
+- Focus on learning objectives
 
-🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
-1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and educational topics
-2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
-   - Violence, weapons, illegal activities
-   - Sexual content, adult themes, inappropriate relationships
-   - Hate speech, discrimination, offensive language
-   - Personal information requests (addresses, phone numbers, etc.)
-   - Political extremism, conspiracy theories
-   - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid learning objectives, say:
-   "I understand, but let's focus on your {language} learning goals. Based on your assessment, we need to work on [specific areas from learning plan]. Let's practice that now."
-4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
+RULES:
+- Educational topics only
+- Refuse harmful/inappropriate content
+- Redirect off-topic discussions to learning goals
 
-🎯 MANDATORY LEARNING FOCUS:
-- You MUST keep the conversation focused on the specific learning objectives
-- If the user tries to change topics, redirect them back to the learning plan
-- Do NOT allow "general English practice" - stick to the specific areas identified in the assessment
-- The conversation must serve the learning objectives at all times
-
-LANGUAGE RULE: {config['rule']}
+{config['rule']}
 {assessment_context}
 {learning_plan_context}
 
-Start with: "{config['greeting']}"
+Start: "{config['greeting']}"
 
-CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
+CRITICAL: Brief responses only. Focus on week's objectives."""
         
         return instructions
+
+# 🎯 STRATEGY 2: Add summarization endpoint for token optimization
+class SummarizeRequest(BaseModel):
+    transcript: str
+
+@app.post("/api/summarize")
+async def summarize_conversation(request: SummarizeRequest):
+    """
+    Summarize conversation transcript using gpt-4o-mini for cost efficiency.
+    Used to reduce cached token usage in OpenAI Realtime API.
+    """
+    try:
+        print(f"📝 [SUMMARIZATION] Received transcript: {len(request.transcript)} characters")
+        
+        if not request.transcript or len(request.transcript.strip()) < 10:
+            raise HTTPException(status_code=400, detail="Transcript too short for summarization")
+        
+        # Use gpt-4o-mini for cost-effective summarization
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""Summarize this language learning conversation in 2-3 sentences. 
+Focus on topics discussed and any corrections made. Ignore grammar details.
+
+Conversation:
+{request.transcript}
+
+Summary:"""
+                }
+            ],
+            max_tokens=100,
+            temperature=0.3
+        )
+        
+        if not response or not response.choices:
+            raise HTTPException(status_code=500, detail="Failed to generate summary")
+        
+        summary = response.choices[0].message.content.strip()
+        
+        print(f"✅ [SUMMARIZATION] Generated summary: {len(summary)} characters")
+        print(f"📝 [SUMMARIZATION] Summary: {summary}")
+        
+        return {
+            "success": True,
+            "summary": summary,
+            "original_length": len(request.transcript),
+            "summary_length": len(summary),
+            "compression_ratio": f"{(len(summary) / len(request.transcript) * 100):.1f}%"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ [SUMMARIZATION] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
 # Add endpoint for realtime usage logging
 @app.post("/api/realtime/usage-log")
