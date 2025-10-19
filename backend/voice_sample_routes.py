@@ -120,7 +120,7 @@ Use your natural {request.voice_id} voice with your {voice_info['personality']} 
 """
         # Create ephemeral token for voice sample generation
         payload = {
-            "model": "gpt-realtime",
+            "model": "gpt-realtime-mini",
             "voice": request.voice_id,
             "instructions": instructions,
             "modalities": ["audio", "text"],

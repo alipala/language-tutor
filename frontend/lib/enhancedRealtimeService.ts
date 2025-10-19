@@ -1097,7 +1097,7 @@ export class EnhancedRealtimeService {
       // Send offer to OpenAI
       console.log('📤 [ENHANCED] Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-realtime';
+      const model = 'gpt-realtime-mini';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: completeOffer.sdp,
@@ -1609,7 +1609,7 @@ export class EnhancedRealtimeService {
       session_start: this.sessionStartTime?.toISOString(),
       session_end: sessionEnd.toISOString(),
       session_duration_seconds: durationSeconds,
-      model: 'gpt-realtime-2025-08-28'
+      model: 'gpt-realtime-mini'
       };
 
       console.log('💰 [USAGE] Logging session:', JSON.stringify(usagePayload, null, 2));

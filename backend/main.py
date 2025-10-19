@@ -499,7 +499,7 @@ class RealtimeUsageData(BaseModel):
     session_end: Optional[str] = None
     session_duration_seconds: Optional[int] = None
     estimated_cost: float = 0.0
-    model: str = "gpt-realtime-2025-08-28"
+    model: str = "gpt-realtime-mini"
 
 # Initialize OpenAI client
 api_key = os.getenv("OPENAI_API_KEY")
@@ -667,10 +667,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"🎤 [VOICE] Request voice: {request.voice}")
         print(f"🎤 [VOICE] Selected voice: {selected_voice}")
         
-        # ✅ Create ephemeral token with complete configuration for gpt-realtime
+        # ✅ Create ephemeral token with complete configuration for gpt-realtime-mini
         # This approach works reliably on desktop AND mobile browsers
         payload = {
-            "model": "gpt-realtime",
+            "model": "gpt-realtime-mini",
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
@@ -799,13 +799,25 @@ Previous conversation history:
         fluency_score = request.assessment_data.get('fluency', {}).get('score', 0)
         coherence_score = request.assessment_data.get('coherence', {}).get('score', 0)
         
-        # 🎯 OPTIMIZED: Condensed assessment context (reduce from ~1185 to ~400 chars)
+        # Build personalized context
         assessment_context = f"""
-📊 PROFILE: {overall_score}/100 ({recommended_level})
-💪 STRENGTHS: {', '.join(strengths[:2]) if strengths else 'Communication'}
-🎯 IMPROVE: {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'Overall skills'}
+📊 STUDENT ASSESSMENT PROFILE:
+- Overall Score: {overall_score}/100
+- Recommended Level: {recommended_level}
+- Pronunciation: {pronunciation_score}/100
+- Grammar: {grammar_score}/100
+- Vocabulary: {vocabulary_score}/100
+- Fluency: {fluency_score}/100
+- Coherence: {coherence_score}/100
 
-APPROACH: Brief responses (1-2 sentences). Focus on {', '.join(areas_for_improvement[:1]) if areas_for_improvement else 'speaking practice'}."""
+💪 STRENGTHS: {', '.join(strengths) if strengths else 'General communication'}
+🎯 FOCUS AREAS: {', '.join(areas_for_improvement) if areas_for_improvement else 'Overall improvement'}
+
+PERSONALIZED APPROACH:
+- Acknowledge their strengths in {', '.join(strengths[:2]) if strengths else 'communication'}
+- Focus on improving {', '.join(areas_for_improvement[:2]) if areas_for_improvement else 'speaking skills'}
+- Adapt difficulty to their {recommended_level} level capabilities
+- Provide targeted feedback based on their assessment results"""
         
         print(f"✅ Assessment context integrated: {len(assessment_context)} characters")
     
@@ -847,19 +859,36 @@ LEARNING PROGRESSION:
 - Reference progress made in earlier conversations
 - Continue developing skills identified in previous summaries"""
                 
-                # 🎯 OPTIMIZED: Condensed learning plan context (reduce from ~4400 to ~800 chars)
-                # Get only the most recent session summary for context
-                recent_summary = ""
-                if session_summaries and len(session_summaries) > 0:
-                    last_summary = session_summaries[-1]
-                    # Extract just the key points (first 150 chars)
-                    recent_summary = f"\nLast session: {last_summary[:150]}..." if len(last_summary) > 150 else f"\nLast session: {last_summary}"
+                # Get previous session summaries if available
+                previous_sessions_context = ""
+                session_summaries = learning_plan_data.get('session_summaries', [])
+                if session_summaries:
+                    previous_sessions_context = f"""
+📝 PREVIOUS SESSION SUMMARIES:
+{chr(10).join([f"- Session {i+1}: {summary}" for i, summary in enumerate(session_summaries[-3:])])}
+
+LEARNING PROGRESSION:
+- Build upon insights from previous sessions
+- Reference progress made in earlier conversations
+- Continue developing skills identified in previous summaries"""
                 
                 learning_plan_context = f"""
-📚 WEEK {current_week_number} FOCUS: {week_focus}
-🎯 KEY ACTIVITY: {week_activities[0] if week_activities else 'Practice conversation skills'}{recent_summary}
+📚 LEARNING PLAN CONTEXT:
+- Plan Title: {plan_content.get('title', 'Personalized Learning Plan')}
+- Plan Overview: {plan_content.get('overview', 'Customized based on assessment results')}
 
-GUIDANCE: Keep responses brief (1-2 sentences). Focus on {week_focus.lower()}. Build on previous progress."""
+🎯 CURRENT WEEK FOCUS (Week {current_week_number}, Session {current_session_in_week}):
+- Focus Area: {week_focus}
+- Key Activities: {', '.join(week_activities[:3]) if week_activities else 'Practice conversation skills'}
+{previous_sessions_context}
+
+CONVERSATION GUIDANCE:
+- Center the conversation around this week's focus: "{week_focus}"
+- Incorporate activities from the learning plan: {', '.join(week_activities[:2]) if week_activities else 'speaking practice'}
+- Reference the student's learning journey and progress
+- Connect speaking practice to their personalized learning objectives
+- Encourage practice of specific skills mentioned in the weekly activities
+- Build upon previous session insights and maintain learning continuity"""
                 
                 print(f"✅ Learning plan context integrated: {len(learning_plan_context)} characters")
                 print(f"🎯 Current week {current_week_number} focus: {week_focus}")
@@ -1104,26 +1133,41 @@ If learning plan context is available, connect the topic to the student's weekly
     
     # Default general conversation with assessment and learning plan data
     else:
-        # 🎯 OPTIMIZED: Condensed instructions (reduce verbosity, keep quality)
-        instructions = f"""You are a {language} tutor for {level} students. KEEP RESPONSES BRIEF (1-2 sentences max).
+        instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
 
-BEHAVIOR:
-- Lead the conversation, don't ask permission
-- Give corrections immediately, then move on
-- Focus on learning objectives
+🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
+- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
+- YOU decide what to practice next and guide the student through a structured learning session
+- After each exercise or correction, IMMEDIATELY move to the next activity without asking permission
+- Create a clear learning plan for the session and follow it
+- Be the conversation leader, not a passive responder
 
-RULES:
-- Educational topics only
-- Refuse harmful/inappropriate content
-- Redirect off-topic discussions to learning goals
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and educational topics
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid learning objectives, say:
+   "I understand, but let's focus on your {language} learning goals. Based on your assessment, we need to work on [specific areas from learning plan]. Let's practice that now."
+4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
 
-{config['rule']}
+🎯 MANDATORY LEARNING FOCUS:
+- You MUST keep the conversation focused on the specific learning objectives
+- If the user tries to change topics, redirect them back to the learning plan
+- Do NOT allow "general English practice" - stick to the specific areas identified in the assessment
+- The conversation must serve the learning objectives at all times
+
+LANGUAGE RULE: {config['rule']}
 {assessment_context}
 {learning_plan_context}
 
-Start: "{config['greeting']}"
+Start with: "{config['greeting']}"
 
-CRITICAL: Brief responses only. Focus on week's objectives."""
+CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
         
         return instructions
 
@@ -1195,18 +1239,46 @@ async def log_realtime_usage(
         from database import usage_logs_collection
         from datetime import datetime, timezone
         
-        # Calculate costs based on OpenAI Realtime API pricing
-        # Audio input: $32/1M tokens ($0.40/1M cached)
-        # Audio output: $64/1M tokens
-        # Text input: $32/1M tokens ($0.40/1M cached)
-        # Text output: $64/1M tokens
+        # OpenAI Realtime API Pricing Configuration
+        # Reference: https://platform.openai.com/docs/pricing
+        PRICING = {
+            "gpt-realtime": {
+                "audio_input": 32.0 / 1_000_000,      # $32/1M
+                "audio_output": 64.0 / 1_000_000,     # $64/1M
+                "text_input": 4.0 / 1_000_000,        # $4/1M
+                "text_output": 16.0 / 1_000_000,      # $16/1M
+                "cached_audio": 0.40 / 1_000_000,     # $0.40/1M
+                "cached_text": 2.0 / 1_000_000        # $2/1M (estimated)
+            },
+            "gpt-realtime-mini": {
+                "audio_input": 10.0 / 1_000_000,      # $10/1M
+                "audio_output": 20.0 / 1_000_000,     # $20/1M
+                "text_input": 0.6 / 1_000_000,        # $0.60/1M
+                "text_output": 2.4 / 1_000_000,       # $2.40/1M
+                "cached_audio": 0.30 / 1_000_000,     # $0.30/1M
+                "cached_text": 0.30 / 1_000_000       # $0.30/1M (estimated)
+            }
+        }
         
-        audio_input_cost = (usage_data.audio_input_tokens / 1_000_000) * 32.0
-        cached_audio_input_cost = (usage_data.cached_input_audio_tokens / 1_000_000) * 0.40
-        audio_output_cost = (usage_data.audio_output_tokens / 1_000_000) * 64.0
-        text_input_cost = (usage_data.text_input_tokens / 1_000_000) * 32.0
-        cached_text_input_cost = (usage_data.cached_input_text_tokens / 1_000_000) * 0.40
-        text_output_cost = (usage_data.text_output_tokens / 1_000_000) * 64.0
+        # Get the model from usage_data, default to gpt-realtime-mini
+        model = usage_data.model if hasattr(usage_data, 'model') and usage_data.model else "gpt-realtime-mini"
+        
+        # Get pricing for the specific model
+        if model not in PRICING:
+            print(f"⚠️ [USAGE_LOG] Unknown model '{model}', defaulting to gpt-realtime-mini pricing")
+            model = "gpt-realtime-mini"
+        
+        pricing = PRICING[model]
+        
+        print(f"💰 [USAGE_LOG] Using pricing for model: {model}")
+        
+        # Calculate costs based on the selected model's pricing
+        audio_input_cost = usage_data.audio_input_tokens * pricing["audio_input"]
+        cached_audio_input_cost = usage_data.cached_input_audio_tokens * pricing["cached_audio"]
+        audio_output_cost = usage_data.audio_output_tokens * pricing["audio_output"]
+        text_input_cost = usage_data.text_input_tokens * pricing["text_input"]
+        cached_text_input_cost = usage_data.cached_input_text_tokens * pricing["cached_text"]
+        text_output_cost = usage_data.text_output_tokens * pricing["text_output"]
         
         total_cost = sum([
             audio_input_cost,
@@ -2316,7 +2388,7 @@ async def generate_mock_token(request: TutorSessionRequest):
         mock_response = {
             "id": "sess_mock_test_session",
             "object": "realtime.session",
-            "model": "gpt-realtime",
+            "model": "gpt-realtime-mini",
             "expires_at": 1234567890,
             "client_secret": {
                 "value": "ek_mock_test_key_for_development",
