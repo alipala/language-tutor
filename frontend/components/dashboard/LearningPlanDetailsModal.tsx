@@ -378,7 +378,7 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                         const isUpcoming = weekSessionsCompleted === 0;
                       
                         return (
-                          <div key={index} className={`rounded-lg p-3 border-2 ${
+                          <div key={index} className={`rounded-lg p-3 border-2 overflow-hidden ${
                             isCompleted ? 'bg-green-50 border-green-200' :
                             isCurrent ? 'bg-blue-50 border-blue-200' :
                             'bg-gray-50 border-gray-200'
@@ -429,14 +429,14 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                                   {isCompleted ? `${weekTotalSessions}/${weekTotalSessions}` : isCurrent ? `${weekSessionsCompleted}/${weekTotalSessions}` : `0/${weekTotalSessions}`} sessions
                                 </span>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                                 <div 
                                   className={`h-2 rounded-full transition-all duration-500 ${
                                     isCompleted ? 'bg-green-500' :
                                     isCurrent ? 'bg-blue-500' :
                                     'bg-gray-300'
                                   }`}
-                                  style={{ width: `${weekProgress}%` }}
+                                  style={{ width: `${Math.min(weekProgress, 100)}%` }}
                                 />
                               </div>
                             </div>
