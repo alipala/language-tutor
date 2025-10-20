@@ -848,15 +848,28 @@ async def handle_subscription_created(subscription):
         # Prepare update data
         update_data = {
             "subscription_status": subscription.get("status"),
-            "subscription_id": subscription.get("id"),
-            # 🔥 FIX ROOT CAUSE 1: Reset usage counters when subscription is created
-            # This ensures users start with fresh counters on their paid plan
-            "practice_minutes_used": 0.0,
-            "practice_sessions_used": 0,
-            "assessments_used": 0
+            "subscription_id": subscription.get("id")
         }
         
-        logger.info(f"[SUB_CREATED] 🔥 RESET USAGE COUNTERS for user {user['_id']}")
+        # 🔥 FIX ROOT CAUSE 1: PRESERVE remaining free minutes as a bonus!
+        # Calculate remaining free minutes (15 - used)
+        current_minutes_used = user.get("practice_minutes_used", 0.0)
+        free_plan_limit = 15.0
+        remaining_free_minutes = max(0, free_plan_limit - current_minutes_used)
+        
+        if remaining_free_minutes > 0:
+            # User has unused free minutes - preserve them by resetting counter
+            # The remaining minutes will be added to their new subscription limit
+            update_data["practice_minutes_used"] = 0.0
+            logger.info(f"[SUB_CREATED] 🎁 PRESERVING {remaining_free_minutes:.1f} free minutes for user {user['_id']}")
+        else:
+            # User used all free minutes - reset counter for new subscription
+            update_data["practice_minutes_used"] = 0.0
+            logger.info(f"[SUB_CREATED] ✅ Resetting counter for user {user['_id']} (no free minutes remaining)")
+        
+        # Always reset session and assessment counters for new subscription period
+        update_data["practice_sessions_used"] = 0
+        update_data["assessments_used"] = 0
         
         # Add period dates from Stripe
         from datetime import datetime, timezone
@@ -1124,15 +1137,27 @@ async def handle_checkout_completed(checkout_session):
             return
 
         # Update user's Stripe customer ID if not already set
-        # 🔥 FIX ROOT CAUSE 1: Also reset usage counters on checkout completion
+        # 🔥 FIX ROOT CAUSE 1: PRESERVE remaining free minutes as a bonus!
         update_data = {"stripe_customer_id": customer_id}
         
         if not user.get("stripe_customer_id"):
-            # New subscription - reset all counters
-            update_data["practice_minutes_used"] = 0.0
+            # New subscription - preserve remaining free minutes
+            current_minutes_used = user.get("practice_minutes_used", 0.0)
+            free_plan_limit = 15.0
+            remaining_free_minutes = max(0, free_plan_limit - current_minutes_used)
+            
+            if remaining_free_minutes > 0:
+                # User has unused free minutes - preserve them by resetting counter
+                update_data["practice_minutes_used"] = 0.0
+                logger.info(f"[CHECKOUT_COMPLETED] 🎁 PRESERVING {remaining_free_minutes:.1f} free minutes for user {user['_id']}")
+            else:
+                # User used all free minutes - reset counter for new subscription
+                update_data["practice_minutes_used"] = 0.0
+                logger.info(f"[CHECKOUT_COMPLETED] ✅ Resetting counter for user {user['_id']} (no free minutes remaining)")
+            
+            # Always reset session and assessment counters
             update_data["practice_sessions_used"] = 0
             update_data["assessments_used"] = 0
-            logger.info(f"[CHECKOUT_COMPLETED] 🔥 RESET USAGE COUNTERS for user {user['_id']}")
         
         await database["users"].update_one(
             {"_id": user["_id"]},
