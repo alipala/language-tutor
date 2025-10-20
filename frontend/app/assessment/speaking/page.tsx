@@ -28,7 +28,9 @@ export default function SpeakingAssessmentPage() {
   // Check if assessments are available
   const assessmentsRemaining = subscriptionStatus?.limits?.assessments_remaining ?? 0;
   const assessmentsLimit = subscriptionStatus?.limits?.assessments_limit ?? 0;
-  const isAssessmentBlocked = user && assessmentsRemaining === 0; // Only block for authenticated users
+  // 🔥 FIX ROOT CAUSE 3: Add loading state check to prevent race condition
+  // Only show blocked message AFTER subscription data has fully loaded
+  const isAssessmentBlocked = user && !subscriptionLoading && assessmentsRemaining === 0;
 
   console.log('[SpeakingAssessmentPage] Assessment boundary check:', {
     user: !!user,

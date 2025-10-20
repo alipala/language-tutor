@@ -848,8 +848,15 @@ async def handle_subscription_created(subscription):
         # Prepare update data
         update_data = {
             "subscription_status": subscription.get("status"),
-            "subscription_id": subscription.get("id")
+            "subscription_id": subscription.get("id"),
+            # 🔥 FIX ROOT CAUSE 1: Reset usage counters when subscription is created
+            # This ensures users start with fresh counters on their paid plan
+            "practice_minutes_used": 0.0,
+            "practice_sessions_used": 0,
+            "assessments_used": 0
         }
+        
+        logger.info(f"[SUB_CREATED] 🔥 RESET USAGE COUNTERS for user {user['_id']}")
         
         # Add period dates from Stripe
         from datetime import datetime, timezone
@@ -1117,12 +1124,21 @@ async def handle_checkout_completed(checkout_session):
             return
 
         # Update user's Stripe customer ID if not already set
+        # 🔥 FIX ROOT CAUSE 1: Also reset usage counters on checkout completion
+        update_data = {"stripe_customer_id": customer_id}
+        
         if not user.get("stripe_customer_id"):
-            await database["users"].update_one(
-                {"_id": user["_id"]},
-                {"$set": {"stripe_customer_id": customer_id}}
-            )
-            logger.info(f"Updated Stripe customer ID for user {user['_id']}")
+            # New subscription - reset all counters
+            update_data["practice_minutes_used"] = 0.0
+            update_data["practice_sessions_used"] = 0
+            update_data["assessments_used"] = 0
+            logger.info(f"[CHECKOUT_COMPLETED] 🔥 RESET USAGE COUNTERS for user {user['_id']}")
+        
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+        logger.info(f"Updated Stripe customer ID for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling checkout completed: {str(e)}")
 
