@@ -1268,20 +1268,15 @@ async def log_realtime_usage(
             }
         }
         
-        # 🔥 FIX: Get the model from environment variable first, then fall back to usage_data
-        # This ensures cost calculation matches the actual model used in the session
-        env_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
-        usage_model = usage_data.model if hasattr(usage_data, 'model') and usage_data.model else "gpt-realtime-mini"
+        # 🔥 FIX: Always use environment variable model for cost calculation
+        # The usage_data.model might be outdated or incorrect
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
         
-        # Use environment variable model if it's set, otherwise use the model from usage_data
-        model = env_model if os.getenv("OPENAI_REALTIME_MODEL") else usage_model
+        print(f"💰 [USAGE_LOG] Using model from environment: {model}")
         
-        # Log if there's a mismatch between environment and usage data
-        if env_model != usage_model:
-            print(f"⚠️ [USAGE_LOG] Model mismatch detected!")
-            print(f"   Environment variable: {env_model}")
-            print(f"   Usage data model: {usage_model}")
-            print(f"   Using: {model}")
+        # Log if usage_data has a different model (for debugging)
+        if hasattr(usage_data, 'model') and usage_data.model and usage_data.model != model:
+            print(f"ℹ️ [USAGE_LOG] Note: usage_data.model was '{usage_data.model}' but using environment model '{model}' for cost calculation")
         
         # Get pricing for the specific model
         if model not in PRICING:
@@ -1404,14 +1399,13 @@ async def log_realtime_usage(
                         print(f"[ORG_COSTS] ⚠️ Parsed start timestamp is in the future! start={start_timestamp}, current={current_time}")
                         print(f"[ORG_COSTS] ⚠️ Skipping organization cost fetch - invalid timestamp")
                     else:
-                        # 🔥 FIX: Calculate end_time as 6 minutes (360 seconds) after start_time
-                        end_timestamp = start_timestamp + 360  # Add 6 minutes
-                        print(f"[ORG_COSTS] Parsed timestamps from session strings: {start_timestamp} to {end_timestamp}")
+                        # 🔥 FIX: Only use start_time, let API handle daily bucketing
+                        print(f"[ORG_COSTS] Parsed start timestamp from session string: {start_timestamp}")
                         
-                        # Use both start_time and end_time for precise cost tracking
+                        # Only pass start_time, let API return daily bucket
                         org_cost_result = await fetch_organization_costs(
                             start_time=start_timestamp,
-                            end_time=end_timestamp,  # 🔥 FIX: Now properly set to 6 minutes later
+                            end_time=None,  # 🔥 FIX: Don't send end_time, let API handle bucketing
                             limit=1
                         )
                         
