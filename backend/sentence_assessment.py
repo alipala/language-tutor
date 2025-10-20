@@ -8,6 +8,7 @@ import re
 from fastapi import HTTPException
 import openai
 import httpx
+from gpt4o_cost_tracker import GPT4oCostTracker
 
 # Helper function to create OpenAI client with proper error handling
 def create_openai_client():
@@ -287,6 +288,23 @@ async def analyze_sentence(text: str, language: str, level: str, exercise_type: 
             ],
             temperature=0.1  # Low temperature for consistent results
         )
+        
+        # Track GPT-4o cost for sentence analysis
+        usage = response.usage
+        if usage:
+            try:
+                await GPT4oCostTracker.log_usage(
+                    user_id=None,  # Will be set by caller if available
+                    session_id="sentence_analysis",
+                    usage_type="sentence_assessment",
+                    input_tokens=usage.prompt_tokens,
+                    output_tokens=usage.completion_tokens,
+                    cached_tokens=getattr(usage, 'prompt_tokens_details', {}).get('cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
+                    language=language,
+                    context={"level": level, "exercise_type": exercise_type}
+                )
+            except Exception as track_error:
+                print(f"[SENTENCE_ASSESSMENT] ⚠️ Cost tracking failed: {track_error}")
         
         # Parse response
         result = json.loads(response.choices[0].message.content)

@@ -8,13 +8,16 @@ import { Button } from '@/components/ui/button';
 import { ProgressRing } from './ProgressRing';
 import LearningPlanDetailsModal from './LearningPlanDetailsModal';
 import { LearningPlan } from '@/lib/learning-api';
-import { 
-  Play, 
-  Eye, 
-  Flame, 
-  Clock, 
+import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
+import {
+  Play,
+  Eye,
+  Flame,
+  Clock,
   Target,
-  BookOpen
+  BookOpen,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 interface LearningPlanCardProps {
@@ -45,10 +48,10 @@ const calculateProgress = (plan: LearningPlan): number => {
   if (plan.progress_percentage !== undefined) {
     return plan.progress_percentage;
   }
-  
+
   const completed = plan.completed_sessions || 0;
   const total = plan.total_sessions || 24;
-  
+
   return Math.min((completed / total) * 100, 100);
 };
 
@@ -65,8 +68,8 @@ const getLevelColor = (level: string): string => {
   return colors[level.toUpperCase()] || 'bg-teal-100 text-teal-700';
 };
 
-export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({ 
-  plan, 
+export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
+  plan,
   progressStats,
   className = ""
 }) => {
@@ -74,17 +77,26 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   
+  // Check low minutes status
+  const { lowMinutesStatus } = useLowMinutesAlert();
+
   const progress = calculateProgress(plan);
   const completedSessions = plan.completed_sessions || 0;
   const totalSessions = plan.total_sessions || 24;
   const currentStreak = progressStats?.current_streak || 0;
+  const isCompleted = progress >= 100;
+  
+  // Determine if we should show low minutes warning
+  const hasLowMinutes = lowMinutesStatus?.has_low_minutes && !lowMinutesStatus?.is_unlimited;
+  const minutesRemaining = lowMinutesStatus?.minutes_remaining || 0;
+  const showCriticalWarning = hasLowMinutes && minutesRemaining <= 1;
 
   const handleContinueLearning = () => {
     // Store plan context for speech practice
     sessionStorage.setItem('selectedLanguage', plan.language);
     sessionStorage.setItem('selectedLevel', plan.proficiency_level);
     sessionStorage.setItem('currentPlanId', plan.id);
-    
+
     // Navigate to speech practice with plan ID parameter
     router.push(`/speech?plan=${plan.id}`);
   };
@@ -105,20 +117,20 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
       >
         {/* Gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-teal-50 via-blue-50 to-purple-50 opacity-60" />
-        
+
         {/* Animated border on hover */}
         <motion.div
           className="absolute inset-0 rounded-2xl border-2 border-teal-400 opacity-0"
           animate={{ opacity: isHovered ? 1 : 0 }}
           transition={{ duration: 0.3 }}
         />
-        
+
         {/* Content */}
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <motion.div 
+              <motion.div
                 className="text-3xl"
                 animate={{ scale: isHovered ? 1.1 : 1 }}
                 transition={{ duration: 0.3 }}
@@ -134,10 +146,10 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
                 </span>
               </div>
             </div>
-            
+
             {/* Streak indicator */}
             {currentStreak > 0 && (
-              <motion.div 
+              <motion.div
                 className="flex items-center space-x-1 bg-orange-100 px-3 py-1 rounded-full"
                 animate={{ scale: isHovered ? 1.05 : 1 }}
                 transition={{ duration: 0.3 }}
@@ -152,8 +164,8 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
 
           {/* Progress Ring */}
           <div className="flex justify-center mb-5">
-            <ProgressRing 
-              percentage={progress} 
+            <ProgressRing
+              percentage={progress}
               size={90}
               strokeWidth={6}
               animated={true}
@@ -171,7 +183,7 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
               </div>
               <div className="text-xs text-gray-600">Sessions</div>
             </div>
-            
+
             <div className="text-center">
               <div className="flex items-center justify-center mb-1">
                 <Clock className="h-4 w-4 text-blue-500" />
@@ -181,7 +193,7 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
               </div>
               <div className="text-xs text-gray-600">Complete</div>
             </div>
-            
+
             <div className="text-center">
               <div className="flex items-center justify-center mb-1">
                 <BookOpen className="h-4 w-4 text-purple-500" />
@@ -206,12 +218,33 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
           <div className="space-y-3">
             <Button
               onClick={handleContinueLearning}
-              className="w-full bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white font-medium py-3 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg"
+              disabled={isCompleted}
+              className={`w-full font-medium py-3 rounded-xl transition-all duration-300 shadow-md relative ${
+                isCompleted 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : hasLowMinutes
+                    ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white hover:shadow-lg'
+                    : 'bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white hover:shadow-lg'
+              }`}
             >
-              <Play className="h-4 w-4 mr-2" />
-              Continue Learning
+              {isCompleted ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Plan Completed
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Continue Learning
+                  {hasLowMinutes && minutesRemaining > 0 && (
+                    <span className="ml-2 text-xs opacity-90">
+                      ({Math.floor(minutesRemaining)} min left)
+                    </span>
+                  )}
+                </>
+              )}
             </Button>
-            
+
             <Button
               onClick={handleViewDetails}
               variant="outline"

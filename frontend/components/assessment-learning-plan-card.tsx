@@ -921,11 +921,25 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button 
                   onClick={() => router.push(`/speech?plan=${learningPlan.id}`)}
-                  className="flex-1 text-white py-3 px-6 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center" 
-                  style={{ backgroundColor: '#4ECFBF' }}
+                  disabled={(learningPlan.progress_percentage || 0) >= 100}
+                  className={`flex-1 py-3 px-6 rounded-xl font-medium transition-opacity flex items-center justify-center ${
+                    (learningPlan.progress_percentage || 0) >= 100
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'text-white hover:opacity-90'
+                  }`}
+                  style={(learningPlan.progress_percentage || 0) >= 100 ? {} : { backgroundColor: '#4ECFBF' }}
                 >
-                  <BookOpen className="h-5 w-5 mr-2" />
-                  Continue Learning
+                  {(learningPlan.progress_percentage || 0) >= 100 ? (
+                    <>
+                      <CheckCircle className="h-5 w-5 mr-2" />
+                      Plan Completed
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="h-5 w-5 mr-2" />
+                      Continue Learning
+                    </>
+                  )}
                 </Button>
                 <Button 
                   onClick={() => setShowShareModal(true)}

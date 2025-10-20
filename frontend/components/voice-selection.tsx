@@ -386,7 +386,7 @@ export default function VoiceSelectionComponent() {
           });
 
           // Send offer to OpenAI
-          const response = await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime`, {
+          const response = await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime-mini`, {
             method: 'POST',
             body: peerConnection.localDescription?.sdp,
             headers: {

@@ -22,7 +22,7 @@ import {
   TrendingUp, Award, BookOpen, Clock, Zap,
   ChevronRight, ChevronDown, Share2, Lock,
   Gem, Heart, Volume2, Mic, CheckCircle, Brain,
-  Bell
+  Bell, AlertTriangle
 } from 'lucide-react';
 import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 import ExportModal from '@/components/export-modal';
@@ -32,6 +32,8 @@ import PaymentProcessingModal from '@/components/payment-processing-modal';
 import SoundWaveLoader from '@/components/sound-wave-loader';
 import NotificationsTab from '@/components/notifications-tab';
 import VoiceSelectionComponent from '@/components/voice-selection';
+import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
+import LowMinutesAlert from '@/components/LowMinutesAlert';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -296,6 +298,9 @@ export default function ProfilePage() {
   // Subscription status state
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  
+  // Use low minutes alert hook
+  const { lowMinutesStatus, loading: lowMinutesLoading } = useLowMinutesAlert();
 
   // Mock user stats for display (will be replaced with real data)
   const userStats = {
@@ -786,7 +791,11 @@ export default function ProfilePage() {
                 {/* Subscription & Stats Row - Mobile Optimized */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   {/* Subscription Status Card - Compact on Mobile */}
-                  <div className="bg-white/30 backdrop-blur-sm rounded-xl p-3 md:p-6 shadow-lg border border-white/40">
+                  <div className={`backdrop-blur-sm rounded-xl p-3 md:p-6 shadow-lg border-2 ${
+                    !lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes
+                      ? 'bg-white/30 border-orange-400'
+                      : 'bg-white/30 border-white/40'
+                  }`}>
                     <div className="flex items-center justify-between mb-2 md:mb-4">
                       <div className="flex items-center space-x-2 md:space-x-3">
                         <div className="text-xl md:text-3xl">{planInfo.icon}</div>
@@ -809,9 +818,13 @@ export default function ProfilePage() {
                     {!subscriptionLoading && subscriptionStatus?.limits && (
                       <div className="space-y-1 md:space-y-3">
                         {/* PRIMARY: Speaking Time (what actually matters for limits) */}
-                        <div className="flex justify-between text-white text-xs md:text-base">
+                        <div className="flex justify-between text-xs md:text-base text-white">
                           <span className="font-medium">Speaking Time</span>
-                          <span className="font-bold text-sm md:text-lg">
+                          <span className={`font-bold text-sm md:text-lg ${
+                            !lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes
+                              ? 'text-orange-300'
+                              : ''
+                          }`}>
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
                              `${Math.round(subscriptionStatus.limits.minutes_remaining || 0)} min left`}
                           </span>
@@ -868,6 +881,7 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
 
           {/* Navigation Tabs - Mobile Optimized */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6 md:mb-8">

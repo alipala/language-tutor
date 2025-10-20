@@ -133,6 +133,10 @@ app.include_router(stripe_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include low minutes alert routes
+from low_minutes_alert import router as low_minutes_router
+app.include_router(low_minutes_router)
+
 # Include health ping routes
 from health_ping_routes import router as health_ping_router
 app.include_router(health_ping_router)
@@ -481,6 +485,28 @@ class CustomTopicRequest(BaseModel):
     topic: Optional[str] = None  # Topic to focus the conversation on
     user_prompt: str  # The custom prompt from the user
 
+# Realtime Usage Data model
+class RealtimeUsageData(BaseModel):
+    user_id: Optional[str] = None
+    session_id: str
+    language: str
+    level: str
+    topic: Optional[str] = None
+    audio_input_tokens: int = 0
+    audio_output_tokens: int = 0
+    text_input_tokens: int = 0
+    text_output_tokens: int = 0
+    cached_input_audio_tokens: int = 0
+    cached_input_text_tokens: int = 0
+    total_tokens: int = 0
+    session_start: str
+    session_end: Optional[str] = None
+    session_duration_seconds: Optional[int] = None
+    estimated_cost: float = 0.0
+    model: str = "gpt-realtime-mini"
+    start_time: Optional[int] = None  # Unix timestamp for session start
+    end_time: Optional[int] = None    # Unix timestamp for session end
+
 # Initialize OpenAI client
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
@@ -647,10 +673,11 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"🎤 [VOICE] Request voice: {request.voice}")
         print(f"🎤 [VOICE] Selected voice: {selected_voice}")
         
-        # ✅ Create ephemeral token with complete configuration for gpt-realtime
+        # ✅ Create ephemeral token with complete configuration
         # This approach works reliably on desktop AND mobile browsers
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
         payload = {
-            "model": "gpt-realtime",
+            "model": model,
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
@@ -688,6 +715,18 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             raise HTTPException(status_code=response.status_code, detail=error_text)
         
         result = response.json()
+        
+        # Log session creation
+        session_id = result.get('id', 'unknown')
+        print("="*80)
+        print(f"💰 [USAGE_LOG] SESSION CREATED")
+        print(f"Session ID: {session_id}")
+        print(f"User ID: {current_user.id if current_user else 'guest'}")
+        print(f"Language: {request.language}")
+        print(f"Level: {request.level}")
+        print(f"Timestamp: {datetime.now().isoformat()}")
+        print("="*80)
+        
         print(f"✅ [UNIVERSAL] Ephemeral token created successfully")
         return result
         
@@ -773,7 +812,7 @@ Previous conversation history:
 - Overall Score: {overall_score}/100
 - Recommended Level: {recommended_level}
 - Pronunciation: {pronunciation_score}/100
-- Grammar: {grammar_score}/100  
+- Grammar: {grammar_score}/100
 - Vocabulary: {vocabulary_score}/100
 - Fluency: {fluency_score}/100
 - Coherence: {coherence_score}/100
@@ -813,6 +852,19 @@ PERSONALIZED APPROACH:
             if current_week:
                 week_focus = current_week.get('focus', 'Building foundational skills')
                 week_activities = current_week.get('activities', [])
+                
+                # Get previous session summaries if available
+                previous_sessions_context = ""
+                session_summaries = learning_plan_data.get('session_summaries', [])
+                if session_summaries:
+                    previous_sessions_context = f"""
+📝 PREVIOUS SESSION SUMMARIES:
+{chr(10).join([f"- Session {i+1}: {summary}" for i, summary in enumerate(session_summaries[-3:])])}
+
+LEARNING PROGRESSION:
+- Build upon insights from previous sessions
+- Reference progress made in earlier conversations
+- Continue developing skills identified in previous summaries"""
                 
                 # Get previous session summaries if available
                 previous_sessions_context = ""
@@ -1125,6 +1177,299 @@ Start with: "{config['greeting']}"
 CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
         
         return instructions
+
+# 🎯 STRATEGY 2: Add summarization endpoint for token optimization
+class SummarizeRequest(BaseModel):
+    transcript: str
+
+@app.post("/api/summarize")
+async def summarize_conversation(request: SummarizeRequest):
+    """
+    Summarize conversation transcript using gpt-4o-mini for cost efficiency.
+    Used to reduce cached token usage in OpenAI Realtime API.
+    """
+    try:
+        print(f"📝 [SUMMARIZATION] Received transcript: {len(request.transcript)} characters")
+        
+        if not request.transcript or len(request.transcript.strip()) < 10:
+            raise HTTPException(status_code=400, detail="Transcript too short for summarization")
+        
+        # Use gpt-4o-mini for cost-effective summarization
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""Summarize this language learning conversation in 2-3 sentences. 
+Focus on topics discussed and any corrections made. Ignore grammar details.
+
+Conversation:
+{request.transcript}
+
+Summary:"""
+                }
+            ],
+            max_tokens=100,
+            temperature=0.3
+        )
+        
+        if not response or not response.choices:
+            raise HTTPException(status_code=500, detail="Failed to generate summary")
+        
+        summary = response.choices[0].message.content.strip()
+        
+        print(f"✅ [SUMMARIZATION] Generated summary: {len(summary)} characters")
+        print(f"📝 [SUMMARIZATION] Summary: {summary}")
+        
+        return {
+            "success": True,
+            "summary": summary,
+            "original_length": len(request.transcript),
+            "summary_length": len(summary),
+            "compression_ratio": f"{(len(summary) / len(request.transcript) * 100):.1f}%"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ [SUMMARIZATION] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
+
+# Add endpoint for realtime usage logging
+@app.post("/api/realtime/usage-log")
+async def log_realtime_usage(
+    usage_data: RealtimeUsageData,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)
+):
+    """Store realtime API usage data and calculate costs"""
+    try:
+        from database import usage_logs_collection
+        from datetime import datetime, timezone
+        from openai_organization_costs import fetch_organization_costs, datetime_to_unix_timestamp
+        
+        # OpenAI Realtime API Pricing Configuration
+        # Reference: https://platform.openai.com/docs/pricing
+        PRICING = {
+            "gpt-realtime": {
+                "audio_input": 32.0 / 1_000_000,      # $32/1M
+                "audio_output": 64.0 / 1_000_000,     # $64/1M
+                "text_input": 4.0 / 1_000_000,        # $4/1M
+                "text_output": 16.0 / 1_000_000,      # $16/1M
+                "cached_audio": 0.40 / 1_000_000,     # $0.40/1M
+                "cached_text": 2.0 / 1_000_000        # $2/1M (estimated)
+            },
+            "gpt-realtime-mini": {
+                "audio_input": 10.0 / 1_000_000,      # $10/1M
+                "audio_output": 20.0 / 1_000_000,     # $20/1M
+                "text_input": 0.6 / 1_000_000,        # $0.60/1M
+                "text_output": 2.4 / 1_000_000,       # $2.40/1M
+                "cached_audio": 0.30 / 1_000_000,     # $0.30/1M
+                "cached_text": 0.30 / 1_000_000       # $0.30/1M (estimated)
+            }
+        }
+        
+        # 🔥 FIX: Always use environment variable model for cost calculation
+        # The usage_data.model might be outdated or incorrect
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        
+        print(f"💰 [USAGE_LOG] Using model from environment: {model}")
+        
+        # Log if usage_data has a different model (for debugging)
+        if hasattr(usage_data, 'model') and usage_data.model and usage_data.model != model:
+            print(f"ℹ️ [USAGE_LOG] Note: usage_data.model was '{usage_data.model}' but using environment model '{model}' for cost calculation")
+        
+        # Get pricing for the specific model
+        if model not in PRICING:
+            print(f"⚠️ [USAGE_LOG] Unknown model '{model}', defaulting to gpt-realtime-mini pricing")
+            model = "gpt-realtime-mini"
+        
+        pricing = PRICING[model]
+        
+        print(f"💰 [USAGE_LOG] Using pricing for model: {model}")
+        
+        # Calculate costs based on the selected model's pricing
+        audio_input_cost = usage_data.audio_input_tokens * pricing["audio_input"]
+        cached_audio_input_cost = usage_data.cached_input_audio_tokens * pricing["cached_audio"]
+        audio_output_cost = usage_data.audio_output_tokens * pricing["audio_output"]
+        text_input_cost = usage_data.text_input_tokens * pricing["text_input"]
+        cached_text_input_cost = usage_data.cached_input_text_tokens * pricing["cached_text"]
+        text_output_cost = usage_data.text_output_tokens * pricing["text_output"]
+        
+        total_cost = sum([
+            audio_input_cost,
+            cached_audio_input_cost,
+            audio_output_cost,
+            text_input_cost,
+            cached_text_input_cost,
+            text_output_cost
+        ])
+        
+        # Calculate cost per minute and tokens per minute
+        duration_minutes = usage_data.session_duration_seconds / 60 if usage_data.session_duration_seconds else 1
+        cost_per_minute = total_cost / duration_minutes if duration_minutes > 0 else 0
+        tokens_per_minute = usage_data.total_tokens / duration_minutes if duration_minutes > 0 else 0
+        
+        # Format duration
+        duration_min = usage_data.session_duration_seconds // 60
+        duration_sec = usage_data.session_duration_seconds % 60
+        duration_str = f"{duration_min} min {duration_sec} sec" if duration_min > 0 else f"{duration_sec} sec"
+        
+        # Log to console with detailed breakdown
+        print("="*80)
+        print(f"💰 [USAGE_LOG] SESSION COMPLETED")
+        print(f"Session ID: {usage_data.session_id}")
+        print(f"User ID: {current_user.id if current_user else usage_data.user_id or 'guest'}")
+        print(f"Language: {usage_data.language}")
+        print(f"Level: {usage_data.level}")
+        print(f"Duration: {usage_data.session_duration_seconds}s ({duration_str})")
+        print(f"Model: {usage_data.model}")
+        print("-"*80)
+        print(f"TOKEN USAGE:")
+        print(f"  Audio Input: {usage_data.audio_input_tokens:,} tokens")
+        print(f"  Audio Input (cached): {usage_data.cached_input_audio_tokens:,} tokens")
+        print(f"  Audio Output: {usage_data.audio_output_tokens:,} tokens")
+        print(f"  Text Input: {usage_data.text_input_tokens:,} tokens")
+        print(f"  Text Input (cached): {usage_data.cached_input_text_tokens:,} tokens")
+        print(f"  Text Output: {usage_data.text_output_tokens:,} tokens")
+        print(f"  TOTAL: {usage_data.total_tokens:,} tokens")
+        print("-"*80)
+        print(f"COST BREAKDOWN:")
+        print(f"  Audio Input: ${audio_input_cost:.4f}")
+        print(f"  Audio Input (cached): ${cached_audio_input_cost:.4f}")
+        print(f"  Audio Output: ${audio_output_cost:.4f}")
+        print(f"  Text Input: ${text_input_cost:.4f}")
+        print(f"  Text Input (cached): ${cached_text_input_cost:.4f}")
+        print(f"  Text Output: ${text_output_cost:.4f}")
+        print(f"  TOTAL COST: ${total_cost:.4f}")
+        print("-"*80)
+        print(f"Cost per minute: ${cost_per_minute:.4f}")
+        print(f"Tokens per minute: {tokens_per_minute:,.0f}")
+        print("="*80)
+        
+        # 🔥 NEW: Fetch organization costs from OpenAI API
+        organization_cost = None
+        organization_cost_data = None
+        
+        # Convert session timestamps to Unix timestamps if provided
+        if usage_data.start_time:
+            # 🔥 SIMPLIFIED FIX: Only use start_time, let API handle daily bucketing
+            # The OpenAI API works best with just start_time and returns daily buckets
+            import time
+            current_time = int(time.time())
+            
+            start_time = usage_data.start_time
+            
+            # Validate timestamp is in the past
+            if start_time > current_time:
+                print(f"[ORG_COSTS] ⚠️ Start timestamp is in the future! start={start_time}, current={current_time}")
+                print(f"[ORG_COSTS] ⚠️ Skipping organization cost fetch - invalid timestamp")
+            else:
+                print(f"[ORG_COSTS] Fetching organization costs for start_time: {start_time}")
+                
+                try:
+                    # Only pass start_time, let API return daily bucket
+                    org_cost_result = await fetch_organization_costs(
+                        start_time=start_time,
+                        end_time=None,  # Let API handle bucketing
+                        limit=1
+                    )
+                
+                    if org_cost_result:
+                        organization_cost = org_cost_result.get("cost", 0.0)
+                        organization_cost_data = org_cost_result
+                        print(f"[ORG_COSTS] ✅ Organization cost fetched: ${organization_cost:.4f}")
+                        print(f"[ORG_COSTS] Currency: {org_cost_result.get('currency', 'usd').upper()}")
+                    else:
+                        print(f"[ORG_COSTS] ⚠️ No organization cost data available")
+                except Exception as org_cost_error:
+                    print(f"[ORG_COSTS] ❌ Error fetching organization costs: {str(org_cost_error)}")
+        else:
+            # If timestamps not provided, try to parse from session_start string only
+            try:
+                if usage_data.session_start:
+                    from dateutil import parser
+                    import time
+                    
+                    start_dt = parser.parse(usage_data.session_start)
+                    start_timestamp = datetime_to_unix_timestamp(start_dt)
+                    current_time = int(time.time())
+                    
+                    # Validate timestamp is in the past
+                    if start_timestamp > current_time:
+                        print(f"[ORG_COSTS] ⚠️ Parsed start timestamp is in the future! start={start_timestamp}, current={current_time}")
+                        print(f"[ORG_COSTS] ⚠️ Skipping organization cost fetch - invalid timestamp")
+                    else:
+                        # 🔥 FIX: Only use start_time, let API handle daily bucketing
+                        print(f"[ORG_COSTS] Parsed start timestamp from session string: {start_timestamp}")
+                        
+                        # Only pass start_time, let API return daily bucket
+                        org_cost_result = await fetch_organization_costs(
+                            start_time=start_timestamp,
+                            end_time=None,  # 🔥 FIX: Don't send end_time, let API handle bucketing
+                            limit=1
+                        )
+                        
+                        if org_cost_result:
+                            organization_cost = org_cost_result.get("cost", 0.0)
+                            organization_cost_data = org_cost_result
+                            print(f"[ORG_COSTS] ✅ Organization cost fetched: ${organization_cost:.4f}")
+                        else:
+                            print(f"[ORG_COSTS] ⚠️ No organization cost data available")
+            except Exception as parse_error:
+                print(f"[ORG_COSTS] ⚠️ Could not parse session timestamp: {str(parse_error)}")
+        
+        # Log organization cost comparison if available
+        if organization_cost is not None:
+            cost_difference = abs(total_cost - organization_cost)
+            cost_difference_pct = (cost_difference / total_cost * 100) if total_cost > 0 else 0
+            
+            print("-"*80)
+            print(f"COST COMPARISON:")
+            print(f"  Calculated Cost: ${total_cost:.4f}")
+            print(f"  Organization Cost: ${organization_cost:.4f}")
+            print(f"  Difference: ${cost_difference:.4f} ({cost_difference_pct:.2f}%)")
+            print("="*80)
+        
+        # Save to database
+        usage_log_doc = {
+            "user_id": current_user.id if current_user else usage_data.user_id,
+            "session_id": usage_data.session_id,
+            "language": usage_data.language,
+            "level": usage_data.level,
+            "topic": usage_data.topic,
+            "audio_input_tokens": usage_data.audio_input_tokens,
+            "audio_output_tokens": usage_data.audio_output_tokens,
+            "text_input_tokens": usage_data.text_input_tokens,
+            "text_output_tokens": usage_data.text_output_tokens,
+            "cached_input_audio_tokens": usage_data.cached_input_audio_tokens,
+            "cached_input_text_tokens": usage_data.cached_input_text_tokens,
+            "total_tokens": usage_data.total_tokens,
+            "session_start": usage_data.session_start,
+            "session_end": usage_data.session_end,
+            "session_duration_seconds": usage_data.session_duration_seconds,
+            "total_cost": total_cost,
+            "model": usage_data.model,
+            "logged_at": datetime.now(timezone.utc).isoformat(),
+            # 🔥 NEW: Add organization cost fields
+            "start_time": usage_data.start_time,  # Unix timestamp
+            "end_time": usage_data.end_time,      # Unix timestamp
+            "organization_cost": organization_cost,  # Actual cost from OpenAI API
+            "organization_cost_data": organization_cost_data  # Full response data
+        }
+        
+        result = await usage_logs_collection.insert_one(usage_log_doc)
+        
+        print(f"✅ [USAGE_LOG] Saved to database with ID: {result.inserted_id}")
+        
+        return {
+            "success": True,
+            "total_cost": total_cost,
+            "log_id": str(result.inserted_id)
+        }
+        
+    except Exception as e:
+        print(f"❌ [USAGE_LOG] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error logging usage: {str(e)}")
 
 # Add endpoint for custom topic research using web search
 @app.post("/api/custom-topic/research")
@@ -2134,6 +2479,25 @@ async def get_transcription_status():
         print(f"❌ Error getting transcription status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting transcription status: {str(e)}")
 
+# Add endpoint to get current model configuration
+@app.get("/api/realtime/model-config")
+async def get_model_config():
+    """
+    Get the current OpenAI Realtime API model configuration
+    """
+    try:
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        
+        return {
+            "model": model,
+            "configured_via": "environment_variable" if os.getenv("OPENAI_REALTIME_MODEL") else "default",
+            "available_models": ["gpt-realtime-mini", "gpt-realtime"],
+            "default_model": "gpt-realtime-mini"
+        }
+    except Exception as e:
+        print(f"❌ Error getting model config: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting model config: {str(e)}")
+
 # Add mock token endpoint for testing
 @app.post("/api/mock-token")
 async def generate_mock_token(request: TutorSessionRequest):
@@ -2147,7 +2511,7 @@ async def generate_mock_token(request: TutorSessionRequest):
         mock_response = {
             "id": "sess_mock_test_session",
             "object": "realtime.session",
-            "model": "gpt-realtime",
+            "model": "gpt-realtime-mini",
             "expires_at": 1234567890,
             "client_secret": {
                 "value": "ek_mock_test_key_for_development",

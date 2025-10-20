@@ -36,33 +36,62 @@ export class EnhancedRealtimeService {
   private isPaused: boolean = false;
   private pauseStartTime: number | null = null;
   private semanticMuteController: SemanticMuteController | null = null;
-  
+
   // ✅ ENHANCED: Triple-layer muting system
   private ai_is_speaking: boolean = false;
   private fallback_mute_timeout: NodeJS.Timeout | null = null;
   private emergency_mute_timeout: NodeJS.Timeout | null = null;
   private fallback_protection_enabled: boolean = true;
   private last_ai_speech_event: string = '';
-  
+
   // ✅ NEW: Pre-emptive muting before connection
   private pre_connection_mute_active: boolean = false;
   private mobile_optimization_active: boolean = false;
   private echo_cancellation_level: number = 3; // Maximum level
-  
+
   // ✅ NEW: User manual mute state tracking
   private user_manually_muted: boolean = false;
-  
+
   // ✅ PHASE 1: Reduced aggressive timing controls
   private readonly PREEMPTIVE_MUTE_DELAY = 100; // Wait 100ms before muting
   private readonly MOBILE_SAFETY_BUFFER = 0; // Reduced mobile buffer
   private readonly EMERGENCY_MUTE_THRESHOLD = 50; // Emergency trigger time
+
+  // 💰 USAGE TRACKING: Session and token tracking
+  private sessionId: string = '';
+  private sessionStartTime: Date | null = null;
+  private usageData = {
+    audio_input_tokens: 0,
+    audio_output_tokens: 0,
+    text_input_tokens: 0,
+    text_output_tokens: 0,
+    cached_input_audio_tokens: 0,
+    cached_input_text_tokens: 0,
+    total_tokens: 0
+  };
+  private sessionMetadata = {
+    language: '',
+    level: '',
+    topic: null as string | null,
+    user_id: null as string | null
+  };
+
+  // 🎯 STRATEGY 1: Conversation Truncation (30-40% savings)
+  private conversationBuffer: string[] = [];
+  private readonly MAX_CONVERSATION_ITEMS = 6; // Keep last 6 items (3 user + 3 AI exchanges)
+  private readonly MIN_ITEMS_BEFORE_TRUNCATION = 3; // Buffer minimum before truncation starts
   
+  // 🎯 STRATEGY 2: Summarization (10-20% savings)
+  private transcriptBuffer: string = '';
+  private messageCount: number = 0;
+  private readonly SUMMARIZATION_INTERVAL = 6; // Summarize every 6 exchanges
+
   constructor() {
     // Only initialize Audio in browser environments
     if (typeof window !== 'undefined') {
       this.audioElement = new Audio();
       this.audioElement.autoplay = true;
-      
+
       // ✅ CRITICAL: Detect mobile browsers for enhanced optimization
       this.mobile_optimization_active = this.isMobileBrowser();
       console.log('🔧 [ENHANCED] Mobile optimization:', this.mobile_optimization_active ? 'ACTIVE' : 'DISABLED');
@@ -74,13 +103,13 @@ export class EnhancedRealtimeService {
    */
   private isMobileBrowser(): boolean {
     if (typeof window === 'undefined') return false;
-    
+
     const userAgent = window.navigator.userAgent.toLowerCase();
     const mobileKeywords = [
-      'iphone', 'ipad', 'ipod', 'android', 'mobile', 'phone', 
+      'iphone', 'ipad', 'ipod', 'android', 'mobile', 'phone',
       'tablet', 'touch', 'webos', 'blackberry'
     ];
-    
+
     return mobileKeywords.some(keyword => userAgent.includes(keyword));
   }
 
@@ -88,8 +117,8 @@ export class EnhancedRealtimeService {
    * ✅ ENHANCED: Initialize with pre-emptive muting setup
    */
   public async initialize(
-    onMessage: (event: RealtimeEvent) => void, 
-    onConnected?: () => void, 
+    onMessage: (event: RealtimeEvent) => void,
+    onConnected?: () => void,
     onDisconnected?: () => void,
     language?: string,
     level?: string,
@@ -99,19 +128,19 @@ export class EnhancedRealtimeService {
   ): Promise<boolean> {
     try {
       console.log('🚀 [ENHANCED] Initializing enhanced realtime service with bulletproof muting...');
-      
+
       // ✅ CRITICAL: Activate pre-connection muting immediately
       this.pre_connection_mute_active = true;
       console.log('🔇 [ENHANCED] Pre-connection muting ACTIVATED');
-      
+
       // Clean up any existing connections first
       this.disconnect();
-      
+
       this.onMessageCallback = onMessage;
       this.onConnectedCallback = onConnected || null;
       this.onDisconnectedCallback = onDisconnected || null;
       this.reconnectAttempts = 0;
-      
+
       // Store all parameters for use in conversation resumption
       if (language) {
         this.currentLanguage = language.toLowerCase();
@@ -130,7 +159,7 @@ export class EnhancedRealtimeService {
       if (assessmentData) {
         this.currentAssessmentData = assessmentData;
       }
-      
+
       // Use the correct backend URL (default to 127.0.0.1:8000 if running locally)
       this.backendUrl = '';
       if (typeof window !== 'undefined') {
@@ -138,9 +167,9 @@ export class EnhancedRealtimeService {
           this.backendUrl = 'http://127.0.0.1:8000';
         }
       }
-      
+
       console.log('🌐 Using backend URL:', this.backendUrl);
-      
+
       // Test the connection to the backend first
       try {
         const testResponse = await fetch(`${this.backendUrl}/api/test`, {
@@ -156,7 +185,7 @@ export class EnhancedRealtimeService {
         console.error('❌ Error connecting to backend:', err);
         return false;
       }
-      
+
       try {
         // Get ephemeral key from backend with language and level if provided
         const token = await this.getEphemeralKey(language, level, topic, userPrompt, assessmentData);
@@ -164,7 +193,7 @@ export class EnhancedRealtimeService {
           console.error('❌ Failed to get ephemeral key (empty token)');
           return false;
         }
-        
+
         console.log('✅ Ephemeral key obtained successfully');
         this.ephemeralKey = token;
         return true;
@@ -177,14 +206,14 @@ export class EnhancedRealtimeService {
       return false;
     }
   }
-  
+
   /**
    * ✅ ENHANCED: Set up WebRTC connection with BULLETPROOF mobile optimization
    */
   private setupWebRTC(): boolean {
     try {
       console.log('🔧 [ENHANCED] Setting up WebRTC with bulletproof mobile optimization...');
-      
+
       // ✅ CRITICAL: Enhanced STUN/TURN servers for mobile reliability
       const iceServers = [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -193,7 +222,7 @@ export class EnhancedRealtimeService {
         { urls: 'stun:stun3.l.google.com:19302' },
         { urls: 'stun:stun4.l.google.com:19302' }
       ];
-      
+
       // ✅ ENHANCED: Mobile-optimized RTCConfiguration
       const rtcConfig: RTCConfiguration = {
         iceServers,
@@ -202,20 +231,20 @@ export class EnhancedRealtimeService {
         rtcpMuxPolicy: 'require', // Reduce port usage on mobile
         iceTransportPolicy: 'all' // Allow all transport types
       };
-      
+
       this.peerConnection = new RTCPeerConnection(rtcConfig);
-      
+
       // Set up audio handling with enhanced mobile support
       this.peerConnection.ontrack = (e) => {
         console.log('🎵 [ENHANCED] Received remote track', e.streams);
         if (this.audioElement && e.streams && e.streams[0]) {
           this.audioElement.srcObject = e.streams[0];
-          
+
           // ✅ PHASE 1: Don't mute remote audio - let user hear AI
           this.audioElement.muted = false;
           this.audioElement.volume = 1.0; // Full volume for AI speech
           console.log('🔊 [ENHANCED] Remote audio enabled for AI speech');
-          
+
           // ✅ NEW: Set up audio element for mobile optimization
           if (this.mobile_optimization_active) {
             this.audioElement.volume = 0.8; // Slightly lower volume on mobile
@@ -225,12 +254,12 @@ export class EnhancedRealtimeService {
           }
         }
       };
-      
+
       // ✅ ENHANCED: Connection state monitoring with mobile-specific handling
       this.peerConnection.onconnectionstatechange = () => {
         const state = this.peerConnection?.connectionState;
         console.log('🌐 [ENHANCED] Connection state changed:', state);
-        
+
         if (state === 'connected') {
           console.log('✅ [ENHANCED] WebRTC connection fully established');
           // ✅ CRITICAL: Ensure muting is still active after connection
@@ -243,71 +272,93 @@ export class EnhancedRealtimeService {
           }
         }
       };
-      
+
       // ✅ ENHANCED: Data channel with mobile-optimized settings
       this.dataChannel = this.peerConnection.createDataChannel('oai-events', {
         ordered: true,
         maxRetransmits: this.mobile_optimization_active ? 5 : 3 // Increased for mobile reliability
       });
-      
+
       this.dataChannel.onopen = () => {
         console.log('✅ [ENHANCED] Data channel opened');
         this.isConnected = true;
-        
+
         // ✅ CRITICAL: Final muting enforcement after data channel opens
         this.enforcePostConnectionMuting();
-        
+
         if (this.onConnectedCallback) this.onConnectedCallback();
       };
-      
+
       this.dataChannel.onclose = () => {
         console.log('❌ [ENHANCED] Data channel closed');
         this.isConnected = false;
         if (this.onDisconnectedCallback) this.onDisconnectedCallback();
       };
-      
+
       this.dataChannel.onmessage = (e) => {
         if (this.onMessageCallback) {
           try {
             const eventData = JSON.parse(e.data) as RealtimeEvent;
             console.log('📨 [ENHANCED] Received message type:', eventData.type);
-            
+
             // ✅ CRITICAL: Enhanced event handling with complete coverage
             this.handleEnhancedRealtimeEvent(eventData);
-            
-            // Log specific details for transcription events
+
+            // 🎯 STRATEGY 1: Track conversation items for truncation
             if (eventData.type === 'conversation.item.created') {
-              console.log('💬 Conversation item created:', 
-                eventData.item?.role, 
+              console.log('💬 Conversation item created:',
+                eventData.item?.role,
                 eventData.item?.content ? 'Content array present' : 'No content array',
                 eventData.item?.input ? 'Input present' : 'No input');
+              
+              // Add item ID to buffer and truncate if needed
+              this.handleConversationItemCreated(eventData);
             } else if (eventData.type === 'conversation.item.input_audio_transcription.completed') {
+              // 🎯 STRATEGY 2: Collect user transcripts
+              const transcript = eventData.transcript;
+              if (transcript) {
+                this.transcriptBuffer += `User: ${transcript}\n`;
+                this.messageCount++;
+                console.log('📝 [OPTIMIZATION] Collected user transcript, message count:', this.messageCount);
+              }
               console.log('📝 Transcription completed:', eventData.transcription?.text);
+            } else if (eventData.type === 'response.audio_transcript.done') {
+              // 🎯 STRATEGY 2: Collect AI transcripts
+              const aiTranscript = (eventData as any).transcript;
+              if (aiTranscript) {
+                this.transcriptBuffer += `AI: ${aiTranscript}\n`;
+                console.log('📝 [OPTIMIZATION] Collected AI transcript');
+                
+                // Check if we should summarize
+                if (this.messageCount > 0 && this.messageCount % this.SUMMARIZATION_INTERVAL === 0) {
+                  this.triggerSummarization();
+                }
+              }
             } else if (eventData.type === 'input_audio_buffer.speech_stopped') {
               // Emit user speaking completion event for conversation help modal hiding
               if (typeof window !== 'undefined') {
                 const userSpeakingCompleteEvent = new CustomEvent('user-speaking-complete');
                 window.dispatchEvent(userSpeakingCompleteEvent);
                 console.log('[CONVERSATION_HELP] Emitted user-speaking-complete event from input_audio_buffer.speech_stopped');
-                
+
                 // Also emit input-audio-stop for modal hiding with animation
                 const inputAudioStopEvent = new CustomEvent('input-audio-stop');
                 window.dispatchEvent(inputAudioStopEvent);
                 console.log('[CONVERSATION_HELP] Emitted input-audio-stop event for modal hiding with animation');
               }
             }
-            
+
             this.onMessageCallback(eventData);
           } catch (error) {
             console.error('❌ [ENHANCED] Error parsing message:', error);
           }
         }
       };
-      
+
       // ✅ ENHANCED: ICE handling with mobile optimization
       this.peerConnection.onicecandidate = (event) => {
         console.log('🧊 [ENHANCED] ICE candidate', event.candidate);
-        
+
         // ✅ NEW: Mobile-specific ICE candidate filtering
         if (this.mobile_optimization_active && event.candidate) {
           // Prefer relay candidates on mobile for better NAT traversal
@@ -316,20 +367,20 @@ export class EnhancedRealtimeService {
           }
         }
       };
-      
+
       this.peerConnection.oniceconnectionstatechange = () => {
         console.log('🧊 [ENHANCED] ICE connection state:', this.peerConnection?.iceConnectionState);
-        if (this.peerConnection?.iceConnectionState === 'failed' || 
-            this.peerConnection?.iceConnectionState === 'disconnected') {
+        if (this.peerConnection?.iceConnectionState === 'failed' ||
+          this.peerConnection?.iceConnectionState === 'disconnected') {
           console.warn('⚠️ [ENHANCED] ICE connection failed or disconnected');
-          
+
           // ✅ NEW: Mobile-specific ICE restart
           if (this.mobile_optimization_active) {
             this.handleMobileICEFailure();
           }
         }
       };
-      
+
       return true;
     } catch (error) {
       console.error('❌ [ENHANCED] Error setting up WebRTC:', error);
@@ -342,7 +393,7 @@ export class EnhancedRealtimeService {
    */
   private enforcePostConnectionMuting(): void {
     console.log('🔇 [ENHANCED] Enforcing post-connection muting...');
-    
+
     // ✅ CRITICAL: Ensure all audio tracks are muted
     if (this.localStream) {
       const audioTracks = this.localStream.getAudioTracks();
@@ -353,23 +404,23 @@ export class EnhancedRealtimeService {
         }
       });
     }
-    
+
     // ✅ PHASE 1: Don't mute remote audio - user needs to hear AI
     if (this.audioElement) {
       this.audioElement.muted = false;
       this.audioElement.volume = 1.0;
       console.log('🔊 [ENHANCED] Post-connection - Remote audio enabled for AI speech');
     }
-    
-      // ✅ CRITICAL: Initialize semantic mute controller if not already done
-      if (!this.semanticMuteController && this.localStream) {
-        this.initializeSemanticMuteController();
-      }
-      
-      // ✅ NEW: Set up user manual mute checker for semantic controller
-      if (this.semanticMuteController) {
-        this.semanticMuteController.setUserManualMuteChecker(() => this.user_manually_muted);
-      }
+
+    // ✅ CRITICAL: Initialize semantic mute controller if not already done
+    if (!this.semanticMuteController && this.localStream) {
+      this.initializeSemanticMuteController();
+    }
+
+    // ✅ NEW: Set up user manual mute checker for semantic controller
+    if (this.semanticMuteController) {
+      this.semanticMuteController.setUserManualMuteChecker(() => this.user_manually_muted);
+    }
   }
 
   /**
@@ -377,7 +428,7 @@ export class EnhancedRealtimeService {
    */
   private handleMobileICEFailure(): void {
     console.log('📱 [ENHANCED] Handling mobile ICE failure...');
-    
+
     // ✅ NEW: ICE restart for mobile networks
     if (this.peerConnection && this.peerConnection.restartIce) {
       console.log('🔄 [ENHANCED] Restarting ICE for mobile network recovery');
@@ -390,7 +441,7 @@ export class EnhancedRealtimeService {
    */
   private scheduleReconnection(): void {
     console.log('🔄 [ENHANCED] Scheduling reconnection for mobile network...');
-    
+
     setTimeout(() => {
       if (!this.isConnected && this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
@@ -399,7 +450,7 @@ export class EnhancedRealtimeService {
       }
     }, 2000 * this.reconnectAttempts); // Exponential backoff
   }
-  
+
   /**
    * ✅ ENHANCED: Request microphone access with BULLETPROOF mobile optimization
    */
@@ -407,7 +458,7 @@ export class EnhancedRealtimeService {
     try {
       console.log('🎤 [ENHANCED] Requesting microphone access with bulletproof mobile optimization...');
       if (typeof window === 'undefined') return false;
-      
+
       // Set up WebRTC if not already done
       if (!this.peerConnection) {
         console.log('🌐 [ENHANCED] Setting up WebRTC connection first...');
@@ -416,12 +467,12 @@ export class EnhancedRealtimeService {
           console.error('❌ [ENHANCED] Failed to set up WebRTC connection');
           return false;
         }
-        
+
         // ✅ ENHANCED: Longer delay for mobile browsers to ensure WebRTC is ready
         const delay = this.mobile_optimization_active ? 500 : 300;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
-      
+
       // Release any existing stream to avoid resource leaks
       if (this.localStream) {
         console.log('🧹 [ENHANCED] Releasing existing media stream...');
@@ -430,12 +481,12 @@ export class EnhancedRealtimeService {
           console.log(`🛑 Stopped track: ${track.kind}`);
         });
         this.localStream = null;
-        
+
         // Add a longer delay after stopping tracks for mobile browsers
         const delay = this.mobile_optimization_active ? 400 : 200;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
-      
+
       // ✅ BULLETPROOF: Enhanced constraints with MAXIMUM echo cancellation
       const constraints = {
         audio: {
@@ -443,7 +494,7 @@ export class EnhancedRealtimeService {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          
+
           // ✅ ENHANCED: Chrome/Chromium-based browsers (MAXIMUM settings)
           googEchoCancellation: true,
           googEchoCancellationType: "system",
@@ -458,20 +509,20 @@ export class EnhancedRealtimeService {
           googHighpassFilter: true,
           googTypingNoiseDetection: true,
           googAudioMirroring: false,
-          
+
           // ✅ ENHANCED: Firefox-specific optimizations (MAXIMUM settings)
           mozEchoCancellation: true,
           mozNoiseSuppression: true,
           mozAutoGainControl: true,
           mozEchoCancellationLevel: 3, // ✅ NEW: Maximum level
           mozNoiseSuppressionLevel: 3, // ✅ NEW: Maximum level
-          
+
           // ✅ ENHANCED: Safari/WebKit optimizations (MAXIMUM settings)
           webkitEchoCancellation: true,
           webkitNoiseSuppression: true,
           webkitAutoGainControl: true,
           webkitEchoCancellationLevel: 3, // ✅ NEW: Maximum level
-          
+
           // ✅ ENHANCED: Mobile-specific optimizations
           ...(this.mobile_optimization_active && {
             // ✅ CRITICAL: Mobile-specific latency and quality settings
@@ -480,17 +531,17 @@ export class EnhancedRealtimeService {
             channelCount: { ideal: 1, max: 1 }, // Mono for better processing
             sampleSize: { ideal: 16, min: 16 }, // High bit depth
             volume: { ideal: 0.9, max: 1.0 }, // Slightly lower volume
-            
+
             // ✅ NEW: Mobile-specific echo cancellation
             googMobileEchoCancellation: true,
             googMobileNoiseSuppression: true,
             googMobileAutoGainControl: true,
-            
+
             // ✅ NEW: iOS-specific optimizations
             webkitMobileEchoCancellation: true,
             webkitMobileNoiseSuppression: true,
           }),
-          
+
           // ✅ ENHANCED: Universal latency and quality optimization
           latency: { ideal: 0.01, max: 0.02 },
           sampleRate: { ideal: 48000 },
@@ -499,9 +550,9 @@ export class EnhancedRealtimeService {
           volume: { ideal: 1.0 }
         }
       };
-      
+
       console.log('🎤 [ENHANCED] Requesting user media with BULLETPROOF constraints:', JSON.stringify(constraints));
-      
+
       try {
         // ✅ ENHANCED: Longer timeout for mobile browsers
         const timeout = this.mobile_optimization_active ? 15000 : 10000;
@@ -509,17 +560,17 @@ export class EnhancedRealtimeService {
         const timeoutPromise = new Promise<MediaStream>((_, reject) => {
           setTimeout(() => reject(new Error('Microphone access request timed out')), timeout);
         });
-        
+
         this.localStream = await Promise.race([getUserMediaPromise, timeoutPromise]);
         console.log('✅ [ENHANCED] Microphone access granted', this.localStream);
       } catch (mediaError) {
         console.error('⚠️ [ENHANCED] First attempt to get user media failed:', mediaError);
-        
+
         // ✅ ENHANCED: More aggressive retry with simpler constraints
         const delay = this.mobile_optimization_active ? 1000 : 500;
         await new Promise(resolve => setTimeout(resolve, delay));
         console.log('🔄 [ENHANCED] Retrying with simpler constraints...');
-        
+
         try {
           // ✅ FALLBACK: Simpler constraints for problematic devices
           const fallbackConstraints = {
@@ -533,7 +584,7 @@ export class EnhancedRealtimeService {
               })
             }
           };
-          
+
           this.localStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
           console.log('✅ [ENHANCED] Microphone access granted on second attempt');
         } catch (retryError) {
@@ -541,7 +592,7 @@ export class EnhancedRealtimeService {
           throw retryError;
         }
       }
-      
+
       // Add audio track to peer connection
       if (this.peerConnection && this.localStream) {
         const audioTracks = this.localStream.getAudioTracks();
@@ -549,22 +600,22 @@ export class EnhancedRealtimeService {
           console.error('❌ [ENHANCED] No audio tracks found in media stream');
           return false;
         }
-        
+
         console.log('🎵 [ENHANCED] Adding audio track to peer connection', audioTracks[0].label);
-        
+
         try {
           const sender = this.peerConnection.addTrack(audioTracks[0], this.localStream);
           console.log('✅ [ENHANCED] Track added successfully, sender created:', sender ? 'Yes' : 'No');
-          
+
           // ✅ CRITICAL: IMMEDIATE muting of all tracks before any audio can leak
           audioTracks.forEach((track, index) => {
             track.enabled = false; // Start muted
             console.log(`🔇 [ENHANCED] Track ${index} IMMEDIATELY muted on creation`);
           });
-          
+
           // ✅ ENHANCED: Initialize SemanticMuteController with retry mechanism
           await this.initializeSemanticMuteController();
-          
+
           // ✅ ENHANCED: Longer delay after adding track for mobile browsers
           const delay = this.mobile_optimization_active ? 400 : 200;
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -574,11 +625,11 @@ export class EnhancedRealtimeService {
           return false;
         }
       }
-      
+
       return false;
     } catch (error) {
       console.error('❌ [ENHANCED] Error starting microphone:', error);
-      
+
       // Specific error handling for common issues
       if (error instanceof DOMException) {
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -589,7 +640,7 @@ export class EnhancedRealtimeService {
           console.error('🔒 [ENHANCED] Microphone is already in use by another application');
         }
       }
-      
+
       return false;
     }
   }
@@ -606,7 +657,7 @@ export class EnhancedRealtimeService {
     try {
       this.semanticMuteController = new SemanticMuteController();
       const muteControllerInitialized = await this.semanticMuteController.initialize(this.localStream);
-      
+
       if (muteControllerInitialized) {
         console.log('✅ [ENHANCED] SemanticMuteController initialized successfully');
         // ✅ NEW: Set up user manual mute checker
@@ -614,12 +665,12 @@ export class EnhancedRealtimeService {
       } else {
         console.warn('⚠️ [ENHANCED] SemanticMuteController initialization failed, using fallback');
         this.semanticMuteController = null;
-        
+
         // ✅ NEW: Retry mechanism for mobile browsers
         if (this.mobile_optimization_active) {
           console.log('🔄 [ENHANCED] Retrying SemanticMuteController initialization for mobile...');
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           try {
             this.semanticMuteController = new SemanticMuteController();
             const retryResult = await this.semanticMuteController.initialize(this.localStream);
@@ -646,7 +697,7 @@ export class EnhancedRealtimeService {
    */
   private handleEnhancedRealtimeEvent(eventData: RealtimeEvent): void {
     console.log(`🔧 [ENHANCED] Processing event: ${eventData.type}`);
-    
+
     // ✅ PHASE 1: Only mute on actual audio output, not preemptive
     switch (eventData.type) {
       // ✅ PHASE 1: Wait for actual audio before muting
@@ -674,6 +725,45 @@ export class EnhancedRealtimeService {
       case 'response.done':
         console.log('🔊 [ENHANCED] Response done - SCHEDULING FASTER UNMUTE');
         this.scheduleDelayedUnmute('AI response completed');
+        
+        // 💰 USAGE TRACKING: Extract token usage from response.done event
+        try {
+          const responseData = (eventData as any).response;
+          if (responseData && responseData.usage) {
+            const usage = responseData.usage;
+            console.log('💰 [USAGE] Extracting usage from response.done:', JSON.stringify(usage, null, 2));
+            
+            // Extract token counts from usage object
+            this.usageData.total_tokens = usage.total_tokens || 0;
+            
+            // Extract input tokens
+            const inputTokens = usage.input_tokens || 0;
+            const inputTokenDetails = usage.input_token_details || {};
+            this.usageData.text_input_tokens = inputTokenDetails.text_tokens || 0;
+            this.usageData.audio_input_tokens = inputTokenDetails.audio_tokens || 0;
+            this.usageData.cached_input_text_tokens = inputTokenDetails.cached_tokens || 0;
+            this.usageData.cached_input_audio_tokens = inputTokenDetails.cached_tokens_details?.audio_tokens || 0;
+            
+            // Extract output tokens
+            const outputTokens = usage.output_tokens || 0;
+            const outputTokenDetails = usage.output_token_details || {};
+            this.usageData.text_output_tokens = outputTokenDetails.text_tokens || 0;
+            this.usageData.audio_output_tokens = outputTokenDetails.audio_tokens || 0;
+            
+            console.log('💰 [USAGE] Updated token counts:');
+            console.log(`  - Total: ${this.usageData.total_tokens}`);
+            console.log(`  - Audio Input: ${this.usageData.audio_input_tokens}`);
+            console.log(`  - Audio Output: ${this.usageData.audio_output_tokens}`);
+            console.log(`  - Text Input: ${this.usageData.text_input_tokens}`);
+            console.log(`  - Text Output: ${this.usageData.text_output_tokens}`);
+            console.log(`  - Cached Audio Input: ${this.usageData.cached_input_audio_tokens}`);
+            console.log(`  - Cached Text Input: ${this.usageData.cached_input_text_tokens}`);
+          } else {
+            console.warn('⚠️ [USAGE] No usage data in response.done event');
+          }
+        } catch (usageError) {
+          console.error('❌ [USAGE] Error extracting usage data:', usageError);
+        }
         break;
 
       // ✅ USER SPEECH DETECTION - Immediate unmute
@@ -689,8 +779,8 @@ export class EnhancedRealtimeService {
 
       default:
         // Log other audio-related events for debugging
-        if (eventData.type.includes('audio') || eventData.type.includes('speech') || 
-            eventData.type.includes('response') || eventData.type.includes('assistant')) {
+        if (eventData.type.includes('audio') || eventData.type.includes('speech') ||
+          eventData.type.includes('response') || eventData.type.includes('assistant')) {
           console.log(`🔧 [ENHANCED] Unhandled audio event: ${eventData.type}`);
         }
         break;
@@ -711,16 +801,16 @@ export class EnhancedRealtimeService {
    */
   private executeImmediateMute(reason: string): void {
     console.log(`🔇 [ENHANCED] IMMEDIATE MUTE: ${reason}`);
-    
+
     this.ai_is_speaking = true;
     this.last_ai_speech_event = reason;
-    
+
     // Clear any pending unmute operations
     this.clearAllDelayedOperations();
-    
+
     // ✅ LAYER 1: Hardware-level track muting (IMMEDIATE)
     this.muteViaTrackEnabled(true);
-    
+
     // ✅ LAYER 2: SemanticMuteController (if available)
     if (this.semanticMuteController) {
       try {
@@ -729,7 +819,7 @@ export class EnhancedRealtimeService {
         console.error('❌ [ENHANCED] SemanticMuteController mute failed:', error);
       }
     }
-    
+
     // ✅ LAYER 3: Emergency timeout as safety net
     this.setEmergencyMuteTimeout(reason);
   }
@@ -739,22 +829,22 @@ export class EnhancedRealtimeService {
    */
   private executeImmediateUnmute(reason: string): void {
     console.log(`🔊 [ENHANCED] IMMEDIATE UNMUTE: ${reason}`);
-    
+
     this.ai_is_speaking = false;
     this.last_ai_speech_event = reason;
-    
+
     // Clear all pending operations
     this.clearAllDelayedOperations();
-    
+
     // ✅ CRITICAL: Check if user has manually muted their microphone
     if (this.user_manually_muted) {
       console.log(`🔇 [ENHANCED] SKIPPING IMMEDIATE UNMUTE - User has manually muted microphone`);
       return;
     }
-    
+
     // ✅ IMMEDIATE: Hardware-level track unmuting
     this.muteViaTrackEnabled(false);
-    
+
     // ✅ SemanticMuteController unmuting
     if (this.semanticMuteController) {
       try {
@@ -770,35 +860,35 @@ export class EnhancedRealtimeService {
    */
   private scheduleDelayedUnmute(reason: string): void {
     console.log(`⏰ [ENHANCED] SCHEDULING DELAYED UNMUTE: ${reason}`);
-    
+
     this.ai_is_speaking = false;
     this.last_ai_speech_event = reason;
-    
+
     // Clear any existing delayed operations
     this.clearAllDelayedOperations();
-    
+
     // ✅ PHASE 1: Reduced delay calculation
     const semanticDelay = 100; // Reduced from 300ms
     const tailProtection = 100; // Reduced from 500ms
     const mobileBuffer = this.mobile_optimization_active ? this.MOBILE_SAFETY_BUFFER : 0;
     const totalDelay = semanticDelay + tailProtection + mobileBuffer;
-    
+
     console.log(`⏰ [ENHANCED] Unmuting in ${totalDelay}ms (semantic: ${semanticDelay}ms + tail: ${tailProtection}ms + mobile: ${mobileBuffer}ms)`);
-    
+
     this.fallback_mute_timeout = setTimeout(() => {
       console.log(`🔊 [ENHANCED] EXECUTING DELAYED UNMUTE: ${reason}`);
-      
+
       // ✅ CRITICAL: Check if user has manually muted their microphone
       if (this.user_manually_muted) {
         console.log(`🔇 [ENHANCED] SKIPPING UNMUTE - User has manually muted microphone`);
         this.fallback_mute_timeout = null;
         return;
       }
-      
+
       // Double-check AI speaking state before unmuting
       if (!this.ai_is_speaking) {
         this.muteViaTrackEnabled(false);
-        
+
         // Also unmute via SemanticMuteController
         if (this.semanticMuteController) {
           try {
@@ -810,7 +900,7 @@ export class EnhancedRealtimeService {
       } else {
         console.log(`🚨 [ENHANCED] SKIPPING UNMUTE - AI still speaking`);
       }
-      
+
       this.fallback_mute_timeout = null;
     }, totalDelay);
   }
@@ -843,13 +933,13 @@ export class EnhancedRealtimeService {
         }
       });
 
-        // ✅ PHASE 1: Don't control remote audio volume - let user hear AI
-        if (this.audioElement) {
-          // Keep remote audio always enabled so user can hear AI
-          this.audioElement.muted = false;
-          this.audioElement.volume = this.mobile_optimization_active ? 0.8 : 1.0;
-          console.log('🔊 [ENHANCED] Remote audio kept enabled for AI speech');
-        }
+      // ✅ PHASE 1: Don't control remote audio volume - let user hear AI
+      if (this.audioElement) {
+        // Keep remote audio always enabled so user can hear AI
+        this.audioElement.muted = false;
+        this.audioElement.volume = this.mobile_optimization_active ? 0.8 : 1.0;
+        console.log('🔊 [ENHANCED] Remote audio kept enabled for AI speech');
+      }
 
       // Emit custom events for UI feedback
       if (typeof window !== 'undefined') {
@@ -915,19 +1005,19 @@ export class EnhancedRealtimeService {
         console.error('❌ [ENHANCED] Peer connection not initialized');
         return false;
       }
-      
+
       // Clear any existing timeout
       if (this.connectionAttemptTimeout) {
         clearTimeout(this.connectionAttemptTimeout);
       }
-      
+
       // Set connection timeout (longer for mobile)
       const timeout = this.mobile_optimization_active ? 20000 : 15000;
       this.connectionAttemptTimeout = setTimeout(() => {
         console.error('⏰ [ENHANCED] Connection attempt timed out');
         this.disconnect();
       }, timeout);
-      
+
       // Make sure data channel is created before creating the offer
       if (!this.dataChannel || this.dataChannel.readyState === 'closed') {
         console.log('🔄 [ENHANCED] Creating new data channel before offer...');
@@ -936,22 +1026,22 @@ export class EnhancedRealtimeService {
             ordered: true,
             maxRetransmits: this.mobile_optimization_active ? 5 : 3
           });
-          
+
           console.log('✅ [ENHANCED] Data channel created successfully');
-          
+
           this.dataChannel.onopen = () => {
             console.log('✅ [ENHANCED] Data channel opened');
             this.isConnected = true;
             this.enforcePostConnectionMuting();
             if (this.onConnectedCallback) this.onConnectedCallback();
           };
-          
+
           this.dataChannel.onclose = () => {
             console.log('❌ [ENHANCED] Data channel closed');
             this.isConnected = false;
             if (this.onDisconnectedCallback) this.onDisconnectedCallback();
           };
-          
+
           this.dataChannel.onmessage = (e) => {
             if (this.onMessageCallback) {
               try {
@@ -963,7 +1053,7 @@ export class EnhancedRealtimeService {
               }
             }
           };
-          
+
           // Add a delay after creating the data channel (longer for mobile)
           const delay = this.mobile_optimization_active ? 400 : 200;
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -972,24 +1062,24 @@ export class EnhancedRealtimeService {
           return false;
         }
       }
-      
+
       // Create offer
       console.log('📝 [ENHANCED] Creating offer...');
       let completeOffer: RTCSessionDescriptionInit | null = null;
-      
+
       try {
         const offer = await this.peerConnection.createOffer({
           offerToReceiveAudio: true
         });
-        
+
         console.log('📝 [ENHANCED] Setting local description...');
         await this.peerConnection.setLocalDescription(offer);
         console.log('✅ [ENHANCED] Local description set successfully');
-        
+
         // Add a delay after setting local description (longer for mobile)
         const delay = this.mobile_optimization_active ? 500 : 300;
         await new Promise(resolve => setTimeout(resolve, delay));
-        
+
         // Wait for ICE gathering to complete
         console.log('🧊 [ENHANCED] Waiting for ICE gathering to complete...');
         completeOffer = await this.waitForIceComplete();
@@ -997,17 +1087,17 @@ export class EnhancedRealtimeService {
           console.error('❌ [ENHANCED] Failed to gather ICE candidates');
           return false;
         }
-        
+
         console.log('✅ [ENHANCED] ICE gathering completed successfully');
       } catch (offerError) {
         console.error('❌ [ENHANCED] Error creating or processing offer:', offerError);
         return false;
       }
-      
+
       // Send offer to OpenAI
       console.log('📤 [ENHANCED] Sending offer to OpenAI...');
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-realtime';
+      const model = 'gpt-realtime-mini';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: completeOffer.sdp,
@@ -1016,28 +1106,28 @@ export class EnhancedRealtimeService {
           'Content-Type': 'application/sdp'
         },
       });
-      
+
       if (!sdpResponse.ok) {
         const errorText = await sdpResponse.text();
         console.error('❌ [ENHANCED] Error connecting to OpenAI:', errorText);
         return false;
       }
-      
+
       // Set remote description
       console.log('📝 [ENHANCED] Setting remote description...');
       const answer = {
         type: 'answer' as RTCSdpType,
         sdp: await sdpResponse.text(),
       };
-      
+
       await this.peerConnection.setRemoteDescription(answer);
-      
+
       // Clear timeout as connection was successful
       if (this.connectionAttemptTimeout) {
         clearTimeout(this.connectionAttemptTimeout);
         this.connectionAttemptTimeout = null;
       }
-      
+
       console.log('✅ [ENHANCED] Connected to OpenAI successfully');
       return true;
     } catch (error) {
@@ -1053,7 +1143,7 @@ export class EnhancedRealtimeService {
     if (!this.peerConnection || !this.peerConnection.localDescription) {
       return null;
     }
-    
+
     return new Promise((resolve) => {
       // Set a timeout to prevent waiting indefinitely (longer for mobile)
       const timeout = this.mobile_optimization_active ? 8000 : 5000;
@@ -1065,7 +1155,7 @@ export class EnhancedRealtimeService {
           resolve(null);
         }
       }, timeout);
-      
+
       const checkIce = () => {
         if (this.peerConnection?.iceGatheringState === 'complete') {
           clearTimeout(timeoutId);
@@ -1074,7 +1164,7 @@ export class EnhancedRealtimeService {
           setTimeout(checkIce, 100);
         }
       };
-      
+
       checkIce();
     });
   }
@@ -1087,19 +1177,19 @@ export class EnhancedRealtimeService {
       console.error('❌ [ENHANCED] Data channel not available, cannot send message');
       return false;
     }
-    
+
     // If data channel is connecting, wait for it to open
     if (this.dataChannel.readyState === 'connecting') {
       console.log('⏳ [ENHANCED] Data channel is connecting, waiting for it to open...');
       return false;
     }
-    
+
     // If data channel is not open, cannot send message
     if (this.dataChannel.readyState !== 'open') {
       console.error(`❌ [ENHANCED] Data channel not open (state: ${this.dataChannel.readyState}), cannot send message`);
       return false;
     }
-    
+
     try {
       const messageString = JSON.stringify(message);
       console.log('📤 [ENHANCED] Sending message:', message.type);
@@ -1116,53 +1206,53 @@ export class EnhancedRealtimeService {
    */
   public async startConversation(instructions?: string): Promise<boolean> {
     console.log('🚀 [ENHANCED] Starting conversation with bulletproof approach...');
-    
+
     // If we have conversation instructions (for resuming), we need to get a new ephemeral key
     if (instructions) {
       console.log('📝 [ENHANCED] Conversation instructions provided - getting new ephemeral key with context');
-      
+
       const newToken = await this.getEphemeralKey(
-        this.currentLanguage, 
+        this.currentLanguage,
         this.currentLevel,
         this.currentTopic,
         this.currentUserPrompt,
         this.currentAssessmentData,
         instructions
       );
-      
+
       if (!newToken) {
         console.error('❌ [ENHANCED] Failed to get new ephemeral key with conversation history');
         return false;
       }
-      
+
       this.ephemeralKey = newToken;
       console.log('✅ [ENHANCED] Updated ephemeral key with conversation context');
     }
-    
+
     // Check if data channel is ready
     if (!this.dataChannel) {
       console.error('❌ [ENHANCED] Data channel not initialized');
       return false;
     }
-    
+
     // Wait for data channel to be ready (longer timeout for mobile)
     if (this.dataChannel.readyState !== 'open') {
       console.log('⏳ [ENHANCED] Data channel not open, waiting before starting conversation...');
-      
+
       try {
         const timeout = this.mobile_optimization_active ? 12000 : 8000;
         await new Promise<void>((resolve, reject) => {
           const timeoutId = setTimeout(() => {
             reject(new Error('Timed out waiting for data channel to open'));
           }, timeout);
-          
+
           const checkDataChannel = () => {
             if (!this.dataChannel) {
               clearTimeout(timeoutId);
               reject(new Error('Data channel was cleared'));
               return;
             }
-            
+
             if (this.dataChannel.readyState === 'open') {
               clearTimeout(timeoutId);
               resolve();
@@ -1173,7 +1263,7 @@ export class EnhancedRealtimeService {
               setTimeout(checkDataChannel, 100);
             }
           };
-          
+
           checkDataChannel();
         });
       } catch (error) {
@@ -1181,12 +1271,12 @@ export class EnhancedRealtimeService {
         return false;
       }
     }
-    
+
     // Enhanced delay for mobile browsers to ensure everything is ready
     const delay = this.mobile_optimization_active ? 1000 : 800;
     console.log(`⏳ [ENHANCED] Ensuring data channel is fully ready (${delay}ms delay)...`);
     await new Promise(resolve => setTimeout(resolve, delay));
-    
+
     // Send response.create event to start the conversation immediately
     const event: RealtimeResponseCreateEvent = {
       type: 'response.create',
@@ -1194,7 +1284,7 @@ export class EnhancedRealtimeService {
         modalities: ['text', 'audio'],
       },
     };
-    
+
     console.log('✅ [ENHANCED] Starting conversation with response.create');
     return this.sendMessage(event);
   }
@@ -1205,15 +1295,15 @@ export class EnhancedRealtimeService {
   public pauseConversation(): boolean {
     try {
       console.log('⏸️ [ENHANCED] Pausing conversation (keeping connection alive)...');
-      
+
       if (!this.isConnected || !this.dataChannel) {
         console.warn('⚠️ [ENHANCED] Cannot pause - not connected or no data channel');
         return false;
       }
-      
+
       this.isPaused = true;
       this.pauseStartTime = Date.now();
-      
+
       // Mute the local audio track instead of stopping it
       if (this.localStream) {
         const audioTracks = this.localStream.getAudioTracks();
@@ -1222,13 +1312,13 @@ export class EnhancedRealtimeService {
           console.log('🔇 [ENHANCED] Muted audio track:', track.label);
         });
       }
-      
+
       // Mute the remote audio as well
       if (this.audioElement) {
         this.audioElement.muted = true;
         console.log('🔇 [ENHANCED] Muted remote audio');
       }
-      
+
       console.log('✅ [ENHANCED] Conversation paused successfully');
       return true;
     } catch (error) {
@@ -1236,28 +1326,28 @@ export class EnhancedRealtimeService {
       return false;
     }
   }
-  
+
   /**
    * Resume the conversation from pause
    */
   public resumeConversation(): boolean {
     try {
       console.log('▶️ [ENHANCED] Resuming conversation...');
-      
+
       if (!this.isPaused) {
         console.warn('⚠️ [ENHANCED] Conversation is not paused');
         return false;
       }
-      
+
       if (!this.isConnected || !this.dataChannel) {
         console.warn('⚠️ [ENHANCED] Cannot resume - not connected or no data channel');
         return false;
       }
-      
+
       // Calculate pause duration
       const pauseDuration = this.pauseStartTime ? Date.now() - this.pauseStartTime : 0;
       console.log(`⏱️ [ENHANCED] Resuming after ${pauseDuration}ms pause`);
-      
+
       // Unmute the local audio track
       if (this.localStream) {
         const audioTracks = this.localStream.getAudioTracks();
@@ -1266,16 +1356,16 @@ export class EnhancedRealtimeService {
           console.log('🔊 [ENHANCED] Unmuted audio track:', track.label);
         });
       }
-      
+
       // Unmute the remote audio
       if (this.audioElement) {
         this.audioElement.muted = false;
         console.log('🔊 [ENHANCED] Unmuted remote audio');
       }
-      
+
       this.isPaused = false;
       this.pauseStartTime = null;
-      
+
       console.log('✅ [ENHANCED] Conversation resumed successfully');
       return true;
     } catch (error) {
@@ -1283,14 +1373,14 @@ export class EnhancedRealtimeService {
       return false;
     }
   }
-  
+
   /**
    * Check if the conversation is currently paused
    */
   public isPausedState(): boolean {
     return this.isPaused;
   }
-  
+
   /**
    * Get pause duration in milliseconds
    */
@@ -1304,14 +1394,14 @@ export class EnhancedRealtimeService {
    */
   public emergencyMute(reason: string): void {
     console.log(`🚨 [ENHANCED] EMERGENCY MUTE ACTIVATED: ${reason}`);
-    
+
     this.clearAllDelayedOperations();
     this.ai_is_speaking = true;
     this.last_ai_speech_event = `EMERGENCY: ${reason}`;
-    
+
     // Triple-layer emergency muting
     this.muteViaTrackEnabled(true);
-    
+
     if (this.semanticMuteController) {
       try {
         this.semanticMuteController.forceMute(true, reason);
@@ -1319,7 +1409,7 @@ export class EnhancedRealtimeService {
         console.error('🚨 [ENHANCED] SemanticMuteController emergency mute failed:', error);
       }
     }
-    
+
     // Force remote audio mute
     if (this.audioElement) {
       this.audioElement.muted = true;
@@ -1331,14 +1421,14 @@ export class EnhancedRealtimeService {
    */
   public emergencyUnmute(reason: string): void {
     console.log(`🔊 [ENHANCED] EMERGENCY UNMUTE ACTIVATED: ${reason}`);
-    
+
     this.clearAllDelayedOperations();
     this.ai_is_speaking = false;
     this.last_ai_speech_event = `EMERGENCY UNMUTE: ${reason}`;
-    
+
     // Triple-layer emergency unmuting
     this.muteViaTrackEnabled(false);
-    
+
     if (this.semanticMuteController) {
       try {
         this.semanticMuteController.forceMute(false, reason);
@@ -1361,21 +1451,21 @@ export class EnhancedRealtimeService {
   public muteUserMicrophone(): boolean {
     try {
       console.log('🔇 [USER_MUTE] Muting user microphone on request');
-      
+
       if (!this.localStream) {
         console.warn('⚠️ [USER_MUTE] No local stream available');
         return false;
       }
-      
+
       const audioTracks = this.localStream.getAudioTracks();
       if (audioTracks.length === 0) {
         console.warn('⚠️ [USER_MUTE] No audio tracks found');
         return false;
       }
-      
+
       // ✅ CRITICAL: Set user manual mute flag
       this.user_manually_muted = true;
-      
+
       // Mute all audio tracks
       audioTracks.forEach((track, index) => {
         if (track.readyState === 'live') {
@@ -1383,7 +1473,7 @@ export class EnhancedRealtimeService {
           console.log(`🔇 [USER_MUTE] Track ${index} (${track.label}) muted by user`);
         }
       });
-      
+
       // Emit custom event for UI feedback
       if (typeof window !== 'undefined') {
         const event = new CustomEvent('user-microphone-muted', {
@@ -1394,7 +1484,7 @@ export class EnhancedRealtimeService {
         });
         window.dispatchEvent(event);
       }
-      
+
       console.log('✅ [USER_MUTE] User microphone muted successfully');
       return true;
     } catch (error) {
@@ -1409,21 +1499,21 @@ export class EnhancedRealtimeService {
   public unmuteUserMicrophone(): boolean {
     try {
       console.log('🔊 [USER_MUTE] Unmuting user microphone on request');
-      
+
       if (!this.localStream) {
         console.warn('⚠️ [USER_MUTE] No local stream available');
         return false;
       }
-      
+
       const audioTracks = this.localStream.getAudioTracks();
       if (audioTracks.length === 0) {
         console.warn('⚠️ [USER_MUTE] No audio tracks found');
         return false;
       }
-      
+
       // ✅ CRITICAL: Clear user manual mute flag
       this.user_manually_muted = false;
-      
+
       // Unmute all audio tracks
       audioTracks.forEach((track, index) => {
         if (track.readyState === 'live') {
@@ -1431,7 +1521,7 @@ export class EnhancedRealtimeService {
           console.log(`🔊 [USER_MUTE] Track ${index} (${track.label}) unmuted by user`);
         }
       });
-      
+
       // Emit custom event for UI feedback
       if (typeof window !== 'undefined') {
         const event = new CustomEvent('user-microphone-unmuted', {
@@ -1442,7 +1532,7 @@ export class EnhancedRealtimeService {
         });
         window.dispatchEvent(event);
       }
-      
+
       console.log('✅ [USER_MUTE] User microphone unmuted successfully');
       return true;
     } catch (error) {
@@ -1456,10 +1546,10 @@ export class EnhancedRealtimeService {
    */
   public isUserMicrophoneMuted(): boolean {
     if (!this.localStream) return true;
-    
+
     const audioTracks = this.localStream.getAudioTracks();
     if (audioTracks.length === 0) return true;
-    
+
     // Check if any track is enabled (not muted)
     return !audioTracks.some(track => track.enabled && track.readyState === 'live');
   }
@@ -1480,13 +1570,13 @@ export class EnhancedRealtimeService {
       pre_connection_mute_active: this.pre_connection_mute_active,
       echo_cancellation_level: this.echo_cancellation_level,
       audio_tracks_count: this.localStream ? this.localStream.getAudioTracks().length : 0,
-      audio_tracks_enabled: this.localStream ? 
+      audio_tracks_enabled: this.localStream ?
         this.localStream.getAudioTracks().map(track => ({
           label: track.label,
           enabled: track.enabled,
           readyState: track.readyState
         })) : [],
-      semantic_controller_diagnostics: this.semanticMuteController ? 
+      semantic_controller_diagnostics: this.semanticMuteController ?
         this.semanticMuteController.getDiagnostics() : null,
       // NEW: User mute status
       user_microphone_muted: this.isUserMicrophoneMuted()
@@ -1494,19 +1584,171 @@ export class EnhancedRealtimeService {
   }
 
   /**
+   * 💰 USAGE TRACKING: Log session usage to backend
+   */
+  private async logSessionUsage(): Promise<void> {
+    try {
+      const sessionEnd = new Date();
+      const durationSeconds = this.sessionStartTime
+        ? Math.floor((sessionEnd.getTime() - this.sessionStartTime.getTime()) / 1000)
+        : 0;
+
+      const usagePayload = {
+        session_id: this.sessionId,
+        user_id: this.sessionMetadata.user_id,
+        language: this.sessionMetadata.language,
+        level: this.sessionMetadata.level,
+        topic: this.sessionMetadata.topic,
+        audio_input_tokens: this.usageData.audio_input_tokens,
+        audio_output_tokens: this.usageData.audio_output_tokens,
+        text_input_tokens: this.usageData.text_input_tokens,
+        text_output_tokens: this.usageData.text_output_tokens,
+        cached_input_audio_tokens: this.usageData.cached_input_audio_tokens,
+        cached_input_text_tokens: this.usageData.cached_input_text_tokens,
+        total_tokens: this.usageData.total_tokens,
+      session_start: this.sessionStartTime?.toISOString(),
+      session_end: sessionEnd.toISOString(),
+      session_duration_seconds: durationSeconds,
+      model: 'gpt-realtime-mini'
+      };
+
+      console.log('💰 [USAGE] Logging session:', JSON.stringify(usagePayload, null, 2));
+
+      const response = await fetch(`${this.backendUrl}/api/realtime/usage-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(usagePayload),
+        credentials: 'same-origin'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ [USAGE] Logged successfully. Cost: $' + result.total_cost);
+      } else {
+        console.error('❌ [USAGE] Failed to log:', await response.text());
+      }
+    } catch (error) {
+      console.error('❌ [USAGE] Error logging:', error);
+    }
+  }
+
+  /**
+   * 🎯 STRATEGY 1: Handle conversation item creation and truncation
+   */
+  private handleConversationItemCreated(eventData: any): void {
+    const itemId = eventData.item?.id;
+    if (!itemId) {
+      console.warn('⚠️ [TRUNCATION] No item ID in conversation.item.created event');
+      return;
+    }
+
+    // Add to buffer
+    this.conversationBuffer.push(itemId);
+    console.log(`📊 [TRUNCATION] Buffer size: ${this.conversationBuffer.length}/${this.MAX_CONVERSATION_ITEMS}`);
+
+    // Only truncate if we have more than MAX_ITEMS and we're not during active speech
+    if (this.conversationBuffer.length > this.MAX_CONVERSATION_ITEMS && 
+        this.conversationBuffer.length > this.MIN_ITEMS_BEFORE_TRUNCATION &&
+        !this.ai_is_speaking) {
+      
+      const itemsToRemove = this.conversationBuffer.slice(0, -this.MAX_CONVERSATION_ITEMS);
+      console.log(`✂️ [TRUNCATION] Removing ${itemsToRemove.length} old items to reduce cached tokens`);
+      
+      // Send deletion events for old items
+      itemsToRemove.forEach(id => {
+        const deleteEvent = {
+          type: 'conversation.item.delete',
+          item_id: id
+        };
+        
+        if (this.sendMessage(deleteEvent)) {
+          console.log(`🗑️ [TRUNCATION] Deleted conversation item: ${id}`);
+        } else {
+          console.warn(`⚠️ [TRUNCATION] Failed to delete item: ${id}`);
+        }
+      });
+
+      // Keep only the last MAX_ITEMS in buffer
+      this.conversationBuffer = this.conversationBuffer.slice(-this.MAX_CONVERSATION_ITEMS);
+      console.log(`✅ [TRUNCATION] Buffer trimmed to ${this.conversationBuffer.length} items`);
+      console.log(`💰 [TRUNCATION] Expected cached token reduction: ~${itemsToRemove.length * 2} items removed`);
+    }
+  }
+
+  /**
+   * 🎯 STRATEGY 2: Trigger summarization of conversation
+   */
+  private async triggerSummarization(): Promise<void> {
+    if (!this.transcriptBuffer || this.transcriptBuffer.trim().length === 0) {
+      console.warn('⚠️ [SUMMARIZATION] No transcript buffer to summarize');
+      return;
+    }
+
+    console.log(`📝 [SUMMARIZATION] Triggering summarization after ${this.messageCount} messages`);
+    console.log(`📝 [SUMMARIZATION] Transcript length: ${this.transcriptBuffer.length} characters`);
+
+    try {
+      // Call backend summarization endpoint
+      const response = await fetch(`${this.backendUrl}/api/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: this.transcriptBuffer }),
+        credentials: 'same-origin'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const summary = result.summary;
+        console.log(`✅ [SUMMARIZATION] Generated summary: ${summary}`);
+
+        // Update session instructions with summary (NOT conversation.item.create)
+        const baseInstructions = `You are a helpful language tutor for ${this.sessionMetadata.language} at ${this.sessionMetadata.level} level.`;
+        const updateEvent = {
+          type: 'session.update',
+          session: {
+            instructions: `${baseInstructions}\n\nPrevious conversation context: ${summary}`
+          }
+        };
+
+        if (this.sendMessage(updateEvent)) {
+          console.log('✅ [SUMMARIZATION] Session updated with summary');
+          console.log('💰 [SUMMARIZATION] Cleared transcript buffer to reduce future cached tokens');
+          
+          // Clear the transcript buffer
+          this.transcriptBuffer = '';
+        } else {
+          console.warn('⚠️ [SUMMARIZATION] Failed to send session.update');
+        }
+      } else {
+        console.error('❌ [SUMMARIZATION] Backend summarization failed:', await response.text());
+      }
+    } catch (error) {
+      console.error('❌ [SUMMARIZATION] Error during summarization:', error);
+    }
+  }
+
+  /**
    * Disconnect and clean up all resources
    */
   public disconnect(): void {
     console.log('🧹 [ENHANCED] Disconnecting with enhanced cleanup...');
+
+    // 💰 USAGE TRACKING: Log session usage before cleanup
+    if (this.sessionId && this.sessionStartTime) {
+      this.logSessionUsage().catch(error => {
+        console.error('❌ [USAGE] Error logging session usage:', error);
+      });
+    }
+
     try {
       // Clear all timeouts
       this.clearAllDelayedOperations();
-      
+
       if (this.connectionAttemptTimeout) {
         clearTimeout(this.connectionAttemptTimeout);
         this.connectionAttemptTimeout = null;
       }
-      
+
       // Stop all media tracks first
       if (this.localStream) {
         console.log('🛑 [ENHANCED] Stopping local stream tracks...');
@@ -1521,7 +1763,7 @@ export class EnhancedRealtimeService {
         });
         this.localStream = null;
       }
-      
+
       // Close data channel
       if (this.dataChannel) {
         console.log('🔌 [ENHANCED] Closing data channel...');
@@ -1532,7 +1774,7 @@ export class EnhancedRealtimeService {
         }
         this.dataChannel = null;
       }
-      
+
       // Close peer connection
       if (this.peerConnection) {
         console.log('🔌 [ENHANCED] Closing peer connection...');
@@ -1543,26 +1785,31 @@ export class EnhancedRealtimeService {
         }
         this.peerConnection = null;
       }
-      
+
       // Clear audio element
       if (this.audioElement) {
         this.audioElement.srcObject = null;
         this.audioElement.muted = true;
       }
-      
+
       // Dispose of SemanticMuteController
       if (this.semanticMuteController) {
         this.semanticMuteController.dispose();
         this.semanticMuteController = null;
         console.log('✅ [ENHANCED] SemanticMuteController disposed');
       }
-      
+
       // Reset all state
       this.ai_is_speaking = false;
       this.fallback_protection_enabled = true;
       this.last_ai_speech_event = '';
       this.pre_connection_mute_active = false;
-      
+
+      // 🎯 OPTIMIZATION: Reset conversation tracking
+      this.conversationBuffer = [];
+      this.transcriptBuffer = '';
+      this.messageCount = 0;
+
       console.log('✅ [ENHANCED] Enhanced cleanup completed');
     } catch (e) {
       console.error('❌ [ENHANCED] Error during disconnect:', e);
@@ -1577,7 +1824,7 @@ export class EnhancedRealtimeService {
    * Convert language name to ISO-639-1 code
    */
   private getLanguageIsoCode(language: string): string {
-    const languageMap: {[key: string]: string} = {
+    const languageMap: { [key: string]: string } = {
       'english': 'en',
       'dutch': 'nl',
       'nederlands': 'nl',
@@ -1615,16 +1862,16 @@ export class EnhancedRealtimeService {
       'hebrew': 'he',
       'ukrainian': 'uk'
     };
-    
+
     return languageMap[language.toLowerCase()] || language.toLowerCase();
   }
-  
+
   /**
    * Get an ephemeral key from the backend
    */
   public async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any, conversationHistory?: string): Promise<string> {
     let usedMockToken = false;
-    
+
     try {
       console.log('================================================================================');
       console.log('🌐 [ENHANCED] Getting ephemeral key from backend...');
@@ -1635,15 +1882,15 @@ export class EnhancedRealtimeService {
       console.log('🌐 [ENHANCED] User prompt length:', userPrompt ? userPrompt.length : 0);
       console.log('🌐 [ENHANCED] Assessment data provided:', !!assessmentData);
       console.log('================================================================================');
-      
+
       if (!language || !level) {
         console.error('❌ [ENHANCED] Missing language or level parameters');
         throw new Error('Language and level are required parameters');
       }
-      
+
       let endpoint = `${this.backendUrl}/api/realtime/token`;
       console.log('📤 [ENHANCED] Fetching ephemeral key from:', endpoint);
-      
+
       let researchData = null;
       if (topic === 'custom') {
         const storedResearchData = sessionStorage.getItem('customTopicResearch');
@@ -1651,7 +1898,7 @@ export class EnhancedRealtimeService {
           try {
             const parsedResearch = JSON.parse(storedResearchData);
             console.log('🔍 [ENHANCED] Parsed research data structure:', parsedResearch);
-            
+
             if (parsedResearch.research) {
               researchData = parsedResearch.research;
               console.log('✅ [ENHANCED] Retrieved research data from "research" field:', researchData.length, 'characters');
@@ -1668,24 +1915,24 @@ export class EnhancedRealtimeService {
           console.log('⚠️ [ENHANCED] No research data found in session storage for custom topic');
         }
       }
-      
+
       let selectedVoice = 'alloy';
       try {
         const token = localStorage.getItem('token');
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
-        
+
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
-        
+
         const voiceResponse = await fetch(`${this.backendUrl}/auth/get-voice`, {
           method: 'GET',
           credentials: 'include',
           headers
         });
-        
+
         if (voiceResponse.ok) {
           const voiceData = await voiceResponse.json();
           if (voiceData.voice) {
@@ -1711,19 +1958,19 @@ export class EnhancedRealtimeService {
         research_data: researchData || null,
         conversation_history: conversationHistory || null
       };
-      
+
       if (assessmentData) {
         console.log('📊 [ENHANCED] Including assessment data in token request');
       }
-      
+
       if (topic === 'custom' && userPrompt) {
         console.log('🎯 [ENHANCED] Using custom topic with user prompt:', userPrompt.substring(0, 50) + (userPrompt.length > 50 ? '...' : ''));
       }
-      
+
       console.log('📋 [ENHANCED] Request body:', JSON.stringify(requestBody));
-      
+
       let realEndpointError: any = null;
-      
+
       try {
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -1733,11 +1980,31 @@ export class EnhancedRealtimeService {
           body: JSON.stringify(requestBody),
           credentials: 'omit',
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('📥 [ENHANCED] Received response from backend:', data);
-          
+
+          // 💰 USAGE TRACKING: Initialize session tracking
+          this.sessionId = data.id || 'unknown';
+          this.sessionStartTime = new Date();
+          this.sessionMetadata = {
+            language: language || 'unknown',
+            level: level || 'unknown',
+            topic: topic || null,
+            user_id: typeof window !== 'undefined' ? localStorage.getItem('userId') : null
+          };
+          this.usageData = {
+            audio_input_tokens: 0,
+            audio_output_tokens: 0,
+            text_input_tokens: 0,
+            text_output_tokens: 0,
+            cached_input_audio_tokens: 0,
+            cached_input_text_tokens: 0,
+            total_tokens: 0
+          };
+          console.log('💰 [USAGE] Session initialized:', this.sessionId);
+
           if (data.ephemeral_key) {
             console.log('✅ [ENHANCED] Successfully obtained real ephemeral key');
             return data.ephemeral_key;
@@ -1758,12 +2025,12 @@ export class EnhancedRealtimeService {
             console.error('❌ [ENHANCED] Error from real endpoint (status ' + response.status + '):', errorText);
             errorData = errorText;
           }
-          
+
           realEndpointError = {
             status: response.status,
             data: errorData
           };
-          
+
           throw new Error(`Token endpoint returned ${response.status}`);
         }
       } catch (error) {
@@ -1771,12 +2038,12 @@ export class EnhancedRealtimeService {
         realEndpointError = error;
         console.log('🔄 [ENHANCED] Real endpoint failed, trying mock endpoint as fallback...');
       }
-      
+
       usedMockToken = true;
       endpoint = `${this.backendUrl}/api/mock-token`;
       console.log('📤 [ENHANCED] Fetching mock ephemeral key from:', endpoint);
       console.log('📋 [ENHANCED] Mock request body:', JSON.stringify(requestBody));
-      
+
       try {
         const mockResponse = await fetch(endpoint, {
           method: 'POST',
@@ -1786,7 +2053,7 @@ export class EnhancedRealtimeService {
           body: JSON.stringify(requestBody),
           credentials: 'omit',
         });
-        
+
         if (!mockResponse.ok) {
           let errorInfo = '';
           try {
@@ -1795,19 +2062,19 @@ export class EnhancedRealtimeService {
           } catch (e) {
             errorInfo = await mockResponse.text();
           }
-          
+
           console.error(`❌ [ENHANCED] Failed to get mock ephemeral key (status ${mockResponse.status}):`, errorInfo);
-          
+
           if (realEndpointError) {
             throw new Error(`Real endpoint failed: ${realEndpointError.message || JSON.stringify(realEndpointError)}. Mock endpoint also failed (${mockResponse.status}): ${errorInfo}`);
           }
-          
+
           throw new Error(`Failed to get mock token: ${errorInfo}`);
         }
-        
+
         const mockData = await mockResponse.json();
         console.log('📥 [ENHANCED] Received mock response from backend');
-        
+
         if (mockData.ephemeral_key) {
           console.log('✅ [ENHANCED] Using mock ephemeral key for testing');
           return mockData.ephemeral_key;
@@ -1817,16 +2084,16 @@ export class EnhancedRealtimeService {
         }
       } catch (mockError) {
         console.error('❌ [ENHANCED] Error with mock endpoint:', mockError);
-        
+
         if (realEndpointError) {
           throw new Error(`Real endpoint error: ${realEndpointError.message || JSON.stringify(realEndpointError)}. Mock endpoint error: ${mockError instanceof Error ? mockError.message : String(mockError)}`);
         }
-        
+
         throw mockError;
       }
     } catch (error) {
       console.error('❌ [ENHANCED] Error getting ephemeral key:', error);
-      
+
       console.error('🔍 [ENHANCED] Detailed error context:', {
         error,
         language,
@@ -1835,7 +2102,7 @@ export class EnhancedRealtimeService {
         backendUrl: this.backendUrl,
         usedMockToken: usedMockToken || false
       });
-      
+
       return '';
     }
   }
