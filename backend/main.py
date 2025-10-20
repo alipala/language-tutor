@@ -1268,8 +1268,20 @@ async def log_realtime_usage(
             }
         }
         
-        # Get the model from usage_data, default to gpt-realtime-mini
-        model = usage_data.model if hasattr(usage_data, 'model') and usage_data.model else "gpt-realtime-mini"
+        # 🔥 FIX: Get the model from environment variable first, then fall back to usage_data
+        # This ensures cost calculation matches the actual model used in the session
+        env_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        usage_model = usage_data.model if hasattr(usage_data, 'model') and usage_data.model else "gpt-realtime-mini"
+        
+        # Use environment variable model if it's set, otherwise use the model from usage_data
+        model = env_model if os.getenv("OPENAI_REALTIME_MODEL") else usage_model
+        
+        # Log if there's a mismatch between environment and usage data
+        if env_model != usage_model:
+            print(f"⚠️ [USAGE_LOG] Model mismatch detected!")
+            print(f"   Environment variable: {env_model}")
+            print(f"   Usage data model: {usage_model}")
+            print(f"   Using: {model}")
         
         # Get pricing for the specific model
         if model not in PRICING:
