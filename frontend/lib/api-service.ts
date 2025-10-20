@@ -76,7 +76,7 @@ export async function fetchSubscriptionStatus(retryCount = 0, maxRetries = 8) {
   return apiCache.fetchWithCache(
     `subscription-status-${userId}`,
     async () => {
-      const response = await fetch('/api/stripe/subscription-status', {
+      const response = await fetch(`${API_URL}/api/stripe/subscription-status`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export async function fetchUnreadCount() {
   return apiCache.fetchWithCache(
     `unread-count-${userId}`,
     async () => {
-      const response = await fetch('/api/unread-count', {
+      const response = await fetch(`${API_URL}/api/unread-count`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
