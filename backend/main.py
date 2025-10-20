@@ -133,6 +133,10 @@ app.include_router(stripe_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include low minutes alert routes
+from low_minutes_alert import router as low_minutes_router
+app.include_router(low_minutes_router)
+
 # Include health ping routes
 from health_ping_routes import router as health_ping_router
 app.include_router(health_ping_router)
@@ -500,6 +504,8 @@ class RealtimeUsageData(BaseModel):
     session_duration_seconds: Optional[int] = None
     estimated_cost: float = 0.0
     model: str = "gpt-realtime-mini"
+    start_time: Optional[int] = None  # Unix timestamp for session start
+    end_time: Optional[int] = None    # Unix timestamp for session end
 
 # Initialize OpenAI client
 api_key = os.getenv("OPENAI_API_KEY")
@@ -1238,6 +1244,7 @@ async def log_realtime_usage(
     try:
         from database import usage_logs_collection
         from datetime import datetime, timezone
+        from openai_organization_costs import fetch_organization_costs, datetime_to_unix_timestamp
         
         # OpenAI Realtime API Pricing Configuration
         # Reference: https://platform.openai.com/docs/pricing
@@ -1331,6 +1338,91 @@ async def log_realtime_usage(
         print(f"Tokens per minute: {tokens_per_minute:,.0f}")
         print("="*80)
         
+        # 🔥 NEW: Fetch organization costs from OpenAI API
+        organization_cost = None
+        organization_cost_data = None
+        
+        # Convert session timestamps to Unix timestamps if provided
+        if usage_data.start_time:
+            # 🔥 SIMPLIFIED FIX: Only use start_time, let API handle daily bucketing
+            # The OpenAI API works best with just start_time and returns daily buckets
+            import time
+            current_time = int(time.time())
+            
+            start_time = usage_data.start_time
+            
+            # Validate timestamp is in the past
+            if start_time > current_time:
+                print(f"[ORG_COSTS] ⚠️ Start timestamp is in the future! start={start_time}, current={current_time}")
+                print(f"[ORG_COSTS] ⚠️ Skipping organization cost fetch - invalid timestamp")
+            else:
+                print(f"[ORG_COSTS] Fetching organization costs for start_time: {start_time}")
+                
+                try:
+                    # Only pass start_time, let API return daily bucket
+                    org_cost_result = await fetch_organization_costs(
+                        start_time=start_time,
+                        end_time=None,  # Let API handle bucketing
+                        limit=1
+                    )
+                
+                    if org_cost_result:
+                        organization_cost = org_cost_result.get("cost", 0.0)
+                        organization_cost_data = org_cost_result
+                        print(f"[ORG_COSTS] ✅ Organization cost fetched: ${organization_cost:.4f}")
+                        print(f"[ORG_COSTS] Currency: {org_cost_result.get('currency', 'usd').upper()}")
+                    else:
+                        print(f"[ORG_COSTS] ⚠️ No organization cost data available")
+                except Exception as org_cost_error:
+                    print(f"[ORG_COSTS] ❌ Error fetching organization costs: {str(org_cost_error)}")
+        else:
+            # If timestamps not provided, try to parse from session_start string only
+            try:
+                if usage_data.session_start:
+                    from dateutil import parser
+                    import time
+                    
+                    start_dt = parser.parse(usage_data.session_start)
+                    start_timestamp = datetime_to_unix_timestamp(start_dt)
+                    current_time = int(time.time())
+                    
+                    # Validate timestamp is in the past
+                    if start_timestamp > current_time:
+                        print(f"[ORG_COSTS] ⚠️ Parsed start timestamp is in the future! start={start_timestamp}, current={current_time}")
+                        print(f"[ORG_COSTS] ⚠️ Skipping organization cost fetch - invalid timestamp")
+                    else:
+                        # 🔥 FIX: Calculate end_time as 6 minutes (360 seconds) after start_time
+                        end_timestamp = start_timestamp + 360  # Add 6 minutes
+                        print(f"[ORG_COSTS] Parsed timestamps from session strings: {start_timestamp} to {end_timestamp}")
+                        
+                        # Use both start_time and end_time for precise cost tracking
+                        org_cost_result = await fetch_organization_costs(
+                            start_time=start_timestamp,
+                            end_time=end_timestamp,  # 🔥 FIX: Now properly set to 6 minutes later
+                            limit=1
+                        )
+                        
+                        if org_cost_result:
+                            organization_cost = org_cost_result.get("cost", 0.0)
+                            organization_cost_data = org_cost_result
+                            print(f"[ORG_COSTS] ✅ Organization cost fetched: ${organization_cost:.4f}")
+                        else:
+                            print(f"[ORG_COSTS] ⚠️ No organization cost data available")
+            except Exception as parse_error:
+                print(f"[ORG_COSTS] ⚠️ Could not parse session timestamp: {str(parse_error)}")
+        
+        # Log organization cost comparison if available
+        if organization_cost is not None:
+            cost_difference = abs(total_cost - organization_cost)
+            cost_difference_pct = (cost_difference / total_cost * 100) if total_cost > 0 else 0
+            
+            print("-"*80)
+            print(f"COST COMPARISON:")
+            print(f"  Calculated Cost: ${total_cost:.4f}")
+            print(f"  Organization Cost: ${organization_cost:.4f}")
+            print(f"  Difference: ${cost_difference:.4f} ({cost_difference_pct:.2f}%)")
+            print("="*80)
+        
         # Save to database
         usage_log_doc = {
             "user_id": current_user.id if current_user else usage_data.user_id,
@@ -1350,7 +1442,12 @@ async def log_realtime_usage(
             "session_duration_seconds": usage_data.session_duration_seconds,
             "total_cost": total_cost,
             "model": usage_data.model,
-            "logged_at": datetime.now(timezone.utc).isoformat()
+            "logged_at": datetime.now(timezone.utc).isoformat(),
+            # 🔥 NEW: Add organization cost fields
+            "start_time": usage_data.start_time,  # Unix timestamp
+            "end_time": usage_data.end_time,      # Unix timestamp
+            "organization_cost": organization_cost,  # Actual cost from OpenAI API
+            "organization_cost_data": organization_cost_data  # Full response data
         }
         
         result = await usage_logs_collection.insert_one(usage_log_doc)

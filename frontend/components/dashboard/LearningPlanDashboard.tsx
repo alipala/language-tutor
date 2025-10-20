@@ -10,6 +10,7 @@ import { EmptyState } from './EmptyState';
 import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
 import { 
   ChevronRight, 
   Loader2, 
@@ -21,10 +22,12 @@ import {
   Target,
   Play,
   CheckCircle,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import UpgradePrompt from '@/components/upgrade-prompt';
 import SessionModeModal from '@/components/session-mode-modal';
+import LowMinutesAlert from '@/components/LowMinutesAlert';
 
 interface ProgressStats {
   total_sessions: number;
@@ -85,6 +88,9 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   
   // Use shared subscription status hook
   const { refreshSubscriptionStatus } = useSubscriptionStatus();
+  
+  // Use low minutes alert hook
+  const { lowMinutesStatus, loading: lowMinutesLoading } = useLowMinutesAlert();
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -386,24 +392,29 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
 
         {/* Main Action Button for Registered Users - moved to bottom */}
         <motion.div
-          className="flex items-center justify-center mb-4"
+          className="flex flex-col items-center justify-center mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
           <button
             onClick={() => setShowSessionModeModal(true)}
-            className="bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500 font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden flex items-center justify-center
-            
-            /* Mobile-Optimized Design */
-            px-8 py-4 text-lg min-w-[300px] h-14
-            
-            /* Desktop Enhancement */
-            lg:px-12 lg:text-xl lg:min-w-[320px] lg:h-16"
+            className={`font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden flex items-center justify-center px-8 py-4 text-lg min-w-[300px] h-14 lg:px-12 lg:text-xl lg:min-w-[320px] lg:h-16 ${
+              !lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes
+                ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white border-2 border-orange-400'
+                : 'bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500'
+            }`}
           >
             {/* Animated gradient text effect */}
-            <span className="relative z-10 flex items-center justify-center">
-              <span className="animated-gradient-text">Start New Learning Session</span>
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              <span className={!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes ? '' : 'animated-gradient-text'}>
+                Start New Learning Session
+                {!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes && lowMinutesStatus.minutes_remaining && (
+                  <span className="ml-2 text-xs opacity-90">
+                    ({Math.floor(lowMinutesStatus.minutes_remaining)} min left)
+                  </span>
+                )}
+              </span>
             </span>
             
             {/* Animated background shimmer */}

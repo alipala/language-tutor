@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressRing } from './ProgressRing';
 import LearningPlanDetailsModal from './LearningPlanDetailsModal';
 import { LearningPlan } from '@/lib/learning-api';
+import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
 import {
   Play,
   Eye,
@@ -15,7 +16,8 @@ import {
   Clock,
   Target,
   BookOpen,
-  CheckCircle
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 interface LearningPlanCardProps {
@@ -74,12 +76,20 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
   const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  
+  // Check low minutes status
+  const { lowMinutesStatus } = useLowMinutesAlert();
 
   const progress = calculateProgress(plan);
   const completedSessions = plan.completed_sessions || 0;
   const totalSessions = plan.total_sessions || 24;
   const currentStreak = progressStats?.current_streak || 0;
   const isCompleted = progress >= 100;
+  
+  // Determine if we should show low minutes warning
+  const hasLowMinutes = lowMinutesStatus?.has_low_minutes && !lowMinutesStatus?.is_unlimited;
+  const minutesRemaining = lowMinutesStatus?.minutes_remaining || 0;
+  const showCriticalWarning = hasLowMinutes && minutesRemaining <= 1;
 
   const handleContinueLearning = () => {
     // Store plan context for speech practice
@@ -209,10 +219,12 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
             <Button
               onClick={handleContinueLearning}
               disabled={isCompleted}
-              className={`w-full font-medium py-3 rounded-xl transition-all duration-300 shadow-md ${
+              className={`w-full font-medium py-3 rounded-xl transition-all duration-300 shadow-md relative ${
                 isCompleted 
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white hover:shadow-lg'
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : hasLowMinutes
+                    ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white hover:shadow-lg'
+                    : 'bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white hover:shadow-lg'
               }`}
             >
               {isCompleted ? (
@@ -224,6 +236,11 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
                 <>
                   <Play className="h-4 w-4 mr-2" />
                   Continue Learning
+                  {hasLowMinutes && minutesRemaining > 0 && (
+                    <span className="ml-2 text-xs opacity-90">
+                      ({Math.floor(minutesRemaining)} min left)
+                    </span>
+                  )}
                 </>
               )}
             </Button>
