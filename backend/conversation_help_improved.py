@@ -13,6 +13,7 @@ import httpx
 import asyncio
 import hashlib
 from dotenv import load_dotenv
+from gpt4o_cost_tracker import GPT4oCostTracker
 
 # Load environment variables
 load_dotenv()
@@ -125,6 +126,23 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
             ),
             timeout=3.0
         )
+        
+        # Track GPT-4o cost for intent analysis
+        usage = response.usage
+        if usage:
+            try:
+                await GPT4oCostTracker.log_usage(
+                    user_id=None,  # Will be set by caller if available
+                    session_id="intent_analysis",
+                    usage_type="conversation_help_intent",
+                    input_tokens=usage.prompt_tokens,
+                    output_tokens=usage.completion_tokens,
+                    cached_tokens=getattr(usage, 'prompt_tokens_details', {}).get('cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
+                    language=request.target_language,
+                    context={"intent_analysis": True}
+                )
+            except Exception as track_error:
+                print(f"[INTENT_ANALYSIS] ⚠️ Cost tracking failed: {track_error}")
         
         content = response.choices[0].message.content.strip()
         
@@ -341,6 +359,23 @@ async def generate_contextual_responses(
             ),
             timeout=8.0  # INCREASED: Give GPT-4o enough time for quality responses
         )
+        
+        # Track GPT-4o cost for response generation
+        usage = response.usage
+        if usage:
+            try:
+                await GPT4oCostTracker.log_usage(
+                    user_id=None,  # Will be set by caller if available
+                    session_id="response_generation",
+                    usage_type="conversation_help_responses",
+                    input_tokens=usage.prompt_tokens,
+                    output_tokens=usage.completion_tokens,
+                    cached_tokens=getattr(usage, 'prompt_tokens_details', {}).get('cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
+                    language=request.target_language,
+                    context={"intent": intent.intent, "teaching_phase": intent.teaching_phase}
+                )
+            except Exception as track_error:
+                print(f"[RESPONSE_GEN] ⚠️ Cost tracking failed: {track_error}")
         
         content = response.choices[0].message.content.strip()
         
