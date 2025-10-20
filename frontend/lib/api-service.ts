@@ -14,8 +14,6 @@
 import { apiCache } from './api-cache';
 import { getApiUrl } from './api-utils';
 
-const API_URL = getApiUrl();
-
 // Cache durations (in milliseconds)
 const CACHE_DURATIONS = {
   SUBSCRIPTION_STATUS: 60000,      // 60 seconds
@@ -76,7 +74,8 @@ export async function fetchSubscriptionStatus(retryCount = 0, maxRetries = 8) {
   return apiCache.fetchWithCache(
     `subscription-status-${userId}`,
     async () => {
-      const response = await fetch(`${API_URL}/api/stripe/subscription-status`, {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/stripe/subscription-status`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -107,7 +106,8 @@ export async function fetchUnreadCount() {
   return apiCache.fetchWithCache(
     `unread-count-${userId}`,
     async () => {
-      const response = await fetch(`${API_URL}/api/unread-count`, {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/unread-count`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -137,7 +137,8 @@ export async function fetchProgressStats() {
   return apiCache.fetchWithCache(
     `progress-stats-${userId}`,
     async () => {
-      const response = await fetch(`${API_URL}/api/progress/stats`, {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/progress/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -167,7 +168,8 @@ export async function fetchConversationHistory(limit: number = 10) {
   return apiCache.fetchWithCache(
     `conversation-history-${userId}-${limit}`,
     async () => {
-      const response = await fetch(`${API_URL}/api/progress/conversations?limit=${limit}`, {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/progress/conversations?limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -197,7 +199,8 @@ export async function fetchAchievements() {
   return apiCache.fetchWithCache(
     `achievements-${userId}`,
     async () => {
-      const response = await fetch(`${API_URL}/api/progress/achievements`, {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/progress/achievements`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -227,7 +230,8 @@ export async function fetchLowMinutesCheck() {
   return apiCache.fetchWithCache(
     `low-minutes-check-${userId}`,
     async () => {
-      const response = await fetch(`${API_URL}/api/subscription/low-minutes-check`, {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/subscription/low-minutes-check`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
