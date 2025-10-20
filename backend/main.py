@@ -673,10 +673,11 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"🎤 [VOICE] Request voice: {request.voice}")
         print(f"🎤 [VOICE] Selected voice: {selected_voice}")
         
-        # ✅ Create ephemeral token with complete configuration for gpt-realtime-mini
+        # ✅ Create ephemeral token with complete configuration
         # This approach works reliably on desktop AND mobile browsers
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
         payload = {
-            "model": "gpt-realtime-mini",
+            "model": model,
             "voice": selected_voice,
             "instructions": instructions,  # ✅ All instructions here
             "modalities": ["audio", "text"],
@@ -2471,6 +2472,25 @@ async def get_transcription_status():
     except Exception as e:
         print(f"❌ Error getting transcription status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting transcription status: {str(e)}")
+
+# Add endpoint to get current model configuration
+@app.get("/api/realtime/model-config")
+async def get_model_config():
+    """
+    Get the current OpenAI Realtime API model configuration
+    """
+    try:
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        
+        return {
+            "model": model,
+            "configured_via": "environment_variable" if os.getenv("OPENAI_REALTIME_MODEL") else "default",
+            "available_models": ["gpt-realtime-mini", "gpt-realtime"],
+            "default_model": "gpt-realtime-mini"
+        }
+    except Exception as e:
+        print(f"❌ Error getting model config: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting model config: {str(e)}")
 
 # Add mock token endpoint for testing
 @app.post("/api/mock-token")
