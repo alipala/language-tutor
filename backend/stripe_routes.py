@@ -158,15 +158,13 @@ async def create_checkout_session(
         else:
             logger.error(f"[AUTH_CHECKOUT] ❌ WEBHOOK SECRET IS NONE!")
         
-        # Create checkout session with 7-day free trial
+        # Create checkout session with proper configuration
         try:
             logger.info(f"[AUTH_CHECKOUT] Creating Stripe checkout session...")
             
-            # CRITICAL DEBUG: Test if the issue is with subscription_data
-            logger.info(f"[AUTH_CHECKOUT] Testing minimal checkout session creation...")
-            
-            # Try creating a minimal checkout session first
-            minimal_session_data = {
+            # 🔥 FIX: Create checkout session with all required parameters
+            # The 400 error was likely due to missing or invalid configuration
+            checkout_session_data = {
                 "customer": customer_id,
                 "payment_method_types": ["card"],
                 "line_items": [
@@ -178,29 +176,49 @@ async def create_checkout_session(
                 "mode": "subscription",
                 "success_url": success_url,
                 "cancel_url": cancel_url,
-                "allow_promotion_codes": True,  # Enable promo code field
+                # 🔥 COUPON FIX: Enable promotion codes properly
+                "allow_promotion_codes": True,
+                # Add metadata for tracking
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "user_email": current_user.email
+                },
+                # Set billing address collection
+                "billing_address_collection": "auto",
+                # Set customer update to allow email updates
+                "customer_update": {
+                    "address": "auto",
+                    "name": "auto"
+                },
+                # Add subscription data with metadata
+                "subscription_data": {
+                    "metadata": {
+                        "user_id": str(current_user.id),
+                        "user_email": current_user.email
+                    }
+                }
             }
             
-            logger.info(f"[AUTH_CHECKOUT] Attempting minimal checkout session...")
-            checkout_session = stripe.checkout.Session.create(**minimal_session_data)
-            logger.info(f"[AUTH_CHECKOUT] ✅ Minimal checkout session created: {checkout_session.id}")
-            
-            # If minimal works, the issue was with subscription_data or other parameters
-            logger.info(f"[AUTH_CHECKOUT] SUCCESS: The issue was with subscription_data parameters!")
+            logger.info(f"[AUTH_CHECKOUT] Creating checkout session with full configuration...")
+            checkout_session = stripe.checkout.Session.create(**checkout_session_data)
+            logger.info(f"[AUTH_CHECKOUT] ✅ Checkout session created successfully: {checkout_session.id}")
+            logger.info(f"[AUTH_CHECKOUT] ✅ Promotion codes enabled: {checkout_session.allow_promotion_codes}")
             
         except Exception as checkout_error:
-            logger.error(f"[AUTH_CHECKOUT] ❌ Even minimal checkout session failed: {str(checkout_error)}")
+            logger.error(f"[AUTH_CHECKOUT] ❌ Checkout session creation failed: {str(checkout_error)}")
             logger.error(f"[AUTH_CHECKOUT] Error type: {type(checkout_error)}")
             import traceback
             logger.error(f"[AUTH_CHECKOUT] Full traceback: {traceback.format_exc()}")
             
             # Try to identify the exact issue
-            logger.error(f"[AUTH_CHECKOUT] Stripe API key type: {type(stripe.api_key)}")
-            logger.error(f"[AUTH_CHECKOUT] Stripe API key value: {stripe.api_key}")
+            logger.error(f"[AUTH_CHECKOUT] Stripe API key configured: {bool(stripe.api_key)}")
             logger.error(f"[AUTH_CHECKOUT] Customer ID: {customer_id}")
             logger.error(f"[AUTH_CHECKOUT] Price ID: {price_id}")
             
-            raise checkout_error
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to create checkout session: {str(checkout_error)}"
+            )
 
         logger.info(f"[AUTH_CHECKOUT] Created checkout session: {checkout_session.id}")
         return {"url": checkout_session.url}
