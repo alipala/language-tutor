@@ -32,8 +32,7 @@ export const useSubscriptionStatus = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        // Add cache busting to ensure fresh data
-        cache: 'no-cache'
+        cache: 'no-store', // Always fetch fresh data
       });
 
       if (response.ok) {

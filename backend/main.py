@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import httpx
@@ -49,6 +49,14 @@ if not os.getenv("OPENAI_API_KEY"):
     logger.error("Please configure OPENAI_API_KEY in environment variables")
 
 app = FastAPI(title="Language Tutor Backend API")
+
+# 🚀 PERFORMANCE: Enable GZip compression for all responses
+# This reduces payload sizes by 60-80% (e.g., 15KB → 3KB)
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000,  # Only compress responses larger than 1KB
+    compresslevel=6     # Balance between speed and compression ratio (1-9)
+)
 
 # CORS configuration
 # For Railway deployment, we need to ensure proper CORS settings

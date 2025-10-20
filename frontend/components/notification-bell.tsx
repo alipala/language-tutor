@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { fetchUnreadCount as fetchUnreadCountAPI } from '@/lib/api-service';
 
 interface Notification {
   id: string;
@@ -28,23 +29,15 @@ export default function NotificationBell({ className = '' }: NotificationBellPro
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Fetch unread count
+  // Fetch unread count using centralized API service
   const fetchUnreadCount = async () => {
     if (!user) return;
 
     try {
-      const response = await fetch('/api/unread-count', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.unread_count);
-      }
+      const data = await fetchUnreadCountAPI();
+      setUnreadCount(data.unread_count || 0);
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      console.error('[NOTIFICATION_BELL] Error fetching unread count:', error);
     }
   };
 

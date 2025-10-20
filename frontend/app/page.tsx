@@ -12,6 +12,7 @@ import SubscriptionPlans from '@/components/subscription-plans';
 import SoundWaveLoader from '@/components/sound-wave-loader';
 import './landing-sections.css';
 import { motion } from 'framer-motion';
+import { prefetchCriticalData } from '@/lib/api-service';
 
 // Export the main component
 export default function Home() {

@@ -259,62 +259,76 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     fetchVoicePreference();
   }, [user]);
 
-  // Fetch subscription information for the modal
+  // Fetch subscription information for the modal using centralized API service
   useEffect(() => {
-    const fetchSubscriptionInfo = async () => {
-      if (!user) return;
+    if (!showInfoModal || !user) return;
+
+    let retryCount = 0;
+    const maxRetries = 5;
+    let isMounted = true;
+    
+    const fetchSubscriptionInfo = async (): Promise<void> => {
+      if (!isMounted) return;
+
+      // Add a small delay to ensure token is in localStorage after login
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       try {
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          retryCount++;
+          if (retryCount < maxRetries && isMounted) {
+            console.log(`[SUBSCRIPTION_INFO] No token available yet, retry ${retryCount}/${maxRetries}...`);
+            // Retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, 300 * retryCount));
+            return fetchSubscriptionInfo(); // Recursive call
+          } else {
+            console.log('[SUBSCRIPTION_INFO] Max retries reached, token not available');
+            return;
+          }
+        }
 
-        const response = await fetch(`${getApiUrl()}/api/stripe/subscription-status`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const displayElement = document.getElementById('subscription-info-display');
+        const { fetchSubscriptionStatus } = await import('@/lib/api-service');
+        const data = await fetchSubscriptionStatus();
+        
+        if (!isMounted) return;
+        
+        const displayElement = document.getElementById('subscription-info-display');
+        
+        if (displayElement && data.limits) {
+          const { limits } = data;
+          let infoText = '';
           
-          if (displayElement && data.limits) {
-            const { limits } = data;
-            let infoText = '';
+          if (limits.is_unlimited) {
+            infoText = '✨ You have unlimited speaking time! Practice as much as you want.';
+          } else {
+            const minutesRemaining = Math.round(limits.minutes_remaining || 0);
+            const minutesLimit = limits.minutes_limit || 0;
+            const minutesUsed = Math.round(limits.minutes_used || 0);
             
-            if (limits.is_unlimited) {
-              infoText = '✨ You have unlimited speaking time! Practice as much as you want.';
-            } else {
-              const minutesRemaining = Math.round(limits.minutes_remaining || 0);
-              const minutesLimit = limits.minutes_limit || 0;
-              const minutesUsed = Math.round(limits.minutes_used || 0);
-              
-              infoText = `You have ${minutesRemaining} minutes remaining this ${data.period || 'month'}. (${minutesUsed}/${minutesLimit} minutes used)`;
-            }
-            
-            displayElement.textContent = infoText;
+            infoText = `You have ${minutesRemaining} minutes remaining this ${data.period || 'month'}. (${minutesUsed}/${minutesLimit} minutes used)`;
           }
-        } else {
-          console.error('[SUBSCRIPTION_INFO] Failed to fetch subscription status');
-          const displayElement = document.getElementById('subscription-info-display');
-          if (displayElement) {
-            displayElement.textContent = 'Unable to load subscription information.';
-          }
+          
+          displayElement.textContent = infoText;
+          console.log('[SUBSCRIPTION_INFO] ✅ Successfully loaded subscription info');
         }
       } catch (error) {
         console.error('[SUBSCRIPTION_INFO] Error fetching subscription info:', error);
+        if (!isMounted) return;
+        
         const displayElement = document.getElementById('subscription-info-display');
         if (displayElement) {
-          displayElement.textContent = 'Unable to load subscription information.';
+          // Show a more user-friendly message
+          displayElement.textContent = 'Subscription information will be available after you sign in.';
         }
       }
     };
 
-    // Only fetch when the modal is shown and user is authenticated
-    if (showInfoModal && user) {
-      fetchSubscriptionInfo();
-    }
+    fetchSubscriptionInfo();
+
+    return () => {
+      isMounted = false;
+    };
   }, [showInfoModal, user]);
   
   // Only log on initial render, not on every re-render
