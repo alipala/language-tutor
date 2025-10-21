@@ -42,26 +42,32 @@ const nextConfig = {
   // Proxy API requests to backend
   async rewrites() {
     // Use environment variable or default to localhost for development
-    // In production, this should be set via BACKEND_URL env var or left empty for same-origin
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-    console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl)
+    // For Railway production, use empty string for API routes to avoid redirects
+    const apiBackendUrl = process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT
+      ? (process.env.BACKEND_URL || '')
+      : backendUrl
+
+    console.log('[NEXT_CONFIG] Proxying API routes to:', apiBackendUrl)
+    console.log('[NEXT_CONFIG] Proxying auth routes to:', backendUrl)
+
     return [
       // Proxy /api/institution/* to /institution/* (strip /api prefix for institution routes)
       {
         source: '/api/institution/:path*',
-        destination: `${backendUrl}/institution/:path*`,
+        destination: `${apiBackendUrl}/institution/:path*`,
       },
       // Proxy /api/tutor/* to /tutor/* (strip /api prefix for tutor routes)
       {
         source: '/api/tutor/:path*',
-        destination: `${backendUrl}/tutor/:path*`,
+        destination: `${apiBackendUrl}/tutor/:path*`,
       },
       // Proxy /api/* routes to backend (keep /api prefix for other API routes)
       {
         source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
+        destination: `${apiBackendUrl}/api/:path*`,
       },
-      // Proxy /auth/* routes to backend (for Google OAuth)
+      // Proxy /auth/* routes to backend (for Google OAuth) - keep original backendUrl
       {
         source: '/auth/:path*',
         destination: `${backendUrl}/auth/:path*`,
