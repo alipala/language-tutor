@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchUnreadCount as fetchUnreadCountAPI } from '@/lib/api-service';
-import { getApiUrl } from '@/lib/api-utils';
 
 interface Notification {
   id: string;
@@ -48,8 +47,7 @@ export default function NotificationBell({ className = '' }: NotificationBellPro
 
     setLoading(true);
     try {
-      const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/?limit=10`, {
+      const response = await fetch('/api/?limit=10', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -72,8 +70,7 @@ export default function NotificationBell({ className = '' }: NotificationBellPro
     if (!user) return;
 
     try {
-      const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/mark-read`, {
+      const response = await fetch('/api/mark-read', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,8 +100,7 @@ export default function NotificationBell({ className = '' }: NotificationBellPro
     if (!user) return;
 
     try {
-      const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/mark-all-read`, {
+      const response = await fetch('/api/mark-all-read', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
