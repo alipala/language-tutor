@@ -12,6 +12,10 @@ restartPolicyMaxRetries = 10
 name = "RAILWAY_HEALTHCHECK_PORT"
 value = "8000"
 
+[[deploy.environmentVariables]]
+name = "BACKEND_URL"
+value = "http://localhost:8000"
+
 [nixpacks]
 nodejs-version = "20"
 python-version = "3.11"
