@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Force new build ID to prevent caching issues
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
   // Remove console logs in production for security
