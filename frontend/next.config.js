@@ -43,18 +43,15 @@ const nextConfig = {
   async rewrites() {
     // Use environment variable or default to localhost for development
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-    // For production, default to empty string (same-origin) if BACKEND_URL not set
-    const apiBackendUrl = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8000')
+    // For Railway production, use empty string for API routes to avoid redirects
+    const apiBackendUrl = process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT
+      ? (process.env.BACKEND_URL || '')
+      : backendUrl
 
-    console.log('[NEXT_CONFIG] Proxying API routes to:', apiBackendUrl || '(same-origin)')
+    console.log('[NEXT_CONFIG] Proxying API routes to:', apiBackendUrl)
     console.log('[NEXT_CONFIG] Proxying auth routes to:', backendUrl)
 
     return [
-      // Proxy /api (exact match, no trailing slash)
-      {
-        source: '/api',
-        destination: `${apiBackendUrl}/api`,
-      },
       // Proxy /api/institution/* to /institution/* (strip /api prefix for institution routes)
       {
         source: '/api/institution/:path*',
