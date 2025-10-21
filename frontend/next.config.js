@@ -42,9 +42,11 @@ const nextConfig = {
   // Proxy API requests to backend
   async rewrites() {
     // Use environment variable or default to localhost for development
-    // In production, this should be set via BACKEND_URL env var or left empty for same-origin
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-    console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl)
+    // In production, default to empty string for same-origin API calls
+    const backendUrl = process.env.NODE_ENV === 'production'
+      ? (process.env.BACKEND_URL || '')
+      : (process.env.BACKEND_URL || 'http://localhost:8000')
+    console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl || '(same-origin)')
     return [
       // Proxy /api/institution/* to /institution/* (strip /api prefix for institution routes)
       {
