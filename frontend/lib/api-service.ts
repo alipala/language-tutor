@@ -98,7 +98,7 @@ export async function fetchSubscriptionStatus(retryCount = 0, maxRetries = 8) {
 export async function fetchUnreadCount() {
   const token = getAuthToken();
   const userId = getUserId();
-  
+
   if (!token || !userId) {
     return { unread_count: 0 };
   }
@@ -106,8 +106,8 @@ export async function fetchUnreadCount() {
   return apiCache.fetchWithCache(
     `unread-count-${userId}`,
     async () => {
-      const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/unread-count`, {
+      // Use relative URL to leverage Next.js rewrites
+      const response = await fetch(`/api/unread-count`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

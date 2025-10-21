@@ -14,8 +14,20 @@ export function getApiUrl(): string {
       return '';
     }
   }
+
   // Default to environment variable or localhost
   const fallbackUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+  // NEVER return localhost URLs in production-like environments
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname.includes('railway.app') || hostname === 'mytacoai.com' ||
+        (hostname !== 'localhost' && hostname !== '127.0.0.1')) {
+      console.log(`[API_UTILS] Forcing same-origin API URL for production hostname ${hostname}`);
+      return '';
+    }
+  }
+
   console.log(`[API_UTILS] Using fallback API URL: ${fallbackUrl}`);
   return fallbackUrl;
 }
