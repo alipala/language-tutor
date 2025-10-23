@@ -120,6 +120,252 @@ export const getLearningGoals = async (): Promise<LearningGoal[]> => {
   return await response.json();
 };
 
+// Flashcard API functions
+export interface Flashcard {
+  id: string;
+  session_id: string;
+  user_id: string;
+  language: string;
+  level: string;
+  topic?: string;
+  front: string;
+  back: string;
+  category: string;
+  difficulty: string;
+  tags: string[];
+  created_at: string;
+  last_reviewed?: string;
+  review_count: number;
+  correct_count: number;
+  incorrect_count: number;
+  mastery_level: number;
+  next_review_date?: string;
+  is_active: boolean;
+}
+
+export interface FlashcardSet {
+  id: string;
+  session_id: string;
+  user_id: string;
+  language: string;
+  level: string;
+  topic?: string;
+  title: string;
+  description: string;
+  flashcards: Flashcard[];
+  total_cards: number;
+  created_at: string;
+  is_completed: boolean;
+  completed_at?: string;
+}
+
+export interface FlashcardGenerationRequest {
+  session_id: string;
+  language: string;
+  level: string;
+  topic?: string;
+  conversation_content?: string;
+  session_summary?: string;
+  count?: number;
+}
+
+export interface FlashcardReviewRequest {
+  flashcard_id: string;
+  correct: boolean;
+}
+
+export interface FlashcardProgress {
+  total_cards: number;
+  reviewed_today: number;
+  due_today: number;
+  mastered_cards: number;
+  average_mastery: number;
+}
+
+// Generate flashcards from a speaking session
+export const generateFlashcards = async (request: FlashcardGenerationRequest): Promise<FlashcardSet> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to generate flashcards');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to generate flashcards');
+  }
+
+  return await response.json();
+};
+
+// Get all flashcard sets for the current user
+export const getUserFlashcardSets = async (): Promise<FlashcardSet[]> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to access flashcard sets');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/sets`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch flashcard sets');
+  }
+
+  return await response.json();
+};
+
+// Get a specific flashcard set with all its flashcards
+export const getFlashcardSet = async (setId: string): Promise<FlashcardSet> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to access flashcard set');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/set/${setId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch flashcard set');
+  }
+
+  return await response.json();
+};
+
+// Get flashcards that are due for review
+export const getDueFlashcards = async (limit: number = 10): Promise<Flashcard[]> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to access due flashcards');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/due?limit=${limit}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch due flashcards');
+  }
+
+  return await response.json();
+};
+
+// Review a flashcard (mark as correct or incorrect)
+export const reviewFlashcard = async (request: FlashcardReviewRequest): Promise<any> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to review flashcards');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/review`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to review flashcard');
+  }
+
+  return await response.json();
+};
+
+// Get overall flashcard progress statistics
+export const getFlashcardProgress = async (): Promise<FlashcardProgress> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to access flashcard progress');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/progress`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch flashcard progress');
+  }
+
+  return await response.json();
+};
+
+// Delete a flashcard set
+export const deleteFlashcardSet = async (setId: string): Promise<any> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to delete flashcard set');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/set/${setId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to delete flashcard set');
+  }
+
+  return await response.json();
+};
+
 // Create learning plan
 export const createLearningPlan = async (planRequest: LearningPlanRequest): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();

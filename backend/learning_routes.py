@@ -1124,6 +1124,44 @@ async def save_session_summary(
             {"$set": update_fields}
         )
         
+        # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards after session completion
+        flashcard_generation_success = False
+        generated_flashcards = 0
+
+        try:
+            from flashcard_service import FlashcardService
+            from models import FlashcardGenerationRequest
+
+            # Create flashcard generation request
+            flashcard_request = FlashcardGenerationRequest(
+                session_id=str(uuid.uuid4()),  # Generate unique session ID for flashcards
+                language=learning_plan.get("language", "english"),
+                level=learning_plan.get("proficiency_level", "B1"),
+                topic=request.topic if request and request.topic else None,
+                conversation_content=None,  # Could be added later if conversation data is available
+                session_summary=session_summary,
+                count=5  # Generate 5 flashcards per session
+            )
+
+            print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for completed session")
+            print(f"[FLASHCARD_INTEGRATION] Language: {flashcard_request.language}, Level: {flashcard_request.level}")
+
+            # Generate flashcards
+            flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+
+            if flashcard_set and flashcard_set.flashcards:
+                generated_flashcards = len(flashcard_set.flashcards)
+                flashcard_generation_success = True
+                print(f"[FLASHCARD_INTEGRATION] ✅ Generated {generated_flashcards} flashcards successfully")
+            else:
+                print(f"[FLASHCARD_INTEGRATION] ⚠️ Flashcard generation returned empty result")
+
+        except Exception as flashcard_error:
+            print(f"[FLASHCARD_INTEGRATION] ❌ Flashcard generation failed: {str(flashcard_error)}")
+            # Don't fail the session save if flashcard generation fails
+            flashcard_generation_success = False
+            generated_flashcards = 0
+
         if result.modified_count > 0:
             print(f"[SESSION_SUMMARY] ✅ Learning plan updated successfully")
             print(f"[SESSION_SUMMARY] 🎉 Session summary saved with UNIFIED TRACKING!")
@@ -1135,7 +1173,9 @@ async def save_session_summary(
                 "session_in_week": session_in_week,
                 "progress_percentage": progress_percentage,
                 "duration_minutes": duration_minutes,
-                "subscription_tracked": subscription_tracked
+                "subscription_tracked": subscription_tracked,
+                "flashcards_generated": generated_flashcards,
+                "flashcard_generation_success": flashcard_generation_success
             }
         else:
             print(f"[SESSION_SUMMARY] ❌ Failed to update learning plan in database")
