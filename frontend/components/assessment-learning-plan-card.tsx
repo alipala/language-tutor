@@ -147,7 +147,7 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
 
   // Check if user has insufficient minutes for a session (< 5 minutes)
-  const hasInsufficientMinutes = lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited;
+  const hasInsufficientMinutes = !!(lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited);
   
   return (
     <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border-2" style={{ borderColor: '#4ECFBF' }}>

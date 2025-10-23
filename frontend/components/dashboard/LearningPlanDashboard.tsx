@@ -94,7 +94,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   const { lowMinutesStatus, loading: lowMinutesLoading } = useLowMinutesAlert();
 
   // Check if user has insufficient minutes for a session (< 5 minutes)
-  const hasInsufficientMinutes = !lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited;
+  const hasInsufficientMinutes = !!(!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited);
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
