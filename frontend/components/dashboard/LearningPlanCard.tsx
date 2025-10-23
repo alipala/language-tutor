@@ -91,6 +91,9 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
   const minutesRemaining = lowMinutesStatus?.minutes_remaining || 0;
   const showCriticalWarning = hasLowMinutes && minutesRemaining <= 1;
 
+  // Check if user has insufficient minutes for a session (< 5 minutes)
+  const hasInsufficientMinutes = minutesRemaining < 5 && !lowMinutesStatus?.is_unlimited;
+
   const handleContinueLearning = () => {
     // Store plan context for speech practice
     sessionStorage.setItem('selectedLanguage', plan.language);
@@ -218,9 +221,9 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
           <div className="space-y-3">
             <Button
               onClick={handleContinueLearning}
-              disabled={isCompleted}
+              disabled={isCompleted || hasInsufficientMinutes}
               className={`w-full font-medium py-3 rounded-xl transition-all duration-300 shadow-md relative ${
-                isCompleted 
+                isCompleted || hasInsufficientMinutes
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : hasLowMinutes
                     ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white hover:shadow-lg'
@@ -231,6 +234,14 @@ export const LearningPlanCard: React.FC<LearningPlanCardProps> = ({
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Plan Completed
+                </>
+              ) : hasInsufficientMinutes ? (
+                <>
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Insufficient Minutes
+                  <span className="ml-2 text-xs">
+                    (Need 5+ min)
+                  </span>
                 </>
               ) : (
                 <>

@@ -5,12 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useRouter } from 'next/navigation';
 import ShareProgressModal from './share-progress-modal';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Award, 
-  Target, 
-  BookOpen, 
+import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
+import {
+  ChevronDown,
+  ChevronRight,
+  Award,
+  Target,
+  BookOpen,
   TrendingUp,
   CheckCircle,
   Star,
@@ -26,7 +27,8 @@ import {
   MessageCircle,
   Copy,
   X,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 
 interface SkillData {
@@ -126,10 +128,10 @@ const getProgressBarColor = (progress: number) => {
   return '#F75A5A';
 };
 
-export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProps> = ({ 
-  assessment, 
+export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProps> = ({
+  assessment,
   learningPlan,
-  isExpanded, 
+  isExpanded,
   onToggle,
   index
 }) => {
@@ -137,9 +139,15 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [currentWeekPage, setCurrentWeekPage] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
-  
+
+  // Check low minutes status
+  const { lowMinutesStatus } = useLowMinutesAlert();
+
   const formattedDate = assessment.date ? formatDate(new Date(assessment.date)) : 'N/A';
   const planDate = learningPlan?.created_at ? formatDate(new Date(learningPlan.created_at)) : null;
+
+  // Check if user has insufficient minutes for a session (< 5 minutes)
+  const hasInsufficientMinutes = !!(lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited);
   
   return (
     <div className="mb-6 bg-white rounded-2xl shadow-lg overflow-hidden border-2" style={{ borderColor: '#4ECFBF' }}>
@@ -919,20 +927,25 @@ export const AssessmentLearningPlanCard: React.FC<AssessmentLearningPlanCardProp
               
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                <Button 
+                <Button
                   onClick={() => router.push(`/speech?plan=${learningPlan.id}`)}
-                  disabled={(learningPlan.progress_percentage || 0) >= 100}
+                  disabled={((learningPlan.progress_percentage || 0) >= 100) || hasInsufficientMinutes}
                   className={`flex-1 py-3 px-6 rounded-xl font-medium transition-opacity flex items-center justify-center ${
-                    (learningPlan.progress_percentage || 0) >= 100
+                    ((learningPlan.progress_percentage || 0) >= 100) || hasInsufficientMinutes
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'text-white hover:opacity-90'
                   }`}
-                  style={(learningPlan.progress_percentage || 0) >= 100 ? {} : { backgroundColor: '#4ECFBF' }}
+                  style={((learningPlan.progress_percentage || 0) >= 100) || hasInsufficientMinutes ? {} : { backgroundColor: '#4ECFBF' }}
                 >
-                  {(learningPlan.progress_percentage || 0) >= 100 ? (
+                  {((learningPlan.progress_percentage || 0) >= 100) ? (
                     <>
                       <CheckCircle className="h-5 w-5 mr-2" />
                       Plan Completed
+                    </>
+                  ) : hasInsufficientMinutes ? (
+                    <>
+                      <AlertTriangle className="h-5 w-5 mr-2" />
+                      Insufficient Minutes
                     </>
                   ) : (
                     <>

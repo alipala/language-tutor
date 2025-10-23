@@ -93,6 +93,9 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   // Use low minutes alert hook
   const { lowMinutesStatus, loading: lowMinutesLoading } = useLowMinutesAlert();
 
+  // Check if user has insufficient minutes for a session (< 5 minutes)
+  const hasInsufficientMinutes = !!(!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited);
+
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -388,27 +391,42 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
           transition={{ duration: 0.6, delay: 0.4 }}
         >
           <button
-            onClick={() => setShowSessionModeModal(true)}
-            className={`font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden flex items-center justify-center px-8 py-4 text-lg min-w-[300px] h-14 lg:px-12 lg:text-xl lg:min-w-[320px] lg:h-16 ${
-              !lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes
-                ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white border-2 border-orange-400'
-                : 'bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500'
+            onClick={() => !hasInsufficientMinutes && setShowSessionModeModal(true)}
+            disabled={hasInsufficientMinutes}
+            className={`font-semibold rounded-xl transition-all duration-300 shadow-lg relative overflow-hidden flex items-center justify-center px-8 py-4 text-lg min-w-[300px] h-14 lg:px-12 lg:text-xl lg:min-w-[320px] lg:h-16 ${
+              hasInsufficientMinutes
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-300'
+                : !lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes
+                  ? 'hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white border-2 border-orange-400'
+                  : 'hover:shadow-xl transform hover:scale-105 bg-white hover:bg-white border-2 border-teal-500 hover:border-teal-400 text-teal-600 hover:text-teal-500'
             }`}
           >
             {/* Animated gradient text effect */}
             <span className="relative z-10 flex items-center justify-center gap-2">
-              <span className={!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes ? '' : 'animated-gradient-text'}>
-                Start New Learning Session
-                {!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes && lowMinutesStatus.minutes_remaining && (
-                  <span className="ml-2 text-xs opacity-90">
-                    ({Math.floor(lowMinutesStatus.minutes_remaining)} min left)
+              {hasInsufficientMinutes ? (
+                <>
+                  <AlertTriangle className="h-5 w-5" />
+                  Insufficient Minutes
+                  <span className="ml-2 text-xs">
+                    (Need 5+ min)
                   </span>
-                )}
-              </span>
+                </>
+              ) : (
+                <span className={!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes ? '' : 'animated-gradient-text'}>
+                  Start New Learning Session
+                  {!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.has_low_minutes && lowMinutesStatus.minutes_remaining !== null && (
+                    <span className="ml-2 text-xs opacity-90">
+                      ({Math.floor(lowMinutesStatus.minutes_remaining)} min left)
+                    </span>
+                  )}
+                </span>
+              )}
             </span>
-            
-            {/* Animated background shimmer */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-teal-100/30 to-transparent transform -skew-x-12 -translate-x-full animate-shimmer"></div>
+
+            {/* Animated background shimmer - only when not disabled */}
+            {!hasInsufficientMinutes && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-teal-100/30 to-transparent transform -skew-x-12 -translate-x-full animate-shimmer"></div>
+            )}
           </button>
         </motion.div>
 
