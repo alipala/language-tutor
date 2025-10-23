@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Crown, Star, Users, Zap, Clock, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { fetchSubscriptionStatus as fetchSubscriptionStatusAPI } from '@/lib/api-service';
 
 interface SubscriptionStatus {
   status: string | null;
@@ -40,19 +41,10 @@ export default function MembershipBadge({ className = "", showDetails = true }: 
         return;
       }
 
-      const response = await fetch('/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionStatus(data);
-      }
+      const data = await fetchSubscriptionStatusAPI();
+      setSubscriptionStatus(data);
     } catch (error) {
-      console.error('Error fetching subscription status:', error);
+      console.error('[MEMBERSHIP_BADGE] Error fetching subscription status:', error);
     } finally {
       setLoading(false);
     }
@@ -293,19 +285,10 @@ export function UsageIndicator({ className = "" }: { className?: string }) {
         return;
       }
 
-      const response = await fetch('/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionStatus(data);
-      }
+      const data = await fetchSubscriptionStatusAPI();
+      setSubscriptionStatus(data);
     } catch (error) {
-      console.error('Error fetching subscription status:', error);
+      console.error('[USAGE_INDICATOR] Error fetching subscription status:', error);
     } finally {
       setLoading(false);
     }

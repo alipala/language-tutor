@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in on mount
@@ -69,11 +70,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         if (token) {
-          logger.debug('Checking authentication with token');
+          // OPTIMISTIC AUTH: Load cached user data immediately
+          try {
+            const cachedUserData = localStorage.getItem('userData');
+            if (cachedUserData) {
+              const userData = JSON.parse(cachedUserData);
+              setUser(userData);
+              setLoading(false); // Set loading to false immediately with cached data
+              logger.debug('Loaded cached user data, auth ready');
+            }
+          } catch (cacheErr) {
+            logger.error('Error loading cached user data:', cacheErr);
+          }
+          
+          // Then verify token in background (don't block UI)
+          logger.debug('Verifying authentication token in background');
           
           // Determine the correct URL to use
           const authUrl = isRailway ? '/auth/me' : `${API_URL}/auth/me`;
-          logger.debug('Using auth URL for authentication check');
+          logger.debug('Using auth URL for background verification');
           
           try {
             const response = await fetch(authUrl, {
@@ -87,51 +102,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               mode: 'cors'  // Explicitly use CORS mode
             });
 
-            logger.debug('Auth check response received');
+            logger.debug('Background auth verification response received');
             
             if (response.ok) {
               const userData = await response.json();
-              logger.auth('User authentication successful', userData._id);
+              logger.auth('Background token verification successful', userData._id);
               
-              // Store user data in localStorage
+              // Update user data if it changed
+              setUser(userData);
+              
+              // Store updated user data in localStorage
               try {
                 localStorage.setItem('userData', JSON.stringify(userData));
               } catch (storageErr) {
                 logger.error('Error storing user data in localStorage:', storageErr);
-                // Continue without storing in localStorage
               }
-              
-              setUser(userData);
             } else {
               // Token is invalid or expired
-              logger.debug('Token invalid or expired, clearing');
+              logger.debug('Token invalid or expired during background check, clearing');
               try {
                 localStorage.removeItem('token');
+                localStorage.removeItem('userData');
               } catch (storageErr) {
                 logger.error('Error removing token from localStorage:', storageErr);
               }
               setUser(null);
             }
           } catch (fetchErr) {
-            console.error('Fetch error during auth check:', fetchErr);
-            // Try to recover with cached user data if available
-            try {
-              const cachedUserData = localStorage.getItem('userData');
-              if (cachedUserData) {
-                console.log('Recovering with cached user data');
-                const userData = JSON.parse(cachedUserData);
-                setUser(userData);
-              } else {
-                setUser(null);
-              }
-            } catch (cacheErr) {
-              console.error('Error recovering with cached data:', cacheErr);
-              setUser(null);
-            }
+            console.error('Background fetch error during auth check:', fetchErr);
+            // Keep using cached data on network error
+            logger.debug('Network error during background verification, keeping cached user data');
           }
         } else {
           console.log('No token found in localStorage');
           setUser(null);
+          setLoading(false);
         }
       } catch (err) {
         console.error('Auth check error:', err);
@@ -149,7 +154,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error('Error recovering with cached data:', cacheErr);
           setUser(null);
         }
+        setLoading(false);
       } finally {
+        // Ensure loading is always set to false
         setLoading(false);
       }
     };
@@ -266,11 +273,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', data.access_token);
       
       // Set user data
-      setUser({
+      const userData = {
         _id: data.user_id,
         name: data.name,
         email: data.email
-      });
+      };
+      
+      // Store user data in localStorage
+      localStorage.setItem('userData', JSON.stringify(userData));
+      setUser(userData);
 
       // Save user preferences if available
       if (data.preferred_language) {

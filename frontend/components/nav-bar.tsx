@@ -8,6 +8,7 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { Logo } from './logo';
 import { Crown, Star, Zap } from 'lucide-react';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
+import { fetchUnreadCount } from '@/lib/api-service';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
   // Determine if we're on the landing page
@@ -36,23 +37,15 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   // Notification state
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch unread notification count
-  const fetchUnreadCount = async () => {
+  // Fetch unread notification count using centralized API service
+  const loadUnreadCount = async () => {
     if (!user) return;
 
     try {
-      const response = await fetch('/api/unread-count', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.unread_count);
-      }
+      const data = await fetchUnreadCount();
+      setUnreadCount(data.unread_count || 0);
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      console.error('[NAVBAR] Error fetching unread count:', error);
     }
   };
 
@@ -135,10 +128,10 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   // Fetch unread count when user is available
   useEffect(() => {
     if (user) {
-      fetchUnreadCount();
+      loadUnreadCount();
       
       // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchUnreadCount, 30000);
+      const interval = setInterval(loadUnreadCount, 30000);
       return () => clearInterval(interval);
     }
   }, [user]);

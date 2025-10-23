@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getApiUrl } from '@/lib/api-utils';
+import { fetchLowMinutesCheck } from '@/lib/api-service';
 
 export interface LowMinutesStatus {
   has_low_minutes: boolean;
@@ -28,28 +28,14 @@ export function useLowMinutesAlert() {
       }
       setError(null);
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        if (isInitialLoad) {
-          setLoading(false);
-        }
-        return;
-      }
-
-      const response = await fetch(`${getApiUrl()}/api/subscription/low-minutes-check`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setLowMinutesStatus(data.data);
-        }
-      } else {
-        console.error('Failed to check low minutes status');
+      // Use centralized API service with caching - much faster!
+      const data = await fetchLowMinutesCheck();
+      
+      if (data.success && data.data) {
+        setLowMinutesStatus(data.data);
+      } else if (data.has_low_minutes !== undefined) {
+        // Handle direct response format
+        setLowMinutesStatus(data as LowMinutesStatus);
       }
     } catch (err) {
       console.error('Error checking low minutes:', err);

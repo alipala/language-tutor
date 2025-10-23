@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Force new build ID to prevent caching issues
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
   reactStrictMode: false, // Prevent double rendering in production
   swcMinify: true,
   // Remove console logs in production for security
@@ -37,28 +41,33 @@ const nextConfig = {
   compress: true,
   // Proxy API requests to backend
   async rewrites() {
-    // In Railway, backend runs on localhost:8000, frontend on the dynamic PORT
-    const backendUrl = process.env.NODE_ENV === 'production' 
-      ? 'http://localhost:8000'  // Fixed backend port in production
-      : (process.env.BACKEND_URL || 'http://localhost:8000')
-    console.log('[NEXT_CONFIG] Proxying API routes to:', backendUrl)
+    // Use environment variable or default to localhost for development
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    // For Railway production, use empty string for API routes to avoid redirects
+    const apiBackendUrl = process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT
+      ? (process.env.BACKEND_URL || '')
+      : backendUrl
+
+    console.log('[NEXT_CONFIG] Proxying API routes to:', apiBackendUrl)
+    console.log('[NEXT_CONFIG] Proxying auth routes to:', backendUrl)
+
     return [
       // Proxy /api/institution/* to /institution/* (strip /api prefix for institution routes)
       {
         source: '/api/institution/:path*',
-        destination: `${backendUrl}/institution/:path*`,
+        destination: `${apiBackendUrl}/institution/:path*`,
       },
       // Proxy /api/tutor/* to /tutor/* (strip /api prefix for tutor routes)
       {
         source: '/api/tutor/:path*',
-        destination: `${backendUrl}/tutor/:path*`,
+        destination: `${apiBackendUrl}/tutor/:path*`,
       },
       // Proxy /api/* routes to backend (keep /api prefix for other API routes)
       {
         source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
+        destination: `${apiBackendUrl}/api/:path*`,
       },
-      // Proxy /auth/* routes to backend (for Google OAuth)
+      // Proxy /auth/* routes to backend (for Google OAuth) - keep original backendUrl
       {
         source: '/auth/:path*',
         destination: `${backendUrl}/auth/:path*`,

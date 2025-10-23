@@ -34,6 +34,7 @@ import NotificationsTab from '@/components/notifications-tab';
 import VoiceSelectionComponent from '@/components/voice-selection';
 import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
 import LowMinutesAlert from '@/components/LowMinutesAlert';
+import { apiCache } from '@/lib/api-cache';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -311,7 +312,7 @@ export default function ProfilePage() {
     longestStreak: progressStats?.longest_streak || 0
   };
 
-  // Fetch subscription status
+  // Fetch subscription status with caching
   const fetchSubscriptionStatus = async () => {
     if (!user) return;
     
@@ -325,26 +326,33 @@ export default function ProfilePage() {
         return;
       }
 
-      console.log('[PROFILE] Fetching subscription status...');
-      const response = await fetch('/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      console.log('[PROFILE] 🚀 Fetching subscription status with caching...');
+      
+      // Fetch with caching (60s cache - subscription rarely changes)
+      const data = await apiCache.fetchWithCache(
+        `subscription-status-${user._id}`,
+        async () => {
+          const response = await fetch('/api/stripe/subscription-status', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch subscription status');
+          }
+
+          return response.json();
         },
-      });
+        60000 // Cache for 60 seconds
+      );
 
-      console.log('[PROFILE] Subscription status response:', response.status);
+      console.log('[PROFILE] ✅ Subscription status loaded (cached)');
+      setSubscriptionStatus(data);
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[PROFILE] Subscription status data:', data);
-        setSubscriptionStatus(data);
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('[PROFILE] Subscription status error:', errorData);
-      }
     } catch (error) {
-      console.error('[PROFILE] Error fetching subscription status:', error);
+      console.error('[PROFILE] ❌ Error fetching subscription status:', error);
     } finally {
       setSubscriptionLoading(false);
     }
@@ -399,7 +407,7 @@ export default function ProfilePage() {
     }
   }, [checkoutSuccess, user]);
 
-  // Fetch progress data from API
+  // Fetch progress data from API with caching and parallel loading
   const fetchProgressData = async () => {
     if (!user) return;
     
@@ -412,64 +420,67 @@ export default function ProfilePage() {
         throw new Error('Not authenticated');
       }
 
-      // Fetch progress stats
-      const statsResponse = await fetch(`${API_URL}/api/progress/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      console.log('[PROFILE] 🚀 Fetching progress data with caching and parallel loading...');
 
-      if (statsResponse.ok) {
-        const stats = await statsResponse.json();
-        setProgressStats(stats);
-        console.log('[PROFILE] Progress stats loaded:', stats);
-      } else {
-        console.error('[PROFILE] Failed to fetch progress stats');
-      }
+      // Fetch all data in parallel with caching
+      const [stats, historyData, achievementsData] = await Promise.all([
+        // Progress stats (cache for 60s)
+        apiCache.fetchWithCache(
+          `progress-stats-${user._id}`,
+          async () => {
+            const response = await fetch(`${API_URL}/api/progress/stats`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to fetch stats');
+            return response.json();
+          },
+          60000
+        ),
+        
+        // Conversation history (cache for 60s)
+        apiCache.fetchWithCache(
+          `conversation-history-${user._id}`,
+          async () => {
+            const response = await fetch(`${API_URL}/api/progress/conversations?limit=10`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to fetch history');
+            return response.json();
+          },
+          60000
+        ),
+        
+        // Achievements (cache for 120s - rarely changes)
+        apiCache.fetchWithCache(
+          `achievements-${user._id}`,
+          async () => {
+            const response = await fetch(`${API_URL}/api/progress/achievements`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to fetch achievements');
+            return response.json();
+          },
+          120000
+        )
+      ]);
 
-      // Fetch conversation history
-      const historyResponse = await fetch(`${API_URL}/api/progress/conversations?limit=10`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (historyResponse.ok) {
-        const historyData = await historyResponse.json();
-        setConversationHistory(historyData.sessions || []);
-        console.log('[PROFILE] Conversation history loaded:', historyData.sessions?.length || 0, 'sessions');
-      } else {
-        console.error('[PROFILE] Failed to fetch conversation history');
-      }
-
-      // Fetch achievements
-      const achievementsResponse = await fetch(`${API_URL}/api/progress/achievements`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (achievementsResponse.ok) {
-        const achievementsData = await achievementsResponse.json();
-        setAchievements(achievementsData.achievements || []);
-        console.log('[PROFILE] Achievements loaded:', achievementsData.achievements?.length || 0, 'achievements');
-      } else {
-        console.error('[PROFILE] Failed to fetch achievements');
-        // Set empty achievements array as fallback
-        setAchievements([]);
-      }
+      // Update state with fetched data
+      setProgressStats(stats);
+      setConversationHistory(historyData.sessions || []);
+      setAchievements(achievementsData.achievements || []);
+      
+      console.log('[PROFILE] ✅ Progress data loaded successfully (parallel + cached)');
 
     } catch (err: any) {
-      console.error('[PROFILE] Error fetching progress data:', err);
+      console.error('[PROFILE] ❌ Error fetching progress data:', err);
       setStatsError(err.message || 'Failed to load progress data');
-      // Set fallback empty data
       setAchievements([]);
     } finally {
       setStatsLoading(false);
     }
   };
   
-  // Fetch user's learning plans
+  // Fetch user's learning plans with caching
   const fetchUserLearningPlans = async () => {
     if (!user) return;
     
@@ -477,10 +488,22 @@ export default function ProfilePage() {
     setPlansError(null);
     
     try {
-      const plans = await getUserLearningPlans();
+      console.log('[PROFILE] 🚀 Fetching learning plans with caching...');
+      
+      // Fetch with caching (120s cache - learning plans rarely change)
+      const plans = await apiCache.fetchWithCache(
+        `learning-plans-${user._id}`,
+        async () => {
+          return await getUserLearningPlans();
+        },
+        120000 // Cache for 120 seconds
+      );
+      
       setLearningPlans(plans);
+      console.log('[PROFILE] ✅ Learning plans loaded (cached):', plans.length);
+      
     } catch (err: any) {
-      console.error('Error fetching learning plans:', err);
+      console.error('[PROFILE] ❌ Error fetching learning plans:', err);
       setPlansError(err.message || 'Failed to load learning plans');
     } finally {
       setPlansLoading(false);

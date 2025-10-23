@@ -5,15 +5,29 @@ export function getApiUrl(): string {
     const hostname = window.location.hostname;
     // If we're on Railway or custom domain, use empty string (same domain)
     if (hostname.includes('railway.app') || hostname === 'mytacoai.com') {
-      console.log(`Detected production deployment on ${hostname}, using same-origin API URL`);
+      console.log(`[API_UTILS] Detected production deployment on ${hostname}, using same-origin API URL`);
       return '';
     }
     // If we're not on localhost, use the same origin for API calls
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      console.log(`Detected production hostname ${hostname}, using same-origin API URL`);
-      return window.location.origin;
+      console.log(`[API_UTILS] Detected production hostname ${hostname}, using same-origin API URL`);
+      return '';
     }
   }
+
   // Default to environment variable or localhost
-  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const fallbackUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+  // NEVER return localhost URLs in production-like environments
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname.includes('railway.app') || hostname === 'mytacoai.com' ||
+        (hostname !== 'localhost' && hostname !== '127.0.0.1')) {
+      console.log(`[API_UTILS] Forcing same-origin API URL for production hostname ${hostname}`);
+      return '';
+    }
+  }
+
+  console.log(`[API_UTILS] Using fallback API URL: ${fallbackUrl}`);
+  return fallbackUrl;
 }

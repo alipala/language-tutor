@@ -34,6 +34,7 @@ import {
   Lock
 } from 'lucide-react';
 import UpgradePrompt from '@/components/upgrade-prompt';
+import { fetchSubscriptionStatus as fetchSubscriptionStatusAPI } from '@/lib/api-service';
 
 interface EmptyStateProps {
   className?: string;
@@ -48,7 +49,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
-  // Fetch subscription status
+  // Fetch subscription status using centralized API service
   const fetchSubscriptionStatus = async () => {
     setSubscriptionLoading(true);
     
@@ -60,26 +61,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         return;
       }
 
-      console.log('[EMPTY_STATE] Fetching subscription status...');
-      const response = await fetch('/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('[EMPTY_STATE] Subscription status response:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[EMPTY_STATE] Subscription status data:', data);
-        setSubscriptionStatus(data);
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('[EMPTY_STATE] Subscription status error:', errorData);
-      }
+      console.log('[EMPTY_STATE] Fetching subscription status with caching...');
+      const data = await fetchSubscriptionStatusAPI();
+      console.log('[EMPTY_STATE] ✅ Subscription status loaded (cached)');
+      setSubscriptionStatus(data);
     } catch (error) {
-      console.error('[EMPTY_STATE] Error fetching subscription status:', error);
+      console.error('[EMPTY_STATE] ❌ Error fetching subscription status:', error);
     } finally {
       setSubscriptionLoading(false);
     }

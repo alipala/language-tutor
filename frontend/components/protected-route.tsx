@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import SoundWaveLoader from '@/components/sound-wave-loader';
@@ -12,6 +12,7 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [showLoader, setShowLoader] = useState(false);
 
   useEffect(() => {
     // Only check after auth has loaded
@@ -27,8 +28,22 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, router]);
 
-  // Show loading state while checking authentication
-  if (loading) {
+  // Delay showing loader to avoid flash for fast auth checks
+  useEffect(() => {
+    if (loading) {
+      // Only show loader if loading takes more than 100ms
+      const timer = setTimeout(() => {
+        setShowLoader(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoader(false);
+    }
+  }, [loading]);
+
+  // Show loading state only if it's taking a while
+  if (loading && showLoader) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <SoundWaveLoader 

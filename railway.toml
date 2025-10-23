@@ -12,6 +12,8 @@ restartPolicyMaxRetries = 10
 name = "RAILWAY_HEALTHCHECK_PORT"
 value = "8000"
 
+# BACKEND_URL is not set for production - Next.js will use same-origin for API calls
+
 [nixpacks]
 nodejs-version = "20"
 python-version = "3.11"

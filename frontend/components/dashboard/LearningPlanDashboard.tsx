@@ -11,6 +11,7 @@ import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
+import { fetchProgressStats } from '@/lib/api-service';
 import { 
   ChevronRight, 
   Loader2, 
@@ -99,22 +100,11 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
     try {
       setError(null);
       
-      // Fetch learning plans and progress stats in parallel
-      const [plansData, statsResponse] = await Promise.all([
+      // Fetch learning plans and progress stats in parallel using centralized API service
+      const [plansData, statsData] = await Promise.all([
         getUserLearningPlans(),
-        fetch(`${getApiUrl()}/api/progress/stats`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        })
+        fetchProgressStats().catch(() => null)
       ]);
-      
-      // Process stats response
-      let statsData: ProgressStats | null = null;
-      if (statsResponse.ok) {
-        statsData = await statsResponse.json();
-      }
       
       // Show all learning plans - no artificial limit
       setPlans(plansData);
