@@ -176,7 +176,7 @@ export default function EnhancedAnalysisModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-2xl font-bold flex items-center">
+          <DialogTitle className="text-2xl font-bold text-gray-800 flex items-center">
             <Brain className="h-6 w-6 mr-2 text-purple-600" />
             Enhanced Analysis
           </DialogTitle>
@@ -525,8 +525,10 @@ export default function EnhancedAnalysisModal({
                   }}
                   onReview={handleFlashcardReview}
                   showProgress={true}
-                  showFilters={true}
+                  showFilters={false}
+                  showShuffle={true}
                   showDownload={false}
+                  showStats={false}
                   autoAdvance={false}
                   className="h-full"
                 />

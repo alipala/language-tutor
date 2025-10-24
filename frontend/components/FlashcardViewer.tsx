@@ -64,7 +64,9 @@ interface FlashcardViewerProps {
   onClose?: () => void;
   showProgress?: boolean;
   showFilters?: boolean;
+  showShuffle?: boolean;
   showDownload?: boolean;
+  showStats?: boolean;
   autoAdvance?: boolean;
   className?: string;
 }
@@ -80,7 +82,9 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   onClose,
   showProgress = true,
   showFilters = true,
+  showShuffle = true,
   showDownload = true,
+  showStats = true,
   autoAdvance = false,
   className = ''
 }) => {
@@ -286,28 +290,53 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          {showShuffle && !showFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShuffle}
+              className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+            >
+              <Shuffle className="h-4 w-4 mr-2" />
+              <span className="text-sm font-medium">Shuffle</span>
+            </Button>
+          )}
+
           {showFilters && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setReviewMode(!reviewMode)}
-              className={`text-black border-gray-300 hover:bg-gray-100 ${reviewMode ? 'bg-blue-50 border-blue-200' : ''}`}
+              className={`h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 ${
+                reviewMode ? 'bg-blue-50 border-blue-300 text-blue-700' : ''
+              }`}
             >
-              {reviewMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {reviewMode ? 'Study Mode' : 'Review Mode'}
+              {reviewMode ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              <span className="text-sm font-medium">{reviewMode ? 'Study Mode' : 'Review Mode'}</span>
             </Button>
           )}
 
           {showDownload && flashcardSet && (
-            <Button variant="outline" size="sm" onClick={handleDownload} className="text-black border-gray-300 hover:bg-gray-100">
-              <Download className="h-4 w-4 mr-1" />
-              Export
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              <span className="text-sm font-medium">Export</span>
             </Button>
           )}
 
           {onClose && (
-            <Button variant="outline" size="sm" onClick={onClose} className="text-black border-gray-300 hover:bg-gray-100">
-              <X className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors duration-200"
+            >
+              <X className="h-4 w-4 mr-2" />
+              <span className="text-sm font-medium">Close</span>
             </Button>
           )}
         </div>
@@ -357,9 +386,14 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
             <option value="hard" className="text-black">Hard</option>
           </select>
 
-          <Button variant="outline" size="sm" onClick={handleShuffle} className="text-black border-gray-300 hover:bg-gray-100">
-            <Shuffle className="h-4 w-4 mr-1" />
-            Shuffle
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShuffle}
+            className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+          >
+            <Shuffle className="h-4 w-4 mr-2" />
+            <span className="text-sm font-medium">Shuffle</span>
           </Button>
         </div>
       )}
@@ -476,22 +510,30 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
           variant="outline"
           onClick={handlePrevious}
           disabled={currentIndex === 0}
-          className="text-black border-gray-300 hover:bg-gray-100"
+          className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Previous
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          <span className="text-sm font-medium">Previous</span>
         </Button>
 
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setIsFlipped(false)} className="text-black border-gray-300 hover:bg-gray-100">
-            <RotateCcw className="h-4 w-4 mr-1" />
-            Reset
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFlipped(false)}
+            className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            <span className="text-sm font-medium">Reset</span>
           </Button>
 
           {!isFlipped && (
-            <Button onClick={handleFlip} className="text-black bg-blue-600 hover:bg-blue-700">
-              <Eye className="h-4 w-4 mr-1" />
-              Show Answer
+            <Button
+              onClick={handleFlip}
+              className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700 transition-colors duration-200 shadow-sm hover:shadow-md"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              <span className="text-sm font-medium">Show Answer</span>
             </Button>
           )}
         </div>
@@ -500,27 +542,29 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
           variant="outline"
           onClick={handleNext}
           disabled={currentIndex === filteredCards.length - 1}
-          className="text-black border-gray-300 hover:bg-gray-100"
+          className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Next
-          <ChevronRight className="h-4 w-4 ml-1" />
+          <span className="text-sm font-medium">Next</span>
+          <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
 
       {/* Card Statistics */}
-      <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <div className="flex items-center space-x-4">
-            <span>Reviews: {currentCard.review_count}</span>
-            <span>Correct: {currentCard.correct_count}</span>
-            <span>Incorrect: {currentCard.incorrect_count}</span>
-            <span>Mastery: {Math.round(currentCard.mastery_level * 100)}%</span>
-          </div>
-          <div>
-            Created: {new Date(currentCard.created_at).toLocaleDateString()}
+      {showStats && (
+        <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center space-x-4">
+              <span>Reviews: {currentCard.review_count}</span>
+              <span>Correct: {currentCard.correct_count}</span>
+              <span>Incorrect: {currentCard.incorrect_count}</span>
+              <span>Mastery: {Math.round(currentCard.mastery_level * 100)}%</span>
+            </div>
+            <div>
+              Created: {new Date(currentCard.created_at).toLocaleDateString()}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
