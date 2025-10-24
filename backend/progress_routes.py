@@ -120,6 +120,10 @@ async def save_conversation(
                 request.topic or "general",
                 request.duration_minutes
             )
+
+            # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
+            # Note: Flashcards will be generated after session creation using the actual session ID
+
         else:
             print(f"[PROGRESS] Skipping enhanced analysis - session doesn't meet criteria")
         
@@ -207,12 +211,67 @@ async def save_conversation(
             print(f"[PROGRESS] Duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
             
             result = await conversation_sessions_collection.insert_one(session_dict)
-            
+
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
-            
+
+            # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
+            try:
+                print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for conversation session")
+
+                # Create flashcard generation request using the actual session ID
+                from flashcard_service import FlashcardService
+                from models import FlashcardGenerationRequest
+                from database import database
+                from bson import ObjectId
+
+                flashcard_request = FlashcardGenerationRequest(
+                    session_id=str(result.inserted_id),  # Use the actual session ID
+                    language=request.language,
+                    level=request.level,
+                    topic=request.topic,
+                    conversation_content=None,  # Could extract from messages if needed
+                    session_summary=summary,  # Use the basic summary
+                    count=5  # Generate 5 flashcards per session
+                )
+
+                # Generate flashcards using the service
+                flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+
+                # Save flashcard set to database (same logic as in flashcard_routes.py)
+                flashcard_sets_collection = database.flashcard_sets
+                flashcards_collection = database.flashcards
+
+                flashcard_set_doc = flashcard_set.dict()
+                flashcard_set_doc["_id"] = ObjectId()
+                flashcard_set_doc["created_at"] = datetime.utcnow()
+
+                # Save individual flashcards
+                flashcard_docs = []
+                for flashcard in flashcard_set.flashcards:
+                    card_doc = flashcard.dict()
+                    card_doc["_id"] = ObjectId()
+                    flashcard_docs.append(card_doc)
+
+                # Insert flashcard set
+                set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
+
+                # Insert individual flashcards
+                if flashcard_docs:
+                    cards_result = await flashcards_collection.insert_many(flashcard_docs)
+                    print(f"[FLASHCARD_INTEGRATION] ✅ Saved {len(cards_result.inserted_ids)} flashcards to database")
+
+                print(f"[FLASHCARD_INTEGRATION] ✅ Generated and saved {len(flashcard_set.flashcards)} flashcards for conversation session")
+                print(f"[FLASHCARD_INTEGRATION] 📚 Flashcard set: {flashcard_set.title}")
+
+            except Exception as flashcard_error:
+                print(f"[FLASHCARD_INTEGRATION] ⚠️ Flashcard generation failed: {str(flashcard_error)}")
+                # Don't fail the session saving if flashcard generation fails
+                # Users can still manually generate flashcards if needed
+                pass
+
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
-            
+
             return {
                 "success": True,
                 "session_id": str(result.inserted_id),

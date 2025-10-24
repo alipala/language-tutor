@@ -761,9 +761,10 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const analysisData = await response.json();
-        // Include conversation messages in the analysis data
+        // Include conversation messages and session_id in the analysis data
         const enhancedAnalysisWithMessages = {
           ...analysisData.enhanced_analysis,
+          session_id: analysisData.session_id,  // Include session_id for flashcard lookup
           conversation_messages: analysisData.conversation_messages || []
         };
         setSelectedAnalysis(enhancedAnalysisWithMessages);

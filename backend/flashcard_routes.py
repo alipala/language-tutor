@@ -355,6 +355,48 @@ async def get_flashcard_progress(
             detail=f"Failed to fetch progress: {str(e)}"
         )
 
+@router.get("/session/{session_id}", response_model=List[Flashcard])
+async def get_flashcards_for_session(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get all flashcards for a specific session
+    """
+    try:
+        # Find all flashcards for this session (include both active and legacy cards without is_active field)
+        flashcards_cursor = flashcards_collection.find({
+            "session_id": session_id,
+            "user_id": str(current_user.id),
+            "$or": [
+                {"is_active": True},
+                {"is_active": {"$exists": False}},  # Include cards where is_active field doesn't exist
+                {"is_active": None}
+            ]
+        })
+
+        flashcard_docs = await flashcards_cursor.to_list(length=None)
+
+        # Convert to Flashcard objects
+        flashcards = []
+        for doc in flashcard_docs:
+            doc.pop("_id", None)
+            # Ensure is_active is set to True for legacy cards
+            if "is_active" not in doc or doc["is_active"] is None:
+                doc["is_active"] = True
+            flashcards.append(Flashcard(**doc))
+
+        print(f"[FLASHCARD_API] Found {len(flashcards)} flashcards for session {session_id}")
+
+        return flashcards
+
+    except Exception as e:
+        print(f"[FLASHCARD_API] ❌ Error fetching flashcards for session: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch flashcards for session: {str(e)}"
+        )
+
 @router.delete("/set/{set_id}")
 async def delete_flashcard_set(
     set_id: str,

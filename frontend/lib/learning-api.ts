@@ -340,6 +340,32 @@ export const getFlashcardProgress = async (): Promise<FlashcardProgress> => {
   return await response.json();
 };
 
+// Get all flashcards for a specific session
+export const getFlashcardsForSession = async (sessionId: string): Promise<Flashcard[]> => {
+  const apiUrl = getApiUrl();
+
+  // This endpoint requires authentication
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required to access flashcards');
+  }
+
+  const response = await fetch(`${apiUrl}/api/flashcards/session/${sessionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch flashcards for session');
+  }
+
+  return await response.json();
+};
+
 // Delete a flashcard set
 export const deleteFlashcardSet = async (setId: string): Promise<any> => {
   const apiUrl = getApiUrl();

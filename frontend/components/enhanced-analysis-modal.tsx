@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+import {
   TrendingUp, Target, Lightbulb, CheckCircle, AlertCircle,
   Brain, MessageSquare, Clock, Star, ChevronRight,
-  BarChart3, Zap, Trophy, ArrowUp, ArrowDown, Minus
+  BarChart3, Zap, Trophy, ArrowUp, ArrowDown, Minus, Book
 } from 'lucide-react';
+import { getFlashcardsForSession, Flashcard, reviewFlashcard } from '@/lib/learning-api';
+import FlashcardViewer from '@/components/FlashcardViewer';
 
 interface EnhancedAnalysisModalProps {
   isOpen: boolean;
@@ -34,6 +36,46 @@ export default function EnhancedAnalysisModal({
   sessionInfo
 }: EnhancedAnalysisModalProps) {
   const [activeTab, setActiveTab] = useState('conversation');
+  const [sessionFlashcards, setSessionFlashcards] = useState<Flashcard[]>([]);
+  const [flashcardsLoading, setFlashcardsLoading] = useState(false);
+  const [flashcardsError, setFlashcardsError] = useState<string | null>(null);
+
+  // Fetch flashcards when modal opens
+  useEffect(() => {
+    if (isOpen && analysis) {
+      fetchSessionFlashcards();
+    }
+  }, [isOpen, analysis]);
+
+  const fetchSessionFlashcards = async () => {
+    if (!analysis || !analysis.session_id) return;
+
+    setFlashcardsLoading(true);
+    setFlashcardsError(null);
+
+    try {
+      const flashcards = await getFlashcardsForSession(analysis.session_id);
+      setSessionFlashcards(flashcards);
+    } catch (error) {
+      console.error('Error fetching session flashcards:', error);
+      setFlashcardsError('Failed to load flashcards for this session');
+    } finally {
+      setFlashcardsLoading(false);
+    }
+  };
+
+  const handleFlashcardReview = async (flashcardId: string, correct: boolean) => {
+    try {
+      await reviewFlashcard({ flashcard_id: flashcardId, correct });
+      // Refresh flashcards after review
+      if (analysis?.session_id) {
+        const updatedFlashcards = await getFlashcardsForSession(analysis.session_id);
+        setSessionFlashcards(updatedFlashcards);
+      }
+    } catch (error) {
+      console.error('Error reviewing flashcard:', error);
+    }
+  };
 
   if (!analysis) return null;
 
@@ -126,6 +168,7 @@ export default function EnhancedAnalysisModal({
     { id: 'quality', label: 'Quality Metrics', icon: Target },
     { id: 'progress', label: 'Progress', icon: TrendingUp },
     { id: 'insights', label: 'AI Insights', icon: Brain },
+    { id: 'flashcards', label: 'Flashcards', icon: Book },
     { id: 'recommendations', label: 'Recommendations', icon: Lightbulb }
   ];
 
@@ -442,6 +485,55 @@ export default function EnhancedAnalysisModal({
             </div>
           )}
 
+          {/* Flashcards Tab */}
+          {activeTab === 'flashcards' && (
+            <div className="h-full">
+              {flashcardsLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
+                  <span className="ml-3 text-gray-600">Loading flashcards...</span>
+                </div>
+              ) : flashcardsError ? (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+                  <p className="text-red-600">{flashcardsError}</p>
+                </div>
+              ) : sessionFlashcards.length === 0 ? (
+                <div className="text-center py-8">
+                  <Book className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-500">No flashcards available for this session</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Flashcards are generated after completing speaking sessions.
+                  </p>
+                </div>
+              ) : (
+                <FlashcardViewer
+                  flashcards={sessionFlashcards}
+                  flashcardSet={{
+                    id: `session-${analysis.session_id}`,
+                    session_id: analysis.session_id,
+                    user_id: '',
+                    language: sessionInfo.language,
+                    level: sessionInfo.level,
+                    topic: sessionInfo.topic,
+                    title: `Session Flashcards - ${sessionInfo.language} ${sessionInfo.level}`,
+                    description: `AI-generated flashcards from your ${sessionInfo.language} conversation on ${sessionInfo.topic || 'general topics'}`,
+                    flashcards: sessionFlashcards,
+                    total_cards: sessionFlashcards.length,
+                    created_at: sessionInfo.created_at,
+                    is_completed: false
+                  }}
+                  onReview={handleFlashcardReview}
+                  showProgress={true}
+                  showFilters={true}
+                  showDownload={false}
+                  autoAdvance={false}
+                  className="h-full"
+                />
+              )}
+            </div>
+          )}
+
           {/* Conversation Tab */}
           {activeTab === 'conversation' && (
             <div className="space-y-6">
@@ -455,8 +547,8 @@ export default function EnhancedAnalysisModal({
                     analysis.conversation_messages.map((message: any, index: number) => (
                       <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] rounded-lg p-4 ${
-                          message.role === 'user' 
-                            ? 'bg-blue-500 text-white' 
+                          message.role === 'user'
+                            ? 'bg-blue-500 text-white'
                             : 'bg-gray-100 text-gray-800'
                         }`}>
                           <div className="flex items-center justify-between mb-2">
