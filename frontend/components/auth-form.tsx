@@ -148,7 +148,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     // For login, check if this is a B2B user BEFORE attempting login
     if (type === 'login') {
       try {
-        const response = await fetch('/api/auth/check-user-type', {
+        // Determine API URL based on environment
+        const isRailway = typeof window !== 'undefined' && (
+          window.location.hostname.includes('railway.app') || 
+          window.location.hostname === 'mytacoai.com'
+        );
+        const apiUrl = isRailway ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+        
+        const response = await fetch(`${apiUrl}/api/auth/check-user-type`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

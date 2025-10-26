@@ -11,7 +11,7 @@ const isRailway = typeof window !== 'undefined' && (
   window.location.hostname === 'mytacoai.com'
 );
 const API_URL = isRailway 
-  ? '' // Empty string means same domain, which is correct for Railway
+  ? '/api' // Use /api prefix for same-domain Railway deployment
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 
 // Types
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logger.debug('Verifying authentication token in background');
           
           // Determine the correct URL to use
-          const authUrl = isRailway ? '/auth/me' : `${API_URL}/auth/me`;
+          const authUrl = isRailway ? '/api/auth/me' : `${API_URL}/api/auth/me`;
           logger.debug('Using auth URL for background verification');
           
           try {
@@ -171,7 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       logger.userAction('Login attempt', email);
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/auth/google-login`, {
+      const response = await fetch(`${API_URL}/api/auth/google-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -308,7 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('API URL:', API_URL);
 
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -368,7 +368,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -394,7 +394,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
+      const response = await fetch(`${API_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
