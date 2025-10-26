@@ -1,0 +1,603 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import {
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Shuffle,
+  Filter,
+  Download,
+  X,
+  CheckCircle,
+  XCircle,
+  Eye,
+  EyeOff,
+  Star,
+  StarOff
+} from 'lucide-react';
+
+export interface Flashcard {
+  id: string;
+  session_id: string;
+  user_id: string;
+  language: string;
+  level: string;
+  topic?: string;
+  front: string;
+  back: string;
+  category: string;
+  difficulty: string;
+  tags: string[];
+  created_at: string;
+  last_reviewed?: string;
+  review_count: number;
+  correct_count: number;
+  incorrect_count: number;
+  mastery_level: number;
+  next_review_date?: string;
+  is_active: boolean;
+}
+
+export interface FlashcardSet {
+  id: string;
+  session_id: string;
+  user_id: string;
+  language: string;
+  level: string;
+  topic?: string;
+  title: string;
+  description: string;
+  flashcards: Flashcard[];
+  total_cards: number;
+  created_at: string;
+  is_completed: boolean;
+  completed_at?: string;
+}
+
+interface FlashcardViewerProps {
+  flashcards: Flashcard[];
+  flashcardSet?: FlashcardSet;
+  onReview?: (flashcardId: string, correct: boolean) => void;
+  onClose?: () => void;
+  showProgress?: boolean;
+  showFilters?: boolean;
+  showShuffle?: boolean;
+  showDownload?: boolean;
+  showStats?: boolean;
+  autoAdvance?: boolean;
+  className?: string;
+  currentCard?: Flashcard;
+}
+
+type FilterType = 'all' | 'due' | 'new' | 'difficult' | 'mastered';
+type CategoryFilter = 'all' | 'grammar' | 'vocabulary' | 'pronunciation' | 'fluency' | 'comprehension';
+type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard';
+
+export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
+  flashcards,
+  flashcardSet,
+  onReview,
+  onClose,
+  showProgress = true,
+  showFilters = true,
+  showShuffle = true,
+  showDownload = true,
+  showStats = true,
+  autoAdvance = false,
+  className = ''
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('all');
+  const [filteredCards, setFilteredCards] = useState<Flashcard[]>(flashcards);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
+
+  // Filter flashcards based on current filters
+  useEffect(() => {
+    let filtered = [...flashcards];
+
+    // Apply filter
+    switch (filter) {
+      case 'due':
+        const now = new Date();
+        filtered = filtered.filter(card =>
+          !card.next_review_date || new Date(card.next_review_date) <= now
+        );
+        break;
+      case 'new':
+        filtered = filtered.filter(card => card.review_count === 0);
+        break;
+      case 'difficult':
+        filtered = filtered.filter(card => card.mastery_level < 0.5);
+        break;
+      case 'mastered':
+        filtered = filtered.filter(card => card.mastery_level >= 0.8);
+        break;
+    }
+
+    // Apply category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(card => card.category === categoryFilter);
+    }
+
+    // Apply difficulty filter
+    if (difficultyFilter !== 'all') {
+      filtered = filtered.filter(card => card.difficulty === difficultyFilter);
+    }
+
+    setFilteredCards(filtered);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setShowAnswer(false);
+  }, [flashcards, filter, categoryFilter, difficultyFilter]);
+
+  const currentCard = filteredCards[currentIndex];
+  const progress = filteredCards.length > 0 ? ((currentIndex + 1) / filteredCards.length) * 100 : 0;
+
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+    if (!isFlipped) {
+      setShowAnswer(true);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < filteredCards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setIsFlipped(false);
+      setShowAnswer(false);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setIsFlipped(false);
+      setShowAnswer(false);
+    }
+  };
+
+  const handleReview = async (correct: boolean) => {
+    if (currentCard && onReview) {
+      await onReview(currentCard.id, correct);
+      setReviewedCards(prev => new Set(prev).add(currentCard.id));
+
+      if (autoAdvance && currentIndex < filteredCards.length - 1) {
+        setTimeout(() => {
+          handleNext();
+        }, 500);
+      }
+    }
+  };
+
+  const handleShuffle = () => {
+    const shuffled = [...filteredCards].sort(() => Math.random() - 0.5);
+    setFilteredCards(shuffled);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setShowAnswer(false);
+  };
+
+  const handleDownload = () => {
+    if (!flashcardSet) return;
+
+    const dataStr = JSON.stringify({
+      title: flashcardSet.title,
+      description: flashcardSet.description,
+      flashcards: filteredCards.map(card => ({
+        front: card.front,
+        back: card.back,
+        category: card.category,
+        difficulty: card.difficulty,
+        tags: card.tags
+      })),
+      created_at: flashcardSet.created_at
+    }, null, 2);
+
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `${flashcardSet.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_flashcards.json`;
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-100 text-green-700 border-green-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'hard': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'grammar': return 'bg-blue-100 text-blue-700';
+      case 'vocabulary': return 'bg-purple-100 text-purple-700';
+      case 'pronunciation': return 'bg-orange-100 text-orange-700';
+      case 'fluency': return 'bg-teal-100 text-teal-700';
+      case 'comprehension': return 'bg-indigo-100 text-indigo-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const renderStars = (masteryLevel: number) => {
+    const stars = [];
+    const filledStars = Math.round(masteryLevel * 5);
+
+    for (let i = 0; i < 5; i++) {
+      stars.push(
+        i < filledStars ?
+          <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" /> :
+          <StarOff key={i} className="h-3 w-3 text-gray-300" />
+      );
+    }
+
+    return stars;
+  };
+
+  if (!currentCard) {
+    return (
+      <div className={`flex flex-col items-center justify-center p-8 text-center ${className}`}>
+        <div className="text-6xl mb-4">🎴</div>
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">No flashcards found</h3>
+        <p className="text-gray-600 mb-4">
+          {flashcards.length === 0
+            ? "No flashcards have been generated for this session yet."
+            : "No flashcards match the current filters."
+          }
+        </p>
+        {flashcards.length > 0 && (
+          <Button onClick={() => {
+            setFilter('all');
+            setCategoryFilter('all');
+            setDifficultyFilter('all');
+          }} className="text-black border-gray-300 hover:bg-gray-100">
+            Clear Filters
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // Check if we're in modal mode (compact layout)
+  const isModalMode = className.includes('h-full');
+  const isModalCompact = className.includes('modal-compact');
+
+  return (
+    <div className={`flex flex-col h-full ${isModalMode ? 'py-2' : 'py-8'} ${className}`}>
+      {/* Header - Only show in non-modal mode */}
+      {!isModalMode && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1">
+              {flashcardSet && (
+                <div>
+                  <h2 className="text-lg font-semibold text-black">
+                    {flashcardSet.title}
+                  </h2>
+                  <p className="text-sm text-gray-600">{flashcardSet.description}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-1">
+              {showShuffle && !showFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShuffle}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+                >
+                  <Shuffle className="h-3 w-3" />
+                </Button>
+              )}
+
+              {showFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReviewMode(!reviewMode)}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 ${
+                    reviewMode ? 'bg-blue-50 border-blue-300 text-blue-700' : ''
+                  }"
+                >
+                  {reviewMode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </Button>
+              )}
+
+              {showDownload && flashcardSet && !isModalMode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+                >
+                  <Download className="h-3 w-3" />
+                </Button>
+              )}
+
+              {onClose && !isModalMode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors duration-200"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters - Hidden in modal mode */}
+      {showFilters && !isModalMode && (
+        <div className="flex flex-wrap items-center gap-2 p-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center space-x-2">
+            <Filter className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium text-black">Filter:</span>
+          </div>
+
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as FilterType)}
+            className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black bg-white"
+          >
+            <option value="all" className="text-black">All Cards</option>
+            <option value="due" className="text-black">Due for Review</option>
+            <option value="new" className="text-black">New Cards</option>
+            <option value="difficult" className="text-black">Difficult</option>
+            <option value="mastered" className="text-black">Mastered</option>
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+            className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black bg-white"
+          >
+            <option value="all" className="text-black">All Categories</option>
+            <option value="grammar" className="text-black">Grammar</option>
+            <option value="vocabulary" className="text-black">Vocabulary</option>
+            <option value="pronunciation" className="text-black">Pronunciation</option>
+            <option value="fluency" className="text-black">Fluency</option>
+            <option value="comprehension" className="text-black">Comprehension</option>
+          </select>
+
+          <select
+            value={difficultyFilter}
+            onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+            className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black bg-white"
+          >
+            <option value="all" className="text-black">All Difficulties</option>
+            <option value="easy" className="text-black">Easy</option>
+            <option value="medium" className="text-black">Medium</option>
+            <option value="hard" className="text-black">Hard</option>
+          </select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShuffle}
+            className="h-9 px-3 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+          >
+            <Shuffle className="h-4 w-4 mr-2" />
+            <span className="text-sm font-medium">Shuffle</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Progress - Compact in modal mode */}
+      {showProgress && (
+        <div className={`${isModalMode ? 'px-3 py-1.5 mb-2' : 'px-4 py-2 mb-6'} border-b border-gray-200`}>
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-1.5">
+            <span>Card {currentIndex + 1} of {filteredCards.length}</span>
+            <span>{Math.round(progress)}% complete</span>
+          </div>
+          <Progress value={progress} className="h-1.5" />
+        </div>
+      )}
+
+      {/* Flashcard - Optimized spacing in modal mode */}
+      <div className={`flex-1 flex items-center justify-center ${isModalCompact ? 'px-3 py-3' : isModalMode ? 'px-3 py-3' : 'p-8'}`}>
+        <div className={`${isModalCompact ? 'w-[78%] max-w-xl' : isModalMode ? 'w-[78%] max-w-3xl' : 'w-full max-w-2xl'}`}>
+          <div
+            className={`relative cursor-pointer transition-transform duration-500 transform-style-preserve-3d ${
+              isFlipped ? 'rotate-y-180' : ''
+            } ${isModalCompact ? 'w-full h-72' : isModalMode ? 'w-full h-80' : 'w-full h-96'}`}
+            onClick={handleFlip}
+            style={{
+              transformStyle: 'preserve-3d',
+              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+              aspectRatio: isModalCompact ? '5/4' : undefined,
+              maxHeight: isModalMode ? '380px' : undefined,
+              minHeight: isModalMode ? '300px' : undefined
+            }}
+          >
+            {/* Front of card */}
+            <div
+              className="absolute inset-0 w-full h-full backface-hidden"
+              style={{ backfaceVisibility: 'hidden' }}
+            >
+              <div
+                className={`w-full h-full rounded-2xl shadow-xl flex flex-col items-center justify-center text-white ${isModalMode ? 'p-3' : 'p-8'}`}
+                style={{
+                  background: '#4ECFBF',
+                  boxShadow: '0 10px 25px rgba(78, 207, 191, 0.3), 0 4px 10px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                <div className="text-center">
+                  <div className={`${isModalMode ? 'text-lg mb-2' : 'text-2xl mb-4'}`}>💭</div>
+                  <h3 className={`${isModalMode ? 'text-lg font-semibold mb-2' : 'text-xl font-semibold mb-4'}`}>Question</h3>
+                  <p className={`${isModalMode ? 'text-base leading-relaxed px-2' : 'text-lg leading-relaxed'} overflow-hidden`}>
+                    <span className={`${isModalMode ? 'line-clamp-4' : ''}`}>{currentCard.front}</span>
+                  </p>
+                </div>
+
+                {/* Difficulty and Category badges on question card */}
+                <div className={`absolute top-3 right-3 flex items-center space-x-1 ${isModalMode ? 'scale-75' : ''}`}>
+                  <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium border ${getDifficultyColor(currentCard.difficulty)}`}>
+                    {currentCard.difficulty}
+                  </span>
+                  <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getCategoryColor(currentCard.category)}`}>
+                    {currentCard.category}
+                  </span>
+                </div>
+
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                  <div className={`${isModalMode ? 'text-xs' : 'text-sm'} opacity-75`}>Click to reveal answer</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Back of card */}
+            <div
+              className="absolute inset-0 w-full h-full backface-hidden rotate-y-180"
+              style={{
+                backfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)'
+              }}
+            >
+              <div
+                className={`w-full h-full rounded-2xl shadow-xl flex flex-col items-center justify-center text-gray-900 ${isModalMode ? 'p-3' : 'p-8'}`}
+                style={{
+                  background: '#FFD63A',
+                  boxShadow: '0 10px 25px rgba(255, 214, 58, 0.3), 0 4px 10px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                <div className="text-center">
+                  <div className={`${isModalMode ? 'text-lg mb-2' : 'text-2xl mb-4'}`}>💡</div>
+                  <h3 className={`${isModalMode ? 'text-lg font-semibold mb-2' : 'text-xl font-semibold mb-4'}`}>Answer</h3>
+                  <p className={`${isModalMode ? 'text-base leading-relaxed px-2' : 'text-lg leading-relaxed'} overflow-hidden`}>
+                    <span className={`${isModalMode ? 'line-clamp-4' : ''}`}>{currentCard.back}</span>
+                  </p>
+                </div>
+
+
+
+                {/* Tags - Smaller in modal mode */}
+                {currentCard.tags.length > 0 && (
+                  <div className={`absolute bottom-2 left-2 flex flex-wrap gap-1 ${isModalMode ? 'scale-75' : ''}`}>
+                    {currentCard.tags.slice(0, 3).map((tag, index) => (
+                      <span key={index} className="text-xs bg-white bg-opacity-30 px-2 py-1 rounded-full text-gray-800 font-medium">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Review buttons (only show when flipped and in review mode) - Compact in modal mode */}
+          {isFlipped && reviewMode && onReview && (
+            <div className={`flex justify-center space-x-2 ${isModalMode ? 'mt-3' : 'mt-4'}`}>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReview(false);
+                }}
+                variant="outline"
+                className="border-red-300 text-red-600 hover:bg-red-50"
+                disabled={reviewedCards.has(currentCard.id)}
+                size={isModalMode ? "sm" : "default"}
+              >
+                <XCircle className={`${isModalMode ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+                {!isModalMode && 'Incorrect'}
+              </Button>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReview(true);
+                }}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={reviewedCards.has(currentCard.id)}
+                size={isModalMode ? "sm" : "default"}
+              >
+                <CheckCircle className={`${isModalMode ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+                {!isModalMode && 'Correct'}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation - Compact in modal mode */}
+      <div className={`${isModalMode ? 'flex items-center justify-between px-3 py-1.5' : 'flex items-center justify-between p-4'} border-t border-gray-200`}>
+        <Button
+          variant="outline"
+          onClick={handlePrevious}
+          disabled={currentIndex === 0}
+          className={`${isModalMode ? 'h-8 px-2' : 'h-9 px-3'} text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+          size={isModalMode ? "sm" : "default"}
+        >
+          <ChevronLeft className={`${isModalMode ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+          {!isModalMode && <span className="text-sm font-medium">Previous</span>}
+        </Button>
+
+        <div className={`flex items-center ${isModalMode ? 'space-x-1' : 'space-x-3'}`}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFlipped(false)}
+            className={`${isModalMode ? 'h-8 px-2' : 'h-9 px-3'} text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200`}
+          >
+            <RotateCcw className={`${isModalMode ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+            {!isModalMode && <span className="text-sm font-medium">Reset</span>}
+          </Button>
+
+          {!isFlipped && (
+            <Button
+              onClick={handleFlip}
+              className={`${isModalMode ? 'h-8 px-3' : 'h-9 px-4'} bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700 transition-colors duration-200 shadow-sm hover:shadow-md`}
+              size={isModalMode ? "sm" : "default"}
+            >
+              <Eye className={`${isModalMode ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+              {!isModalMode && <span className="text-sm font-medium">Show Answer</span>}
+            </Button>
+          )}
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={handleNext}
+          disabled={currentIndex === filteredCards.length - 1}
+          className={`${isModalMode ? 'h-8 px-2' : 'h-9 px-3'} text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+          size={isModalMode ? "sm" : "default"}
+        >
+          {!isModalMode && <span className="text-sm font-medium">Next</span>}
+          <ChevronRight className={`${isModalMode ? 'h-3 w-3 ml-1' : 'h-4 w-4 ml-2'}`} />
+        </Button>
+      </div>
+
+      {/* Card Statistics - Hidden in modal mode */}
+      {showStats && !isModalMode && (
+        <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center space-x-4">
+              <span>Reviews: {currentCard.review_count}</span>
+              <span>Correct: {currentCard.correct_count}</span>
+              <span>Incorrect: {currentCard.incorrect_count}</span>
+              <span>Mastery: {Math.round(currentCard.mastery_level * 100)}%</span>
+            </div>
+            <div>
+              Created: {new Date(currentCard.created_at).toLocaleDateString()}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FlashcardViewer;

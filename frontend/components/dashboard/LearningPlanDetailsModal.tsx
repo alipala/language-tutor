@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ProgressRing } from './ProgressRing';
-import { LearningPlan } from '@/lib/learning-api';
-import { 
+import { LearningPlan, getUserFlashcardSets, FlashcardSet, reviewFlashcard } from '@/lib/learning-api';
+import FlashcardViewer from '@/components/FlashcardViewer';
+import {
   X,
   Calendar,
   Target,
@@ -14,7 +15,9 @@ import {
   Circle,
   Play,
   Award,
-  TrendingUp
+  TrendingUp,
+  Book,
+  Brain
 } from 'lucide-react';
 
 interface LearningPlanDetailsModalProps {
@@ -91,6 +94,40 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
   const [currentPage, setCurrentPage] = React.useState(0);
   const weeksPerPage = 2;
   const totalPages = Math.ceil(weeklySchedule.length / weeksPerPage);
+
+  // Flashcard state
+  const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([]);
+  const [selectedFlashcardSet, setSelectedFlashcardSet] = useState<FlashcardSet | null>(null);
+  const [showFlashcards, setShowFlashcards] = useState(false);
+  const [loadingFlashcards, setLoadingFlashcards] = useState(false);
+
+  // Load flashcard sets when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadFlashcardSets();
+    }
+  }, [isOpen]);
+
+  const loadFlashcardSets = async () => {
+    try {
+      setLoadingFlashcards(true);
+      const sets = await getUserFlashcardSets();
+      setFlashcardSets(sets);
+    } catch (error) {
+      console.error('Error loading flashcard sets:', error);
+    } finally {
+      setLoadingFlashcards(false);
+    }
+  };
+
+  const handleFlashcardReview = async (flashcardId: string, correct: boolean) => {
+    try {
+      await reviewFlashcard({ flashcard_id: flashcardId, correct });
+      // Optionally refresh flashcard data or update local state
+    } catch (error) {
+      console.error('Error reviewing flashcard:', error);
+    }
+  };
 
   if (!isOpen) {
     return null;
@@ -555,6 +592,59 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
                   </div>
                 </div>
               )}
+
+              {/* AI-Generated Flashcards */}
+              <div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <Brain className="h-5 w-5 mr-2 text-indigo-500" />
+                  AI-Generated Flashcards
+                </h4>
+                <div className="bg-indigo-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Review flashcards automatically generated from your speaking sessions to reinforce learning and improve retention.
+                  </p>
+
+                  {loadingFlashcards ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+                      <span className="ml-2 text-sm text-gray-600">Loading flashcards...</span>
+                    </div>
+                  ) : flashcardSets.length > 0 ? (
+                    <div className="space-y-3">
+                      {flashcardSets.slice(0, 3).map((set) => (
+                        <div key={set.id} className="bg-white rounded-lg p-3 border border-indigo-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h5 className="font-medium text-gray-800">{set.title}</h5>
+                              <p className="text-xs text-gray-600">{set.total_cards} cards • {set.language} • {set.level}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => setSelectedFlashcardSet(set)}
+                              className="bg-indigo-600 hover:bg-indigo-700"
+                            >
+                              <Book className="h-3 w-3 mr-1" />
+                              Study
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {flashcardSets.length > 3 && (
+                        <p className="text-xs text-indigo-600 text-center">
+                          +{flashcardSets.length - 3} more flashcard sets available
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <Book className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Complete speaking sessions to generate AI-powered flashcards
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Plan Creation Date */}
               <div className="text-xs text-gray-500 pt-4 border-t border-gray-200">

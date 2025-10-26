@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip } from '@/components/ui/tooltip';
 import { AssessmentCard } from '@/components/assessment-card';
 import AssessmentLearningPlanCard from '@/components/assessment-learning-plan-card';
-import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
+import { getUserLearningPlans, LearningPlan, getUserFlashcardSets, FlashcardSet, getDueFlashcards, Flashcard, reviewFlashcard } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -22,11 +22,12 @@ import {
   TrendingUp, Award, BookOpen, Clock, Zap,
   ChevronRight, ChevronDown, Share2, Lock,
   Gem, Heart, Volume2, Mic, CheckCircle, Brain,
-  Bell, AlertTriangle
+  Bell, AlertTriangle, Book
 } from 'lucide-react';
 import EnhancedAnalysisModal from '@/components/enhanced-analysis-modal';
 import ExportModal from '@/components/export-modal';
 import SubscriptionManagement from './subscription-management';
+import FlashcardViewer from '@/components/FlashcardViewer';
 import MembershipBadge, { UsageIndicator } from '@/components/membership-badge';
 import PaymentProcessingModal from '@/components/payment-processing-modal';
 import SoundWaveLoader from '@/components/sound-wave-loader';
@@ -64,7 +65,7 @@ export default function ProfilePage() {
   // Check for tab parameter in URL
   useEffect(() => {
     const tab = searchParams?.get('tab');
-    if (tab && ['overview', 'progress', 'notifications', 'export', 'settings'].includes(tab)) {
+    if (tab && ['overview', 'progress', 'flashcards', 'notifications', 'export', 'settings'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -198,6 +199,23 @@ export default function ProfilePage() {
   
   // Export loading states
   const [exportLoading, setExportLoading] = useState<Record<string, boolean>>({});
+
+  // Flashcard state
+  const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([]);
+  const [dueFlashcards, setDueFlashcards] = useState<Flashcard[]>([]);
+  const [selectedFlashcardSet, setSelectedFlashcardSet] = useState<FlashcardSet | null>(null);
+  const [showFlashcardViewer, setShowFlashcardViewer] = useState(false);
+  const [flashcardLoading, setFlashcardLoading] = useState(false);
+  const [flashcardFilter, setFlashcardFilter] = useState<'all' | 'learning-plans' | 'practice'>('all');
+  const [flashcardViewMode, setFlashcardViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Filter flashcard sets based on selected filter
+  const filteredFlashcardSets = flashcardSets.filter(set => {
+    if (flashcardFilter === 'all') return true;
+    if (flashcardFilter === 'learning-plans') return set.session_id.startsWith('learning_plan_');
+    if (flashcardFilter === 'practice') return !set.session_id.startsWith('learning_plan_');
+    return true;
+  });
   
   // Calculate export stats for export modal
   const exportStats = {
@@ -396,6 +414,7 @@ export default function ProfilePage() {
       fetchUserLearningPlans();
       fetchProgressData();
       fetchSubscriptionStatus();
+      fetchFlashcardData();
     }
   }, [user]);
 
@@ -742,9 +761,10 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const analysisData = await response.json();
-        // Include conversation messages in the analysis data
+        // Include conversation messages and session_id in the analysis data
         const enhancedAnalysisWithMessages = {
           ...analysisData.enhanced_analysis,
+          session_id: analysisData.session_id,  // Include session_id for flashcard lookup
           conversation_messages: analysisData.conversation_messages || []
         };
         setSelectedAnalysis(enhancedAnalysisWithMessages);
@@ -764,14 +784,52 @@ export default function ProfilePage() {
   const handlePaymentProcessingComplete = () => {
     console.log('[PROFILE] Payment processing complete, refreshing subscription status');
     setShowPaymentProcessing(false);
-    
+
     // Refresh subscription status to get updated data
     fetchSubscriptionStatus();
-    
+
     // Remove checkout parameter from URL
     const url = new URL(window.location.href);
     url.searchParams.delete('checkout');
     window.history.replaceState({}, '', url.toString());
+  };
+
+  // Fetch flashcard data
+  const fetchFlashcardData = async () => {
+    if (!user) return;
+
+    setFlashcardLoading(true);
+
+    try {
+      console.log('[PROFILE] 🚀 Fetching flashcard data...');
+
+      // Fetch flashcard sets and due flashcards in parallel
+      const [sets, due] = await Promise.all([
+        getUserFlashcardSets(),
+        getDueFlashcards(10)
+      ]);
+
+      setFlashcardSets(sets);
+      setDueFlashcards(due);
+      console.log('[PROFILE] ✅ Flashcard data loaded:', sets.length, 'sets,', due.length, 'due');
+
+    } catch (error) {
+      console.error('[PROFILE] ❌ Error fetching flashcard data:', error);
+    } finally {
+      setFlashcardLoading(false);
+    }
+  };
+
+  // Handle flashcard review
+  const handleFlashcardReview = async (flashcardId: string, correct: boolean) => {
+    try {
+      await reviewFlashcard({ flashcard_id: flashcardId, correct });
+      // Refresh due flashcards after review
+      const updatedDue = await getDueFlashcards(10);
+      setDueFlashcards(updatedDue);
+    } catch (error) {
+      console.error('Error reviewing flashcard:', error);
+    }
   };
 
   return (
@@ -915,6 +973,7 @@ export default function ProfilePage() {
                   {[
                     { id: 'overview', label: 'Overview', icon: TrendingUp },
                     { id: 'progress', label: 'Progress', icon: Target },
+                    { id: 'flashcards', label: 'Flashcards', icon: Brain },
                     { id: 'ai-tutor', label: 'AI Tutor', icon: Volume2 },
                     { id: 'notifications', label: 'Alerts', icon: Bell },
                     { id: 'export', label: 'Export', icon: Download },
@@ -947,6 +1006,7 @@ export default function ProfilePage() {
                 {[
                   { id: 'overview', label: 'Overview', icon: TrendingUp },
                   { id: 'progress', label: 'Learning Progress', icon: Target },
+                  { id: 'flashcards', label: 'Flashcards', icon: Brain },
                   { id: 'ai-tutor', label: 'AI Tutor', icon: Volume2 },
                   { id: 'notifications', label: 'Notifications', icon: Bell },
                   { id: 'export', label: 'Export Data', icon: Download },
@@ -1141,6 +1201,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
+
             </div>
           )}
 
@@ -1204,6 +1265,260 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               ) : null}
+            </div>
+          )}
+
+          {/* Flashcards Tab */}
+          {activeTab === 'flashcards' && (
+            <div className="space-y-8">
+              {/* Flashcard Overview */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                    <Brain className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
+                    AI-Generated Flashcards
+                  </h3>
+                  <div className="text-sm text-gray-500">
+                    {flashcardSets.length} flashcard sets • {dueFlashcards.length} due today
+                  </div>
+                </div>
+
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-teal-700">
+                    <strong>🧠 Smart Learning:</strong> Review AI-generated flashcards from your speaking sessions to reinforce vocabulary, grammar, and pronunciation. Cards are spaced using scientific learning algorithms for optimal retention.
+                  </p>
+                </div>
+
+                {flashcardLoading ? (
+                  <div className="flex justify-center items-center py-8">
+                    <SoundWaveLoader
+                      size="md"
+                      color="#4ECFBF"
+                      text="Loading flashcards..."
+                      subtext="Fetching your AI-generated study materials"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Due Flashcards Section */}
+                    {dueFlashcards.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                          <Zap className="h-5 w-5 mr-2 text-orange-500" />
+                          Due for Review ({dueFlashcards.length})
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {dueFlashcards.slice(0, 6).map((card) => (
+                            <div key={card.id} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                              <div className="text-sm text-gray-600 mb-2">Due: {new Date(card.next_review_date || '').toLocaleDateString()}</div>
+                              <div className="font-medium text-gray-800 mb-2">{card.front}</div>
+                              <div className="text-xs text-gray-500">Level: {card.difficulty} • {card.category}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 text-center">
+                          <Button
+                            onClick={() => {
+                              // Start review session with due cards
+                              const mockSet = {
+                                id: 'due-cards',
+                                session_id: 'due-review',
+                                user_id: user?._id || '',
+                                language: 'Mixed',
+                                level: 'Mixed',
+                                title: 'Due for Review',
+                                description: 'Cards due for review today',
+                                flashcards: dueFlashcards,
+                                total_cards: dueFlashcards.length,
+                                created_at: new Date().toISOString(),
+                                is_completed: false
+                              };
+                              setSelectedFlashcardSet(mockSet);
+                              setShowFlashcardViewer(true);
+                            }}
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
+                          >
+                            <Zap className="h-4 w-4 mr-2" />
+                            Start Review Session ({dueFlashcards.length} cards)
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Flashcard Sets Section */}
+                    <div>
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-lg font-semibold text-gray-800 flex items-center">
+                          <Book className="h-5 w-5 mr-2 text-indigo-500" />
+                          Your Flashcard Sets
+                        </h4>
+
+                        {/* Filter and View Controls */}
+                        <div className="flex items-center space-x-3">
+                          {/* Filter Dropdown */}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-800 font-medium">Filter:</span>
+                            <select
+                              value={flashcardFilter}
+                              onChange={(e) => setFlashcardFilter(e.target.value as 'all' | 'learning-plans' | 'practice')}
+                              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
+                            >
+                              <option value="all">All Sets</option>
+                              <option value="learning-plans">Learning Plans</option>
+                              <option value="practice">Practice Sessions</option>
+                            </select>
+                          </div>
+
+                          {/* View Mode Toggle */}
+                          <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
+                            <button
+                              onClick={() => setFlashcardViewMode('grid')}
+                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                flashcardViewMode === 'grid'
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : 'text-gray-600 hover:text-gray-800'
+                              }`}
+                            >
+                              Grid
+                            </button>
+                            <button
+                              onClick={() => setFlashcardViewMode('list')}
+                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                flashcardViewMode === 'list'
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : 'text-gray-600 hover:text-gray-800'
+                              }`}
+                            >
+                              List
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {filteredFlashcardSets.length === 0 ? (
+                        <div className="text-center py-8">
+                          <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <Brain className="h-8 w-8 text-indigo-500" />
+                          </div>
+                          <h4 className="text-lg font-medium text-gray-800 mb-2">
+                            {flashcardFilter === 'all' ? 'No Flashcards Yet' :
+                             flashcardFilter === 'learning-plans' ? 'No Learning Plan Flashcards' :
+                             'No Practice Session Flashcards'}
+                          </h4>
+                          <p className="text-gray-600 mb-4">
+                            {flashcardFilter === 'all'
+                              ? 'Complete speaking sessions to generate AI-powered flashcards'
+                              : flashcardFilter === 'learning-plans'
+                              ? 'Complete learning plan sessions to generate flashcards'
+                              : 'Complete practice sessions to generate flashcards'
+                            }
+                          </p>
+                          <Button
+                            onClick={() => router.push('/speech')}
+                            className="text-white py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition-all"
+                            style={{ backgroundColor: '#4ECFBF' }}
+                          >
+                            Start Practicing
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className={
+                          flashcardViewMode === 'grid'
+                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                            : "space-y-4"
+                        }>
+                          {filteredFlashcardSets.map((set) => (
+                            flashcardViewMode === 'grid' ? (
+                              // Grid View
+                              <div key={set.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                                <div className="flex items-start justify-between mb-4">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                      <Brain className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                    <div>
+                                      <h5 className="font-semibold text-gray-800">{set.title}</h5>
+                                      <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                    </div>
+                                  </div>
+                                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                                    {set.total_cards} cards
+                                  </Badge>
+                                </div>
+
+                                {set.description && (
+                                  <p className="text-sm text-gray-600 mb-4">{set.description}</p>
+                                )}
+
+                                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                                  <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
+                                  {set.is_completed && (
+                                    <Badge className="bg-green-100 text-green-700 text-xs">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Completed
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <Button
+                                  onClick={() => {
+                                    setSelectedFlashcardSet(set);
+                                    setShowFlashcardViewer(true);
+                                  }}
+                                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  size="sm"
+                                >
+                                  <Book className="h-4 w-4 mr-2" />
+                                  Study Now
+                                </Button>
+                              </div>
+                            ) : (
+                              // List View
+                              <div key={set.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-4 flex-1">
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <Brain className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-semibold text-gray-800 truncate">{set.title}</h5>
+                                      <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                      {set.description && (
+                                        <p className="text-sm text-gray-500 mt-1 truncate">{set.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                      <span>{set.total_cards} cards</span>
+                                      <span>{new Date(set.created_at).toLocaleDateString()}</span>
+                                      {set.is_completed && (
+                                        <Badge className="bg-green-100 text-green-700 text-xs">
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                          Completed
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    onClick={() => {
+                                      setSelectedFlashcardSet(set);
+                                      setShowFlashcardViewer(true);
+                                    }}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white ml-4"
+                                    size="sm"
+                                  >
+                                    <Book className="h-4 w-4 mr-2" />
+                                    Study
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1843,6 +2158,27 @@ export default function ProfilePage() {
         planName={planInfo.name}
         userEmail={user?.email}
       />
+
+      {/* Flashcard Viewer Modal */}
+      {showFlashcardViewer && selectedFlashcardSet && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black bg-opacity-75" onClick={() => setShowFlashcardViewer(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <FlashcardViewer
+              flashcards={selectedFlashcardSet.flashcards}
+              flashcardSet={selectedFlashcardSet}
+              onReview={undefined}
+              onClose={() => setShowFlashcardViewer(false)}
+              showProgress={true}
+              showFilters={false}
+              showShuffle={true}
+              showDownload={false}
+              showStats={false}
+              autoAdvance={false}
+            />
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

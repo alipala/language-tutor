@@ -195,6 +195,10 @@ app.include_router(learner_router)
 from activation_codes_routes import router as activation_codes_router
 app.include_router(activation_codes_router)
 
+# Include flashcard routes
+from flashcard_routes import router as flashcard_router
+app.include_router(flashcard_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
@@ -1949,7 +1953,7 @@ async def store_session_summary(
                 {"_id": ObjectId(current_user.id)},
                 {"$inc": {"practice_sessions_used": 1}}
             )
-            
+
             if user_result.modified_count > 0:
                 print(f"[SESSION_SUMMARY] ✅ Incremented subscription usage for user {current_user.id}")
             else:
@@ -1957,6 +1961,40 @@ async def store_session_summary(
         except Exception as subscription_error:
             print(f"[SESSION_SUMMARY] ❌ Error tracking subscription usage: {str(subscription_error)}")
             # Don't fail the session saving if subscription tracking fails
+            pass
+
+        # 🔥 NEW: Generate flashcards for learning plan sessions
+        # Automatically create flashcards when a learning plan session is completed
+        try:
+            print(f"[SESSION_SUMMARY] 🎯 Generating flashcards for learning plan session {completed_sessions}")
+
+            # Create a unique session ID for the flashcard generation
+            import uuid
+            flashcard_session_id = f"learning_plan_{plan_id}_session_{completed_sessions}_{uuid.uuid4().hex[:8]}"
+
+            # Prepare flashcard generation request
+            from flashcard_service import FlashcardService
+            from models import FlashcardGenerationRequest
+
+            flashcard_request = FlashcardGenerationRequest(
+                session_id=flashcard_session_id,
+                language=language,
+                level=level,
+                topic=week_focus,  # Use the current week's focus as topic
+                conversation_content=conversation_content if conversation_content else None,
+                session_summary=comprehensive_summary
+            )
+
+            # Generate flashcards using the service
+            flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+
+            print(f"[SESSION_SUMMARY] ✅ Generated {len(flashcard_set.flashcards)} flashcards for learning plan session")
+            print(f"[SESSION_SUMMARY] 📚 Flashcard set: {flashcard_set.title}")
+
+        except Exception as flashcard_error:
+            print(f"[SESSION_SUMMARY] ⚠️ Flashcard generation failed: {str(flashcard_error)}")
+            # Don't fail the session summary if flashcard generation fails
+            # Users can still manually generate flashcards if needed
             pass
         
         # Update the plan

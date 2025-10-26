@@ -392,6 +392,85 @@ class NotificationListResponse(BaseModel):
     unread_count: int
     total_count: int
 
+# Flashcard models
+class Flashcard(BaseModel):
+    id: str
+    session_id: str  # Links to conversation session
+    user_id: str
+    language: str
+    level: str
+    topic: Optional[str] = None
+    front: str  # Question/prompt
+    back: str   # Answer/explanation
+    category: str  # grammar, vocabulary, pronunciation, fluency, etc.
+    difficulty: str  # easy, medium, hard
+    tags: List[str] = []  # Additional categorization tags
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_reviewed: Optional[datetime] = None
+    review_count: int = 0
+    correct_count: int = 0
+    incorrect_count: int = 0
+    mastery_level: float = 0.0  # 0.0 to 1.0, based on spaced repetition algorithm
+    next_review_date: Optional[datetime] = None
+    is_active: bool = True
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class FlashcardSet(BaseModel):
+    id: str
+    session_id: str
+    user_id: str
+    language: str
+    level: str
+    topic: Optional[str] = None
+    title: str
+    description: str
+    flashcards: List[Flashcard]
+    total_cards: int
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class FlashcardGenerationRequest(BaseModel):
+    session_id: str
+    language: str
+    level: str
+    topic: Optional[str] = None
+    conversation_content: Optional[str] = None
+    session_summary: Optional[str] = None
+    count: int = 5  # Number of flashcards to generate (5-10)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class FlashcardReviewRequest(BaseModel):
+    flashcard_id: str
+    correct: bool  # True if answered correctly, False if incorrect
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class FlashcardProgress(BaseModel):
+    total_cards: int
+    reviewed_today: int
+    due_today: int
+    mastered_cards: int
+    average_mastery: float
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
 # Voice selection models
 class VoiceSelectionRequest(BaseModel):
     voice: str  # One of: alloy, ash, ballad, coral, echo, sage, shimmer, verse
