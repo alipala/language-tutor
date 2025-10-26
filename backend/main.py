@@ -104,7 +104,7 @@ app.add_middleware(
 )
 
 # Include authentication routes
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api", tags=["authentication"])
 
 # Include learning routes
 from learning_routes import router as learning_router
@@ -441,8 +441,11 @@ async def health_check():
                 "/api/realtime/token",
                 "/api/speaking/assess",
                 "/api/sentence/assess",
-                "/auth/login",
-                "/auth/signup"
+                "/api/auth/login",
+                "/api/auth/register",
+                "/api/auth/check-user-type",
+                "/api/auth/google-login",
+                "/api/auth/me"
             ]
         }
         
