@@ -11,7 +11,7 @@ const isRailway = typeof window !== 'undefined' && (
   window.location.hostname === 'mytacoai.com'
 );
 const API_URL = isRailway 
-  ? '/api' // Use /api prefix for same-domain Railway deployment
+  ? '' // Empty string for same-domain Railway deployment (routes already have /api prefix)
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 
 // Types
