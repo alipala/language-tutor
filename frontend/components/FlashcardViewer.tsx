@@ -483,10 +483,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                   </p>
                 </div>
 
-                {/* Mastery stars - Smaller in modal mode */}
-                <div className={`absolute top-2 right-2 flex items-center space-x-1 ${isModalMode ? 'scale-75' : ''}`}>
-                  {renderStars(currentCard.mastery_level)}
-                </div>
+
 
                 {/* Tags - Smaller in modal mode */}
                 {currentCard.tags.length > 0 && (
