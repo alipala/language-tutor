@@ -69,6 +69,7 @@ interface FlashcardViewerProps {
   showStats?: boolean;
   autoAdvance?: boolean;
   className?: string;
+  currentCard?: Flashcard;
 }
 
 type FilterType = 'all' | 'due' | 'new' | 'difficult' | 'mastered';
@@ -273,80 +274,72 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   const isModalCompact = className.includes('modal-compact');
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      {/* Header - Ultra compact in modal-compact mode */}
-      <div className={`${isModalCompact ? 'px-2 py-1 mb-1' : isModalMode ? 'px-3 py-2' : 'p-4'} ${isModalCompact ? '' : 'border-b border-gray-200'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            {flashcardSet && (
-              <div>
-                <h2 className={`${isModalCompact ? 'text-sm' : isModalMode ? 'text-base' : 'text-lg'} font-semibold text-black ${isModalCompact ? 'mb-0' : ''}`}>
-                  {flashcardSet.title}
-                </h2>
-                {!isModalMode && (
-                  <p className="text-sm text-gray-600">{flashcardSet.description}</p>
-                )}
-              </div>
-            )}
+    <div className={`flex flex-col h-full ${isModalMode ? 'py-2' : 'py-8'} ${className}`}>
+      {/* Header - Only show in non-modal mode */}
+      {!isModalMode && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1">
-              <span className={`inline-block text-xs px-1.5 py-0.5 rounded-full font-medium border ${getDifficultyColor(currentCard.difficulty)}`}>
-                {currentCard.difficulty}
-              </span>
-              <span className={`inline-block text-xs px-1.5 py-0.5 rounded-full font-medium ${getCategoryColor(currentCard.category)}`}>
-                {currentCard.category}
-              </span>
+              {flashcardSet && (
+                <div>
+                  <h2 className="text-lg font-semibold text-black">
+                    {flashcardSet.title}
+                  </h2>
+                  <p className="text-sm text-gray-600">{flashcardSet.description}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-1">
+              {showShuffle && !showFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShuffle}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+                >
+                  <Shuffle className="h-3 w-3" />
+                </Button>
+              )}
+
+              {showFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReviewMode(!reviewMode)}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 ${
+                    reviewMode ? 'bg-blue-50 border-blue-300 text-blue-700' : ''
+                  }"
+                >
+                  {reviewMode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </Button>
+              )}
+
+              {showDownload && flashcardSet && !isModalMode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+                >
+                  <Download className="h-3 w-3" />
+                </Button>
+              )}
+
+              {onClose && !isModalMode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors duration-200"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           </div>
-
-          <div className="flex items-center space-x-1">
-            {showShuffle && !showFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShuffle}
-                className={`${isModalCompact ? 'h-6 px-1.5' : 'h-8 px-2'} text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200`}
-              >
-                <Shuffle className={`${isModalCompact ? 'h-2.5 w-2.5' : 'h-3 w-3'}`} />
-              </Button>
-            )}
-
-            {showFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReviewMode(!reviewMode)}
-                className={`${isModalCompact ? 'h-6 px-1.5' : 'h-8 px-2'} text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 ${
-                  reviewMode ? 'bg-blue-50 border-blue-300 text-blue-700' : ''
-                }`}
-              >
-                {reviewMode ? <EyeOff className={`${isModalCompact ? 'h-2.5 w-2.5' : 'h-3 w-3'}`} /> : <Eye className={`${isModalCompact ? 'h-2.5 w-2.5' : 'h-3 w-3'}`} />}
-              </Button>
-            )}
-
-            {showDownload && flashcardSet && !isModalMode && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
-              >
-                <Download className="h-3 w-3" />
-              </Button>
-            )}
-
-            {onClose && !isModalMode && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-                className="h-8 px-2 text-gray-700 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors duration-200"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Filters - Hidden in modal mode */}
       {showFilters && !isModalMode && (
@@ -406,27 +399,29 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
 
       {/* Progress - Compact in modal mode */}
       {showProgress && (
-        <div className={`${isModalMode ? 'px-3 py-1' : 'px-4 py-2'} border-b border-gray-200`}>
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+        <div className={`${isModalMode ? 'px-3 py-1.5 mb-2' : 'px-4 py-2 mb-6'} border-b border-gray-200`}>
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-1.5">
             <span>Card {currentIndex + 1} of {filteredCards.length}</span>
             <span>{Math.round(progress)}% complete</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-1.5" />
         </div>
       )}
 
-      {/* Flashcard - Compact in modal mode */}
-      <div className={`flex-1 flex items-center justify-center ${isModalCompact ? 'px-2 py-1' : isModalMode ? 'px-4 py-2' : 'p-8'}`}>
-        <div className={`${isModalCompact ? 'w-full max-w-lg' : 'w-full max-w-2xl'}`}>
+      {/* Flashcard - Optimized spacing in modal mode */}
+      <div className={`flex-1 flex items-center justify-center ${isModalCompact ? 'px-3 py-3' : isModalMode ? 'px-3 py-3' : 'p-8'}`}>
+        <div className={`${isModalCompact ? 'w-[78%] max-w-xl' : isModalMode ? 'w-[78%] max-w-3xl' : 'w-full max-w-2xl'}`}>
           <div
             className={`relative cursor-pointer transition-transform duration-500 transform-style-preserve-3d ${
               isFlipped ? 'rotate-y-180' : ''
-            } ${isModalCompact ? 'w-full h-64' : isModalMode ? 'w-full h-48' : 'w-full h-96'}`}
+            } ${isModalCompact ? 'w-full h-72' : isModalMode ? 'w-full h-80' : 'w-full h-96'}`}
             onClick={handleFlip}
             style={{
               transformStyle: 'preserve-3d',
               transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              aspectRatio: isModalCompact ? '3/2' : undefined
+              aspectRatio: isModalCompact ? '5/4' : undefined,
+              maxHeight: isModalMode ? '380px' : undefined,
+              minHeight: isModalMode ? '300px' : undefined
             }}
           >
             {/* Front of card */}
@@ -434,7 +429,13 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
               className="absolute inset-0 w-full h-full backface-hidden"
               style={{ backfaceVisibility: 'hidden' }}
             >
-              <div className={`w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl flex flex-col items-center justify-center text-white ${isModalMode ? 'p-4' : 'p-8'}`}>
+              <div
+                className={`w-full h-full rounded-2xl shadow-xl flex flex-col items-center justify-center text-white ${isModalMode ? 'p-3' : 'p-8'}`}
+                style={{
+                  background: '#4ECFBF',
+                  boxShadow: '0 10px 25px rgba(78, 207, 191, 0.3), 0 4px 10px rgba(0, 0, 0, 0.1)'
+                }}
+              >
                 <div className="text-center">
                   <div className={`${isModalMode ? 'text-lg mb-2' : 'text-2xl mb-4'}`}>💭</div>
                   <h3 className={`${isModalMode ? 'text-lg font-semibold mb-2' : 'text-xl font-semibold mb-4'}`}>Question</h3>
@@ -442,6 +443,17 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                     <span className={`${isModalMode ? 'line-clamp-4' : ''}`}>{currentCard.front}</span>
                   </p>
                 </div>
+
+                {/* Difficulty and Category badges on question card */}
+                <div className={`absolute top-3 right-3 flex items-center space-x-1 ${isModalMode ? 'scale-75' : ''}`}>
+                  <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium border ${getDifficultyColor(currentCard.difficulty)}`}>
+                    {currentCard.difficulty}
+                  </span>
+                  <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getCategoryColor(currentCard.category)}`}>
+                    {currentCard.category}
+                  </span>
+                </div>
+
                 <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
                   <div className={`${isModalMode ? 'text-xs' : 'text-sm'} opacity-75`}>Click to reveal answer</div>
                 </div>
@@ -456,7 +468,13 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                 transform: 'rotateY(180deg)'
               }}
             >
-              <div className={`w-full h-full bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl shadow-xl flex flex-col items-center justify-center text-white ${isModalMode ? 'p-4' : 'p-8'}`}>
+              <div
+                className={`w-full h-full rounded-2xl shadow-xl flex flex-col items-center justify-center text-gray-900 ${isModalMode ? 'p-3' : 'p-8'}`}
+                style={{
+                  background: '#FFD63A',
+                  boxShadow: '0 10px 25px rgba(255, 214, 58, 0.3), 0 4px 10px rgba(0, 0, 0, 0.1)'
+                }}
+              >
                 <div className="text-center">
                   <div className={`${isModalMode ? 'text-lg mb-2' : 'text-2xl mb-4'}`}>💡</div>
                   <h3 className={`${isModalMode ? 'text-lg font-semibold mb-2' : 'text-xl font-semibold mb-4'}`}>Answer</h3>
@@ -474,7 +492,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                 {currentCard.tags.length > 0 && (
                   <div className={`absolute bottom-2 left-2 flex flex-wrap gap-1 ${isModalMode ? 'scale-75' : ''}`}>
                     {currentCard.tags.slice(0, 3).map((tag, index) => (
-                      <span key={index} className="text-xs bg-white bg-opacity-20 px-2 py-1 rounded-full">
+                      <span key={index} className="text-xs bg-white bg-opacity-30 px-2 py-1 rounded-full text-gray-800 font-medium">
                         {tag}
                       </span>
                     ))}
@@ -486,7 +504,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
 
           {/* Review buttons (only show when flipped and in review mode) - Compact in modal mode */}
           {isFlipped && reviewMode && onReview && (
-            <div className={`flex justify-center space-x-2 ${isModalMode ? 'mt-2' : 'mt-6'}`}>
+            <div className={`flex justify-center space-x-2 ${isModalMode ? 'mt-3' : 'mt-4'}`}>
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -518,7 +536,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       </div>
 
       {/* Navigation - Compact in modal mode */}
-      <div className={`${isModalMode ? 'flex items-center justify-between px-3 py-2' : 'flex items-center justify-between p-4'} border-t border-gray-200`}>
+      <div className={`${isModalMode ? 'flex items-center justify-between px-3 py-1.5' : 'flex items-center justify-between p-4'} border-t border-gray-200`}>
         <Button
           variant="outline"
           onClick={handlePrevious}

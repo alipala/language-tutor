@@ -206,7 +206,7 @@ export default function EnhancedAnalysisModal({
           ))}
         </div>
 
-        <ScrollArea className="flex-1 p-6">
+        <ScrollArea className={`flex-1 ${activeTab === 'flashcards' ? 'p-0' : 'p-6'}`}>
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -487,7 +487,7 @@ export default function EnhancedAnalysisModal({
 
           {/* Flashcards Tab */}
           {activeTab === 'flashcards' && (
-            <div className="h-full pt-2">
+            <div className="h-full">
               {flashcardsLoading ? (
                 <div className="flex justify-center items-center py-8">
                   <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
@@ -531,6 +531,7 @@ export default function EnhancedAnalysisModal({
                   showStats={false}
                   autoAdvance={false}
                   className="h-full modal-compact"
+                  currentCard={sessionFlashcards[0]} // Pass current card for badges
                 />
               )}
             </div>
