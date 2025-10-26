@@ -487,7 +487,7 @@ export default function EnhancedAnalysisModal({
 
           {/* Flashcards Tab */}
           {activeTab === 'flashcards' && (
-            <div className="h-full">
+            <div className="h-full pt-2">
               {flashcardsLoading ? (
                 <div className="flex justify-center items-center py-8">
                   <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
@@ -530,7 +530,7 @@ export default function EnhancedAnalysisModal({
                   showDownload={false}
                   showStats={false}
                   autoAdvance={false}
-                  className="h-full"
+                  className="h-full modal-compact"
                 />
               )}
             </div>
