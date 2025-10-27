@@ -1150,14 +1150,43 @@ async def save_session_summary(
             flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
 
             if flashcard_set and flashcard_set.flashcards:
+                # 🔥 FIX ISSUE 2: Save flashcards to database (same pattern as progress_routes.py)
+                from bson import ObjectId  # Import ObjectId for MongoDB
+                
+                flashcard_sets_collection = database.flashcard_sets
+                flashcards_collection = database.flashcards
+
+                # Prepare flashcard set document
+                flashcard_set_doc = flashcard_set.dict()
+                flashcard_set_doc["_id"] = ObjectId()
+                flashcard_set_doc["created_at"] = datetime.utcnow()
+
+                # Prepare individual flashcard documents
+                flashcard_docs = []
+                for flashcard in flashcard_set.flashcards:
+                    card_doc = flashcard.dict()
+                    card_doc["_id"] = ObjectId()
+                    flashcard_docs.append(card_doc)
+
+                # Insert flashcard set
+                set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
+                print(f"[FLASHCARD_INTEGRATION] ✅ Saved flashcard set to database: {set_result.inserted_id}")
+
+                # Insert individual flashcards
+                if flashcard_docs:
+                    cards_result = await flashcards_collection.insert_many(flashcard_docs)
+                    print(f"[FLASHCARD_INTEGRATION] ✅ Saved {len(cards_result.inserted_ids)} flashcards to database")
+
                 generated_flashcards = len(flashcard_set.flashcards)
                 flashcard_generation_success = True
-                print(f"[FLASHCARD_INTEGRATION] ✅ Generated {generated_flashcards} flashcards successfully")
+                print(f"[FLASHCARD_INTEGRATION] ✅ Generated and saved {generated_flashcards} flashcards successfully")
             else:
                 print(f"[FLASHCARD_INTEGRATION] ⚠️ Flashcard generation returned empty result")
 
         except Exception as flashcard_error:
             print(f"[FLASHCARD_INTEGRATION] ❌ Flashcard generation failed: {str(flashcard_error)}")
+            import traceback
+            traceback.print_exc()
             # Don't fail the session save if flashcard generation fails
             flashcard_generation_success = False
             generated_flashcards = 0
