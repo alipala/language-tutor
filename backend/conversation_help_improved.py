@@ -114,10 +114,10 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
 </instructions>"""
 
     try:
-        # Use GPT-4o for better reasoning, with timeout for performance
+        # Use GPT-4o-mini for cost optimization
         response = await asyncio.wait_for(
             client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "developer", "content": intent_prompt}
                 ],
@@ -127,19 +127,19 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
             timeout=3.0
         )
         
-        # Track GPT-4o cost for intent analysis
+        # Track gpt-4o-mini cost for intent analysis
         usage = response.usage
         if usage:
             try:
                 await GPT4oCostTracker.log_usage(
                     user_id=None,  # Will be set by caller if available
                     session_id="intent_analysis",
-                    usage_type="conversation_help_intent",
+                    usage_type="conversation_help_intent_mini",
                     input_tokens=usage.prompt_tokens,
                     output_tokens=usage.completion_tokens,
                     cached_tokens=getattr(usage, 'prompt_tokens_details', {}).get('cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
                     language=request.target_language,
-                    context={"intent_analysis": True}
+                    context={"intent_analysis": True, "model": "gpt-4o-mini"}
                 )
             except Exception as track_error:
                 print(f"[INTENT_ANALYSIS] ⚠️ Cost tracking failed: {track_error}")
@@ -225,7 +225,7 @@ Key Focus: {intent.key_focus}
 - Responses should be short and clear for pronunciation practice
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
+Generate 1 contextually perfect response in JSON format:
 {{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "IPA or simplified phonetic", "explanation": "why this response helps with pronunciation practice"}}]}}"""
 
     elif intent.intent == "ERROR_CORRECTION":
@@ -245,7 +245,7 @@ Key Focus: {intent.key_focus}
 - Demonstrate that the student learned from the correction
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
+Generate 1 contextually perfect response in JSON format:
 {{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response shows understanding of the correction"}}]}}"""
 
     elif intent.intent == "NEW_CONCEPT_INTRODUCTION":
@@ -265,7 +265,7 @@ Key Focus: {intent.key_focus}
 - Request examples or practice opportunities
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
+Generate 1 contextually perfect response in JSON format:
 {{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response shows engagement with the new concept"}}]}}"""
 
     elif intent.intent == "VOCABULARY_PRACTICE":
@@ -285,7 +285,7 @@ Key Focus: {intent.key_focus}
 - Make sentences meaningful and realistic
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
+Generate 1 contextually perfect response in JSON format:
 {{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this sentence demonstrates proper vocabulary usage"}}]}}"""
 
     elif intent.intent == "ASSESSMENT":
@@ -305,7 +305,7 @@ Key Focus: {intent.key_focus}
 - Demonstrate learning progress
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
+Generate 1 contextually perfect response in JSON format:
 {{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response demonstrates knowledge appropriately"}}]}}"""
 
     else:  # CONVERSATIONAL_PRACTICE or ENCOURAGEMENT
@@ -325,7 +325,7 @@ Key Focus: {intent.key_focus}
 - Show personality while practicing the language
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
+Generate 1 contextually perfect response in JSON format:
 {{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits the conversation naturally"}}]}}"""
 
 async def generate_contextual_responses(
@@ -347,32 +347,32 @@ async def generate_contextual_responses(
     context_prompt = build_context_aware_prompt(request, intent)
     
     try:
-        # Generate responses with extended timeout for quality responses
+        # Generate responses with gpt-4o-mini for cost optimization
         response = await asyncio.wait_for(
             client.chat.completions.create(
-                model="gpt-4o",  # Use GPT-4o for better contextual understanding
+                model="gpt-4o-mini",  # Use gpt-4o-mini for cost optimization
                 messages=[
                     {"role": "developer", "content": context_prompt}
                 ],
                 temperature=0.2,
-                max_tokens=400  # Reduced for speed while maintaining quality
+                max_tokens=300  # Reduced since we're generating only 1 response
             ),
-            timeout=8.0  # INCREASED: Give GPT-4o enough time for quality responses
+            timeout=5.0  # Reduced timeout for faster mini model
         )
         
-        # Track GPT-4o cost for response generation
+        # Track gpt-4o-mini cost for response generation
         usage = response.usage
         if usage:
             try:
                 await GPT4oCostTracker.log_usage(
                     user_id=None,  # Will be set by caller if available
                     session_id="response_generation",
-                    usage_type="conversation_help_responses",
+                    usage_type="conversation_help_responses_mini",
                     input_tokens=usage.prompt_tokens,
                     output_tokens=usage.completion_tokens,
                     cached_tokens=getattr(usage, 'prompt_tokens_details', {}).get('cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
                     language=request.target_language,
-                    context={"intent": intent.intent, "teaching_phase": intent.teaching_phase}
+                    context={"intent": intent.intent, "teaching_phase": intent.teaching_phase, "model": "gpt-4o-mini"}
                 )
             except Exception as track_error:
                 print(f"[RESPONSE_GEN] ⚠️ Cost tracking failed: {track_error}")
@@ -389,13 +389,12 @@ async def generate_contextual_responses(
         
         # Cache the result
         RESPONSE_CACHE[cache_key] = response_data
-        print(f"[RESPONSE_GEN] ✅ Generated {len(response_data.get('responses', []))} contextual responses")
+        print(f"[RESPONSE_GEN] ✅ Generated {len(response_data.get('responses', []))} contextual response (optimized to 1)")
         
         return response_data
         
     except asyncio.TimeoutError as e:
-        print(f"[RESPONSE_GEN] ⏰ TIMEOUT after 8 seconds - GPT-4o needs more processing time")
-        print(f"[RESPONSE_GEN] ⏰ This is expected for complex contextual analysis")
+        print(f"[RESPONSE_GEN] ⏰ TIMEOUT after 5 seconds - gpt-4o-mini processing time exceeded")
         return None
     except json.JSONDecodeError as e:
         print(f"[RESPONSE_GEN] ❌ JSON parsing failed: {e}")
@@ -442,7 +441,7 @@ async def generate_conversation_help_context_aware(request: EnhancedConversation
                             "pronunciation": resp.get("pronunciation", ""),
                             "difficulty_level": request.proficiency_level,
                             "explanation": resp.get("explanation", "")
-                        } for resp in response_data.get("responses", [])[:2]
+                        } for resp in response_data.get("responses", [])[:1]  # Only take 1 response
                     ],
                     "vocabulary_highlights": [],
                     "grammar_tips": [],

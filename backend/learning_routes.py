@@ -1132,9 +1132,13 @@ async def save_session_summary(
             from flashcard_service import FlashcardService
             from models import FlashcardGenerationRequest
 
+            # 🔥 FIX ISSUE 2: Use learning plan session_id format for proper filtering
+            # This ensures flashcards are correctly identified as "Learning Plans" in the filter
+            flashcard_session_id = f"learning_plan_{plan_id}_session_{session_number}_{uuid.uuid4().hex[:8]}"
+            
             # Create flashcard generation request
             flashcard_request = FlashcardGenerationRequest(
-                session_id=str(uuid.uuid4()),  # Generate unique session ID for flashcards
+                session_id=flashcard_session_id,  # Use learning plan session ID format
                 language=learning_plan.get("language", "english"),
                 level=learning_plan.get("proficiency_level", "B1"),
                 topic=request.topic if request and request.topic else None,

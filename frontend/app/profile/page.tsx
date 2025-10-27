@@ -1300,51 +1300,6 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Due Flashcards Section */}
-                    {dueFlashcards.length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                          <Zap className="h-5 w-5 mr-2 text-orange-500" />
-                          Due for Review ({dueFlashcards.length})
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {dueFlashcards.slice(0, 6).map((card) => (
-                            <div key={card.id} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                              <div className="text-sm text-gray-600 mb-2">Due: {new Date(card.next_review_date || '').toLocaleDateString()}</div>
-                              <div className="font-medium text-gray-800 mb-2">{card.front}</div>
-                              <div className="text-xs text-gray-500">Level: {card.difficulty} • {card.category}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <Button
-                            onClick={() => {
-                              // Start review session with due cards
-                              const mockSet = {
-                                id: 'due-cards',
-                                session_id: 'due-review',
-                                user_id: user?._id || '',
-                                language: 'Mixed',
-                                level: 'Mixed',
-                                title: 'Due for Review',
-                                description: 'Cards due for review today',
-                                flashcards: dueFlashcards,
-                                total_cards: dueFlashcards.length,
-                                created_at: new Date().toISOString(),
-                                is_completed: false
-                              };
-                              setSelectedFlashcardSet(mockSet);
-                              setShowFlashcardViewer(true);
-                            }}
-                            className="bg-orange-600 hover:bg-orange-700 text-white"
-                          >
-                            <Zap className="h-4 w-4 mr-2" />
-                            Start Review Session ({dueFlashcards.length} cards)
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Flashcard Sets Section */}
                     <div>
                       <div className="flex items-center justify-between mb-6">
