@@ -11,6 +11,7 @@ from bson import ObjectId
 from auth import get_current_user
 from models import UserResponse
 from database import database, users_collection
+from batch_sentence_analysis import generate_batch_analysis_report
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -872,12 +873,14 @@ async def update_session_progress(
         )
 
 class SessionSummaryRequest(BaseModel):
-    """Model for session summary with optional duration"""
+    """Model for session summary with optional duration and batch analysis"""
     messages: Optional[List[Dict[str, Any]]] = []
     duration_minutes: Optional[float] = 0.0
     language: Optional[str] = None
     level: Optional[str] = None
     topic: Optional[str] = None
+    conversation_transcript: Optional[str] = None  # NEW: Full conversation for batch analysis
+    user_sentences: Optional[List[str]] = []  # NEW: Collected user sentences for batch analysis
 
 @router.post("/session-summary")
 async def save_session_summary(
@@ -1103,6 +1106,53 @@ async def save_session_summary(
                 detail=f"Failed to track session: {str(usage_error)}"
             )
         
+        # 🔥 NEW: BATCH SENTENCE ANALYSIS - Process collected sentences at session end
+        detailed_analysis = None
+        batch_analysis_success = False
+        
+        if request and request.user_sentences and len(request.user_sentences) > 0:
+            try:
+                print(f"[BATCH_ANALYSIS] 🎯 Starting batch analysis for {len(request.user_sentences)} sentences")
+                
+                # Get language and level from request or learning plan
+                analysis_language = request.language or learning_plan.get("language", "english")
+                analysis_level = request.level or learning_plan.get("proficiency_level", "B1")
+                analysis_topic = request.topic or "general conversation"
+                conversation_transcript = request.conversation_transcript or ""
+                
+                # Call the batch analysis function
+                batch_report = await generate_batch_analysis_report(
+                    language=analysis_language,
+                    level=analysis_level,
+                    topic=analysis_topic,
+                    conversation_transcript=conversation_transcript,
+                    user_sentences=request.user_sentences
+                )
+                
+                # Extract the detailed analysis
+                detailed_analysis = batch_report.get("detailed_analysis", [])
+                batch_analysis_success = True
+                
+                print(f"[BATCH_ANALYSIS] ✅ Batch analysis completed successfully")
+                print(f"[BATCH_ANALYSIS] ✅ Analyzed {len(detailed_analysis)} sentences")
+                
+                # Add batch analysis to session detail
+                session_detail["batch_analysis"] = {
+                    "session_summary": batch_report.get("session_summary", ""),
+                    "detailed_analysis": detailed_analysis,
+                    "analyzed_at": datetime.utcnow().isoformat()
+                }
+                
+            except Exception as batch_error:
+                print(f"[BATCH_ANALYSIS] ❌ Batch analysis failed: {str(batch_error)}")
+                import traceback
+                traceback.print_exc()
+                # Don't fail the session save if batch analysis fails
+                batch_analysis_success = False
+                detailed_analysis = None
+        else:
+            print(f"[BATCH_ANALYSIS] ℹ️ No sentences provided for batch analysis")
+        
         # Update the learning plan
         update_fields = {
             "plan_content.weekly_schedule": weekly_schedule,
@@ -1198,7 +1248,9 @@ async def save_session_summary(
         if result.modified_count > 0:
             print(f"[SESSION_SUMMARY] ✅ Learning plan updated successfully")
             print(f"[SESSION_SUMMARY] 🎉 Session summary saved with UNIFIED TRACKING!")
-            return {
+            
+            # Build response with batch analysis if available
+            response = {
                 "success": True,
                 "message": "Session summary saved successfully",
                 "session_number": session_number,
@@ -1208,8 +1260,17 @@ async def save_session_summary(
                 "duration_minutes": duration_minutes,
                 "subscription_tracked": subscription_tracked,
                 "flashcards_generated": generated_flashcards,
-                "flashcard_generation_success": flashcard_generation_success
+                "flashcard_generation_success": flashcard_generation_success,
+                "batch_analysis_success": batch_analysis_success
             }
+            
+            # Add batch analysis results if available
+            if batch_analysis_success and detailed_analysis:
+                response["detailed_analysis"] = detailed_analysis
+                response["sentences_analyzed"] = len(detailed_analysis)
+                print(f"[SESSION_SUMMARY] ✅ Returning {len(detailed_analysis)} sentence analyses to frontend")
+            
+            return response
         else:
             print(f"[SESSION_SUMMARY] ❌ Failed to update learning plan in database")
             raise HTTPException(

@@ -643,140 +643,44 @@ export function setCachedAnalysis(
 
 /**
  * Evaluate whether a sentence is substantial enough for analysis
+ * DEPRECATED: This function is no longer used. Sentence analysis now happens in batch at session end.
  */
 export async function evaluateSentenceWorthiness(
   request: SentenceEvaluationRequest
 ): Promise<SentenceEvaluationResponse> {
-  try {
-    console.log('🔍 [EVALUATION_API] Evaluating sentence worthiness:', request.text);
-    
-    const response = await fetch(`${getApiUrl()}/api/sentence/evaluate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || `HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ [EVALUATION_API] Evaluation result:', result);
-    
-    return result;
-  } catch (error) {
-    console.error('❌ [EVALUATION_API] Error evaluating sentence:', error);
-    throw error;
-  }
+  console.log('⚠️ [DEPRECATED] evaluateSentenceWorthiness called - this function is deprecated');
+  // Return a default response indicating analysis should not happen in real-time
+  return {
+    should_analyze: false,
+    reason: 'Real-time analysis is deprecated. Analysis happens at session end.',
+    confidence: 1.0
+  };
 }
 
 /**
  * Perform background sentence analysis
+ * DEPRECATED: This function is no longer used. Sentence analysis now happens in batch at session end.
  */
 export async function performBackgroundAnalysis(
   request: BackgroundAnalysisRequest
 ): Promise<BackgroundAnalysisResponse> {
-  try {
-    console.log('🔬 [ANALYSIS_API] Performing background analysis:', request.text);
-    
-    const response = await fetch(`${getApiUrl()}/api/sentence/background-analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || `HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ [ANALYSIS_API] Analysis completed:', result.analysis_id);
-    
-    return result;
-  } catch (error) {
-    console.error('❌ [ANALYSIS_API] Error performing analysis:', error);
-    throw error;
-  }
+  console.log('⚠️ [DEPRECATED] performBackgroundAnalysis called - this function is deprecated');
+  throw new Error('Real-time analysis is deprecated. Analysis happens at session end.');
 }
 
 /**
  * Complete background sentence processing pipeline
- * Evaluates if sentence should be analyzed, and if so, performs the analysis
- * Includes deduplication to prevent multiple analysis of the same sentence
+ * DEPRECATED: This function is no longer used. Sentence analysis now happens in batch at session end.
  */
 export async function processBackgroundSentence(
   request: BackgroundAnalysisRequest
 ): Promise<BackgroundProcessResponse> {
-  try {
-    console.log('🔄 [PROCESS_API] Processing sentence in background:', request.text);
-    
-    // Create a unique key for this analysis request
-    const analysisKey = getCacheKey(request.text, request.language, request.level);
-    
-    // Check if this analysis is already in progress
-    if (ongoingAnalysis.has(analysisKey)) {
-      console.log('⏭️ [PROCESS_API] Analysis already in progress for this sentence, skipping duplicate');
-      return {
-        analyzed: false,
-        reason: 'Analysis already in progress for this sentence'
-      };
-    }
-    
-    // Check cache first
-    const cachedResult = getCachedAnalysis(request.text, request.language, request.level);
-    if (cachedResult) {
-      console.log('⚡ [PROCESS_API] Using cached analysis result');
-      return {
-        analyzed: true,
-        analysis: cachedResult
-      };
-    }
-    
-    // Mark this analysis as ongoing
-    ongoingAnalysis.add(analysisKey);
-    
-    try {
-      const response = await fetch(`${getApiUrl()}/api/sentence/process-background`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      // Cache the result if analysis was successful
-      if (result.analyzed && result.analysis) {
-        setCachedAnalysis(request.text, request.language, request.level, result.analysis);
-      }
-      
-      if (result.analyzed) {
-        console.log('✅ [PROCESS_API] Sentence analyzed successfully:', result.analysis.analysis_id);
-      } else {
-        console.log('⏭️ [PROCESS_API] Sentence skipped:', result.reason);
-      }
-      
-      return result;
-    } finally {
-      // Always remove from ongoing analysis set
-      ongoingAnalysis.delete(analysisKey);
-    }
-  } catch (error) {
-    console.error('❌ [PROCESS_API] Error processing sentence:', error);
-    throw error;
-  }
+  console.log('⚠️ [DEPRECATED] processBackgroundSentence called - this function is deprecated');
+  // Return a response indicating no analysis was performed
+  return {
+    analyzed: false,
+    reason: 'Real-time analysis is deprecated. Analysis happens at session end.'
+  };
 }
 
 /**

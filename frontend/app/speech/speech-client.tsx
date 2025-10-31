@@ -378,7 +378,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     isUserMuted,
     muteMicrophone,
     unmuteMicrophone,
-    toggleMicrophone
+    toggleMicrophone,
+    // 🔥 NEW: BATCH ANALYSIS - Collected sentences
+    collectedSentences
   } = useRealtime();
   
   // Track user speaking state for modal fade-out - only when modal is open
@@ -1286,7 +1288,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           // Generate a session summary for the learning plan
           const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
           
-          // 🔥 CRITICAL FIX: Send data in request body, not query parameters
+          // 🔥 BATCH ANALYSIS: Send collected sentences for batch processing
+          console.log('[BATCH_ANALYSIS] 📊 Collected sentences:', collectedSentences.length);
+          console.log('[BATCH_ANALYSIS] 📝 Conversation transcript length:', getFormattedConversationHistory().length);
+          
           const summaryResponse = await fetch(`${getApiUrl()}/api/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
             method: 'POST',
             headers: {
@@ -1298,7 +1303,10 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
               duration_minutes: durationMinutes,
               language: language,
               level: level,
-              topic: topic
+              topic: topic,
+              // 🔥 NEW: Send collected sentences for batch analysis
+              conversation_transcript: getFormattedConversationHistory(),
+              user_sentences: collectedSentences
             })
           });
 
@@ -1312,6 +1320,30 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
           console.log('[AUTO_SAVE] ✅ Session number:', summaryResult.session_number);
           console.log('[AUTO_SAVE] ✅ Progress:', summaryResult.progress_percentage, '%');
+          
+          // 🔥 BATCH ANALYSIS: Display the analysis results if available
+          if (summaryResult.detailed_analysis && summaryResult.detailed_analysis.length > 0) {
+            console.log('[BATCH_ANALYSIS] ✅ Received', summaryResult.detailed_analysis.length, 'sentence analyses');
+            
+            // Convert the batch analysis results to the format expected by BackgroundAnalysisCard
+            const batchAnalyses = summaryResult.detailed_analysis.map((analysis: any, index: number) => ({
+              analysis_id: `batch_${Date.now()}_${index}`,
+              recognized_text: analysis.original_sentence,
+              grammatical_score: analysis.grammatical_score,
+              vocabulary_score: analysis.vocabulary_score,
+              corrected_text: analysis.corrected_text,
+              grammar_issues: analysis.grammar_issues || [],
+              improvement_suggestions: analysis.improvement_suggestions || [],
+              level_appropriate_alternatives: analysis.level_appropriate_alternatives || []
+            }));
+            
+            // Add the batch analyses to the display
+            setBackgroundAnalyses(batchAnalyses);
+            console.log('[BATCH_ANALYSIS] ✅ Displaying', batchAnalyses.length, 'analyses in UI');
+          } else {
+            console.log('[BATCH_ANALYSIS] ℹ️ No sentence analyses in response');
+          }
+          
           return;
         }
 

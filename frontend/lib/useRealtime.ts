@@ -218,6 +218,9 @@ export function useRealtime() {
   const [microphoneState, setMicrophoneState] = useState<MicrophoneState>('idle');
   const [isUserMuted, setIsUserMuted] = useState(false);
   
+  // 🔥 NEW: BATCH ANALYSIS - Collect user sentences for end-of-session analysis
+  const [collectedSentences, setCollectedSentences] = useState<string[]>([]);
+  
   const retryCountRef = useRef(0);
   const maxRetries = 3;
   const isBrowser = typeof window !== 'undefined';
@@ -305,6 +308,17 @@ export function useRealtime() {
       if (userTranscriptEvent.transcript) {
         const cleanedTranscript = cleanTranscript(userTranscriptEvent.transcript);
         if (cleanedTranscript) {
+          // 🔥 BATCH ANALYSIS: Collect user sentences for end-of-session analysis
+          // Only collect substantial sentences (not empty, not too short)
+          if (cleanedTranscript.length > 5) {
+            setCollectedSentences(prev => {
+              const updated = [...prev, cleanedTranscript];
+              console.log('[SENTENCE COLLECTION] 📝 Added sentence:', cleanedTranscript);
+              console.log('[SENTENCE COLLECTION] 📊 Total collected:', updated.length);
+              return updated;
+            });
+          }
+          
           // Split transcript into sentences and apply smart grouping
           const sentences = splitIntoSentences(cleanedTranscript);
           const smartGroups = smartGroupSentences(sentences);
@@ -612,6 +626,8 @@ export function useRealtime() {
     // NEW: Microphone state properties
     microphoneState,
     isUserMuted,
+    // 🔥 NEW: BATCH ANALYSIS - Collected sentences
+    collectedSentences,
     // Functions
     initialize,
     startConversation,
