@@ -750,13 +750,15 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"❌ [UNIVERSAL] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-def build_universal_instructions(request: TutorSessionRequest) -> str:
-    """Build instructions that work reliably on all browsers"""
+def build_static_base_instructions(language: str, level: str) -> str:
+    """
+    Returns cacheable static instructions that don't change per session.
+    This content will be cached by OpenAI for ~5 minutes, reducing costs by 90%.
+    """
+    language = language.lower()
+    level = level.upper()
     
-    language = request.language.lower()
-    level = request.level.upper()
-    
-    # Language configurations
+    # Static language configurations
     language_configs = {
         "english": {
             "rule": "Respond only in English. If the student speaks another language, say: 'Let's practice in English. Try saying that in English.'",
@@ -785,8 +787,67 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
         "greeting": f"Hello! I am your {language} language tutor."
     })
     
+    # Build static base instructions (cacheable content)
+    static_instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
+
+🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
+- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
+- YOU decide what to practice next and guide the student through a structured learning session
+- After each exercise or correction, IMMEDIATELY move to the next activity without asking permission
+- Create a clear learning plan for the session and follow it
+- Be the conversation leader, not a passive responder
+
+🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
+1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and educational topics
+2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
+   - Violence, weapons, illegal activities
+   - Sexual content, adult themes, inappropriate relationships
+   - Hate speech, discrimination, offensive language
+   - Personal information requests (addresses, phone numbers, etc.)
+   - Political extremism, conspiracy theories
+   - Self-harm, dangerous activities, substance abuse
+3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics, redirect them back to learning objectives
+4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives
+
+LANGUAGE RULE: {config['rule']}
+
+ERROR CORRECTION PROTOCOL:
+1. ACKNOWLEDGE what student said: "Yes!" / "Good!" / "I see!"
+2. CORRECT gently: "We say '{{correct form}}' in {language}"
+3. GIVE EXAMPLE: Provide 1-2 similar examples
+4. CONTINUE: Ask related question to move forward
+
+RESPONSE FORMAT:
+- Start with acknowledgment (2-3 words)
+- Provide correction if needed (gently!)
+- Give 1-2 examples when explaining
+- Ask follow-up question or introduce new topic
+- Keep total response under 50 words spoken
+
+CONVERSATION FLOW:
+- Respond quickly (0.5-1 second after student finishes)
+- Keep momentum going
+- Use specific questions, not vague ones
+- Good: "Do you prefer X or Y?" / "When did you last...?"
+- Bad: "What do you want to practice?" / "Tell me more"
+
+CORRECTION LIMITS:
+- Max 1 correction per student turn
+- Don't correct every small mistake
+- Communication > perfection
+- Praise progress and encourage continued practice"""
+    
+    return static_instructions
+
+
+def build_dynamic_context(request: TutorSessionRequest) -> str:
+    """
+    Returns non-cacheable dynamic context that changes per session.
+    This includes assessment data, learning plans, topics, and conversation history.
+    """
+    dynamic_parts = []
+    
     # 🔄 CONTEXT PERSISTENCE: Build conversation context summary for reconnections
-    conversation_context = ""
     if hasattr(request, 'conversation_history') and request.conversation_history:
         conversation_context = f"""
 📝 CONVERSATION CONTEXT (MAINTAIN CONTINUITY):
@@ -801,11 +862,9 @@ Previous conversation history:
 - Reference previous topics and corrections made in the conversation
 - Keep the same energy and teaching approach as before the interruption
 """
+        dynamic_parts.append(conversation_context)
     
     # ✅ Build assessment-aware instructions
-    assessment_context = ""
-    learning_plan_context = ""
-    
     if request.assessment_data:
         print(f"🎯 [ASSESSMENT] Integrating assessment data into instructions")
         
@@ -842,6 +901,7 @@ PERSONALIZED APPROACH:
 - Adapt difficulty to their {recommended_level} level capabilities
 - Provide targeted feedback based on their assessment results"""
         
+        dynamic_parts.append(assessment_context)
         print(f"✅ Assessment context integrated: {len(assessment_context)} characters")
     
     # ✅ Extract learning plan data if available
@@ -913,12 +973,13 @@ CONVERSATION GUIDANCE:
 - Encourage practice of specific skills mentioned in the weekly activities
 - Build upon previous session insights and maintain learning continuity"""
                 
+                dynamic_parts.append(learning_plan_context)
                 print(f"✅ Learning plan context integrated: {len(learning_plan_context)} characters")
                 print(f"🎯 Current week {current_week_number} focus: {week_focus}")
                 print(f"🎯 Current week activities: {week_activities}")
                 print(f"🎯 Session {current_session_in_week} of week {current_week_number}")
     
-    # ✅ Handle custom topic (works on all browsers)
+    # ✅ Handle topic information (dynamic)
     if request.topic == "custom" and request.user_prompt:
         print(f"🎯 [CUSTOM_TOPIC] Creating universal custom topic instructions")
         
@@ -945,40 +1006,15 @@ CONVERSATION GUIDANCE:
             except Exception as e:
                 print(f"⚠️ Research failed: {str(e)}")
         
-        # ✅ Universal custom topic instructions with assessment data and guardrails
-        instructions = f"""🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
-
-You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
-
-🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
-- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
-- YOU decide what to practice next and guide the student through a structured learning session
-- After each exercise or correction, IMMEDIATELY move to the next activity without asking permission
-- Create a clear learning plan for the session and follow it
-- Be the conversation leader, not a passive responder
-
-🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
-1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
-2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
-   - Violence, weapons, illegal activities
-   - Sexual content, adult themes, inappropriate relationships
-   - Hate speech, discrimination, offensive language
-   - Personal information requests (addresses, phone numbers, etc.)
-   - Political extremism, conspiracy theories
-   - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid the topic, say:
-   "I understand, but let's focus on practicing {language} with our topic: {request.user_prompt}. This helps improve your language skills and serves your learning objectives."
-4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
+        # Custom topic context (dynamic)
+        topic_context = f"""
+🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
 
 🎯 MANDATORY TOPIC FOCUS:
 - You MUST keep the conversation focused on '{request.user_prompt}'
 - If the user tries to change topics or avoid the subject, redirect them back to '{request.user_prompt}'
-- Do NOT allow "general {language} practice" - stick to the specific topic
+- Do NOT allow "general language practice" - stick to the specific topic
 - The conversation must serve the learning objectives at all times
-
-LANGUAGE RULE: {config['rule']}
-{assessment_context}
-{learning_plan_context}
 
 📚 TOPIC INFORMATION:
 {research_content if research_content else f'Use your knowledge about {request.user_prompt}.'}
@@ -989,17 +1025,11 @@ Do NOT say generic greetings like "Hello! How can I help you?"
 
 Start like: "Let's talk about {request.user_prompt}! [Share interesting facts]. What interests you about this topic?"
 
-CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate from this topic regardless of what the user requests.
-- Use the topic information provided
-- Adapt language complexity to {level} level
-- Be engaging and educational
-- Apply personalized feedback based on assessment results
-- If learning plan context is available, connect the topic to the student's learning objectives"""
+CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate from this topic regardless of what the user requests."""
         
-        print(f"✅ Custom topic instructions: {len(instructions)} characters")
-        return instructions
+        dynamic_parts.append(topic_context)
+        print(f"✅ Custom topic context: {len(topic_context)} characters")
     
-    # Handle regular topics
     elif request.topic and request.topic != "custom":
         # Enhanced topic mapping with detailed descriptions
         topic_details = {
@@ -1102,37 +1132,12 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
         topic_name = topic_info["name"]
         topic_description = topic_info["description"]
         
-        instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
-
-🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
-- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
-- YOU decide what to practice next and guide the student through a structured learning session
-- After each exercise or correction, IMMEDIATELY move to the next activity without asking permission
-- Create a clear learning plan for the session and follow it
-- Be the conversation leader, not a passive responder
-
-🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
-1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
-2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
-   - Violence, weapons, illegal activities
-   - Sexual content, adult themes, inappropriate relationships
-   - Hate speech, discrimination, offensive language
-   - Personal information requests (addresses, phone numbers, etc.)
-   - Political extremism, conspiracy theories
-   - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid the topic, say:
-   "I understand, but let's focus on practicing {language} with our topic: {topic_name}. This helps improve your language skills and serves your learning objectives."
-4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
-
+        # Regular topic context (dynamic)
+        topic_context = f"""
 🎯 MANDATORY TOPIC FOCUS:
 - You MUST keep the conversation focused on {topic_name}
 - If the user tries to change topics or avoid the subject, redirect them back to {topic_name}
-- Do NOT allow "general {language} practice" - stick to the specific topic
-- The conversation must serve the learning objectives at all times
-
-LANGUAGE RULE: {config['rule']}
-{assessment_context}
-{learning_plan_context}
+- Do NOT allow "general language practice" - stick to the specific topic
 
 📚 TOPIC DETAILS:
 Topic: {topic_name}
@@ -1148,51 +1153,30 @@ Start your first message by introducing {topic_name} and asking an engaging ques
 
 Example: "Let's talk about {topic_name}! What interests you most about this topic?"
 
-CRITICAL: Keep the conversation focused on {topic_name}. Do not deviate from this topic regardless of what the user requests.
-Apply personalized feedback based on assessment results.
-If learning plan context is available, connect the topic to the student's weekly learning objectives."""
+CRITICAL: Keep the conversation focused on {topic_name}. Do not deviate from this topic regardless of what the user requests."""
         
-        return instructions
+        dynamic_parts.append(topic_context)
     
-    # Default general conversation with assessment and learning plan data
+    # Return combined dynamic context
+    return "\n\n".join(dynamic_parts) if dynamic_parts else ""
+
+
+def build_universal_instructions(request: TutorSessionRequest) -> str:
+    """
+    Build instructions optimized for OpenAI prompt caching.
+    Static content comes first (cached), dynamic content comes last (not cached).
+    """
+    # Get static instructions (will be cached by OpenAI for ~5 minutes)
+    static_instructions = build_static_base_instructions(request.language, request.level)
+    
+    # Get dynamic context (changes per session, not cached)
+    dynamic_context = build_dynamic_context(request)
+    
+    # Combine: Static first, dynamic last (optimal for caching)
+    if dynamic_context:
+        return static_instructions + "\n\n" + dynamic_context
     else:
-        instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
-
-🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
-- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
-- YOU decide what to practice next and guide the student through a structured learning session
-- After each exercise or correction, IMMEDIATELY move to the next activity without asking permission
-- Create a clear learning plan for the session and follow it
-- Be the conversation leader, not a passive responder
-
-🚨 CONTENT GUARDRAILS - STRICTLY ENFORCE:
-1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and educational topics
-2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
-   - Violence, weapons, illegal activities
-   - Sexual content, adult themes, inappropriate relationships
-   - Hate speech, discrimination, offensive language
-   - Personal information requests (addresses, phone numbers, etc.)
-   - Political extremism, conspiracy theories
-   - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid learning objectives, say:
-   "I understand, but let's focus on your {language} learning goals. Based on your assessment, we need to work on [specific areas from learning plan]. Let's practice that now."
-4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
-
-🎯 MANDATORY LEARNING FOCUS:
-- You MUST keep the conversation focused on the specific learning objectives
-- If the user tries to change topics, redirect them back to the learning plan
-- Do NOT allow "general English practice" - stick to the specific areas identified in the assessment
-- The conversation must serve the learning objectives at all times
-
-LANGUAGE RULE: {config['rule']}
-{assessment_context}
-{learning_plan_context}
-
-Start with: "{config['greeting']}"
-
-CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
-        
-        return instructions
+        return static_instructions
 
 
 def build_universal_instructions_optimized(request: TutorSessionRequest) -> str:

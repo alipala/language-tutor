@@ -1692,14 +1692,20 @@ export class EnhancedRealtimeService {
       const response = await fetch(`${this.backendUrl}/api/summarize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: this.transcriptBuffer }),
+        body: JSON.stringify({ 
+          transcript: this.transcriptBuffer
+        }),
         credentials: 'same-origin'
       });
 
       if (response.ok) {
         const result = await response.json();
         const summary = result.summary;
-        console.log(`✅ [SUMMARIZATION] Generated summary: ${summary}`);
+        const compressionRatio = result.compression_ratio;
+        
+        console.log(`✅ [SUMMARIZATION] Generated summary (${compressionRatio} compression):`);
+        console.log(`📝 [SUMMARIZATION] Summary: ${summary}`);
+        console.log(`💰 [SUMMARIZATION] Original: ${result.original_length} chars → Summary: ${result.summary_length} chars`);
 
         // Update session instructions with summary (NOT conversation.item.create)
         const baseInstructions = `You are a helpful language tutor for ${this.sessionMetadata.language} at ${this.sessionMetadata.level} level.`;
@@ -1714,13 +1720,14 @@ export class EnhancedRealtimeService {
           console.log('✅ [SUMMARIZATION] Session updated with summary');
           console.log('💰 [SUMMARIZATION] Cleared transcript buffer to reduce future cached tokens');
           
-          // Clear the transcript buffer
+          // Clear the transcript buffer after successful summarization
           this.transcriptBuffer = '';
         } else {
           console.warn('⚠️ [SUMMARIZATION] Failed to send session.update');
         }
       } else {
-        console.error('❌ [SUMMARIZATION] Backend summarization failed:', await response.text());
+        const errorText = await response.text();
+        console.error('❌ [SUMMARIZATION] Backend summarization failed:', errorText);
       }
     } catch (error) {
       console.error('❌ [SUMMARIZATION] Error during summarization:', error);
