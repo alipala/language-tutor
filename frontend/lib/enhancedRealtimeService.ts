@@ -52,6 +52,13 @@ export class EnhancedRealtimeService {
   // ✅ NEW: User manual mute state tracking
   private user_manually_muted: boolean = false;
 
+  // 🔔 INSTRUCTION REMINDERS: Maintain model focus in long sessions
+  private instructionReminderCount: number = 0;
+  private readonly INSTRUCTION_REMINDER_INTERVAL: number = 15; // Remind every 15 turns
+  private sessionLanguage: string = '';
+  private sessionLevel: string = '';
+  private sessionTopic: string = '';
+
   // ✅ PHASE 1: Reduced aggressive timing controls
   private readonly PREEMPTIVE_MUTE_DELAY = 100; // Wait 100ms before muting
   private readonly MOBILE_SAFETY_BUFFER = 0; // Reduced mobile buffer
@@ -95,6 +102,97 @@ export class EnhancedRealtimeService {
       // ✅ CRITICAL: Detect mobile browsers for enhanced optimization
       this.mobile_optimization_active = this.isMobileBrowser();
       console.log('🔧 [ENHANCED] Mobile optimization:', this.mobile_optimization_active ? 'ACTIVE' : 'DISABLED');
+    }
+  }
+
+  /**
+   * 🔔 Build instruction reminder for long sessions
+   * Maintains model focus without breaking prompt cache
+   */
+  private buildInstructionReminder(): string {
+    return `
+ROLE REMINDER:
+You are a ${this.sessionLanguage} tutor for ${this.sessionLevel} students.
+Current topic: ${this.sessionTopic}
+
+KEY REMINDERS:
+- Stay conversational and encouraging
+- Maintain focus on ${this.sessionTopic}
+- Use ${this.sessionLanguage} only
+- Adapt to ${this.sessionLevel} level
+- Keep driving the conversation forward
+- Provide constructive feedback
+
+Continue naturally from where we left off.
+`;
+  }
+
+  /**
+   * 🔔 Send instruction reminder to model
+   * Helps maintain focus in 20+ turn conversations
+   */
+  private async remindModelOfInstructions(): Promise<void> {
+    try {
+      console.log('🔔 [INSTRUCTION_REMINDER] Sending reminder after', this.instructionReminderCount, 'turns');
+      
+      const reminder = this.buildInstructionReminder();
+      
+      // Send as conversation item (preserves cache)
+      const success = this.sendMessage({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'system',
+          content: [{
+            type: 'input_text',
+            text: reminder
+          }]
+        }
+      });
+      
+      if (success) {
+        console.log('✅ [INSTRUCTION_REMINDER] Reminder sent successfully');
+      } else {
+        console.warn('⚠️ [INSTRUCTION_REMINDER] Failed to send reminder');
+      }
+      
+    } catch (error) {
+      console.error('❌ [INSTRUCTION_REMINDER] Error sending reminder:', error);
+      // Continue without reminder on error
+    }
+  }
+
+  /**
+   * 🔔 Store session info for instruction reminders
+   */
+  private storeSessionInfo(language: string, level: string, topic: string): void {
+    this.sessionLanguage = language;
+    this.sessionLevel = level;
+    this.sessionTopic = topic || 'conversation';
+    this.instructionReminderCount = 0; // Reset counter
+    
+    console.log('🔔 [INSTRUCTION_REMINDER] Session info stored:', {
+      language: this.sessionLanguage,
+      level: this.sessionLevel,
+      topic: this.sessionTopic,
+      interval: this.INSTRUCTION_REMINDER_INTERVAL
+    });
+  }
+
+  /**
+   * 🔔 Handle turn counting and trigger reminders
+   * Called when AI completes a response
+   */
+  private handleTurnCompletion(): void {
+    this.instructionReminderCount++;
+    
+    console.log(`🔔 [INSTRUCTION_REMINDER] Turn ${this.instructionReminderCount} completed`);
+    
+    // Send reminder every N turns
+    if (this.instructionReminderCount >= this.INSTRUCTION_REMINDER_INTERVAL) {
+      console.log(`🔔 [INSTRUCTION_REMINDER] Reminder threshold reached (${this.INSTRUCTION_REMINDER_INTERVAL} turns)`);
+      this.remindModelOfInstructions();
+      this.instructionReminderCount = 0; // Reset counter
     }
   }
 
@@ -158,6 +256,11 @@ export class EnhancedRealtimeService {
       }
       if (assessmentData) {
         this.currentAssessmentData = assessmentData;
+      }
+
+      // 🔔 Store session info for instruction reminders
+      if (language && level) {
+        this.storeSessionInfo(language, level, topic || userPrompt || 'conversation');
       }
 
       // Use the correct backend URL (default to 127.0.0.1:8000 if running locally)
@@ -725,6 +828,9 @@ export class EnhancedRealtimeService {
       case 'response.done':
         console.log('🔊 [ENHANCED] Response done - SCHEDULING FASTER UNMUTE');
         this.scheduleDelayedUnmute('AI response completed');
+        
+        // 🔔 INSTRUCTION REMINDERS: Track turn completion
+        this.handleTurnCompletion();
         
         // 💰 USAGE TRACKING: Extract token usage from response.done event
         try {
