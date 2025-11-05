@@ -543,3 +543,328 @@ Use natural {language} expressions for:
 - Use natural {language} expressions
 - Adapt tone to conversation phase
 """
+
+
+# ============================================================================
+# PHASE 3: OPTIMIZATION FUNCTIONS
+# ============================================================================
+
+def build_speed_instructions() -> str:
+    """
+    Build speed and pacing instructions for natural audio delivery.
+    
+    🔥 PHASE 3 OPTIMIZATION: Improves audio experience with natural pacing
+    and delivery guidance.
+    
+    Returns:
+        Formatted speed and pacing instructions
+    """
+    return """
+# Speed & Pacing
+
+## Delivery Speed
+- Speak at a natural, conversational pace
+- Do NOT rush through responses
+- Do NOT sound robotic or mechanical
+- Match the learner's speaking speed when appropriate
+
+## Pauses
+- Use natural pauses between sentences
+- Brief pause after questions (0.5-1 second)
+- Pause before corrections to let learner process
+
+## Emphasis
+- Emphasize key vocabulary words slightly
+- Use natural intonation for questions
+- Vary tone to maintain engagement
+
+## Avoid
+- Speaking too fast (learners need processing time)
+- Monotone delivery (sounds robotic)
+- Unnatural pauses or hesitations
+- Rushed corrections
+"""
+
+
+def build_optimized_assessment_context(assessment_data: Dict[str, Any]) -> str:
+    """
+    Build optimized assessment context with reduced verbosity.
+    
+    🔥 PHASE 3 OPTIMIZATION: Reduces assessment context tokens by ~40%
+    while maintaining essential information.
+    
+    Args:
+        assessment_data: Dictionary containing assessment results
+    
+    Returns:
+        Formatted, optimized assessment context
+    """
+    if not assessment_data:
+        return ""
+    
+    # Extract key metrics only
+    overall_score = assessment_data.get('overall_score', 0)
+    recommended_level = assessment_data.get('recommended_level', 'B1')
+    
+    # Get top 2 strengths and improvements
+    strengths = assessment_data.get('strengths', [])[:2]
+    improvements = assessment_data.get('areas_for_improvement', [])[:2]
+    
+    # Build concise context
+    context = f"""
+📊 LEARNER PROFILE:
+Level: {recommended_level} | Score: {overall_score}/100
+Strengths: {', '.join(strengths) if strengths else 'General communication'}
+Focus: {', '.join(improvements) if improvements else 'Overall improvement'}
+"""
+    
+    print(f"[ASSESSMENT_CONTEXT] Optimized context: {len(context)} chars")
+    return context
+
+
+def build_dynamic_context_injection(
+    language: str,
+    level: str,
+    topic: str = None,
+    assessment_data: Dict[str, Any] = None,
+    session_summaries: list = None
+) -> Dict[str, str]:
+    """
+    Build dynamic context for session.update injection.
+    
+    🔥 PHASE 3 OPTIMIZATION: Separates static instructions from dynamic context
+    for better cache utilization and token efficiency.
+    
+    Args:
+        language: Target language
+        level: CEFR level
+        topic: Optional topic
+        assessment_data: Optional assessment results
+        session_summaries: Optional previous session summaries
+    
+    Returns:
+        Dictionary with 'static' and 'dynamic' context sections
+    """
+    # Static context (cached)
+    static_context = {
+        "language": language,
+        "level": level,
+        "topic": topic or "general conversation"
+    }
+    
+    # Dynamic context (injected via session.update)
+    dynamic_context = {}
+    
+    if assessment_data:
+        dynamic_context["assessment"] = build_optimized_assessment_context(assessment_data)
+    
+    if session_summaries:
+        dynamic_context["progress"] = build_compressed_session_context(session_summaries, max_summaries=2)
+    
+    print(f"[DYNAMIC_CONTEXT] Static keys: {list(static_context.keys())}")
+    print(f"[DYNAMIC_CONTEXT] Dynamic keys: {list(dynamic_context.keys())}")
+    
+    return {
+        "static": static_context,
+        "dynamic": dynamic_context
+    }
+
+
+# ============================================================================
+# PHASE 4: VALIDATION & METRICS FUNCTIONS
+# ============================================================================
+
+def calculate_token_savings(
+    original_tokens: int,
+    optimized_tokens: int
+) -> Dict[str, Any]:
+    """
+    Calculate token savings and cost impact.
+    
+    🔥 PHASE 4 VALIDATION: Measures optimization effectiveness.
+    
+    Args:
+        original_tokens: Token count before optimization
+        optimized_tokens: Token count after optimization
+    
+    Returns:
+        Dictionary with savings metrics
+    """
+    tokens_saved = original_tokens - optimized_tokens
+    percentage_saved = (tokens_saved / original_tokens * 100) if original_tokens > 0 else 0
+    
+    # Cost calculations (gpt-realtime-mini pricing)
+    cost_per_token_input = 0.60 / 1_000_000  # $0.60 per 1M tokens
+    cost_per_token_output = 2.40 / 1_000_000  # $2.40 per 1M tokens
+    
+    # Assume 70% input, 30% output
+    input_savings = tokens_saved * 0.7 * cost_per_token_input
+    output_savings = tokens_saved * 0.3 * cost_per_token_output
+    total_cost_savings = input_savings + output_savings
+    
+    # Monthly projections (1000 sessions)
+    monthly_savings = total_cost_savings * 1000
+    annual_savings = monthly_savings * 12
+    
+    return {
+        "tokens_saved": tokens_saved,
+        "percentage_saved": round(percentage_saved, 2),
+        "cost_savings_per_session": round(total_cost_savings, 6),
+        "monthly_savings": round(monthly_savings, 2),
+        "annual_savings": round(annual_savings, 2),
+        "original_tokens": original_tokens,
+        "optimized_tokens": optimized_tokens
+    }
+
+
+def track_quality_metrics(
+    session_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Track quality metrics for validation.
+    
+    🔥 PHASE 4 VALIDATION: Monitors conversation quality and user satisfaction.
+    
+    Args:
+        session_data: Dictionary containing session information
+    
+    Returns:
+        Dictionary with quality metrics
+    """
+    metrics = {
+        "session_id": session_data.get("session_id"),
+        "duration_seconds": session_data.get("duration_seconds", 0),
+        "turns_count": session_data.get("turns_count", 0),
+        "topic_adherence": session_data.get("topic_adherence", True),
+        "instruction_following": session_data.get("instruction_following", True),
+        "user_satisfaction": session_data.get("user_satisfaction", 0),  # 1-5 stars
+        "completion_status": session_data.get("completion_status", "completed"),
+        "escalation_triggered": session_data.get("escalation_triggered", False),
+        "phase_transitions": session_data.get("phase_transitions", []),
+        "average_response_length": session_data.get("average_response_length", 0)
+    }
+    
+    # Calculate quality score (0-100)
+    quality_score = 0
+    if metrics["topic_adherence"]:
+        quality_score += 25
+    if metrics["instruction_following"]:
+        quality_score += 25
+    if metrics["user_satisfaction"] >= 4:
+        quality_score += 25
+    if metrics["completion_status"] == "completed":
+        quality_score += 25
+    
+    metrics["quality_score"] = quality_score
+    
+    return metrics
+
+
+def generate_optimization_report(
+    phase: str,
+    metrics: Dict[str, Any]
+) -> str:
+    """
+    Generate optimization report for a specific phase.
+    
+    🔥 PHASE 4 VALIDATION: Creates comprehensive reports for analysis.
+    
+    Args:
+        phase: Phase name (0, 1, 2, 3, or 4)
+        metrics: Dictionary containing metrics data
+    
+    Returns:
+        Formatted report string
+    """
+    report = f"""
+# Phase {phase} Optimization Report
+
+## Token Savings
+- Original tokens: {metrics.get('original_tokens', 0):,}
+- Optimized tokens: {metrics.get('optimized_tokens', 0):,}
+- Tokens saved: {metrics.get('tokens_saved', 0):,}
+- Percentage saved: {metrics.get('percentage_saved', 0)}%
+
+## Cost Impact
+- Cost savings per session: ${metrics.get('cost_savings_per_session', 0):.6f}
+- Monthly savings (1000 sessions): ${metrics.get('monthly_savings', 0):.2f}
+- Annual savings: ${metrics.get('annual_savings', 0):.2f}
+
+## Quality Metrics
+- Quality score: {metrics.get('quality_score', 0)}/100
+- Topic adherence: {metrics.get('topic_adherence', 'N/A')}
+- Instruction following: {metrics.get('instruction_following', 'N/A')}
+- User satisfaction: {metrics.get('user_satisfaction', 0)}/5 stars
+- Completion rate: {metrics.get('completion_status', 'N/A')}
+
+## Session Statistics
+- Average duration: {metrics.get('duration_seconds', 0)} seconds
+- Average turns: {metrics.get('turns_count', 0)}
+- Escalations: {metrics.get('escalation_triggered', False)}
+
+## Recommendations
+"""
+    
+    # Add phase-specific recommendations
+    if metrics.get('percentage_saved', 0) < 20:
+        report += "- Consider additional optimization opportunities\n"
+    if metrics.get('quality_score', 0) < 75:
+        report += "- Review quality metrics and adjust instructions\n"
+    if metrics.get('user_satisfaction', 0) < 4:
+        report += "- Gather user feedback for improvements\n"
+    
+    report += "\n---\n"
+    
+    return report
+
+
+def validate_optimization_effectiveness(
+    before_metrics: Dict[str, Any],
+    after_metrics: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Validate optimization effectiveness by comparing before/after metrics.
+    
+    🔥 PHASE 4 VALIDATION: Ensures optimizations improve both cost and quality.
+    
+    Args:
+        before_metrics: Metrics before optimization
+        after_metrics: Metrics after optimization
+    
+    Returns:
+        Dictionary with validation results
+    """
+    validation = {
+        "token_reduction_achieved": False,
+        "quality_maintained": False,
+        "cost_savings_achieved": False,
+        "overall_success": False
+    }
+    
+    # Check token reduction (target: 20%+ reduction)
+    token_reduction = (
+        (before_metrics.get('tokens', 0) - after_metrics.get('tokens', 0)) /
+        before_metrics.get('tokens', 1) * 100
+    )
+    validation["token_reduction_achieved"] = token_reduction >= 20
+    validation["token_reduction_percentage"] = round(token_reduction, 2)
+    
+    # Check quality maintenance (target: quality score >= 75)
+    quality_before = before_metrics.get('quality_score', 0)
+    quality_after = after_metrics.get('quality_score', 0)
+    validation["quality_maintained"] = quality_after >= 75 and quality_after >= (quality_before * 0.95)
+    validation["quality_change"] = quality_after - quality_before
+    
+    # Check cost savings (target: positive savings)
+    cost_savings = before_metrics.get('cost', 0) - after_metrics.get('cost', 0)
+    validation["cost_savings_achieved"] = cost_savings > 0
+    validation["cost_savings"] = round(cost_savings, 6)
+    
+    # Overall success requires all three
+    validation["overall_success"] = (
+        validation["token_reduction_achieved"] and
+        validation["quality_maintained"] and
+        validation["cost_savings_achieved"]
+    )
+    
+    return validation
