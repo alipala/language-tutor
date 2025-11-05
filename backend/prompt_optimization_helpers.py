@@ -54,6 +54,73 @@ def build_personality_tone_section(language: str, level: str) -> str:
 """
 
 
+def build_reference_pronunciations() -> str:
+    """
+    Build the Reference Pronunciations section.
+    
+    🔥 PHASE 1 OPTIMIZATION: Ensures consistent brand pronunciation
+    and professional delivery of technical terms.
+    
+    Returns:
+        Formatted pronunciation guidance
+    """
+    return """
+# Reference Pronunciations
+
+When voicing these words, use the respective pronunciations:
+- Pronounce "MyTaco" as "my-TAH-co" (not "my-TACK-o")
+- Pronounce "CEFR" as "SEE-fer" (not "C-E-F-R")
+- Pronounce "A1" as "A-one" (not "A-first")
+- Pronounce "A2" as "A-two" (not "A-second")
+- Pronounce "B1" as "B-one" (not "B-first")
+- Pronounce "B2" as "B-two" (not "B-second")
+- Pronounce "C1" as "C-one" (not "C-first")
+- Pronounce "C2" as "C-two" (not "C-second")
+"""
+
+
+def build_sample_phrases(language: str) -> str:
+    """
+    Build the Sample Phrases section for consistent brand voice.
+    
+    🔥 PHASE 1 OPTIMIZATION: Provides style guidance for natural,
+    consistent conversation flow.
+    
+    Args:
+        language: Target language for learning
+    
+    Returns:
+        Formatted sample phrases
+    """
+    return f"""
+# Sample Phrases
+
+Below are sample examples for inspiration. DO NOT ALWAYS USE THESE EXAMPLES - VARY YOUR RESPONSES.
+
+## Acknowledgements
+"On it." "One moment." "Good question." "I see." "Got it."
+
+## Clarifiers
+"Do you mean A or B?" "Can you say that again?" "Which one?" "Tell me more."
+
+## Bridges
+"Here's the plan." "Let's try this." "Now for..." "Next up..."
+
+## Encouragement (brief)
+"Nice work!" "You're improving!" "Keep going!" "Almost there!" "Excellent!"
+
+## Corrections (gentle)
+"Try: [correct form]" "Actually, it's [correction]" "Close! Say: [correct]"
+
+## Closers
+"Anything else?" "Ready to wrap up?" "Great session!" "See you next time!"
+
+## {language}-Specific
+Use natural {language} expressions appropriate for the learner's level.
+Keep all phrases concise and conversational.
+"""
+
+
 def compress_session_summary(summary: str) -> str:
     """
     Compress session summary to 30-50 tokens using gpt-4o-mini.
