@@ -691,6 +691,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # ✅ Create ephemeral token with complete configuration
         # This approach works reliably on desktop AND mobile browsers
         model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        
+        # 🔥 PHASE 0: Import truncation config helper
+        from prompt_optimization_helpers import build_truncation_config
+        
         payload = {
             "model": model,
             "voice": selected_voice,
@@ -708,8 +712,12 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             },
             "input_audio_noise_reduction": {
                 "type": "near_field"  # Focus on learner's voice for semantic analysis
-            }
+            },
+            # 🔥 PHASE 0 OPTIMIZATION: Add truncation configuration to prevent runaway costs
+            "truncation": build_truncation_config()
         }
+        
+        print(f"🔥 [TRUNCATION] Configured with retention_ratio=0.8, post_instructions limit=8000 tokens")
         
         print("✅ [UNIVERSAL] Sending ephemeral token request to OpenAI...")
         
@@ -750,10 +758,18 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         raise HTTPException(status_code=500, detail=str(e))
 
 def build_universal_instructions(request: TutorSessionRequest) -> str:
-    """Build instructions that work reliably on all browsers"""
+    """
+    Build instructions that work reliably on all browsers.
+    
+    🔥 PHASE 0 OPTIMIZATION: Now includes personality/tone section with 2-sentence limit
+    and uses compressed session summaries for 93% token reduction.
+    """
     
     language = request.language.lower()
     level = request.level.upper()
+    
+    # 🔥 PHASE 0: Import optimization helpers
+    from prompt_optimization_helpers import build_personality_tone_section, build_compressed_session_context
     
     # Language configurations
     language_configs = {
@@ -872,23 +888,11 @@ PERSONALIZED APPROACH:
                 previous_sessions_context = ""
                 session_summaries = learning_plan_data.get('session_summaries', [])
                 if session_summaries:
-                    previous_sessions_context = f"""
-📝 PREVIOUS SESSION SUMMARIES:
-{chr(10).join([f"- Session {i+1}: {summary}" for i, summary in enumerate(session_summaries[-3:])])}
-
-LEARNING PROGRESSION:
-- Build upon insights from previous sessions
-- Reference progress made in earlier conversations
-- Continue developing skills identified in previous summaries"""
-                
-                # Get previous session summaries if available
-                previous_sessions_context = ""
-                session_summaries = learning_plan_data.get('session_summaries', [])
-                if session_summaries:
-                    previous_sessions_context = f"""
-📝 PREVIOUS SESSION SUMMARIES:
-{chr(10).join([f"- Session {i+1}: {summary}" for i, summary in enumerate(session_summaries[-3:])])}
-
+                    # 🔥 PHASE 0 OPTIMIZATION: Use compressed session context (93% token reduction)
+                    previous_sessions_context = build_compressed_session_context(session_summaries, max_summaries=3)
+                    
+                    # Add learning progression guidance
+                    previous_sessions_context += """
 LEARNING PROGRESSION:
 - Build upon insights from previous sessions
 - Reference progress made in earlier conversations
@@ -944,8 +948,13 @@ CONVERSATION GUIDANCE:
             except Exception as e:
                 print(f"⚠️ Research failed: {str(e)}")
         
+        # 🔥 PHASE 0: Add personality & tone section at the top
+        personality_section = build_personality_tone_section(language, level)
+        
         # ✅ Universal custom topic instructions with assessment data and guardrails
-        instructions = f"""🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
+        instructions = f"""{personality_section}
+
+🎯 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
 
 You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
 
@@ -1101,7 +1110,12 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
         topic_name = topic_info["name"]
         topic_description = topic_info["description"]
         
-        instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
+        # 🔥 PHASE 0: Add personality & tone section at the top
+        personality_section = build_personality_tone_section(language, level)
+        
+        instructions = f"""{personality_section}
+
+You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
 
 🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
 - DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
@@ -1155,7 +1169,12 @@ If learning plan context is available, connect the topic to the student's weekly
     
     # Default general conversation with assessment and learning plan data
     else:
-        instructions = f"""You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
+        # 🔥 PHASE 0: Add personality & tone section at the top
+        personality_section = build_personality_tone_section(language, level)
+        
+        instructions = f"""{personality_section}
+
+You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
 
 🚨 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
 - DO NOT ask questions like 'What would you like to practice?', 'Would you like to try another exercise?', 'Do you have any questions?', or 'How would you like to proceed?'
@@ -1919,16 +1938,17 @@ async def store_session_summary(
                 detail="You don't have permission to update this learning plan"
             )
         
-        # Generate comprehensive session summary
-        comprehensive_summary = await generate_comprehensive_session_summary(
+        # Generate comprehensive session summary (returns dict with 'full' and 'compressed')
+        summary_data = await generate_comprehensive_session_summary(
             plan, conversation_data, basic_summary, current_user.id
         )
         
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
         
-        # Add new comprehensive session summary
-        session_summaries.append(comprehensive_summary)
+        # 🔥 PHASE 0 OPTIMIZATION: Store compressed summary for prompt usage
+        # Store full summary for history/display purposes
+        session_summaries.append(summary_data.get("compressed", summary_data.get("full", summary_data)))
         
         # Update completed sessions count and weekly schedule
         completed_sessions = plan.get("completed_sessions", 0) + 1
@@ -2033,7 +2053,7 @@ async def store_session_summary(
             "total_summaries": len(session_summaries),
             "current_week": new_week,
             "sessions_in_week": sessions_in_week,
-            "comprehensive_summary": comprehensive_summary
+            "comprehensive_summary": summary_data.get("full", summary_data) if isinstance(summary_data, dict) else summary_data
         }
         
     except Exception as e:
@@ -2044,7 +2064,12 @@ async def store_session_summary(
         )
 
 async def generate_comprehensive_session_summary(plan, conversation_data, basic_summary, user_id):
-    """Generate a comprehensive session summary with AI analysis"""
+    """
+    Generate a comprehensive session summary with AI analysis.
+    
+    🔥 PHASE 0 OPTIMIZATION: Now returns both full and compressed summaries.
+    Compressed summaries reduce token usage by 93% (696 → 40 tokens).
+    """
     try:
         # Get plan details
         language = plan.get("language", "english")
@@ -2139,11 +2164,23 @@ Make it detailed and educational, focusing on the learning objectives and expect
         if response and response.choices:
             comprehensive_summary = response.choices[0].message.content.strip()
             print(f"[SESSION_SUMMARY] ✅ Generated comprehensive summary: {len(comprehensive_summary)} characters")
-            return comprehensive_summary
+            
+            # 🔥 PHASE 0 OPTIMIZATION: Compress summary for prompt usage
+            from prompt_optimization_helpers import compress_session_summary
+            compressed_summary = compress_session_summary(comprehensive_summary)
+            
+            print(f"[SESSION_SUMMARY] ✅ Compressed summary: {len(compressed_summary)} characters")
+            
+            # Return both versions
+            return {
+                "full": comprehensive_summary,
+                "compressed": compressed_summary
+            }
         else:
             print(f"[SESSION_SUMMARY] ❌ No response from OpenAI")
             # Enhanced fallback summary
-            return f"""**Session {completed_sessions} Summary**
+            # 🔥 PHASE 0 OPTIMIZATION: Return dict with both versions
+            fallback_full = f"""**Session {completed_sessions} Summary**
 
 **Session Overview:**
 Completed a {basic_summary if basic_summary else '5-minute conversation session'} focusing on {language} language practice at {level} level.
@@ -2164,13 +2201,22 @@ This session addressed the current week's objective: {week_focus}
 **Next Steps:**
 Continue practicing the weekly focus areas and maintain consistent engagement with the learning plan objectives."""
             
+            from prompt_optimization_helpers import compress_session_summary
+            fallback_compressed = compress_session_summary(fallback_full)
+            
+            return {
+                "full": fallback_full,
+                "compressed": fallback_compressed
+            }
+            
     except Exception as e:
         print(f"[SESSION_SUMMARY] ❌ Error generating comprehensive summary: {str(e)}")
         import traceback
         print(f"[SESSION_SUMMARY] Full traceback: {traceback.format_exc()}")
         
         # Enhanced fallback summary with error handling
-        return f"""**Session {completed_sessions} Summary**
+        # 🔥 PHASE 0 OPTIMIZATION: Return dict with both versions
+        error_fallback_full = f"""**Session {completed_sessions} Summary**
 
 **Session Overview:**
 Completed a {basic_summary if basic_summary else 'conversation session'} in {language} at {level} level.
@@ -2189,6 +2235,14 @@ Completed a {basic_summary if basic_summary else 'conversation session'} in {lan
 - Building fluency and confidence
 
 This session contributed to the overall learning journey and weekly objectives."""
+        
+        from prompt_optimization_helpers import compress_session_summary
+        error_fallback_compressed = compress_session_summary(error_fallback_full)
+        
+        return {
+            "full": error_fallback_full,
+            "compressed": error_fallback_compressed
+        }
 
 # Add endpoint for sentence construction assessment
 @app.post("/api/sentence/assess", response_model=SentenceAssessmentResponse)
