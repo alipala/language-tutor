@@ -768,7 +768,7 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
     language = request.language.lower()
     level = request.level.upper()
     
-    # 🔥 PHASE 0, PHASE 1 & PHASE 2: Import optimization helpers
+    # 🔥 PHASE 0, PHASE 1, PHASE 2 & PHASE 3: Import optimization helpers
     from prompt_optimization_helpers import (
         build_personality_tone_section,
         build_compressed_session_context,
@@ -776,7 +776,10 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
         build_sample_phrases,
         build_conversation_flow_section,
         build_safety_escalation_section,
-        build_state_specific_sample_phrases
+        build_state_specific_sample_phrases,
+        # Phase 3 optimizations
+        build_speed_instructions,
+        build_optimized_assessment_context
     )
     
     # Language configurations
@@ -956,12 +959,13 @@ CONVERSATION GUIDANCE:
             except Exception as e:
                 print(f"⚠️ Research failed: {str(e)}")
         
-        # 🔥 PHASE 0, PHASE 1 & PHASE 2: Add personality, pronunciations, sample phrases, conversation flow, and safety
+        # 🔥 PHASE 0, PHASE 1, PHASE 2 & PHASE 3: Add all optimization sections
         personality_section = build_personality_tone_section(language, level)
         pronunciations = build_reference_pronunciations()
         sample_phrases = build_sample_phrases(language)
         conversation_flow = build_conversation_flow_section(language, level, request.user_prompt)
         safety_escalation = build_safety_escalation_section(language)
+        speed_instructions = build_speed_instructions()  # Phase 3
         
         # ✅ Universal custom topic instructions with assessment data and guardrails
         instructions = f"""{personality_section}
@@ -969,6 +973,8 @@ CONVERSATION GUIDANCE:
 {pronunciations}
 
 {sample_phrases}
+
+{speed_instructions}
 
 {conversation_flow}
 
@@ -1130,18 +1136,21 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
         topic_name = topic_info["name"]
         topic_description = topic_info["description"]
         
-        # 🔥 PHASE 0, PHASE 1 & PHASE 2: Add personality, pronunciations, sample phrases, conversation flow, and safety
+        # 🔥 PHASE 0, PHASE 1, PHASE 2 & PHASE 3: Add all optimization sections
         personality_section = build_personality_tone_section(language, level)
         pronunciations = build_reference_pronunciations()
         sample_phrases = build_sample_phrases(language)
         conversation_flow = build_conversation_flow_section(language, level, topic_name)
         safety_escalation = build_safety_escalation_section(language)
+        speed_instructions = build_speed_instructions()  # Phase 3
         
         instructions = f"""{personality_section}
 
 {pronunciations}
 
 {sample_phrases}
+
+{speed_instructions}
 
 {conversation_flow}
 
@@ -1201,18 +1210,21 @@ If learning plan context is available, connect the topic to the student's weekly
     
     # Default general conversation with assessment and learning plan data
     else:
-        # 🔥 PHASE 0, PHASE 1 & PHASE 2: Add personality, pronunciations, sample phrases, conversation flow, and safety
+        # 🔥 PHASE 0, PHASE 1, PHASE 2 & PHASE 3: Add all optimization sections
         personality_section = build_personality_tone_section(language, level)
         pronunciations = build_reference_pronunciations()
         sample_phrases = build_sample_phrases(language)
         conversation_flow = build_conversation_flow_section(language, level)
         safety_escalation = build_safety_escalation_section(language)
+        speed_instructions = build_speed_instructions()  # Phase 3
         
         instructions = f"""{personality_section}
 
 {pronunciations}
 
 {sample_phrases}
+
+{speed_instructions}
 
 {conversation_flow}
 
