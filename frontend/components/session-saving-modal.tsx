@@ -190,7 +190,7 @@ export default function SessionSavingModal({
               <>
                 {/* Success Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <StatCard icon="📊" label="Duration" value={duration} />
+                  <StatCard icon="📊" label="Duration" value="5:00" />
                   <StatCard icon="💬" label="Messages" value={messageCount.toString()} />
                   <StatCard icon="🎯" label="Analyzed" value={sentenceCount.toString()} />
                 </div>
@@ -216,10 +216,16 @@ export default function SessionSavingModal({
                     View Analysis
                   </button>
                   <button
-                    onClick={onComplete}
+                    onClick={() => {
+                      onComplete();
+                      // Redirect to profile/dashboard
+                      setTimeout(() => {
+                        window.location.href = '/profile';
+                      }, 100);
+                    }}
                     className="w-full bg-white text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 hover:border-gray-300"
                   >
-                    Continue
+                    Go Dashboard
                   </button>
                 </div>
               </>
