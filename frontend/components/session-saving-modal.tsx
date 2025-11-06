@@ -131,38 +131,62 @@ export default function SessionSavingModal({
 
           {/* Content Area */}
           <div className="p-6">
-            {stage !== 'success' ? (
-              <>
-                {/* Conversation Highlights */}
-                {conversationHighlights.length > 0 && (
-                  <div className="mb-6">
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentHighlight}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className={`bg-gradient-to-br ${config.bgColor} rounded-lg p-4 border ${config.borderColor}`}
-                      >
-                        <p className="text-gray-700 dark:text-gray-300 italic">
-                          "{conversationHighlights[currentHighlight]}"
-                        </p>
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                )}
+            {/* 🔥 UNIFIED CHECKLIST - Always visible, dynamically updated */}
+            <div className="space-y-3 mb-6">
+              {/* Step 1: Conversation saved */}
+              <AnalysisStep 
+                completed={stage === 'analyzing' || stage === 'finalizing' || stage === 'success'} 
+                active={stage === 'saving'} 
+                text="Conversation saved" 
+                color="#4ECFBF" 
+              />
+              
+              {/* Step 2: Speech analyzed */}
+              <AnalysisStep 
+                completed={stage === 'finalizing' || stage === 'success'} 
+                active={stage === 'analyzing'} 
+                text="Speech analyzed" 
+                color="#4ECFBF" 
+              />
+              
+              {/* Step 3: Feedback generated */}
+              <AnalysisStep 
+                completed={stage === 'success'} 
+                active={stage === 'finalizing'} 
+                text="Feedback generated" 
+                color="#FFD63A" 
+              />
+            </div>
 
-                {/* Analysis Steps */}
-                {stage === 'analyzing' && (
-                  <div className="space-y-3">
-                    <AnalysisStep completed text="Grammar check" color="#4ECFBF" />
-                    <AnalysisStep completed text="Vocabulary assessment" color="#4ECFBF" />
-                    <AnalysisStep active text="Generating feedback..." color="#FFD63A" />
-                  </div>
-                )}
-              </>
-            ) : (
+            {/* Conversation Highlights - Show during processing */}
+            {stage !== 'success' && conversationHighlights.length > 0 && (
+              <div className="mb-6">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentHighlight}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={`bg-gradient-to-br ${config.bgColor} rounded-lg p-4 border ${config.borderColor}`}
+                  >
+                    <p className="text-gray-700 dark:text-gray-300 italic text-sm">
+                      "{conversationHighlights[currentHighlight]}"
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Success Stats - Only show when complete */}
+            {stage === 'success' && (
               <>
+                {/* Completion Summary - Show all completed stages */}
+                <div className="space-y-3 mb-6">
+                  <AnalysisStep completed text="Conversation saved" color="#4ECFBF" />
+                  <AnalysisStep completed text="Speech analyzed" color="#4ECFBF" />
+                  <AnalysisStep completed text="Feedback generated" color="#FFD63A" />
+                </div>
+
                 {/* Success Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <StatCard icon="📊" label="Duration" value={duration} />
@@ -170,11 +194,29 @@ export default function SessionSavingModal({
                   <StatCard icon="🎯" label="Analyzed" value={sentenceCount.toString()} />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3">
+                {/* Action Buttons - Two options */}
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      onComplete();
+                      // Scroll to analysis section
+                      setTimeout(() => {
+                        const analysisSection = document.querySelector('[class*="Real Time Sentence Analysis"]')?.parentElement;
+                        if (analysisSection) {
+                          analysisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }, 300);
+                    }}
+                    className="w-full bg-gradient-to-r from-[#4ECFBF] to-[#3DBFAF] text-white py-3 rounded-lg font-semibold hover:from-[#3DBFAF] hover:to-[#2DAFA0] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    View Analysis
+                  </button>
                   <button
                     onClick={onComplete}
-                    className="flex-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF] text-white py-3 rounded-lg font-semibold hover:from-[#3DBFAF] hover:to-[#3DBFAF] transition-all shadow-lg hover:shadow-xl"
+                    className="w-full bg-white text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 hover:border-gray-300"
                   >
                     Continue
                   </button>

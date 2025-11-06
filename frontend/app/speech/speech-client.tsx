@@ -35,7 +35,6 @@ import SentenceConstructionAssessment from '@/components/sentence-construction-a
 import DraggableTimer from '@/components/draggable-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
-import SessionCompletionModal from '@/components/session-completion-modal';
 import SessionSavingModal from '@/components/session-saving-modal';
 import BackgroundAnalysisCard from '@/components/background-analysis-card';
 import ConversationHelpModal from '@/components/conversation-help-modal';
@@ -135,11 +134,12 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [isProcessingBackground, setIsProcessingBackground] = useState(false);
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0);
   
-  // 🔥 NEW: Batch sentence collection for cost optimization
+  // 🔥 NEW: Batch sentence collection for cost optimization with quality scoring
   const [collectedSentences, setCollectedSentences] = useState<Array<{
     text: string;
     timestamp: string;
     messageIndex: number;
+    qualityScore?: number;
   }>>([]);
   
   // 🔥 NEW: Session saving animation state
@@ -185,8 +185,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [conversationStartTime, setConversationStartTime] = useState<number | null>(null);
   
-  // Session completion modal state
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  // Session completion state
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [showSavingLoader, setShowSavingLoader] = useState(false);
   const [isReviewingAnalysis, setIsReviewingAnalysis] = useState(false);
@@ -949,14 +948,21 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
-  // 🔥 NEW: Enhanced background sentence analysis - COLLECT instead of analyze immediately
+  // 🔥 NEW: Enhanced background sentence analysis - COLLECT TOP 5 most valuable sentences
   const handleBackgroundAnalysis = useCallback(async (text: string, messageIndex: number) => {
-    console.log(`🔄 [BATCH_COLLECT] Collecting sentence for batch analysis: "${text.substring(0, 50)}..."`);
+    console.log(`🔄 [BATCH_COLLECT] Evaluating sentence: "${text.substring(0, 50)}..."`);
     
-    // 🔥 CRITICAL FIX: Check if we've already collected this exact sentence
-    const isDuplicate = collectedSentences.some(s => s.text.trim().toLowerCase() === text.trim().toLowerCase());
+    // 🔥 MAX LIMIT: Only collect top 5 most valuable sentences
+    const MAX_SENTENCES = 5;
+    
+    // 🔥 CRITICAL FIX: Check against BOTH incoming text AND already collected sentences
+    const normalizedText = text.trim().toLowerCase();
+    const isDuplicate = collectedSentences.some(s => 
+      s.text.trim().toLowerCase() === normalizedText
+    );
+    
     if (isDuplicate) {
-      console.log(`⏭️ [BATCH_COLLECT] Skipping DUPLICATE sentence:`, text.substring(0, 50) + '...');
+      console.log(`⏭️ [BATCH_COLLECT] Skipping DUPLICATE:`, text.substring(0, 50) + '...');
       return;
     }
     
@@ -965,7 +971,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       .filter(msg => msg.role === 'user')
       .slice(-5)
       .map(msg => msg.content)
-      .filter(content => content !== text);
+      .filter(content => content.trim().toLowerCase() !== normalizedText);
 
     // Enhanced client-side check with conversation context and language awareness
     const analysisDecision = shouldConsiderForAnalysis(text, recentUserMessages, language);
@@ -975,16 +981,34 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       return;
     }
 
-    console.log(`✅ [BATCH_COLLECT] Collecting UNIQUE sentence for batch: "${text.substring(0, 50)}..."`);
+    // Calculate quality score for prioritization
+    const qualityScore = analysisDecision.confidence * 100;
     
-    // 🔥 COLLECT instead of analyze immediately
-    setCollectedSentences(prev => [...prev, {
-      text: text,
-      timestamp: new Date().toISOString(),
-      messageIndex: messageIndex
-    }]);
+    console.log(`✅ [BATCH_COLLECT] Quality score: ${qualityScore.toFixed(0)} - "${text.substring(0, 50)}..."`);
     
-    console.log(`📦 [BATCH_COLLECT] Total collected: ${collectedSentences.length + 1} UNIQUE sentences`);
+    // 🔥 SMART COLLECTION: Keep only top 5 most valuable sentences
+    setCollectedSentences(prev => {
+      const newSentence = {
+        text: text,
+        timestamp: new Date().toISOString(),
+        messageIndex: messageIndex,
+        qualityScore: qualityScore
+      };
+      
+      // Add new sentence
+      const updated = [...prev, newSentence];
+      
+      // If we exceed the limit, keep only the top 5 by quality score
+      if (updated.length > MAX_SENTENCES) {
+        const sorted = updated.sort((a, b) => (b.qualityScore || 0) - (a.qualityScore || 0));
+        const kept = sorted.slice(0, MAX_SENTENCES);
+        console.log(`📊 [BATCH_COLLECT] Keeping top ${MAX_SENTENCES} sentences (dropped lower quality)`);
+        return kept;
+      }
+      
+      console.log(`📦 [BATCH_COLLECT] Total collected: ${updated.length}/${MAX_SENTENCES} sentences`);
+      return updated;
+    });
   }, [language, messages, collectedSentences]);
 
   // Handle transcript updates and language detection
@@ -1147,7 +1171,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, language, alertAnimationState, showLanguageAlert]);
   
-  // 🔥 ENHANCED: Auto-save conversation progress with batch analysis and animation
+  // 🔥 ENHANCED: Auto-save conversation progress with REAL backend progress tracking
   const saveConversationProgress = async () => {
     if (!user || processedMessages.length === 0) {
       console.log('Cannot save: no user or no messages');
@@ -1157,6 +1181,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     // 🔥 STEP 1: Show saving animation modal immediately
     setShowSavingAnimation(true);
     setSavingStage('saving');
+    console.log('[MODAL_STAGE] 💾 Stage: SAVING');
 
     try {
       // Check if this is a learning plan conversation
@@ -1222,14 +1247,20 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         const summaryResult = await summaryResponse.json();
         console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
         
-        // 🔥 STEP 2: Show success stage
-        setSavingStage('success');
+        // 🔥 STEP 2: Transition to analyzing stage (simulate backend progress)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setSavingStage('analyzing');
+        console.log('[MODAL_STAGE] 🔍 Stage: ANALYZING');
         
-        // 🔥 STEP 3: Wait for success animation, then close and show completion modal
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setShowSavingAnimation(false);
-        setSavingStage('saving');
-        setShowCompletionModal(true); // Show statistics modal
+        // 🔥 STEP 3: Transition to finalizing stage
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setSavingStage('finalizing');
+        console.log('[MODAL_STAGE] ✨ Stage: FINALIZING');
+        
+        // 🔥 STEP 4: Show success stage
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setSavingStage('success');
+        console.log('[MODAL_STAGE] 🎉 Stage: SUCCESS');
         
         return;
       }
@@ -1237,11 +1268,11 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       // This is a practice mode conversation - save to conversation history
       console.log('[AUTO_SAVE] 💬 This is a practice session - saving to conversation history');
       
-      // 🔥 STEP 2: Progress to analyzing stage if we have sentences
-      if (collectedSentences.length > 0) {
-        console.log(`[BATCH_SAVE] 📊 Sending ${collectedSentences.length} sentences for batch analysis`);
-        setSavingStage('analyzing');
-      }
+      // 🔥 STEP 2: Transition to analyzing stage BEFORE making the request
+      // This shows the user we're about to analyze their speech
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setSavingStage('analyzing');
+      console.log('[MODAL_STAGE] 🔍 Stage: ANALYZING (starting backend request)');
       
       const response = await fetch(`${getApiUrl()}/api/progress/save-conversation`, {
         method: 'POST',
@@ -1271,24 +1302,22 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       const result = await response.json();
       console.log('[AUTO_SAVE] ✅ Practice conversation saved successfully:', result);
       
-      // 🔥 STEP 3: Load batch analyses and show finalizing stage
+      // 🔥 STEP 3: Transition to finalizing stage when we receive the response
+      setSavingStage('finalizing');
+      console.log('[MODAL_STAGE] ✨ Stage: FINALIZING (processing results)');
+      
+      // Load batch analyses if available
       if (result.background_analyses && result.background_analyses.length > 0) {
         console.log(`[BATCH_SAVE] ✅ Received ${result.background_analyses.length} batch analyses from backend`);
-        setSavingStage('finalizing');
-        
         setBackgroundAnalyses(result.background_analyses);
-        
-        await new Promise(resolve => setTimeout(resolve, 800));
       }
+      
+      // Give user time to see the finalizing stage
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // 🔥 STEP 4: Show success stage
       setSavingStage('success');
-      
-      // 🔥 STEP 5: Wait for success animation, then close and show completion modal
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setShowSavingAnimation(false);
-      setSavingStage('saving');
-      setShowCompletionModal(true); // Show statistics modal
+      console.log('[MODAL_STAGE] 🎉 Stage: SUCCESS');
 
       // Track speaking time for subscription limits (new duration-based tracking)
       try {
@@ -1320,6 +1349,9 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
 
     } catch (error) {
       console.error('[AUTO_SAVE] ❌ Error auto-saving conversation:', error);
+      // Reset modal on error
+      setShowSavingAnimation(false);
+      setSavingStage('saving');
     }
   };
   
@@ -2014,7 +2046,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     console.log('🔄 Starting new session');
     // Reset all session states
     setSessionCompleted(false);
-    setShowCompletionModal(false);
     setConversationTimeUp(false);
     setConversationStartTime(null);
     setAnalyzedMessageIds([]);
@@ -2716,21 +2747,6 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         practiceTime={getPracticeTime()}
       />
 
-      {/* Session Completion Modal */}
-      <SessionCompletionModal
-        isOpen={showCompletionModal}
-        onGoHome={handleGoHome}
-        onStartNew={handleStartNewSession}
-        onCheckAnalysis={() => {
-          console.log('🔍 User wants to check analyzed sentences - closing modal to show analysis');
-          setShowCompletionModal(false);
-          setIsReviewingAnalysis(true); // Disable recording button
-        }}
-        sessionDuration={getPracticeTime()}
-        messageCount={processedMessages.length}
-        language={language}
-        level={level}
-      />
 
 
       {/* 🔥 REMOVED: Old saving loader - now using SessionSavingModal */}

@@ -872,12 +872,13 @@ async def update_session_progress(
         )
 
 class SessionSummaryRequest(BaseModel):
-    """Model for session summary with optional duration"""
+    """Model for session summary with optional duration and batch analysis"""
     messages: Optional[List[Dict[str, Any]]] = []
     duration_minutes: Optional[float] = 0.0
     language: Optional[str] = None
     level: Optional[str] = None
     topic: Optional[str] = None
+    sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch analysis support
 
 @router.post("/session-summary")
 async def save_session_summary(
@@ -1162,6 +1163,36 @@ async def save_session_summary(
             flashcard_generation_success = False
             generated_flashcards = 0
 
+        # 🔥 NEW: Process batch sentence analysis if sentences were provided
+        background_analyses = []
+        if request and request.sentences_for_analysis and len(request.sentences_for_analysis) > 0:
+            try:
+                from background_sentence_analysis import batch_analyze_sentences
+                
+                print(f"[BATCH_ANALYSIS] 📊 Processing {len(request.sentences_for_analysis)} sentences for learning plan session")
+                
+                # Extract sentence texts from the request
+                sentence_texts = [s.get('text', '') for s in request.sentences_for_analysis if s.get('text')]
+                
+                if sentence_texts:
+                    # Use the same batch analysis system as practice sessions
+                    analyses = await batch_analyze_sentences(
+                        sentences=sentence_texts,
+                        language=learning_plan.get("language", "english"),
+                        level=learning_plan.get("proficiency_level", "B1"),
+                        user_id=str(current_user.id)
+                    )
+                    
+                    background_analyses = analyses
+                    print(f"[BATCH_ANALYSIS] ✅ Generated {len(background_analyses)} analyses for learning plan session")
+                else:
+                    print(f"[BATCH_ANALYSIS] ⚠️ No valid sentence texts found in request")
+                    
+            except Exception as analysis_error:
+                print(f"[BATCH_ANALYSIS] ❌ Batch analysis failed: {str(analysis_error)}")
+                # Don't fail the session save if analysis fails
+                background_analyses = []
+        
         if result.modified_count > 0:
             print(f"[SESSION_SUMMARY] ✅ Learning plan updated successfully")
             print(f"[SESSION_SUMMARY] 🎉 Session summary saved with UNIFIED TRACKING!")
@@ -1175,7 +1206,8 @@ async def save_session_summary(
                 "duration_minutes": duration_minutes,
                 "subscription_tracked": subscription_tracked,
                 "flashcards_generated": generated_flashcards,
-                "flashcard_generation_success": flashcard_generation_success
+                "flashcard_generation_success": flashcard_generation_success,
+                "background_analyses": background_analyses  # 🔥 NEW: Return analyses to frontend
             }
         else:
             print(f"[SESSION_SUMMARY] ❌ Failed to update learning plan in database")
