@@ -154,7 +154,15 @@ export default function SessionSavingModal({
                 completed={stage === 'success'} 
                 active={stage === 'finalizing'} 
                 text="Feedback generated" 
-                color="#FFD63A" 
+                color="#4ECFBF" 
+              />
+              
+              {/* Step 4: Flashcards created */}
+              <AnalysisStep 
+                completed={stage === 'success'} 
+                active={false} 
+                text="Flashcards created" 
+                color="#9333EA" 
               />
             </div>
 
@@ -180,13 +188,6 @@ export default function SessionSavingModal({
             {/* Success Stats - Only show when complete */}
             {stage === 'success' && (
               <>
-                {/* Completion Summary - Show all completed stages */}
-                <div className="space-y-3 mb-6">
-                  <AnalysisStep completed text="Conversation saved" color="#4ECFBF" />
-                  <AnalysisStep completed text="Speech analyzed" color="#4ECFBF" />
-                  <AnalysisStep completed text="Feedback generated" color="#FFD63A" />
-                </div>
-
                 {/* Success Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <StatCard icon="📊" label="Duration" value={duration} />
@@ -246,9 +247,11 @@ function AnalysisStep({ completed, active, text, color }: { completed?: boolean;
           </svg>
         ) : active ? (
           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : null}
+        ) : (
+          <div className="w-3 h-3 rounded-full bg-white opacity-30" />
+        )}
       </div>
-      <span className={`text-sm ${completed || active ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+      <span className={`text-sm ${completed || active ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
         {text}
       </span>
     </div>
