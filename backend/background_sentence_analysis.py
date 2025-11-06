@@ -567,7 +567,7 @@ async def batch_analyze_sentences(
             all_results.extend(results)
         return all_results
     
-    print(f"[BATCH_ANALYSIS] Analyzing {len(sentences)} sentences in single GPT-4o call")
+    print(f"[BATCH_ANALYSIS] Analyzing {len(sentences)} sentences in single GPT-4o-mini call")
     
     # Build numbered sentence list
     numbered_sentences = "\n".join([
@@ -622,7 +622,7 @@ Return JSON object with "analyses" array containing analysis for each sentence."
         client = create_openai_client()
         
         response = client.chat.completions.create(
-            model="gpt-4o",  # Using GPT-4o for quality
+            model="gpt-4o-mini",  # Using GPT-4o-mini for cost optimization (94% cheaper)
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -638,7 +638,7 @@ Return JSON object with "analyses" array containing analysis for each sentence."
         analyses_data = result.get('analyses', []) if isinstance(result, dict) else result
         
         if not analyses_data:
-            print(f"[BATCH_ANALYSIS] ⚠️ No analyses returned from GPT-4o")
+            print(f"[BATCH_ANALYSIS] ⚠️ No analyses returned from GPT-4o-mini")
             analyses_data = []
         
         # Convert to BackgroundAnalysisResponse objects
