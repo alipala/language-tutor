@@ -40,12 +40,13 @@ async def save_conversation(
     request: SaveConversationRequest,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Save a conversation session for a registered user"""
+    """Save a conversation session for a registered user with batch sentence analysis"""
     try:
         print(f"[PROGRESS] Saving conversation for user {current_user.id}")
         print(f"[PROGRESS] Language: {request.language}, Level: {request.level}")
         print(f"[PROGRESS] Duration: {request.duration_minutes} minutes")
         print(f"[PROGRESS] Messages count: {len(request.messages)}")
+        print(f"[BATCH_SAVE] Received {len(request.sentences_for_analysis)} sentences for batch analysis")
         
         # Check if this is a learning plan conversation
         learning_plan_id = getattr(request, 'learning_plan_id', None)
@@ -103,6 +104,31 @@ async def save_conversation(
         
         # Generate conversation summary using OpenAI
         summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
+        
+        # 🔥 NEW: Batch analyze sentences if provided
+        background_analyses = []
+        if request.sentences_for_analysis:
+            from background_sentence_analysis import batch_analyze_sentences
+            
+            # Extract sentence texts
+            sentence_texts = [s['text'] for s in request.sentences_for_analysis]
+            
+            print(f"[BATCH_SAVE] Starting batch analysis of {len(sentence_texts)} sentences")
+            
+            try:
+                # Single GPT-4o call for all sentences
+                analyses = await batch_analyze_sentences(
+                    sentences=sentence_texts,
+                    language=request.language,
+                    level=request.level
+                )
+                
+                background_analyses = [a.dict() for a in analyses]
+                print(f"[BATCH_SAVE] ✅ Batch analysis complete: {len(background_analyses)} results")
+                
+            except Exception as analysis_error:
+                print(f"[BATCH_SAVE] ⚠️ Batch analysis failed: {str(analysis_error)}")
+                # Continue saving session even if analysis fails
         
         # Determine analysis level based on session quality
         analysis_level = determine_analysis_level(request.duration_minutes, len(conversation_messages))
@@ -184,6 +210,7 @@ async def save_conversation(
                 "message": "Conversation updated successfully",
                 "is_streak_eligible": is_streak_eligible,
                 "summary": summary,
+                "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
                 "action": "updated"
             }
         else:
@@ -278,6 +305,7 @@ async def save_conversation(
                 "message": "Conversation saved successfully",
                 "is_streak_eligible": is_streak_eligible,
                 "summary": summary,
+                "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
                 "action": "created"
             }
         

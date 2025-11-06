@@ -36,6 +36,7 @@ import DraggableTimer from '@/components/draggable-timer';
 import SaveProgressButton from '@/components/save-progress-button';
 import LeaveConversationModal from '@/components/leave-conversation-modal';
 import SessionCompletionModal from '@/components/session-completion-modal';
+import SessionSavingModal from '@/components/session-saving-modal';
 import BackgroundAnalysisCard from '@/components/background-analysis-card';
 import ConversationHelpModal from '@/components/conversation-help-modal';
 import ConversationHelpHintButton from '@/components/conversation-help-hint-button';
@@ -133,6 +134,17 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
   const [backgroundAnalyses, setBackgroundAnalyses] = useState<BackgroundAnalysisResponse[]>([]);
   const [isProcessingBackground, setIsProcessingBackground] = useState(false);
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0);
+  
+  // 🔥 NEW: Batch sentence collection for cost optimization
+  const [collectedSentences, setCollectedSentences] = useState<Array<{
+    text: string;
+    timestamp: string;
+    messageIndex: number;
+  }>>([]);
+  
+  // 🔥 NEW: Session saving animation state
+  const [showSavingAnimation, setShowSavingAnimation] = useState(false);
+  const [savingStage, setSavingStage] = useState<'saving' | 'analyzing' | 'finalizing' | 'success'>('saving');
   
   // Feedback system state
   const [feedbackModal, setFeedbackModal] = useState<{
@@ -937,147 +949,43 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, isConversationTimerActive, conversationTimeUp, isRecording]);
 
-  // Enhanced background sentence analysis function with caching and smart filtering
+  // 🔥 NEW: Enhanced background sentence analysis - COLLECT instead of analyze immediately
   const handleBackgroundAnalysis = useCallback(async (text: string, messageIndex: number) => {
-    console.log(`🔄 [BACKGROUND] Starting analysis check for: "${text.substring(0, 50)}..."`);
+    console.log(`🔄 [BATCH_COLLECT] Collecting sentence for batch analysis: "${text.substring(0, 50)}..."`);
     
-    // Build conversation context for enhanced filtering - but exclude the current message to avoid false repetition detection
+    // 🔥 CRITICAL FIX: Check if we've already collected this exact sentence
+    const isDuplicate = collectedSentences.some(s => s.text.trim().toLowerCase() === text.trim().toLowerCase());
+    if (isDuplicate) {
+      console.log(`⏭️ [BATCH_COLLECT] Skipping DUPLICATE sentence:`, text.substring(0, 50) + '...');
+      return;
+    }
+    
+    // Build conversation context for enhanced filtering
     const recentUserMessages = messages
       .filter(msg => msg.role === 'user')
-      .slice(-5) // Get last 5 user messages
+      .slice(-5)
       .map(msg => msg.content)
-      .filter(content => content !== text); // Exclude current message to avoid false repetition
-
-    console.log(`🔍 [BACKGROUND] Recent user messages for context:`, recentUserMessages);
+      .filter(content => content !== text);
 
     // Enhanced client-side check with conversation context and language awareness
     const analysisDecision = shouldConsiderForAnalysis(text, recentUserMessages, language);
     
     if (!analysisDecision.shouldAnalyze) {
-      console.log(`⏭️ [BACKGROUND] Skipping analysis - ${analysisDecision.reason}:`, text.substring(0, 50) + '...');
+      console.log(`⏭️ [BATCH_COLLECT] Skipping - ${analysisDecision.reason}:`, text.substring(0, 50) + '...');
       return;
     }
 
-    console.log(`🎯 [BACKGROUND] Analysis approved - ${analysisDecision.reason} (confidence: ${analysisDecision.confidence}):`, text.substring(0, 50) + '...');
-
-    // Check cache first to avoid duplicate API calls
-    const cachedResult = getCachedAnalysis(text, language, level);
-    if (cachedResult) {
-      console.log('⚡ [CACHE] Using cached analysis result');
-      setBackgroundAnalyses(prev => {
-        // Check if we already have this analysis in the UI
-        const isDuplicate = prev.some(existing => 
-          existing.recognized_text.toLowerCase().trim() === cachedResult.recognized_text.toLowerCase().trim()
-        );
-        
-        if (isDuplicate) {
-          console.log('⏭️ [CACHE] Skipping duplicate cached analysis for UI:', cachedResult.recognized_text.substring(0, 50) + '...');
-          return prev; // Don't add duplicate
-        }
-        
-        const newAnalyses = [...prev, cachedResult];
-        return newAnalyses.slice(-5); // Keep only last 5
-      });
-      return;
-    }
-
-    // Don't analyze if already processing or if we already have too many analyses
-    if (isProcessingBackground || backgroundAnalyses.length >= 8) {
-      console.log('⏭️ [BACKGROUND] Skipping analysis - already processing or too many analyses');
-      return;
-    }
-
-    // Create a unique key for this analysis to track timeouts
-    const analysisKey = `${text.substring(0, 30)}-${Date.now()}`;
+    console.log(`✅ [BATCH_COLLECT] Collecting UNIQUE sentence for batch: "${text.substring(0, 50)}..."`);
     
-    try {
-      setIsProcessingBackground(true);
-      console.log('🔄 [BACKGROUND] Starting background analysis for:', text.substring(0, 50) + '...');
-
-      // Set up a timeout to prevent stuck analyses
-      const timeoutId = setTimeout(() => {
-        console.log('⏰ [BACKGROUND] Analysis timeout for:', text.substring(0, 50) + '...');
-        setIsProcessingBackground(false);
-        
-        // Clean up the timeout from our tracking
-        setAnalysisTimeouts(prev => {
-          const newTimeouts = new Map(prev);
-          newTimeouts.delete(analysisKey);
-          return newTimeouts;
-        });
-      }, 15000); // 15 second timeout
-
-      // Track this timeout
-      setAnalysisTimeouts(prev => {
-        const newTimeouts = new Map(prev);
-        newTimeouts.set(analysisKey, timeoutId);
-        return newTimeouts;
-      });
-
-      // Build conversation context from recent messages
-      const recentMessages = messages.slice(-5); // Last 5 messages for context
-      const conversationContext = recentMessages
-        .map(msg => `${msg.role === 'user' ? 'Student' : 'Tutor'}: ${msg.content}`)
-        .join('\n');
-
-      const result = await processBackgroundSentence({
-        text: text,
-        language: language,
-        level: level,
-        exercise_type: 'free',
-        conversation_context: conversationContext
-      });
-
-      // Clear the timeout since we got a result
-      clearTimeout(timeoutId);
-      setAnalysisTimeouts(prev => {
-        const newTimeouts = new Map(prev);
-        newTimeouts.delete(analysisKey);
-        return newTimeouts;
-      });
-
-      if (result.analyzed && result.analysis) {
-        console.log('✅ [BACKGROUND] Analysis completed:', result.analysis.analysis_id);
-        
-        // Cache the result for future use
-        setCachedAnalysis(text, language, level, result.analysis);
-        
-        // Add to background analyses with deduplication and limit
-        setBackgroundAnalyses(prev => {
-          // Check if we already have an analysis for this exact text
-          const isDuplicate = prev.some(existing => 
-            existing.recognized_text.toLowerCase().trim() === result.analysis!.recognized_text.toLowerCase().trim()
-          );
-          
-          if (isDuplicate) {
-            console.log('⏭️ [BACKGROUND] Skipping duplicate analysis result for UI:', result.analysis!.recognized_text.substring(0, 50) + '...');
-            return prev; // Don't add duplicate
-          }
-          
-          const newAnalyses = [...prev, result.analysis!];
-          // Keep only the last 5 analyses to prevent UI clutter
-          return newAnalyses.slice(-5);
-        });
-      } else {
-        console.log('⏭️ [BACKGROUND] Analysis skipped by backend:', result.reason);
-      }
-    } catch (error) {
-      console.error('❌ [BACKGROUND] Error in background analysis:', error);
-      
-      // Clear any pending timeout for this analysis
-      setAnalysisTimeouts(prev => {
-        const newTimeouts = new Map(prev);
-        const timeoutId = newTimeouts.get(analysisKey);
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          newTimeouts.delete(analysisKey);
-        }
-        return newTimeouts;
-      });
-    } finally {
-      setIsProcessingBackground(false);
-    }
-  }, [language, level, messages, isProcessingBackground, backgroundAnalyses.length]);
+    // 🔥 COLLECT instead of analyze immediately
+    setCollectedSentences(prev => [...prev, {
+      text: text,
+      timestamp: new Date().toISOString(),
+      messageIndex: messageIndex
+    }]);
+    
+    console.log(`📦 [BATCH_COLLECT] Total collected: ${collectedSentences.length + 1} UNIQUE sentences`);
+  }, [language, messages, collectedSentences]);
 
   // Handle transcript updates and language detection
   useEffect(() => {
@@ -1239,12 +1147,16 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     }
   }, [messages, language, alertAnimationState, showLanguageAlert]);
   
-  // Auto-save conversation progress function
+  // 🔥 ENHANCED: Auto-save conversation progress with batch analysis and animation
   const saveConversationProgress = async () => {
     if (!user || processedMessages.length === 0) {
       console.log('Cannot save: no user or no messages');
       return;
     }
+
+    // 🔥 STEP 1: Show saving animation modal immediately
+    setShowSavingAnimation(true);
+    setSavingStage('saving');
 
     try {
       // Check if this is a learning plan conversation
@@ -1270,53 +1182,66 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         messageCount: messagesToSave.length,
         duration: durationMinutes,
         isLearningPlan: !!planParam,
-        planId: planParam
+        planId: planParam,
+        collectedSentences: collectedSentences.length
       });
 
       const { getApiUrl } = await import('@/lib/api-utils');
       const token = localStorage.getItem('token');
       
-        // If this is a learning plan session, use the session summary endpoint
-        if (planParam) {
-          console.log('[AUTO_SAVE] 📚 This is a learning plan session - using session summary endpoint');
-          console.log('[AUTO_SAVE] Plan ID:', planParam);
-          console.log('[AUTO_SAVE] Duration:', durationMinutes.toFixed(1), 'minutes');
-          console.log('[AUTO_SAVE] Messages:', messagesToSave.length);
-          
-          // Generate a session summary for the learning plan
-          const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
-          
-          // 🔥 CRITICAL FIX: Send data in request body, not query parameters
-          const summaryResponse = await fetch(`${getApiUrl()}/api/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              messages: messagesToSave,
-              duration_minutes: durationMinutes,
-              language: language,
-              level: level,
-              topic: topic
-            })
-          });
+      // If this is a learning plan session, use the session summary endpoint
+      if (planParam) {
+        console.log('[AUTO_SAVE] 📚 This is a learning plan session - using session summary endpoint');
+        
+        // Generate a session summary for the learning plan
+        const sessionSummary = `Session completed: ${durationMinutes.toFixed(1)} minutes, ${messagesToSave.length} messages exchanged. Focus: ${topic || 'general conversation'} at ${level} level in ${language}.`;
+        
+        const summaryResponse = await fetch(`${getApiUrl()}/api/learning/session-summary?plan_id=${planParam}&session_summary=${encodeURIComponent(sessionSummary)}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            messages: messagesToSave,
+            duration_minutes: durationMinutes,
+            language: language,
+            level: level,
+            topic: topic
+          })
+        });
 
-          if (!summaryResponse.ok) {
-            const errorText = await summaryResponse.text();
-            console.error('[AUTO_SAVE] ❌ Failed to save learning plan session:', summaryResponse.status, errorText);
-            throw new Error(`Failed to save learning plan session: ${summaryResponse.status} - ${errorText}`);
-          }
-
-          const summaryResult = await summaryResponse.json();
-          console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
-          console.log('[AUTO_SAVE] ✅ Session number:', summaryResult.session_number);
-          console.log('[AUTO_SAVE] ✅ Progress:', summaryResult.progress_percentage, '%');
-          return;
+        if (!summaryResponse.ok) {
+          const errorText = await summaryResponse.text();
+          console.error('[AUTO_SAVE] ❌ Failed to save learning plan session:', summaryResponse.status, errorText);
+          setShowSavingAnimation(false);
+          setSavingStage('saving');
+          throw new Error(`Failed to save learning plan session: ${summaryResponse.status} - ${errorText}`);
         }
+
+        const summaryResult = await summaryResponse.json();
+        console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
+        
+        // 🔥 STEP 2: Show success stage
+        setSavingStage('success');
+        
+        // 🔥 STEP 3: Wait for success animation, then close and show completion modal
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setShowSavingAnimation(false);
+        setSavingStage('saving');
+        setShowCompletionModal(true); // Show statistics modal
+        
+        return;
+      }
 
       // This is a practice mode conversation - save to conversation history
       console.log('[AUTO_SAVE] 💬 This is a practice session - saving to conversation history');
+      
+      // 🔥 STEP 2: Progress to analyzing stage if we have sentences
+      if (collectedSentences.length > 0) {
+        console.log(`[BATCH_SAVE] 📊 Sending ${collectedSentences.length} sentences for batch analysis`);
+        setSavingStage('analyzing');
+      }
       
       const response = await fetch(`${getApiUrl()}/api/progress/save-conversation`, {
         method: 'POST',
@@ -1330,18 +1255,40 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           topic,
           messages: messagesToSave,
           duration_minutes: durationMinutes,
-          learning_plan_id: null, // Explicitly mark as practice mode
-          conversation_type: 'practice'
+          learning_plan_id: null,
+          conversation_type: 'practice',
+          sentences_for_analysis: collectedSentences
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        setShowSavingAnimation(false);
+        setSavingStage('saving');
         throw new Error(errorData.detail || 'Failed to save conversation');
       }
 
       const result = await response.json();
       console.log('[AUTO_SAVE] ✅ Practice conversation saved successfully:', result);
+      
+      // 🔥 STEP 3: Load batch analyses and show finalizing stage
+      if (result.background_analyses && result.background_analyses.length > 0) {
+        console.log(`[BATCH_SAVE] ✅ Received ${result.background_analyses.length} batch analyses from backend`);
+        setSavingStage('finalizing');
+        
+        setBackgroundAnalyses(result.background_analyses);
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+      
+      // 🔥 STEP 4: Show success stage
+      setSavingStage('success');
+      
+      // 🔥 STEP 5: Wait for success animation, then close and show completion modal
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setShowSavingAnimation(false);
+      setSavingStage('saving');
+      setShowCompletionModal(true); // Show statistics modal
 
       // Track speaking time for subscription limits (new duration-based tracking)
       try {
@@ -2104,14 +2051,11 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             if (user && processedMessages.length > 0) {
               console.log('🔄 Auto-saving conversation at timer end...');
               
-              // Show loading state while saving
-              setShowSavingLoader(true);
+              // 🔥 FIX: Save conversation (SessionSavingModal will handle the animation)
+              await saveConversationProgress();
               
-              const saveResult = await saveConversationProgress();
-              
-              // Hide loading state and show completion modal
-              setShowSavingLoader(false);
-              setShowCompletionModal(true);
+              // 🔥 FIX: Don't show completion modal - SessionSavingModal handles everything
+              // The modal will auto-close after showing success
             } else {
               // For guests or no messages, trigger the TimeUpModal via parent callback
               if (onTimeUp) {
@@ -2789,18 +2733,32 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       />
 
 
-      {/* Saving Progress Loading Modal */}
-      {showSavingLoader && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 mx-4 max-w-sm w-full text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Saving Your Progress</h3>
-            <p className="text-gray-600">Please wait while we save your conversation...</p>
-          </div>
-        </div>
-      )}
+      {/* 🔥 REMOVED: Old saving loader - now using SessionSavingModal */}
+
+      {/* Session Saving Animation Modal */}
+      <SessionSavingModal
+        isOpen={showSavingAnimation}
+        stage={savingStage}
+        sentenceCount={collectedSentences.length}
+        conversationHighlights={(() => {
+          // Get unique user messages by filtering out duplicates
+          const userMessages = processedMessages
+            .filter(msg => msg.role === 'user')
+            .map(msg => msg.content.substring(0, 100));
+          
+          // Remove duplicates while preserving order
+          const uniqueMessages = Array.from(new Set(userMessages));
+          
+          // Return last 3 unique messages (or all if less than 3)
+          return uniqueMessages.slice(-3);
+        })()}
+        duration={conversationStartTime ? formatTime(Math.floor((Date.now() - conversationStartTime) / 1000)) : '0:00'}
+        messageCount={processedMessages.length}
+        onComplete={() => {
+          setShowSavingAnimation(false);
+          setSavingStage('saving');
+        }}
+      />
 
       {/* Conversation Help Timeout Notification */}
       <ConversationHelpTimeoutNotification

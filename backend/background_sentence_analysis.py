@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 import json
 import os
+import uuid
+from datetime import datetime
 from fastapi import HTTPException
 import openai
 import httpx
@@ -529,6 +531,177 @@ async def perform_background_analysis(text: str, language: str, level: str, exer
             "corrected_text": text,
             "level_appropriate_alternatives": []
         }
+
+async def batch_analyze_sentences(
+    sentences: List[str], 
+    language: str, 
+    level: str
+) -> List[BackgroundAnalysisResponse]:
+    """
+    Analyze multiple sentences in a single GPT-4o call for cost optimization.
+    
+    Args:
+        sentences: List of sentence texts to analyze
+        language: Target language (e.g., 'spanish', 'french')
+        level: Proficiency level (e.g., 'A1', 'B2')
+    
+    Returns:
+        List of analysis results in same order as input
+    """
+    
+    if not sentences:
+        return []
+    
+    # Limit batch size to prevent token overflow
+    MAX_BATCH_SIZE = 10
+    if len(sentences) > MAX_BATCH_SIZE:
+        print(f"[BATCH_ANALYSIS] Splitting {len(sentences)} sentences into batches of {MAX_BATCH_SIZE}")
+        # Split into multiple batches
+        batches = [sentences[i:i+MAX_BATCH_SIZE] 
+                   for i in range(0, len(sentences), MAX_BATCH_SIZE)]
+        
+        all_results = []
+        for batch_idx, batch in enumerate(batches):
+            print(f"[BATCH_ANALYSIS] Processing batch {batch_idx + 1}/{len(batches)}")
+            results = await batch_analyze_sentences(batch, language, level)
+            all_results.extend(results)
+        return all_results
+    
+    print(f"[BATCH_ANALYSIS] Analyzing {len(sentences)} sentences in single GPT-4o call")
+    
+    # Build numbered sentence list
+    numbered_sentences = "\n".join([
+        f"{i+1}. \"{sentence}\""
+        for i, sentence in enumerate(sentences)
+    ])
+    
+    # Create comprehensive prompt
+    system_prompt = f"""You are an expert language teacher analyzing student speech.
+
+Language: {language.title()}
+Student Level: {level.upper()}
+
+Analyze each sentence for:
+1. Grammar correctness (0-100)
+2. Vocabulary appropriateness (0-100)
+3. Complexity level (0-100)
+4. Overall appropriateness (0-100)
+5. Specific grammar issues
+6. Improvement suggestions
+7. Corrected version (if needed)
+8. Level-appropriate alternatives
+
+Return a JSON object with an "analyses" array containing one analysis object per sentence, in the same order.
+Each object must have this exact structure:
+{{
+    "recognized_text": "original sentence",
+    "grammatical_score": 85,
+    "vocabulary_score": 90,
+    "complexity_score": 75,
+    "appropriateness_score": 88,
+    "overall_score": 84.5,
+    "grammar_issues": [
+        {{
+            "issue": "description",
+            "correction": "fix",
+            "explanation": "why"
+        }}
+    ],
+    "improvement_suggestions": ["suggestion 1", "suggestion 2"],
+    "corrected_text": "corrected version",
+    "level_appropriate_alternatives": ["alternative 1", "alternative 2"]
+}}"""
+
+    user_prompt = f"""Analyze these {len(sentences)} sentences:
+
+{numbered_sentences}
+
+Return JSON object with "analyses" array containing analysis for each sentence."""
+
+    try:
+        client = create_openai_client()
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",  # Using GPT-4o for quality
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.3,
+            max_tokens=4000  # Enough for 10 sentences
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        
+        # Handle both array and object with 'analyses' key
+        analyses_data = result.get('analyses', []) if isinstance(result, dict) else result
+        
+        if not analyses_data:
+            print(f"[BATCH_ANALYSIS] ⚠️ No analyses returned from GPT-4o")
+            analyses_data = []
+        
+        # Convert to BackgroundAnalysisResponse objects
+        analyses = []
+        for i, analysis_data in enumerate(analyses_data):
+            # Add metadata
+            analysis_data['analysis_id'] = str(uuid.uuid4())
+            analysis_data['timestamp'] = datetime.now().isoformat()
+            
+            # Ensure recognized_text matches input
+            if 'recognized_text' not in analysis_data and i < len(sentences):
+                analysis_data['recognized_text'] = sentences[i]
+            
+            # Ensure all required fields exist
+            required_fields = {
+                'grammatical_score': 50.0,
+                'vocabulary_score': 50.0,
+                'complexity_score': 50.0,
+                'appropriateness_score': 50.0,
+                'overall_score': 50.0,
+                'grammar_issues': [],
+                'improvement_suggestions': [],
+                'corrected_text': analysis_data.get('recognized_text', sentences[i] if i < len(sentences) else ''),
+                'level_appropriate_alternatives': []
+            }
+            
+            for field, default_value in required_fields.items():
+                if field not in analysis_data:
+                    analysis_data[field] = default_value
+            
+            # Create response object
+            try:
+                analyses.append(BackgroundAnalysisResponse(**analysis_data))
+            except Exception as e:
+                print(f"[BATCH_ANALYSIS] ⚠️ Error creating response object for sentence {i}: {str(e)}")
+                continue
+        
+        print(f"✅ [BATCH_ANALYSIS] Successfully analyzed {len(analyses)} sentences")
+        return analyses
+        
+    except Exception as e:
+        print(f"❌ [BATCH_ANALYSIS] Error: {str(e)}")
+        import traceback
+        print(f"❌ [BATCH_ANALYSIS] Traceback: {traceback.format_exc()}")
+        
+        # Return minimal analyses for failed sentences
+        return [
+            BackgroundAnalysisResponse(
+                analysis_id=str(uuid.uuid4()),
+                timestamp=datetime.now().isoformat(),
+                recognized_text=sentence,
+                grammatical_score=0,
+                vocabulary_score=0,
+                complexity_score=0,
+                appropriateness_score=0,
+                overall_score=0,
+                grammar_issues=[],
+                improvement_suggestions=["Analysis failed. Please try again."],
+                corrected_text=sentence,
+                level_appropriate_alternatives=[]
+            )
+            for sentence in sentences
+        ]
 
 async def process_sentence_for_background_analysis(text: str, language: str, level: str, conversation_context: Optional[str] = None) -> Dict:
     """
