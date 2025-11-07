@@ -2067,7 +2067,34 @@ async def store_session_summary(
             # Generate flashcards using the service
             flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
 
-            print(f"[SESSION_SUMMARY] ✅ Generated {len(flashcard_set.flashcards)} flashcards for learning plan session")
+            # 🔥 CRITICAL FIX: Save flashcards to database (they were being generated but not saved!)
+            if flashcard_set and flashcard_set.flashcards:
+                from bson import ObjectId
+                from database import database
+                
+                # Save flashcard set to database
+                flashcard_set_doc = flashcard_set.dict()
+                flashcard_set_doc["_id"] = ObjectId()
+                flashcard_set_doc["created_at"] = datetime.utcnow()
+                
+                # Save individual flashcards
+                flashcard_docs = []
+                for flashcard in flashcard_set.flashcards:
+                    card_doc = flashcard.dict()
+                    card_doc["_id"] = ObjectId()
+                    flashcard_docs.append(card_doc)
+                
+                # Insert flashcard set
+                flashcard_sets_collection = database.flashcard_sets
+                set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
+                
+                # Insert individual flashcards
+                if flashcard_docs:
+                    flashcards_collection = database.flashcards
+                    cards_result = await flashcards_collection.insert_many(flashcard_docs)
+                    print(f"[SESSION_SUMMARY] 💾 Saved {len(cards_result.inserted_ids)} flashcards to database")
+
+            print(f"[SESSION_SUMMARY] ✅ Generated and saved {len(flashcard_set.flashcards)} flashcards for learning plan session")
             print(f"[SESSION_SUMMARY] 📚 Flashcard set: {flashcard_set.title}")
 
         except Exception as flashcard_error:

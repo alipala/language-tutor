@@ -208,14 +208,48 @@ export default function ProfilePage() {
   const [flashcardLoading, setFlashcardLoading] = useState(false);
   const [flashcardFilter, setFlashcardFilter] = useState<'all' | 'learning-plans' | 'practice'>('all');
   const [flashcardViewMode, setFlashcardViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedLearningPlanFilter, setSelectedLearningPlanFilter] = useState<string>('all');
 
   // Filter flashcard sets based on selected filter
   const filteredFlashcardSets = flashcardSets.filter(set => {
-    if (flashcardFilter === 'all') return true;
-    if (flashcardFilter === 'learning-plans') return set.session_id.startsWith('learning_plan_');
-    if (flashcardFilter === 'practice') return !set.session_id.startsWith('learning_plan_');
+    // First apply the main filter (all/learning-plans/practice)
+    if (flashcardFilter === 'all') {
+      // If "all" is selected, don't filter by type
+    } else if (flashcardFilter === 'learning-plans') {
+      if (!set.session_id.startsWith('learning_plan_')) return false;
+    } else if (flashcardFilter === 'practice') {
+      if (set.session_id.startsWith('learning_plan_')) return false;
+    }
+
+    // Then apply the learning plan specific filter if applicable
+    if (flashcardFilter === 'learning-plans' && selectedLearningPlanFilter !== 'all') {
+      // Extract plan ID from session_id (format: learning_plan_{plan_id}_{session_number}_{uuid})
+      const parts = set.session_id.split('_');
+      if (parts.length >= 3) {
+        const planId = parts[2];
+        if (planId !== selectedLearningPlanFilter) return false;
+      }
+    }
+
     return true;
   });
+
+  // Get unique learning plans from flashcard sets for the filter dropdown
+  const learningPlansWithFlashcards = flashcardSets
+    .filter(set => set.session_id.startsWith('learning_plan_'))
+    .map(set => {
+      const parts = set.session_id.split('_');
+      if (parts.length >= 3) {
+        const planId = parts[2];
+        // Find the matching learning plan
+        const plan = learningPlans.find(p => p.id === planId);
+        return plan ? { id: planId, name: `${plan.language} - ${plan.proficiency_level}` } : null;
+      }
+      return null;
+    })
+    .filter((plan, index, self) => 
+      plan && self.findIndex(p => p && p.id === plan.id) === index
+    ) as Array<{ id: string; name: string }>;
   
   // Calculate export stats for export modal
   const exportStats = {
