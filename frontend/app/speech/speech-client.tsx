@@ -1248,6 +1248,12 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         const summaryResult = await summaryResponse.json();
         console.log('[AUTO_SAVE] ✅ Learning plan session saved successfully:', summaryResult);
         
+        // 🔥 FIX: Load batch analyses if available (same as practice mode)
+        if (summaryResult.background_analyses && summaryResult.background_analyses.length > 0) {
+          console.log(`[BATCH_SAVE] ✅ Received ${summaryResult.background_analyses.length} batch analyses from backend`);
+          setBackgroundAnalyses(summaryResult.background_analyses);
+        }
+        
         // 🔥 STEP 2: Transition to analyzing stage (simulate backend progress)
         await new Promise(resolve => setTimeout(resolve, 500));
         setSavingStage('analyzing');
