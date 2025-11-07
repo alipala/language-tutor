@@ -40,10 +40,13 @@ app.prepare().then(() => {
       const { pathname } = parsedUrl;
 
       // Proxy API routes to backend with extended timeout
+      // BUT: /auth/login, /auth/signup are Next.js pages, not API routes
       if (
         pathname.startsWith('/api/') ||
-        pathname.startsWith('/auth/') ||
-        pathname.startsWith('/health/')
+        pathname.startsWith('/health/') ||
+        (pathname.startsWith('/auth/') && 
+         !pathname.startsWith('/auth/login') && 
+         !pathname.startsWith('/auth/signup'))
       ) {
         proxy.web(req, res);
         return;
