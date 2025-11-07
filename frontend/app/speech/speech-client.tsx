@@ -1232,7 +1232,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             duration_minutes: durationMinutes,
             language: language,
             level: level,
-            topic: topic
+            topic: topic,
+            sentences_for_analysis: collectedSentences  // 🔥 FIX: Include collected sentences for batch analysis
           })
         });
 
