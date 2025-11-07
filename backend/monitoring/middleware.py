@@ -27,9 +27,12 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
         self.performance_threshold = performance_threshold
         
         # Endpoints to exclude from monitoring (to avoid spam)
+        # 🔇 SILENT MODE: Health checks are excluded to prevent log clutter
         self.excluded_endpoints = {
             "/health",
             "/api/health",
+            "/api/health/ping",
+            "/api/health/status",
             "/favicon.ico",
             "/robots.txt"
         }

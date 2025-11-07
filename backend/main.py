@@ -389,6 +389,7 @@ async def test_endpoint():
     return {"message": "Language Tutor API is running"}
 
 # Enhanced health check endpoint with comprehensive error handling
+# 🔇 SILENT MODE: Minimal logging to avoid cluttering production logs
 @app.get("/health")
 @app.get("/api/health")  # Add an additional route to match frontend expectations
 async def health_check():
@@ -449,11 +450,13 @@ async def health_check():
             ]
         }
         
-        print(f"[HEALTH_CHECK] ✅ Health check successful: {health_status['status']}")
+        # 🔇 REMOVED: Verbose logging that clutters production logs
+        # Only log health check failures, not successes
         return health_status
         
     except Exception as e:
         error_message = str(e)
+        # Only log errors, not successful health checks
         print(f"[HEALTH_CHECK] ❌ Health check error: {error_message}")
         
         # Even if there's an error, return a 200 status so Railway doesn't think the service is down
