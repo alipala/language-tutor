@@ -166,15 +166,32 @@ Generate exactly {request.count} flashcards that will help reinforce learning fr
         import re
 
         try:
+            # 🔥 CRITICAL FIX: Strip markdown code fences if present
+            # OpenAI sometimes wraps JSON in ```json ... ``` blocks
+            cleaned_content = response_content.strip()
+            
+            # Remove markdown code fences
+            if cleaned_content.startswith('```'):
+                # Find the first newline after opening fence
+                first_newline = cleaned_content.find('\n')
+                if first_newline != -1:
+                    cleaned_content = cleaned_content[first_newline + 1:]
+                
+                # Remove closing fence
+                if cleaned_content.endswith('```'):
+                    cleaned_content = cleaned_content[:-3].strip()
+            
+            print(f"[FLASHCARD_PARSE] Cleaned content length: {len(cleaned_content)}")
+            
             # Try to extract JSON from the response
             # Look for JSON array in the response
-            json_match = re.search(r'\[.*\]', response_content, re.DOTALL)
+            json_match = re.search(r'\[.*\]', cleaned_content, re.DOTALL)
             if json_match:
                 json_str = json_match.group(0)
                 flashcards_json = json.loads(json_str)
             else:
                 # Try parsing the entire response as JSON
-                flashcards_json = json.loads(response_content)
+                flashcards_json = json.loads(cleaned_content)
 
             flashcards = []
             for i, card_data in enumerate(flashcards_json):

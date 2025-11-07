@@ -1214,8 +1214,7 @@ async def save_session_summary(
                     analyses = await batch_analyze_sentences(
                         sentences=sentence_texts,
                         language=learning_plan.get("language", "english"),
-                        level=learning_plan.get("proficiency_level", "B1"),
-                        user_id=str(current_user.id)
+                        level=learning_plan.get("proficiency_level", "B1")
                     )
                     
                     background_analyses = analyses
