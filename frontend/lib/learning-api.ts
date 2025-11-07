@@ -395,27 +395,27 @@ export const deleteFlashcardSet = async (setId: string): Promise<any> => {
 // Create learning plan
 export const createLearningPlan = async (planRequest: LearningPlanRequest): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
-  
+
   // Try to get auth token if available, but don't require it
   let headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   // Get auth token from local storage if available
   const token = localStorage.getItem('token');
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   try {
     console.log('[CREATE_PLAN] Starting request to:', `${apiUrl}/api/learning/plan`);
     console.log('[CREATE_PLAN] Has token:', !!token);
     console.log('[CREATE_PLAN] Request data:', planRequest);
-    
+
     // Wrap the request data in a plan_request field as expected by the backend
     const requestBody = { plan_request: planRequest };
     console.log('[CREATE_PLAN] Request body:', requestBody);
-    
+
     // 🔥 FIX: Don't use credentials: 'include' - it causes CORS issues
     // The Authorization header is sufficient for authentication
     const options: RequestInit = {
@@ -424,11 +424,11 @@ export const createLearningPlan = async (planRequest: LearningPlanRequest): Prom
       body: JSON.stringify(requestBody),
       // Remove credentials to avoid CORS preflight issues
     };
-    
+
     console.log('[CREATE_PLAN] Fetch options:', { ...options, body: '[REDACTED]' });
-    
+
     const response = await fetch(`${apiUrl}/api/learning/plan`, options);
-    
+
     console.log('[CREATE_PLAN] Response status:', response.status);
     console.log('[CREATE_PLAN] Response ok:', response.ok);
 
@@ -465,16 +465,16 @@ export const createLearningPlan = async (planRequest: LearningPlanRequest): Prom
 // Get learning plan by ID
 export const getLearningPlan = async (planId: string): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
-  
+
   // Check if user is authenticated
   const token = localStorage.getItem('token');
-  
+
   // For guest users, try to get the plan from session storage first
   if (!token) {
     // Try to get language and level from session storage
     const language = sessionStorage.getItem('selectedLanguage');
     const level = sessionStorage.getItem('selectedLevel');
-    
+
     // If we have the basic info in session storage, create a minimal plan object
     if (language && level) {
       console.log('Creating minimal plan for guest user from session storage');
@@ -493,11 +493,11 @@ export const getLearningPlan = async (planId: string): Promise<LearningPlan> => 
         created_at: new Date().toISOString()
       };
     }
-    
+
     // If we don't have the info in session storage, throw an error
     throw new Error('Authentication required to access learning plan');
   }
-  
+
   // For authenticated users, fetch the plan from the API
   const response = await fetch(`${apiUrl}/api/learning/plan/${planId}`, {
     method: 'GET',
@@ -518,13 +518,13 @@ export const getLearningPlan = async (planId: string): Promise<LearningPlan> => 
 // Assign learning plan to user
 export const assignPlanToUser = async (planId: string): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
-  
+
   // This endpoint requires authentication
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication required to assign learning plan');
   }
-  
+
   const response = await fetch(`${apiUrl}/api/learning/plan/${planId}/assign`, {
     method: 'PUT',
     headers: {
@@ -544,13 +544,13 @@ export const assignPlanToUser = async (planId: string): Promise<LearningPlan> =>
 // Get all learning plans for the current user
 export const getUserLearningPlans = async (): Promise<LearningPlan[]> => {
   const apiUrl = getApiUrl();
-  
+
   // This endpoint requires authentication
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication required to access user learning plans');
   }
-  
+
   const response = await fetch(`${apiUrl}/api/learning/plans`, {
     method: 'GET',
     headers: {

@@ -507,33 +507,52 @@ async def create_learning_plan(
             
             print(f"[ATOMIC_SAVE] ✅ Learning plan created with ID: {created_plan['id']}")
             
-            # STEP 2: 🔥 IDEMPOTENT ASSESSMENT SAVE - Prevent Double Increments
+            # STEP 2: 🔥 BULLETPROOF IDEMPOTENT ASSESSMENT SAVE - Prevent Double Increments
             try:
-                # Generate unique assessment ID to prevent duplicates
+                # Generate assessment fingerprint BEFORE any database operations
+                # This fingerprint is based on user + language + level, NOT plan ID
+                assessment_fingerprint = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}"
                 assessment_timestamp = datetime.utcnow().isoformat()
-                assessment_id = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}_{assessment_timestamp}"
                 
-                print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_id}")
+                print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_fingerprint}")
                 
-                # Check if this assessment was already processed
+                # Check if this assessment fingerprint was already processed
                 user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
                 existing_assessment_history = user_doc.get("assessment_history", {})
                 
-                # Check if we already have an assessment for this learning plan
+                # 🔥 CRITICAL FIX: Check fingerprint, not plan ID
+                # This prevents double increment even on retries/duplicates
                 if (existing_assessment_history and 
-                    existing_assessment_history.get("learning_plan_id") == created_plan['id']):
-                    print(f"[IDEMPOTENT_SAVE] ⚠️ Assessment already exists for learning plan {created_plan['id']}")
-                    print(f"[IDEMPOTENT_SAVE] ✅ Skipping duplicate assessment increment")
-                    new_plan = created_plan
+                    existing_assessment_history.get("assessment_fingerprint") == assessment_fingerprint):
+                    print(f"[IDEMPOTENT_SAVE] ⚠️ Assessment already processed for {assessment_fingerprint}")
+                    print(f"[IDEMPOTENT_SAVE] ✅ Returning existing plan without incrementing counter")
+                    
+                    # Return the existing plan linked to this assessment
+                    existing_plan_id = existing_assessment_history.get("learning_plan_id")
+                    if existing_plan_id:
+                        existing_plan = await learning_plans_collection.find_one({"id": existing_plan_id})
+                        if existing_plan:
+                            print(f"[IDEMPOTENT_SAVE] ✅ Returning existing plan: {existing_plan_id}")
+                            new_plan = existing_plan
+                        else:
+                            print(f"[IDEMPOTENT_SAVE] ⚠️ Existing plan not found, using newly created plan")
+                            new_plan = created_plan
+                    else:
+                        print(f"[IDEMPOTENT_SAVE] ⚠️ No plan ID in history, using newly created plan")
+                        new_plan = created_plan
                 else:
                     # This is a new assessment - proceed with increment
                     print(f"[IDEMPOTENT_SAVE] ✅ New assessment detected - proceeding with increment")
                     
-                    # Prepare the update operations with idempotency protection
+                    # Generate unique assessment ID for tracking
+                    assessment_id = f"{assessment_fingerprint}_{assessment_timestamp}"
+                    
+                    # Prepare the update operations with bulletproof idempotency protection
                     update_operations = {
                         "$set": {
                             "last_assessment_data": plan_request.assessment_data,
                             "assessment_history": {
+                                "assessment_fingerprint": assessment_fingerprint,  # 🔥 NEW: Use fingerprint
                                 "assessment_id": assessment_id,
                                 "timestamp": assessment_timestamp,
                                 "data": plan_request.assessment_data,
@@ -545,17 +564,18 @@ async def create_learning_plan(
                         "$inc": {"assessments_used": 1}  # Increment counter atomically
                     }
                     
-                    print(f"[IDEMPOTENT_SAVE] 🔥 IDEMPOTENT FIX: Incrementing assessment counter with duplicate protection")
+                    print(f"[IDEMPOTENT_SAVE] 🔥 BULLETPROOF FIX: Incrementing assessment counter with fingerprint protection")
                     print(f"[IDEMPOTENT_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
                     
-                    # Execute the atomic update with conditional check
+                    # 🔥 CRITICAL: Execute atomic update with fingerprint-based conditional check
+                    # This ensures only ONE increment happens even with retries/duplicates
                     update_result = await users_collection.update_one(
                         {
                             "_id": ObjectId(current_user.id),
-                            # Ensure we don't double-increment if assessment_history already has this plan
+                            # 🔥 BULLETPROOF: Ensure fingerprint doesn't already exist
                             "$or": [
                                 {"assessment_history": {"$exists": False}},
-                                {"assessment_history.learning_plan_id": {"$ne": created_plan['id']}}
+                                {"assessment_history.assessment_fingerprint": {"$ne": assessment_fingerprint}}
                             ]
                         },
                         update_operations
@@ -563,21 +583,36 @@ async def create_learning_plan(
                     
                     if update_result.modified_count > 0:
                         print(f"[IDEMPOTENT_SAVE] ✅ Assessment data saved to user profile")
-                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (idempotent)")
-                        print(f"[IDEMPOTENT_SAVE] 🎯 IDEMPOTENT SAVE COMPLETE: Assessment + Plan saved together")
+                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (bulletproof idempotent)")
+                        print(f"[IDEMPOTENT_SAVE] 🎯 BULLETPROOF SAVE COMPLETE: Assessment + Plan saved together")
                     else:
-                        print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - possible duplicate detected")
+                        print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - duplicate detected by fingerprint")
                         
                         # Double-check if this was due to duplicate protection
                         fresh_user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
                         fresh_history = fresh_user.get("assessment_history", {})
-                        if fresh_history.get("learning_plan_id") == created_plan['id']:
-                            print(f"[IDEMPOTENT_SAVE] ✅ Duplicate protection worked - assessment already exists")
+                        if fresh_history.get("assessment_fingerprint") == assessment_fingerprint:
+                            print(f"[IDEMPOTENT_SAVE] ✅ Bulletproof duplicate protection worked - assessment already exists")
+                            
+                            # Return the existing plan instead of creating a duplicate
+                            existing_plan_id = fresh_history.get("learning_plan_id")
+                            if existing_plan_id:
+                                existing_plan = await learning_plans_collection.find_one({"id": existing_plan_id})
+                                if existing_plan:
+                                    print(f"[IDEMPOTENT_SAVE] ✅ Returning existing plan from duplicate check: {existing_plan_id}")
+                                    new_plan = existing_plan
+                                    # Don't return here, let it fall through to the return statement
+                                else:
+                                    new_plan = created_plan
+                            else:
+                                new_plan = created_plan
                         else:
-                            print(f"[IDEMPOTENT_SAVE] ❌ Unexpected update failure")
+                            print(f"[IDEMPOTENT_SAVE] ❌ Unexpected update failure - fingerprint mismatch")
+                            new_plan = created_plan
                     
                     # Update new_plan with the created plan data for return
-                    new_plan = created_plan
+                    if update_result.modified_count > 0:
+                        new_plan = created_plan
                     
             except Exception as e:
                 print(f"[ATOMIC_SAVE] ⚠️ Warning: Failed to save assessment data: {str(e)}")
