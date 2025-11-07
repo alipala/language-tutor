@@ -1168,9 +1168,11 @@ async def save_session_summary(
             from flashcard_service import FlashcardService
             from models import FlashcardGenerationRequest
 
-            # Create flashcard generation request
+            # 🔥 CRITICAL FIX: Use the learning_plan_session_id so frontend can filter properly
+            # Frontend filter checks: set.session_id.startsWith('learning_plan_')
+            # This ensures flashcards appear in the "Learning Plans" filter
             flashcard_request = FlashcardGenerationRequest(
-                session_id=str(uuid.uuid4()),  # Generate unique session ID for flashcards
+                session_id=learning_plan_session_id,  # Use the proper learning_plan session ID!
                 language=learning_plan.get("language", "english"),
                 level=learning_plan.get("proficiency_level", "B1"),
                 topic=request.topic if request and request.topic else None,
@@ -1179,7 +1181,7 @@ async def save_session_summary(
                 count=5  # Generate 5 flashcards per session
             )
 
-            print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for completed session")
+            print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for learning plan session: {learning_plan_session_id}")
             print(f"[FLASHCARD_INTEGRATION] Language: {flashcard_request.language}, Level: {flashcard_request.level}")
 
             # Generate flashcards
