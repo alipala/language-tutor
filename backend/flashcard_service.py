@@ -35,7 +35,7 @@ class FlashcardService:
             print(f"[FLASHCARD_GEN] Language: {request.language}, Level: {request.level}")
 
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",  # Using GPT-4o-mini for cost optimization (94% cheaper)
                 messages=[
                     {
                         "role": "system",
