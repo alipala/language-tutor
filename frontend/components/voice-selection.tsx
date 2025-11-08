@@ -93,7 +93,7 @@ export default function VoiceSelectionComponent() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/auth/get-voice`, {
+      const response = await fetch(`${API_URL}/api/auth/get-voice`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -138,7 +138,7 @@ export default function VoiceSelectionComponent() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/auth/select-voice`, {
+      const response = await fetch(`${API_URL}/api/auth/select-voice`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

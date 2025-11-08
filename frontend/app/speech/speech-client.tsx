@@ -246,7 +246,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           return;
         }
 
-        const response = await fetch(`${getApiUrl()}/auth/get-voice`, {
+        const response = await fetch(`${getApiUrl()}/api/auth/get-voice`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',

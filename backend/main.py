@@ -104,7 +104,7 @@ app.add_middleware(
 )
 
 # Include authentication routes
-app.include_router(auth_router, prefix="/api", tags=["authentication"])
+app.include_router(auth_router)
 
 # Include learning routes
 from learning_routes import router as learning_router
