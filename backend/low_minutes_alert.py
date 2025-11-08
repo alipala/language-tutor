@@ -12,6 +12,7 @@ from models import UserResponse
 from subscription_service import SubscriptionService
 from logging_config import logger
 from bson import ObjectId
+from performance_cache import perf_cache
 
 router = APIRouter()
 
@@ -99,17 +100,29 @@ async def check_low_minutes_status(user_id: str) -> Dict[str, Any]:
 @router.get("/api/subscription/low-minutes-check")
 async def get_low_minutes_status(current_user: UserResponse = Depends(get_current_user)):
     """
-    API endpoint to check if current user has low remaining minutes
+    🚀 OPTIMIZED: API endpoint to check if current user has low remaining minutes with server-side caching
     Returns status and appropriate warning message
     """
     try:
         user_id = str(current_user.id)
-        status = await check_low_minutes_status(user_id)
+        cache_key = f"low_minutes_check:{user_id}"
         
-        return {
-            "success": True,
-            "data": status
-        }
+        async def fetch_low_minutes_data():
+            """Inner function to fetch low minutes data (cached by perf_cache)"""
+            status = await check_low_minutes_status(user_id)
+            return {
+                "success": True,
+                "data": status
+            }
+        
+        # Use server-side cache with 30-second TTL and request deduplication
+        response = await perf_cache.fetch_with_cache_and_dedup(
+            cache_key,
+            fetch_low_minutes_data,
+            ttl_seconds=30
+        )
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in low minutes check endpoint: {str(e)}")
