@@ -388,101 +388,12 @@ if os.getenv("ENVIRONMENT") == "development":
 async def test_endpoint():
     return {"message": "Language Tutor API is running"}
 
-# Enhanced health check endpoint with comprehensive error handling
-# 🔇 SILENT MODE: Minimal logging to avoid cluttering production logs
+# 🔇 ULTRA-MINIMAL health check - Railway logs everything, so keep response tiny
 @app.get("/health")
-@app.get("/api/health")  # Add an additional route to match frontend expectations
+@app.get("/api/health")
 async def health_check():
-    import time
-    import platform
-    
-    try:
-        # Current timestamp
-        current_time = time.time()
-        
-        # Get environment information
-        environment = os.getenv("ENVIRONMENT", "production")
-        is_railway = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true"
-        
-        # Quick configuration checks (no network calls)
-        openai_configured = os.getenv("OPENAI_API_KEY") is not None
-        
-        # Check if MongoDB URL is configured (don't test connection)
-        mongodb_configured = False
-        for var_name in ["MONGODB_URL", "MONGO_URL", "MONGO_PUBLIC_URL"]:
-            if os.getenv(var_name):
-                mongodb_configured = True
-                break
-        
-        # Enhanced health status with both flat and nested structure for compatibility
-        health_status = {
-            "status": "ok",
-            "timestamp": current_time,
-            "environment": environment,
-            "railway": is_railway,
-            "port": os.getenv("PORT", "3001"),
-            "service": "language-tutor-backend",
-            "python_version": "3.11",
-            "openai_configured": openai_configured,
-            "mongodb_configured": mongodb_configured,
-            "frontend_mode": "nextjs_server",  # Using Next.js server, not static export
-            "version": "1.0.0",
-            "uptime": current_time,
-            # Add nested system_info for backward compatibility with legacy frontend code
-            "system_info": {
-                "python_version": "3.11",
-                "platform": platform.system(),
-                "timestamp": current_time,
-                "environment": environment,
-                "railway": is_railway
-            },
-            "api_routes": [
-                "/api/health",
-                "/api/test",
-                "/api/realtime/token",
-                "/api/speaking/assess",
-                "/api/sentence/assess",
-                "/api/auth/login",
-                "/api/auth/register",
-                "/api/auth/check-user-type",
-                "/api/auth/google-login",
-                "/api/auth/me"
-            ]
-        }
-        
-        # 🔇 REMOVED: Verbose logging that clutters production logs
-        # Only log health check failures, not successes
-        return health_status
-        
-    except Exception as e:
-        error_message = str(e)
-        # Only log errors, not successful health checks
-        print(f"[HEALTH_CHECK] ❌ Health check error: {error_message}")
-        
-        # Even if there's an error, return a 200 status so Railway doesn't think the service is down
-        # But provide both flat and nested error information
-        error_response = {
-            "status": "error",
-            "error": error_message,
-            "timestamp": time.time(),
-            "service": "language-tutor-backend",
-            "environment": os.getenv("ENVIRONMENT", "production"),
-            "railway": os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true",
-            "port": os.getenv("PORT", "3001"),
-            "python_version": "3.11",
-            "openai_configured": False,
-            "mongodb_configured": False,
-            # Add nested system_info for backward compatibility
-            "system_info": {
-                "python_version": "3.11",
-                "platform": "unknown",
-                "timestamp": time.time(),
-                "environment": os.getenv("ENVIRONMENT", "production"),
-                "railway": os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("RAILWAY") == "true"
-            }
-        }
-        
-        return error_response
+    """Minimal health check to reduce Railway log noise"""
+    return {"status": "ok"}
 
 # Define models for request validation
 class TutorSessionRequest(BaseModel):
