@@ -88,7 +88,7 @@ export default function VoiceSelectionComponent() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('[VOICE_SELECTION] No token found');
+        console.log('[VOICE_SELECTION] No token found, using default voice');
         setLoadingVoices(false);
         return;
       }
@@ -105,11 +105,15 @@ export default function VoiceSelectionComponent() {
         console.log('[VOICE_SELECTION] Current voice:', data.voice);
         setSelectedVoice(data.voice);
         setCurrentVoice(data.voice);
+      } else if (response.status === 404 || response.status === 401) {
+        // Endpoint not found or unauthorized - silently use default
+        console.log('[VOICE_SELECTION] Voice endpoint not available, using default voice');
       } else {
-        console.error('[VOICE_SELECTION] Failed to fetch current voice');
+        console.error('[VOICE_SELECTION] Failed to fetch current voice:', response.status);
       }
     } catch (error) {
-      console.error('[VOICE_SELECTION] Error fetching current voice:', error);
+      // Silently handle errors and use default voice
+      console.log('[VOICE_SELECTION] Could not fetch voice preference, using default');
     } finally {
       setLoadingVoices(false);
     }

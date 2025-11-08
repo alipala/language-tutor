@@ -240,6 +240,8 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
       try {
         const token = localStorage.getItem('token');
         if (!token) {
+          console.log('[VOICE_DISPLAY] No token found, using default voice');
+          setSelectedVoice('alloy');
           setVoiceLoading(false);
           return;
         }
@@ -255,12 +257,17 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           const data = await response.json();
           console.log('[VOICE_DISPLAY] Fetched voice preference:', data.voice);
           setSelectedVoice(data.voice || 'alloy');
+        } else if (response.status === 404 || response.status === 401) {
+          // Endpoint not found or unauthorized - silently use default
+          console.log('[VOICE_DISPLAY] Voice endpoint not available, using default voice');
+          setSelectedVoice('alloy');
         } else {
-          console.error('[VOICE_DISPLAY] Failed to fetch voice preference');
+          console.error('[VOICE_DISPLAY] Failed to fetch voice preference:', response.status);
           setSelectedVoice('alloy');
         }
       } catch (error) {
-        console.error('[VOICE_DISPLAY] Error fetching voice preference:', error);
+        // Silently handle errors and use default voice
+        console.log('[VOICE_DISPLAY] Could not fetch voice preference, using default');
         setSelectedVoice('alloy');
       } finally {
         setVoiceLoading(false);
