@@ -1,9 +1,12 @@
 """
-Prompt Optimization Helper Functions
-Phase 0: Critical Optimizations for Token Reduction
+Prompt Optimization Helper Functions - FIXED VERSION
+CHANGES: Removed repetition/drilling patterns, added conversational correction style
 
-This module contains helper functions for optimizing prompts to reduce token usage
-and improve cost efficiency while maintaining quality.
+Key Changes:
+1. build_sample_phrases() - Removed "Say: [correct]" pattern, added natural recasting
+2. build_conversation_flow_section() - Changed correction format to conversational recasting
+3. build_state_specific_sample_phrases() - Replaced explicit corrections with implicit feedback
+4. Added explicit anti-repetition guards throughout
 """
 
 from openai import OpenAI
@@ -81,10 +84,9 @@ When voicing these words, use the respective pronunciations:
 
 def build_sample_phrases(language: str) -> str:
     """
-    Build the Sample Phrases section for consistent brand voice.
+    🔥 FIXED: Removed drilling patterns, added natural conversational corrections.
     
-    🔥 PHASE 1 OPTIMIZATION: Provides style guidance for natural,
-    consistent conversation flow.
+    Build the Sample Phrases section for consistent brand voice.
     
     Args:
         language: Target language for learning
@@ -96,6 +98,12 @@ def build_sample_phrases(language: str) -> str:
 # Sample Phrases
 
 Below are sample examples for inspiration. DO NOT ALWAYS USE THESE EXAMPLES - VARY YOUR RESPONSES.
+
+🚫 CRITICAL: NEVER use repetition/drilling patterns like:
+- ❌ "Repeat after me: [phrase]"
+- ❌ "Say this: [phrase]"
+- ❌ "Try saying: [phrase]"
+- ❌ "Now you say: [phrase]"
 
 ## Acknowledgements
 "On it." "One moment." "Good question." "I see." "Got it."
@@ -109,8 +117,15 @@ Below are sample examples for inspiration. DO NOT ALWAYS USE THESE EXAMPLES - VA
 ## Encouragement (brief)
 "Nice work!" "You're improving!" "Keep going!" "Almost there!" "Excellent!"
 
-## Corrections (gentle)
-"Try: [correct form]" "Actually, it's [correction]" "Close! Say: [correct]"
+## Conversational Corrections (IMPLICIT - Natural Recasting)
+✅ Student: "I go yesterday to store"
+✅ Tutor: "Oh, you went to the store yesterday? What did you buy?"
+
+✅ Student: "She don't like coffee"
+✅ Tutor: "She doesn't like coffee? Does she prefer tea?"
+
+✅ PRINCIPLE: Recast errors naturally in your response, then continue the conversation.
+❌ NEVER: "Actually, it's 'went', not 'go'. Try saying: 'I went to the store.'"
 
 ## Closers
 "Anything else?" "Ready to wrap up?" "Great session!" "See you next time!"
@@ -118,6 +133,12 @@ Below are sample examples for inspiration. DO NOT ALWAYS USE THESE EXAMPLES - VA
 ## {language}-Specific
 Use natural {language} expressions appropriate for the learner's level.
 Keep all phrases concise and conversational.
+
+## Error Handling Philosophy
+- Errors are learning opportunities, not problems to drill
+- Recast errors naturally without highlighting them
+- Continue conversation flow seamlessly
+- ONLY explicitly address errors that severely impede communication
 """
 
 
@@ -264,13 +285,9 @@ def log_token_usage(usage_data: Dict[str, Any]) -> None:
 
 def build_conversation_flow_section(language: str, level: str, topic: str = None) -> str:
     """
-    Build conversation flow section with 3 clear phases and state transitions.
+    🔥 FIXED: Changed correction format to natural recasting instead of explicit drilling.
     
-    🔥 PHASE 2 OPTIMIZATION: Implements structured conversation flow with:
-    - Clear 3-phase structure (Greeting, Practice, Wrap-up)
-    - Exit criteria for each phase
-    - Goal statements and guidance
-    - Better session management
+    Build conversation flow section with 3 clear phases and state transitions.
     
     Args:
         language: Target language for learning
@@ -284,6 +301,17 @@ def build_conversation_flow_section(language: str, level: str, topic: str = None
     
     return f"""
 # Conversation Flow
+
+🚫 CRITICAL PROHIBITION - NEVER DO THESE:
+- ❌ Do NOT ask learners to repeat sentences
+- ❌ Do NOT create pronunciation drills
+- ❌ Do NOT say "Try saying this: [phrase]"
+- ❌ Do NOT focus conversations on mechanics
+- ❌ Do NOT interrupt flow with explicit corrections
+
+✅ INSTEAD: Maintain natural conversation flow at ALL times
+
+---
 
 ## Phase 1: Greeting (30 seconds)
 **Goal:** Welcome learner and establish conversation focus
@@ -304,7 +332,7 @@ def build_conversation_flow_section(language: str, level: str, topic: str = None
 **Goal:** Engage in focused {language} conversation at {level} level
 **How to respond:**
 - Ask follow-up questions based on learner's responses
-- Provide natural, immediate corrections when needed
+- Use NATURAL RECASTING for errors (see correction style below)
 - Encourage elaboration with prompts
 - Use {level}-appropriate vocabulary and structures
 - CRITICAL: Max 2 sentences per turn
@@ -313,8 +341,24 @@ def build_conversation_flow_section(language: str, level: str, topic: str = None
 - 4 minutes elapsed OR
 - Learner signals end ("I'm done", "That's all", etc.)
 
-**Correction Format:**
-"Try: [correct form]" then continue conversation
+**Correction Style - NATURAL RECASTING:**
+
+✅ GOOD (Implicit recasting):
+Student: "I go yesterday to park"
+Tutor: "Oh, you went to the park yesterday? What did you do there?"
+[Error corrected naturally, conversation continues]
+
+❌ BAD (Explicit correction with repetition):
+Student: "I go yesterday to park"
+Tutor: "Let me correct that. The past tense is 'went'. Try saying: 'I went to the park yesterday'"
+[Interrupts flow, creates drilling atmosphere]
+
+**Recasting Principles:**
+1. Embed correct form naturally in your response
+2. Continue the conversation immediately
+3. Never highlight the error explicitly
+4. Keep conversational momentum
+5. Only address errors that severely impede understanding
 
 **Example:**
 "Interesante. ¿Qué te gustó más de ese lugar?"
@@ -325,7 +369,7 @@ def build_conversation_flow_section(language: str, level: str, topic: str = None
 **Goal:** Summarize progress and encourage continued practice
 **How to respond:**
 - Highlight 1-2 specific strengths observed
-- Mention 1 area for improvement
+- Mention 1 area for improvement (without drilling)
 - Encourage continued practice
 - CRITICAL: Max 2 sentences total
 
@@ -341,6 +385,13 @@ def build_conversation_flow_section(language: str, level: str, topic: str = None
 - Stay in Practice until time limit or learner signals end
 - Move to Wrap-up when Practice phase ends
 - End session after Wrap-up delivered
+
+## Conversation Priority Matrix
+1. **Natural conversation flow (80% of focus)**
+2. **Vocabulary expansion through usage (15% of focus)**
+3. **Address critical errors via recasting (5% of focus)**
+
+Remember: You are a CONVERSATION PARTNER, not a drill instructor.
 """
 
 
@@ -439,10 +490,9 @@ If escalation is triggered:
 
 def build_state_specific_sample_phrases(language: str, phase: str = "all") -> str:
     """
-    Build state-specific sample phrases for each conversation phase.
+    🔥 FIXED: Replaced explicit corrections with implicit recasting patterns.
     
-    🔥 PHASE 2 OPTIMIZATION: Extends sample phrases with phase-specific examples
-    for natural conversation flow through all states.
+    Build state-specific sample phrases for each conversation phase.
     
     Args:
         language: Target language for learning
@@ -472,11 +522,21 @@ Keep it brief and inviting.
     practice_phrases = f"""
 ## Practice Phase Phrases (4 minutes)
 
+🚫 CRITICAL: NO explicit corrections or repetition requests
+
 ### Follow-up Questions
 "Tell me more." "Why is that?" "What happened next?" "How did you feel?"
 
-### Natural Corrections
-"Try: [correct form]" "Actually: [correction]" "Better: [improved version]"
+### Implicit Error Correction (Natural Recasting)
+✅ If student says: "I go yesterday"
+✅ You respond: "Oh, you went somewhere yesterday? Where did you go?"
+[Correct form embedded naturally]
+
+✅ If student says: "She don't like it"
+✅ You respond: "She doesn't like it? What does she prefer?"
+[Correct form used naturally in response]
+
+❌ NEVER say: "Try: went" or "Actually: doesn't" or "Say: I went yesterday"
 
 ### Encouragement
 "Good point!" "Interesting!" "Keep going!" "Nice work!"
@@ -490,11 +550,11 @@ Keep it brief and inviting.
 ### {language}-Specific Practice
 Use natural {language} expressions for:
 - Asking clarifying questions
-- Providing gentle corrections
+- Providing IMPLICIT corrections via recasting
 - Encouraging elaboration
 - Transitioning between topics
 
-**Remember:** Keep all responses concise (max 2 sentences)
+**Remember:** Keep all responses concise (max 2 sentences) and conversational
 """
     
     wrapup_phrases = f"""
@@ -504,10 +564,10 @@ Use natural {language} expressions for:
 "Great session!" "Well done!" "Excellent progress!" "Nice improvement!"
 
 ### Specific Strengths
-"Your [skill] was strong." "Good use of [grammar point]." "Clear [pronunciation]."
+"Your [skill] was strong." "Good use of [grammar point]." "Clear communication."
 
-### Improvement Areas
-"Practice [skill] more." "Focus on [area]." "Work on [grammar point]."
+### Improvement Areas (NO drilling)
+"Keep practicing [skill]." "Focus on [area] next time." "Work on [grammar point]."
 
 ### Encouragement
 "Keep practicing!" "You're improving!" "See you next time!" "Great effort!"
@@ -542,6 +602,8 @@ Use natural {language} expressions for:
 - Keep all responses concise (2 sentences max)
 - Use natural {language} expressions
 - Adapt tone to conversation phase
+- NEVER interrupt flow with explicit corrections
+- ALWAYS maintain conversational momentum
 """
 
 
@@ -571,7 +633,7 @@ def build_speed_instructions() -> str:
 ## Pauses
 - Use natural pauses between sentences
 - Brief pause after questions (0.5-1 second)
-- Pause before corrections to let learner process
+- Pause before continuing after recasting an error
 
 ## Emphasis
 - Emphasize key vocabulary words slightly
@@ -582,7 +644,8 @@ def build_speed_instructions() -> str:
 - Speaking too fast (learners need processing time)
 - Monotone delivery (sounds robotic)
 - Unnatural pauses or hesitations
-- Rushed corrections
+- Rushed responses
+- Drilling or mechanical correction patterns
 """
 
 
