@@ -162,8 +162,8 @@ async def create_checkout_session(
         try:
             logger.info(f"[AUTH_CHECKOUT] Creating Stripe checkout session...")
             
-            # 🔥 FIX: Create checkout session with all required parameters
-            # The 400 error was likely due to missing or invalid configuration
+            # 🔥 FIX: Create checkout session with simplified configuration
+            # The 400 error was caused by customer_update conflicting with promotion codes
             checkout_session_data = {
                 "customer": customer_id,
                 "payment_method_types": ["card"],
@@ -176,19 +176,12 @@ async def create_checkout_session(
                 "mode": "subscription",
                 "success_url": success_url,
                 "cancel_url": cancel_url,
-                # 🔥 COUPON FIX: Enable promotion codes properly
+                # 🔥 PROMO CODE FIX: Enable promotion codes (simplified config)
                 "allow_promotion_codes": True,
                 # Add metadata for tracking
                 "metadata": {
                     "user_id": str(current_user.id),
                     "user_email": current_user.email
-                },
-                # Set billing address collection
-                "billing_address_collection": "auto",
-                # Set customer update to allow email updates
-                "customer_update": {
-                    "address": "auto",
-                    "name": "auto"
                 },
                 # Add subscription data with metadata
                 "subscription_data": {
