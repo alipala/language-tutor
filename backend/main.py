@@ -547,10 +547,11 @@ def get_language_iso_code(language: str) -> str:
 @app.post("/api/realtime/token")
 async def generate_token(request: TutorSessionRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     from monitoring import send_error_alert, send_business_logic_alert, AlertContext, AlertSeverity
+    import asyncio
     
     try:
         print("="*80)
-        print(f"🌐 [UNIVERSAL] Creating ephemeral token for all browsers")
+        print(f"🚀 [PERFORMANCE] Creating ephemeral token with parallel optimization")
         print(f"🌐 [UNIVERSAL] Language: {request.language}")
         print(f"🌐 [UNIVERSAL] Level: {request.level}")
         print(f"🌐 [UNIVERSAL] Topic: {request.topic}")
@@ -558,7 +559,6 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
-            # Send alert for missing API key
             context = AlertContext(
                 endpoint="/api/realtime/token",
                 method="POST",
@@ -572,30 +572,42 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             )
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
         
-        # ✅ Build universal instructions that work on all browsers
-        instructions = build_universal_instructions(request)
-        
-        print(f"✅ [UNIVERSAL] Instructions created: {len(instructions)} characters")
-        
-        # 🎤 Get user's preferred voice fresh from database to ensure latest selection
-        preferred_voice = "alloy"  # Default voice
-        if current_user:
+        # 🚀 PERFORMANCE OPTIMIZATION: Run voice fetch and instruction building in parallel
+        async def fetch_voice_preference():
+            """Fetch voice preference without blocking token generation"""
+            if not current_user:
+                return "alloy"
+            
             try:
                 from database import users_collection
                 from bson import ObjectId
                 
-                # Get fresh user data from database to ensure we have the latest voice preference
-                user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+                user_doc = await users_collection.find_one(
+                    {"_id": ObjectId(current_user.id)},
+                    {"preferred_voice": 1}  # Only fetch voice field
+                )
+                
                 if user_doc and "preferred_voice" in user_doc:
-                    preferred_voice = user_doc["preferred_voice"]
-                    print(f"🎤 [VOICE] Fresh voice preference from DB: {preferred_voice}")
-                else:
-                    print(f"🎤 [VOICE] No voice preference found in DB, using default: {preferred_voice}")
+                    print(f"🎤 [VOICE] Fetched voice: {user_doc['preferred_voice']}")
+                    return user_doc["preferred_voice"]
+                
+                print(f"🎤 [VOICE] No preference found, using default")
+                return "alloy"
             except Exception as e:
-                print(f"🎤 [VOICE] Error fetching voice preference: {str(e)}")
-                preferred_voice = "alloy"
+                print(f"🎤 [VOICE] Error fetching voice: {str(e)}")
+                return "alloy"
         
-        # Use request voice if provided, otherwise use user's preferred voice
+        # Run voice fetch and instruction building in parallel
+        voice_task = asyncio.create_task(fetch_voice_preference())
+        
+        # Build instructions (can run while voice is being fetched)
+        instructions = build_universal_instructions(request)
+        print(f"✅ [UNIVERSAL] Instructions created: {len(instructions)} characters")
+        
+        # Wait for voice preference (should be done by now)
+        preferred_voice = await voice_task
+        
+        # Use request voice if provided, otherwise use fetched preference
         selected_voice = request.voice or preferred_voice
         
         print(f"🎤 [VOICE] User preferred voice: {preferred_voice}")
