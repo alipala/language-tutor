@@ -10,6 +10,7 @@ import { isPlanValid, getRemainingTime, checkAndMarkSessionExpired } from '@/lib
 import PendingLearningPlanHandler from '@/components/pending-learning-plan-handler';
 import TimeUpModal from '@/components/time-up-modal';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
+import SpeechLoadingSkeleton from '@/components/speech-loading-skeleton';
 
 // Define the props interface to match the SpeechClient component
 interface SpeechClientProps {
@@ -21,6 +22,9 @@ interface SpeechClientProps {
 
 // Dynamically import SpeechClient with no SSR
 const SpeechClient = dynamic(() => import('./speech-client'), { ssr: false });
+
+// Loading stage type
+type LoadingStage = 'initializing' | 'fetching-token' | 'connecting' | 'ready';
 
 export default function SpeechPage() {
   const router = useRouter();
@@ -35,6 +39,10 @@ export default function SpeechPage() {
   const [planCreationTime, setPlanCreationTime] = useState<string | null>(null);
   const navigationHandledRef = useRef(false);
   const initializationCompleteRef = useRef(false);
+  
+  // Progressive loading states
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>('initializing');
+  const [showSkeleton, setShowSkeleton] = useState(true);
   
   // State for showing the leave site warning modal
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
@@ -69,6 +77,9 @@ export default function SpeechPage() {
   // Function to initialize the page parameters
   const initializePage = async () => {
     try {
+      // Stage 1: Initializing
+      setLoadingStage('initializing');
+      
       const urlParams = new URLSearchParams(window.location.search);
       const planParam = urlParams.get('plan');
       
@@ -84,6 +95,9 @@ export default function SpeechPage() {
         }
         
         setSelectedPlanId(planParam);
+        
+        // Stage 2: Fetching token/plan data
+        setLoadingStage('fetching-token');
         
         try {
           // Import the API function dynamically to avoid circular dependencies
@@ -126,7 +140,20 @@ export default function SpeechPage() {
             // We no longer reference plan.topic and plan.custom_prompt as they don't exist in the interface
             // Keep any existing topic and custom prompt values from session storage
             
+            // Stage 3: Connecting
+            setLoadingStage('connecting');
+            
+            // Small delay to show connecting stage
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Stage 4: Ready
+            setLoadingStage('ready');
+            
+            // Small delay before hiding skeleton
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             initializationCompleteRef.current = true;
+            setShowSkeleton(false);
             setIsLoading(false);
             return;
           }
@@ -159,8 +186,21 @@ export default function SpeechPage() {
         setCustomTopicPrompt(customPrompt);
       }
       
+      // Stage 2: Fetching token
+      setLoadingStage('fetching-token');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Stage 3: Connecting
+      setLoadingStage('connecting');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Stage 4: Ready
+      setLoadingStage('ready');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // We've successfully loaded the speech page with session storage parameters
       initializationCompleteRef.current = true;
+      setShowSkeleton(false);
       setIsLoading(false);
     } catch (error) {
       console.error('[SpeechPage] Error during initialization:', error);
@@ -308,35 +348,18 @@ export default function SpeechPage() {
     setShowLeaveWarning(false);
   };
   
-  if (isLoading || authLoading) {
+  // Show progressive loading skeleton
+  if (showSkeleton || isLoading || authLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <NavBar />
-        <div className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-pulse flex flex-col items-center">
-              <div className="rounded-full h-16 w-16 bg-white/20 mb-4 flex items-center justify-center">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-8 w-8 text-white animate-pulse" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                  <line x1="12" x2="12" y1="19" y2="22"></line>
-                </svg>
-              </div>
-              <p className="text-white text-xl font-medium">Loading...</p>
-              <p className="text-white/70 text-sm mt-2">
-                Starting conversation
-              </p>
-            </div>
-          </div>
+        <div className="flex-grow">
+          <SpeechLoadingSkeleton
+            stage={loadingStage}
+            language={selectedLanguage || 'Language'}
+            level={selectedLevel || 'Level'}
+            topic={selectedTopic || undefined}
+          />
         </div>
       </div>
     );
