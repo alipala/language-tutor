@@ -186,8 +186,8 @@ async def send_verification_email(email: str, name: str, verification_token: str
         print(f"[EMAIL] SMTP Config - Server: {SMTP_SERVER}, Port: {SMTP_PORT}, Username: {SMTP_USERNAME}")
         print(f"[EMAIL] Frontend URL: {FRONTEND_URL}")
         
-        # Create verification link
-        verification_link = f"{FRONTEND_URL}/auth/verify-email?token={verification_token}"
+        # Create verification link - CRITICAL FIX: Use /api/auth/verify-email (backend API route)
+        verification_link = f"{FRONTEND_URL}/api/auth/verify-email?token={verification_token}"
         print(f"[EMAIL] Verification link: {verification_link}")
         
         # Create email message
