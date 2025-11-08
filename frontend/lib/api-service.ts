@@ -15,15 +15,16 @@ import { apiCache } from './api-cache';
 import { getApiUrl } from './api-utils';
 
 // Cache durations (in milliseconds)
+// 🚀 PERFORMANCE OPTIMIZED: Increased cache durations to reduce API calls
 const CACHE_DURATIONS = {
-  SUBSCRIPTION_STATUS: 60000,      // 60 seconds
-  UNREAD_COUNT: 30000,             // 30 seconds
-  PROGRESS_STATS: 60000,           // 60 seconds
-  LEARNING_PLANS: 120000,          // 120 seconds
-  CONVERSATION_HISTORY: 60000,     // 60 seconds
-  ACHIEVEMENTS: 120000,            // 120 seconds
-  USER_INFO: 300000,               // 5 minutes
-  LOW_MINUTES_CHECK: 60000,        // 60 seconds
+    SUBSCRIPTION_STATUS: 30000,      // 30 seconds (matches server-side cache)
+    UNREAD_COUNT: 30000,             // 30 seconds
+    PROGRESS_STATS: 60000,           // 60 seconds
+    LEARNING_PLANS: 120000,          // 120 seconds
+    CONVERSATION_HISTORY: 60000,     // 60 seconds
+    ACHIEVEMENTS: 120000,            // 120 seconds
+    USER_INFO: 300000,               // 5 minutes
+    LOW_MINUTES_CHECK: 30000         // 30 seconds (matches server-side cache)
 };
 
 /**
