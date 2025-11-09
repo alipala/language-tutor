@@ -224,6 +224,9 @@ export function useRealtime() {
 
   // Track if AI has started speaking in current response
   const aiSpeakingStartedRef = useRef(false);
+  
+  // Store voice for conversation resumption
+  const voiceRef = useRef<string | undefined>(undefined);
 
   // Handle incoming messages
   const handleMessage = useCallback((event: RealtimeEvent) => {
@@ -342,12 +345,16 @@ export function useRealtime() {
     level?: string,
     topic?: string,
     userPrompt?: string,
-    assessmentData?: any
+    assessmentData?: any,
+    voice?: string
   ): Promise<boolean> => {
     if (!isBrowser) return false;
     
     try {
       setError(null);
+      
+      // Store voice for later use in conversation resumption
+      voiceRef.current = voice;
       
       const success = await enhancedRealtimeService.initialize(
         handleMessage,
@@ -357,7 +364,8 @@ export function useRealtime() {
         level,
         topic,
         userPrompt,
-        assessmentData
+        assessmentData,
+        voice
       );
       
       if (success) {
@@ -420,8 +428,8 @@ export function useRealtime() {
         return false;
       }
       
-      // Start the conversation
-      const conversationSuccess = await enhancedRealtimeService.startConversation(instructions);
+      // Start the conversation with voice parameter
+      const conversationSuccess = await enhancedRealtimeService.startConversation(instructions, voiceRef.current);
       if (!conversationSuccess) {
         setError('Failed to start conversation');
         return false;

@@ -1252,36 +1252,37 @@ export class RealtimeService {
       // 🎤 Get user's preferred voice from backend
       let selectedVoice = 'alloy'; // Default fallback voice
       try {
-        // Get the auth token from localStorage (same way other API calls work)
         const token = localStorage.getItem('token');
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
         
-        // Add authorization header if token exists
+        // Only attempt to fetch voice preference if user is authenticated
         if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        const voiceResponse = await fetch(`${this.backendUrl}/auth/get-voice`, {
-          method: 'GET',
-          credentials: 'include', // Include cookies for authentication
-          headers
-        });
-        
-        if (voiceResponse.ok) {
-          const voiceData = await voiceResponse.json();
-          if (voiceData.voice) {
-            selectedVoice = voiceData.voice;
-            console.log('🎤 [REALTIME_SERVICE] Using user preferred voice:', selectedVoice);
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+          
+          const voiceResponse = await fetch(`${this.backendUrl}/api/auth/get-voice`, {
+            method: 'GET',
+            credentials: 'include',
+            headers
+          });
+          
+          if (voiceResponse.ok) {
+            const voiceData = await voiceResponse.json();
+            if (voiceData.voice) {
+              selectedVoice = voiceData.voice;
+              console.log('🎤 [REALTIME_SERVICE] Using user preferred voice:', selectedVoice);
+            } else {
+              console.log('🎤 [REALTIME_SERVICE] No voice preference found, using default:', selectedVoice);
+            }
           } else {
-            console.log('🎤 [REALTIME_SERVICE] No voice preference found, using default:', selectedVoice);
+            console.log('🎤 [REALTIME_SERVICE] Failed to get voice preference (status:', voiceResponse.status, '), using default:', selectedVoice);
           }
         } else {
-          console.log('🎤 [REALTIME_SERVICE] Failed to get voice preference (status:', voiceResponse.status, '), using default:', selectedVoice);
+          console.log('🎤 [REALTIME_SERVICE] No auth token found, using default voice:', selectedVoice);
         }
       } catch (voiceError) {
-        console.log('🎤 [REALTIME_SERVICE] Error fetching voice preference, using default:', selectedVoice, voiceError);
+        console.log('🎤 [REALTIME_SERVICE] Error fetching voice preference, using default:', selectedVoice);
       }
 
       // Prepare request body with language and level

@@ -703,6 +703,12 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           return;
         }
         
+        // Wait for voice to be loaded before initializing
+        if (voiceLoading) {
+          console.log('Waiting for voice preference to load before initializing...');
+          return;
+        }
+        
         // Log the parameters being passed to the initialize function
         console.log('Initializing with parameters - language:', language, 'level:', level, 'topic:', topic || 'none');
         if (topic === 'custom' && userPrompt) {
@@ -803,10 +809,11 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
           }
         }
         
-        // Pass the language, level, topic, userPrompt, and assessment data to the initialize function
-        // Note: Research data is handled separately in the realtime service
-        await initialize(language, level, topic, userPrompt, assessmentData);
-        console.log('Realtime service initialized successfully');
+      // Pass the language, level, topic, userPrompt, assessment data, AND voice to the initialize function
+      // Note: Research data is handled separately in the realtime service
+      console.log('Initializing realtime service with voice:', selectedVoice);
+      await initialize(language, level, topic, userPrompt, assessmentData, selectedVoice);
+      console.log('Realtime service initialized successfully with voice:', selectedVoice);
       } catch (err) {
         console.error('Failed to initialize realtime service:', err);
         setLocalError('Failed to initialize the speech service. Please try again.');
@@ -814,7 +821,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
     };
     
     initializeService();
-  }, [initialize, language, level, topic, userPrompt]);
+  }, [initialize, language, level, topic, userPrompt, selectedVoice, voiceLoading]);
   
   // Function to check if text is in the target language
   const isInTargetLanguage = (text: string): boolean => {

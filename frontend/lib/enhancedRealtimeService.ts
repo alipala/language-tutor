@@ -124,7 +124,8 @@ export class EnhancedRealtimeService {
     level?: string,
     topic?: string,
     userPrompt?: string,
-    assessmentData?: any
+    assessmentData?: any,
+    voice?: string
   ): Promise<boolean> {
     try {
       console.log('🚀 [ENHANCED] Initializing enhanced realtime service with bulletproof muting...');
@@ -188,7 +189,8 @@ export class EnhancedRealtimeService {
 
       try {
         // Get ephemeral key from backend with language and level if provided
-        const token = await this.getEphemeralKey(language, level, topic, userPrompt, assessmentData);
+        // Pass voice parameter to avoid fetching it again
+        const token = await this.getEphemeralKey(language, level, topic, userPrompt, assessmentData, undefined, voice);
         if (!token) {
           console.error('❌ Failed to get ephemeral key (empty token)');
           return false;
@@ -1204,7 +1206,7 @@ export class EnhancedRealtimeService {
   /**
    * Start a conversation with OpenAI - Enhanced implementation
    */
-  public async startConversation(instructions?: string): Promise<boolean> {
+  public async startConversation(instructions?: string, voice?: string): Promise<boolean> {
     console.log('🚀 [ENHANCED] Starting conversation with bulletproof approach...');
 
     // If we have conversation instructions (for resuming), we need to get a new ephemeral key
@@ -1217,7 +1219,8 @@ export class EnhancedRealtimeService {
         this.currentTopic,
         this.currentUserPrompt,
         this.currentAssessmentData,
-        instructions
+        instructions,
+        voice
       );
 
       if (!newToken) {
@@ -1869,7 +1872,7 @@ export class EnhancedRealtimeService {
   /**
    * Get an ephemeral key from the backend
    */
-  public async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any, conversationHistory?: string): Promise<string> {
+  public async getEphemeralKey(language?: string, level?: string, topic?: string, userPrompt?: string, assessmentData?: any, conversationHistory?: string, voice?: string): Promise<string> {
     let usedMockToken = false;
 
     try {
@@ -1916,36 +1919,12 @@ export class EnhancedRealtimeService {
         }
       }
 
-      let selectedVoice = 'alloy';
-      try {
-        const token = localStorage.getItem('token');
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const voiceResponse = await fetch(`${this.backendUrl}/auth/get-voice`, {
-          method: 'GET',
-          credentials: 'include',
-          headers
-        });
-
-        if (voiceResponse.ok) {
-          const voiceData = await voiceResponse.json();
-          if (voiceData.voice) {
-            selectedVoice = voiceData.voice;
-            console.log('🎤 [ENHANCED] Using user preferred voice:', selectedVoice);
-          } else {
-            console.log('🎤 [ENHANCED] No voice preference found, using default:', selectedVoice);
-          }
-        } else {
-          console.log('🎤 [ENHANCED] Failed to get voice preference (status:', voiceResponse.status, '), using default:', selectedVoice);
-        }
-      } catch (voiceError) {
-        console.log('🎤 [ENHANCED] Error fetching voice preference, using default:', selectedVoice, voiceError);
+      // Use passed voice parameter if provided, otherwise use default
+      let selectedVoice = voice || 'alloy';
+      if (voice) {
+        console.log('🎤 [ENHANCED] Using passed voice parameter:', selectedVoice);
+      } else {
+        console.log('🎤 [ENHANCED] No voice parameter provided, using default:', selectedVoice);
       }
 
       const requestBody = {
