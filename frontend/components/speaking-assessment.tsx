@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle, ThumbsUp, Check, Target, ArrowUpRight, Footprints } from 'lucide-react';
+import { Mic, Square, Play, RotateCw, Volume2, ChevronRight, AlertCircle, ThumbsUp, Check, Target, ArrowUpRight, Footprints, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { assessSpeaking, fetchSpeakingPrompts, saveSpeakingAssessment, SpeakingAssessmentResult, SpeakingPrompt } from '@/lib/speaking-assessment-api';
@@ -27,8 +27,14 @@ export default function SpeakingAssessment({
   const isMobile = useMobile();
   
   // State for recording and assessment
-  const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'complete'>('idle');
+  const [status, setStatus] = useState<'idle' | 'topic-selection' | 'preparation' | 'recording' | 'processing' | 'complete'>('topic-selection');
   const [showLearningPlanModal, setShowLearningPlanModal] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<any>(null);
+  const [showTopicSelection, setShowTopicSelection] = useState(true);
+  const [showPreparation, setShowPreparation] = useState(false);
+  const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
   const [timer, setTimer] = useState(60);
   const [initialDuration, setInitialDuration] = useState(60); // Track initial duration for progress calculation
   const [isTimerActive, setIsTimerActive] = useState(false);
@@ -207,8 +213,8 @@ export default function SpeakingAssessment({
     try {
       setStatus('processing');
       
-      // Create a general speaking prompt for assessment
-      const assessmentPrompt = `Please speak naturally in ${language} about any topic you're comfortable with. You can talk about your hobbies, daily life, experiences, or anything that interests you.`;
+      // Use selected topic's prompt or fallback to general prompt
+      const assessmentPrompt = selectedTopic?.prompt || `Please speak naturally in ${language} about any topic you're comfortable with. You can talk about your hobbies, daily life, experiences, or anything that interests you.`;
       
       // Get assessment from API
       const result = await assessSpeaking(
@@ -297,7 +303,8 @@ export default function SpeakingAssessment({
     // Remove the completed flag to allow a new assessment
     sessionStorage.removeItem('assessmentCompleted');
     
-    setStatus('idle');
+    setStatus('topic-selection');
+    setSelectedTopic(null);
     setTimer(60);
     setInitialDuration(60); // Reset initial duration
     setCanStopRecording(false); // Reset stop button state
@@ -372,6 +379,503 @@ export default function SpeakingAssessment({
   // Check if user is authenticated
   const userIsAuthenticated = isAuthenticated();
 
+  // Define speaking topics with translations
+  const getTopics = (): Array<{id: string; icon: string; title: string; prompt: string; hints: string[]}> => {
+    const topics: Record<string, Array<{id: string; icon: string; title: string; prompt: string; hints: string[]}>> = {
+      english: [
+        {
+          id: 'about-you',
+          icon: '🙋',
+          title: 'About You',
+          prompt: 'Tell me about yourself and your daily life',
+          hints: [
+            'Where are you from and where do you live now?',
+            'What do you do for work or study?',
+            'What does a typical day look like for you?',
+            'What are your main responsibilities or activities?'
+          ]
+        },
+        {
+          id: 'travel-places',
+          icon: '🌍',
+          title: 'Travel & Places',
+          prompt: 'Describe a place that is special to you',
+          hints: [
+            'What place comes to mind? (hometown, vacation spot, favorite city)',
+            'What does this place look like?',
+            'Why is it meaningful to you?',
+            'What do you like to do there?'
+          ]
+        },
+        {
+          id: 'interests-hobbies',
+          icon: '🎨',
+          title: 'Interests & Hobbies',
+          prompt: 'Talk about something you enjoy doing',
+          hints: [
+            'What hobby or interest do you have?',
+            'How did you get started with it?',
+            'How often do you do this activity?',
+            'What do you like most about it?'
+          ]
+        },
+        {
+          id: 'experiences-memories',
+          icon: '💭',
+          title: 'Experiences & Memories',
+          prompt: 'Share a memorable experience from your life',
+          hints: [
+            'What experience stands out to you?',
+            'When and where did it happen?',
+            'Who was involved?',
+            'Why was it memorable?'
+          ]
+        },
+        {
+          id: 'future-goals',
+          icon: '🎯',
+          title: 'Future & Goals',
+          prompt: 'Discuss your plans or dreams for the future',
+          hints: [
+            'What are you hoping to achieve?',
+            'What steps are you taking toward this goal?',
+            'Why is this important to you?',
+            'How do you imagine your life in the future?'
+          ]
+        },
+        {
+          id: 'work-professional',
+          icon: '💼',
+          title: 'Work & Professional Life',
+          prompt: 'Talk about your work or professional experiences',
+          hints: [
+            'What kind of work do you do or want to do?',
+            'What do you find challenging or rewarding about your work?',
+            'How did you get into your current field?',
+            'What are your professional goals or aspirations?'
+          ]
+        }
+      ],
+      dutch: [
+        {
+          id: 'about-you',
+          icon: '🙋',
+          title: 'Over Jezelf',
+          prompt: 'Vertel me over jezelf en je dagelijks leven',
+          hints: [
+            'Waar kom je vandaan en waar woon je nu?',
+            'Wat doe je voor werk of studie?',
+            'Hoe ziet een typische dag eruit voor jou?',
+            'Wat zijn je belangrijkste verantwoordelijkheden of activiteiten?'
+          ]
+        },
+        {
+          id: 'travel-places',
+          icon: '🌍',
+          title: 'Reizen & Plaatsen',
+          prompt: 'Beschrijf een plek die speciaal voor je is',
+          hints: [
+            'Welke plek komt in je op? (geboorteplaats, vakantieplek, favoriete stad)',
+            'Hoe ziet deze plek eruit?',
+            'Waarom is het belangrijk voor je?',
+            'Wat doe je daar graag?'
+          ]
+        },
+        {
+          id: 'interests-hobbies',
+          icon: '🎨',
+          title: 'Interesses & Hobbys',
+          prompt: 'Praat over iets wat je graag doet',
+          hints: [
+            'Welke hobby of interesse heb je?',
+            'Hoe ben je ermee begonnen?',
+            'Hoe vaak doe je deze activiteit?',
+            'Wat vind je er het leukst aan?'
+          ]
+        },
+        {
+          id: 'experiences-memories',
+          icon: '💭',
+          title: 'Ervaringen & Herinneringen',
+          prompt: 'Deel een gedenkwaardige ervaring uit je leven',
+          hints: [
+            'Welke ervaring springt eruit?',
+            'Wanneer en waar gebeurde het?',
+            'Wie waren erbij betrokken?',
+            'Waarom was het gedenkwaardig?'
+          ]
+        },
+        {
+          id: 'future-goals',
+          icon: '🎯',
+          title: 'Toekomst & Doelen',
+          prompt: 'Bespreek je plannen of dromen voor de toekomst',
+          hints: [
+            'Wat hoop je te bereiken?',
+            'Welke stappen neem je naar dit doel?',
+            'Waarom is dit belangrijk voor je?',
+            'Hoe stel je je leven in de toekomst voor?'
+          ]
+        },
+        {
+          id: 'work-professional',
+          icon: '💼',
+          title: 'Werk & Professioneel Leven',
+          prompt: 'Praat over je werk of professionele ervaringen',
+          hints: [
+            'Wat voor werk doe je of wil je doen?',
+            'Wat vind je uitdagend of lonend aan je werk?',
+            'Hoe ben je in je huidige vakgebied terechtgekomen?',
+            'Wat zijn je professionele doelen of ambities?'
+          ]
+        }
+      ],
+      spanish: [
+        {
+          id: 'about-you',
+          icon: '🙋',
+          title: 'Sobre Ti',
+          prompt: 'Cuéntame sobre ti y tu vida diaria',
+          hints: [
+            '¿De dónde eres y dónde vives ahora?',
+            '¿A qué te dedicas o qué estudias?',
+            '¿Cómo es un día típico para ti?',
+            '¿Cuáles son tus principales responsabilidades o actividades?'
+          ]
+        },
+        {
+          id: 'travel-places',
+          icon: '🌍',
+          title: 'Viajes y Lugares',
+          prompt: 'Describe un lugar que sea especial para ti',
+          hints: [
+            '¿Qué lugar te viene a la mente? (ciudad natal, lugar de vacaciones, ciudad favorita)',
+            '¿Cómo es este lugar?',
+            '¿Por qué es significativo para ti?',
+            '¿Qué te gusta hacer allí?'
+          ]
+        },
+        {
+          id: 'interests-hobbies',
+          icon: '🎨',
+          title: 'Intereses y Pasatiempos',
+          prompt: 'Habla sobre algo que disfrutas hacer',
+          hints: [
+            '¿Qué pasatiempo o interés tienes?',
+            '¿Cómo empezaste con ello?',
+            '¿Con qué frecuencia haces esta actividad?',
+            '¿Qué es lo que más te gusta de ello?'
+          ]
+        },
+        {
+          id: 'experiences-memories',
+          icon: '💭',
+          title: 'Experiencias y Recuerdos',
+          prompt: 'Comparte una experiencia memorable de tu vida',
+          hints: [
+            '¿Qué experiencia te destaca?',
+            '¿Cuándo y dónde sucedió?',
+            '¿Quién estuvo involucrado?',
+            '¿Por qué fue memorable?'
+          ]
+        },
+        {
+          id: 'future-goals',
+          icon: '🎯',
+          title: 'Futuro y Metas',
+          prompt: 'Discute tus planes o sueños para el futuro',
+          hints: [
+            '¿Qué esperas lograr?',
+            '¿Qué pasos estás tomando hacia esta meta?',
+            '¿Por qué es importante para ti?',
+            '¿Cómo imaginas tu vida en el futuro?'
+          ]
+        },
+        {
+          id: 'work-professional',
+          icon: '💼',
+          title: 'Trabajo y Vida Profesional',
+          prompt: 'Habla sobre tu trabajo o experiencias profesionales',
+          hints: [
+            '¿Qué tipo de trabajo haces o quieres hacer?',
+            '¿Qué encuentras desafiante o gratificante en tu trabajo?',
+            '¿Cómo llegaste a tu campo actual?',
+            '¿Cuáles son tus metas o aspiraciones profesionales?'
+          ]
+        }
+      ],
+      german: [
+        {
+          id: 'about-you',
+          icon: '🙋',
+          title: 'Über Dich',
+          prompt: 'Erzähl mir über dich und dein tägliches Leben',
+          hints: [
+            'Woher kommst du und wo wohnst du jetzt?',
+            'Was machst du beruflich oder was studierst du?',
+            'Wie sieht ein typischer Tag für dich aus?',
+            'Was sind deine Hauptverantwortlichkeiten oder Aktivitäten?'
+          ]
+        },
+        {
+          id: 'travel-places',
+          icon: '🌍',
+          title: 'Reisen & Orte',
+          prompt: 'Beschreibe einen Ort, der dir besonders ist',
+          hints: [
+            'Welcher Ort fällt dir ein? (Heimatstadt, Urlaubsort, Lieblingsstadt)',
+            'Wie sieht dieser Ort aus?',
+            'Warum ist er bedeutsam für dich?',
+            'Was machst du dort gerne?'
+          ]
+        },
+        {
+          id: 'interests-hobbies',
+          icon: '🎨',
+          title: 'Interessen & Hobbys',
+          prompt: 'Sprich über etwas, das du gerne machst',
+          hints: [
+            'Welches Hobby oder Interesse hast du?',
+            'Wie hast du damit angefangen?',
+            'Wie oft machst du diese Aktivität?',
+            'Was gefällt dir am meisten daran?'
+          ]
+        },
+        {
+          id: 'experiences-memories',
+          icon: '💭',
+          title: 'Erfahrungen & Erinnerungen',
+          prompt: 'Teile eine unvergessliche Erfahrung aus deinem Leben',
+          hints: [
+            'Welche Erfahrung sticht heraus?',
+            'Wann und wo ist es passiert?',
+            'Wer war beteiligt?',
+            'Warum war es unvergesslich?'
+          ]
+        },
+        {
+          id: 'future-goals',
+          icon: '🎯',
+          title: 'Zukunft & Ziele',
+          prompt: 'Diskutiere deine Pläne oder Träume für die Zukunft',
+          hints: [
+            'Was hoffst du zu erreichen?',
+            'Welche Schritte unternimmst du zu diesem Ziel?',
+            'Warum ist das wichtig für dich?',
+            'Wie stellst du dir dein Leben in der Zukunft vor?'
+          ]
+        },
+        {
+          id: 'work-professional',
+          icon: '💼',
+          title: 'Arbeit & Berufsleben',
+          prompt: 'Sprich über deine Arbeit oder beruflichen Erfahrungen',
+          hints: [
+            'Was für eine Arbeit machst du oder möchtest du machen?',
+            'Was findest du herausfordernd oder lohnend an deiner Arbeit?',
+            'Wie bist du in dein aktuelles Feld gekommen?',
+            'Was sind deine beruflichen Ziele oder Bestrebungen?'
+          ]
+        }
+      ],
+      french: [
+        {
+          id: 'about-you',
+          icon: '🙋',
+          title: 'À Propos de Toi',
+          prompt: 'Parle-moi de toi et de ta vie quotidienne',
+          hints: [
+            "D'où viens-tu et où habites-tu maintenant?",
+            'Que fais-tu comme travail ou études?',
+            'À quoi ressemble une journée typique pour toi?',
+            'Quelles sont tes principales responsabilités ou activités?'
+          ]
+        },
+        {
+          id: 'travel-places',
+          icon: '🌍',
+          title: 'Voyages & Lieux',
+          prompt: 'Décris un endroit qui est spécial pour toi',
+          hints: [
+            'Quel endroit te vient à l\'esprit? (ville natale, lieu de vacances, ville préférée)',
+            'À quoi ressemble cet endroit?',
+            'Pourquoi est-il significatif pour toi?',
+            "Qu'aimes-tu y faire?"
+          ]
+        },
+        {
+          id: 'interests-hobbies',
+          icon: '🎨',
+          title: 'Intérêts & Loisirs',
+          prompt: 'Parle de quelque chose que tu aimes faire',
+          hints: [
+            'Quel loisir ou intérêt as-tu?',
+            'Comment as-tu commencé?',
+            'À quelle fréquence fais-tu cette activité?',
+            "Qu'est-ce que tu aimes le plus?"
+          ]
+        },
+        {
+          id: 'experiences-memories',
+          icon: '💭',
+          title: 'Expériences & Souvenirs',
+          prompt: 'Partage une expérience mémorable de ta vie',
+          hints: [
+            'Quelle expérience te marque?',
+            'Quand et où est-ce arrivé?',
+            'Qui était impliqué?',
+            'Pourquoi était-ce mémorable?'
+          ]
+        },
+        {
+          id: 'future-goals',
+          icon: '🎯',
+          title: 'Avenir & Objectifs',
+          prompt: 'Discute de tes plans ou rêves pour l\'avenir',
+          hints: [
+            "Qu'espères-tu accomplir?",
+            'Quelles étapes prends-tu vers cet objectif?',
+            'Pourquoi est-ce important pour toi?',
+            'Comment imagines-tu ta vie dans le futur?'
+          ]
+        },
+        {
+          id: 'work-professional',
+          icon: '💼',
+          title: 'Travail & Vie Professionnelle',
+          prompt: 'Parle de ton travail ou de tes expériences professionnelles',
+          hints: [
+            'Quel type de travail fais-tu ou veux-tu faire?',
+            'Que trouves-tu difficile ou gratifiant dans ton travail?',
+            'Comment es-tu arrivé dans ton domaine actuel?',
+            'Quels sont tes objectifs ou aspirations professionnels?'
+          ]
+        }
+      ],
+      portuguese: [
+        {
+          id: 'about-you',
+          icon: '🙋',
+          title: 'Sobre Você',
+          prompt: 'Conte-me sobre você e sua vida diária',
+          hints: [
+            'De onde você é e onde mora agora?',
+            'O que você faz no trabalho ou estuda?',
+            'Como é um dia típico para você?',
+            'Quais são suas principais responsabilidades ou atividades?'
+          ]
+        },
+        {
+          id: 'travel-places',
+          icon: '🌍',
+          title: 'Viagens & Lugares',
+          prompt: 'Descreva um lugar que é especial para você',
+          hints: [
+            'Que lugar vem à mente? (cidade natal, lugar de férias, cidade favorita)',
+            'Como é este lugar?',
+            'Por que é significativo para você?',
+            'O que você gosta de fazer lá?'
+          ]
+        },
+        {
+          id: 'interests-hobbies',
+          icon: '🎨',
+          title: 'Interesses & Hobbies',
+          prompt: 'Fale sobre algo que você gosta de fazer',
+          hints: [
+            'Que hobby ou interesse você tem?',
+            'Como você começou com isso?',
+            'Com que frequência você faz esta atividade?',
+            'O que você mais gosta nisso?'
+          ]
+        },
+        {
+          id: 'experiences-memories',
+          icon: '💭',
+          title: 'Experiências & Memórias',
+          prompt: 'Compartilhe uma experiência memorável da sua vida',
+          hints: [
+            'Que experiência se destaca?',
+            'Quando e onde aconteceu?',
+            'Quem estava envolvido?',
+            'Por que foi memorável?'
+          ]
+        },
+        {
+          id: 'future-goals',
+          icon: '🎯',
+          title: 'Futuro & Objetivos',
+          prompt: 'Discuta seus planos ou sonhos para o futuro',
+          hints: [
+            'O que você espera alcançar?',
+            'Que passos você está tomando em direção a este objetivo?',
+            'Por que isso é importante para você?',
+            'Como você imagina sua vida no futuro?'
+          ]
+        },
+        {
+          id: 'work-professional',
+          icon: '💼',
+          title: 'Trabalho & Vida Profissional',
+          prompt: 'Fale sobre seu trabalho ou experiências profissionais',
+          hints: [
+            'Que tipo de trabalho você faz ou quer fazer?',
+            'O que você acha desafiador ou gratificante no seu trabalho?',
+            'Como você entrou no seu campo atual?',
+            'Quais são seus objetivos ou aspirações profissionais?'
+          ]
+        }
+      ]
+    };
+
+    return topics[language.toLowerCase()] || topics.english;
+  };
+
+  const topics = getTopics();
+
+  // Handler for topic selection
+  const handleTopicSelect = (topic: any) => {
+    setSelectedTopic(topic);
+    setShowTopicSelection(false);
+    setShowPreparation(true);
+    setStatus('preparation');
+  };
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current - touchEndX.current > 75) {
+      // Swiped left - next topic
+      setCurrentTopicIndex((prev) => (prev + 1) % topics.length);
+    }
+    if (touchStartX.current - touchEndX.current < -75) {
+      // Swiped right - previous topic
+      setCurrentTopicIndex((prev) => (prev - 1 + topics.length) % topics.length);
+    }
+  };
+
+  // Handler for starting recording from preparation screen
+  const handleStartFromPreparation = () => {
+    setShowPreparation(false);
+    promptRef.current = selectedTopic.prompt;
+    startRecording();
+  };
+
+  // Handler for changing topic
+  const handleChangeTopic = () => {
+    setShowPreparation(false);
+    setShowTopicSelection(true);
+    setSelectedTopic(null);
+    setStatus('topic-selection');
+  };
+
   return (
     <div className="bg-white text-[#333333] rounded-lg p-8 w-full mx-auto space-y-8 border border-[#4ECFBF]/30 shadow-md">
       {/* Hidden audio player*/}
@@ -422,6 +926,208 @@ export default function SpeakingAssessment({
       )}
       
 
+
+      {/* TOPIC SELECTION SCREEN */}
+      {status === 'topic-selection' && (
+        <div className="space-y-6">
+          <div className="text-center mb-8">
+            <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-[#333333] mb-3`}>
+              Choose Your Speaking Topic
+            </h2>
+            <p className={`text-[#555555] ${isMobile ? 'text-sm' : 'text-lg'} max-w-2xl mx-auto`}>
+              {isMobile ? 'Swipe to browse topics' : 'Select a topic you\'re comfortable discussing. This will help you speak more naturally and get better results.'}
+            </p>
+          </div>
+
+          {isMobile ? (
+            /* Mobile: Horizontal Swipe Cards with Arrow Navigation */
+            <div className="relative px-12">
+              {/* Left Arrow */}
+              <button
+                onClick={() => setCurrentTopicIndex((prev) => (prev - 1 + topics.length) % topics.length)}
+                disabled={currentTopicIndex === 0}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  currentTopicIndex === 0
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                    : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                }`}
+                aria-label="Previous topic"
+              >
+                <ChevronRight className="h-6 w-6 rotate-180" />
+              </button>
+
+              {/* Right Arrow */}
+              <button
+                onClick={() => setCurrentTopicIndex((prev) => (prev + 1) % topics.length)}
+                disabled={currentTopicIndex === topics.length - 1}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  currentTopicIndex === topics.length - 1
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                    : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                }`}
+                aria-label="Next topic"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+
+              {/* Card Container */}
+              <div 
+                className="overflow-hidden"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div 
+                  className="flex transition-transform duration-300 ease-out"
+                  style={{ transform: `translateX(-${currentTopicIndex * 100}%)` }}
+                >
+                  {topics.map((topic, index) => (
+                    <div key={topic.id} className="w-full flex-shrink-0 px-2">
+                      <button
+                        onClick={() => handleTopicSelect(topic)}
+                        className="w-full bg-gradient-to-br from-white to-[#F8FDFC] p-6 rounded-2xl border-2 border-[#4ECFBF]/20 active:border-[#4ECFBF] shadow-lg active:shadow-xl transition-all duration-200 text-left"
+                      >
+                        <div className="flex flex-col items-center text-center space-y-4">
+                          <div className="text-6xl">{topic.icon}</div>
+                          <h3 className="text-xl font-bold text-[#333333]">
+                            {topic.title}
+                          </h3>
+                          <p className="text-sm text-[#555555]">
+                            {topic.prompt}
+                          </p>
+                          <div className="flex items-center text-sm text-[#4ECFBF] font-medium pt-2">
+                            <span>Tap to select</span>
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Topic Counter */}
+              <div className="text-center mt-6">
+                <p className="text-sm font-medium text-[#4ECFBF]">
+                  {currentTopicIndex + 1} / {topics.length}
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Desktop: Grid Layout */
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {topics.map((topic) => (
+                <button
+                  key={topic.id}
+                  onClick={() => handleTopicSelect(topic)}
+                  className="group bg-gradient-to-br from-white to-[#F8FDFC] p-6 rounded-2xl border-2 border-[#4ECFBF]/20 hover:border-[#4ECFBF] shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-left"
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className="text-4xl">{topic.icon}</div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-[#333333] mb-2 group-hover:text-[#4ECFBF] transition-colors">
+                        {topic.title}
+                      </h3>
+                      <p className="text-sm text-[#555555] mb-3">
+                        {topic.prompt}
+                      </p>
+                      <div className="flex items-center text-xs text-[#4ECFBF] font-medium">
+                        <span>Select topic</span>
+                        <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PREPARATION SCREEN */}
+      {status === 'preparation' && selectedTopic && (
+        <div className="space-y-4">
+          <button
+            onClick={handleChangeTopic}
+            className="flex items-center text-[#4ECFBF] hover:text-[#3AA8B1] transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span>Change Topic</span>
+          </button>
+
+          <div className={`bg-gradient-to-br from-[#F0FDFB] to-white ${isMobile ? 'p-6' : 'p-8'} rounded-2xl border-2 border-[#4ECFBF] shadow-lg`}>
+            <div className="flex items-center mb-6">
+              <div className={`${isMobile ? 'text-5xl mr-3' : 'text-5xl mr-4'}`}>{selectedTopic.icon}</div>
+              <div>
+                <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-[#333333]`}>
+                  {selectedTopic.title}
+                </h2>
+                {!isMobile && (
+                  <p className="text-lg text-[#555555] mt-1">
+                    {selectedTopic.prompt}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className={`bg-white ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-[#4ECFBF]/30 mb-6`}>
+              <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-[#333333] ${isMobile ? 'mb-3' : 'mb-4'} flex items-center`}>
+                <Target className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2 text-[#4ECFBF]`} />
+                Things you can talk about:
+              </h3>
+              <ul className={`${isMobile ? 'space-y-2' : 'space-y-3'}`}>
+                {selectedTopic.hints.map((hint: string, index: number) => (
+                  <li key={index} className={`flex items-start ${isMobile ? 'space-x-2' : 'space-x-3'}`}>
+                    <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} bg-[#4ECFBF] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                      <span className="text-white text-xs font-bold">{index + 1}</span>
+                    </div>
+                    <p className={`${isMobile ? 'text-sm' : 'text-base'} text-[#555555]`}>{hint}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {!isMobile && (
+              <div className="bg-[#FFFBEB] p-4 rounded-lg border border-[#FFD63A]/30 mb-6">
+                <p className="text-sm text-[#555555]">
+                  💡 <strong>Tip:</strong> Take a moment to think about what you want to say. 
+                  You don't need to answer all the questions - just speak naturally about the topic.
+                </p>
+              </div>
+            )}
+
+            {/* Animated Microphone Button for Both Mobile and Desktop */}
+            <div className="flex flex-col items-center">
+              <div className="relative mb-4 group">
+                {!isMobile && (
+                  <>
+                    <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
+                    <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                  </>
+                )}
+                {isMobile && (
+                  <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-75"></div>
+                )}
+                <button
+                  onClick={handleStartFromPreparation}
+                  className={`relative ${isMobile ? 'w-32 h-32' : 'w-40 h-40'} rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer ${isMobile ? 'active:scale-95' : ''}`}
+                  type="button"
+                >
+                  <Mic className={`${isMobile ? 'h-12 w-12' : 'h-14 w-14'} group-hover:scale-110 transition-transform duration-300`} />
+                </button>
+                
+                {/* Pulse rings */}
+                <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping pointer-events-none"></div>
+                <div className={`absolute ${isMobile ? 'inset-1' : 'inset-2'} rounded-full border-2 border-[#4ECFBF]/20 animate-ping pointer-events-none`} style={{animationDelay: '0.5s'}}></div>
+              </div>
+              
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-[#333333] text-center`}>
+                {isMobile ? 'Tap to start recording' : 'Click to start recording'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Assessment Interface - Mobile-First Redesigned Layout */}
       {status === 'idle' && (
@@ -585,6 +1291,17 @@ export default function SpeakingAssessment({
       {/* Recording State - Animated Transition from Microphone */}
       {status === 'recording' && (
         <div className="bg-white rounded-2xl shadow-xl border border-[#4ECFBF]/20 p-8 animate-in fade-in duration-500">
+          {/* Show selected topic at top */}
+          {selectedTopic && (
+            <div className="bg-[#F0FDFB] p-4 rounded-xl border border-[#4ECFBF]/30 mb-6">
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-2">{selectedTopic.icon}</span>
+                <h3 className="text-lg font-bold text-[#333333]">{selectedTopic.title}</h3>
+              </div>
+              <p className="text-sm text-[#555555] italic">{selectedTopic.prompt}</p>
+            </div>
+          )}
+          
           <div className="flex flex-col md:flex-row items-center justify-between mb-8">
             <div className="flex items-center mb-6 md:mb-0">
               <div className="relative">

@@ -170,15 +170,6 @@ export default function SpeakingAssessmentPage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-2 text-white">
               Speaking Assessment
             </h1>
-            <p className="text-gray-700 text-lg">
-              {selectedLanguage === 'dutch' && 'Beoordeel je spreekvaardigheid in het Nederlands'}
-              {selectedLanguage === 'english' && 'Assess your speaking proficiency in English'}
-              {selectedLanguage === 'spanish' && 'Evalúa tu habilidad para hablar en español'}
-              {selectedLanguage === 'german' && 'Bewerte deine Sprechfähigkeit auf Deutsch'}
-              {selectedLanguage === 'french' && 'Évaluez votre compétence orale en français'}
-              {selectedLanguage === 'portuguese' && 'Avalie sua proficiência oral em português'}
-              {!selectedLanguage && 'Assess your speaking proficiency'}
-            </p>
           </div>
 
           {isLoading ? (
