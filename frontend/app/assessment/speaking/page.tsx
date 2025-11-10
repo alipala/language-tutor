@@ -163,11 +163,11 @@ export default function SpeakingAssessmentPage() {
   return (
     <div className="min-h-screen flex flex-col text-white bg-[var(--turquoise)]">
       <NavBar />
-      <main className="flex-grow flex flex-col p-4 md:p-8 pt-20 md:pt-24">
+      <main className="flex-grow flex flex-col p-4 md:p-8 pt-24 md:pt-24">
         <div className="flex flex-col flex-1 items-stretch w-full max-w-6xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-4">
-            <h1 className="text-4xl md:text-5xl font-bold mb-2 text-white">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl md:text-5xl font-bold text-white">
               Speaking Assessment
             </h1>
           </div>
