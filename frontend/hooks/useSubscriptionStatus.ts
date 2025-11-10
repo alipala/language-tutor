@@ -1,69 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 
-interface SubscriptionStatus {
-  status: string;
-  plan: string;
-  limits?: {
-    sessions_remaining: number;
-    assessments_remaining: number;
-    sessions_limit: number;
-    assessments_limit: number;
-  };
-}
-
+/**
+ * Hook to access subscription status from centralized context
+ * This replaces the previous implementation that made individual API calls
+ * 
+ * PERFORMANCE OPTIMIZATION: This now uses a shared context that makes
+ * only ONE API call per session instead of multiple duplicate calls
+ */
 export const useSubscriptionStatus = () => {
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchSubscriptionStatus = useCallback(async () => {
-    try {
-      setError(null);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store', // Always fetch fresh data
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionStatus(data);
-      } else {
-        setError('Failed to fetch subscription status');
-      }
-    } catch (error) {
-      console.error('Error fetching subscription status:', error);
-      setError('Error fetching subscription status');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchSubscriptionStatus();
-  }, [fetchSubscriptionStatus]);
-
-  // Refresh function for external use
-  const refreshSubscriptionStatus = useCallback(() => {
-    setLoading(true);
-    fetchSubscriptionStatus();
-  }, [fetchSubscriptionStatus]);
-
-  return {
-    subscriptionStatus,
-    loading,
-    error,
-    refreshSubscriptionStatus
-  };
+  return useSubscriptionContext();
 };

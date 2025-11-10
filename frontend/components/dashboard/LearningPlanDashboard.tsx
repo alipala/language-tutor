@@ -7,11 +7,12 @@ import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { LearningPlanCard } from './LearningPlanCard';
 import { EmptyState } from './EmptyState';
-import { getUserLearningPlans, LearningPlan } from '@/lib/learning-api';
+import { LearningPlan } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
 import { fetchProgressStats } from '@/lib/api-service';
+import { useLearningPlans } from '@/contexts/LearningPlansContext';
 import { 
   ChevronRight, 
   Loader2, 
@@ -79,7 +80,9 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const [plans, setPlans] = useState<LearningPlan[]>([]);
+  // Use centralized learning plans context
+  const { learningPlans: plans, loading: plansLoading, error: plansError, refreshLearningPlans } = useLearningPlans();
+  
   const [progressStats, setProgressStats] = useState<ProgressStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,21 +99,15 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   // Check if user has insufficient minutes for a session (< 5 minutes)
   const hasInsufficientMinutes = !!(!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited);
 
-  // Fetch dashboard data
+  // Fetch dashboard data (now only fetches progress stats, plans come from context)
   const fetchDashboardData = async () => {
     if (!user) return;
     
     try {
       setError(null);
       
-      // Fetch learning plans and progress stats in parallel using centralized API service
-      const [plansData, statsData] = await Promise.all([
-        getUserLearningPlans(),
-        fetchProgressStats().catch(() => null)
-      ]);
-      
-      // Show all learning plans - no artificial limit
-      setPlans(plansData);
+      // Only fetch progress stats - learning plans come from context
+      const statsData = await fetchProgressStats().catch(() => null);
       setProgressStats(statsData);
       
     } catch (error) {
@@ -161,7 +158,10 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   // Refresh function
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchDashboardData();
+    await Promise.all([
+      fetchDashboardData(),
+      refreshLearningPlans() // Refresh learning plans from context
+    ]);
   };
 
   // Handle view all plans
@@ -188,8 +188,8 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - wait for both plans and stats
+  if (loading || plansLoading) {
     return <DashboardSkeleton />;
   }
 
@@ -198,8 +198,9 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
     return <EmptyState className={className} />;
   }
 
-  // Error state
-  if (error) {
+  // Error state - check both error sources
+  if (error || plansError) {
+    const displayError = error || plansError || 'Unknown error';
     return (
       <section className={`py-12 bg-gradient-to-br from-gray-50 to-white ${className}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -210,7 +211,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
             <h3 className="text-xl font-semibold text-gray-800 mb-2">
               Unable to Load Dashboard
             </h3>
-            <p className="text-gray-600 mb-6">{error}</p>
+            <p className="text-gray-600 mb-6">{displayError}</p>
             <Button
               onClick={handleRefresh}
               className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white"

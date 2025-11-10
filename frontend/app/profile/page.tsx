@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Tooltip } from '@/components/ui/tooltip';
 import { AssessmentCard } from '@/components/assessment-card';
 import AssessmentLearningPlanCard from '@/components/assessment-learning-plan-card';
-import { getUserLearningPlans, LearningPlan, getUserFlashcardSets, FlashcardSet, getDueFlashcards, Flashcard, reviewFlashcard } from '@/lib/learning-api';
+import { LearningPlan, getUserFlashcardSets, FlashcardSet, getDueFlashcards, Flashcard, reviewFlashcard } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
+import { useLearningPlans } from '@/contexts/LearningPlansContext';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -36,6 +37,7 @@ import VoiceSelectionComponent from '@/components/voice-selection';
 import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
 import LowMinutesAlert from '@/components/LowMinutesAlert';
 import { apiCache } from '@/lib/api-cache';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -44,6 +46,10 @@ export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, logout } = useAuth();
+  
+  // Use centralized learning plans context
+  const { learningPlans, loading: plansLoading, error: plansContextError, refreshLearningPlans } = useLearningPlans();
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState('');
@@ -57,8 +63,6 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-  const [learningPlans, setLearningPlans] = useState<LearningPlan[]>([]);
-  const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -348,9 +352,8 @@ export default function ProfilePage() {
     }
   };
 
-  // Subscription status state
-  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  // Use centralized subscription status hook
+  const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
   
   // Use low minutes alert hook
   const { lowMinutesStatus, loading: lowMinutesLoading } = useLowMinutesAlert();
@@ -364,51 +367,6 @@ export default function ProfilePage() {
     longestStreak: progressStats?.longest_streak || 0
   };
 
-  // Fetch subscription status with caching
-  const fetchSubscriptionStatus = async () => {
-    if (!user) return;
-    
-    setSubscriptionLoading(true);
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('[PROFILE] No token found for subscription status fetch');
-        setSubscriptionLoading(false);
-        return;
-      }
-
-      console.log('[PROFILE] 🚀 Fetching subscription status with caching...');
-      
-      // Fetch with caching (60s cache - subscription rarely changes)
-      const data = await apiCache.fetchWithCache(
-        `subscription-status-${user._id}`,
-        async () => {
-          const response = await fetch('/api/stripe/subscription-status', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch subscription status');
-          }
-
-          return response.json();
-        },
-        60000 // Cache for 60 seconds
-      );
-
-      console.log('[PROFILE] ✅ Subscription status loaded (cached)');
-      setSubscriptionStatus(data);
-
-    } catch (error) {
-      console.error('[PROFILE] ❌ Error fetching subscription status:', error);
-    } finally {
-      setSubscriptionLoading(false);
-    }
-  };
 
   // Helper function to get plan display info
   const getPlanDisplayInfo = () => {
@@ -444,10 +402,8 @@ export default function ProfilePage() {
       setPreferredLanguage(user.preferred_language || '');
       setPreferredLevel(user.preferred_level || '');
       
-      // Fetch user's learning plans and progress data
-      fetchUserLearningPlans();
+      // Fetch progress data and flashcards (learning plans come from context)
       fetchProgressData();
-      fetchSubscriptionStatus();
       fetchFlashcardData();
     }
   }, [user]);
@@ -533,35 +489,6 @@ export default function ProfilePage() {
     }
   };
   
-  // Fetch user's learning plans with caching
-  const fetchUserLearningPlans = async () => {
-    if (!user) return;
-    
-    setPlansLoading(true);
-    setPlansError(null);
-    
-    try {
-      console.log('[PROFILE] 🚀 Fetching learning plans with caching...');
-      
-      // Fetch with caching (120s cache - learning plans rarely change)
-      const plans = await apiCache.fetchWithCache(
-        `learning-plans-${user._id}`,
-        async () => {
-          return await getUserLearningPlans();
-        },
-        120000 // Cache for 120 seconds
-      );
-      
-      setLearningPlans(plans);
-      console.log('[PROFILE] ✅ Learning plans loaded (cached):', plans.length);
-      
-    } catch (err: any) {
-      console.error('[PROFILE] ❌ Error fetching learning plans:', err);
-      setPlansError(err.message || 'Failed to load learning plans');
-    } finally {
-      setPlansLoading(false);
-    }
-  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -816,11 +743,11 @@ export default function ProfilePage() {
 
   // Handle payment processing completion
   const handlePaymentProcessingComplete = () => {
-    console.log('[PROFILE] Payment processing complete, refreshing subscription status');
+    console.log('[PROFILE] Payment processing complete, subscription status will auto-refresh');
     setShowPaymentProcessing(false);
 
-    // Refresh subscription status to get updated data
-    fetchSubscriptionStatus();
+    // The subscription context will automatically refresh on next render
+    // No need to manually fetch - the context handles it
 
     // Remove checkout parameter from URL
     const url = new URL(window.location.href);

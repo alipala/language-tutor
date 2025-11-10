@@ -18,12 +18,13 @@ export const SessionModeModal: React.FC<SessionModeModalProps> = ({
 }) => {
   const { subscriptionStatus, loading, refreshSubscriptionStatus } = useSubscriptionStatus();
 
-  // Refresh subscription status when modal opens
+  // Refresh subscription status when modal opens (only once when isOpen changes to true)
   useEffect(() => {
     if (isOpen) {
       refreshSubscriptionStatus();
     }
-  }, [isOpen, refreshSubscriptionStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Only depend on isOpen, not refreshSubscriptionStatus to prevent infinite loop
 
   // Check if assessments are available
   const assessmentsRemaining = subscriptionStatus?.limits?.assessments_remaining ?? 0;

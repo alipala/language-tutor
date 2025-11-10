@@ -9,6 +9,8 @@ import NavBar from '@/components/nav-bar'
 import ConditionalFooter from '@/components/conditional-footer'
 import { PlanModalProvider } from '@/components/modals/plan-modal-context'
 import { ConnectivityErrorBoundary, ConnectivityIndicator } from '@/components/connectivity-error-boundary'
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext'
+import { LearningPlansProvider } from '@/contexts/LearningPlansContext'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -169,16 +171,20 @@ export default function RootLayout({
         <ConnectivityErrorBoundary>
           <NavigationProvider>
             <AuthProviderWrapper>
-              <PlanModalProvider>
-                <div className="app-background min-h-screen w-full bg-white">
-                  <NavBar />
-                  <main id="main-content" tabIndex={-1} className="outline-none">
-                    {children}
-                  </main>
-                  <ConditionalFooter />
-                  <ConnectivityIndicator />
-                </div>
-              </PlanModalProvider>
+              <SubscriptionProvider>
+                <LearningPlansProvider>
+                  <PlanModalProvider>
+                  <div className="app-background min-h-screen w-full bg-white">
+                    <NavBar />
+                    <main id="main-content" tabIndex={-1} className="outline-none">
+                      {children}
+                    </main>
+                    <ConditionalFooter />
+                    <ConnectivityIndicator />
+                  </div>
+                  </PlanModalProvider>
+                </LearningPlansProvider>
+              </SubscriptionProvider>
             </AuthProviderWrapper>
           </NavigationProvider>
         </ConnectivityErrorBoundary>

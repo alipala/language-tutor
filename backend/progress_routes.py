@@ -9,7 +9,8 @@ import httpx
 from auth import get_current_user
 from models import (
     UserResponse, ConversationSession, ConversationMessage, 
-    SaveConversationRequest, ConversationStats, ConversationHistoryResponse
+    SaveConversationRequest, ConversationStats, ConversationHistoryResponse,
+    Flashcard, FlashcardSet
 )
 from database import conversation_sessions_collection, users_collection
 from enhanced_analysis import generate_enhanced_analysis
@@ -34,6 +35,167 @@ except TypeError as e:
         raise
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
+
+@router.get("/dashboard-data")
+async def get_dashboard_data(current_user: UserResponse = Depends(get_current_user)):
+    """
+    🚀 BATCH ENDPOINT: Get all dashboard data in a single request
+    
+    This endpoint combines multiple API calls into one:
+    - Progress stats
+    - Recent conversations
+    - Achievements
+    - Flashcard sets
+    - Due flashcards
+    - Learning plans
+    
+    All queries run in parallel for optimal performance.
+    """
+    try:
+        print(f"[DASHBOARD_BATCH] 🚀 Fetching all dashboard data for user {current_user.id}")
+        
+        import asyncio
+        from database import database
+        
+        # Run all queries in parallel using asyncio.gather
+        results = await asyncio.gather(
+            # 1. Progress stats
+            get_progress_stats(current_user),
+            
+            # 2. Recent conversations (limit 10)
+            get_conversation_history(limit=10, offset=0, current_user=current_user),
+            
+            # 3. Achievements
+            get_user_achievements(current_user),
+            
+            # 4. Flashcard sets
+            _get_flashcard_sets_internal(current_user),
+            
+            # 5. Due flashcards (limit 10)
+            _get_due_flashcards_internal(current_user, limit=10),
+            
+            # 6. Learning plans
+            _get_learning_plans_internal(current_user),
+            
+            return_exceptions=True  # Don't fail entire request if one query fails
+        )
+        
+        # Unpack results
+        progress_stats = results[0] if not isinstance(results[0], Exception) else None
+        conversations = results[1] if not isinstance(results[1], Exception) else {"sessions": [], "total_count": 0}
+        achievements = results[2] if not isinstance(results[2], Exception) else {"achievements": []}
+        flashcard_sets = results[3] if not isinstance(results[3], Exception) else []
+        due_flashcards = results[4] if not isinstance(results[4], Exception) else []
+        learning_plans = results[5] if not isinstance(results[5], Exception) else []
+        
+        # Log any errors
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                endpoint_names = ["progress_stats", "conversations", "achievements", "flashcard_sets", "due_flashcards", "learning_plans"]
+                print(f"[DASHBOARD_BATCH] ⚠️ Error fetching {endpoint_names[i]}: {str(result)}")
+        
+        # Build response
+        response = {
+            "progress_stats": progress_stats.dict() if progress_stats else None,
+            "conversations": conversations.get("sessions", []) if isinstance(conversations, dict) else [],
+            "total_conversations": conversations.get("total_count", 0) if isinstance(conversations, dict) else 0,
+            "achievements": achievements.get("achievements", []) if isinstance(achievements, dict) else [],
+            "flashcard_sets": [set.dict() for set in flashcard_sets] if flashcard_sets else [],
+            "due_flashcards": [card.dict() for card in due_flashcards] if due_flashcards else [],
+            "learning_plans": [plan.dict() for plan in learning_plans] if learning_plans else []
+        }
+        
+        print(f"[DASHBOARD_BATCH] ✅ Successfully fetched all dashboard data")
+        print(f"[DASHBOARD_BATCH] Stats: {len(response['conversations'])} conversations, {len(response['flashcard_sets'])} flashcard sets, {len(response['learning_plans'])} learning plans")
+        
+        return response
+        
+    except Exception as e:
+        print(f"[DASHBOARD_BATCH] ❌ Error fetching dashboard data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch dashboard data: {str(e)}")
+
+# Internal helper functions for batch endpoint
+async def _get_flashcard_sets_internal(current_user: UserResponse):
+    """Internal function to get flashcard sets without HTTP dependencies"""
+    try:
+        sets_cursor = database.flashcard_sets.find({"user_id": str(current_user.id)})
+        sets_docs = await sets_cursor.to_list(length=None)
+        
+        flashcard_sets = []
+        for doc in sets_docs:
+            flashcards = []
+            flashcards_field = doc.get("flashcards", [])
+            
+            if isinstance(flashcards_field, list) and flashcards_field:
+                if isinstance(flashcards_field[0], str):
+                    flashcard_ids = flashcards_field
+                    flashcards_cursor = database.flashcards.find({
+                        "id": {"$in": flashcard_ids},
+                        "user_id": str(current_user.id)
+                    })
+                    flashcard_docs = await flashcards_cursor.to_list(length=None)
+                    
+                    for card_doc in flashcard_docs:
+                        card_doc.pop("_id", None)
+                        flashcards.append(Flashcard(**card_doc))
+                else:
+                    for card_data in flashcards_field:
+                        if isinstance(card_data, dict):
+                            flashcards.append(Flashcard(**card_data))
+            
+            doc.pop("_id", None)
+            doc["flashcards"] = flashcards
+            doc["total_cards"] = len(flashcards)
+            flashcard_sets.append(FlashcardSet(**doc))
+        
+        return flashcard_sets
+    except Exception as e:
+        print(f"[DASHBOARD_BATCH] Error in _get_flashcard_sets_internal: {str(e)}")
+        return []
+
+async def _get_due_flashcards_internal(current_user: UserResponse, limit: int = 10):
+    """Internal function to get due flashcards without HTTP dependencies"""
+    try:
+        now = datetime.utcnow()
+        due_cards_cursor = database.flashcards.find({
+            "user_id": str(current_user.id),
+            "is_active": True,
+            "$or": [
+                {"next_review_date": {"$lte": now}},
+                {"next_review_date": None}
+            ]
+        }).sort("next_review_date", 1).limit(limit)
+        
+        due_cards_docs = await due_cards_cursor.to_list(length=limit)
+        
+        due_cards = []
+        for doc in due_cards_docs:
+            doc.pop("_id", None)
+            due_cards.append(Flashcard(**doc))
+        
+        return due_cards
+    except Exception as e:
+        print(f"[DASHBOARD_BATCH] Error in _get_due_flashcards_internal: {str(e)}")
+        return []
+
+async def _get_learning_plans_internal(current_user: UserResponse):
+    """Internal function to get learning plans without HTTP dependencies"""
+    try:
+        # Import LearningPlan from learning_routes where it's defined
+        from learning_routes import LearningPlan
+        
+        plans_cursor = database.learning_plans.find({"user_id": current_user.id})
+        plans_docs = await plans_cursor.to_list(length=None)
+        
+        learning_plans = []
+        for doc in plans_docs:
+            doc.pop("_id", None)
+            learning_plans.append(LearningPlan(**doc))
+        
+        return learning_plans
+    except Exception as e:
+        print(f"[DASHBOARD_BATCH] Error in _get_learning_plans_internal: {str(e)}")
+        return []
 
 @router.post("/save-conversation")
 async def save_conversation(

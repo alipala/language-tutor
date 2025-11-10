@@ -360,6 +360,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Clear session storage
     sessionStorage.clear();
+    
+    // 🚀 PERFORMANCE FIX: Clear API cache on logout
+    try {
+      const { invalidateAllUserCache } = require('./api-service');
+      invalidateAllUserCache();
+      console.log('[AUTH] ✅ Cleared API cache on logout');
+    } catch (err) {
+      console.error('[AUTH] Error clearing cache on logout:', err);
+    }
   };
 
   // Forgot password function

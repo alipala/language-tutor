@@ -249,6 +249,51 @@ export async function fetchLowMinutesCheck() {
 }
 
 /**
+ * 🚀 BATCH ENDPOINT: Fetch all dashboard data in a single request
+ * 
+ * This replaces 6+ individual API calls with one batched call:
+ * - Progress stats
+ * - Recent conversations
+ * - Achievements
+ * - Flashcard sets
+ * - Due flashcards
+ * - Learning plans
+ * 
+ * All queries run in parallel on the backend for optimal performance.
+ */
+export async function fetchDashboardData() {
+  const token = getAuthToken();
+  const userId = getUserId();
+  
+  if (!token || !userId) {
+    throw new Error('Not authenticated');
+  }
+
+  return apiCache.fetchWithCache(
+    `dashboard-data-${userId}`,
+    async () => {
+      const apiUrl = getApiUrl();
+      console.log('[API_SERVICE] 🚀 Fetching batched dashboard data...');
+      
+      const response = await fetch(`${apiUrl}/api/progress/dashboard-data`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+
+      const data = await response.json();
+      console.log('[API_SERVICE] ✅ Batched dashboard data received');
+      return data;
+    },
+    60000 // Cache for 60 seconds
+  );
+}
+
+/**
  * Invalidate specific cache entries
  */
 export function invalidateCache(keys: string[]) {
