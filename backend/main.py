@@ -388,12 +388,19 @@ if os.getenv("ENVIRONMENT") == "development":
 async def test_endpoint():
     return {"message": "Language Tutor API is running"}
 
-# 🔇 ULTRA-MINIMAL health check - Railway logs everything, so keep response tiny
+# 🔇 ULTRA-MINIMAL health check - only status and environment
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    """Minimal health check to reduce Railway log noise"""
-    return {"status": "ok"}
+    """Minimal health check - only returns status and environment (no logging)"""
+    # Determine environment correctly
+    is_railway = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true")
+    environment = "production" if is_railway or os.getenv("ENVIRONMENT") == "production" else "development"
+    
+    return {
+        "status": "ok",
+        "environment": environment
+    }
 
 # Define models for request validation
 class TutorSessionRequest(BaseModel):
