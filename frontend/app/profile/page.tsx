@@ -1088,13 +1088,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800 flex items-center">
                     Conversation History
-                    <span className="ml-2 bg-teal-100 text-teal-700 text-xs px-2 py-0.5 rounded-full">
-                      {progressStats?.total_sessions || 0} sessions
-                    </span>
                   </h3>
-                  <div className="text-sm text-gray-500">
-                    {progressStats?.total_minutes ? `${Math.round(progressStats.total_minutes)} minutes practiced` : ''}
-                  </div>
                 </div>
                 
                 {statsLoading ? (
