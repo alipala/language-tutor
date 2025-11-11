@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from '@/lib/auth';
 
 interface SubscriptionLimits {
   sessions_remaining: number;
@@ -40,6 +41,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+
+  const { user } = useAuth();
 
   const fetchSubscriptionStatus = useCallback(async (force: boolean = false) => {
     // If not forced and we fetched within last 30 seconds, skip
@@ -86,15 +89,17 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     }
   }, [subscriptionStatus, lastFetchTime]);
 
-  // Initial fetch on mount
+  // Fetch when user logs in or changes
   useEffect(() => {
-    // Wait a bit for auth to be ready
-    const timer = setTimeout(() => {
-      fetchSubscriptionStatus();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
+    if (user) {
+      console.log('[SUBSCRIPTION_CONTEXT] 👤 User detected, fetching subscription status');
+      fetchSubscriptionStatus(true); // Force fetch on user change
+    } else {
+      console.log('[SUBSCRIPTION_CONTEXT] 🚫 No user, clearing subscription status');
+      setSubscriptionStatus(null);
+      setLoading(false);
+    }
+  }, [user, fetchSubscriptionStatus]);
 
   // Refresh function for external use
   const refreshSubscriptionStatus = useCallback(async () => {
