@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -185,6 +185,38 @@ export default function ProfilePage() {
   
   // State to control showing all conversations
   const [showAllConversations, setShowAllConversations] = useState(false);
+
+  // Mobile slider navigation state
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
+  // Mobile slider navigation functions
+  const handlePrevSlide = () => {
+    if (currentSlideIndex > 0) {
+      const newIndex = currentSlideIndex - 1;
+      setCurrentSlideIndex(newIndex);
+      scrollToSlide(newIndex);
+    }
+  };
+
+  const handleNextSlide = () => {
+    if (currentSlideIndex < conversationHistory.length - 1) {
+      const newIndex = currentSlideIndex + 1;
+      setCurrentSlideIndex(newIndex);
+      scrollToSlide(newIndex);
+    }
+  };
+
+  const scrollToSlide = (index: number) => {
+    if (sliderRef.current) {
+      const slideWidth = 320 + 16; // 320px card width + 16px gap
+      const scrollLeft = index * slideWidth;
+      sliderRef.current.scrollTo({
+        left: scrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Enhanced analysis modal state
   const [showEnhancedAnalysis, setShowEnhancedAnalysis] = useState(false);
@@ -1060,104 +1092,232 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {conversationHistory.slice(0, showAllConversations ? conversationHistory.length : 5).map((session, index) => (
-                      <div key={session.id || index} className="border rounded-xl p-4" style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
-                              {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                    {/* Mobile: Horizontal Scrolling Slider */}
+                    <div className="block md:hidden relative">
+                      {/* Left Arrow */}
+                      <button
+                        onClick={handlePrevSlide}
+                        disabled={currentSlideIndex === 0}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          currentSlideIndex === 0
+                            ? 'opacity-0 cursor-not-allowed'
+                            : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                        }`}
+                        aria-label="Previous conversation"
+                      >
+                        <ChevronRight className="h-6 w-6 rotate-180" />
+                      </button>
+
+                      {/* Right Arrow */}
+                      <button
+                        onClick={handleNextSlide}
+                        disabled={currentSlideIndex === conversationHistory.length - 1}
+                        className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          currentSlideIndex === conversationHistory.length - 1
+                            ? 'opacity-0 cursor-not-allowed'
+                            : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                        }`}
+                        aria-label="Next conversation"
+                      >
+                        <ChevronRight className="h-6 w-6" />
+                      </button>
+
+                      <div ref={sliderRef} className="flex gap-4 overflow-x-auto scrollbar-hide px-4 -mx-4 snap-x snap-mandatory">
+                        {conversationHistory.map((session, index) => (
+                          <div
+                            key={session.id || index}
+                            className="flex-shrink-0 w-80 snap-center border rounded-xl p-4"
+                            style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
+                                  {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-800 capitalize">
+                                    {session.language} - {session.level}
+                                  </h4>
+                                  <p className="text-sm text-gray-600">
+                                    {session.topic && `Topic: ${session.topic} • `}
+                                    {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-xs text-gray-500">
+                                  {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) : 'Recent'}
+                                </div>
+                                {session.is_streak_eligible && (
+                                  <div className="flex items-center text-xs text-green-600 mt-1">
+                                    <Flame className="h-3 w-3 mr-1" />
+                                    Streak eligible
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-800 capitalize">
-                                {session.language} - {session.level}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {session.topic && `Topic: ${session.topic} • `}
-                                {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-gray-500">
-                              {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : 'Recent'}
-                            </div>
-                            {session.is_streak_eligible && (
-                              <div className="flex items-center text-xs text-green-600 mt-1">
-                                <Flame className="h-3 w-3 mr-1" />
-                                Streak eligible
+
+                            {session.summary && (
+                              <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
+                                <strong>Summary:</strong> {session.summary}
                               </div>
                             )}
+
+                            {/* Enhanced Analysis Button */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                {session.enhanced_analysis && (
+                                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                                    <Brain className="h-3 w-3 mr-1" />
+                                    Enhanced Analysis Available
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {session.enhanced_analysis && (
+                                <Button
+                                  onClick={() => handleShowEnhancedAnalysis(session.id, {
+                                    language: session.language,
+                                    level: session.level,
+                                    topic: session.topic,
+                                    duration_minutes: session.duration_minutes,
+                                    message_count: session.message_count,
+                                    created_at: session.created_at
+                                  })}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                  disabled={analysisLoading}
+                                >
+                                  {analysisLoading ? (
+                                    <>
+                                      <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
+                                      Loading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Brain className="h-3 w-3 mr-1" />
+                                      View Analysis
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        
-                        {session.summary && (
-                          <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
-                            <strong>Summary:</strong> {session.summary}
+                        ))}
+                      </div>
+
+
+
+
+                    </div>
+
+                    {/* Desktop: Vertical List Layout */}
+                    <div className="hidden md:block space-y-4">
+                      {conversationHistory.slice(0, showAllConversations ? conversationHistory.length : 5).map((session, index) => (
+                        <div key={session.id || index} className="border rounded-xl p-4" style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
+                                {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-800 capitalize">
+                                  {session.language} - {session.level}
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  {session.topic && `Topic: ${session.topic} • `}
+                                  {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500">
+                                {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'Recent'}
+                              </div>
+                              {session.is_streak_eligible && (
+                                <div className="flex items-center text-xs text-green-600 mt-1">
+                                  <Flame className="h-3 w-3 mr-1" />
+                                  Streak eligible
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        
-                        {/* Enhanced Analysis Button */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
+
+                          {session.summary && (
+                            <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
+                              <strong>Summary:</strong> {session.summary}
+                            </div>
+                          )}
+
+                          {/* Enhanced Analysis Button */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              {session.enhanced_analysis && (
+                                <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                                  <Brain className="h-3 w-3 mr-1" />
+                                  Enhanced Analysis Available
+                                </Badge>
+                              )}
+                            </div>
+
                             {session.enhanced_analysis && (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
-                                <Brain className="h-3 w-3 mr-1" />
-                                Enhanced Analysis Available
-                              </Badge>
+                              <Button
+                                onClick={() => handleShowEnhancedAnalysis(session.id, {
+                                  language: session.language,
+                                  level: session.level,
+                                  topic: session.topic,
+                                  duration_minutes: session.duration_minutes,
+                                  message_count: session.message_count,
+                                  created_at: session.created_at
+                                })}
+                                variant="outline"
+                                size="sm"
+                                className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                disabled={analysisLoading}
+                              >
+                                {analysisLoading ? (
+                                  <>
+                                    <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
+                                    Loading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Brain className="h-3 w-3 mr-1" />
+                                    View Analysis
+                                  </>
+                                )}
+                              </Button>
                             )}
                           </div>
-                          
-                          {session.enhanced_analysis && (
-                            <Button
-                              onClick={() => handleShowEnhancedAnalysis(session.id, {
-                                language: session.language,
-                                level: session.level,
-                                topic: session.topic,
-                                duration_minutes: session.duration_minutes,
-                                message_count: session.message_count,
-                                created_at: session.created_at
-                              })}
-                              variant="outline"
-                              size="sm"
-                              className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                              disabled={analysisLoading}
-                            >
-                              {analysisLoading ? (
-                                <>
-                                  <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
-                                  Loading...
-                                </>
-                              ) : (
-                                <>
-                                  <Brain className="h-3 w-3 mr-1" />
-                                  View Analysis
-                                </>
-                              )}
-                            </Button>
-                          )}
                         </div>
-                      </div>
-                    ))}
-                    
-                    {conversationHistory.length > 5 && (
-                      <div className="text-center pt-4">
-                        <button 
-                          onClick={() => setShowAllConversations(!showAllConversations)}
-                          className="text-sm font-medium hover:opacity-80 transition-opacity"
-                          style={{ color: '#4ECFBF' }}
-                        >
-                          {showAllConversations 
-                            ? `Show less conversations` 
-                            : `View all ${conversationHistory.length} conversations`
-                          }
-                        </button>
-                      </div>
-                    )}
+                      ))}
+
+                      {conversationHistory.length > 5 && (
+                        <div className="text-center pt-4">
+                          <button
+                            onClick={() => setShowAllConversations(!showAllConversations)}
+                            className="text-sm font-medium hover:opacity-80 transition-opacity"
+                            style={{ color: '#4ECFBF' }}
+                          >
+                            {showAllConversations
+                              ? `Show less conversations`
+                              : `View all ${conversationHistory.length} conversations`
+                            }
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
