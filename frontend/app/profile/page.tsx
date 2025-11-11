@@ -190,6 +190,10 @@ export default function ProfilePage() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
 
+  // Flashcard slider navigation state
+  const [currentFlashcardSlideIndex, setCurrentFlashcardSlideIndex] = useState(0);
+  const flashcardSliderRef = useRef<HTMLDivElement>(null);
+
   // Mobile slider navigation functions
   const handlePrevSlide = () => {
     if (currentSlideIndex > 0) {
@@ -212,6 +216,34 @@ export default function ProfilePage() {
       const slideWidth = 320 + 16; // 320px card width + 16px gap
       const scrollLeft = index * slideWidth;
       sliderRef.current.scrollTo({
+        left: scrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Flashcard slider navigation functions
+  const handlePrevFlashcardSlide = () => {
+    if (currentFlashcardSlideIndex > 0) {
+      const newIndex = currentFlashcardSlideIndex - 1;
+      setCurrentFlashcardSlideIndex(newIndex);
+      scrollToFlashcardSlide(newIndex);
+    }
+  };
+
+  const handleNextFlashcardSlide = () => {
+    if (currentFlashcardSlideIndex < filteredFlashcardSets.length - 1) {
+      const newIndex = currentFlashcardSlideIndex + 1;
+      setCurrentFlashcardSlideIndex(newIndex);
+      scrollToFlashcardSlide(newIndex);
+    }
+  };
+
+  const scrollToFlashcardSlide = (index: number) => {
+    if (flashcardSliderRef.current) {
+      const slideWidth = 280 + 16; // 280px card width + 16px gap
+      const scrollLeft = index * slideWidth;
+      flashcardSliderRef.current.scrollTo({
         left: scrollLeft,
         behavior: 'smooth'
       });
@@ -1400,12 +1432,9 @@ export default function ProfilePage() {
                     <Brain className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
                     AI-Generated Flashcards
                   </h3>
-                  <div className="text-sm text-gray-500">
-                    {flashcardSets.length} flashcard sets • {dueFlashcards.length} due today
-                  </div>
                 </div>
 
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6">
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6 hidden md:block">
                   <p className="text-sm text-teal-700">
                     <strong>🧠 Smart Learning:</strong> Review AI-generated flashcards from your speaking sessions to reinforce vocabulary, grammar, and pronunciation. Cards are spaced using scientific learning algorithms for optimal retention.
                   </p>
@@ -1424,50 +1453,65 @@ export default function ProfilePage() {
                   <div className="space-y-6">
                     {/* Flashcard Sets Section */}
                     <div>
-                      <div className="flex items-center justify-between mb-6">
-                        <h4 className="text-lg font-semibold text-gray-800 flex items-center">
-                          <Book className="h-5 w-5 mr-2 text-indigo-500" />
-                          Your Flashcard Sets
-                        </h4>
-
-                        {/* Filter and View Controls */}
-                        <div className="flex items-center space-x-3">
-                          {/* Filter Dropdown */}
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-800 font-medium">Filter:</span>
+                      {/* Filter and View Controls - Mobile Optimized */}
+                      <div className="mb-6">
+                        {/* Mobile: Stacked Layout */}
+                        <div className="block md:hidden space-y-4">
+                          {/* Filter Dropdown - Full Width on Mobile */}
+                          <div className="flex items-center">
                             <select
                               value={flashcardFilter}
                               onChange={(e) => setFlashcardFilter(e.target.value as 'all' | 'learning-plans' | 'practice')}
-                              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
                             >
                               <option value="all">All Sets</option>
                               <option value="learning-plans">Learning Plans</option>
                               <option value="practice">Practice Sessions</option>
                             </select>
                           </div>
+                        </div>
 
-                          {/* View Mode Toggle */}
-                          <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
-                            <button
-                              onClick={() => setFlashcardViewMode('grid')}
-                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                                flashcardViewMode === 'grid'
-                                  ? 'bg-indigo-600 text-white shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-800'
-                              }`}
-                            >
-                              Grid
-                            </button>
-                            <button
-                              onClick={() => setFlashcardViewMode('list')}
-                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                                flashcardViewMode === 'list'
-                                  ? 'bg-indigo-600 text-white shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-800'
-                              }`}
-                            >
-                              List
-                            </button>
+                        {/* Desktop: Horizontal Layout */}
+                        <div className="hidden md:flex items-center justify-between">
+                          {/* Filter and View Controls */}
+                          <div className="flex items-center space-x-3">
+                            {/* Filter Dropdown */}
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-800 font-medium">Filter:</span>
+                              <select
+                                value={flashcardFilter}
+                                onChange={(e) => setFlashcardFilter(e.target.value as 'all' | 'learning-plans' | 'practice')}
+                                className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
+                              >
+                                <option value="all">All Sets</option>
+                                <option value="learning-plans">Learning Plans</option>
+                                <option value="practice">Practice Sessions</option>
+                              </select>
+                            </div>
+
+                            {/* View Mode Toggle */}
+                            <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
+                              <button
+                                onClick={() => setFlashcardViewMode('grid')}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                  flashcardViewMode === 'grid'
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-800'
+                                  }`}
+                              >
+                                Grid
+                              </button>
+                              <button
+                                onClick={() => setFlashcardViewMode('list')}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                  flashcardViewMode === 'list'
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-800'
+                                  }`}
+                              >
+                                List
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1499,74 +1543,120 @@ export default function ProfilePage() {
                           </Button>
                         </div>
                       ) : (
-                        <div className={
-                          flashcardViewMode === 'grid'
-                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            : "space-y-4"
-                        }>
-                          {filteredFlashcardSets.map((set) => (
-                            flashcardViewMode === 'grid' ? (
-                              // Grid View
-                              <div key={set.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex items-start justify-between mb-4">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                      <Brain className="h-6 w-6 text-indigo-600" />
-                                    </div>
-                                    <div>
-                                      <h5 className="font-semibold text-gray-800">{set.title}</h5>
-                                      <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
-                                    </div>
-                                  </div>
-                                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                                    {set.total_cards} cards
-                                  </Badge>
-                                </div>
+                        <>
+                          {/* Mobile: Horizontal Scrolling Slider */}
+                          <div className="block md:hidden relative">
+                            {/* Left Arrow */}
+                            <button
+                              onClick={handlePrevFlashcardSlide}
+                              disabled={currentFlashcardSlideIndex === 0}
+                              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                currentFlashcardSlideIndex === 0
+                                  ? 'opacity-0 cursor-not-allowed'
+                                  : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                              }`}
+                              aria-label="Previous flashcard set"
+                            >
+                              <ChevronRight className="h-6 w-6 rotate-180" />
+                            </button>
 
-                                {set.description && (
-                                  <p className="text-sm text-gray-600 mb-4">{set.description}</p>
-                                )}
+                            {/* Right Arrow */}
+                            <button
+                              onClick={handleNextFlashcardSlide}
+                              disabled={currentFlashcardSlideIndex === filteredFlashcardSets.length - 1}
+                              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                currentFlashcardSlideIndex === filteredFlashcardSets.length - 1
+                                  ? 'opacity-0 cursor-not-allowed'
+                                  : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                              }`}
+                              aria-label="Next flashcard set"
+                            >
+                              <ChevronRight className="h-6 w-6" />
+                            </button>
 
-                                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                                  <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
-                                  {set.is_completed && (
-                                    <Badge className="bg-green-100 text-green-700 text-xs">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Completed
-                                    </Badge>
-                                  )}
-                                </div>
-
-                                <Button
-                                  onClick={() => {
-                                    setSelectedFlashcardSet(set);
-                                    setShowFlashcardViewer(true);
-                                  }}
-                                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                                  size="sm"
+                            <div ref={flashcardSliderRef} className="flex gap-4 overflow-x-auto scrollbar-hide px-4 -mx-4 snap-x snap-mandatory">
+                              {filteredFlashcardSets.map((set, index) => (
+                                <div
+                                  key={set.id}
+                                  className="flex-shrink-0 w-72 snap-center bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow"
                                 >
-                                  <Book className="h-4 w-4 mr-2" />
-                                  Study Now
-                                </Button>
-                              </div>
-                            ) : (
-                              // List View
-                              <div key={set.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-4 flex-1">
-                                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                      <Brain className="h-6 w-6 text-indigo-600" />
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                        <Brain className="h-6 w-6 text-indigo-600" />
+                                      </div>
+                                      <div>
+                                        <h5 className="font-semibold text-gray-800">{set.title}</h5>
+                                        <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                      </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h5 className="font-semibold text-gray-800 truncate">{set.title}</h5>
-                                      <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
-                                      {set.description && (
-                                        <p className="text-sm text-gray-500 mt-1 truncate">{set.description}</p>
-                                      )}
+                                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                                      {set.total_cards} cards
+                                    </Badge>
+                                  </div>
+
+                                  {set.description && (
+                                    <p className="text-sm text-gray-600 mb-4">{set.description}</p>
+                                  )}
+
+                                  <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                                    <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
+                                    {set.is_completed && (
+                                      <Badge className="bg-green-100 text-green-700 text-xs">
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Completed
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  <Button
+                                    onClick={() => {
+                                      setSelectedFlashcardSet(set);
+                                      setShowFlashcardViewer(true);
+                                    }}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    size="sm"
+                                  >
+                                    <Book className="h-4 w-4 mr-2" />
+                                    Study Now
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Desktop: Grid/List Layout */}
+                          <div className="hidden md:block">
+                            <div className={
+                              flashcardViewMode === 'grid'
+                                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                                : "space-y-4"
+                            }>
+                              {filteredFlashcardSets.map((set) => (
+                                flashcardViewMode === 'grid' ? (
+                                  // Grid View
+                                  <div key={set.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                                    <div className="flex items-start justify-between mb-4">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                          <Brain className="h-6 w-6 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                          <h5 className="font-semibold text-gray-800">{set.title}</h5>
+                                          <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                        </div>
+                                      </div>
+                                      <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                                        {set.total_cards} cards
+                                      </Badge>
                                     </div>
-                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                      <span>{set.total_cards} cards</span>
-                                      <span>{new Date(set.created_at).toLocaleDateString()}</span>
+
+                                    {set.description && (
+                                      <p className="text-sm text-gray-600 mb-4">{set.description}</p>
+                                    )}
+
+                                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                                      <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
                                       {set.is_completed && (
                                         <Badge className="bg-green-100 text-green-700 text-xs">
                                           <CheckCircle className="h-3 w-3 mr-1" />
@@ -1574,23 +1664,63 @@ export default function ProfilePage() {
                                         </Badge>
                                       )}
                                     </div>
+
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedFlashcardSet(set);
+                                        setShowFlashcardViewer(true);
+                                      }}
+                                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                                      size="sm"
+                                    >
+                                      <Book className="h-4 w-4 mr-2" />
+                                      Study Now
+                                    </Button>
                                   </div>
-                                  <Button
-                                    onClick={() => {
-                                      setSelectedFlashcardSet(set);
-                                      setShowFlashcardViewer(true);
-                                    }}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white ml-4"
-                                    size="sm"
-                                  >
-                                    <Book className="h-4 w-4 mr-2" />
-                                    Study
-                                  </Button>
-                                </div>
-                              </div>
-                            )
-                          ))}
-                        </div>
+                                ) : (
+                                  // List View
+                                  <div key={set.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-4 flex-1">
+                                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                          <Brain className="h-6 w-6 text-indigo-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <h5 className="font-semibold text-gray-800 truncate">{set.title}</h5>
+                                          <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                          {set.description && (
+                                            <p className="text-sm text-gray-500 mt-1 truncate">{set.description}</p>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                          <span>{set.total_cards} cards</span>
+                                          <span>{new Date(set.created_at).toLocaleDateString()}</span>
+                                          {set.is_completed && (
+                                            <Badge className="bg-green-100 text-green-700 text-xs">
+                                              <CheckCircle className="h-3 w-3 mr-1" />
+                                              Completed
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        onClick={() => {
+                                          setSelectedFlashcardSet(set);
+                                          setShowFlashcardViewer(true);
+                                        }}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white ml-4"
+                                        size="sm"
+                                      >
+                                        <Book className="h-4 w-4 mr-2" />
+                                        Study
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              ))}
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
