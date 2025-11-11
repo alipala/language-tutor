@@ -53,7 +53,22 @@ class LearningPlan(BaseModel):
 learning_goals_collection = database.learning_goals
 learning_plans_collection = database.learning_plans
 
-# Predefined learning goals
+# Import new intelligent modules
+try:
+    from enriched_goals_config import (
+        get_all_main_goals,
+        get_sub_goals_for_main_goal,
+        ENRICHED_GOALS
+    )
+    from intelligent_schedule_generator import IntelligentScheduleGenerator
+    INTELLIGENT_SYSTEM_AVAILABLE = True
+    logger.info("[LEARNING_ROUTES] ✅ Intelligent system modules loaded successfully")
+except ImportError as e:
+    INTELLIGENT_SYSTEM_AVAILABLE = False
+    logger.warning(f"[LEARNING_ROUTES] ⚠️ Intelligent system not available: {str(e)}")
+    logger.warning("[LEARNING_ROUTES] ⚠️ Falling back to legacy system")
+
+# Predefined learning goals (legacy - kept for backward compatibility)
 PREDEFINED_GOALS = [
     {"id": "travel", "text": "Travel and tourism", "category": "general"},
     {"id": "business", "text": "Business and professional communication", "category": "general"},
@@ -62,23 +77,71 @@ PREDEFINED_GOALS = [
     {"id": "daily", "text": "Daily conversation", "category": "general"}
 ]
 
-@router.get("/goals", response_model=List[LearningGoal])
-async def get_learning_goals():
+@router.get("/goals", response_model=List[Dict[str, Any]])
+async def get_learning_goals(
+    enriched: bool = False
+):
     """
-    Get a list of predefined learning goals
+    Get a list of learning goals
+    
+    Args:
+        enriched: If True, return enriched goals with sub-goals. If False, return legacy format.
     """
     try:
-        # Force refresh of learning goals from the predefined list
-        # This ensures we always have the latest goals definition
-        await learning_goals_collection.delete_many({})
-        await learning_goals_collection.insert_many(PREDEFINED_GOALS)
-        return PREDEFINED_GOALS
+        # If enriched goals requested and intelligent system available
+        if enriched and INTELLIGENT_SYSTEM_AVAILABLE:
+            logger.info("[LEARNING_ROUTES] 📊 Returning enriched goals")
+            enriched_goals = get_all_main_goals()
+            return enriched_goals
+        else:
+            # Return legacy format - DON'T insert to database, just return
+            logger.info("[LEARNING_ROUTES] 📊 Returning legacy goals")
+            # 🔥 FIX: Don't insert to database to avoid ObjectId serialization issues
+            # Just return the predefined goals directly
+            return PREDEFINED_GOALS
     
     except Exception as e:
-        # If any error occurs, log it and return the predefined goals
-        print(f"Error refreshing learning goals: {str(e)}")
-        print("Returning predefined goals instead")
+        logger.error(f"[LEARNING_ROUTES] ❌ Error fetching goals: {str(e)}")
+        # Fallback to legacy goals
         return PREDEFINED_GOALS
+
+@router.get("/goals/{goal_id}/sub-goals")
+async def get_sub_goals(goal_id: str):
+    """
+    Get sub-goals for a specific main goal
+    
+    Args:
+        goal_id: Main goal identifier (e.g., "travel", "business")
+        
+    Returns:
+        List of sub-goals with descriptions
+    """
+    try:
+        if not INTELLIGENT_SYSTEM_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Enriched goals system not available"
+            )
+        
+        logger.info(f"[LEARNING_ROUTES] 📊 Fetching sub-goals for: {goal_id}")
+        sub_goals = get_sub_goals_for_main_goal(goal_id)
+        
+        if not sub_goals:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No sub-goals found for goal: {goal_id}"
+            )
+        
+        return sub_goals
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[LEARNING_ROUTES] ❌ Error fetching sub-goals: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching sub-goals: {str(e)}"
+        )
 
 @router.post("/plan", response_model=LearningPlan)
 async def create_learning_plan(
@@ -360,14 +423,46 @@ async def create_learning_plan(
             
             return weekly_schedule
         
-        weekly_schedule = generate_weekly_schedule(
-            plan_request.duration_months, 
-            areas_for_improvement, 
-            strengths, 
-            next_steps,
-            plan_request.language,
-            recommended_level
-        )
+        # 🔥 NEW: Use intelligent schedule generator if available
+        if INTELLIGENT_SYSTEM_AVAILABLE:
+            try:
+                logger.info("[LEARNING_PLAN] 🎯 Using intelligent schedule generator")
+                
+                # Extract sub_goals from request if provided
+                sub_goals = request_data.get('sub_goals', [])
+                
+                weekly_schedule = IntelligentScheduleGenerator.generate_optimized_schedule(
+                    duration_months=plan_request.duration_months,
+                    assessment_data=assessment_data,
+                    goals=plan_request.goals,
+                    language=plan_request.language,
+                    sub_goals=sub_goals if sub_goals else None
+                )
+                
+                logger.info(f"[LEARNING_PLAN] ✅ Intelligent schedule generated: {len(weekly_schedule)} weeks")
+            except Exception as e:
+                logger.warning(f"[LEARNING_PLAN] ⚠️ Intelligent generator failed: {str(e)}")
+                logger.info("[LEARNING_PLAN] 📋 Falling back to legacy generator")
+                # Fallback to legacy generator
+                weekly_schedule = generate_weekly_schedule(
+                    plan_request.duration_months, 
+                    areas_for_improvement, 
+                    strengths, 
+                    next_steps,
+                    plan_request.language,
+                    recommended_level
+                )
+        else:
+            # Use legacy generator
+            logger.info("[LEARNING_PLAN] 📋 Using legacy schedule generator")
+            weekly_schedule = generate_weekly_schedule(
+                plan_request.duration_months, 
+                areas_for_improvement, 
+                strengths, 
+                next_steps,
+                plan_request.language,
+                recommended_level
+            )
         
         # Create a personalized plan based on assessment data
         plan_content_json = {

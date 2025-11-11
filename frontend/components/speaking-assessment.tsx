@@ -9,7 +9,7 @@ import { isAuthenticated } from '@/lib/auth-utils';
 import { getAssessmentDuration, formatTime, getMaxAssessmentDetails, getGuestLimitationsDescription, ASSESSMENT_DURATION_GUEST, ASSESSMENT_DURATION_REGISTERED, CONVERSATION_DURATION_GUEST, CONVERSATION_DURATION_REGISTERED } from '@/lib/guest-utils';
 import { useNotification } from '@/components/ui/notification';
 import { useMobile } from '@/hooks/use-mobile';
-import LearningPlanModal from './learning-plan-modal';
+import EnhancedLearningPlanModal from './enhanced-learning-plan-modal';
 
 interface SpeakingAssessmentProps {
   language: string;
@@ -1756,7 +1756,7 @@ export default function SpeakingAssessment({
 
       {/* Learning Plan Modal*/}
       {assessment && (
-        <LearningPlanModal 
+        <EnhancedLearningPlanModal 
           isOpen={showLearningPlanModal}
           onClose={handleLearningPlanModalClose}
           proficiencyLevel={assessment.recommended_level}

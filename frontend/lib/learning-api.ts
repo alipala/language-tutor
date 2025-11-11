@@ -120,6 +120,42 @@ export const getLearningGoals = async (): Promise<LearningGoal[]> => {
   return await response.json();
 };
 
+// Get enriched learning goals with sub-goals
+export const getEnrichedGoals = async (): Promise<any[]> => {
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}/api/learning/goals?enriched=true`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch enriched goals');
+  }
+
+  return await response.json();
+};
+
+// Get sub-goals for a specific main goal
+export const getSubGoals = async (goalId: string): Promise<any[]> => {
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}/api/learning/goals/${goalId}/sub-goals`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch sub-goals');
+  }
+
+  return await response.json();
+};
+
 // Flashcard API functions
 export interface Flashcard {
   id: string;
