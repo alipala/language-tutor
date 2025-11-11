@@ -1296,7 +1296,7 @@ export default function ProfilePage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               {session.enhanced_analysis && (
-                                <div className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-medium border-0" style={{ background: 'linear-gradient(135deg, #FFD63A 0%, #FFA955 100%)' }}>
+                                <div className="inline-flex items-center px-3 py-1 text-white text-xs font-medium border-0" style={{ backgroundColor: '#F75A5A' }}>
                                   <Brain className="h-3 w-3 mr-1" />
                                   Enhanced Analysis Available
                                 </div>
@@ -1434,8 +1434,8 @@ export default function ProfilePage() {
                   </h3>
                 </div>
 
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6 hidden md:block">
-                  <p className="text-sm text-teal-700">
+                <div className="rounded-xl p-4 mb-6 hidden md:block" style={{ backgroundColor: '#FFF5F5', border: '1px solid rgba(247, 90, 90, 0.2)' }}>
+                  <p className="text-sm" style={{ color: '#F75A5A' }}>
                     <strong>🧠 Smart Learning:</strong> Review AI-generated flashcards from your speaking sessions to reinforce vocabulary, grammar, and pronunciation. Cards are spaced using scientific learning algorithms for optimal retention.
                   </p>
                 </div>
@@ -1495,9 +1495,10 @@ export default function ProfilePage() {
                                 onClick={() => setFlashcardViewMode('grid')}
                                 className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                                   flashcardViewMode === 'grid'
-                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    ? 'text-white shadow-sm'
                                     : 'text-gray-600 hover:text-gray-800'
                                   }`}
+                                style={{ backgroundColor: flashcardViewMode === 'grid' ? '#F75A5A' : 'transparent' }}
                               >
                                 Grid
                               </button>
@@ -1505,9 +1506,10 @@ export default function ProfilePage() {
                                 onClick={() => setFlashcardViewMode('list')}
                                 className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                                   flashcardViewMode === 'list'
-                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    ? 'text-white shadow-sm'
                                     : 'text-gray-600 hover:text-gray-800'
                                   }`}
+                                style={{ backgroundColor: flashcardViewMode === 'list' ? '#F75A5A' : 'transparent' }}
                               >
                                 List
                               </button>
@@ -1578,21 +1580,20 @@ export default function ProfilePage() {
                               {filteredFlashcardSets.map((set, index) => (
                                 <div
                                   key={set.id}
-                                  className="flex-shrink-0 w-72 snap-center bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow"
+                                  className="flex-shrink-0 w-72 snap-center rounded-xl p-6 hover:shadow-lg transition-shadow"
+                                  style={{ backgroundColor: '#FFF5F5', border: '1px solid rgba(247, 90, 90, 0.2)' }}
                                 >
                                   <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center space-x-3">
-                                      <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                        <Brain className="h-6 w-6 text-indigo-600" />
+                                      <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FED7AA' }}>
+                                        <Brain className="h-6 w-6" style={{ color: '#FFA955' }} />
                                       </div>
                                       <div>
                                         <h5 className="font-semibold text-gray-800">{set.title}</h5>
                                         <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
                                       </div>
                                     </div>
-                                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                                      {set.total_cards} cards
-                                    </Badge>
+
                                   </div>
 
                                   {set.description && (
@@ -1614,8 +1615,9 @@ export default function ProfilePage() {
                                       setSelectedFlashcardSet(set);
                                       setShowFlashcardViewer(true);
                                     }}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    className="w-full text-white"
                                     size="sm"
+                                    style={{ backgroundColor: '#F75A5A' }}
                                   >
                                     <Book className="h-4 w-4 mr-2" />
                                     Study Now
@@ -1635,20 +1637,18 @@ export default function ProfilePage() {
                               {filteredFlashcardSets.map((set) => (
                                 flashcardViewMode === 'grid' ? (
                                   // Grid View
-                                  <div key={set.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                                  <div key={set.id} className="rounded-xl p-6 hover:shadow-lg transition-shadow" style={{ backgroundColor: '#FFF5F5', border: '1px solid rgba(247, 90, 90, 0.2)' }}>
                                     <div className="flex items-start justify-between mb-4">
                                       <div className="flex items-center space-x-3">
-                                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                          <Brain className="h-6 w-6 text-indigo-600" />
+                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FED7AA' }}>
+                                          <Brain className="h-6 w-6" style={{ color: '#FFA955' }} />
                                         </div>
                                         <div>
                                           <h5 className="font-semibold text-gray-800">{set.title}</h5>
                                           <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
                                         </div>
                                       </div>
-                                      <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                                        {set.total_cards} cards
-                                      </Badge>
+
                                     </div>
 
                                     {set.description && (
@@ -1670,8 +1670,9 @@ export default function ProfilePage() {
                                         setSelectedFlashcardSet(set);
                                         setShowFlashcardViewer(true);
                                       }}
-                                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                                      className="w-full text-white"
                                       size="sm"
+                                      style={{ backgroundColor: '#F75A5A' }}
                                     >
                                       <Book className="h-4 w-4 mr-2" />
                                       Study Now
@@ -1682,8 +1683,8 @@ export default function ProfilePage() {
                                   <div key={set.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center space-x-4 flex-1">
-                                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                          <Brain className="h-6 w-6 text-indigo-600" />
+                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FED7AA' }}>
+                                          <Brain className="h-6 w-6" style={{ color: '#FFA955' }} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <h5 className="font-semibold text-gray-800 truncate">{set.title}</h5>
@@ -1708,8 +1709,9 @@ export default function ProfilePage() {
                                           setSelectedFlashcardSet(set);
                                           setShowFlashcardViewer(true);
                                         }}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white ml-4"
+                                        className="text-white ml-4"
                                         size="sm"
+                                        style={{ backgroundColor: '#F75A5A' }}
                                       >
                                         <Book className="h-4 w-4 mr-2" />
                                         Study
