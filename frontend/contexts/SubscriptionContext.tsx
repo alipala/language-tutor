@@ -1,7 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
+
+// Helper for development-only logging
+const isDev = process.env.NODE_ENV === 'development';
+const devLog = (message: string, ...args: any[]) => {
+  if (isDev) {
+    console.log(message, ...args);
+  }
+};
 
 interface SubscriptionLimits {
   sessions_remaining: number;
@@ -40,29 +48,39 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  
+  // Use ref to track last fetch time to avoid triggering re-renders
+  const lastFetchTimeRef = useRef<number>(0);
+  const isFetchingRef = useRef<boolean>(false);
 
   const { user } = useAuth();
 
   const fetchSubscriptionStatus = useCallback(async (force: boolean = false) => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current && !force) {
+      devLog('[SUBSCRIPTION_CONTEXT] Fetch already in progress, skipping');
+      return;
+    }
+
     // If not forced and we fetched within last 30 seconds, skip
     const now = Date.now();
-    if (!force && subscriptionStatus && (now - lastFetchTime) < 30000) {
-      console.log('[SUBSCRIPTION_CONTEXT] Using cached data, last fetch was', Math.round((now - lastFetchTime) / 1000), 'seconds ago');
+    if (!force && (now - lastFetchTimeRef.current) < 30000) {
+      devLog('[SUBSCRIPTION_CONTEXT] Using cached data, last fetch was', Math.round((now - lastFetchTimeRef.current) / 1000), 'seconds ago');
       return;
     }
 
     try {
+      isFetchingRef.current = true;
       setError(null);
       const token = localStorage.getItem('token');
       
       if (!token) {
-        console.log('[SUBSCRIPTION_CONTEXT] No token found, skipping fetch');
+        devLog('[SUBSCRIPTION_CONTEXT] No token found, skipping fetch');
         setLoading(false);
         return;
       }
 
-      console.log('[SUBSCRIPTION_CONTEXT] 🚀 Fetching subscription status...');
+      devLog('[SUBSCRIPTION_CONTEXT] 🚀 Fetching subscription status...');
 
       const response = await fetch('/api/stripe/subscription-status', {
         headers: {
@@ -75,8 +93,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       if (response.ok) {
         const data = await response.json();
         setSubscriptionStatus(data);
-        setLastFetchTime(now);
-        console.log('[SUBSCRIPTION_CONTEXT] ✅ Subscription status fetched successfully');
+        lastFetchTimeRef.current = now;
+        devLog('[SUBSCRIPTION_CONTEXT] ✅ Subscription status fetched successfully');
       } else {
         setError('Failed to fetch subscription status');
         console.error('[SUBSCRIPTION_CONTEXT] ❌ Failed to fetch subscription status:', response.status);
@@ -86,24 +104,25 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       setError('Error fetching subscription status');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [subscriptionStatus, lastFetchTime]);
+  }, []); // Empty dependencies - stable function
 
   // Fetch when user logs in or changes
   useEffect(() => {
     if (user) {
-      console.log('[SUBSCRIPTION_CONTEXT] 👤 User detected, fetching subscription status');
+      devLog('[SUBSCRIPTION_CONTEXT] 👤 User detected, fetching subscription status');
       fetchSubscriptionStatus(true); // Force fetch on user change
     } else {
-      console.log('[SUBSCRIPTION_CONTEXT] 🚫 No user, clearing subscription status');
+      devLog('[SUBSCRIPTION_CONTEXT] 🚫 No user, clearing subscription status');
       setSubscriptionStatus(null);
       setLoading(false);
     }
-  }, [user, fetchSubscriptionStatus]);
+  }, [user?._id, fetchSubscriptionStatus]); // Only depend on user ID to avoid re-fetching on user object changes
 
   // Refresh function for external use
   const refreshSubscriptionStatus = useCallback(async () => {
-    console.log('[SUBSCRIPTION_CONTEXT] 🔄 Manual refresh requested');
+    devLog('[SUBSCRIPTION_CONTEXT] 🔄 Manual refresh requested');
     setLoading(true);
     await fetchSubscriptionStatus(true); // Force refresh
   }, [fetchSubscriptionStatus]);
