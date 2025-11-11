@@ -1055,7 +1055,6 @@ export default function ProfilePage() {
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                    <Mic className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
                     Conversation History
                     <span className="ml-2 bg-teal-100 text-teal-700 text-xs px-2 py-0.5 rounded-full">
                       {progressStats?.total_sessions || 0} sessions
@@ -1169,13 +1168,13 @@ export default function ProfilePage() {
                             )}
 
                             {/* Enhanced Analysis Button */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
+                            <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+                              <div className="flex items-center">
                                 {session.enhanced_analysis && (
-                                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                                  <div className="hidden md:inline-flex items-center px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-medium border-0" style={{ background: 'linear-gradient(135deg, #FFD63A 0%, #FFA955 100%)' }}>
                                     <Brain className="h-3 w-3 mr-1" />
                                     Enhanced Analysis Available
-                                  </Badge>
+                                  </div>
                                 )}
                               </div>
 
@@ -1191,12 +1190,13 @@ export default function ProfilePage() {
                                   })}
                                   variant="outline"
                                   size="sm"
-                                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                  className="text-white border-0 font-medium hover:opacity-90 transition-opacity w-fit"
+                                  style={{ backgroundColor: '#4ECFBF' }}
                                   disabled={analysisLoading}
                                 >
                                   {analysisLoading ? (
                                     <>
-                                      <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
+                                      <div className="animate-spin h-3 w-3 mr-1 border border-white border-t-transparent rounded-full"></div>
                                       Loading...
                                     </>
                                   ) : (
@@ -1264,10 +1264,10 @@ export default function ProfilePage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               {session.enhanced_analysis && (
-                                <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                                <div className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-medium border-0" style={{ background: 'linear-gradient(135deg, #FFD63A 0%, #FFA955 100%)' }}>
                                   <Brain className="h-3 w-3 mr-1" />
                                   Enhanced Analysis Available
-                                </Badge>
+                                </div>
                               )}
                             </div>
 
@@ -1283,12 +1283,13 @@ export default function ProfilePage() {
                                 })}
                                 variant="outline"
                                 size="sm"
-                                className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                className="text-white border-0 font-medium hover:opacity-90 transition-opacity"
+                                style={{ backgroundColor: '#4ECFBF' }}
                                 disabled={analysisLoading}
                               >
                                 {analysisLoading ? (
                                   <>
-                                    <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
+                                    <div className="animate-spin h-3 w-3 mr-1 border border-white border-t-transparent rounded-full"></div>
                                     Loading...
                                   </>
                                 ) : (
