@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "npm run build:admin && NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:admin": "echo 'Admin panel already built and included in repository'",
-    "start": "next start",
+    "start": "node server.js",
     "lint": "next lint",
     "generate-favicons": "node scripts/generate-favicons.js"
   },
@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.0.0",
     "framer-motion": "12.6.2",
+    "http-proxy": "^1.18.1",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
     "papaparse": "^5.5.3",

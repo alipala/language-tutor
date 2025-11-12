@@ -53,7 +53,22 @@ class LearningPlan(BaseModel):
 learning_goals_collection = database.learning_goals
 learning_plans_collection = database.learning_plans
 
-# Predefined learning goals
+# Import new intelligent modules
+try:
+    from enriched_goals_config import (
+        get_all_main_goals,
+        get_sub_goals_for_main_goal,
+        ENRICHED_GOALS
+    )
+    from intelligent_schedule_generator import IntelligentScheduleGenerator
+    INTELLIGENT_SYSTEM_AVAILABLE = True
+    logger.info("[LEARNING_ROUTES] ✅ Intelligent system modules loaded successfully")
+except ImportError as e:
+    INTELLIGENT_SYSTEM_AVAILABLE = False
+    logger.warning(f"[LEARNING_ROUTES] ⚠️ Intelligent system not available: {str(e)}")
+    logger.warning("[LEARNING_ROUTES] ⚠️ Falling back to legacy system")
+
+# Predefined learning goals (legacy - kept for backward compatibility)
 PREDEFINED_GOALS = [
     {"id": "travel", "text": "Travel and tourism", "category": "general"},
     {"id": "business", "text": "Business and professional communication", "category": "general"},
@@ -62,23 +77,71 @@ PREDEFINED_GOALS = [
     {"id": "daily", "text": "Daily conversation", "category": "general"}
 ]
 
-@router.get("/goals", response_model=List[LearningGoal])
-async def get_learning_goals():
+@router.get("/goals", response_model=List[Dict[str, Any]])
+async def get_learning_goals(
+    enriched: bool = False
+):
     """
-    Get a list of predefined learning goals
+    Get a list of learning goals
+    
+    Args:
+        enriched: If True, return enriched goals with sub-goals. If False, return legacy format.
     """
     try:
-        # Force refresh of learning goals from the predefined list
-        # This ensures we always have the latest goals definition
-        await learning_goals_collection.delete_many({})
-        await learning_goals_collection.insert_many(PREDEFINED_GOALS)
-        return PREDEFINED_GOALS
+        # If enriched goals requested and intelligent system available
+        if enriched and INTELLIGENT_SYSTEM_AVAILABLE:
+            logger.info("[LEARNING_ROUTES] 📊 Returning enriched goals")
+            enriched_goals = get_all_main_goals()
+            return enriched_goals
+        else:
+            # Return legacy format - DON'T insert to database, just return
+            logger.info("[LEARNING_ROUTES] 📊 Returning legacy goals")
+            # 🔥 FIX: Don't insert to database to avoid ObjectId serialization issues
+            # Just return the predefined goals directly
+            return PREDEFINED_GOALS
     
     except Exception as e:
-        # If any error occurs, log it and return the predefined goals
-        print(f"Error refreshing learning goals: {str(e)}")
-        print("Returning predefined goals instead")
+        logger.error(f"[LEARNING_ROUTES] ❌ Error fetching goals: {str(e)}")
+        # Fallback to legacy goals
         return PREDEFINED_GOALS
+
+@router.get("/goals/{goal_id}/sub-goals")
+async def get_sub_goals(goal_id: str):
+    """
+    Get sub-goals for a specific main goal
+    
+    Args:
+        goal_id: Main goal identifier (e.g., "travel", "business")
+        
+    Returns:
+        List of sub-goals with descriptions
+    """
+    try:
+        if not INTELLIGENT_SYSTEM_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Enriched goals system not available"
+            )
+        
+        logger.info(f"[LEARNING_ROUTES] 📊 Fetching sub-goals for: {goal_id}")
+        sub_goals = get_sub_goals_for_main_goal(goal_id)
+        
+        if not sub_goals:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No sub-goals found for goal: {goal_id}"
+            )
+        
+        return sub_goals
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[LEARNING_ROUTES] ❌ Error fetching sub-goals: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching sub-goals: {str(e)}"
+        )
 
 @router.post("/plan", response_model=LearningPlan)
 async def create_learning_plan(
@@ -360,14 +423,46 @@ async def create_learning_plan(
             
             return weekly_schedule
         
-        weekly_schedule = generate_weekly_schedule(
-            plan_request.duration_months, 
-            areas_for_improvement, 
-            strengths, 
-            next_steps,
-            plan_request.language,
-            recommended_level
-        )
+        # 🔥 NEW: Use intelligent schedule generator if available
+        if INTELLIGENT_SYSTEM_AVAILABLE:
+            try:
+                logger.info("[LEARNING_PLAN] 🎯 Using intelligent schedule generator")
+                
+                # Extract sub_goals from request if provided
+                sub_goals = request_data.get('sub_goals', [])
+                
+                weekly_schedule = IntelligentScheduleGenerator.generate_optimized_schedule(
+                    duration_months=plan_request.duration_months,
+                    assessment_data=assessment_data,
+                    goals=plan_request.goals,
+                    language=plan_request.language,
+                    sub_goals=sub_goals if sub_goals else None
+                )
+                
+                logger.info(f"[LEARNING_PLAN] ✅ Intelligent schedule generated: {len(weekly_schedule)} weeks")
+            except Exception as e:
+                logger.warning(f"[LEARNING_PLAN] ⚠️ Intelligent generator failed: {str(e)}")
+                logger.info("[LEARNING_PLAN] 📋 Falling back to legacy generator")
+                # Fallback to legacy generator
+                weekly_schedule = generate_weekly_schedule(
+                    plan_request.duration_months, 
+                    areas_for_improvement, 
+                    strengths, 
+                    next_steps,
+                    plan_request.language,
+                    recommended_level
+                )
+        else:
+            # Use legacy generator
+            logger.info("[LEARNING_PLAN] 📋 Using legacy schedule generator")
+            weekly_schedule = generate_weekly_schedule(
+                plan_request.duration_months, 
+                areas_for_improvement, 
+                strengths, 
+                next_steps,
+                plan_request.language,
+                recommended_level
+            )
         
         # Create a personalized plan based on assessment data
         plan_content_json = {
@@ -507,33 +602,52 @@ async def create_learning_plan(
             
             print(f"[ATOMIC_SAVE] ✅ Learning plan created with ID: {created_plan['id']}")
             
-            # STEP 2: 🔥 IDEMPOTENT ASSESSMENT SAVE - Prevent Double Increments
+            # STEP 2: 🔥 BULLETPROOF IDEMPOTENT ASSESSMENT SAVE - Prevent Double Increments
             try:
-                # Generate unique assessment ID to prevent duplicates
+                # Generate assessment fingerprint BEFORE any database operations
+                # This fingerprint is based on user + language + level, NOT plan ID
+                assessment_fingerprint = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}"
                 assessment_timestamp = datetime.utcnow().isoformat()
-                assessment_id = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}_{assessment_timestamp}"
                 
-                print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_id}")
+                print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_fingerprint}")
                 
-                # Check if this assessment was already processed
+                # Check if this assessment fingerprint was already processed
                 user_doc = await users_collection.find_one({"_id": ObjectId(current_user.id)})
                 existing_assessment_history = user_doc.get("assessment_history", {})
                 
-                # Check if we already have an assessment for this learning plan
+                # 🔥 CRITICAL FIX: Check fingerprint, not plan ID
+                # This prevents double increment even on retries/duplicates
                 if (existing_assessment_history and 
-                    existing_assessment_history.get("learning_plan_id") == created_plan['id']):
-                    print(f"[IDEMPOTENT_SAVE] ⚠️ Assessment already exists for learning plan {created_plan['id']}")
-                    print(f"[IDEMPOTENT_SAVE] ✅ Skipping duplicate assessment increment")
-                    new_plan = created_plan
+                    existing_assessment_history.get("assessment_fingerprint") == assessment_fingerprint):
+                    print(f"[IDEMPOTENT_SAVE] ⚠️ Assessment already processed for {assessment_fingerprint}")
+                    print(f"[IDEMPOTENT_SAVE] ✅ Returning existing plan without incrementing counter")
+                    
+                    # Return the existing plan linked to this assessment
+                    existing_plan_id = existing_assessment_history.get("learning_plan_id")
+                    if existing_plan_id:
+                        existing_plan = await learning_plans_collection.find_one({"id": existing_plan_id})
+                        if existing_plan:
+                            print(f"[IDEMPOTENT_SAVE] ✅ Returning existing plan: {existing_plan_id}")
+                            new_plan = existing_plan
+                        else:
+                            print(f"[IDEMPOTENT_SAVE] ⚠️ Existing plan not found, using newly created plan")
+                            new_plan = created_plan
+                    else:
+                        print(f"[IDEMPOTENT_SAVE] ⚠️ No plan ID in history, using newly created plan")
+                        new_plan = created_plan
                 else:
                     # This is a new assessment - proceed with increment
                     print(f"[IDEMPOTENT_SAVE] ✅ New assessment detected - proceeding with increment")
                     
-                    # Prepare the update operations with idempotency protection
+                    # Generate unique assessment ID for tracking
+                    assessment_id = f"{assessment_fingerprint}_{assessment_timestamp}"
+                    
+                    # Prepare the update operations with bulletproof idempotency protection
                     update_operations = {
                         "$set": {
                             "last_assessment_data": plan_request.assessment_data,
                             "assessment_history": {
+                                "assessment_fingerprint": assessment_fingerprint,  # 🔥 NEW: Use fingerprint
                                 "assessment_id": assessment_id,
                                 "timestamp": assessment_timestamp,
                                 "data": plan_request.assessment_data,
@@ -545,17 +659,18 @@ async def create_learning_plan(
                         "$inc": {"assessments_used": 1}  # Increment counter atomically
                     }
                     
-                    print(f"[IDEMPOTENT_SAVE] 🔥 IDEMPOTENT FIX: Incrementing assessment counter with duplicate protection")
+                    print(f"[IDEMPOTENT_SAVE] 🔥 BULLETPROOF FIX: Incrementing assessment counter with fingerprint protection")
                     print(f"[IDEMPOTENT_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
                     
-                    # Execute the atomic update with conditional check
+                    # 🔥 CRITICAL: Execute atomic update with fingerprint-based conditional check
+                    # This ensures only ONE increment happens even with retries/duplicates
                     update_result = await users_collection.update_one(
                         {
                             "_id": ObjectId(current_user.id),
-                            # Ensure we don't double-increment if assessment_history already has this plan
+                            # 🔥 BULLETPROOF: Ensure fingerprint doesn't already exist
                             "$or": [
                                 {"assessment_history": {"$exists": False}},
-                                {"assessment_history.learning_plan_id": {"$ne": created_plan['id']}}
+                                {"assessment_history.assessment_fingerprint": {"$ne": assessment_fingerprint}}
                             ]
                         },
                         update_operations
@@ -563,21 +678,36 @@ async def create_learning_plan(
                     
                     if update_result.modified_count > 0:
                         print(f"[IDEMPOTENT_SAVE] ✅ Assessment data saved to user profile")
-                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (idempotent)")
-                        print(f"[IDEMPOTENT_SAVE] 🎯 IDEMPOTENT SAVE COMPLETE: Assessment + Plan saved together")
+                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (bulletproof idempotent)")
+                        print(f"[IDEMPOTENT_SAVE] 🎯 BULLETPROOF SAVE COMPLETE: Assessment + Plan saved together")
                     else:
-                        print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - possible duplicate detected")
+                        print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - duplicate detected by fingerprint")
                         
                         # Double-check if this was due to duplicate protection
                         fresh_user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
                         fresh_history = fresh_user.get("assessment_history", {})
-                        if fresh_history.get("learning_plan_id") == created_plan['id']:
-                            print(f"[IDEMPOTENT_SAVE] ✅ Duplicate protection worked - assessment already exists")
+                        if fresh_history.get("assessment_fingerprint") == assessment_fingerprint:
+                            print(f"[IDEMPOTENT_SAVE] ✅ Bulletproof duplicate protection worked - assessment already exists")
+                            
+                            # Return the existing plan instead of creating a duplicate
+                            existing_plan_id = fresh_history.get("learning_plan_id")
+                            if existing_plan_id:
+                                existing_plan = await learning_plans_collection.find_one({"id": existing_plan_id})
+                                if existing_plan:
+                                    print(f"[IDEMPOTENT_SAVE] ✅ Returning existing plan from duplicate check: {existing_plan_id}")
+                                    new_plan = existing_plan
+                                    # Don't return here, let it fall through to the return statement
+                                else:
+                                    new_plan = created_plan
+                            else:
+                                new_plan = created_plan
                         else:
-                            print(f"[IDEMPOTENT_SAVE] ❌ Unexpected update failure")
+                            print(f"[IDEMPOTENT_SAVE] ❌ Unexpected update failure - fingerprint mismatch")
+                            new_plan = created_plan
                     
                     # Update new_plan with the created plan data for return
-                    new_plan = created_plan
+                    if update_result.modified_count > 0:
+                        new_plan = created_plan
                     
             except Exception as e:
                 print(f"[ATOMIC_SAVE] ⚠️ Warning: Failed to save assessment data: {str(e)}")
@@ -872,12 +1002,13 @@ async def update_session_progress(
         )
 
 class SessionSummaryRequest(BaseModel):
-    """Model for session summary with optional duration"""
+    """Model for session summary with optional duration and batch analysis"""
     messages: Optional[List[Dict[str, Any]]] = []
     duration_minutes: Optional[float] = 0.0
     language: Optional[str] = None
     level: Optional[str] = None
     topic: Optional[str] = None
+    sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch analysis support
 
 @router.post("/session-summary")
 async def save_session_summary(
@@ -1132,9 +1263,11 @@ async def save_session_summary(
             from flashcard_service import FlashcardService
             from models import FlashcardGenerationRequest
 
-            # Create flashcard generation request
+            # 🔥 CRITICAL FIX: Use the learning_plan_session_id so frontend can filter properly
+            # Frontend filter checks: set.session_id.startsWith('learning_plan_')
+            # This ensures flashcards appear in the "Learning Plans" filter
             flashcard_request = FlashcardGenerationRequest(
-                session_id=str(uuid.uuid4()),  # Generate unique session ID for flashcards
+                session_id=learning_plan_session_id,  # Use the proper learning_plan session ID!
                 language=learning_plan.get("language", "english"),
                 level=learning_plan.get("proficiency_level", "B1"),
                 topic=request.topic if request and request.topic else None,
@@ -1143,16 +1276,41 @@ async def save_session_summary(
                 count=5  # Generate 5 flashcards per session
             )
 
-            print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for completed session")
+            print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for learning plan session: {learning_plan_session_id}")
             print(f"[FLASHCARD_INTEGRATION] Language: {flashcard_request.language}, Level: {flashcard_request.level}")
 
             # Generate flashcards
             flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
 
             if flashcard_set and flashcard_set.flashcards:
+                # 🔥 CRITICAL FIX: Save flashcards to database (they were being generated but not saved!)
+                from bson import ObjectId
+                
+                # Save flashcard set to database
+                flashcard_set_doc = flashcard_set.dict()
+                flashcard_set_doc["_id"] = ObjectId()
+                flashcard_set_doc["created_at"] = datetime.utcnow()
+                
+                # Save individual flashcards
+                flashcard_docs = []
+                for flashcard in flashcard_set.flashcards:
+                    card_doc = flashcard.dict()
+                    card_doc["_id"] = ObjectId()
+                    flashcard_docs.append(card_doc)
+                
+                # Insert flashcard set
+                flashcard_sets_collection = database.flashcard_sets
+                set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
+                
+                # Insert individual flashcards
+                if flashcard_docs:
+                    flashcards_collection = database.flashcards
+                    cards_result = await flashcards_collection.insert_many(flashcard_docs)
+                    print(f"[FLASHCARD_INTEGRATION] 💾 Saved {len(cards_result.inserted_ids)} flashcards to database")
+                
                 generated_flashcards = len(flashcard_set.flashcards)
                 flashcard_generation_success = True
-                print(f"[FLASHCARD_INTEGRATION] ✅ Generated {generated_flashcards} flashcards successfully")
+                print(f"[FLASHCARD_INTEGRATION] ✅ Generated and saved {generated_flashcards} flashcards successfully")
             else:
                 print(f"[FLASHCARD_INTEGRATION] ⚠️ Flashcard generation returned empty result")
 
@@ -1162,6 +1320,35 @@ async def save_session_summary(
             flashcard_generation_success = False
             generated_flashcards = 0
 
+        # 🔥 NEW: Process batch sentence analysis if sentences were provided
+        background_analyses = []
+        if request and request.sentences_for_analysis and len(request.sentences_for_analysis) > 0:
+            try:
+                from background_sentence_analysis import batch_analyze_sentences
+                
+                print(f"[BATCH_ANALYSIS] 📊 Processing {len(request.sentences_for_analysis)} sentences for learning plan session")
+                
+                # Extract sentence texts from the request
+                sentence_texts = [s.get('text', '') for s in request.sentences_for_analysis if s.get('text')]
+                
+                if sentence_texts:
+                    # Use the same batch analysis system as practice sessions
+                    analyses = await batch_analyze_sentences(
+                        sentences=sentence_texts,
+                        language=learning_plan.get("language", "english"),
+                        level=learning_plan.get("proficiency_level", "B1")
+                    )
+                    
+                    background_analyses = analyses
+                    print(f"[BATCH_ANALYSIS] ✅ Generated {len(background_analyses)} analyses for learning plan session")
+                else:
+                    print(f"[BATCH_ANALYSIS] ⚠️ No valid sentence texts found in request")
+                    
+            except Exception as analysis_error:
+                print(f"[BATCH_ANALYSIS] ❌ Batch analysis failed: {str(analysis_error)}")
+                # Don't fail the session save if analysis fails
+                background_analyses = []
+        
         if result.modified_count > 0:
             print(f"[SESSION_SUMMARY] ✅ Learning plan updated successfully")
             print(f"[SESSION_SUMMARY] 🎉 Session summary saved with UNIFIED TRACKING!")
@@ -1175,7 +1362,8 @@ async def save_session_summary(
                 "duration_minutes": duration_minutes,
                 "subscription_tracked": subscription_tracked,
                 "flashcards_generated": generated_flashcards,
-                "flashcard_generation_success": flashcard_generation_success
+                "flashcard_generation_success": flashcard_generation_success,
+                "background_analyses": background_analyses  # 🔥 NEW: Return analyses to frontend
             }
         else:
             print(f"[SESSION_SUMMARY] ❌ Failed to update learning plan in database")

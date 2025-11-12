@@ -12,6 +12,9 @@ from bson import ObjectId
 # Import production-safe logging
 from logging_config import logger
 
+# Import performance cache
+from performance_cache import perf_cache
+
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -200,10 +203,21 @@ class SubscriptionService:
             stripe_customer_id = user.get("stripe_customer_id")
             if stripe_customer_id:
                 try:
-                    # Get subscription from Stripe to check trial status
-                    subscriptions = stripe.Subscription.list(
-                        customer=stripe_customer_id,
-                        limit=1
+                    # 🚀 OPTIMIZED: Cache Stripe API call for 30 seconds
+                    cache_key = f"stripe_subscription:{stripe_customer_id}"
+                    
+                    async def fetch_stripe_subscription():
+                        """Fetch subscription from Stripe (cached)"""
+                        return stripe.Subscription.list(
+                            customer=stripe_customer_id,
+                            limit=1
+                        )
+                    
+                    # Get subscription from Stripe with caching
+                    subscriptions = await perf_cache.fetch_with_cache_and_dedup(
+                        cache_key,
+                        fetch_stripe_subscription,
+                        ttl_seconds=30
                     )
                     
                     if subscriptions.data:

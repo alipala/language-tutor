@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useNavigation } from '@/lib/navigation';
 import { useAuth } from '@/lib/auth';
+import { getApiUrl } from '@/lib/api-utils';
 import LanguageOptionsModal from '@/components/language-options-modal';
 import LoadingModal from '@/components/loading-modal';
 import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
@@ -910,10 +911,8 @@ export default function VerticalCarouselFlow() {
     setIsExtendingKnowledge(true);
     
     try {
-      // Use dynamic backend URL that works in both development and production
-      const backendUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://taco.up.railway.app' 
-        : 'http://localhost:8000';
+      // Use the proper API URL utility that handles all environments
+      const backendUrl = getApiUrl();
       
       const response = await fetch(`${backendUrl}/api/custom-topic/research`, {
         method: 'POST',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Tooltip } from '@/components/ui/tooltip';
 import { AssessmentCard } from '@/components/assessment-card';
 import AssessmentLearningPlanCard from '@/components/assessment-learning-plan-card';
-import { getUserLearningPlans, LearningPlan, getUserFlashcardSets, FlashcardSet, getDueFlashcards, Flashcard, reviewFlashcard } from '@/lib/learning-api';
+import { LearningPlan, getUserFlashcardSets, FlashcardSet, getDueFlashcards, Flashcard, reviewFlashcard } from '@/lib/learning-api';
 import { getApiUrl } from '@/lib/api-utils';
+import { useLearningPlans } from '@/contexts/LearningPlansContext';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -36,6 +37,7 @@ import VoiceSelectionComponent from '@/components/voice-selection';
 import { useLowMinutesAlert } from '@/hooks/useLowMinutesAlert';
 import LowMinutesAlert from '@/components/LowMinutesAlert';
 import { apiCache } from '@/lib/api-cache';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 // API base URL
 const API_URL = getApiUrl();
@@ -44,6 +46,10 @@ export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, logout } = useAuth();
+  
+  // Use centralized learning plans context
+  const { learningPlans, loading: plansLoading, error: plansContextError, refreshLearningPlans } = useLearningPlans();
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState('');
@@ -57,8 +63,6 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-  const [learningPlans, setLearningPlans] = useState<LearningPlan[]>([]);
-  const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -182,6 +186,70 @@ export default function ProfilePage() {
   // State to control showing all conversations
   const [showAllConversations, setShowAllConversations] = useState(false);
 
+  // Mobile slider navigation state
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
+  // Flashcard slider navigation state
+  const [currentFlashcardSlideIndex, setCurrentFlashcardSlideIndex] = useState(0);
+  const flashcardSliderRef = useRef<HTMLDivElement>(null);
+
+  // Mobile slider navigation functions
+  const handlePrevSlide = () => {
+    if (currentSlideIndex > 0) {
+      const newIndex = currentSlideIndex - 1;
+      setCurrentSlideIndex(newIndex);
+      scrollToSlide(newIndex);
+    }
+  };
+
+  const handleNextSlide = () => {
+    if (currentSlideIndex < conversationHistory.length - 1) {
+      const newIndex = currentSlideIndex + 1;
+      setCurrentSlideIndex(newIndex);
+      scrollToSlide(newIndex);
+    }
+  };
+
+  const scrollToSlide = (index: number) => {
+    if (sliderRef.current) {
+      const slideWidth = 320 + 16; // 320px card width + 16px gap
+      const scrollLeft = index * slideWidth;
+      sliderRef.current.scrollTo({
+        left: scrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Flashcard slider navigation functions
+  const handlePrevFlashcardSlide = () => {
+    if (currentFlashcardSlideIndex > 0) {
+      const newIndex = currentFlashcardSlideIndex - 1;
+      setCurrentFlashcardSlideIndex(newIndex);
+      scrollToFlashcardSlide(newIndex);
+    }
+  };
+
+  const handleNextFlashcardSlide = () => {
+    if (currentFlashcardSlideIndex < filteredFlashcardSets.length - 1) {
+      const newIndex = currentFlashcardSlideIndex + 1;
+      setCurrentFlashcardSlideIndex(newIndex);
+      scrollToFlashcardSlide(newIndex);
+    }
+  };
+
+  const scrollToFlashcardSlide = (index: number) => {
+    if (flashcardSliderRef.current) {
+      const slideWidth = 280 + 16; // 280px card width + 16px gap
+      const scrollLeft = index * slideWidth;
+      flashcardSliderRef.current.scrollTo({
+        left: scrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Enhanced analysis modal state
   const [showEnhancedAnalysis, setShowEnhancedAnalysis] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
@@ -208,14 +276,48 @@ export default function ProfilePage() {
   const [flashcardLoading, setFlashcardLoading] = useState(false);
   const [flashcardFilter, setFlashcardFilter] = useState<'all' | 'learning-plans' | 'practice'>('all');
   const [flashcardViewMode, setFlashcardViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedLearningPlanFilter, setSelectedLearningPlanFilter] = useState<string>('all');
 
   // Filter flashcard sets based on selected filter
   const filteredFlashcardSets = flashcardSets.filter(set => {
-    if (flashcardFilter === 'all') return true;
-    if (flashcardFilter === 'learning-plans') return set.session_id.startsWith('learning_plan_');
-    if (flashcardFilter === 'practice') return !set.session_id.startsWith('learning_plan_');
+    // First apply the main filter (all/learning-plans/practice)
+    if (flashcardFilter === 'all') {
+      // If "all" is selected, don't filter by type
+    } else if (flashcardFilter === 'learning-plans') {
+      if (!set.session_id.startsWith('learning_plan_')) return false;
+    } else if (flashcardFilter === 'practice') {
+      if (set.session_id.startsWith('learning_plan_')) return false;
+    }
+
+    // Then apply the learning plan specific filter if applicable
+    if (flashcardFilter === 'learning-plans' && selectedLearningPlanFilter !== 'all') {
+      // Extract plan ID from session_id (format: learning_plan_{plan_id}_{session_number}_{uuid})
+      const parts = set.session_id.split('_');
+      if (parts.length >= 3) {
+        const planId = parts[2];
+        if (planId !== selectedLearningPlanFilter) return false;
+      }
+    }
+
     return true;
   });
+
+  // Get unique learning plans from flashcard sets for the filter dropdown
+  const learningPlansWithFlashcards = flashcardSets
+    .filter(set => set.session_id.startsWith('learning_plan_'))
+    .map(set => {
+      const parts = set.session_id.split('_');
+      if (parts.length >= 3) {
+        const planId = parts[2];
+        // Find the matching learning plan
+        const plan = learningPlans.find(p => p.id === planId);
+        return plan ? { id: planId, name: `${plan.language} - ${plan.proficiency_level}` } : null;
+      }
+      return null;
+    })
+    .filter((plan, index, self) => 
+      plan && self.findIndex(p => p && p.id === plan.id) === index
+    ) as Array<{ id: string; name: string }>;
   
   // Calculate export stats for export modal
   const exportStats = {
@@ -314,9 +416,8 @@ export default function ProfilePage() {
     }
   };
 
-  // Subscription status state
-  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  // Use centralized subscription status hook
+  const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
   
   // Use low minutes alert hook
   const { lowMinutesStatus, loading: lowMinutesLoading } = useLowMinutesAlert();
@@ -330,51 +431,6 @@ export default function ProfilePage() {
     longestStreak: progressStats?.longest_streak || 0
   };
 
-  // Fetch subscription status with caching
-  const fetchSubscriptionStatus = async () => {
-    if (!user) return;
-    
-    setSubscriptionLoading(true);
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('[PROFILE] No token found for subscription status fetch');
-        setSubscriptionLoading(false);
-        return;
-      }
-
-      console.log('[PROFILE] 🚀 Fetching subscription status with caching...');
-      
-      // Fetch with caching (60s cache - subscription rarely changes)
-      const data = await apiCache.fetchWithCache(
-        `subscription-status-${user._id}`,
-        async () => {
-          const response = await fetch('/api/stripe/subscription-status', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch subscription status');
-          }
-
-          return response.json();
-        },
-        60000 // Cache for 60 seconds
-      );
-
-      console.log('[PROFILE] ✅ Subscription status loaded (cached)');
-      setSubscriptionStatus(data);
-
-    } catch (error) {
-      console.error('[PROFILE] ❌ Error fetching subscription status:', error);
-    } finally {
-      setSubscriptionLoading(false);
-    }
-  };
 
   // Helper function to get plan display info
   const getPlanDisplayInfo = () => {
@@ -410,10 +466,8 @@ export default function ProfilePage() {
       setPreferredLanguage(user.preferred_language || '');
       setPreferredLevel(user.preferred_level || '');
       
-      // Fetch user's learning plans and progress data
-      fetchUserLearningPlans();
+      // Fetch progress data and flashcards (learning plans come from context)
       fetchProgressData();
-      fetchSubscriptionStatus();
       fetchFlashcardData();
     }
   }, [user]);
@@ -499,35 +553,6 @@ export default function ProfilePage() {
     }
   };
   
-  // Fetch user's learning plans with caching
-  const fetchUserLearningPlans = async () => {
-    if (!user) return;
-    
-    setPlansLoading(true);
-    setPlansError(null);
-    
-    try {
-      console.log('[PROFILE] 🚀 Fetching learning plans with caching...');
-      
-      // Fetch with caching (120s cache - learning plans rarely change)
-      const plans = await apiCache.fetchWithCache(
-        `learning-plans-${user._id}`,
-        async () => {
-          return await getUserLearningPlans();
-        },
-        120000 // Cache for 120 seconds
-      );
-      
-      setLearningPlans(plans);
-      console.log('[PROFILE] ✅ Learning plans loaded (cached):', plans.length);
-      
-    } catch (err: any) {
-      console.error('[PROFILE] ❌ Error fetching learning plans:', err);
-      setPlansError(err.message || 'Failed to load learning plans');
-    } finally {
-      setPlansLoading(false);
-    }
-  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -782,11 +807,11 @@ export default function ProfilePage() {
 
   // Handle payment processing completion
   const handlePaymentProcessingComplete = () => {
-    console.log('[PROFILE] Payment processing complete, refreshing subscription status');
+    console.log('[PROFILE] Payment processing complete, subscription status will auto-refresh');
     setShowPaymentProcessing(false);
 
-    // Refresh subscription status to get updated data
-    fetchSubscriptionStatus();
+    // The subscription context will automatically refresh on next render
+    // No need to manually fetch - the context handles it
 
     // Remove checkout parameter from URL
     const url = new URL(window.location.href);
@@ -1062,15 +1087,8 @@ export default function ProfilePage() {
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                    <Mic className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
                     Conversation History
-                    <span className="ml-2 bg-teal-100 text-teal-700 text-xs px-2 py-0.5 rounded-full">
-                      {progressStats?.total_sessions || 0} sessions
-                    </span>
                   </h3>
-                  <div className="text-sm text-gray-500">
-                    {progressStats?.total_minutes ? `${Math.round(progressStats.total_minutes)} minutes practiced` : ''}
-                  </div>
                 </div>
                 
                 {statsLoading ? (
@@ -1099,104 +1117,234 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {conversationHistory.slice(0, showAllConversations ? conversationHistory.length : 5).map((session, index) => (
-                      <div key={session.id || index} className="border rounded-xl p-4" style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
-                              {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                    {/* Mobile: Horizontal Scrolling Slider */}
+                    <div className="block md:hidden relative">
+                      {/* Left Arrow */}
+                      <button
+                        onClick={handlePrevSlide}
+                        disabled={currentSlideIndex === 0}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          currentSlideIndex === 0
+                            ? 'opacity-0 cursor-not-allowed'
+                            : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                        }`}
+                        aria-label="Previous conversation"
+                      >
+                        <ChevronRight className="h-6 w-6 rotate-180" />
+                      </button>
+
+                      {/* Right Arrow */}
+                      <button
+                        onClick={handleNextSlide}
+                        disabled={currentSlideIndex === conversationHistory.length - 1}
+                        className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          currentSlideIndex === conversationHistory.length - 1
+                            ? 'opacity-0 cursor-not-allowed'
+                            : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                        }`}
+                        aria-label="Next conversation"
+                      >
+                        <ChevronRight className="h-6 w-6" />
+                      </button>
+
+                      <div ref={sliderRef} className="flex gap-4 overflow-x-auto scrollbar-hide px-4 -mx-4 snap-x snap-mandatory">
+                        {conversationHistory.map((session, index) => (
+                          <div
+                            key={session.id || index}
+                            className="flex-shrink-0 w-80 snap-center border rounded-xl p-4"
+                            style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
+                                  {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-800 capitalize">
+                                    {session.language} - {session.level}
+                                  </h4>
+                                  <p className="text-sm text-gray-600">
+                                    {session.topic && `Topic: ${session.topic} • `}
+                                    {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-xs text-gray-500">
+                                  {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) : 'Recent'}
+                                </div>
+                                {session.is_streak_eligible && (
+                                  <div className="flex items-center text-xs text-green-600 mt-1">
+                                    <Flame className="h-3 w-3 mr-1" />
+                                    Streak eligible
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-800 capitalize">
-                                {session.language} - {session.level}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {session.topic && `Topic: ${session.topic} • `}
-                                {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-gray-500">
-                              {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : 'Recent'}
-                            </div>
-                            {session.is_streak_eligible && (
-                              <div className="flex items-center text-xs text-green-600 mt-1">
-                                <Flame className="h-3 w-3 mr-1" />
-                                Streak eligible
+
+                            {session.summary && (
+                              <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
+                                <strong>Summary:</strong> {session.summary}
                               </div>
                             )}
+
+                            {/* Enhanced Analysis Button */}
+                            <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+                              <div className="flex items-center">
+                                {session.enhanced_analysis && (
+                                  <div className="hidden md:inline-flex items-center px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-medium border-0" style={{ background: 'linear-gradient(135deg, #FFD63A 0%, #FFA955 100%)' }}>
+                                    <Brain className="h-3 w-3 mr-1" />
+                                    Enhanced Analysis Available
+                                  </div>
+                                )}
+                              </div>
+
+                              {session.enhanced_analysis && (
+                                <Button
+                                  onClick={() => handleShowEnhancedAnalysis(session.id, {
+                                    language: session.language,
+                                    level: session.level,
+                                    topic: session.topic,
+                                    duration_minutes: session.duration_minutes,
+                                    message_count: session.message_count,
+                                    created_at: session.created_at
+                                  })}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-white border-0 font-medium hover:opacity-90 transition-opacity w-fit"
+                                  style={{ backgroundColor: '#4ECFBF' }}
+                                  disabled={analysisLoading}
+                                >
+                                  {analysisLoading ? (
+                                    <>
+                                      <div className="animate-spin h-3 w-3 mr-1 border border-white border-t-transparent rounded-full"></div>
+                                      Loading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Brain className="h-3 w-3 mr-1" />
+                                      View Analysis
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        
-                        {session.summary && (
-                          <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
-                            <strong>Summary:</strong> {session.summary}
+                        ))}
+                      </div>
+
+
+
+
+                    </div>
+
+                    {/* Desktop: Vertical List Layout */}
+                    <div className="hidden md:block space-y-4">
+                      {conversationHistory.slice(0, showAllConversations ? conversationHistory.length : 5).map((session, index) => (
+                        <div key={session.id || index} className="border rounded-xl p-4" style={{ backgroundColor: '#F0FDFA', borderColor: 'rgba(78, 207, 191, 0.2)' }}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#4ECFBF' }}>
+                                {session.language?.charAt(0)?.toUpperCase() || 'L'}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-800 capitalize">
+                                  {session.language} - {session.level}
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  {session.topic && `Topic: ${session.topic} • `}
+                                  {Math.round(session.duration_minutes || 0)} min • {session.message_count || 0} messages
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500">
+                                {session.created_at ? new Date(session.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'Recent'}
+                              </div>
+                              {session.is_streak_eligible && (
+                                <div className="flex items-center text-xs text-green-600 mt-1">
+                                  <Flame className="h-3 w-3 mr-1" />
+                                  Streak eligible
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        
-                        {/* Enhanced Analysis Button */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
+
+                          {session.summary && (
+                            <div className="bg-white rounded-lg p-3 text-sm text-gray-700 mb-3">
+                              <strong>Summary:</strong> {session.summary}
+                            </div>
+                          )}
+
+                          {/* Enhanced Analysis Button */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              {session.enhanced_analysis && (
+                                <div className="inline-flex items-center px-3 py-1 text-white text-xs font-medium border-0" style={{ backgroundColor: '#F75A5A' }}>
+                                  <Brain className="h-3 w-3 mr-1" />
+                                  Enhanced Analysis Available
+                                </div>
+                              )}
+                            </div>
+
                             {session.enhanced_analysis && (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
-                                <Brain className="h-3 w-3 mr-1" />
-                                Enhanced Analysis Available
-                              </Badge>
+                              <Button
+                                onClick={() => handleShowEnhancedAnalysis(session.id, {
+                                  language: session.language,
+                                  level: session.level,
+                                  topic: session.topic,
+                                  duration_minutes: session.duration_minutes,
+                                  message_count: session.message_count,
+                                  created_at: session.created_at
+                                })}
+                                variant="outline"
+                                size="sm"
+                                className="text-white border-0 font-medium hover:opacity-90 transition-opacity"
+                                style={{ backgroundColor: '#4ECFBF' }}
+                                disabled={analysisLoading}
+                              >
+                                {analysisLoading ? (
+                                  <>
+                                    <div className="animate-spin h-3 w-3 mr-1 border border-white border-t-transparent rounded-full"></div>
+                                    Loading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Brain className="h-3 w-3 mr-1" />
+                                    View Analysis
+                                  </>
+                                )}
+                              </Button>
                             )}
                           </div>
-                          
-                          {session.enhanced_analysis && (
-                            <Button
-                              onClick={() => handleShowEnhancedAnalysis(session.id, {
-                                language: session.language,
-                                level: session.level,
-                                topic: session.topic,
-                                duration_minutes: session.duration_minutes,
-                                message_count: session.message_count,
-                                created_at: session.created_at
-                              })}
-                              variant="outline"
-                              size="sm"
-                              className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                              disabled={analysisLoading}
-                            >
-                              {analysisLoading ? (
-                                <>
-                                  <div className="animate-spin h-3 w-3 mr-1 border border-purple-600 border-t-transparent rounded-full"></div>
-                                  Loading...
-                                </>
-                              ) : (
-                                <>
-                                  <Brain className="h-3 w-3 mr-1" />
-                                  View Analysis
-                                </>
-                              )}
-                            </Button>
-                          )}
                         </div>
-                      </div>
-                    ))}
-                    
-                    {conversationHistory.length > 5 && (
-                      <div className="text-center pt-4">
-                        <button 
-                          onClick={() => setShowAllConversations(!showAllConversations)}
-                          className="text-sm font-medium hover:opacity-80 transition-opacity"
-                          style={{ color: '#4ECFBF' }}
-                        >
-                          {showAllConversations 
-                            ? `Show less conversations` 
-                            : `View all ${conversationHistory.length} conversations`
-                          }
-                        </button>
-                      </div>
-                    )}
+                      ))}
+
+                      {conversationHistory.length > 5 && (
+                        <div className="text-center pt-4">
+                          <button
+                            onClick={() => setShowAllConversations(!showAllConversations)}
+                            className="text-sm font-medium hover:opacity-80 transition-opacity"
+                            style={{ color: '#4ECFBF' }}
+                          >
+                            {showAllConversations
+                              ? `Show less conversations`
+                              : `View all ${conversationHistory.length} conversations`
+                            }
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1278,13 +1426,10 @@ export default function ProfilePage() {
                     <Brain className="h-6 w-6 mr-2" style={{ color: '#4ECFBF' }} />
                     AI-Generated Flashcards
                   </h3>
-                  <div className="text-sm text-gray-500">
-                    {flashcardSets.length} flashcard sets • {dueFlashcards.length} due today
-                  </div>
                 </div>
 
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6">
-                  <p className="text-sm text-teal-700">
+                <div className="rounded-xl p-4 mb-6 hidden md:block" style={{ backgroundColor: '#FFF5F5', border: '1px solid rgba(247, 90, 90, 0.2)' }}>
+                  <p className="text-sm" style={{ color: '#F75A5A' }}>
                     <strong>🧠 Smart Learning:</strong> Review AI-generated flashcards from your speaking sessions to reinforce vocabulary, grammar, and pronunciation. Cards are spaced using scientific learning algorithms for optimal retention.
                   </p>
                 </div>
@@ -1300,97 +1445,69 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Due Flashcards Section */}
-                    {dueFlashcards.length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                          <Zap className="h-5 w-5 mr-2 text-orange-500" />
-                          Due for Review ({dueFlashcards.length})
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {dueFlashcards.slice(0, 6).map((card) => (
-                            <div key={card.id} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                              <div className="text-sm text-gray-600 mb-2">Due: {new Date(card.next_review_date || '').toLocaleDateString()}</div>
-                              <div className="font-medium text-gray-800 mb-2">{card.front}</div>
-                              <div className="text-xs text-gray-500">Level: {card.difficulty} • {card.category}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <Button
-                            onClick={() => {
-                              // Start review session with due cards
-                              const mockSet = {
-                                id: 'due-cards',
-                                session_id: 'due-review',
-                                user_id: user?._id || '',
-                                language: 'Mixed',
-                                level: 'Mixed',
-                                title: 'Due for Review',
-                                description: 'Cards due for review today',
-                                flashcards: dueFlashcards,
-                                total_cards: dueFlashcards.length,
-                                created_at: new Date().toISOString(),
-                                is_completed: false
-                              };
-                              setSelectedFlashcardSet(mockSet);
-                              setShowFlashcardViewer(true);
-                            }}
-                            className="bg-orange-600 hover:bg-orange-700 text-white"
-                          >
-                            <Zap className="h-4 w-4 mr-2" />
-                            Start Review Session ({dueFlashcards.length} cards)
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Flashcard Sets Section */}
                     <div>
-                      <div className="flex items-center justify-between mb-6">
-                        <h4 className="text-lg font-semibold text-gray-800 flex items-center">
-                          <Book className="h-5 w-5 mr-2 text-indigo-500" />
-                          Your Flashcard Sets
-                        </h4>
-
-                        {/* Filter and View Controls */}
-                        <div className="flex items-center space-x-3">
-                          {/* Filter Dropdown */}
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-800 font-medium">Filter:</span>
+                      {/* Filter and View Controls - Mobile Optimized */}
+                      <div className="mb-6">
+                        {/* Mobile: Stacked Layout */}
+                        <div className="block md:hidden space-y-4">
+                          {/* Filter Dropdown - Full Width on Mobile */}
+                          <div className="flex items-center">
                             <select
                               value={flashcardFilter}
                               onChange={(e) => setFlashcardFilter(e.target.value as 'all' | 'learning-plans' | 'practice')}
-                              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
                             >
                               <option value="all">All Sets</option>
                               <option value="learning-plans">Learning Plans</option>
                               <option value="practice">Practice Sessions</option>
                             </select>
                           </div>
+                        </div>
 
-                          {/* View Mode Toggle */}
-                          <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
-                            <button
-                              onClick={() => setFlashcardViewMode('grid')}
-                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                                flashcardViewMode === 'grid'
-                                  ? 'bg-indigo-600 text-white shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-800'
-                              }`}
-                            >
-                              Grid
-                            </button>
-                            <button
-                              onClick={() => setFlashcardViewMode('list')}
-                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                                flashcardViewMode === 'list'
-                                  ? 'bg-indigo-600 text-white shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-800'
-                              }`}
-                            >
-                              List
-                            </button>
+                        {/* Desktop: Horizontal Layout */}
+                        <div className="hidden md:flex items-center justify-between">
+                          {/* Filter and View Controls */}
+                          <div className="flex items-center space-x-3">
+                            {/* Filter Dropdown */}
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-800 font-medium">Filter:</span>
+                              <select
+                                value={flashcardFilter}
+                                onChange={(e) => setFlashcardFilter(e.target.value as 'all' | 'learning-plans' | 'practice')}
+                                className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
+                              >
+                                <option value="all">All Sets</option>
+                                <option value="learning-plans">Learning Plans</option>
+                                <option value="practice">Practice Sessions</option>
+                              </select>
+                            </div>
+
+                            {/* View Mode Toggle */}
+                            <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
+                              <button
+                                onClick={() => setFlashcardViewMode('grid')}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                  flashcardViewMode === 'grid'
+                                    ? 'text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-800'
+                                  }`}
+                                style={{ backgroundColor: flashcardViewMode === 'grid' ? '#F75A5A' : 'transparent' }}
+                              >
+                                Grid
+                              </button>
+                              <button
+                                onClick={() => setFlashcardViewMode('list')}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                  flashcardViewMode === 'list'
+                                    ? 'text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-800'
+                                  }`}
+                                style={{ backgroundColor: flashcardViewMode === 'list' ? '#F75A5A' : 'transparent' }}
+                              >
+                                List
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1422,74 +1539,118 @@ export default function ProfilePage() {
                           </Button>
                         </div>
                       ) : (
-                        <div className={
-                          flashcardViewMode === 'grid'
-                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            : "space-y-4"
-                        }>
-                          {filteredFlashcardSets.map((set) => (
-                            flashcardViewMode === 'grid' ? (
-                              // Grid View
-                              <div key={set.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex items-start justify-between mb-4">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                      <Brain className="h-6 w-6 text-indigo-600" />
-                                    </div>
-                                    <div>
-                                      <h5 className="font-semibold text-gray-800">{set.title}</h5>
-                                      <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
-                                    </div>
-                                  </div>
-                                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                                    {set.total_cards} cards
-                                  </Badge>
-                                </div>
+                        <>
+                          {/* Mobile: Horizontal Scrolling Slider */}
+                          <div className="block md:hidden relative">
+                            {/* Left Arrow */}
+                            <button
+                              onClick={handlePrevFlashcardSlide}
+                              disabled={currentFlashcardSlideIndex === 0}
+                              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                currentFlashcardSlideIndex === 0
+                                  ? 'opacity-0 cursor-not-allowed'
+                                  : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                              }`}
+                              aria-label="Previous flashcard set"
+                            >
+                              <ChevronRight className="h-6 w-6 rotate-180" />
+                            </button>
 
-                                {set.description && (
-                                  <p className="text-sm text-gray-600 mb-4">{set.description}</p>
-                                )}
+                            {/* Right Arrow */}
+                            <button
+                              onClick={handleNextFlashcardSlide}
+                              disabled={currentFlashcardSlideIndex === filteredFlashcardSets.length - 1}
+                              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                currentFlashcardSlideIndex === filteredFlashcardSets.length - 1
+                                  ? 'opacity-0 cursor-not-allowed'
+                                  : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                              }`}
+                              aria-label="Next flashcard set"
+                            >
+                              <ChevronRight className="h-6 w-6" />
+                            </button>
 
-                                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                                  <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
-                                  {set.is_completed && (
-                                    <Badge className="bg-green-100 text-green-700 text-xs">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Completed
-                                    </Badge>
-                                  )}
-                                </div>
-
-                                <Button
-                                  onClick={() => {
-                                    setSelectedFlashcardSet(set);
-                                    setShowFlashcardViewer(true);
-                                  }}
-                                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                                  size="sm"
+                            <div ref={flashcardSliderRef} className="flex gap-4 overflow-x-auto scrollbar-hide px-4 -mx-4 snap-x snap-mandatory">
+                              {filteredFlashcardSets.map((set, index) => (
+                                <div
+                                  key={set.id}
+                                  className="flex-shrink-0 w-72 snap-center rounded-xl p-6 hover:shadow-lg transition-shadow"
+                                  style={{ backgroundColor: '#FFF5F5', border: '1px solid rgba(247, 90, 90, 0.2)' }}
                                 >
-                                  <Book className="h-4 w-4 mr-2" />
-                                  Study Now
-                                </Button>
-                              </div>
-                            ) : (
-                              // List View
-                              <div key={set.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-4 flex-1">
-                                    <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                      <Brain className="h-6 w-6 text-indigo-600" />
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FED7AA' }}>
+                                        <Brain className="h-6 w-6" style={{ color: '#FFA955' }} />
+                                      </div>
+                                      <div>
+                                        <h5 className="font-semibold text-gray-800">{set.title}</h5>
+                                        <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                      </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h5 className="font-semibold text-gray-800 truncate">{set.title}</h5>
-                                      <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
-                                      {set.description && (
-                                        <p className="text-sm text-gray-500 mt-1 truncate">{set.description}</p>
-                                      )}
+
+                                  </div>
+
+                                  {set.description && (
+                                    <p className="text-sm text-gray-600 mb-4">{set.description}</p>
+                                  )}
+
+                                  <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                                    <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
+                                    {set.is_completed && (
+                                      <Badge className="bg-green-100 text-green-700 text-xs">
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Completed
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  <Button
+                                    onClick={() => {
+                                      setSelectedFlashcardSet(set);
+                                      setShowFlashcardViewer(true);
+                                    }}
+                                    className="w-full text-white"
+                                    size="sm"
+                                    style={{ backgroundColor: '#F75A5A' }}
+                                  >
+                                    <Book className="h-4 w-4 mr-2" />
+                                    Study Now
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Desktop: Grid/List Layout */}
+                          <div className="hidden md:block">
+                            <div className={
+                              flashcardViewMode === 'grid'
+                                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                                : "space-y-4"
+                            }>
+                              {filteredFlashcardSets.map((set) => (
+                                flashcardViewMode === 'grid' ? (
+                                  // Grid View
+                                  <div key={set.id} className="rounded-xl p-6 hover:shadow-lg transition-shadow" style={{ backgroundColor: '#FFF5F5', border: '1px solid rgba(247, 90, 90, 0.2)' }}>
+                                    <div className="flex items-start justify-between mb-4">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FED7AA' }}>
+                                          <Brain className="h-6 w-6" style={{ color: '#FFA955' }} />
+                                        </div>
+                                        <div>
+                                          <h5 className="font-semibold text-gray-800">{set.title}</h5>
+                                          <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                        </div>
+                                      </div>
+
                                     </div>
-                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                      <span>{set.total_cards} cards</span>
-                                      <span>{new Date(set.created_at).toLocaleDateString()}</span>
+
+                                    {set.description && (
+                                      <p className="text-sm text-gray-600 mb-4">{set.description}</p>
+                                    )}
+
+                                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                                      <span>Created: {new Date(set.created_at).toLocaleDateString()}</span>
                                       {set.is_completed && (
                                         <Badge className="bg-green-100 text-green-700 text-xs">
                                           <CheckCircle className="h-3 w-3 mr-1" />
@@ -1497,23 +1658,65 @@ export default function ProfilePage() {
                                         </Badge>
                                       )}
                                     </div>
+
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedFlashcardSet(set);
+                                        setShowFlashcardViewer(true);
+                                      }}
+                                      className="w-full text-white"
+                                      size="sm"
+                                      style={{ backgroundColor: '#F75A5A' }}
+                                    >
+                                      <Book className="h-4 w-4 mr-2" />
+                                      Study Now
+                                    </Button>
                                   </div>
-                                  <Button
-                                    onClick={() => {
-                                      setSelectedFlashcardSet(set);
-                                      setShowFlashcardViewer(true);
-                                    }}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white ml-4"
-                                    size="sm"
-                                  >
-                                    <Book className="h-4 w-4 mr-2" />
-                                    Study
-                                  </Button>
-                                </div>
-                              </div>
-                            )
-                          ))}
-                        </div>
+                                ) : (
+                                  // List View
+                                  <div key={set.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-4 flex-1">
+                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FED7AA' }}>
+                                          <Brain className="h-6 w-6" style={{ color: '#FFA955' }} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <h5 className="font-semibold text-gray-800 truncate">{set.title}</h5>
+                                          <p className="text-sm text-gray-600">{set.language} • {set.level}</p>
+                                          {set.description && (
+                                            <p className="text-sm text-gray-500 mt-1 truncate">{set.description}</p>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                          <span>{set.total_cards} cards</span>
+                                          <span>{new Date(set.created_at).toLocaleDateString()}</span>
+                                          {set.is_completed && (
+                                            <Badge className="bg-green-100 text-green-700 text-xs">
+                                              <CheckCircle className="h-3 w-3 mr-1" />
+                                              Completed
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        onClick={() => {
+                                          setSelectedFlashcardSet(set);
+                                          setShowFlashcardViewer(true);
+                                        }}
+                                        className="text-white ml-4"
+                                        size="sm"
+                                        style={{ backgroundColor: '#F75A5A' }}
+                                      >
+                                        <Book className="h-4 w-4 mr-2" />
+                                        Study
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              ))}
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>

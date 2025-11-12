@@ -56,7 +56,7 @@ from auth import (
 from email_service import send_welcome_email
 from database import users_collection, tutors_collection, institutions_collection
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 @router.post("/check-user-type")
 async def check_user_type(request: EmailCheckRequest):

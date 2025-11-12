@@ -214,6 +214,7 @@ class SaveConversationRequest(BaseModel):
     duration_minutes: float
     learning_plan_id: Optional[str] = None
     conversation_type: Optional[str] = 'practice'
+    sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch sentence analysis
 
 class ConversationStats(BaseModel):
     total_sessions: int

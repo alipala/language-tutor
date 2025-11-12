@@ -8,8 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bell, CheckCircle, Clock, AlertTriangle, Gift, Info, Wrench } from 'lucide-react';
 import { getApiUrl } from '@/lib/api-utils';
 
-// Use relative URLs for API calls to leverage Next.js rewrites
-const API_URL = '';
+// Get the correct API URL for the current environment
+const API_URL = getApiUrl();
 
 interface Notification {
   id: string;

@@ -28,6 +28,7 @@ from models import UserResponse, UsageTrackingRequest, SpeakingTimeTrackingReque
 from database import database
 from subscription_service import SubscriptionService
 from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
+from performance_cache import perf_cache
 
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
@@ -162,8 +163,8 @@ async def create_checkout_session(
         try:
             logger.info(f"[AUTH_CHECKOUT] Creating Stripe checkout session...")
             
-            # 🔥 FIX: Create checkout session with all required parameters
-            # The 400 error was likely due to missing or invalid configuration
+            # 🔥 FIX: Create checkout session with simplified configuration
+            # The 400 error was caused by customer_update conflicting with promotion codes
             checkout_session_data = {
                 "customer": customer_id,
                 "payment_method_types": ["card"],
@@ -176,19 +177,12 @@ async def create_checkout_session(
                 "mode": "subscription",
                 "success_url": success_url,
                 "cancel_url": cancel_url,
-                # 🔥 COUPON FIX: Enable promotion codes properly
+                # 🔥 PROMO CODE FIX: Enable promotion codes (simplified config)
                 "allow_promotion_codes": True,
                 # Add metadata for tracking
                 "metadata": {
                     "user_id": str(current_user.id),
                     "user_email": current_user.email
-                },
-                # Set billing address collection
-                "billing_address_collection": "auto",
-                # Set customer update to allow email updates
-                "customer_update": {
-                    "address": "auto",
-                    "name": "auto"
                 },
                 # Add subscription data with metadata
                 "subscription_data": {
@@ -261,98 +255,104 @@ async def create_customer_portal_session(
 async def get_subscription_status(
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """🔥 FIXED: Get comprehensive subscription status with CORRECT minute calculation"""
+    """🔥 OPTIMIZED: Get comprehensive subscription status with server-side caching"""
     try:
-        # 🔥 CRITICAL FIX: Calculate minutes directly from user's practice_minutes_used
-        # This ensures frontend shows the SAME minutes as the bulletproof tracking system
+        # 🚀 PERFORMANCE FIX: Use server-side caching with request deduplication
+        cache_key = f"subscription_status:{current_user.id}"
         
-        from bson import ObjectId
-        
-        # Get user document directly from database
-        user_doc = await database["users"].find_one({"_id": ObjectId(current_user.id)})
-        if not user_doc:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Get subscription details
-        subscription_status = user_doc.get("subscription_status", "free")
-        subscription_plan = user_doc.get("subscription_plan", "try_learn")
-        subscription_period = user_doc.get("subscription_period", "monthly")
-        practice_minutes_used = user_doc.get("practice_minutes_used", 0.0)
-        practice_sessions_used = user_doc.get("practice_sessions_used", 0)
-        assessments_used = user_doc.get("assessments_used", 0)
-        
-        logger.info(f"[SUBSCRIPTION_STATUS] 🔥 FIXED CALCULATION for user {current_user.id}")
-        logger.info(f"[SUBSCRIPTION_STATUS] Plan: {subscription_plan} ({subscription_period})")
-        logger.info(f"[SUBSCRIPTION_STATUS] Minutes used: {practice_minutes_used}")
-        logger.info(f"[SUBSCRIPTION_STATUS] Sessions used: {practice_sessions_used}")
-        
-        # Calculate limits based on subscription plan (SAME logic as bulletproof tracker)
-        if subscription_plan == "team_mastery":
-            # Team Mastery: Unlimited everything
-            limits = {
-                "is_unlimited": True,
-                "minutes_limit": -1,
-                "minutes_used": practice_minutes_used,
-                "minutes_remaining": -1,
-                "sessions_limit": -1,
-                "sessions_used": practice_sessions_used,
-                "sessions_remaining": -1,
-                "assessments_limit": -1,
-                "assessments_used": assessments_used,
-                "assessments_remaining": -1
+        async def fetch_subscription_data():
+            """Inner function to fetch subscription data (cached by perf_cache)"""
+            from bson import ObjectId
+            
+            # Get user document directly from database
+            user_doc = await database["users"].find_one({"_id": ObjectId(current_user.id)})
+            if not user_doc:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            # Get subscription details
+            subscription_status = user_doc.get("subscription_status", "free")
+            subscription_plan = user_doc.get("subscription_plan", "try_learn")
+            subscription_period = user_doc.get("subscription_period", "monthly")
+            practice_minutes_used = user_doc.get("practice_minutes_used", 0.0)
+            practice_sessions_used = user_doc.get("practice_sessions_used", 0)
+            assessments_used = user_doc.get("assessments_used", 0)
+            
+            logger.info(f"[SUBSCRIPTION_STATUS] 🚀 CACHED CALCULATION for user {current_user.id}")
+            logger.info(f"[SUBSCRIPTION_STATUS] Plan: {subscription_plan} ({subscription_period})")
+            logger.info(f"[SUBSCRIPTION_STATUS] Minutes used: {practice_minutes_used}")
+            logger.info(f"[SUBSCRIPTION_STATUS] Sessions used: {practice_sessions_used}")
+            
+            # Calculate limits based on subscription plan
+            if subscription_plan == "team_mastery":
+                limits = {
+                    "is_unlimited": True,
+                    "minutes_limit": -1,
+                    "minutes_used": practice_minutes_used,
+                    "minutes_remaining": -1,
+                    "sessions_limit": -1,
+                    "sessions_used": practice_sessions_used,
+                    "sessions_remaining": -1,
+                    "assessments_limit": -1,
+                    "assessments_used": assessments_used,
+                    "assessments_remaining": -1
+                }
+            elif subscription_plan == "fluency_builder":
+                if subscription_period == "annual":
+                    minutes_limit = 1800
+                else:
+                    minutes_limit = 150
+                
+                minutes_remaining = max(0, minutes_limit - practice_minutes_used)
+                
+                limits = {
+                    "is_unlimited": False,
+                    "minutes_limit": minutes_limit,
+                    "minutes_used": practice_minutes_used,
+                    "minutes_remaining": minutes_remaining,
+                    "sessions_limit": -1,
+                    "sessions_used": practice_sessions_used,
+                    "sessions_remaining": -1,
+                    "assessments_limit": 2,
+                    "assessments_used": assessments_used,
+                    "assessments_remaining": max(0, 2 - assessments_used)
+                }
+                
+                logger.info(f"[SUBSCRIPTION_STATUS] ✅ Fluency Builder: {minutes_remaining}/{minutes_limit} minutes remaining")
+            else:  # try_learn
+                minutes_remaining = max(0, 15 - practice_minutes_used)
+                
+                limits = {
+                    "is_unlimited": False,
+                    "minutes_limit": 15,
+                    "minutes_used": practice_minutes_used,
+                    "minutes_remaining": minutes_remaining,
+                    "sessions_limit": 3,
+                    "sessions_used": practice_sessions_used,
+                    "sessions_remaining": max(0, 3 - practice_sessions_used),
+                    "assessments_limit": 1,
+                    "assessments_used": assessments_used,
+                    "assessments_remaining": max(0, 1 - assessments_used)
+                }
+            
+            # Build response with correct data
+            return {
+                "status": subscription_status,
+                "plan": subscription_plan,
+                "period": subscription_period,
+                "limits": limits,
+                "is_in_trial": user_doc.get("is_in_trial", False),
+                "trial_end_date": user_doc.get("trial_end_date"),
+                "trial_days_remaining": None
             }
-        elif subscription_plan == "fluency_builder":
-            # Fluency Builder: Limited minutes and assessments, unlimited sessions
-            if subscription_period == "annual":
-                minutes_limit = 1800  # 1800 minutes annually
-            else:
-                minutes_limit = 150   # 150 minutes monthly
-            
-            minutes_remaining = max(0, minutes_limit - practice_minutes_used)
-            
-            limits = {
-                "is_unlimited": False,
-                "minutes_limit": minutes_limit,
-                "minutes_used": practice_minutes_used,
-                "minutes_remaining": minutes_remaining,
-                "sessions_limit": -1,  # Unlimited sessions
-                "sessions_used": practice_sessions_used,
-                "sessions_remaining": -1,
-                "assessments_limit": 2,  # 2 assessments per period (CORRECTED!)
-                "assessments_used": assessments_used,
-                "assessments_remaining": max(0, 2 - assessments_used)
-            }
-            
-            logger.info(f"[SUBSCRIPTION_STATUS] ✅ Fluency Builder: {minutes_remaining}/{minutes_limit} minutes remaining")
-        else:  # try_learn
-            # Try & Learn: Limited everything
-            minutes_remaining = max(0, 15 - practice_minutes_used)
-            
-            limits = {
-                "is_unlimited": False,
-                "minutes_limit": 15,
-                "minutes_used": practice_minutes_used,
-                "minutes_remaining": minutes_remaining,
-                "sessions_limit": 3,
-                "sessions_used": practice_sessions_used,
-                "sessions_remaining": max(0, 3 - practice_sessions_used),
-                "assessments_limit": 1,
-                "assessments_used": assessments_used,
-                "assessments_remaining": max(0, 1 - assessments_used)
-            }
         
-        # Build response with correct data
-        response = {
-            "status": subscription_status,
-            "plan": subscription_plan,
-            "period": subscription_period,
-            "limits": limits,
-            "is_in_trial": user_doc.get("is_in_trial", False),
-            "trial_end_date": user_doc.get("trial_end_date"),
-            "trial_days_remaining": None  # Could calculate if needed
-        }
+        # Use server-side cache with 30-second TTL and request deduplication
+        response = await perf_cache.fetch_with_cache_and_dedup(
+            cache_key,
+            fetch_subscription_data,
+            ttl_seconds=30
+        )
         
-        logger.info(f"[SUBSCRIPTION_STATUS] ✅ FIXED: Frontend will now show correct minutes!")
+        logger.info(f"[SUBSCRIPTION_STATUS] ✅ Response served (cached or fresh)")
         return response
         
     except Exception as e:

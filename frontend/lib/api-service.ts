@@ -15,15 +15,16 @@ import { apiCache } from './api-cache';
 import { getApiUrl } from './api-utils';
 
 // Cache durations (in milliseconds)
+// 🚀 PERFORMANCE OPTIMIZED: Increased cache durations to reduce API calls
 const CACHE_DURATIONS = {
-  SUBSCRIPTION_STATUS: 60000,      // 60 seconds
-  UNREAD_COUNT: 30000,             // 30 seconds
-  PROGRESS_STATS: 60000,           // 60 seconds
-  LEARNING_PLANS: 120000,          // 120 seconds
-  CONVERSATION_HISTORY: 60000,     // 60 seconds
-  ACHIEVEMENTS: 120000,            // 120 seconds
-  USER_INFO: 300000,               // 5 minutes
-  LOW_MINUTES_CHECK: 60000,        // 60 seconds
+    SUBSCRIPTION_STATUS: 30000,      // 30 seconds (matches server-side cache)
+    UNREAD_COUNT: 30000,             // 30 seconds
+    PROGRESS_STATS: 60000,           // 60 seconds
+    LEARNING_PLANS: 120000,          // 120 seconds
+    CONVERSATION_HISTORY: 60000,     // 60 seconds
+    ACHIEVEMENTS: 120000,            // 120 seconds
+    USER_INFO: 300000,               // 5 minutes
+    LOW_MINUTES_CHECK: 30000         // 30 seconds (matches server-side cache)
 };
 
 /**
@@ -244,6 +245,51 @@ export async function fetchLowMinutesCheck() {
       return response.json();
     },
     CACHE_DURATIONS.LOW_MINUTES_CHECK
+  );
+}
+
+/**
+ * 🚀 BATCH ENDPOINT: Fetch all dashboard data in a single request
+ * 
+ * This replaces 6+ individual API calls with one batched call:
+ * - Progress stats
+ * - Recent conversations
+ * - Achievements
+ * - Flashcard sets
+ * - Due flashcards
+ * - Learning plans
+ * 
+ * All queries run in parallel on the backend for optimal performance.
+ */
+export async function fetchDashboardData() {
+  const token = getAuthToken();
+  const userId = getUserId();
+  
+  if (!token || !userId) {
+    throw new Error('Not authenticated');
+  }
+
+  return apiCache.fetchWithCache(
+    `dashboard-data-${userId}`,
+    async () => {
+      const apiUrl = getApiUrl();
+      console.log('[API_SERVICE] 🚀 Fetching batched dashboard data...');
+      
+      const response = await fetch(`${apiUrl}/api/progress/dashboard-data`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+
+      const data = await response.json();
+      console.log('[API_SERVICE] ✅ Batched dashboard data received');
+      return data;
+    },
+    60000 // Cache for 60 seconds
   );
 }
 

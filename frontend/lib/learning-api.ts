@@ -120,6 +120,42 @@ export const getLearningGoals = async (): Promise<LearningGoal[]> => {
   return await response.json();
 };
 
+// Get enriched learning goals with sub-goals
+export const getEnrichedGoals = async (): Promise<any[]> => {
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}/api/learning/goals?enriched=true`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch enriched goals');
+  }
+
+  return await response.json();
+};
+
+// Get sub-goals for a specific main goal
+export const getSubGoals = async (goalId: string): Promise<any[]> => {
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}/api/learning/goals/${goalId}/sub-goals`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch sub-goals');
+  }
+
+  return await response.json();
+};
+
 // Flashcard API functions
 export interface Flashcard {
   id: string;
@@ -395,49 +431,69 @@ export const deleteFlashcardSet = async (setId: string): Promise<any> => {
 // Create learning plan
 export const createLearningPlan = async (planRequest: LearningPlanRequest): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
-  
+
   // Try to get auth token if available, but don't require it
   let headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   // Get auth token from local storage if available
   const token = localStorage.getItem('token');
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   try {
+    console.log('[CREATE_PLAN] Starting request to:', `${apiUrl}/api/learning/plan`);
+    console.log('[CREATE_PLAN] Has token:', !!token);
+    console.log('[CREATE_PLAN] Request data:', planRequest);
+
     // Wrap the request data in a plan_request field as expected by the backend
-    // Only include credentials if we have a token (authenticated user)
+    const requestBody = { plan_request: planRequest };
+    console.log('[CREATE_PLAN] Request body:', requestBody);
+
+    // 🔥 FIX: Don't use credentials: 'include' - it causes CORS issues
+    // The Authorization header is sufficient for authentication
     const options: RequestInit = {
       method: 'POST',
       headers,
-      body: JSON.stringify({ plan_request: planRequest }),
+      body: JSON.stringify(requestBody),
+      // Remove credentials to avoid CORS preflight issues
     };
-    
-    // Only include credentials for authenticated users
-    if (token) {
-      options.credentials = 'include';
-    }
-    
+
+    console.log('[CREATE_PLAN] Fetch options:', { ...options, body: '[REDACTED]' });
+
     const response = await fetch(`${apiUrl}/api/learning/plan`, options);
+
+    console.log('[CREATE_PLAN] Response status:', response.status);
+    console.log('[CREATE_PLAN] Response ok:', response.ok);
 
     if (!response.ok) {
       // Handle different error status codes
       if (response.status === 401) {
         throw new Error('Not authenticated');
       } else if (response.status === 422) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[CREATE_PLAN] Validation error:', errorData);
         throw new Error('Invalid plan request format');
       } else {
         const errorData = await response.json().catch(() => ({}));
+        console.error('[CREATE_PLAN] Error response:', errorData);
         throw new Error(errorData.detail || `Failed to create learning plan: ${response.status}`);
       }
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log('[CREATE_PLAN] Success! Plan ID:', data.id);
+    return data;
   } catch (error) {
-    console.error('Error in createLearningPlan:', error);
+    console.error('[CREATE_PLAN] Error in createLearningPlan:', error);
+    // Log more details about the error
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('[CREATE_PLAN] Network error - possible CORS or connectivity issue');
+      console.error('[CREATE_PLAN] API URL:', apiUrl);
+      console.error('[CREATE_PLAN] Check if backend is running and CORS is configured correctly');
+    }
     throw error;
   }
 };
@@ -445,16 +501,16 @@ export const createLearningPlan = async (planRequest: LearningPlanRequest): Prom
 // Get learning plan by ID
 export const getLearningPlan = async (planId: string): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
-  
+
   // Check if user is authenticated
   const token = localStorage.getItem('token');
-  
+
   // For guest users, try to get the plan from session storage first
   if (!token) {
     // Try to get language and level from session storage
     const language = sessionStorage.getItem('selectedLanguage');
     const level = sessionStorage.getItem('selectedLevel');
-    
+
     // If we have the basic info in session storage, create a minimal plan object
     if (language && level) {
       console.log('Creating minimal plan for guest user from session storage');
@@ -473,11 +529,11 @@ export const getLearningPlan = async (planId: string): Promise<LearningPlan> => 
         created_at: new Date().toISOString()
       };
     }
-    
+
     // If we don't have the info in session storage, throw an error
     throw new Error('Authentication required to access learning plan');
   }
-  
+
   // For authenticated users, fetch the plan from the API
   const response = await fetch(`${apiUrl}/api/learning/plan/${planId}`, {
     method: 'GET',
@@ -498,13 +554,13 @@ export const getLearningPlan = async (planId: string): Promise<LearningPlan> => 
 // Assign learning plan to user
 export const assignPlanToUser = async (planId: string): Promise<LearningPlan> => {
   const apiUrl = getApiUrl();
-  
+
   // This endpoint requires authentication
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication required to assign learning plan');
   }
-  
+
   const response = await fetch(`${apiUrl}/api/learning/plan/${planId}/assign`, {
     method: 'PUT',
     headers: {
@@ -524,13 +580,13 @@ export const assignPlanToUser = async (planId: string): Promise<LearningPlan> =>
 // Get all learning plans for the current user
 export const getUserLearningPlans = async (): Promise<LearningPlan[]> => {
   const apiUrl = getApiUrl();
-  
+
   // This endpoint requires authentication
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication required to access user learning plans');
   }
-  
+
   const response = await fetch(`${apiUrl}/api/learning/plans`, {
     method: 'GET',
     headers: {

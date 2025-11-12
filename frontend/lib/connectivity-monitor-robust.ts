@@ -32,6 +32,8 @@ export interface ConnectivityOptions {
   enableFallbacks: boolean;
   debounceDelay: number;
   consecutiveFailureThreshold: number;
+  activityBasedChecking: boolean; // Only check after inactivity
+  inactivityThreshold: number; // Milliseconds of inactivity before checking
 }
 
 class RobustConnectivityMonitor {
@@ -46,12 +48,14 @@ class RobustConnectivityMonitor {
 
   private options: ConnectivityOptions = {
     autoRetry: true,
-    retryInterval: 30000, // 30 seconds
+    retryInterval: 300000, // 5 minutes (only after inactivity)
     maxRetries: 5,
     showUserNotifications: true,
     enableFallbacks: true,
     debounceDelay: 3000, // 3 seconds debounce
-    consecutiveFailureThreshold: 2 // Require 2 consecutive failures
+    consecutiveFailureThreshold: 2, // Require 2 consecutive failures
+    activityBasedChecking: true, // Only check after inactivity
+    inactivityThreshold: 300000 // 5 minutes of inactivity
   };
 
   private listeners: Array<(status: ConnectivityStatus) => void> = [];
@@ -60,11 +64,14 @@ class RobustConnectivityMonitor {
   private navigationTimeout: NodeJS.Timeout | null = null;
   private isChecking = false;
   private suppressNotifications = false;
+  private lastActivityTime: number = Date.now();
+  private activityListenersAttached = false;
 
   constructor(options?: Partial<ConnectivityOptions>) {
     this.options = { ...this.options, ...options };
     this.initializeNavigationTracking();
     this.initializePageVisibilityTracking();
+    this.initializeActivityTracking();
     this.startMonitoring();
   }
 
@@ -161,17 +168,51 @@ class RobustConnectivityMonitor {
   }
 
   /**
+   * Initialize user activity tracking
+   */
+  private initializeActivityTracking(): void {
+    if (typeof window === 'undefined' || !this.options.activityBasedChecking) return;
+
+    if (this.activityListenersAttached) return;
+    
+    const updateActivity = () => {
+      this.lastActivityTime = Date.now();
+    };
+    
+    // Track various user activities
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    events.forEach(event => {
+      window.addEventListener(event, updateActivity, { passive: true });
+    });
+    
+    this.activityListenersAttached = true;
+    console.log('[CONNECTIVITY] Activity tracking initialized');
+  }
+
+  /**
+   * Check if user has been inactive
+   */
+  private isUserInactive(): boolean {
+    if (!this.options.activityBasedChecking) return false;
+    
+    const timeSinceActivity = Date.now() - this.lastActivityTime;
+    return timeSinceActivity >= this.options.inactivityThreshold;
+  }
+
+  /**
    * Start connectivity monitoring
    */
   private startMonitoring(): void {
-    console.log('[CONNECTIVITY] Starting robust connectivity monitoring...');
+    console.log('[CONNECTIVITY] Starting robust connectivity monitoring with activity-based checking...');
     
-    // Initial optimistic check after a short delay
+    // Initial check on app load after a short delay
     setTimeout(() => {
+      console.log('[CONNECTIVITY] Initial connectivity check on app load');
       this.checkConnectivity();
     }, 1000);
     
-    // Set up periodic checks
+    // Set up periodic checks based on activity
     if (this.options.autoRetry) {
       this.scheduleNextCheck();
     }
@@ -366,7 +407,15 @@ class RobustConnectivityMonitor {
     this.clearRetryTimer();
 
     this.retryTimer = setTimeout(() => {
-      this.checkConnectivity();
+      // Only check if user is inactive or activity-based checking is disabled
+      if (!this.options.activityBasedChecking || this.isUserInactive()) {
+        console.log('[CONNECTIVITY] User inactive - performing scheduled connectivity check');
+        this.checkConnectivity();
+      } else {
+        console.log('[CONNECTIVITY] User active - skipping scheduled check, rescheduling');
+        // Reschedule for next check
+        this.scheduleNextCheck();
+      }
     }, this.options.retryInterval);
   }
 

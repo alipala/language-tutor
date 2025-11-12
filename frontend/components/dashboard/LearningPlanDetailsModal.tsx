@@ -112,7 +112,30 @@ export const LearningPlanDetailsModal: React.FC<LearningPlanDetailsModalProps> =
     try {
       setLoadingFlashcards(true);
       const sets = await getUserFlashcardSets();
-      setFlashcardSets(sets);
+      
+      // 🔥 CRITICAL FIX: Filter flashcard sets to only show those belonging to this learning plan
+      // Learning plan session IDs have the format: learning_plan_{plan_id}_{session_number}_{uuid}
+      const planFlashcardSets = sets.filter(set => {
+        if (!set.session_id) return false;
+        
+        // Check if this is a learning plan flashcard set
+        if (!set.session_id.startsWith('learning_plan_')) return false;
+        
+        // Extract the plan ID from session_id (format: learning_plan_{plan_id}_{session_number}_{uuid})
+        const parts = set.session_id.split('_');
+        if (parts.length < 3) return false;
+        
+        // The plan_id is at index 2 (learning_plan_{plan_id}_...)
+        const flashcardPlanId = parts[2];
+        
+        // Only include flashcards that belong to this specific learning plan
+        return flashcardPlanId === plan.id;
+      });
+      
+      console.log(`[FLASHCARD_FILTER] Found ${sets.length} total flashcard sets`);
+      console.log(`[FLASHCARD_FILTER] Filtered to ${planFlashcardSets.length} sets for plan ${plan.id}`);
+      
+      setFlashcardSets(planFlashcardSets);
     } catch (error) {
       console.error('Error loading flashcard sets:', error);
     } finally {
