@@ -510,7 +510,6 @@ async def cancel_subscription(
             logger.info(f"Subscription scheduled for cancellation for user {current_user.id}")
             
             # Get period end date for better messaging
-            from datetime import datetime
             period_end_timestamp = updated_subscription.current_period_end if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
             period_end_date = datetime.fromtimestamp(period_end_timestamp).strftime('%B %d, %Y') if period_end_timestamp else 'the end of your billing period'
             
