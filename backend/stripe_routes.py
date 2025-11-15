@@ -563,20 +563,41 @@ async def reactivate_subscription(
             cancel_at_period_end=False
         )
 
-        # Update user's subscription status in MongoDB
+        # Update user's subscription status in MongoDB and clear cancellation fields
         await database["users"].update_one(
             {"_id": current_user.id},
-            {"$set": {"subscription_status": "active"}}
+            {
+                "$set": {"subscription_status": "active"},
+                "$unset": {
+                    "cancel_at_period_end": "",
+                    "cancellation_date": ""
+                }
+            }
         )
+
+        # Clear the Stripe subscription cache to force fresh data
+        stripe_customer_id = getattr(current_user, 'stripe_customer_id', None)
+        if stripe_customer_id:
+            cache_key = f"stripe_subscription:{stripe_customer_id}"
+            try:
+                await perf_cache.delete(cache_key)
+                logger.info(f"Cleared Stripe subscription cache for user {current_user.id}")
+            except Exception as cache_error:
+                logger.warning(f"Could not clear cache: {str(cache_error)}")
 
         logger.info(f"Subscription reactivated for user {current_user.id}")
         
+        # Get period end date for better messaging
+        period_end_timestamp = updated_subscription.current_period_end if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+        period_end_date = datetime.fromtimestamp(period_end_timestamp).strftime('%B %d, %Y') if period_end_timestamp else None
+        
         return {
             "success": True,
-            "message": "Subscription reactivated successfully.",
+            "message": f"Subscription reactivated! Your subscription will continue and auto-renew on {period_end_date}." if period_end_date else "Subscription reactivated successfully!",
             "subscription_id": subscription.id,
             "cancel_at_period_end": updated_subscription.cancel_at_period_end,
-            "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+            "current_period_end": int(period_end_timestamp) if period_end_timestamp else None,
+            "period_end_date": period_end_date
         }
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error reactivating subscription: {str(e)}")
