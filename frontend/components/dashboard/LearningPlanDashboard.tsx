@@ -30,6 +30,7 @@ import {
 import UpgradePrompt from '@/components/upgrade-prompt';
 import SessionModeModal from '@/components/session-mode-modal';
 import LowMinutesAlert from '@/components/LowMinutesAlert';
+import UpgradeModal from '@/src/components/UpgradeModal';
 
 interface ProgressStats {
   total_sessions: number;
@@ -89,6 +90,7 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showSessionModeModal, setShowSessionModeModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Use shared subscription status hook
   const { refreshSubscriptionStatus } = useSubscriptionStatus();
@@ -98,6 +100,13 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
 
   // Check if user has insufficient minutes for a session (< 5 minutes)
   const hasInsufficientMinutes = !!(!lowMinutesLoading && lowMinutesStatus && lowMinutesStatus.minutes_remaining !== null && lowMinutesStatus.minutes_remaining < 5 && !lowMinutesStatus.is_unlimited);
+
+  // Auto-show upgrade modal when user has insufficient minutes
+  useEffect(() => {
+    if (hasInsufficientMinutes && !showUpgradeModal) {
+      setShowUpgradeModal(true);
+    }
+  }, [hasInsufficientMinutes]);
 
   // Fetch dashboard data (now only fetches progress stats, plans come from context)
   const fetchDashboardData = async () => {
@@ -456,6 +465,18 @@ export const LearningPlanDashboard: React.FC<LearningPlanDashboardProps> = ({
         isOpen={showSessionModeModal}
         onClose={() => setShowSessionModeModal(false)}
         onSelectMode={handleSessionModeSelect}
+      />
+
+      {/* Upgrade Modal - Shows when user has insufficient minutes */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onUpgradeSuccess={() => {
+          setShowUpgradeModal(false);
+          // Refresh dashboard data and subscription status
+          handleRefresh();
+          refreshSubscriptionStatus();
+        }}
       />
     </section>
   );

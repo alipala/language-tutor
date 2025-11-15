@@ -136,6 +136,9 @@ app.include_router(admin_router)
 from stripe_routes import router as stripe_router
 app.include_router(stripe_router)
 
+# Include upgrade routes
+from routers.upgrade_routes import router as upgrade_router
+app.include_router(upgrade_router)
 
 # Include notification routes
 from notification_routes import router as notification_router

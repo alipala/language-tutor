@@ -70,6 +70,10 @@ class UserInDB(UserBase):
     learning_plan_data: Optional[Dict[str, Any]] = None  # Preserved learning plan data
     learning_plan_progress: Optional[Dict[str, Any]] = None  # Progress milestones
     
+    # Upgrade tracking
+    last_upgrade_date: Optional[datetime] = None
+    upgrade_history: Optional[List[Dict[str, Any]]] = []
+    
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -258,6 +262,8 @@ class SubscriptionLimits(BaseModel):
     minutes_limit: int  # -1 for unlimited
     minutes_used: float
     minutes_remaining: float  # -1 for unlimited
+    # 🔥 FIX: Add lifetime sessions count for Profile display
+    sessions_completed: int = 0  # Lifetime total (never resets)
     period_start: datetime
     period_end: datetime
     is_unlimited: bool = False

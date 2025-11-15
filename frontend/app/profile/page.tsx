@@ -940,7 +940,7 @@ export default function ProfilePage() {
                           <span className="font-medium">Sessions Completed</span>
                           <span className="font-medium">
                             {subscriptionStatus.limits.is_unlimited ? '∞' : 
-                             `${subscriptionStatus.limits.sessions_used || 0} completed`}
+                             `${subscriptionStatus.limits.sessions_completed || 0} completed`}
                           </span>
                         </div>
                         <div className="flex justify-between text-white text-xs md:text-base">
