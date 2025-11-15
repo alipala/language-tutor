@@ -340,6 +340,12 @@ class SubscriptionService:
             assessments_limit = plan.monthly_assessments
             minutes_limit = plan.monthly_minutes
         
+        # 🔥 FIX: Count lifetime conversation sessions for "Sessions Completed" display
+        sessions_completed = await database["conversation_sessions"].count_documents({
+            "user_id": user_id
+        })
+        logger.info(f"User {user_id} has {sessions_completed} lifetime conversation sessions")
+        
         # Get current period dates
         period_start = user_data.get("current_period_start")
         period_end = user_data.get("current_period_end")
@@ -422,6 +428,8 @@ class SubscriptionService:
             minutes_limit=minutes_limit,
             minutes_used=minutes_used,
             minutes_remaining=minutes_remaining,
+            # 🔥 FIX: Add lifetime sessions count for Profile display
+            sessions_completed=sessions_completed,
             period_start=period_start,
             period_end=period_end,
             is_unlimited=(sessions_limit == -1 and assessments_limit == -1 and minutes_limit == -1)

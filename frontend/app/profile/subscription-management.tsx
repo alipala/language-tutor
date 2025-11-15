@@ -14,6 +14,11 @@ interface SubscriptionStatus {
   is_in_trial: boolean;
   trial_end_date: string | null;
   trial_days_remaining: number | null;
+  limits?: {
+    minutes_remaining?: number;
+    is_unlimited?: boolean;
+    period_end?: string;
+  };
 }
 
 export default function SubscriptionManagement() {
@@ -84,15 +89,21 @@ export default function SubscriptionManagement() {
         throw new Error(errorData.error || 'Failed to cancel subscription');
       }
 
-      // Refresh subscription status
+      // Get the response data for better messaging
+      const responseData = await response.json();
+      
+      // Refresh subscription status to get fresh data from backend
       await fetchSubscriptionStatus();
       
-      // Show success message
+      // Show success message with period end date if available
       setError(null);
-      setShowSuccessMessage('Your subscription has been canceled successfully. You will retain access until the end of your current billing period.');
+      const successMessage = responseData.period_end_date 
+        ? `Cancellation scheduled. Your subscription will remain active until ${responseData.period_end_date}. You can reactivate anytime before then.`
+        : 'Your subscription has been canceled successfully. You will retain access until the end of your current billing period.';
+      setShowSuccessMessage(successMessage);
       
-      // Hide success message after 5 seconds
-      setTimeout(() => setShowSuccessMessage(null), 5000);
+      // Hide success message after 8 seconds (longer for more detailed message)
+      setTimeout(() => setShowSuccessMessage(null), 8000);
       
     } catch (error: any) {
       console.error('Error canceling subscription:', error);
@@ -122,15 +133,21 @@ export default function SubscriptionManagement() {
         throw new Error(errorData.error || 'Failed to reactivate subscription');
       }
 
-      // Refresh subscription status
+      // Get the response data for better messaging
+      const responseData = await response.json();
+      
+      // Refresh subscription status to get fresh data from backend
       await fetchSubscriptionStatus();
       
-      // Show success message
+      // Show success message with renewal date if available
       setError(null);
-      setShowSuccessMessage('Your subscription has been reactivated successfully!');
+      const successMessage = responseData.period_end_date 
+        ? `Subscription reactivated! Your subscription will continue and auto-renew on ${responseData.period_end_date}.`
+        : 'Your subscription has been reactivated successfully!';
+      setShowSuccessMessage(successMessage);
       
-      // Hide success message after 5 seconds
-      setTimeout(() => setShowSuccessMessage(null), 5000);
+      // Hide success message after 8 seconds (longer for more detailed message)
+      setTimeout(() => setShowSuccessMessage(null), 8000);
       
     } catch (error: any) {
       console.error('Error reactivating subscription:', error);
@@ -357,17 +374,42 @@ export default function SubscriptionManagement() {
             )}
           </div>
           
-          {subscription.status === 'canceling' && (
-            <div className="mt-4 bg-orange-50 border-l-4 border-orange-400 p-4">
-              <div className="flex">
+          {subscription.status === 'canceling' && subscription.limits && (
+            <div className="mt-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
+              <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-orange-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <svg className="h-6 w-6 text-yellow-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-orange-700">
-                    Your subscription is scheduled for cancellation and will end at the end of your current billing period. You can reactivate it anytime before then.
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-bold text-yellow-900 mb-2">
+                    ⚠️ Cancellation Scheduled
+                  </h3>
+                  <p className="text-sm text-yellow-800 mb-3">
+                    Your subscription will remain active until{' '}
+                    {subscription.limits.period_end 
+                      ? new Date(subscription.limits.period_end).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })
+                      : 'the end of your billing period'}.
+                  </p>
+                  <div className="bg-white rounded-lg p-3 mb-3">
+                    <p className="text-sm font-semibold text-gray-900 mb-2">You still have:</p>
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li>• {subscription.limits.is_unlimited ? 'Unlimited' : `${Math.round(subscription.limits.minutes_remaining || 0)}`} minutes available</li>
+                      <li>• Full access to all features</li>
+                      <li>• {subscription.limits.period_end 
+                          ? Math.max(0, Math.ceil((new Date(subscription.limits.period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+                          : '0'} days of learning time</li>
+                    </ul>
+                  </div>
+                  <p className="text-xs text-yellow-700">
+                    After {subscription.limits.period_end 
+                      ? new Date(subscription.limits.period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                      : 'your billing period ends'}, your subscription will not renew. You can reactivate anytime before then.
                   </p>
                 </div>
               </div>

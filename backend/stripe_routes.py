@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import JSONResponse
 from typing import Optional
+from datetime import datetime
 import os
 import logging
 
@@ -255,104 +256,23 @@ async def create_customer_portal_session(
 async def get_subscription_status(
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """🔥 OPTIMIZED: Get comprehensive subscription status with server-side caching"""
+    """🔥 FIXED: Use SubscriptionService for consistent data"""
     try:
-        # 🚀 PERFORMANCE FIX: Use server-side caching with request deduplication
-        cache_key = f"subscription_status:{current_user.id}"
+        # Use the SubscriptionService which has the correct logic including sessions_completed
+        status = await SubscriptionService.get_user_subscription_status(current_user.id)
         
-        async def fetch_subscription_data():
-            """Inner function to fetch subscription data (cached by perf_cache)"""
-            from bson import ObjectId
-            
-            # Get user document directly from database
-            user_doc = await database["users"].find_one({"_id": ObjectId(current_user.id)})
-            if not user_doc:
-                raise HTTPException(status_code=404, detail="User not found")
-            
-            # Get subscription details
-            subscription_status = user_doc.get("subscription_status", "free")
-            subscription_plan = user_doc.get("subscription_plan", "try_learn")
-            subscription_period = user_doc.get("subscription_period", "monthly")
-            practice_minutes_used = user_doc.get("practice_minutes_used", 0.0)
-            practice_sessions_used = user_doc.get("practice_sessions_used", 0)
-            assessments_used = user_doc.get("assessments_used", 0)
-            
-            logger.info(f"[SUBSCRIPTION_STATUS] 🚀 CACHED CALCULATION for user {current_user.id}")
-            logger.info(f"[SUBSCRIPTION_STATUS] Plan: {subscription_plan} ({subscription_period})")
-            logger.info(f"[SUBSCRIPTION_STATUS] Minutes used: {practice_minutes_used}")
-            logger.info(f"[SUBSCRIPTION_STATUS] Sessions used: {practice_sessions_used}")
-            
-            # Calculate limits based on subscription plan
-            if subscription_plan == "team_mastery":
-                limits = {
-                    "is_unlimited": True,
-                    "minutes_limit": -1,
-                    "minutes_used": practice_minutes_used,
-                    "minutes_remaining": -1,
-                    "sessions_limit": -1,
-                    "sessions_used": practice_sessions_used,
-                    "sessions_remaining": -1,
-                    "assessments_limit": -1,
-                    "assessments_used": assessments_used,
-                    "assessments_remaining": -1
-                }
-            elif subscription_plan == "fluency_builder":
-                if subscription_period == "annual":
-                    minutes_limit = 1800
-                else:
-                    minutes_limit = 150
-                
-                minutes_remaining = max(0, minutes_limit - practice_minutes_used)
-                
-                limits = {
-                    "is_unlimited": False,
-                    "minutes_limit": minutes_limit,
-                    "minutes_used": practice_minutes_used,
-                    "minutes_remaining": minutes_remaining,
-                    "sessions_limit": -1,
-                    "sessions_used": practice_sessions_used,
-                    "sessions_remaining": -1,
-                    "assessments_limit": 2,
-                    "assessments_used": assessments_used,
-                    "assessments_remaining": max(0, 2 - assessments_used)
-                }
-                
-                logger.info(f"[SUBSCRIPTION_STATUS] ✅ Fluency Builder: {minutes_remaining}/{minutes_limit} minutes remaining")
-            else:  # try_learn
-                minutes_remaining = max(0, 15 - practice_minutes_used)
-                
-                limits = {
-                    "is_unlimited": False,
-                    "minutes_limit": 15,
-                    "minutes_used": practice_minutes_used,
-                    "minutes_remaining": minutes_remaining,
-                    "sessions_limit": 3,
-                    "sessions_used": practice_sessions_used,
-                    "sessions_remaining": max(0, 3 - practice_sessions_used),
-                    "assessments_limit": 1,
-                    "assessments_used": assessments_used,
-                    "assessments_remaining": max(0, 1 - assessments_used)
-                }
-            
-            # Build response with correct data
-            return {
-                "status": subscription_status,
-                "plan": subscription_plan,
-                "period": subscription_period,
-                "limits": limits,
-                "is_in_trial": user_doc.get("is_in_trial", False),
-                "trial_end_date": user_doc.get("trial_end_date"),
-                "trial_days_remaining": None
-            }
+        # Convert to dict for JSON response
+        response = {
+            "status": status.status,
+            "plan": status.plan,
+            "period": status.period,
+            "limits": status.limits.dict() if status.limits else None,
+            "is_in_trial": status.is_in_trial,
+            "trial_end_date": status.trial_end_date.isoformat() if status.trial_end_date else None,
+            "trial_days_remaining": status.trial_days_remaining
+        }
         
-        # Use server-side cache with 30-second TTL and request deduplication
-        response = await perf_cache.fetch_with_cache_and_dedup(
-            cache_key,
-            fetch_subscription_data,
-            ttl_seconds=30
-        )
-        
-        logger.info(f"[SUBSCRIPTION_STATUS] ✅ Response served (cached or fresh)")
+        logger.info(f"[SUBSCRIPTION_STATUS] ✅ Response served for user {current_user.id}")
         return response
         
     except Exception as e:
@@ -577,20 +497,29 @@ async def cancel_subscription(
                 cancel_at_period_end=True
             )
 
-            # Update user's subscription status in MongoDB
+            # 🔥 FIX: Use "canceling" status instead of "canceled" to indicate active until period end
             await database["users"].update_one(
                 {"_id": current_user.id},
-                {"$set": {"subscription_status": "canceled"}}
+                {"$set": {
+                    "subscription_status": "canceling",
+                    "cancel_at_period_end": True,
+                    "cancellation_date": datetime.utcnow()
+                }}
             )
 
-            logger.info(f"Subscription canceled for user {current_user.id}")
+            logger.info(f"Subscription scheduled for cancellation for user {current_user.id}")
+            
+            # Get period end date for better messaging
+            period_end_timestamp = updated_subscription.current_period_end if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+            period_end_date = datetime.fromtimestamp(period_end_timestamp).strftime('%B %d, %Y') if period_end_timestamp else 'the end of your billing period'
             
             return {
                 "success": True,
-                "message": "Subscription canceled successfully. Access will continue until the end of your billing period.",
+                "message": f"Cancellation scheduled. Your subscription will remain active until {period_end_date}. You can reactivate anytime before then.",
                 "subscription_id": subscription.id,
                 "cancel_at_period_end": updated_subscription.cancel_at_period_end,
-                "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None,
+                "current_period_end": int(period_end_timestamp) if period_end_timestamp else None,
+                "period_end_date": period_end_date,
                 "was_trial": False
             }
     except stripe.error.StripeError as e:
@@ -633,20 +562,41 @@ async def reactivate_subscription(
             cancel_at_period_end=False
         )
 
-        # Update user's subscription status in MongoDB
+        # Update user's subscription status in MongoDB and clear cancellation fields
         await database["users"].update_one(
             {"_id": current_user.id},
-            {"$set": {"subscription_status": "active"}}
+            {
+                "$set": {"subscription_status": "active"},
+                "$unset": {
+                    "cancel_at_period_end": "",
+                    "cancellation_date": ""
+                }
+            }
         )
+
+        # Clear the Stripe subscription cache to force fresh data
+        stripe_customer_id = getattr(current_user, 'stripe_customer_id', None)
+        if stripe_customer_id:
+            cache_key = f"stripe_subscription:{stripe_customer_id}"
+            try:
+                await perf_cache.delete(cache_key)
+                logger.info(f"Cleared Stripe subscription cache for user {current_user.id}")
+            except Exception as cache_error:
+                logger.warning(f"Could not clear cache: {str(cache_error)}")
 
         logger.info(f"Subscription reactivated for user {current_user.id}")
         
+        # Get period end date for better messaging
+        period_end_timestamp = updated_subscription.current_period_end if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+        period_end_date = datetime.fromtimestamp(period_end_timestamp).strftime('%B %d, %Y') if period_end_timestamp else None
+        
         return {
             "success": True,
-            "message": "Subscription reactivated successfully.",
+            "message": f"Subscription reactivated! Your subscription will continue and auto-renew on {period_end_date}." if period_end_date else "Subscription reactivated successfully!",
             "subscription_id": subscription.id,
             "cancel_at_period_end": updated_subscription.cancel_at_period_end,
-            "current_period_end": int(updated_subscription.current_period_end) if hasattr(updated_subscription, 'current_period_end') and updated_subscription.current_period_end else None
+            "current_period_end": int(period_end_timestamp) if period_end_timestamp else None,
+            "period_end_date": period_end_date
         }
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error reactivating subscription: {str(e)}")

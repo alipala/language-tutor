@@ -18,6 +18,7 @@ interface SubscriptionLimits {
   assessments_limit: number;
   minutes_remaining?: number;
   sessions_used?: number;
+  sessions_completed?: number; // 🔥 FIX: Lifetime sessions count (never resets)
   is_unlimited?: boolean;
 }
 
