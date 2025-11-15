@@ -89,11 +89,11 @@ export default function SubscriptionManagement() {
         throw new Error(errorData.error || 'Failed to cancel subscription');
       }
 
-      // Refresh subscription status
-      await fetchSubscriptionStatus();
-      
       // Get the response data for better messaging
       const responseData = await response.json();
+      
+      // Refresh subscription status to get fresh data from backend
+      await fetchSubscriptionStatus();
       
       // Show success message with period end date if available
       setError(null);
@@ -133,15 +133,21 @@ export default function SubscriptionManagement() {
         throw new Error(errorData.error || 'Failed to reactivate subscription');
       }
 
-      // Refresh subscription status
+      // Get the response data for better messaging
+      const responseData = await response.json();
+      
+      // Refresh subscription status to get fresh data from backend
       await fetchSubscriptionStatus();
       
-      // Show success message
+      // Show success message with renewal date if available
       setError(null);
-      setShowSuccessMessage('Your subscription has been reactivated successfully!');
+      const successMessage = responseData.period_end_date 
+        ? `Subscription reactivated! Your subscription will continue and auto-renew on ${responseData.period_end_date}.`
+        : 'Your subscription has been reactivated successfully!';
+      setShowSuccessMessage(successMessage);
       
-      // Hide success message after 5 seconds
-      setTimeout(() => setShowSuccessMessage(null), 5000);
+      // Hide success message after 8 seconds (longer for more detailed message)
+      setTimeout(() => setShowSuccessMessage(null), 8000);
       
     } catch (error: any) {
       console.error('Error reactivating subscription:', error);
