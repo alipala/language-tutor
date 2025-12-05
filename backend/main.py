@@ -202,6 +202,11 @@ app.include_router(activation_codes_router)
 from flashcard_routes import router as flashcard_router
 app.include_router(flashcard_router)
 
+# Include modular routes (refactored from main.py)
+from routes import health_router, mock_router
+app.include_router(health_router)
+app.include_router(mock_router)
+
 # Create images directory for URL shortener
 os.makedirs("static/images", exist_ok=True)
 
@@ -387,23 +392,25 @@ if os.getenv("ENVIRONMENT") == "development":
     app.add_middleware(RequestLoggingMiddleware)
 
 # Simple test endpoint to verify API connectivity
-@app.get("/api/test")
-async def test_endpoint():
-    return {"message": "Language Tutor API is running"}
+# REFACTORED: Moved to routes/health_routes.py
+# @app.get("/api/test")
+# async def test_endpoint():
+#     return {"message": "Language Tutor API is running"}
 
 # 🔇 ULTRA-MINIMAL health check - only status and environment
-@app.get("/health")
-@app.get("/api/health")
-async def health_check():
-    """Minimal health check - only returns status and environment (no logging)"""
-    # Determine environment correctly
-    is_railway = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true")
-    environment = "production" if is_railway or os.getenv("ENVIRONMENT") == "production" else "development"
-    
-    return {
-        "status": "ok",
-        "environment": environment
-    }
+# REFACTORED: Moved to routes/health_routes.py
+# @app.get("/health")
+# @app.get("/api/health")
+# async def health_check():
+#     """Minimal health check - only returns status and environment (no logging)"""
+#     # Determine environment correctly
+#     is_railway = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY") == "true")
+#     environment = "production" if is_railway or os.getenv("ENVIRONMENT") == "production" else "development"
+#
+#     return {
+#         "status": "ok",
+#         "environment": environment
+#     }
 
 # Define models for request validation
 class TutorSessionRequest(BaseModel):
@@ -2671,34 +2678,35 @@ async def get_model_config():
         print(f"❌ Error getting model config: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting model config: {str(e)}")
 
+# REFACTORED: Moved to routes/mock_routes.py
 # Add mock token endpoint for testing
-@app.post("/api/mock-token")
-async def generate_mock_token(request: TutorSessionRequest):
-    """
-    Mock endpoint for testing when OpenAI API is not available
-    """
-    try:
-        print("🧪 [MOCK] Creating mock ephemeral token for testing")
-        
-        # Return a mock response that matches the expected format
-        mock_response = {
-            "id": "sess_mock_test_session",
-            "object": "realtime.session",
-            "model": "gpt-realtime-mini",
-            "expires_at": 1234567890,
-            "client_secret": {
-                "value": "ek_mock_test_key_for_development",
-                "expires_at": 1234567890
-            },
-            "ephemeral_key": "ek_mock_test_key_for_development"
-        }
-        
-        print("✅ [MOCK] Mock token created successfully")
-        return mock_response
-        
-    except Exception as e:
-        print(f"❌ [MOCK] Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/api/mock-token")
+# async def generate_mock_token(request: TutorSessionRequest):
+#     """
+#     Mock endpoint for testing when OpenAI API is not available
+#     """
+#     try:
+#         print("🧪 [MOCK] Creating mock ephemeral token for testing")
+#
+#         # Return a mock response that matches the expected format
+#         mock_response = {
+#             "id": "sess_mock_test_session",
+#             "object": "realtime.session",
+#             "model": "gpt-realtime-mini",
+#             "expires_at": 1234567890,
+#             "client_secret": {
+#                 "value": "ek_mock_test_key_for_development",
+#                 "expires_at": 1234567890
+#             },
+#             "ephemeral_key": "ek_mock_test_key_for_development"
+#         }
+#
+#         print("✅ [MOCK] Mock token created successfully")
+#         return mock_response
+#
+#     except Exception as e:
+#         print(f"❌ [MOCK] Error: {str(e)}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 # Frontend is served by Next.js server (npm start), not by FastAPI
 # Backend only handles API routes
