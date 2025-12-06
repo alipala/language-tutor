@@ -668,7 +668,9 @@ LANGUAGE RULE: {config['rule']}
 {assessment_context}
 {learning_plan_context}
 
-Start with: "{config['greeting']}"
+FIRST MESSAGE INSTRUCTIONS:
+- If learning plan context is provided above: Start by referencing the current week's focus and immediately begin practicing the specified activities. Example: "Great to see you! This week we're focusing on [week focus]. Let's start by [first activity]. Tell me about..."
+- If NO learning plan context: Start with "{config['greeting']}" and ask what the student wants to practice today
 
 CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
 
