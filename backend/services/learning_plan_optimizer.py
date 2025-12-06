@@ -269,11 +269,11 @@ class LearningPlanOptimizer:
             activities = updated_week.get("activities", [])
             for adjustment in applicable_adjustments:
                 if adjustment["type"] == "grammar_focus":
-                    activities.append(f"📝 Grammar drill: {adjustment['focus_area']}")
+                    activities.append(f"📝 Practice {adjustment['focus_area']} in conversation")
                 elif adjustment["type"] == "vocabulary_emphasis":
-                    activities.append("📚 Vocabulary expansion exercises")
+                    activities.append("📚 Expand vocabulary through dialogue")
                 elif adjustment["type"] == "review_focus":
-                    activities.append("🔄 Review previous lessons and patterns")
+                    activities.append("🔄 Revisit recent topics naturally")
 
             updated_week["activities"] = activities[:6]  # Limit to 6 activities
 
@@ -632,27 +632,27 @@ class LearningPlanOptimizer:
 
         for adj in adjustments[:3]:  # Top 3 priorities
             if adj["type"] == "critical_grammar_weakness":
-                focus_areas.append("🚨 Intensive grammar review")
-                activities.insert(0, "📝 Grammar fundamentals review")
+                focus_areas.append("🚨 Focus on grammar through conversation")
+                activities.insert(0, "📝 Discuss topics using key grammar structures")
             elif adj["type"] == "critical_vocabulary_weakness":
-                focus_areas.append("🚨 Vocabulary building")
-                activities.insert(0, "📚 Core vocabulary expansion")
+                focus_areas.append("🚨 Build vocabulary naturally")
+                activities.insert(0, "📚 Introduce new words through context")
             elif adj["type"] == "grammar_regression":
-                focus_areas.append(f"🔄 Grammar review (dropped {adj['data'].get('drop')}pts)")
-                activities.insert(0, "🔄 Review previous grammar lessons")
+                focus_areas.append(f"🔄 Revisit grammar concepts (dropped {adj['data'].get('drop')}pts)")
+                activities.insert(0, "🔄 Naturally revisit recent grammar topics")
             elif adj["type"] == "vocabulary_regression":
-                focus_areas.append(f"🔄 Vocabulary review (dropped {adj['data'].get('drop')}pts)")
-                activities.insert(0, "🔄 Review previous vocabulary")
+                focus_areas.append(f"🔄 Reinforce vocabulary (dropped {adj['data'].get('drop')}pts)")
+                activities.insert(0, "🔄 Use recent vocabulary in new contexts")
             elif adj["type"] == "repeated_grammar_issue":
                 issue = adj["data"].get("issue", "grammar")
-                focus_areas.append(f"🎯 Fix {issue} issues")
-                activities.insert(0, f"📝 Targeted practice: {issue}")
+                focus_areas.append(f"🎯 Work on {issue} naturally")
+                activities.insert(0, f"📝 Use {issue} correctly in conversation")
             elif adj["type"] == "ready_to_advance":
-                focus_areas.append("🚀 Advanced challenge")
-                activities.append("🌟 Advanced exercises and complex topics")
+                focus_areas.append("🚀 More challenging conversations")
+                activities.append("🌟 Discuss advanced topics with complex language")
             elif adj["type"] == "low_complexity":
-                focus_areas.append("📈 Increase complexity")
-                activities.append("🎯 Practice complex sentence structures")
+                focus_areas.append("📈 Use richer language")
+                activities.append("🎯 Express ideas with varied structures")
 
         # Update next week
         if focus_areas:
