@@ -343,6 +343,80 @@ async def store_session_summary(
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
 
+            # 🎯 NEW: Two-Tier Learning Plan Optimization
+            try:
+                from services.learning_plan_optimizer import LearningPlanOptimizer
+
+                # Get sentence analyses from current session (from conversation_data if available)
+                current_session_analyses = []
+                if conversation_data:
+                    # Extract sentence analyses from conversation data
+                    # This assumes conversation_data has a 'sentence_analyses' key
+                    current_session_analyses = conversation_data.get("sentence_analyses", [])
+
+                    # If not directly available, try to get from latest session in database
+                    if not current_session_analyses:
+                        from database import database
+                        latest_session = await database.conversation_sessions.find_one(
+                            {"user_id": str(current_user.id)},
+                            sort=[("created_at", -1)]
+                        )
+                        if latest_session:
+                            current_session_analyses = latest_session.get("sentence_analyses", [])
+
+                print(f"[PLAN_OPTIMIZER] Found {len(current_session_analyses)} sentence analyses for optimization")
+
+                # Run two-tier optimizer
+                optimizer_result = await LearningPlanOptimizer.auto_update_plan_after_session(
+                    user_id=str(current_user.id),
+                    plan_id=plan_id,
+                    current_session_analyses=current_session_analyses if current_session_analyses else None,
+                    minimum_sessions_for_update=3  # Pattern updates every 3 sessions
+                )
+
+                # Log results
+                if optimizer_result.get("auto_updated"):
+                    print(f"[PLAN_OPTIMIZER] ✅ Plan updated!")
+
+                    tier1 = optimizer_result.get("tier1_immediate", {})
+                    tier2 = optimizer_result.get("tier2_patterns", {})
+
+                    if tier1.get("update", {}).get("immediate_update"):
+                        print(f"[PLAN_OPTIMIZER]    Tier 1 (Immediate): {len(tier1['update'].get('adjustments_applied', []))} adjustments")
+
+                    if tier2.get("update", {}).get("success"):
+                        print(f"[PLAN_OPTIMIZER]    Tier 2 (Patterns): {tier2['update'].get('weeks_updated', 0)} weeks updated")
+
+                    # Return enriched response with adaptation info
+                    return {
+                        "success": True,
+                        "message": "Session summary stored successfully",
+                        "completed_sessions": completed_sessions,
+                        "progress_percentage": progress_percentage,
+                        "current_week": new_week,
+                        "session_summary": summary_data.get("full", summary_data),
+                        "plan_adapted": True,  # NEW
+                        "adaptation": {  # NEW
+                            "tier1_immediate": {
+                                "applied": tier1.get("update", {}).get("immediate_update", False),
+                                "concerns": tier1.get("analysis", {}).get("immediate_concerns", []),
+                                "regression_detected": tier1.get("regression_check", {}).get("regression_detected", False)
+                            },
+                            "tier2_patterns": {
+                                "applied": tier2.get("update", {}).get("success", False),
+                                "weeks_updated": tier2.get("update", {}).get("weeks_updated", 0)
+                            }
+                        }
+                    }
+                else:
+                    print(f"[PLAN_OPTIMIZER] No updates needed (Tier1: {optimizer_result.get('tier1_immediate')}, Tier2: {optimizer_result.get('tier2_patterns')})")
+
+            except Exception as optimizer_error:
+                # Don't fail the session if optimizer fails
+                print(f"[PLAN_OPTIMIZER] ❌ Error: {str(optimizer_error)}")
+                print(f"[PLAN_OPTIMIZER] Traceback: {traceback.format_exc()}")
+
+            # Original return (if optimizer didn't return early)
             return {
                 "success": True,
                 "message": "Session summary stored successfully",

@@ -1010,14 +1010,17 @@ class SessionSummaryRequest(BaseModel):
     topic: Optional[str] = None
     sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch analysis support
 
-@router.post("/session-summary")
-async def save_session_summary(
+# 🔥 REFACTORED: This endpoint moved to routes/session_summary_routes.py with LearningPlanOptimizer integration
+# @router.post("/session-summary")
+async def save_session_summary_OLD_DEPRECATED(
     plan_id: str,
     session_summary: str,
     request: Optional[SessionSummaryRequest] = None,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
+    DEPRECATED: Moved to routes/session_summary_routes.py with LearningPlanOptimizer integration
+
     Save a session summary to the correct week in the learning plan structure
     Also tracks speaking minutes for the learning plan
     UNIFIED TRACKING: Ensures both learning plan and subscription usage are tracked
