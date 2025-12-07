@@ -73,7 +73,13 @@ class UserInDB(UserBase):
     # Upgrade tracking
     last_upgrade_date: Optional[datetime] = None
     upgrade_history: Optional[List[Dict[str, Any]]] = []
-    
+
+    # Push notifications
+    push_token: Optional[str] = None  # Expo Push Token
+    device_type: Optional[str] = None  # 'ios' or 'android'
+    device_info: Optional[Dict[str, Any]] = None  # Device brand, model, OS version
+    push_token_updated_at: Optional[datetime] = None  # Last time token was updated
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True

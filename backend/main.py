@@ -116,6 +116,10 @@ app.include_router(upgrade_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include WebSocket routes for real-time notifications
+from websocket_routes import router as websocket_router
+app.include_router(websocket_router, prefix="/api")
+
 # Include low minutes alert routes
 from low_minutes_alert import router as low_minutes_router
 app.include_router(low_minutes_router)

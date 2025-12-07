@@ -380,19 +380,21 @@ async def process_notification(notification_id: str):
     """Process and send notification to users"""
     from bson import ObjectId
     from database import notifications_collection, user_notifications_collection, users_collection
-    
+    from notification_service import send_notification_to_users, send_notification_to_all_users
+    from websocket_manager import manager
+
     print(f"DEBUG: Processing notification {notification_id}")
-    
+
     try:
         # Get notification - try string ID first, then ObjectId
         notification = await notifications_collection.find_one({"_id": notification_id})
         if not notification and ObjectId.is_valid(notification_id):
             notification = await notifications_collection.find_one({"_id": ObjectId(notification_id)})
-        
+
         if not notification:
             print(f"DEBUG: Notification {notification_id} not found")
             return
-        
+
         print(f"DEBUG: Found notification: {notification.get('title')}")
         
         # Get target users
@@ -420,7 +422,37 @@ async def process_notification(notification_id: str):
         if user_notifications:
             result = await user_notifications_collection.insert_many(user_notifications)
             print(f"DEBUG: Inserted {len(result.inserted_ids)} user notifications")
-        
+
+        # Send push notifications to users
+        print(f"DEBUG: Sending push notifications...")
+        try:
+            if notification.get("target_user_ids"):
+                # Send to specific users
+                from bson import ObjectId as BsonObjectId
+                target_user_object_ids = [BsonObjectId(uid) if BsonObjectId.is_valid(uid) else uid for uid in notification["target_user_ids"]]
+                push_result = await send_notification_to_users(
+                    user_ids=target_user_object_ids,
+                    title=notification.get('title', 'Notification'),
+                    content=notification.get('content', ''),
+                    notification_type=notification.get('notification_type', 'Information'),
+                    users_collection=users_collection,
+                    priority='high' if notification.get('notification_type') == 'Maintenance' else 'default'
+                )
+            else:
+                # Send to all active users
+                push_result = await send_notification_to_all_users(
+                    title=notification.get('title', 'Notification'),
+                    content=notification.get('content', ''),
+                    notification_type=notification.get('notification_type', 'Information'),
+                    users_collection=users_collection,
+                    priority='high' if notification.get('notification_type') == 'Maintenance' else 'default'
+                )
+
+            print(f"DEBUG: Push notification result: {push_result}")
+        except Exception as push_error:
+            print(f"WARNING: Failed to send push notifications: {str(push_error)}")
+            # Continue even if push fails - we still want to mark as sent
+
         # Mark notification as sent - use the same ID format as found
         update_result = await notifications_collection.update_one(
             {"_id": notification["_id"]},
@@ -432,7 +464,30 @@ async def process_notification(notification_id: str):
             }
         )
         print(f"DEBUG: Marked notification as sent: {update_result.modified_count} documents updated")
-        
+
+        # Send WebSocket update to connected clients
+        print(f"DEBUG: Sending WebSocket update...")
+        try:
+            notification_data = {
+                "id": str(notification["_id"]),
+                "title": notification.get('title'),
+                "content": notification.get('content'),
+                "notification_type": notification.get('notification_type'),
+                "is_sent": True,
+                "sent_at": datetime.utcnow().isoformat(),
+                "created_at": notification.get('created_at').isoformat() if notification.get('created_at') else None
+            }
+
+            # Broadcast to admins (all admin connections)
+            await manager.broadcast({
+                "type": "new_notification",
+                "data": notification_data
+            })
+
+            print(f"DEBUG: WebSocket update sent")
+        except Exception as ws_error:
+            print(f"WARNING: Failed to send WebSocket update: {str(ws_error)}")
+
     except Exception as e:
         print(f"ERROR: Failed to process notification {notification_id}: {str(e)}")
         import traceback

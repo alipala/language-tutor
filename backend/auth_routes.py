@@ -366,6 +366,79 @@ async def get_user_me(current_user: UserResponse = Depends(get_current_user)):
     """
     return current_user
 
+@router.post("/push-token", status_code=status.HTTP_200_OK)
+async def register_push_token(
+    push_token_data: dict,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Register or update user's Expo push notification token
+    """
+    from datetime import datetime
+    from bson import ObjectId
+
+    try:
+        push_token = push_token_data.get('push_token')
+        device_type = push_token_data.get('device_type')  # 'ios' or 'android'
+        device_info = push_token_data.get('device_info', {})
+
+        if not push_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="push_token is required"
+            )
+
+        # Validate Expo push token format
+        if not (push_token.startswith('ExponentPushToken[') or push_token.startswith('ExpoPushToken[')):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Expo push token format"
+            )
+
+        print(f"📱 Registering push token for user {current_user.email}")
+        print(f"   Token: {push_token[:30]}...")
+        print(f"   Device: {device_type}")
+
+        # Update user's push token in database
+        result = await users_collection.update_one(
+            {"_id": ObjectId(current_user.id)},
+            {
+                "$set": {
+                    "push_token": push_token,
+                    "device_type": device_type,
+                    "device_info": device_info,
+                    "push_token_updated_at": datetime.utcnow()
+                }
+            }
+        )
+
+        if result.modified_count == 0:
+            # Check if user exists
+            user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            # Token might be the same, that's ok
+            print(f"✅ Push token already up to date for {current_user.email}")
+        else:
+            print(f"✅ Push token registered successfully for {current_user.email}")
+
+        return {
+            "success": True,
+            "message": "Push token registered successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error registering push token: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to register push token: {str(e)}"
+        )
+
 @router.put("/update-profile", response_model=UserResponse)
 async def update_profile(profile_data: UserUpdate, current_user: UserResponse = Depends(get_current_user)):
     """
