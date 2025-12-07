@@ -8,8 +8,7 @@ from fastapi.security import HTTPBearer
 from typing import Optional
 import logging
 from websocket_manager import manager
-from auth import get_current_user, get_current_admin
-from admin_routes import get_current_admin as verify_admin
+from auth import get_current_user, get_current_admin_user
 import jwt
 from datetime import datetime
 
