@@ -69,7 +69,8 @@ class NotificationService:
                 sound=sound,
                 priority=priority,
                 badge=badge,
-                category_id='default',  # iOS notification category
+                # Note: category_id is not a valid Expo parameter
+                # Use channelId for Android channels if needed
             )
             messages.append(message)
 
