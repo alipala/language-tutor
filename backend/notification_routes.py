@@ -381,7 +381,7 @@ async def mark_all_notifications_read(
 
     return {"message": f"Marked {result.modified_count} notifications as read"}
 
-@router.post("/delete")
+@router.post("/notifications/delete")
 async def delete_notification(
     request: NotificationDeleteRequest,
     current_user: UserInDB = Depends(get_current_user)
