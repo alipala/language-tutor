@@ -436,6 +436,7 @@ async def process_notification(notification_id: str):
                     content=notification.get('content', ''),
                     notification_type=notification.get('notification_type', 'Information'),
                     users_collection=users_collection,
+                    notification_id=str(notification.get('_id')),
                     priority='high' if notification.get('notification_type') == 'Maintenance' else 'default'
                 )
             else:
@@ -445,6 +446,7 @@ async def process_notification(notification_id: str):
                     content=notification.get('content', ''),
                     notification_type=notification.get('notification_type', 'Information'),
                     users_collection=users_collection,
+                    notification_id=str(notification.get('_id')),
                     priority='high' if notification.get('notification_type') == 'Maintenance' else 'default'
                 )
 

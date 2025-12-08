@@ -150,6 +150,7 @@ async def send_notification_to_users(
     content: str,
     notification_type: str,
     users_collection,
+    notification_id: str = None,  # CRITICAL: Include notification_id for banner tap!
     priority: str = 'high'
 ) -> Dict[str, Any]:
     """
@@ -184,6 +185,7 @@ async def send_notification_to_users(
         data = {
             'type': 'notification',
             'notification_type': notification_type,
+            'notification_id': notification_id,  # CRITICAL: iOS needs this to identify notification!
             'screen': 'Main',  # Navigate to Main (Profile tab)
             'params': {
                 'screen': 'Profile',
@@ -215,6 +217,7 @@ async def send_notification_to_all_users(
     content: str,
     notification_type: str,
     users_collection,
+    notification_id: str = None,  # CRITICAL: Include notification_id for banner tap!
     priority: str = 'high'
 ) -> Dict[str, Any]:
     """
@@ -248,6 +251,7 @@ async def send_notification_to_all_users(
         data = {
             'type': 'notification',
             'notification_type': notification_type,
+            'notification_id': notification_id,  # CRITICAL: iOS needs this to identify notification!
             'screen': 'Main',
             'params': {
                 'screen': 'Profile',
