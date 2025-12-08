@@ -9,7 +9,7 @@ from auth import get_current_user
 from models import (
     UserInDB, NotificationCreate, NotificationInDB, NotificationResponse,
     UserNotificationInDB, UserNotificationResponse, NotificationListResponse,
-    NotificationMarkReadRequest, NotificationType
+    NotificationMarkReadRequest, NotificationDeleteRequest, NotificationType
 )
 
 # Import admin authentication from admin_routes
@@ -263,9 +263,9 @@ async def get_user_notifications(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """Get notifications for the current user"""
-    
-    # Build query
-    query = {"user_id": current_user.id}
+
+    # Build query - exclude deleted notifications
+    query = {"user_id": current_user.id, "deleted_at": None}
     if unread_only:
         query["is_read"] = False
     
@@ -299,11 +299,15 @@ async def get_user_notifications(
         )
         notifications.append(notification_data)
     
-    # Get counts
-    total_count = await user_notifications_collection.count_documents({"user_id": current_user.id})
+    # Get counts - exclude deleted notifications
+    total_count = await user_notifications_collection.count_documents({
+        "user_id": current_user.id,
+        "deleted_at": None
+    })
     unread_count = await user_notifications_collection.count_documents({
         "user_id": current_user.id,
-        "is_read": False
+        "is_read": False,
+        "deleted_at": None
     })
     
     return NotificationListResponse(
@@ -317,12 +321,14 @@ async def get_unread_count(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """Get count of unread notifications for the current user"""
-    
+
+    # Exclude deleted notifications from unread count
     count = await user_notifications_collection.count_documents({
         "user_id": current_user.id,
-        "is_read": False
+        "is_read": False,
+        "deleted_at": None
     })
-    
+
     return {"unread_count": count}
 
 @router.post("/mark-read")
@@ -359,7 +365,7 @@ async def mark_all_notifications_read(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """Mark all notifications as read for the current user"""
-    
+
     result = await user_notifications_collection.update_many(
         {
             "user_id": current_user.id,
@@ -372,8 +378,40 @@ async def mark_all_notifications_read(
             }
         }
     )
-    
+
     return {"message": f"Marked {result.modified_count} notifications as read"}
+
+@router.post("/delete")
+async def delete_notification(
+    request: NotificationDeleteRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Soft delete a notification for the current user"""
+
+    # Update the notification to mark it as deleted (soft delete)
+    result = await user_notifications_collection.update_one(
+        {
+            "user_id": current_user.id,
+            "notification_id": request.notification_id,
+            "deleted_at": None  # Only delete non-deleted notifications
+        },
+        {
+            "$set": {
+                "deleted_at": datetime.utcnow()
+            }
+        }
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found or already deleted"
+        )
+
+    return {
+        "success": True,
+        "message": "Notification deleted successfully"
+    }
 
 # Background task functions
 async def process_notification(notification_id: str):

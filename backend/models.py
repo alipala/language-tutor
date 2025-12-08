@@ -374,7 +374,8 @@ class UserNotificationBase(BaseModel):
     notification_id: str
     is_read: bool = False
     read_at: Optional[datetime] = None
-    
+    deleted_at: Optional[datetime] = None  # Soft delete timestamp
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -398,6 +399,9 @@ class UserNotificationResponse(UserNotificationBase):
         arbitrary_types_allowed = True
 
 class NotificationMarkReadRequest(BaseModel):
+    notification_id: str
+
+class NotificationDeleteRequest(BaseModel):
     notification_id: str
 
 class NotificationListResponse(BaseModel):

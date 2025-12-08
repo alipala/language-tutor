@@ -115,7 +115,13 @@ async def init_db():
         
         # Create unique index for email in users collection
         await users_collection.create_index("email", unique=True)
-        
+
+        # Create composite index for user_notifications (for soft delete queries)
+        await user_notifications_collection.create_index([
+            ("user_id", 1),
+            ("deleted_at", 1)
+        ])
+
         print("Database indexes initialized successfully")
     except Exception as e:
         print(f"ERROR initializing database indexes: {str(e)}")
