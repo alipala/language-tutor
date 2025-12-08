@@ -399,7 +399,29 @@ async def register_push_token(
         print(f"   Token: {push_token[:30]}...")
         print(f"   Device: {device_type}")
 
-        # Update user's push token in database
+        # CRITICAL: Remove this token from any other users first
+        # This handles the case where multiple users log in on the same device
+        # Without this, the old user would still have the token and receive notifications
+        # meant for the new user!
+        removed_result = await users_collection.update_many(
+            {
+                "_id": {"$ne": ObjectId(current_user.id)},  # All users EXCEPT current
+                "push_token": push_token  # Who have this same token
+            },
+            {
+                "$unset": {
+                    "push_token": "",  # Remove the token
+                    "device_type": "",
+                    "device_info": "",
+                    "push_token_updated_at": ""
+                }
+            }
+        )
+
+        if removed_result.modified_count > 0:
+            print(f"🔄 Removed token from {removed_result.modified_count} other user(s)")
+
+        # Now update the current user's push token
         result = await users_collection.update_one(
             {"_id": ObjectId(current_user.id)},
             {
