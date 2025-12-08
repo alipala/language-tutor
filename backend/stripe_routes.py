@@ -34,6 +34,10 @@ from performance_cache import perf_cache
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
+# Feature flag for iDEAL payment method (can be disabled without code deployment)
+ENABLE_IDEAL_PAYMENT = os.getenv("ENABLE_IDEAL_PAYMENT", "true").lower() == "true"
+logger.info(f"[STRIPE_INIT] iDEAL payment support: {'ENABLED' if ENABLE_IDEAL_PAYMENT else 'DISABLED'}")
+
 def map_stripe_product_to_plan_id(product_name: str) -> str:
     """Map Stripe product names to internal plan IDs"""
     plan_name = product_name.lower()
@@ -166,9 +170,16 @@ async def create_checkout_session(
             
             # 🔥 FIX: Create checkout session with simplified configuration
             # The 400 error was caused by customer_update conflicting with promotion codes
+
+            # Configure payment methods (card + iDEAL support)
+            payment_methods = ["card"]
+            if ENABLE_IDEAL_PAYMENT:
+                payment_methods.append("ideal")
+                logger.info(f"[AUTH_CHECKOUT] iDEAL payment method enabled")
+
             checkout_session_data = {
                 "customer": customer_id,
-                "payment_method_types": ["card"],
+                "payment_method_types": payment_methods,
                 "line_items": [
                     {
                         "price": price_id,
@@ -1063,6 +1074,12 @@ async def handle_subscription_trial_will_end(subscription):
 async def handle_checkout_completed(checkout_session):
     """Handle checkout session completed event"""
     try:
+        # Log payment method types used for analytics
+        payment_method_types = checkout_session.get("payment_method_types", [])
+        logger.info(f"[CHECKOUT_COMPLETED] Payment methods used: {payment_method_types}")
+        if "ideal" in payment_method_types:
+            logger.info(f"[CHECKOUT_COMPLETED] ✅ iDEAL payment completed successfully")
+
         # Only process subscription checkouts
         if checkout_session.get("mode") != "subscription":
             return

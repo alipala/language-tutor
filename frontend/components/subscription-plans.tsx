@@ -338,6 +338,19 @@ export default function SubscriptionPlans() {
                     </div>
 
                     <p className="text-gray-600">{plan.description}</p>
+
+                    {/* Payment Methods - Only show for paid plans */}
+                    {plan.price !== "Free" && (
+                      <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
+                        <span className="inline-flex items-center">
+                          💳 Card
+                        </span>
+                        <span>•</span>
+                        <span className="inline-flex items-center">
+                          🇳🇱 iDEAL
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Features */}
