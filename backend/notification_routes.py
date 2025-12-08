@@ -336,13 +336,29 @@ async def mark_notification_read(
     request: NotificationMarkReadRequest,
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Mark a notification as read"""
-    
-    result = await user_notifications_collection.update_one(
+    """Mark a notification as read (idempotent - safe to call multiple times)"""
+
+    # First check if notification exists for this user
+    notification = await user_notifications_collection.find_one({
+        "user_id": current_user.id,
+        "notification_id": request.notification_id
+    })
+
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+
+    # If already read, return success without error
+    if notification.get("is_read", False):
+        return {"success": True, "message": "Notification already marked as read"}
+
+    # Mark as read
+    await user_notifications_collection.update_one(
         {
             "user_id": current_user.id,
-            "notification_id": request.notification_id,
-            "is_read": False
+            "notification_id": request.notification_id
         },
         {
             "$set": {
@@ -351,14 +367,8 @@ async def mark_notification_read(
             }
         }
     )
-    
-    if result.matched_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found or already read"
-        )
-    
-    return {"message": "Notification marked as read"}
+
+    return {"success": True, "message": "Notification marked as read"}
 
 @router.post("/mark-all-read")
 async def mark_all_notifications_read(
