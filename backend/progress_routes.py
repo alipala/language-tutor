@@ -8,12 +8,13 @@ import httpx
 
 from auth import get_current_user
 from models import (
-    UserResponse, ConversationSession, ConversationMessage, 
+    UserResponse, ConversationSession, ConversationMessage,
     SaveConversationRequest, ConversationStats, ConversationHistoryResponse,
     Flashcard, FlashcardSet
 )
 from database import conversation_sessions_collection, users_collection
 from enhanced_analysis import generate_enhanced_analysis
+from session_statistics import SessionStatistics
 
 # Initialize OpenAI client with error handling
 api_key = os.getenv("OPENAI_API_KEY")
@@ -197,6 +198,130 @@ async def _get_learning_plans_internal(current_user: UserResponse):
         print(f"[DASHBOARD_BATCH] Error in _get_learning_plans_internal: {str(e)}")
         return []
 
+async def get_enhanced_session_statistics(
+    user_id: str,
+    messages: List[Dict[str, Any]],
+    duration_minutes: float,
+    background_analyses: Optional[List[Dict[str, Any]]] = None,
+    session_number: Optional[int] = None,
+    week_number: Optional[int] = None,
+    week_focus: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Calculate enhanced session statistics including comparison and overall progress
+
+    Returns dict with: session_stats, comparison, overall_progress
+    """
+    try:
+        # Calculate current session stats
+        session_stats = SessionStatistics.calculate_session_stats(
+            messages=messages,
+            duration_minutes=duration_minutes,
+            background_analyses=background_analyses,
+            session_number=session_number,
+            week_number=week_number,
+            week_focus=week_focus
+        )
+
+        # Fetch previous session for comparison
+        previous_session = await conversation_sessions_collection.find_one(
+            {"user_id": user_id},
+            sort=[("created_at", -1)],  # Most recent first
+            limit=1
+        )
+
+        # Calculate comparison
+        comparison = SessionStatistics.calculate_comparison(session_stats, previous_session)
+
+        # Get overall progress stats
+        overall_progress = await _calculate_overall_progress(user_id)
+
+        return {
+            "session_stats": session_stats,
+            "comparison": comparison,
+            "overall_progress": overall_progress
+        }
+
+    except Exception as e:
+        print(f"[ENHANCED_STATS] Error calculating enhanced statistics: {str(e)}")
+        # Return minimal stats on error
+        return {
+            "session_stats": {
+                "duration_minutes": duration_minutes,
+                "message_count": len(messages),
+            },
+            "comparison": {"has_previous_session": False},
+            "overall_progress": {
+                "total_sessions": 0,
+                "total_minutes": 0.0,
+                "current_streak": 0,
+                "longest_streak": 0,
+                "sessions_this_week": 0,
+                "sessions_this_month": 0
+            }
+        }
+
+async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
+    """Calculate overall progress statistics for a user"""
+    try:
+        # Get conversation sessions
+        sessions_cursor = conversation_sessions_collection.find({"user_id": user_id})
+        conversation_sessions = await sessions_cursor.to_list(length=None)
+
+        conversation_total_sessions = len(conversation_sessions)
+        conversation_total_minutes = sum(session.get('duration_minutes', 0) for session in conversation_sessions)
+
+        # Get learning plan sessions
+        from database import database
+        learning_plans_collection = database["learning_plans"]
+        learning_plans_cursor = learning_plans_collection.find({"user_id": user_id})
+        learning_plans = await learning_plans_cursor.to_list(length=None)
+
+        learning_plan_total_sessions = 0
+        learning_plan_total_minutes = 0.0
+
+        for plan in learning_plans:
+            plan_sessions = plan.get("completed_sessions", 0)
+            plan_minutes = plan.get("practice_minutes_used", 0.0)
+            learning_plan_total_sessions += plan_sessions
+            learning_plan_total_minutes += plan_minutes
+
+        # Unified totals
+        total_sessions = conversation_total_sessions + learning_plan_total_sessions
+        total_minutes = conversation_total_minutes + learning_plan_total_minutes
+
+        # Calculate streak
+        current_streak, longest_streak = await calculate_streaks(user_id)
+
+        # Calculate sessions this week/month
+        now = datetime.utcnow()
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
+
+        sessions_this_week = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= week_start])
+        sessions_this_month = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= month_start])
+
+        return SessionStatistics.get_overall_progress(
+            user_id=user_id,
+            total_sessions=total_sessions,
+            total_minutes=total_minutes,
+            current_streak=current_streak,
+            longest_streak=longest_streak,
+            sessions_this_week=sessions_this_week,
+            sessions_this_month=sessions_this_month
+        )
+
+    except Exception as e:
+        print(f"[ENHANCED_STATS] Error calculating overall progress: {str(e)}")
+        return {
+            "total_sessions": 0,
+            "total_minutes": 0.0,
+            "current_streak": 0,
+            "longest_streak": 0,
+            "sessions_this_week": 0,
+            "sessions_this_month": 0
+        }
+
 @router.post("/save-conversation")
 async def save_conversation(
     request: SaveConversationRequest,
@@ -362,10 +487,18 @@ async def save_conversation(
             )
             
             print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
-            
+
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
-            
+
+            # 🎯 NEW: Calculate enhanced session statistics
+            enhanced_stats = await get_enhanced_session_statistics(
+                user_id=current_user.id,
+                messages=[msg.dict() for msg in conversation_messages],
+                duration_minutes=request.duration_minutes,
+                background_analyses=background_analyses
+            )
+
             return {
                 "success": True,
                 "session_id": str(existing_session["_id"]),
@@ -373,6 +506,9 @@ async def save_conversation(
                 "is_streak_eligible": is_streak_eligible,
                 "summary": summary,
                 "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
+                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
+                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison with previous
+                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
                 "action": "updated"
             }
         else:
@@ -461,6 +597,14 @@ async def save_conversation(
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
 
+            # 🎯 NEW: Calculate enhanced session statistics
+            enhanced_stats = await get_enhanced_session_statistics(
+                user_id=current_user.id,
+                messages=[msg.dict() for msg in conversation_messages],
+                duration_minutes=request.duration_minutes,
+                background_analyses=background_analyses
+            )
+
             return {
                 "success": True,
                 "session_id": str(result.inserted_id),
@@ -468,6 +612,9 @@ async def save_conversation(
                 "is_streak_eligible": is_streak_eligible,
                 "summary": summary,
                 "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
+                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
+                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison with previous
+                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
                 "action": "created"
             }
         

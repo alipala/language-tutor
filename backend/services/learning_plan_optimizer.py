@@ -800,9 +800,10 @@ class LearningPlanOptimizer:
             result["tier2_patterns"] = {"skipped": True}
 
         # Determine if any updates were made
+        # 🔥 CRITICAL FIX: Use 'or {}' to handle None values when tiers don't run
         result["auto_updated"] = (
-            result.get("tier1_immediate", {}).get("update", {}).get("immediate_update") or
-            result.get("tier2_patterns", {}).get("update", {}).get("success")
+            (result.get("tier1_immediate") or {}).get("update", {}).get("immediate_update") or
+            (result.get("tier2_patterns") or {}).get("update", {}).get("success")
         )
 
         return result
