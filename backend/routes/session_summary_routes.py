@@ -16,6 +16,7 @@ from openai import OpenAI
 
 from auth import get_current_user
 from models import UserResponse
+from session_statistics import SessionStatistics
 
 # Initialize router
 router = APIRouter()
@@ -259,6 +260,14 @@ async def store_session_summary(
     print(f"[SESSION_SUMMARY] Basic summary: {basic_summary[:100] if basic_summary else 'None'}...")
     print(f"[SESSION_SUMMARY] Conversation data available: {conversation_data is not None}")
 
+    # 🔍 DEBUG: Check what's in conversation_data
+    if conversation_data:
+        print(f"[SESSION_SUMMARY] 🔍 Conversation data keys: {list(conversation_data.keys())}")
+        if "sentences_for_analysis" in conversation_data:
+            print(f"[SESSION_SUMMARY] 🔍 Found sentences_for_analysis: {len(conversation_data['sentences_for_analysis'])} sentences")
+        else:
+            print(f"[SESSION_SUMMARY] ⚠️ 'sentences_for_analysis' NOT in conversation_data!")
+
     try:
         from database import database
         learning_plans_collection = database.learning_plans
@@ -283,6 +292,42 @@ async def store_session_summary(
         summary_data = await generate_comprehensive_session_summary(
             plan, conversation_data, basic_summary, current_user.id
         )
+
+        # 🔥 NEW: Batch analyze sentences if provided (CRITICAL FIX!)
+        background_analyses = []
+        if conversation_data and "sentences_for_analysis" in conversation_data:
+            sentences_for_analysis = conversation_data["sentences_for_analysis"]
+
+            if sentences_for_analysis:
+                from background_sentence_analysis import batch_analyze_sentences
+
+                # Extract sentence texts
+                sentence_texts = [s.get('text') for s in sentences_for_analysis if s.get('text')]
+
+                print(f"[SESSION_SUMMARY] 🔍 Starting batch analysis of {len(sentence_texts)} sentences")
+
+                try:
+                    # Get language and level from plan
+                    language = plan.get("language", "english")
+                    level = plan.get("proficiency_level", "B1")
+
+                    # Single GPT-4o call for all sentences
+                    analyses = await batch_analyze_sentences(
+                        sentences=sentence_texts,
+                        language=language,
+                        level=level
+                    )
+
+                    background_analyses = [a.dict() for a in analyses]
+                    print(f"[SESSION_SUMMARY] ✅ Batch analysis complete: {len(background_analyses)} results")
+
+                except Exception as analysis_error:
+                    print(f"[SESSION_SUMMARY] ⚠️ Batch analysis failed: {str(analysis_error)}")
+                    # Continue saving session even if analysis fails
+            else:
+                print(f"[SESSION_SUMMARY] ⚠️ No sentences provided for analysis")
+        else:
+            print(f"[SESSION_SUMMARY] ℹ️ No sentences_for_analysis in conversation data")
 
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
@@ -326,6 +371,22 @@ async def store_session_summary(
             # Don't fail the session saving if subscription tracking fails
             pass
 
+        # 🎯 NEW: Store session messages for future comparisons
+        # Initialize session_history if it doesn't exist
+        session_history = plan.get("session_history", [])
+
+        # Store current session data for future comparisons
+        current_session_data = {
+            "session_number": completed_sessions,
+            "messages": conversation_data.get("messages", []) if conversation_data else [],
+            "duration_minutes": conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0,
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        }
+        session_history.append(current_session_data)
+
+        print(f"[SESSION_SUMMARY] 💾 Stored session {completed_sessions} messages for future comparison")
+        print(f"[SESSION_SUMMARY] 💾 Message count: {len(current_session_data['messages'])}, Duration: {current_session_data['duration_minutes']} min")
+
         # Update the learning plan with new data
         update_result = await learning_plans_collection.update_one(
             {"id": plan_id},
@@ -335,6 +396,7 @@ async def store_session_summary(
                     "completed_sessions": completed_sessions,
                     "progress_percentage": progress_percentage,
                     "plan_content.weekly_schedule": weekly_schedule,
+                    "session_history": session_history,  # 🎯 NEW: Store session history
                     "updated_at": datetime.now(timezone.utc)
                 }
             }
@@ -343,26 +405,105 @@ async def store_session_summary(
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
 
+            # 🎯 NEW: Calculate enhanced session statistics for learning plan session
+            enhanced_stats = {}
+            try:
+                # Extract messages from conversation_data
+                messages = []
+                duration_minutes = 0.0
+                if conversation_data and "messages" in conversation_data:
+                    messages = conversation_data["messages"]
+                    duration_minutes = conversation_data.get("duration_minutes", 5.0)
+
+                # Get sentence analyses for quality scores (use already-calculated background_analyses)
+                # DON'T overwrite! background_analyses was already populated above
+                # Only use from conversation_data if it wasn't calculated yet
+                if not background_analyses and conversation_data:
+                    background_analyses = conversation_data.get("sentence_analyses", [])
+
+                # Calculate session_number and week_number
+                sessions_per_week = 2
+                session_number = completed_sessions
+                week_number = ((completed_sessions - 1) // sessions_per_week) + 1
+
+                # Get week focus
+                week_focus = "General language practice"
+                if weekly_schedule and week_number <= len(weekly_schedule):
+                    week_focus = weekly_schedule[week_number - 1].get("focus", week_focus)
+
+                # Calculate session stats
+                session_stats = SessionStatistics.calculate_session_stats(
+                    messages=messages,
+                    duration_minutes=duration_minutes,
+                    background_analyses=background_analyses,
+                    session_number=session_number,
+                    week_number=week_number,
+                    week_focus=week_focus
+                )
+
+                # 🎯 UPDATED: Fetch previous learning plan session from session_history
+                previous_session_data = None
+                if session_number > 1:
+                    # Get session_history from the plan (we just stored current session)
+                    # Look for previous session (session_number - 1)
+                    plan_session_history = plan.get("session_history", [])
+
+                    print(f"[SESSION_SUMMARY] Looking for previous session {session_number - 1} in history (total: {len(plan_session_history)} sessions)")
+
+                    for hist_session in plan_session_history:
+                        if hist_session.get("session_number") == session_number - 1:
+                            previous_session_data = hist_session
+                            print(f"[SESSION_SUMMARY] ✅ Found previous session {session_number - 1} with {len(hist_session.get('messages', []))} messages")
+                            break
+
+                    if not previous_session_data:
+                        print(f"[SESSION_SUMMARY] ⚠️ Previous session {session_number - 1} not found in history (session before implementation)")
+
+                # Calculate comparison with full data if available
+                comparison = SessionStatistics.calculate_comparison(session_stats, previous_session_data)
+
+                if comparison.get("has_previous_session"):
+                    print(f"[SESSION_SUMMARY] ✅ Comparison calculated: words={comparison.get('words_improvement')}, speed={comparison.get('speed_improvement')} wpm")
+
+                # Get overall progress stats
+                from database import database as db
+                learning_plans_collection_ref = db.learning_plans
+                current_plan = await learning_plans_collection_ref.find_one({"id": plan_id})
+
+                # Import progress stats calculator from progress_routes
+                import sys
+                import os
+                sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from progress_routes import _calculate_overall_progress
+
+                overall_progress = await _calculate_overall_progress(str(current_user.id))
+
+                # Add learning plan specific progress
+                if current_plan:
+                    overall_progress["plan_progress_percentage"] = progress_percentage
+                    overall_progress["plan_completed_sessions"] = completed_sessions
+                    overall_progress["plan_total_sessions"] = plan.get("total_sessions", 48)
+
+                enhanced_stats = {
+                    "session_stats": session_stats,
+                    "comparison": comparison,
+                    "overall_progress": overall_progress
+                }
+
+                print(f"[SESSION_SUMMARY] ✅ Enhanced statistics calculated successfully")
+
+            except Exception as stats_error:
+                print(f"[SESSION_SUMMARY] ⚠️ Error calculating enhanced stats: {str(stats_error)}")
+                # Continue without enhanced stats if calculation fails
+                enhanced_stats = {}
+
             # 🎯 NEW: Two-Tier Learning Plan Optimization
             try:
                 from services.learning_plan_optimizer import LearningPlanOptimizer
 
-                # Get sentence analyses from current session (from conversation_data if available)
-                current_session_analyses = []
-                if conversation_data:
-                    # Extract sentence analyses from conversation data
-                    # This assumes conversation_data has a 'sentence_analyses' key
-                    current_session_analyses = conversation_data.get("sentence_analyses", [])
-
-                    # If not directly available, try to get from latest session in database
-                    if not current_session_analyses:
-                        from database import database
-                        latest_session = await database.conversation_sessions.find_one(
-                            {"user_id": str(current_user.id)},
-                            sort=[("created_at", -1)]
-                        )
-                        if latest_session:
-                            current_session_analyses = latest_session.get("sentence_analyses", [])
+                # 🔥 CRITICAL FIX: Use background_analyses that we just calculated above!
+                # Don't try to fetch from conversation_data with wrong key
+                current_session_analyses = background_analyses if background_analyses else []
 
                 print(f"[PLAN_OPTIMIZER] Found {len(current_session_analyses)} sentence analyses for optimization")
 
@@ -388,6 +529,7 @@ async def store_session_summary(
                         print(f"[PLAN_OPTIMIZER]    Tier 2 (Patterns): {tier2['update'].get('weeks_updated', 0)} weeks updated")
 
                     # Return enriched response with adaptation info
+                    print(f"[SESSION_SUMMARY] 🔍 RETURNING WITH background_analyses: {len(background_analyses)} items")
                     return {
                         "success": True,
                         "message": "Session summary stored successfully",
@@ -395,6 +537,7 @@ async def store_session_summary(
                         "progress_percentage": progress_percentage,
                         "current_week": new_week,
                         "session_summary": summary_data.get("full", summary_data),
+                        "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
                         "plan_adapted": True,  # NEW
                         "adaptation": {  # NEW
                             "tier1_immediate": {
@@ -406,7 +549,10 @@ async def store_session_summary(
                                 "applied": tier2.get("update", {}).get("success", False),
                                 "weeks_updated": tier2.get("update", {}).get("weeks_updated", 0)
                             }
-                        }
+                        },
+                        "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
+                        "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
+                        "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
                     }
                 else:
                     print(f"[PLAN_OPTIMIZER] No updates needed (Tier1: {optimizer_result.get('tier1_immediate')}, Tier2: {optimizer_result.get('tier2_patterns')})")
@@ -417,16 +563,24 @@ async def store_session_summary(
                 print(f"[PLAN_OPTIMIZER] Traceback: {traceback.format_exc()}")
 
             # Original return (if optimizer didn't return early)
+            print(f"[SESSION_SUMMARY] 🔍 RETURNING (optimizer path) WITH background_analyses: {len(background_analyses)} items")
             return {
                 "success": True,
                 "message": "Session summary stored successfully",
                 "completed_sessions": completed_sessions,
                 "progress_percentage": progress_percentage,
                 "current_week": new_week,
-                "session_summary": summary_data.get("full", summary_data)
+                "session_summary": summary_data.get("full", summary_data),
+                "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
+                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
+                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
+                "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
             }
         else:
             print(f"[SESSION_SUMMARY] Warning: No documents were modified for plan {plan_id}")
+
+            # Still calculate enhanced stats even if no changes were made
+            enhanced_stats = {}
 
             return {
                 "success": True,
@@ -434,7 +588,11 @@ async def store_session_summary(
                 "completed_sessions": completed_sessions,
                 "progress_percentage": progress_percentage,
                 "current_week": new_week,
-                "session_summary": summary_data.get("full", summary_data)
+                "session_summary": summary_data.get("full", summary_data),
+                "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
+                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
+                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
+                "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
             }
 
     except HTTPException:

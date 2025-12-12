@@ -299,7 +299,7 @@ async def analyze_sentence(text: str, language: str, level: str, exercise_type: 
                     usage_type="sentence_assessment",
                     input_tokens=usage.prompt_tokens,
                     output_tokens=usage.completion_tokens,
-                    cached_tokens=getattr(usage, 'prompt_tokens_details', {}).get('cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
+                    cached_tokens=getattr(getattr(usage, 'prompt_tokens_details', None), 'cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
                     language=language,
                     context={"level": level, "exercise_type": exercise_type}
                 )
