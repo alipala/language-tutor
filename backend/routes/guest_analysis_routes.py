@@ -286,25 +286,68 @@ async def analyze_guest_session(request: GuestSessionAnalysisRequest):
         )
         print(f"[GUEST_ANALYSIS] ✅ Insights generated")
 
-        # 5. Generate simple flashcards from sentence analyses
+        # 5. Generate flashcards from sentence analyses
         flashcards = []
-        for idx, analysis in enumerate(background_analyses[:5]):  # Max 5 flashcards
-            if analysis.get('is_worth_analyzing') and (
-                analysis.get('grammar_issues') or
-                analysis.get('vocabulary_suggestions')
-            ):
-                # Create flashcard from the analysis
+        flashcard_count = 0
+
+        for idx, analysis in enumerate(background_analyses):
+            if flashcard_count >= 8:  # Max 8 flashcards for guests
+                break
+
+            original = analysis.get('recognized_text', '')
+            corrected = analysis.get('corrected_text', '')
+            grammar_issues = analysis.get('grammar_issues', [])
+            suggestions = analysis.get('improvement_suggestions', [])
+            alternatives = analysis.get('level_appropriate_alternatives', [])
+            overall_score = analysis.get('overall_score', 100)
+
+            # Skip if no useful content or sentence is already perfect
+            if not original or not corrected or original == corrected:
+                continue
+
+            # Type 1: Correction Flashcard (if there are differences)
+            if original != corrected and overall_score < 95:
                 flashcard = {
-                    "id": f"guest_flash_{idx}",
-                    "front": f"How can you improve this sentence?\n\n\"{analysis['sentence']}\"",
-                    "back": analysis.get('alternative_phrasings', [analysis['sentence']])[0] if analysis.get('alternative_phrasings') else analysis['sentence'],
-                    "category": "grammar" if analysis.get('grammar_issues') else "vocabulary",
-                    "difficulty": analysis.get('difficulty_level', request.level),
-                    "hint": analysis.get('grammar_issues', [None])[0] if analysis.get('grammar_issues') else analysis.get('vocabulary_suggestions', [None])[0]
+                    "id": f"guest_flash_{flashcard_count}",
+                    "front": f"Correct this sentence:\n\n\"{original}\"",
+                    "back": corrected,
+                    "category": "grammar",
+                    "difficulty": request.level,
+                    "hint": grammar_issues[0] if grammar_issues else "Check the grammar",
+                    "explanation": f"Original: {original}\nCorrected: {corrected}"
                 }
                 flashcards.append(flashcard)
+                flashcard_count += 1
 
-        print(f"[GUEST_ANALYSIS] ✅ Generated {len(flashcards)} flashcards")
+            # Type 2: Alternative Phrasing Flashcard (if alternatives exist)
+            if alternatives and flashcard_count < 8:
+                flashcard = {
+                    "id": f"guest_flash_{flashcard_count}",
+                    "front": f"Rephrase this sentence:\n\n\"{original}\"",
+                    "back": alternatives[0],
+                    "category": "vocabulary",
+                    "difficulty": request.level,
+                    "hint": "Try a different way to say this",
+                    "explanation": f"Alternative: {alternatives[0]}"
+                }
+                flashcards.append(flashcard)
+                flashcard_count += 1
+
+            # Type 3: Improvement Flashcard (if suggestions exist)
+            if suggestions and flashcard_count < 8:
+                flashcard = {
+                    "id": f"guest_flash_{flashcard_count}",
+                    "front": f"How can you improve this?\n\n\"{original}\"",
+                    "back": suggestions[0],
+                    "category": "improvement",
+                    "difficulty": request.level,
+                    "hint": "Think about clarity and naturalness",
+                    "explanation": f"Suggestion: {suggestions[0]}"
+                }
+                flashcards.append(flashcard)
+                flashcard_count += 1
+
+        print(f"[GUEST_ANALYSIS] ✅ Generated {len(flashcards)} flashcards from {len(background_analyses)} analyses")
 
         # Return complete analysis
         return {
