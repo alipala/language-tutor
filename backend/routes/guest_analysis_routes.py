@@ -301,12 +301,15 @@ async def analyze_guest_session(request: GuestSessionAnalysisRequest):
             alternatives = analysis.get('level_appropriate_alternatives', [])
             overall_score = analysis.get('overall_score', 100)
 
-            # Skip if no useful content or sentence is already perfect
-            if not original or not corrected or original == corrected:
+            # Skip if no content
+            if not original or not corrected:
                 continue
 
-            # Type 1: Correction Flashcard (if there are differences)
-            if original != corrected and overall_score < 95:
+            # Determine if sentence has mistakes
+            has_mistakes = original != corrected
+
+            # Type 1: Correction Flashcard (if there are mistakes)
+            if has_mistakes and flashcard_count < 8:
                 flashcard = {
                     "id": f"guest_flash_{flashcard_count}",
                     "front": f"Correct this sentence:\n\n\"{original}\"",
@@ -314,38 +317,60 @@ async def analyze_guest_session(request: GuestSessionAnalysisRequest):
                     "category": "grammar",
                     "difficulty": request.level,
                     "hint": grammar_issues[0] if grammar_issues else "Check the grammar",
-                    "explanation": f"Original: {original}\nCorrected: {corrected}"
+                    "explanation": f"Your version: {original}\n\nCorrected: {corrected}"
                 }
                 flashcards.append(flashcard)
                 flashcard_count += 1
 
-            # Type 2: Alternative Phrasing Flashcard (if alternatives exist)
+            # Type 2: Alternative Phrasing Flashcard (ALWAYS generate if alternatives exist)
             if alternatives and flashcard_count < 8:
                 flashcard = {
                     "id": f"guest_flash_{flashcard_count}",
-                    "front": f"Rephrase this sentence:\n\n\"{original}\"",
+                    "front": f"Say this in a different way:\n\n\"{original}\"",
                     "back": alternatives[0],
                     "category": "vocabulary",
                     "difficulty": request.level,
-                    "hint": "Try a different way to say this",
-                    "explanation": f"Alternative: {alternatives[0]}"
+                    "hint": "Try using different words",
+                    "explanation": f"Your version: {original}\n\nAlternative: {alternatives[0]}"
                 }
                 flashcards.append(flashcard)
                 flashcard_count += 1
 
-            # Type 3: Improvement Flashcard (if suggestions exist)
+            # Type 3: Improvement/Learning Flashcard (ALWAYS generate if suggestions exist)
             if suggestions and flashcard_count < 8:
                 flashcard = {
                     "id": f"guest_flash_{flashcard_count}",
-                    "front": f"How can you improve this?\n\n\"{original}\"",
+                    "front": f"Practice this:\n\n\"{original}\"",
                     "back": suggestions[0],
-                    "category": "improvement",
+                    "category": "practice",
                     "difficulty": request.level,
-                    "hint": "Think about clarity and naturalness",
-                    "explanation": f"Suggestion: {suggestions[0]}"
+                    "hint": "Remember this for next time",
+                    "explanation": f"Tip: {suggestions[0]}"
                 }
                 flashcards.append(flashcard)
                 flashcard_count += 1
+
+            # Type 4: Vocabulary Review (if sentence is perfect and no cards yet)
+            if not has_mistakes and flashcard_count < 8 and len(flashcards) == 0:
+                # Create a fill-in-the-blank style card
+                words = original.split()
+                if len(words) >= 3:
+                    # Blank out the middle word
+                    blank_index = len(words) // 2
+                    blanked_sentence = " ".join(words[:blank_index] + ["____"] + words[blank_index+1:])
+                    missing_word = words[blank_index]
+
+                    flashcard = {
+                        "id": f"guest_flash_{flashcard_count}",
+                        "front": f"Fill in the blank:\n\n{blanked_sentence}",
+                        "back": original,
+                        "category": "vocabulary",
+                        "difficulty": request.level,
+                        "hint": f"Missing word starts with '{missing_word[0]}'",
+                        "explanation": f"Complete sentence: {original}"
+                    }
+                    flashcards.append(flashcard)
+                    flashcard_count += 1
 
         print(f"[GUEST_ANALYSIS] ✅ Generated {len(flashcards)} flashcards from {len(background_analyses)} analyses")
 
