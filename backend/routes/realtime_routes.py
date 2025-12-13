@@ -1010,8 +1010,25 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"Timestamp: {datetime.now().isoformat()}")
         print("="*80)
 
+        # Add session configuration based on authentication status
+        is_guest = current_user is None
+        max_duration_seconds = 120 if is_guest else 300  # 2 min for guests, 5 min for registered
+
+        print(f"[SESSION_CONFIG] User type: {'guest' if is_guest else 'authenticated'}")
+        print(f"[SESSION_CONFIG] Max duration: {max_duration_seconds}s ({max_duration_seconds//60} minutes)")
+
         print(f"[UNIVERSAL] Ephemeral token created successfully")
-        return result
+
+        # Return OpenAI result + session configuration
+        return {
+            **result,  # OpenAI session data (id, client_secret, etc.)
+            "session_config": {
+                "max_duration_seconds": max_duration_seconds,
+                "is_guest": is_guest,
+                "duration_minutes": max_duration_seconds / 60,
+                "assessment_duration_seconds": 30 if is_guest else 60
+            }
+        }
 
     except Exception as e:
         print(f"[UNIVERSAL] Error: {str(e)}")
