@@ -480,20 +480,30 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     if "preferred_level" in update_data:
         print(f"[UPDATE_PROFILE] 📊 LEVEL CHANGE: {current_user.preferred_level} → {update_data['preferred_level']}")
 
+    # Convert user ID to ObjectId for MongoDB query
+    from bson import ObjectId
+    user_object_id = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+
+    print(f"[UPDATE_PROFILE] 🔍 Querying user with ObjectId: {user_object_id}")
+
     result = await users_collection.update_one(
-        {"_id": current_user.id},
+        {"_id": user_object_id},  # ← FIX: Use ObjectId, not string!
         {"$set": update_data}
     )
 
     print(f"[UPDATE_PROFILE] 💾 Database update result: matched={result.matched_count}, modified={result.modified_count}")
     
+    if result.matched_count == 0:
+        print(f"[UPDATE_PROFILE] ❌ ERROR: User not found with ID {user_object_id}")
+        raise HTTPException(status_code=404, detail="User not found")
+
     if result.modified_count == 0:
         # No changes were made
         print(f"[UPDATE_PROFILE] ⚠️ No documents modified (data might be same as existing)")
         return current_user
 
     # Get updated user
-    updated_user = await users_collection.find_one({"_id": current_user.id})
+    updated_user = await users_collection.find_one({"_id": user_object_id})
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
 
