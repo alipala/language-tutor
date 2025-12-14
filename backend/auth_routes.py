@@ -468,28 +468,46 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     """
     # Update user in database
     update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
-    
+
+    print(f"[UPDATE_PROFILE] 👤 User {current_user.email} updating profile")
+    print(f"[UPDATE_PROFILE] 📝 Update data: {update_data}")
+
     if not update_data:
+        print(f"[UPDATE_PROFILE] ⚠️ No data to update")
         return current_user
-    
+
+    # Special logging for preferred_level changes
+    if "preferred_level" in update_data:
+        print(f"[UPDATE_PROFILE] 📊 LEVEL CHANGE: {current_user.preferred_level} → {update_data['preferred_level']}")
+
     result = await users_collection.update_one(
         {"_id": current_user.id},
         {"$set": update_data}
     )
+
+    print(f"[UPDATE_PROFILE] 💾 Database update result: matched={result.matched_count}, modified={result.modified_count}")
     
     if result.modified_count == 0:
         # No changes were made
+        print(f"[UPDATE_PROFILE] ⚠️ No documents modified (data might be same as existing)")
         return current_user
-    
+
     # Get updated user
     updated_user = await users_collection.find_one({"_id": current_user.id})
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # Verify the update
+    if "preferred_level" in update_data:
+        actual_level = updated_user.get("preferred_level")
+        print(f"[UPDATE_PROFILE] ✅ Verified preferred_level in DB: {actual_level}")
+
     # Convert MongoDB _id to string
     updated_user["id"] = str(updated_user["_id"])
     del updated_user["_id"]
-    
+
+    print(f"[UPDATE_PROFILE] ✅ Profile updated successfully")
+
     return UserResponse(**updated_user)
 
 @router.post("/update-password", status_code=status.HTTP_204_NO_CONTENT)
