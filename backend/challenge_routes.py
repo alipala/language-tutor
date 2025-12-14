@@ -16,7 +16,7 @@ from models import (
     DailyChallengesResponse,
 )
 from database import database
-from challenge_generator import generate_daily_challenges_intelligent
+from challenge_generator_ai import get_or_generate_daily_challenges
 
 router = APIRouter(prefix="/api/challenges", tags=["challenges"])
 
@@ -197,11 +197,11 @@ async def get_daily_challenges(current_user: UserResponse = Depends(get_current_
                 last_updated=cached_challenges.get("created_at", datetime.utcnow())
             )
 
-        # No cache - generate new daily challenges INTELLIGENTLY
-        print(f"[CHALLENGES] 🔄 Generating new intelligent daily challenges")
+        # No cache - generate new AI challenges
+        print(f"[CHALLENGES] 🤖 Generating new AI-powered daily challenges")
 
-        # Use intelligent generator (50% user data + 50% seed data)
-        challenges = await generate_daily_challenges_intelligent(
+        # Use AI generator (100% personalized based on user data)
+        challenges = await get_or_generate_daily_challenges(
             user_id=user_id,
             user_level=user_level
         )
@@ -217,19 +217,8 @@ async def get_daily_challenges(current_user: UserResponse = Depends(get_current_
         for challenge in challenges:
             challenge["completed"] = challenge["id"] in completed_today
 
-        # Cache for 24 hours
-        cache_doc = {
-            "user_id": user_id,
-            "date": today_start,
-            "challenges": challenges,
-            "created_at": datetime.utcnow()
-        }
-
-        # Create TTL index on cache collection (24 hours)
-        await cache_collection.create_index("created_at", expireAfterSeconds=24*60*60)
-        await cache_collection.insert_one(cache_doc)
-
-        print(f"[CHALLENGES] ✅ Generated and cached {len(challenges)} challenges")
+        # Note: Caching is handled inside get_or_generate_daily_challenges
+        print(f"[CHALLENGES] ✅ Retrieved {len(challenges)} AI-generated challenges")
 
         return DailyChallengesResponse(
             challenges=challenges,
