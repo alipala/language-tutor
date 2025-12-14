@@ -584,3 +584,42 @@ class DailyChallengesResponse(BaseModel):
     total_completed_today: int
     streak: int
     last_updated: datetime
+
+# Challenge Pool System Models
+class ChallengePoolItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    cefr_level: str  # A1-C2
+    challenge_type: str  # error_spotting, swipe_fix, etc.
+    challenge_data: Dict[str, Any]  # Full challenge object
+    status: str = "available"  # available, completed, expired
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(days=30))
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class ChallengeCountsResponse(BaseModel):
+    error_spotting: int
+    swipe_fix: int
+    micro_quiz: int
+    smart_flashcard: int
+    native_check: int
+    brain_tickler: int
+    total: int
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class ChallengesByTypeResponse(BaseModel):
+    challenges: List[Dict[str, Any]]
+    total: int
+    type: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True

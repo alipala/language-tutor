@@ -14,6 +14,9 @@ from models import (
     UserResponse,
     ChallengeCompletionRequest,
     DailyChallengesResponse,
+    ChallengeCountsResponse,
+    ChallengesByTypeResponse,
+    ChallengePoolItem,
 )
 from database import database
 from challenge_generator_ai import get_or_generate_daily_challenges
@@ -29,6 +32,11 @@ def get_challenges_collection():
 def get_daily_challenges_cache_collection():
     """Get daily challenges cache collection"""
     return database.daily_challenges_cache
+
+
+def get_challenge_pool_collection():
+    """Get challenge pool collection"""
+    return database.challenge_pool
 
 
 async def get_user_weakness_tags(user_id: str) -> List[str]:
@@ -341,6 +349,27 @@ async def complete_challenge(
         if result.modified_count == 0:
             print(f"[CHALLENGES] ⚠️ No changes made to user {user_id}")
 
+        # CHALLENGE POOL: Mark pool item as completed if it exists
+        pool_collection = get_challenge_pool_collection()
+        pool_result = await pool_collection.update_one(
+            {
+                "user_id": user_id,
+                "challenge_data.id": challenge_id,
+                "status": "available"
+            },
+            {
+                "$set": {
+                    "status": "completed",
+                    "completed_at": datetime.utcnow()
+                }
+            }
+        )
+
+        if pool_result.modified_count > 0:
+            print(f"[CHALLENGE_POOL] ✅ Marked pool item as completed")
+        else:
+            print(f"[CHALLENGE_POOL] ℹ️ No pool item found (legacy challenge or already completed)")
+
         print(f"[CHALLENGES] ✅ Challenge completed. Streak: {current_streak}, Total: {challenge_stats['totalCompleted']}")
 
         return {
@@ -401,3 +430,121 @@ async def get_challenge_stats(current_user: UserResponse = Depends(get_current_u
     except Exception as e:
         print(f"[CHALLENGES] ❌ Error getting stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get challenge stats: {str(e)}")
+
+
+# ==================== CHALLENGE POOL SYSTEM ENDPOINTS ====================
+
+@router.get("/counts", response_model=ChallengeCountsResponse)
+async def get_challenge_counts(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Get available challenge counts per type for the user
+
+    Returns count of available (not completed/expired) challenges for each type
+    Used by iOS to show how many challenges are available in each category
+    """
+    try:
+        print(f"[CHALLENGE_POOL] 📊 Getting challenge counts for user {current_user.id}")
+
+        user_id = current_user.id
+        pool_collection = get_challenge_pool_collection()
+
+        # Count available challenges per type
+        challenge_types = [
+            "error_spotting",
+            "swipe_fix",
+            "micro_quiz",
+            "smart_flashcard",
+            "native_check",
+            "brain_tickler"
+        ]
+
+        counts = {}
+        total = 0
+
+        for challenge_type in challenge_types:
+            count = await pool_collection.count_documents({
+                "user_id": user_id,
+                "challenge_type": challenge_type,
+                "status": "available"
+            })
+            counts[challenge_type] = count
+            total += count
+
+        counts["total"] = total
+
+        print(f"[CHALLENGE_POOL] ✅ Counts: {counts}")
+
+        return ChallengeCountsResponse(**counts)
+
+    except Exception as e:
+        print(f"[CHALLENGE_POOL] ❌ Error getting counts: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get challenge counts: {str(e)}")
+
+
+@router.get("/by-type/{challenge_type}", response_model=ChallengesByTypeResponse)
+async def get_challenges_by_type(
+    challenge_type: str,
+    current_user: UserResponse = Depends(get_current_user),
+    limit: int = 50
+):
+    """
+    Get available challenges of a specific type
+
+    Args:
+        challenge_type: Type of challenge (error_spotting, swipe_fix, etc.)
+        limit: Maximum number of challenges to return (default 50)
+
+    Returns list of available challenges sorted by creation date
+    """
+    try:
+        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}")
+
+        # Validate challenge type
+        valid_types = [
+            "error_spotting", "swipe_fix", "micro_quiz",
+            "smart_flashcard", "native_check", "brain_tickler"
+        ]
+
+        if challenge_type not in valid_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid challenge type. Must be one of: {', '.join(valid_types)}"
+            )
+
+        user_id = current_user.id
+        pool_collection = get_challenge_pool_collection()
+
+        # Get available challenges of this type
+        cursor = pool_collection.find({
+            "user_id": user_id,
+            "challenge_type": challenge_type,
+            "status": "available"
+        }).sort("created_at", -1).limit(limit)
+
+        challenges_raw = await cursor.to_list(length=limit)
+
+        # Extract challenge_data from each pool item
+        challenges = []
+        for item in challenges_raw:
+            challenge_data = item.get("challenge_data", {})
+            # Add pool item ID for completion tracking
+            challenge_data["pool_item_id"] = str(item.get("_id"))
+            challenges.append(challenge_data)
+
+        print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges")
+
+        return ChallengesByTypeResponse(
+            challenges=challenges,
+            total=len(challenges),
+            type=challenge_type
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CHALLENGE_POOL] ❌ Error getting challenges by type: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get challenges: {str(e)}")

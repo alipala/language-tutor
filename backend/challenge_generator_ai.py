@@ -7,6 +7,7 @@ Uses GPT-4 to create personalized challenges every 24 hours
 import os
 import json
 import random
+import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -367,8 +368,14 @@ async def generate_challenges_with_ai(user_id: str, user_level: str) -> List[Dic
 
         print(f"[AI_CHALLENGE] ✅ Generated {len(challenges)} AI challenges")
 
-        # Add metadata
+        # Add metadata and ensure unique IDs
         for challenge in challenges:
+            # Generate globally unique ID by appending UUID
+            # Keep original ID as base, add unique suffix
+            original_id = challenge.get("id", "challenge")
+            unique_id = f"{original_id}_{uuid.uuid4().hex[:8]}"
+            challenge["id"] = unique_id
+
             challenge["generated_at"] = datetime.utcnow().isoformat()
             challenge["source"] = "ai_generated"
 
