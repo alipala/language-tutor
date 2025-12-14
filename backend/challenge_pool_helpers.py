@@ -206,15 +206,18 @@ async def ensure_pool_has_challenges(
             "brain_tickler"
         ]
 
-        # Get current counts
+        # Get current counts - FILTER BY CEFR LEVEL!
         counts = {}
         total = 0
         needs_replenishment = False
+
+        print(f"[POOL_HELPER] 📊 Counting challenges for user {user_id}, level: {user_level}")
 
         for challenge_type in challenge_types:
             count = await pool_collection.count_documents({
                 "user_id": user_id,
                 "challenge_type": challenge_type,
+                "cefr_level": user_level,  # ← FIX: Filter by CEFR level
                 "status": "available"
             })
             counts[challenge_type] = count
@@ -254,17 +257,20 @@ async def ensure_pool_has_challenges(
                 30  # Generate ~30 new challenges
             )
 
-        # Recalculate counts
+        # Recalculate counts - FILTER BY CEFR LEVEL!
         final_counts = {}
         for challenge_type in challenge_types:
             count = await pool_collection.count_documents({
                 "user_id": user_id,
                 "challenge_type": challenge_type,
+                "cefr_level": user_level,  # ← FIX: Filter by CEFR level
                 "status": "available"
             })
             final_counts[challenge_type] = count
 
         final_counts["total"] = sum(final_counts.values())
+
+        print(f"[POOL_HELPER] ✅ Final counts for level {user_level}: {final_counts}")
 
         return final_counts
 

@@ -486,8 +486,6 @@ async def get_challenges_by_type(
     Returns list of available challenges sorted by creation date
     """
     try:
-        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}")
-
         # Validate challenge type
         valid_types = [
             "error_spotting", "swipe_fix", "micro_quiz",
@@ -501,12 +499,17 @@ async def get_challenges_by_type(
             )
 
         user_id = current_user.id
+        user_level = current_user.preferred_level or "B1"
+
+        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}, level: {user_level}")
+
         pool_collection = get_challenge_pool_collection()
 
-        # Get available challenges of this type
+        # Get available challenges of this type - FILTER BY CEFR LEVEL!
         cursor = pool_collection.find({
             "user_id": user_id,
             "challenge_type": challenge_type,
+            "cefr_level": user_level,  # ← FIX: Filter by CEFR level
             "status": "available"
         }).sort("created_at", -1).limit(limit)
 
@@ -520,7 +523,7 @@ async def get_challenges_by_type(
             challenge_data["pool_item_id"] = str(item.get("_id"))
             challenges.append(challenge_data)
 
-        print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges")
+        print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges for level {user_level}")
 
         return ChallengesByTypeResponse(
             challenges=challenges,
