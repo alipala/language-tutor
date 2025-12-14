@@ -55,7 +55,7 @@ async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
         }).sort("created_at", -1).limit(10).to_list(length=10)
 
         for session in recent_sessions:
-            enhanced = session.get("enhanced_analysis", {})
+            enhanced = session.get("enhanced_analysis") or {}
             insights = enhanced.get("insights", {})
 
             # Grammar issues
