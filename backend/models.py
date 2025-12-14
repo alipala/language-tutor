@@ -500,7 +500,87 @@ class VoiceSelectionResponse(BaseModel):
     success: bool
     voice: str
     message: str
-    
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+
+# Challenge models for Explore Tab
+class ChallengeOption(BaseModel):
+    id: str
+    text: str
+    isCorrect: bool
+
+class SwipeFixExample(BaseModel):
+    text: str
+    isCorrect: bool
+    explanation: str
+
+class ChallengeBase(BaseModel):
+    id: str
+    type: str  # error_spotting, swipe_fix, micro_quiz, smart_flashcard, native_check, brain_tickler
+    title: str
+    emoji: str
+    description: str
+    cefrLevel: str  # A1, A2, B1, B2, C1, C2
+    estimatedSeconds: int
+    completed: Optional[bool] = False
+    tags: List[str] = []  # For personalization (e.g., "past_tense", "articles", "vocabulary")
+
+class ErrorSpottingChallenge(ChallengeBase):
+    type: str = "error_spotting"
+    sentence: str
+    options: List[ChallengeOption]
+    explanation: str
+    correctedSentence: str
+
+class SwipeFixChallenge(ChallengeBase):
+    type: str = "swipe_fix"
+    concept: str
+    examples: List[SwipeFixExample]
+
+class MicroQuizChallenge(ChallengeBase):
+    type: str = "micro_quiz"
+    question: str
+    options: List[ChallengeOption]
+    explanation: str
+
+class SmartFlashcardChallenge(ChallengeBase):
+    type: str = "smart_flashcard"
+    word: str
+    context: str
+    explanation: str
+    exampleSentence: str
+
+class NativeCheckChallenge(ChallengeBase):
+    type: str = "native_check"
+    sentence: str
+    isNatural: bool
+    correctedVersion: Optional[str] = None
+    explanation: str
+
+class BrainTicklerChallenge(ChallengeBase):
+    type: str = "brain_tickler"
+    question: str
+    options: List[ChallengeOption]
+    timeLimit: int  # in seconds
+    explanation: str
+
+# User challenge progress tracking
+class UserChallengeStats(BaseModel):
+    totalCompleted: int = 0
+    currentStreak: int = 0
+    lastChallengeDate: Optional[datetime] = None
+    completedToday: List[str] = []  # List of challenge IDs completed today
+    completionHistory: Dict[str, Any] = {}  # Date -> challenge_ids mapping
+
+class ChallengeCompletionRequest(BaseModel):
+    challenge_id: str
+    correct: bool  # Whether user answered correctly
+    time_spent: int  # Time spent in seconds
+
+class DailyChallengesResponse(BaseModel):
+    challenges: List[Dict[str, Any]]  # List of challenge objects (polymorphic)
+    total_completed_today: int
+    streak: int
+    last_updated: datetime

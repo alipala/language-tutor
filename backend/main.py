@@ -178,6 +178,10 @@ app.include_router(activation_codes_router)
 from flashcard_routes import router as flashcard_router
 app.include_router(flashcard_router)
 
+# Include challenge routes (Explore Tab)
+from challenge_routes import router as challenge_router
+app.include_router(challenge_router)
+
 # Include modular routes (refactored from main.py)
 from routes import health_router, mock_router
 from routes.image_routes import router as image_router
