@@ -44,9 +44,16 @@ async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
     try:
         # 1. Get user's CEFR level
         from bson import ObjectId
-        user = await database.users.find_one({"_id": ObjectId(user_id)})
-        if user:
-            analysis["level"] = user.get("preferred_level", "B1") or "B1"
+
+        # Handle special case: reference_user (for generating generic challenges)
+        if user_id == "reference_user":
+            # Skip user lookup, use provided level
+            pass
+        else:
+            # Normal user lookup
+            user = await database.users.find_one({"_id": ObjectId(user_id)})
+            if user:
+                analysis["level"] = user.get("preferred_level", "B1") or "B1"
 
         # 2. Extract mistakes from recent practice sessions
         sessions_collection = database.conversation_sessions

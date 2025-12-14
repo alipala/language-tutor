@@ -602,6 +602,23 @@ class ChallengePoolItem(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+class ReferenceChallengeItem(BaseModel):
+    """
+    Generic pre-written challenges for new users
+    Reusable across all users of same level
+    """
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    cefr_level: str  # A1-C2
+    challenge_type: str  # error_spotting, swipe_fix, etc.
+    challenge_data: Dict[str, Any]  # Full challenge object
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    tags: List[str] = []  # For categorization
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
 class ChallengeCountsResponse(BaseModel):
     error_spotting: int
     swipe_fix: int

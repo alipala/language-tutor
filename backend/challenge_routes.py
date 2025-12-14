@@ -439,38 +439,25 @@ async def get_challenge_counts(current_user: UserResponse = Depends(get_current_
     """
     Get available challenge counts per type for the user
 
-    Returns count of available (not completed/expired) challenges for each type
-    Used by iOS to show how many challenges are available in each category
+    Auto-handling:
+    - New users: Instant copy from reference challenges
+    - Low pool: Auto-replenishes with personalized AI challenges
+    - Always ensures user has content
     """
     try:
         print(f"[CHALLENGE_POOL] 📊 Getting challenge counts for user {current_user.id}")
 
         user_id = current_user.id
-        pool_collection = get_challenge_pool_collection()
+        user_level = current_user.preferred_level or "B1"
 
-        # Count available challenges per type
-        challenge_types = [
-            "error_spotting",
-            "swipe_fix",
-            "micro_quiz",
-            "smart_flashcard",
-            "native_check",
-            "brain_tickler"
-        ]
+        # Import helper functions
+        from challenge_pool_helpers import ensure_pool_has_challenges, is_new_user
 
-        counts = {}
-        total = 0
+        # Check if new user
+        new_user = await is_new_user(user_id)
 
-        for challenge_type in challenge_types:
-            count = await pool_collection.count_documents({
-                "user_id": user_id,
-                "challenge_type": challenge_type,
-                "status": "available"
-            })
-            counts[challenge_type] = count
-            total += count
-
-        counts["total"] = total
+        # Ensure pool has challenges (handles all scenarios)
+        counts = await ensure_pool_has_challenges(user_id, user_level, new_user)
 
         print(f"[CHALLENGE_POOL] ✅ Counts: {counts}")
 
