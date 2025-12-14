@@ -166,6 +166,11 @@ async def get_intelligent_seed_challenges(
         List of challenges from seed database
     """
     try:
+        # Default to B1 if no level provided
+        if not user_level or user_level == "None":
+            user_level = "B1"
+            print(f"[CHALLENGE_GEN] No user level provided, defaulting to B1")
+
         challenges_collection = database.challenges
 
         # Define remaining types needed
