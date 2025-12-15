@@ -1,0 +1,27 @@
+# Minimal requirements for challenge_pool_replenisher.py cron job
+# Only includes what's needed for the replenisher script
+
+# Core dependencies
+python-dotenv==1.0.1
+pymongo==4.6.1
+motor==3.3.2
+
+# OpenAI for challenge generation
+openai==1.109.1
+
+# Async HTTP client (required by openai)
+httpx==0.28.1
+anyio==4.8.0
+sniffio==1.3.1
+
+# Type checking and validation (required by openai/pydantic)
+pydantic==2.10.6
+annotated-types==0.7.0
+pydantic-core==2.27.2
+typing-extensions==4.12.2
+
+# OpenAI SDK dependencies
+distro==1.9.0
+tqdm==4.67.1
+
+# That's it! No FastAPI, no matplotlib, no weasyprint, no reportlab
