@@ -59,3 +59,4 @@ backend/chatbot_documents.json
 cron-service/phase2-crewai/crewai_challenges_*.log
 cron-service/phase2-crewai/crewai_usage_report_*.json
 cron-service/phase2-crewai/venv/
+backend/backend.log
