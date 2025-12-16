@@ -37,8 +37,14 @@ from openai import OpenAI
 # CONFIGURATION
 # ============================================================================
 
-# Load environment variables
+# Load environment variables - check multiple locations
+# 1. Check for .env in current directory (for Railway/production)
 load_dotenv()
+
+# 2. Check for backend/.env (for local testing)
+backend_env = os.path.join(os.path.dirname(__file__), '../../backend/.env')
+if os.path.exists(backend_env):
+    load_dotenv(backend_env, override=True)
 
 # LLM Configuration (configurable via environment)
 GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4o")
