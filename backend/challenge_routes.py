@@ -74,6 +74,74 @@ async def get_user_active_language(user_id: str) -> str:
         return "english"
 
 
+async def resolve_language_and_level(
+    user_id: str,
+    user_preferred_level: Optional[str],
+    language_param: Optional[str] = None,
+    level_param: Optional[str] = None
+) -> tuple[str, str]:
+    """
+    Smart resolution of language and level with proper priority fallback.
+
+    Priority for LANGUAGE:
+    1. Explicit language parameter (iOS user selection)
+    2. User's active learning plan language
+    3. Fallback: "english"
+
+    Priority for LEVEL:
+    1. Explicit level parameter (iOS user selection)
+    2. User's preferred_level from profile
+    3. Fallback: "B1"
+
+    Args:
+        user_id: User ID
+        user_preferred_level: User's preferred level from profile
+        language_param: Optional explicit language from query params
+        level_param: Optional explicit level from query params
+
+    Returns:
+        Tuple of (language, level) both lowercase
+    """
+    # Resolve language
+    if language_param and language_param.strip():
+        # Priority 1: Explicit parameter from iOS
+        language = language_param.lower().strip()
+        print(f"[RESOLVE] Using explicit language parameter: {language}")
+    else:
+        # Priority 2: User's active learning plan
+        language = await get_user_active_language(user_id)
+        print(f"[RESOLVE] Using learning plan language: {language}")
+
+    # Resolve level
+    if level_param and level_param.strip():
+        # Priority 1: Explicit parameter from iOS
+        level = level_param.upper().strip()
+        print(f"[RESOLVE] Using explicit level parameter: {level}")
+    elif user_preferred_level:
+        # Priority 2: User's profile preference
+        level = user_preferred_level
+        print(f"[RESOLVE] Using user preferred level: {level}")
+    else:
+        # Priority 3: Default fallback
+        level = "B1"
+        print(f"[RESOLVE] Using default level: {level}")
+
+    # Validate language (supported languages)
+    valid_languages = ["english", "spanish", "dutch", "german", "french", "portuguese"]
+    if language not in valid_languages:
+        print(f"[RESOLVE] ⚠️ Invalid language '{language}', defaulting to 'english'")
+        language = "english"
+
+    # Validate level (CEFR levels)
+    valid_levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+    if level not in valid_levels:
+        print(f"[RESOLVE] ⚠️ Invalid level '{level}', defaulting to 'B1'")
+        level = "B1"
+
+    print(f"[RESOLVE] ✅ Final: language={language}, level={level}")
+    return language, level
+
+
 async def get_user_weakness_tags(user_id: str) -> List[str]:
     """
     Analyze user's weak areas from existing data:
@@ -199,9 +267,19 @@ async def select_personalized_challenges(
 
 
 @router.get("/daily")
-async def get_daily_challenges(current_user: UserResponse = Depends(get_current_user)):
+async def get_daily_challenges(
+    current_user: UserResponse = Depends(get_current_user),
+    language: Optional[str] = None,
+    level: Optional[str] = None
+):
     """
     Get 6 personalized daily challenges
+
+    Query Parameters:
+    - language (optional): Target language (english, spanish, dutch, german, french, portuguese)
+    - level (optional): CEFR level (A1, A2, B1, B2, C1, C2)
+
+    If not provided, falls back to user's active learning plan or profile preferences.
 
     - Returns cached challenges if available (24h cache)
     - Personalizes based on user's weak areas from flashcards/sessions
@@ -211,8 +289,14 @@ async def get_daily_challenges(current_user: UserResponse = Depends(get_current_
         print(f"[CHALLENGES] 📅 Getting daily challenges for user {current_user.id}")
 
         user_id = current_user.id
-        user_level = current_user.preferred_level or "B1"
-        user_language = await get_user_active_language(user_id)
+
+        # Smart resolution: query params > learning plan > profile > defaults
+        user_language, user_level = await resolve_language_and_level(
+            user_id=user_id,
+            user_preferred_level=current_user.preferred_level,
+            language_param=language,
+            level_param=level
+        )
 
         # Check cache first
         cache_collection = get_daily_challenges_cache_collection()
@@ -476,9 +560,19 @@ async def get_challenge_stats(current_user: UserResponse = Depends(get_current_u
 # ==================== CHALLENGE POOL SYSTEM ENDPOINTS ====================
 
 @router.get("/counts", response_model=ChallengeCountsResponse)
-async def get_challenge_counts(current_user: UserResponse = Depends(get_current_user)):
+async def get_challenge_counts(
+    current_user: UserResponse = Depends(get_current_user),
+    language: Optional[str] = None,
+    level: Optional[str] = None
+):
     """
     Get available challenge counts per type for the user
+
+    Query Parameters:
+    - language (optional): Target language (english, spanish, dutch, german, french, portuguese)
+    - level (optional): CEFR level (A1, A2, B1, B2, C1, C2)
+
+    If not provided, falls back to user's active learning plan or profile preferences.
 
     Auto-handling:
     - New users: Instant copy from reference challenges
@@ -489,8 +583,14 @@ async def get_challenge_counts(current_user: UserResponse = Depends(get_current_
         print(f"[CHALLENGE_POOL] 📊 Getting challenge counts for user {current_user.id}")
 
         user_id = current_user.id
-        user_level = current_user.preferred_level or "B1"
-        user_language = await get_user_active_language(user_id)
+
+        # Smart resolution: query params > learning plan > profile > defaults
+        user_language, user_level = await resolve_language_and_level(
+            user_id=user_id,
+            user_preferred_level=current_user.preferred_level,
+            language_param=language,
+            level_param=level
+        )
 
         # Import helper functions
         from challenge_pool_helpers import ensure_pool_has_challenges, is_new_user
@@ -516,14 +616,22 @@ async def get_challenge_counts(current_user: UserResponse = Depends(get_current_
 async def get_challenges_by_type(
     challenge_type: str,
     current_user: UserResponse = Depends(get_current_user),
+    language: Optional[str] = None,
+    level: Optional[str] = None,
     limit: int = 50
 ):
     """
     Get available challenges of a specific type
 
-    Args:
-        challenge_type: Type of challenge (error_spotting, swipe_fix, etc.)
-        limit: Maximum number of challenges to return (default 50)
+    Path Parameters:
+    - challenge_type: Type of challenge (error_spotting, swipe_fix, etc.)
+
+    Query Parameters:
+    - language (optional): Target language (english, spanish, dutch, german, french, portuguese)
+    - level (optional): CEFR level (A1, A2, B1, B2, C1, C2)
+    - limit: Maximum number of challenges to return (default 50)
+
+    If language/level not provided, falls back to user's active learning plan or profile preferences.
 
     Returns list of available challenges sorted by creation date
     """
@@ -541,8 +649,14 @@ async def get_challenges_by_type(
             )
 
         user_id = current_user.id
-        user_level = current_user.preferred_level or "B1"
-        user_language = await get_user_active_language(user_id)
+
+        # Smart resolution: query params > learning plan > profile > defaults
+        user_language, user_level = await resolve_language_and_level(
+            user_id=user_id,
+            user_preferred_level=current_user.preferred_level,
+            language_param=language,
+            level_param=level
+        )
 
         print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}, language: {user_language}, level: {user_level}")
 
@@ -585,21 +699,34 @@ async def get_challenges_by_type(
 
 
 @router.get("/languages")
-async def get_available_languages(current_user: UserResponse = Depends(get_current_user)):
+async def get_available_languages(
+    current_user: UserResponse = Depends(get_current_user),
+    level: Optional[str] = None
+):
     """
     Get list of all available languages and user's learning status
+
+    Query Parameters:
+    - level (optional): CEFR level to check counts for (A1, A2, B1, B2, C1, C2)
 
     Returns:
         List of languages with:
         - Language name
         - Whether user has active plan
-        - Challenge counts available
+        - Challenge counts available (for specified or user's level)
     """
     try:
         print(f"[CHALLENGES] 🌍 Getting available languages for user {current_user.id}")
 
         user_id = current_user.id
-        user_level = current_user.preferred_level or "B1"
+
+        # Use provided level or user's preferred level
+        user_level = level.upper() if level else (current_user.preferred_level or "B1")
+
+        # Validate level
+        valid_levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+        if user_level not in valid_levels:
+            user_level = "B1"
 
         # All supported languages
         all_languages = ["english", "spanish", "dutch", "german", "french", "portuguese"]
