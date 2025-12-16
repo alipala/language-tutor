@@ -28,6 +28,7 @@ async def get_pool_collection():
 async def copy_reference_to_pool(
     user_id: str,
     user_level: str,
+    language: str = "english",
     challenges_per_type: int = 10
 ) -> int:
     """
@@ -37,6 +38,7 @@ async def copy_reference_to_pool(
     Args:
         user_id: User ID
         user_level: CEFR level (A1-C2)
+        language: Target language (default: "english")
         challenges_per_type: Number per type (default 10)
 
     Returns:
@@ -60,12 +62,13 @@ async def copy_reference_to_pool(
         pool_items = []
 
         for challenge_type in challenge_types:
-            # Get random reference challenges of this type and level
+            # Get random reference challenges of this type, level, and language
             cursor = reference_collection.aggregate([
                 {
                     "$match": {
                         "cefr_level": user_level,
-                        "challenge_type": challenge_type
+                        "challenge_type": challenge_type,
+                        "language": language
                     }
                 },
                 {"$sample": {"size": challenges_per_type}}
@@ -77,6 +80,7 @@ async def copy_reference_to_pool(
             for ref_challenge in reference_challenges:
                 pool_item = {
                     "user_id": user_id,
+                    "language": language,
                     "cefr_level": user_level,
                     "challenge_type": challenge_type,
                     "challenge_data": ref_challenge.get("challenge_data"),
@@ -104,7 +108,8 @@ async def copy_reference_to_pool(
 async def generate_personalized_challenges(
     user_id: str,
     user_level: str,
-    challenges_needed: int
+    language: str = "english",
+    challenges_needed: int = 30
 ) -> int:
     """
     Generate AI-powered personalized challenges
@@ -113,7 +118,8 @@ async def generate_personalized_challenges(
     Args:
         user_id: User ID
         user_level: CEFR level
-        challenges_needed: Total number needed
+        language: Target language (default: "english")
+        challenges_needed: Total number needed (default: 30)
 
     Returns:
         Number of challenges generated
@@ -137,7 +143,7 @@ async def generate_personalized_challenges(
 
         # Generate batches
         for batch_num in range(batches_needed):
-            batch = await generate_challenges_with_ai(user_id, user_level)
+            batch = await generate_challenges_with_ai(user_id, user_level, language)
             if batch:
                 for challenge in batch:
                     challenge_type = challenge.get("type")
@@ -150,6 +156,7 @@ async def generate_personalized_challenges(
             for challenge in challenges:
                 pool_items.append({
                     "user_id": user_id,
+                    "language": language,
                     "cefr_level": user_level,
                     "challenge_type": challenge_type,
                     "challenge_data": challenge,
@@ -176,6 +183,7 @@ async def generate_personalized_challenges(
 async def ensure_pool_has_challenges(
     user_id: str,
     user_level: str,
+    language: str = "english",
     is_new_user: bool = False
 ) -> Dict[str, int]:
     """
@@ -189,6 +197,7 @@ async def ensure_pool_has_challenges(
     Args:
         user_id: User ID
         user_level: CEFR level
+        language: Target language (default: "english")
         is_new_user: True if user has no activity history
 
     Returns:
@@ -206,18 +215,19 @@ async def ensure_pool_has_challenges(
             "brain_tickler"
         ]
 
-        # Get current counts - FILTER BY CEFR LEVEL!
+        # Get current counts - FILTER BY LANGUAGE AND CEFR LEVEL!
         counts = {}
         total = 0
         needs_replenishment = False
 
-        print(f"[POOL_HELPER] 📊 Counting challenges for user {user_id}, level: {user_level}")
+        print(f"[POOL_HELPER] 📊 Counting challenges for user {user_id}, language: {language}, level: {user_level}")
 
         for challenge_type in challenge_types:
             count = await pool_collection.count_documents({
                 "user_id": user_id,
+                "language": language,
                 "challenge_type": challenge_type,
-                "cefr_level": user_level,  # ← FIX: Filter by CEFR level
+                "cefr_level": user_level,
                 "status": "available"
             })
             counts[challenge_type] = count
@@ -230,12 +240,13 @@ async def ensure_pool_has_challenges(
         if total == 0:
             if is_new_user:
                 print(f"[POOL_HELPER] 🆕 New user - copying from reference")
-                await copy_reference_to_pool(user_id, user_level, TARGET_CHALLENGES_PER_TYPE)
+                await copy_reference_to_pool(user_id, user_level, language, TARGET_CHALLENGES_PER_TYPE)
             else:
                 print(f"[POOL_HELPER] 🔄 Existing user - generating personalized")
                 await generate_personalized_challenges(
                     user_id,
                     user_level,
+                    language,
                     TARGET_CHALLENGES_PER_TYPE * 6
                 )
 
@@ -254,23 +265,25 @@ async def ensure_pool_has_challenges(
             await generate_personalized_challenges(
                 user_id,
                 user_level,
+                language,
                 30  # Generate ~30 new challenges
             )
 
-        # Recalculate counts - FILTER BY CEFR LEVEL!
+        # Recalculate counts - FILTER BY LANGUAGE AND CEFR LEVEL!
         final_counts = {}
         for challenge_type in challenge_types:
             count = await pool_collection.count_documents({
                 "user_id": user_id,
+                "language": language,
                 "challenge_type": challenge_type,
-                "cefr_level": user_level,  # ← FIX: Filter by CEFR level
+                "cefr_level": user_level,
                 "status": "available"
             })
             final_counts[challenge_type] = count
 
         final_counts["total"] = sum(final_counts.values())
 
-        print(f"[POOL_HELPER] ✅ Final counts for level {user_level}: {final_counts}")
+        print(f"[POOL_HELPER] ✅ Final counts for language {language}, level {user_level}: {final_counts}")
 
         return final_counts
 

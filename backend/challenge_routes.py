@@ -39,6 +39,41 @@ def get_challenge_pool_collection():
     return database.challenge_pool
 
 
+async def get_user_active_language(user_id: str) -> str:
+    """
+    Get user's active learning plan language
+
+    Returns:
+        Language code (default: "english")
+    """
+    try:
+        learning_plans_collection = database.learning_plans
+        active_plan = await learning_plans_collection.find_one({
+            "user_id": user_id,
+            "is_active": True
+        })
+
+        if active_plan:
+            language = active_plan.get("language", "english")
+            # Ensure lowercase for consistency
+            return language.lower()
+
+        # Fallback: get most recent plan
+        recent_plan = await learning_plans_collection.find_one(
+            {"user_id": user_id},
+            sort=[("created_at", -1)]
+        )
+
+        if recent_plan:
+            return recent_plan.get("language", "english").lower()
+
+        return "english"
+
+    except Exception as e:
+        print(f"[CHALLENGES] Error getting user language: {str(e)}")
+        return "english"
+
+
 async def get_user_weakness_tags(user_id: str) -> List[str]:
     """
     Analyze user's weak areas from existing data:
@@ -92,6 +127,7 @@ async def get_user_weakness_tags(user_id: str) -> List[str]:
 
 async def select_personalized_challenges(
     user_level: str,
+    language: str,
     weakness_tags: List[str],
     exclude_ids: List[str] = []
 ) -> List[Dict[str, Any]]:
@@ -100,6 +136,7 @@ async def select_personalized_challenges(
 
     Args:
         user_level: CEFR level (A1-C2)
+        language: Target language
         weakness_tags: User's weak areas
         exclude_ids: Challenge IDs to exclude (already completed today)
 
@@ -123,6 +160,7 @@ async def select_personalized_challenges(
         # Build query
         query = {
             "type": challenge_type,
+            "language": language,
             "cefrLevel": user_level,
             "id": {"$nin": exclude_ids}
         }
@@ -174,6 +212,7 @@ async def get_daily_challenges(current_user: UserResponse = Depends(get_current_
 
         user_id = current_user.id
         user_level = current_user.preferred_level or "B1"
+        user_language = await get_user_active_language(user_id)
 
         # Check cache first
         cache_collection = get_daily_challenges_cache_collection()
@@ -182,6 +221,7 @@ async def get_daily_challenges(current_user: UserResponse = Depends(get_current_
 
         cached_challenges = await cache_collection.find_one({
             "user_id": user_id,
+            "language": user_language,
             "date": today_start
         })
 
@@ -211,7 +251,8 @@ async def get_daily_challenges(current_user: UserResponse = Depends(get_current_
         # Use AI generator (100% personalized based on user data)
         challenges = await get_or_generate_daily_challenges(
             user_id=user_id,
-            user_level=user_level
+            user_level=user_level,
+            language=user_language
         )
 
         # Get user stats for completion tracking
@@ -449,6 +490,7 @@ async def get_challenge_counts(current_user: UserResponse = Depends(get_current_
 
         user_id = current_user.id
         user_level = current_user.preferred_level or "B1"
+        user_language = await get_user_active_language(user_id)
 
         # Import helper functions
         from challenge_pool_helpers import ensure_pool_has_challenges, is_new_user
@@ -457,7 +499,7 @@ async def get_challenge_counts(current_user: UserResponse = Depends(get_current_
         new_user = await is_new_user(user_id)
 
         # Ensure pool has challenges (handles all scenarios)
-        counts = await ensure_pool_has_challenges(user_id, user_level, new_user)
+        counts = await ensure_pool_has_challenges(user_id, user_level, user_language, new_user)
 
         print(f"[CHALLENGE_POOL] ✅ Counts: {counts}")
 
@@ -500,16 +542,18 @@ async def get_challenges_by_type(
 
         user_id = current_user.id
         user_level = current_user.preferred_level or "B1"
+        user_language = await get_user_active_language(user_id)
 
-        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}, level: {user_level}")
+        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}, language: {user_language}, level: {user_level}")
 
         pool_collection = get_challenge_pool_collection()
 
-        # Get available challenges of this type - FILTER BY CEFR LEVEL!
+        # Get available challenges of this type - FILTER BY LANGUAGE AND CEFR LEVEL!
         cursor = pool_collection.find({
             "user_id": user_id,
+            "language": user_language,
             "challenge_type": challenge_type,
-            "cefr_level": user_level,  # ← FIX: Filter by CEFR level
+            "cefr_level": user_level,
             "status": "available"
         }).sort("created_at", -1).limit(limit)
 
@@ -523,7 +567,7 @@ async def get_challenges_by_type(
             challenge_data["pool_item_id"] = str(item.get("_id"))
             challenges.append(challenge_data)
 
-        print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges for level {user_level}")
+        print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges for language {user_language}, level {user_level}")
 
         return ChallengesByTypeResponse(
             challenges=challenges,
@@ -538,3 +582,83 @@ async def get_challenges_by_type(
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to get challenges: {str(e)}")
+
+
+@router.get("/languages")
+async def get_available_languages(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Get list of all available languages and user's learning status
+
+    Returns:
+        List of languages with:
+        - Language name
+        - Whether user has active plan
+        - Challenge counts available
+    """
+    try:
+        print(f"[CHALLENGES] 🌍 Getting available languages for user {current_user.id}")
+
+        user_id = current_user.id
+        user_level = current_user.preferred_level or "B1"
+
+        # All supported languages
+        all_languages = ["english", "spanish", "dutch", "german", "french", "portuguese"]
+
+        # Get user's learning plans
+        learning_plans_collection = database.learning_plans
+        user_plans = await learning_plans_collection.find({
+            "user_id": user_id
+        }).to_list(length=10)
+
+        # Build language status map
+        languages_with_plans = {}
+        active_language = None
+
+        for plan in user_plans:
+            lang = plan.get("language", "").lower()
+            is_active = plan.get("is_active", False)
+
+            if lang:
+                languages_with_plans[lang] = {
+                    "has_plan": True,
+                    "is_active": is_active
+                }
+
+                if is_active:
+                    active_language = lang
+
+        # Get challenge counts for each language
+        pool_collection = get_challenge_pool_collection()
+
+        result = []
+        for language in all_languages:
+            # Count available challenges for this language
+            count = await pool_collection.count_documents({
+                "user_id": user_id,
+                "language": language,
+                "cefr_level": user_level,
+                "status": "available"
+            })
+
+            plan_info = languages_with_plans.get(language, {"has_plan": False, "is_active": False})
+
+            result.append({
+                "language": language,
+                "has_learning_plan": plan_info["has_plan"],
+                "is_active": plan_info["is_active"],
+                "available_challenges": count
+            })
+
+        print(f"[CHALLENGES] ✅ Found {len(result)} languages. Active: {active_language}")
+
+        return {
+            "success": True,
+            "languages": result,
+            "active_language": active_language
+        }
+
+    except Exception as e:
+        print(f"[CHALLENGES] ❌ Error getting languages: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get languages: {str(e)}")
