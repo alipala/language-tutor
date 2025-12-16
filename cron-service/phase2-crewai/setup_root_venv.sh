@@ -48,8 +48,36 @@ echo ""
 
 # Check Python version
 echo "1. Checking Python version..."
-$VENV_PYTHON --version
-echo "✅ Python OK"
+PYTHON_VERSION=$($VENV_PYTHON --version 2>&1 | grep -oE '[0-9]+\.[0-9]+')
+echo "Python $PYTHON_VERSION"
+
+# Check if Python >= 3.10 (required by CrewAI)
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
+    echo "❌ ERROR: CrewAI requires Python >=3.10, but your venv uses Python $PYTHON_VERSION"
+    echo ""
+    echo "You need to recreate your venv with Python 3.10+:"
+    echo ""
+    echo "1. Check if you have Python 3.10+ installed:"
+    echo "   python3.11 --version  # or python3.10, python3.12, etc."
+    echo ""
+    echo "2. If yes, recreate your venv:"
+    echo "   cd $PROJECT_ROOT"
+    echo "   rm -rf venv"
+    echo "   python3.11 -m venv venv  # Use whatever version you have"
+    echo "   source venv/bin/activate"
+    echo "   pip install -r backend/requirements.txt"
+    echo "   pip install -r cron-service/phase2-crewai/requirements.txt"
+    echo ""
+    echo "3. If you don't have Python 3.10+, install it:"
+    echo "   brew install python@3.11"
+    echo ""
+    exit 1
+fi
+
+echo "✅ Python $PYTHON_VERSION OK (CrewAI requires >=3.10)"
 echo ""
 
 # Check current installations
@@ -72,7 +100,7 @@ if [ "$CREWAI_VERSION" != "not installed" ]; then
     echo "   Upgrading to ensure correct version..."
 fi
 
-$VENV_PIP install --upgrade crewai==0.80.0 crewai-tools==0.12.1
+$VENV_PIP install --upgrade crewai==1.7.1 crewai-tools==1.7.1
 
 echo "✅ Phase 2 dependencies installed"
 echo ""
