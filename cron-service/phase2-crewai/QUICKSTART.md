@@ -23,30 +23,59 @@ Apple's Python and Homebrew Python are "externally managed" to prevent conflicts
 
 ---
 
-## 🚀 **Quick Setup (30 seconds)**
+## 🚀 **Quick Setup - TWO OPTIONS**
 
-### **Option 1: Automated Setup Script** ⭐ Recommended
+### **Option 1: Use Your Existing Root Venv** ⭐ RECOMMENDED
+
+If you already run the backend with `python run_with_venv.py`, you have a venv at the project root. Let's use it!
 
 ```bash
 cd cron-service/phase2-crewai
 
-# Run the setup script
+# Add Phase 2 dependencies to your root venv
+./setup_root_venv.sh
+
+# Then activate and test
+cd ../..  # Go to project root
+source venv/bin/activate
+cd cron-service/phase2-crewai
+python test_crew_ai.py
+```
+
+**Pros:** ✅ Simpler, uses your existing setup, one environment for everything
+
+---
+
+### **Option 2: Create Separate Venv for Phase 2**
+
+If you want complete isolation:
+
+```bash
+cd cron-service/phase2-crewai
+
+# Create separate venv
 ./setup_venv.sh
 
-# Activate virtual environment
+# Activate it
 source venv/bin/activate
 
 # Run test
 python test_crew_ai.py
 ```
 
-That's it! ✅
+**Pros:** ✅ Complete isolation, no dependency conflicts
 
 ---
 
-### **Option 2: Manual Setup**
+**Not sure which to choose?** See `SETUP_OPTIONS.md` for detailed comparison.
 
-If you prefer to do it manually:
+**Most users:** Use Option 1 (root venv) - it's simpler!
+
+---
+
+## 📋 **Manual Setup (Alternative)**
+
+If you prefer to set up manually instead of using the scripts:
 
 ```bash
 cd cron-service/phase2-crewai
