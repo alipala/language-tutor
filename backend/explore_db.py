@@ -141,16 +141,14 @@ async def explore_database():
 
                 # Sample a few plans with their fields
                 print(f"\n  Sample learning plan fields (first 3):")
-                sample_plans = collection.find().limit(3)
-                async for i, plan in enumerate(sample_plans, 1):
+                sample_plans = await collection.find().limit(3).to_list(length=3)
+                for i, plan in enumerate(sample_plans, 1):
                     print(f"\n    Plan {i}:")
                     print(f"      - language: {plan.get('language', 'NOT SET')}")
                     print(f"      - proficiency_level: {plan.get('proficiency_level', 'NOT SET')}")
                     print(f"      - user_id: {str(plan.get('user_id', 'NOT SET'))[:20]}...")
                     print(f"      - completed_sessions: {plan.get('completed_sessions', 0)}")
                     print(f"      - total_sessions: {plan.get('total_sessions', 0)}")
-                    if i >= 3:
-                        break
 
             elif coll_name == "challenge_pool":
                 print("\n🎯 Challenge Pool Analysis:")
@@ -201,6 +199,18 @@ async def explore_database():
                         user_id = str(user['_id'])[:20] if user['_id'] else 'null'
                         print(f"    - User {user_id}...: {user['count']} challenges")
 
+                # Language distribution in pool (CRITICAL!)
+                pipeline = [
+                    {"$group": {"_id": "$language", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}}
+                ]
+                pool_langs = await collection.aggregate(pipeline).to_list(length=100)
+
+                if pool_langs:
+                    print(f"\n  🔥 Language distribution in challenge pool (CRITICAL):")
+                    for lang in pool_langs:
+                        print(f"    - {lang['_id'] or 'null/missing (NO LANGUAGE FIELD!)'}: {lang['count']} challenges")
+
                 # Sample a pool item
                 print(f"\n  Sample challenge pool item:")
                 sample_pool = await collection.find_one()
@@ -243,6 +253,18 @@ async def explore_database():
                     print(f"\n  CEFR levels:")
                     for level in levels:
                         print(f"    - {level['_id']}: {level['count']}")
+
+                # Language distribution (CRITICAL!)
+                pipeline = [
+                    {"$group": {"_id": "$language", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}}
+                ]
+                ref_langs = await collection.aggregate(pipeline).to_list(length=100)
+
+                if ref_langs:
+                    print(f"\n  🔥 Language distribution in reference challenges:")
+                    for lang in ref_langs:
+                        print(f"    - {lang['_id'] or 'null/missing (NO LANGUAGE FIELD!)'}: {lang['count']} challenges")
 
                 # Sample reference challenge
                 print(f"\n  Sample reference challenge:")
