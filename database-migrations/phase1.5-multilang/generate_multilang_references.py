@@ -21,15 +21,32 @@ from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Load environment
-load_dotenv()
+# Load environment - check multiple locations
+# Try backend/.env first, then local .env, then environment variables
+backend_env = os.path.join(os.path.dirname(__file__), '../../backend/.env')
+if os.path.exists(backend_env):
+    load_dotenv(backend_env)
+    print(f"✅ Loaded environment from: {backend_env}")
+else:
+    load_dotenv()  # Try local .env or environment variables
+    print(f"ℹ️  Loading from local .env or environment variables")
 
 # MongoDB connection
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://mongo:rdJVDcRfesCmdVXgYuJPNJlDzkFzxIoT@crossover.proxy.rlwy.net:44437/language_tutor?authSource=admin")
 DATABASE_NAME = "language_tutor"
 
-# OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# OpenAI client - verify key exists
+openai_key = os.getenv("OPENAI_API_KEY")
+if not openai_key:
+    print("\n❌ ERROR: OPENAI_API_KEY not found!")
+    print("\nPlease set it using one of these methods:")
+    print("  1. Export: export OPENAI_API_KEY='sk-...'")
+    print("  2. Create backend/.env with: OPENAI_API_KEY=sk-...")
+    print("  3. Create local .env in this directory\n")
+    exit(1)
+
+client = OpenAI(api_key=openai_key)
+print(f"✅ OpenAI API key loaded (ends with: ...{openai_key[-8:]})")
 
 # Configuration
 LANGUAGES = {
