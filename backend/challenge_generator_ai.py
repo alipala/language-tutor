@@ -21,7 +21,7 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
+async def analyze_user_learning_data(user_id: str, language: str = "english") -> Dict[str, Any]:
     """
     Deep analysis of user's learning history to extract:
     - Common mistakes and error patterns
@@ -29,10 +29,15 @@ async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
     - Grammar struggles
     - Learning plan focus areas
 
+    Args:
+        user_id: User ID
+        language: Target language (default: "english")
+
     Returns comprehensive analysis for AI prompt
     """
     analysis = {
         "user_id": user_id,
+        "language": language,
         "level": "B1",
         "common_mistakes": [],
         "weak_vocabulary": [],
@@ -55,10 +60,11 @@ async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
             if user:
                 analysis["level"] = user.get("preferred_level", "B1") or "B1"
 
-        # 2. Extract mistakes from recent practice sessions
+        # 2. Extract mistakes from recent practice sessions (filter by language!)
         sessions_collection = database.conversation_sessions
         recent_sessions = await sessions_collection.find({
             "user_id": user_id,
+            "language": language,
             "enhanced_analysis": {"$exists": True}
         }).sort("created_at", -1).limit(10).to_list(length=10)
 
@@ -90,10 +96,11 @@ async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
             if summary:
                 analysis["session_summaries"].append(summary)
 
-        # 3. Get weak flashcards
+        # 3. Get weak flashcards (filter by language!)
         flashcards_collection = database.flashcards
         weak_cards = await flashcards_collection.find({
             "user_id": user_id,
+            "language": language,
             "mastery_level": {"$lt": 0.5},
             "is_active": True
         }).limit(10).to_list(length=10)
@@ -105,10 +112,11 @@ async def analyze_user_learning_data(user_id: str) -> Dict[str, Any]:
                 "definition": card.get("back", "")
             })
 
-        # 4. Get learning plan focus areas
+        # 4. Get learning plan focus areas (filter by language!)
         learning_plans_collection = database.learning_plans
         learning_plan = await learning_plans_collection.find_one({
-            "user_id": user_id
+            "user_id": user_id,
+            "language": language
         }, sort=[("updated_at", -1)])
 
         if learning_plan:
@@ -148,11 +156,15 @@ def build_challenge_generation_prompt(user_analysis: Dict[str, Any]) -> str:
     """
 
     level = user_analysis.get("level", "B1")
+    language = user_analysis.get("language", "english")
     mistakes = user_analysis.get("common_mistakes", [])
     vocab = user_analysis.get("weak_vocabulary", [])
     topics = user_analysis.get("learning_plan_topics", [])
 
-    prompt = f"""You are an expert language learning AI. Generate 6 personalized daily challenges for a {level} level English learner.
+    # Capitalize language name for prompt
+    language_display = language.capitalize()
+
+    prompt = f"""You are an expert language learning AI. Generate 6 personalized daily challenges for a {level} level {language_display} learner.
 
 **User's Learning Data:**
 
@@ -301,23 +313,25 @@ Return ONLY valid JSON array (no markdown, no extra text):
     return prompt
 
 
-async def generate_challenges_with_ai(user_id: str, user_level: str) -> List[Dict[str, Any]]:
+async def generate_challenges_with_ai(user_id: str, user_level: str, language: str = "english") -> List[Dict[str, Any]]:
     """
     Use GPT-4 to generate 6 personalized challenges based on user's learning data
 
     Args:
         user_id: User ID
         user_level: CEFR level (A1-C2)
+        language: Target language (default: "english")
 
     Returns:
         List of 6 AI-generated challenges
     """
     try:
-        print(f"[AI_CHALLENGE] 🤖 Generating AI challenges for user {user_id} (level: {user_level})")
+        print(f"[AI_CHALLENGE] 🤖 Generating AI challenges for user {user_id} (language: {language}, level: {user_level})")
 
         # Step 1: Analyze user's learning data
-        user_analysis = await analyze_user_learning_data(user_id)
+        user_analysis = await analyze_user_learning_data(user_id, language)
         user_analysis["level"] = user_level
+        user_analysis["language"] = language
 
         # Step 2: Build prompt
         prompt = build_challenge_generation_prompt(user_analysis)
@@ -383,6 +397,7 @@ async def generate_challenges_with_ai(user_id: str, user_level: str) -> List[Dic
             unique_id = f"{original_id}_{uuid.uuid4().hex[:8]}"
             challenge["id"] = unique_id
 
+            challenge["language"] = language
             challenge["generated_at"] = datetime.utcnow().isoformat()
             challenge["source"] = "ai_generated"
 
@@ -397,7 +412,7 @@ async def generate_challenges_with_ai(user_id: str, user_level: str) -> List[Dic
         return []
 
 
-async def get_or_generate_daily_challenges(user_id: str, user_level: str) -> List[Dict[str, Any]]:
+async def get_or_generate_daily_challenges(user_id: str, user_level: str, language: str = "english") -> List[Dict[str, Any]]:
     """
     Main function: Get cached challenges or generate new ones with AI
 
@@ -408,18 +423,20 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str) -> Lis
     Args:
         user_id: User ID
         user_level: CEFR level
+        language: Target language (default: "english")
 
     Returns:
         List of 6 challenges (cached or freshly generated)
     """
     try:
-        # Check cache first
+        # Check cache first (filter by language!)
         cache_collection = database.daily_challenges_cache
         today = datetime.utcnow().date()
         today_start = datetime.combine(today, datetime.min.time())
 
         cached = await cache_collection.find_one({
             "user_id": user_id,
+            "language": language,
             "date": today_start
         })
 
@@ -428,9 +445,9 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str) -> Lis
             return cached.get("challenges", [])
 
         # No cache - generate new AI challenges
-        print(f"[AI_CHALLENGE] 🆕 Generating new daily challenges with AI...")
+        print(f"[AI_CHALLENGE] 🆕 Generating new daily challenges with AI for language: {language}...")
 
-        challenges = await generate_challenges_with_ai(user_id, user_level)
+        challenges = await generate_challenges_with_ai(user_id, user_level, language)
 
         if not challenges or len(challenges) == 0:
             print(f"[AI_CHALLENGE] ⚠️ AI generation failed, returning empty")
@@ -439,6 +456,7 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str) -> Lis
         # Cache for 24 hours
         cache_doc = {
             "user_id": user_id,
+            "language": language,
             "date": today_start,
             "challenges": challenges,
             "created_at": datetime.utcnow(),

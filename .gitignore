@@ -54,3 +54,9 @@ fix_openai.py
 # Chatbot embeddings (auto-generated)
 backend/chatbot_embeddings.pkl
 backend/chatbot_documents.json
+
+# Phase 2 CrewAI logs and reports
+cron-service/phase2-crewai/crewai_challenges_*.log
+cron-service/phase2-crewai/crewai_usage_report_*.json
+cron-service/phase2-crewai/venv/
+backend/backend.log
