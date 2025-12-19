@@ -628,13 +628,17 @@ async def run_weekly_challenge_generation():
         for user in active_users:
             user_id = str(user["_id"])
 
-            # Get user's active learning plans
+            # Get user's active learning plans AND completed plans (100%)
+            # This ensures we generate challenges even for completed learning plans
             learning_plans = await db.learning_plans.find({
                 "user_id": user_id,
-                "is_active": True
+                "$or": [
+                    {"is_active": True},  # Active plans
+                    {"progress_percentage": {"$gte": 100}}  # Completed plans (100%)
+                ]
             }).to_list(length=10)
 
-            logger.info(f"👤 Processing user {user_id}: {len(learning_plans)} active learning plan(s)")
+            logger.info(f"👤 Processing user {user_id}: {len(learning_plans)} learning plan(s) (active + completed)")
 
             # Replenish challenges for each learning plan
             for plan in learning_plans:

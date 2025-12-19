@@ -2,4 +2,4 @@
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "python challenge_pool_replenisher.py"
+cmd = "python phase2-crewai/weekly_cron.py"
