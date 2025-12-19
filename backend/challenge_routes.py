@@ -563,7 +563,8 @@ async def get_challenge_stats(current_user: UserResponse = Depends(get_current_u
 async def get_challenge_counts(
     current_user: UserResponse = Depends(get_current_user),
     language: Optional[str] = None,
-    level: Optional[str] = None
+    level: Optional[str] = None,
+    source: Optional[str] = None
 ):
     """
     Get available challenge counts per type for the user
@@ -571,6 +572,9 @@ async def get_challenge_counts(
     Query Parameters:
     - language (optional): Target language (english, spanish, dutch, german, french, portuguese)
     - level (optional): CEFR level (A1, A2, B1, B2, C1, C2)
+    - source (optional): Challenge source - 'reference' for Freestyle Practice (fast, no AI),
+                        'learning_plan' for personalized challenges (AI-generated),
+                        None for default behavior (backward compatible)
 
     If not provided, falls back to user's active learning plan or profile preferences.
 
@@ -580,7 +584,7 @@ async def get_challenge_counts(
     - Always ensures user has content
     """
     try:
-        print(f"[CHALLENGE_POOL] 📊 Getting challenge counts for user {current_user.id}")
+        print(f"[CHALLENGE_POOL] 📊 Getting challenge counts for user {current_user.id}, source={source}")
 
         user_id = current_user.id
 
@@ -593,17 +597,36 @@ async def get_challenge_counts(
         )
 
         # Import helper functions
-        from challenge_pool_helpers import ensure_pool_has_challenges, is_new_user
+        from challenge_pool_helpers import (
+            ensure_pool_has_challenges,
+            is_new_user,
+            get_reference_challenge_counts
+        )
 
-        # Check if new user
-        new_user = await is_new_user(user_id)
+        # FREESTYLE PRACTICE: Fetch from reference_challenges collection (FAST - no AI)
+        if source == "reference":
+            print(f"[REFERENCE] ✅ Using reference challenges (Freestyle Practice)")
+            counts = await get_reference_challenge_counts(user_language, user_level)
+            return ChallengeCountsResponse(**counts)
 
-        # Ensure pool has challenges (handles all scenarios)
-        counts = await ensure_pool_has_challenges(user_id, user_level, user_language, new_user)
+        # LEARNING PLAN: Use existing personalized logic (can be slow - AI generation)
+        elif source == "learning_plan":
+            print(f"[CHALLENGE_POOL] ✅ Using learning plan challenges (Personalized)")
+            # Check if new user
+            new_user = await is_new_user(user_id)
+            # Ensure pool has challenges (handles all scenarios)
+            counts = await ensure_pool_has_challenges(user_id, user_level, user_language, new_user)
+            return ChallengeCountsResponse(**counts)
 
-        print(f"[CHALLENGE_POOL] ✅ Counts: {counts}")
-
-        return ChallengeCountsResponse(**counts)
+        # DEFAULT: Backward compatible (existing behavior)
+        else:
+            print(f"[CHALLENGE_POOL] ✅ Using default behavior (backward compatible)")
+            # Check if new user
+            new_user = await is_new_user(user_id)
+            # Ensure pool has challenges (handles all scenarios)
+            counts = await ensure_pool_has_challenges(user_id, user_level, user_language, new_user)
+            print(f"[CHALLENGE_POOL] ✅ Counts: {counts}")
+            return ChallengeCountsResponse(**counts)
 
     except Exception as e:
         print(f"[CHALLENGE_POOL] ❌ Error getting counts: {str(e)}")
@@ -618,7 +641,8 @@ async def get_challenges_by_type(
     current_user: UserResponse = Depends(get_current_user),
     language: Optional[str] = None,
     level: Optional[str] = None,
-    limit: int = 50
+    limit: int = 50,
+    source: Optional[str] = None
 ):
     """
     Get available challenges of a specific type
@@ -630,6 +654,9 @@ async def get_challenges_by_type(
     - language (optional): Target language (english, spanish, dutch, german, french, portuguese)
     - level (optional): CEFR level (A1, A2, B1, B2, C1, C2)
     - limit: Maximum number of challenges to return (default 50)
+    - source (optional): Challenge source - 'reference' for Freestyle Practice (fast, no AI),
+                        'learning_plan' for personalized challenges (AI-generated),
+                        None for default behavior (backward compatible)
 
     If language/level not provided, falls back to user's active learning plan or profile preferences.
 
@@ -658,36 +685,61 @@ async def get_challenges_by_type(
             level_param=level
         )
 
-        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}, language: {user_language}, level: {user_level}")
+        print(f"[CHALLENGE_POOL] 📚 Getting {challenge_type} challenges for user {current_user.id}, language: {user_language}, level: {user_level}, source={source}")
 
-        pool_collection = get_challenge_pool_collection()
+        # FREESTYLE PRACTICE: Fetch from reference_challenges collection (FAST - no AI)
+        if source == "reference":
+            print(f"[REFERENCE] ✅ Using reference challenges (Freestyle Practice)")
+            from challenge_pool_helpers import get_reference_challenges
 
-        # Get available challenges of this type - FILTER BY LANGUAGE AND CEFR LEVEL!
-        cursor = pool_collection.find({
-            "user_id": user_id,
-            "language": user_language,
-            "challenge_type": challenge_type,
-            "cefr_level": user_level,
-            "status": "available"
-        }).sort("created_at", -1).limit(limit)
+            challenges = await get_reference_challenges(
+                challenge_type=challenge_type,
+                language=user_language,
+                level=user_level,
+                limit=limit
+            )
 
-        challenges_raw = await cursor.to_list(length=limit)
+            return ChallengesByTypeResponse(
+                challenges=challenges,
+                total=len(challenges),
+                type=challenge_type
+            )
 
-        # Extract challenge_data from each pool item
-        challenges = []
-        for item in challenges_raw:
-            challenge_data = item.get("challenge_data", {})
-            # Add pool item ID for completion tracking
-            challenge_data["pool_item_id"] = str(item.get("_id"))
-            challenges.append(challenge_data)
+        # LEARNING PLAN or DEFAULT: Use existing pool logic
+        else:
+            if source == "learning_plan":
+                print(f"[CHALLENGE_POOL] ✅ Using learning plan challenges (Personalized)")
+            else:
+                print(f"[CHALLENGE_POOL] ✅ Using default behavior (backward compatible)")
 
-        print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges for language {user_language}, level {user_level}")
+            pool_collection = get_challenge_pool_collection()
 
-        return ChallengesByTypeResponse(
-            challenges=challenges,
-            total=len(challenges),
-            type=challenge_type
-        )
+            # Get available challenges of this type - FILTER BY LANGUAGE AND CEFR LEVEL!
+            cursor = pool_collection.find({
+                "user_id": user_id,
+                "language": user_language,
+                "challenge_type": challenge_type,
+                "cefr_level": user_level,
+                "status": "available"
+            }).sort("created_at", -1).limit(limit)
+
+            challenges_raw = await cursor.to_list(length=limit)
+
+            # Extract challenge_data from each pool item
+            challenges = []
+            for item in challenges_raw:
+                challenge_data = item.get("challenge_data", {})
+                # Add pool item ID for completion tracking
+                challenge_data["pool_item_id"] = str(item.get("_id"))
+                challenges.append(challenge_data)
+
+            print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges for language {user_language}, level {user_level}")
+
+            return ChallengesByTypeResponse(
+                challenges=challenges,
+                total=len(challenges),
+                type=challenge_type
+            )
 
     except HTTPException:
         raise
