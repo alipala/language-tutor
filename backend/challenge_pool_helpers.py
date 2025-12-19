@@ -341,3 +341,139 @@ async def is_new_user(user_id: str) -> bool:
         print(f"[POOL_HELPER] ⚠️ Error checking new user status: {str(e)}")
         # Default to False (existing user) to be safe
         return False
+
+
+# ==================== REFERENCE CHALLENGES (FREESTYLE PRACTICE) ====================
+
+async def get_reference_challenge_counts(
+    language: str,
+    level: str
+) -> Dict[str, int]:
+    """
+    Get challenge counts from reference_challenges collection
+    Fast - no AI generation, no pool management
+    Used for Freestyle Practice mode
+
+    Args:
+        language: Target language (e.g., "french", "spanish")
+        level: CEFR level (e.g., "C2", "B1")
+
+    Returns:
+        Dict of counts per type + total
+    """
+    try:
+        print(f"[REFERENCE] 📊 Getting reference challenge counts for {language} {level}")
+
+        reference_collection = await get_reference_challenges_collection()
+
+        challenge_types = [
+            "error_spotting",
+            "swipe_fix",
+            "micro_quiz",
+            "smart_flashcard",
+            "native_check",
+            "brain_tickler"
+        ]
+
+        # Build aggregation pipeline to count by type
+        pipeline = [
+            {
+                "$match": {
+                    "language": language,
+                    "cefr_level": level
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$challenge_type",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+
+        results = await reference_collection.aggregate(pipeline).to_list(None)
+
+        # Convert to dict
+        counts = {item["_id"]: item["count"] for item in results}
+
+        # Ensure all 6 types exist (even if 0)
+        for challenge_type in challenge_types:
+            if challenge_type not in counts:
+                counts[challenge_type] = 0
+
+        counts["total"] = sum(counts.values())
+
+        print(f"[REFERENCE] ✅ Reference counts: {counts}")
+
+        return counts
+
+    except Exception as e:
+        print(f"[REFERENCE] ❌ Error getting reference counts: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        # Return empty counts on error
+        return {
+            "error_spotting": 0,
+            "swipe_fix": 0,
+            "micro_quiz": 0,
+            "smart_flashcard": 0,
+            "native_check": 0,
+            "brain_tickler": 0,
+            "total": 0
+        }
+
+
+async def get_reference_challenges(
+    challenge_type: str,
+    language: str,
+    level: str,
+    limit: int = 50
+) -> List[Dict[str, Any]]:
+    """
+    Get challenges from reference_challenges collection
+    Fast - no AI generation, no pool management
+    Used for Freestyle Practice mode
+
+    Args:
+        challenge_type: Type of challenge (e.g., "error_spotting")
+        language: Target language (e.g., "french", "spanish")
+        level: CEFR level (e.g., "C2", "B1")
+        limit: Maximum number to return (default: 50)
+
+    Returns:
+        List of challenge dictionaries
+    """
+    try:
+        print(f"[REFERENCE] 📚 Getting {limit} {challenge_type} challenges for {language} {level}")
+
+        reference_collection = await get_reference_challenges_collection()
+
+        # Build query filter
+        query = {
+            "challenge_type": challenge_type,
+            "language": language,
+            "cefr_level": level
+        }
+
+        # Fetch challenges
+        cursor = reference_collection.find(query).limit(limit)
+        reference_challenges = await cursor.to_list(length=limit)
+
+        # Extract challenge_data from each reference challenge
+        challenges = []
+        for ref_item in reference_challenges:
+            challenge_data = ref_item.get("challenge_data", {})
+            # Convert MongoDB _id to string for JSON serialization
+            if "_id" in challenge_data:
+                challenge_data["_id"] = str(challenge_data["_id"])
+            challenges.append(challenge_data)
+
+        print(f"[REFERENCE] ✅ Found {len(challenges)} reference challenges")
+
+        return challenges
+
+    except Exception as e:
+        print(f"[REFERENCE] ❌ Error getting reference challenges: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return []
