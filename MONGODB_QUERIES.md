@@ -12,6 +12,31 @@ mongosh "mongodb://mongo:rdJVDcRfesCmdVXgYuJPNJlDzkFzxIoT@66.33.22.252:44437/lan
 use language_tutor
 ```
 
+## 📋 Quick Reference - List User IDs
+
+### Get all unique user IDs from challenge_pool:
+```javascript
+db.challenge_pool.distinct("user_id")
+```
+
+### Get all user IDs from users collection:
+```javascript
+db.users.distinct("_id")
+```
+
+### Count how many challenges each user has:
+```javascript
+db.challenge_pool.aggregate([
+  {$group: {_id: "$user_id", count: {$sum: 1}}},
+  {$sort: {count: -1}}
+])
+```
+
+### Get user IDs with their email:
+```javascript
+db.users.find({}, {_id: 1, email: 1}).limit(20)
+```
+
 ---
 
 ## 📚 REFERENCE CHALLENGES QUERIES
@@ -262,7 +287,14 @@ db.challenge_pool.countDocuments({
 
 ### 3. Count for a Specific User
 
-**Template:**
+**Template - All challenges for a user:**
+```javascript
+db.challenge_pool.countDocuments({
+  user_id: "USER_ID_HERE"
+})
+```
+
+**Template - User + Language + Level:**
 ```javascript
 db.challenge_pool.countDocuments({
   user_id: "USER_ID_HERE",
@@ -271,13 +303,50 @@ db.challenge_pool.countDocuments({
 })
 ```
 
-**Example:**
+**Template - User + Status:**
 ```javascript
+db.challenge_pool.countDocuments({
+  user_id: "USER_ID_HERE",
+  status: "STATUS_HERE"
+})
+```
+
+**Template - User + Language + Level + Status:**
+```javascript
+db.challenge_pool.countDocuments({
+  user_id: "USER_ID_HERE",
+  language: "LANGUAGE_HERE",
+  cefr_level: "LEVEL_HERE",
+  status: "STATUS_HERE"
+})
+```
+
+**Examples:**
+```javascript
+// All challenges for a specific user
+db.challenge_pool.countDocuments({
+  user_id: "693f32dfbdb6ea2037d17895"
+})
+
 // User's French A1 challenges
 db.challenge_pool.countDocuments({
   user_id: "693f32dfbdb6ea2037d17895",
   language: "french",
   cefr_level: "A1"
+})
+
+// User's available challenges
+db.challenge_pool.countDocuments({
+  user_id: "693f32dfbdb6ea2037d17895",
+  status: "available"
+})
+
+// User's available French A1 challenges
+db.challenge_pool.countDocuments({
+  user_id: "693f32dfbdb6ea2037d17895",
+  language: "french",
+  cefr_level: "A1",
+  status: "available"
 })
 ```
 
@@ -361,6 +430,45 @@ db.challenge_pool.countDocuments({
   user_id: "693f32dfbdb6ea2037d17895",
   status: "available"
 })
+```
+
+### 7. Get Breakdown by Language/Level for a Specific User
+
+**Template:**
+```javascript
+db.challenge_pool.aggregate([
+  {$match: {user_id: "USER_ID_HERE"}},
+  {$group: {_id: {language: "$language", level: "$cefr_level", status: "$status"}, count: {$sum: 1}}},
+  {$sort: {"_id.language": 1, "_id.level": 1}}
+])
+```
+
+**Example:**
+```javascript
+// Get all challenges breakdown for a specific user
+db.challenge_pool.aggregate([
+  {$match: {user_id: "693f32dfbdb6ea2037d17895"}},
+  {$group: {_id: {language: "$language", level: "$cefr_level", status: "$status"}, count: {$sum: 1}}},
+  {$sort: {"_id.language": 1, "_id.level": 1}}
+])
+```
+
+### 8. Find Sample Documents for a User
+
+**Template:**
+```javascript
+db.challenge_pool.find({
+  user_id: "USER_ID_HERE"
+}).limit(5).pretty()
+```
+
+**Example:**
+```javascript
+// Get 5 sample challenges for a user
+db.challenge_pool.find({
+  user_id: "693f32dfbdb6ea2037d17895",
+  status: "available"
+}).limit(5).pretty()
 ```
 
 ---
