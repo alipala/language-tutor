@@ -190,6 +190,10 @@ app.include_router(achievement_router)
 from routes.progress_stats_routes import router as progress_stats_router
 app.include_router(progress_stats_router)
 
+# Include gamification stats routes (NEW)
+from routes.stats_routes import router as stats_router
+app.include_router(stats_router)
+
 # Include modular routes (refactored from main.py)
 from routes import health_router, mock_router
 from routes.image_routes import router as image_router
