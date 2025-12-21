@@ -218,21 +218,26 @@ async def cleanup_expired_challenges():
     """
     Clean up expired challenges
     MongoDB TTL index should handle this automatically, but this is a manual backup
+
+    IMPORTANT: Only delete AVAILABLE challenges that have expired.
+    Completed challenges should be preserved indefinitely for user history.
     """
     try:
         print(f"[REPLENISH] 🧹 Cleaning up expired challenges...")
 
         pool_collection = database.challenge_pool
 
-        # Find and delete expired challenges
+        # Find and delete ONLY available (not completed) expired challenges
+        # This preserves users' completed challenge history
         result = await pool_collection.delete_many({
-            "expires_at": {"$lt": datetime.utcnow()}
+            "expires_at": {"$lt": datetime.utcnow()},
+            "status": "available"  # Only delete available challenges, preserve completed ones
         })
 
         if result.deleted_count > 0:
-            print(f"[REPLENISH] 🗑️ Deleted {result.deleted_count} expired challenges")
+            print(f"[REPLENISH] 🗑️ Deleted {result.deleted_count} expired available challenges")
         else:
-            print(f"[REPLENISH] ✓ No expired challenges to clean up")
+            print(f"[REPLENISH] ✓ No expired available challenges to clean up")
 
     except Exception as e:
         print(f"[REPLENISH] ⚠️ Error cleaning up: {str(e)}")
