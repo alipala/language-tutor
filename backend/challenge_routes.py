@@ -696,7 +696,8 @@ async def get_challenges_by_type(
                 challenge_type=challenge_type,
                 language=user_language,
                 level=user_level,
-                limit=limit
+                limit=limit,
+                user_id=user_id
             )
 
             return ChallengesByTypeResponse(

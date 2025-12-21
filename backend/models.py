@@ -640,3 +640,99 @@ class ChallengesByTypeResponse(BaseModel):
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+
+# Achievement models for gamification
+class AchievementBase(BaseModel):
+    id: str  # perfect_session, speed_demon, combo_master, ultimate_combo
+    title: str
+    description: str
+    icon: str  # Emoji icon
+    xpBonus: int  # XP bonus for unlocking
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class UserAchievementInDB(BaseModel):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    achievement_id: str  # Links to AchievementBase.id
+    unlocked_at: datetime = Field(default_factory=datetime.utcnow)
+    session_id: Optional[str] = None  # Challenge session that unlocked it
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class UserAchievementResponse(AchievementBase):
+    unlocked_at: datetime
+    session_id: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class AchievementUnlockRequest(BaseModel):
+    achievement_id: str
+    session_id: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class UserAchievementsResponse(BaseModel):
+    achievements: List[UserAchievementResponse]
+    total_count: int
+    total_xp: int
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+# Challenge session models for gamification
+class ChallengeSessionCreate(BaseModel):
+    user_id: str
+    language: str
+    level: str  # CEFR level
+    challenge_type: str
+    source: str  # 'reference' or 'learning_plan'
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class ChallengeSessionInDB(BaseModel):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    language: str
+    level: str
+    challenge_type: str
+    source: str
+    challenge_ids: List[str]  # List of 10 challenge IDs
+    correct_answers: int = 0
+    wrong_answers: int = 0
+    max_combo: int = 0
+    total_xp: int = 0
+    is_active: bool = True
+    start_time: datetime = Field(default_factory=datetime.utcnow)
+    end_time: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class ChallengeSessionComplete(BaseModel):
+    session_id: str
+    correct_answers: int
+    wrong_answers: int
+    max_combo: int
+    total_xp: int
+    answer_times: List[float]  # Time spent on each challenge in seconds
+    achievements: List[str]  # Achievement IDs unlocked
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True

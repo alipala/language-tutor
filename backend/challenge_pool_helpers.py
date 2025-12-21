@@ -427,7 +427,8 @@ async def get_reference_challenges(
     challenge_type: str,
     language: str,
     level: str,
-    limit: int = 50
+    limit: int = 50,
+    user_id: str = None
 ) -> List[Dict[str, Any]]:
     """
     Get challenges from reference_challenges collection
@@ -439,25 +440,54 @@ async def get_reference_challenges(
         language: Target language (e.g., "french", "spanish")
         level: CEFR level (e.g., "C2", "B1")
         limit: Maximum number to return (default: 50)
+        user_id: Optional user ID to exclude completed challenges
 
     Returns:
-        List of challenge dictionaries
+        List of challenge dictionaries (randomized and excluding completed)
     """
     try:
         print(f"[REFERENCE] 📚 Getting {limit} {challenge_type} challenges for {language} {level}")
 
         reference_collection = await get_reference_challenges_collection()
 
-        # Build query filter
-        query = {
-            "challenge_type": challenge_type,
-            "language": language,
-            "cefr_level": level
-        }
+        # Get completed challenge IDs for this user (if provided)
+        exclude_ids = []
+        if user_id:
+            challenge_sessions_collection = database.challenge_sessions
+            completed_sessions = challenge_sessions_collection.find({
+                "user_id": user_id
+            })
 
-        # Fetch challenges
-        cursor = reference_collection.find(query).limit(limit)
-        reference_challenges = await cursor.to_list(length=limit)
+            # Extract all challenge IDs from completed sessions
+            async for session in completed_sessions:
+                # Sessions store challenge data with IDs
+                if "challenges" in session:
+                    for challenge in session["challenges"]:
+                        if "id" in challenge:
+                            exclude_ids.append(challenge["id"])
+
+            print(f"[REFERENCE] 🚫 Excluding {len(exclude_ids)} completed challenges")
+
+        # Build aggregation pipeline with randomization
+        pipeline = [
+            {
+                "$match": {
+                    "challenge_type": challenge_type,
+                    "language": language,
+                    "cefr_level": level
+                }
+            }
+        ]
+
+        # Add exclusion filter if we have completed challenges
+        if exclude_ids:
+            pipeline[0]["$match"]["challenge_data.id"] = {"$nin": exclude_ids}
+
+        # Add random sampling
+        pipeline.append({"$sample": {"size": limit}})
+
+        # Execute aggregation
+        reference_challenges = await reference_collection.aggregate(pipeline).to_list(limit)
 
         # Extract challenge_data from each reference challenge
         challenges = []
@@ -468,7 +498,7 @@ async def get_reference_challenges(
                 challenge_data["_id"] = str(challenge_data["_id"])
             challenges.append(challenge_data)
 
-        print(f"[REFERENCE] ✅ Found {len(challenges)} reference challenges")
+        print(f"[REFERENCE] ✅ Found {len(challenges)} reference challenges (randomized)")
 
         return challenges
 
