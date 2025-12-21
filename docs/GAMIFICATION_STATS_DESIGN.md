@@ -2,8 +2,90 @@
 ## Backend Design Specification v1.0
 
 **Date**: 2025-12-21
-**Status**: Design Phase
+**Status**: Ready for Implementation
 **Author**: Backend Architecture Team
+
+---
+
+## 🎯 Executive Summary
+
+### What We're Building
+
+A **multi-layered statistics system** for language learning gamification that tracks user progress across three time dimensions:
+
+1. **Daily Statistics** (24h reset, timezone-aware)
+   - Real-time today's progress for "Today's Progress Card"
+   - Challenges completed, accuracy %, XP earned
+   - Breakdown by language, CEFR level, and challenge type
+   - Streak tracking (consecutive practice days)
+
+2. **Recent Performance** (7-day rolling window)
+   - Trend analysis and insights
+   - Identifies weak areas (lowest accuracy levels/types)
+   - Most/least practiced categories
+   - Daily activity patterns for visualization
+
+3. **Long-Term Progress** (lifetime cumulative)
+   - Language mastery progression (A1 → C2)
+   - Challenge type expertise rankings
+   - Total XP, time invested, achievements
+   - AI-ready learning path suggestions
+
+### Architecture at a Glance
+
+**Event-Based Design**:
+- **`challenge_sessions`** = Source of truth (immutable event log)
+- **`daily_stats`** = Pre-aggregated daily summaries (fast queries, < 10ms)
+- **`users.stats.lifetime`** = Denormalized counters (ultra-fast, < 10ms)
+- **`recent_performance`** = Cached 7-day aggregations (< 50ms)
+
+**Key Features**:
+- ✅ Timezone-aware daily resets (user's local date, not UTC)
+- ✅ Incremental aggregation (MongoDB `$inc`, no full scans)
+- ✅ Backward compatible (keeps existing endpoints working)
+- ✅ Scalable to 1M+ users (shard-ready architecture)
+- ✅ AI-ready (structured for LLM context generation)
+- ✅ Performance: Daily stats < 10ms, Recent stats < 50ms (cached)
+
+### API Endpoints
+
+```
+GET /api/stats/daily          → Today's progress (< 10ms)
+GET /api/stats/recent?days=7  → 7-day rolling window (< 50ms)
+GET /api/stats/lifetime       → All-time progress (< 10ms)
+GET /api/stats/all            → Unified response (mobile optimization)
+```
+
+### Implementation Decisions ✅
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Caching Strategy** | MongoDB TTL collection | Simpler, no Redis infrastructure needed |
+| **Recent Window** | Fixed 7 days | Standard analytics window, extensible later |
+| **Timezone Storage** | Device (primary) + Profile (fallback) | Best accuracy with graceful degradation |
+| **Migration Timing** | Immediate (during implementation) | Ensures data consistency from day 1 |
+
+### 4-Phase Implementation Plan
+
+- **Phase 1** (Week 1): Foundation → Enhanced sessions, daily stats, `/api/stats/daily`
+- **Phase 2** (Week 2): Recent performance → Rolling aggregations, `/api/stats/recent`
+- **Phase 3** (Week 3): Lifetime progress → Cumulative tracking, `/api/stats/lifetime`
+- **Phase 4** (Week 4): Optimization → AI integration, mobile unified endpoint, load testing
+
+### Quick Start for Implementation
+
+**Start with Phase 1**:
+1. Enhance `challenge_sessions` schema with timezone support
+2. Create `daily_stats` collection with incremental aggregation
+3. Build `/api/stats/daily` endpoint
+4. Run migration script to backfill existing data
+
+**Files to Create/Modify**:
+- `backend/models.py` - Add new Pydantic models
+- `backend/routes/stats_routes.py` - New stats endpoints (create this file)
+- `backend/services/stats_service.py` - Aggregation logic (create this file)
+- `backend/migrations/001_enhance_sessions.py` - Migration script (create this file)
+- `backend/database.py` - Add `daily_stats_collection`, `recent_performance_collection`
 
 ---
 
