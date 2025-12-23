@@ -80,6 +80,12 @@ class UserInDB(UserBase):
     device_info: Optional[Dict[str, Any]] = None  # Device brand, model, OS version
     push_token_updated_at: Optional[datetime] = None  # Last time token was updated
 
+    # Timezone for stats calculations
+    timezone: Optional[str] = "UTC"  # User's timezone (e.g., "America/New_York")
+
+    # Statistics (new gamification system)
+    stats: Optional[Dict[str, Any]] = None  # Embedded stats document
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -92,7 +98,8 @@ class UserResponse(UserBase):
     subscription_plan: Optional[str] = None
     subscription_period: Optional[str] = None
     subscription_price_id: Optional[str] = None
-    
+    timezone: Optional[str] = "UTC"  # User's timezone for stats calculations
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -709,7 +716,7 @@ class ChallengeSessionInDB(BaseModel):
     level: str
     challenge_type: str
     source: str
-    challenge_ids: List[str]  # List of 10 challenge IDs
+    challenge_ids: List[str] = []  # List of 10 challenge IDs
     correct_answers: int = 0
     wrong_answers: int = 0
     max_combo: int = 0
@@ -718,6 +725,21 @@ class ChallengeSessionInDB(BaseModel):
     start_time: datetime = Field(default_factory=datetime.utcnow)
     end_time: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # NEW: Pre-calculated fields for statistics
+    total_challenges: int = 0  # correct + wrong
+    accuracy: float = 0.0  # Percentage (0-100)
+    duration_seconds: float = 0.0  # Total time spent
+
+    # NEW: Timezone support
+    user_timezone: Optional[str] = "UTC"  # User's timezone
+    local_date: Optional[str] = None  # Date in user's timezone (e.g., "2025-12-21")
+
+    # NEW: Analytics tags
+    tags: Optional[Dict[str, Any]] = None  # Additional metadata
+
+    # Challenges data (for history tracking)
+    challenges: Optional[List[Dict[str, Any]]] = []  # Full challenge data if needed
 
     class Config:
         populate_by_name = True
@@ -733,6 +755,229 @@ class ChallengeSessionComplete(BaseModel):
     answer_times: List[float]  # Time spent on each challenge in seconds
     achievements: List[str]  # Achievement IDs unlocked
 
+    # Optional: Client can send timezone if available
+    user_timezone: Optional[str] = None
+
+    # Optional: Session context for better stats tracking
+    language: Optional[str] = None
+    level: Optional[str] = None
+    challenge_type: Optional[str] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+
+
+# ============================================================================
+# GAMIFICATION & STATISTICS MODELS
+# New models for the gamification and statistics system
+# ============================================================================
+
+# Daily Statistics Models
+class DailyStatsBreakdown(BaseModel):
+    """Breakdown of stats by language/level/type"""
+    challenges: int = 0
+    correct: int = 0
+    incorrect: int = 0
+    accuracy: float = 0.0
+    xp: int = 0
+
+class DailyStatsInDB(BaseModel):
+    """Pre-aggregated daily statistics"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    local_date: str  # "2025-12-21" in user's timezone
+    user_timezone: str = "UTC"
+
+    # Overall metrics
+    total_sessions: int = 0
+    total_challenges: int = 0
+    correct_challenges: int = 0
+    incorrect_challenges: int = 0
+    accuracy_percent: float = 0.0
+    total_xp: int = 0
+    total_time_seconds: float = 0.0
+
+    # Breakdown by dimensions (stored as dict)
+    by_language: Dict[str, Dict[str, Any]] = {}
+    by_level: Dict[str, Dict[str, Any]] = {}
+    by_type: Dict[str, Dict[str, Any]] = {}
+
+    # Streak tracking
+    is_streak_day: bool = True
+    streak_count: int = 0
+
+    # Metadata
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    last_session_id: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+# Daily Stats Response Models
+class DailyStatsOverall(BaseModel):
+    total_sessions: int
+    total_challenges: int
+    correct: int
+    incorrect: int
+    accuracy: float
+    total_xp: int
+    time_minutes: float
+
+
+class StreakInfo(BaseModel):
+    current: int
+    longest: int = 0
+    is_active_today: bool
+    next_milestone: int
+
+
+class DailyStatsResponse(BaseModel):
+    success: bool = True
+    date: str  # Local date
+    timezone: str
+    overall: DailyStatsOverall
+    by_language: Dict[str, DailyStatsBreakdown]
+    by_level: Dict[str, DailyStatsBreakdown]
+    by_type: Dict[str, DailyStatsBreakdown]
+    streak: StreakInfo
+    metadata: Dict[str, Any]
+
+
+# Recent Performance Models
+class RecentPerformanceSummary(BaseModel):
+    total_sessions: int
+    total_challenges: int
+    average_accuracy: float
+    total_xp: int
+    total_time_minutes: float
+    active_days: int
+
+
+class RecentPerformanceInsights(BaseModel):
+    most_practiced_type: Optional[str] = None
+    most_practiced_language: Optional[str] = None
+    weakest_level: Optional[str] = None
+    weakest_level_accuracy: float = 0.0
+    strongest_level: Optional[str] = None
+    strongest_level_accuracy: float = 0.0
+    improvement_trend: str = "stable"  # positive, negative, stable
+    accuracy_change_percent: float = 0.0
+
+
+class DailyBreakdownItem(BaseModel):
+    date: str
+    challenges: int
+    accuracy: float
+    xp: int
+    time_minutes: float
+    sessions: int
+
+
+class LanguageDistribution(BaseModel):
+    challenges: int
+    percentage: float
+    accuracy: float
+
+
+class RecentPerformanceInDB(BaseModel):
+    """Cached recent performance data"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    window_start: datetime
+    window_end: datetime
+
+    # Summary metrics
+    total_sessions: int = 0
+    total_challenges: int = 0
+    average_accuracy: float = 0.0
+    total_xp: int = 0
+
+    # Insights
+    most_practiced_type: Optional[str] = None
+    most_practiced_language: Optional[str] = None
+    weakest_level: Optional[str] = None
+    strongest_level: Optional[str] = None
+
+    # Daily breakdown
+    daily_breakdown: List[Dict[str, Any]] = []
+
+    # Distributions
+    language_distribution: Dict[str, Dict[str, Any]] = {}
+    type_distribution: Dict[str, Dict[str, Any]] = {}
+    level_performance: Dict[str, Dict[str, Any]] = {}
+
+    # Cache metadata
+    calculated_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=1))
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class RecentPerformanceResponse(BaseModel):
+    success: bool = True
+    window: Dict[str, Any]
+    summary: RecentPerformanceSummary
+    insights: RecentPerformanceInsights
+    daily_breakdown: List[DailyBreakdownItem]
+    language_distribution: Dict[str, LanguageDistribution]
+    type_distribution: Dict[str, LanguageDistribution]
+    level_performance: Dict[str, Dict[str, Any]]
+    metadata: Dict[str, Any]
+
+
+# Lifetime Progress Models
+class LifetimeLanguageProgress(BaseModel):
+    total_challenges: int
+    highest_level: str
+    total_xp: int
+    started_at: datetime
+    last_practiced: datetime
+    time_hours: float
+    mastery_percent: float
+    level_breakdown: Dict[str, Dict[str, Any]] = {}
+
+
+class LifetimeChallengeTypeMastery(BaseModel):
+    total_challenges: int
+    accuracy: float
+    mastery_level: int  # 1-5 stars
+    rank: str  # beginner, intermediate, advanced, expert, master
+    favorite: bool = False
+
+
+class LifetimeSummary(BaseModel):
+    total_challenges: int
+    total_sessions: int
+    total_xp: int
+    total_time_hours: float
+    member_since: str
+    longest_streak: int
+    current_streak: int
+
+
+class LifetimeProgressResponse(BaseModel):
+    success: bool = True
+    summary: LifetimeSummary
+    language_progress: Dict[str, Dict[str, Any]]
+    level_mastery: Dict[str, Dict[str, Any]]
+    challenge_type_mastery: Dict[str, Dict[str, Any]]
+    learning_path: Dict[str, Any]
+    achievements: Optional[Dict[str, Any]] = None
+    milestones: Optional[Dict[str, Any]] = None
+    metadata: Dict[str, Any]
+
+
+# Unified Stats Response (All three layers)
+class UnifiedStatsResponse(BaseModel):
+    success: bool = True
+    daily: DailyStatsResponse
+    recent: RecentPerformanceResponse
+    lifetime: LifetimeProgressResponse

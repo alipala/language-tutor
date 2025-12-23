@@ -14,7 +14,7 @@ from typing import List
 from datetime import datetime
 
 from auth import get_current_user
-from database import user_achievements_collection, challenge_sessions_collection
+from database import user_achievements_collection, challenge_sessions_collection, users_collection
 from models import (
     UserInDB,
     AchievementUnlockRequest,
@@ -24,6 +24,9 @@ from models import (
     ChallengeSessionComplete,
     AchievementBase
 )
+from services.timezone_utils import convert_to_local_date
+from services.stats_service import process_session_completion
+from bson import ObjectId
 
 router = APIRouter()
 
@@ -207,9 +210,19 @@ async def complete_challenge_session(
         # Find the session
         session = await challenge_sessions_collection.find_one({"_id": session_id})
 
+        # Get user's timezone from profile or request
+        user_timezone = request.user_timezone or current_user.timezone or "UTC"
+
+        # Calculate derived fields
+        end_time = datetime.utcnow()
+        total_challenges = request.correct_answers + request.wrong_answers
+        accuracy = (request.correct_answers / total_challenges * 100) if total_challenges > 0 else 0
+
         if not session:
             # Session doesn't exist yet (client-side generated ID)
-            # Create a new session record
+            # This shouldn't happen normally, but handle it gracefully
+            print(f"⚠️ Warning: Session {session_id} not found, creating minimal record")
+
             session_doc = {
                 "_id": session_id,
                 "user_id": current_user.id,
@@ -220,9 +233,22 @@ async def complete_challenge_session(
                 "answer_times": request.answer_times,
                 "is_active": False,
                 "created_at": datetime.utcnow(),
-                "end_time": datetime.utcnow()
+                "end_time": end_time,
+
+                # NEW: Required fields for stats (use client values or defaults)
+                "language": request.language or "unknown",
+                "level": request.level or "B1",
+                "challenge_type": request.challenge_type or "unknown",
+                "source": "freestyle",  # Freestyle practice since no session exists
+                "total_challenges": total_challenges,
+                "accuracy": accuracy,
+                "duration_seconds": 0,
+                "user_timezone": user_timezone,
+                "local_date": convert_to_local_date(datetime.utcnow(), user_timezone),
+                "start_time": datetime.utcnow()
             }
             await challenge_sessions_collection.insert_one(session_doc)
+            session = session_doc
             print(f"✅ Created new session record: {session_id}")
         else:
             # Verify session belongs to current user
@@ -232,24 +258,57 @@ async def complete_challenge_session(
                     detail="You do not have permission to complete this session"
                 )
 
+            # Calculate duration
+            start_time = session.get("start_time", datetime.utcnow())
+            duration_seconds = (end_time - start_time).total_seconds()
+
+            # Calculate local_date using timezone
+            local_date = convert_to_local_date(end_time, user_timezone)
+
             # Update existing session with completion data
+            update_fields = {
+                "correct_answers": request.correct_answers,
+                "wrong_answers": request.wrong_answers,
+                "max_combo": request.max_combo,
+                "total_xp": request.total_xp,
+                "answer_times": request.answer_times,
+                "is_active": False,
+                "end_time": end_time,
+
+                # NEW: Pre-calculated fields for statistics
+                "total_challenges": total_challenges,
+                "accuracy": accuracy,
+                "duration_seconds": duration_seconds,
+                "user_timezone": user_timezone,
+                "local_date": local_date
+            }
+
+            # Update language/level/type if provided by client (overrides existing values)
+            if request.language:
+                update_fields["language"] = request.language
+            if request.level:
+                update_fields["level"] = request.level
+            if request.challenge_type:
+                update_fields["challenge_type"] = request.challenge_type
+
             update_result = await challenge_sessions_collection.update_one(
                 {"_id": session_id},
-                {
-                    "$set": {
-                        "correct_answers": request.correct_answers,
-                        "wrong_answers": request.wrong_answers,
-                        "max_combo": request.max_combo,
-                        "total_xp": request.total_xp,
-                        "answer_times": request.answer_times,
-                        "is_active": False,
-                        "end_time": datetime.utcnow()
-                    }
-                }
+                {"$set": update_fields}
             )
 
             if update_result.modified_count == 0:
                 print(f"⚠️ Warning: Session {session_id} was not updated")
+
+            # Fetch updated session for stats processing
+            session = await challenge_sessions_collection.find_one({"_id": session_id})
+
+        # NEW: Process session completion for statistics
+        try:
+            await process_session_completion(session)
+            print(f"[STATS] ✅ Statistics updated for session {session_id}")
+        except Exception as e:
+            print(f"[STATS] ❌ Error updating statistics: {str(e)}")
+            # Don't fail the request if stats update fails
 
         # Unlock achievements
         unlocked_achievements = []

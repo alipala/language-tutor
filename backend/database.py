@@ -77,6 +77,10 @@ try:
     challenge_pool_collection = database.challenge_pool
     user_achievements_collection = database.user_achievements
     challenge_sessions_collection = database.challenge_sessions
+
+    # NEW: Gamification & Statistics collections
+    daily_stats_collection = database.daily_stats
+    recent_performance_collection = database.recent_performance
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -91,6 +95,8 @@ except Exception as e:
     challenge_pool_collection = None
     user_achievements_collection = None
     challenge_sessions_collection = None
+    daily_stats_collection = None
+    recent_performance_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
@@ -129,6 +135,21 @@ async def init_db():
             ("user_id", 1),
             ("deleted_at", 1)
         ])
+
+        # NEW: Create indexes for gamification & statistics collections
+        # Challenge sessions indexes
+        await challenge_sessions_collection.create_index([("user_id", 1), ("local_date", -1)])
+        await challenge_sessions_collection.create_index([("user_id", 1), ("created_at", -1)])
+        await challenge_sessions_collection.create_index([("user_id", 1), ("language", 1), ("level", 1), ("created_at", -1)])
+        await challenge_sessions_collection.create_index([("user_id", 1), ("challenge_type", 1), ("created_at", -1)])
+
+        # Daily stats indexes
+        await daily_stats_collection.create_index([("user_id", 1), ("local_date", -1)], unique=True)
+        await daily_stats_collection.create_index("local_date")
+
+        # Recent performance indexes (with TTL)
+        await recent_performance_collection.create_index([("user_id", 1), ("expires_at", 1)])
+        await recent_performance_collection.create_index("expires_at", expireAfterSeconds=0)  # TTL index
 
         print("Database indexes initialized successfully")
     except Exception as e:
