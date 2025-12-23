@@ -235,11 +235,11 @@ async def complete_challenge_session(
                 "created_at": datetime.utcnow(),
                 "end_time": end_time,
 
-                # NEW: Required fields for stats (use defaults if not available)
-                "language": "unknown",
-                "level": "B1",
-                "challenge_type": "unknown",
-                "source": "unknown",
+                # NEW: Required fields for stats (use client values or defaults)
+                "language": request.language or "unknown",
+                "level": request.level or "B1",
+                "challenge_type": request.challenge_type or "unknown",
+                "source": "freestyle",  # Freestyle practice since no session exists
                 "total_challenges": total_challenges,
                 "accuracy": accuracy,
                 "duration_seconds": 0,
@@ -282,6 +282,14 @@ async def complete_challenge_session(
                 "user_timezone": user_timezone,
                 "local_date": local_date
             }
+
+            # Update language/level/type if provided by client (overrides existing values)
+            if request.language:
+                update_fields["language"] = request.language
+            if request.level:
+                update_fields["level"] = request.level
+            if request.challenge_type:
+                update_fields["challenge_type"] = request.challenge_type
 
             update_result = await challenge_sessions_collection.update_one(
                 {"_id": session_id},

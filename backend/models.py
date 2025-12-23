@@ -758,6 +758,11 @@ class ChallengeSessionComplete(BaseModel):
     # Optional: Client can send timezone if available
     user_timezone: Optional[str] = None
 
+    # Optional: Session context for better stats tracking
+    language: Optional[str] = None
+    level: Optional[str] = None
+    challenge_type: Optional[str] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
