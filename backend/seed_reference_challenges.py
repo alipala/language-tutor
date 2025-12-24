@@ -12,33 +12,36 @@ from challenge_generator_ai import generate_challenges_with_ai
 
 async def generate_reference_challenges_for_level(
     level: str,
+    language: str = "english",
     challenges_per_type: int = 50
 ) -> int:
     """
-    Generate reference challenges for a specific CEFR level
+    Generate reference challenges for a specific CEFR level and language
 
     Args:
         level: CEFR level (A1-C2)
+        language: Target language (default: "english")
         challenges_per_type: Number per type (default 50)
 
     Returns:
         Number of challenges generated
     """
     try:
-        print(f"\n[REF_SEED] 🎯 Generating reference challenges for level {level}")
+        print(f"\n[REF_SEED] 🎯 Generating reference challenges for {language} {level}")
 
         reference_collection = database.reference_challenges
 
         # Check existing
         existing_count = await reference_collection.count_documents({
+            "language": language,
             "cefr_level": level
         })
 
         if existing_count >= (challenges_per_type * 6):
-            print(f"[REF_SEED] ✅ Level {level} already has {existing_count} challenges, skipping")
+            print(f"[REF_SEED] ✅ {language} {level} already has {existing_count} challenges, skipping")
             return 0
 
-        print(f"[REF_SEED] 📊 Current: {existing_count} challenges for level {level}")
+        print(f"[REF_SEED] 📊 Current: {existing_count} challenges for {language} {level}")
 
         challenges_by_type = {
             "error_spotting": [],
