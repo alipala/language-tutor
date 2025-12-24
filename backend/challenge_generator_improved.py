@@ -385,9 +385,10 @@ async def generate_challenges_with_improved_ai(
         prompt = build_improved_challenge_prompt(user_level, language, user_analysis)
 
         # Call GPT
-        response = client.chat.completions.create(
-            model=GPT_MODEL,
-            messages=[
+        # GPT-5.2 and o-series models use max_completion_tokens instead of max_tokens
+        api_params = {
+            "model": GPT_MODEL,
+            "messages": [
                 {
                     "role": "system",
                     "content": f"You are an expert {language.capitalize()} language teacher. Generate high-quality, accurate challenges. Return valid JSON only."
@@ -397,9 +398,16 @@ async def generate_challenges_with_improved_ai(
                     "content": prompt
                 }
             ],
-            temperature=0.7,  # Balance between consistency and variety
-            max_tokens=4000
-        )
+            "temperature": 0.7,  # Balance between consistency and variety
+        }
+
+        # Use correct parameter name based on model
+        if GPT_MODEL.startswith(("gpt-5", "o3", "o1")):
+            api_params["max_completion_tokens"] = 4000
+        else:
+            api_params["max_tokens"] = 4000
+
+        response = client.chat.completions.create(**api_params)
 
         # Parse response
         content = response.choices[0].message.content.strip()
