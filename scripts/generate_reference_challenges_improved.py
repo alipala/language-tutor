@@ -30,12 +30,24 @@ from dotenv import load_dotenv
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
+# Load environment variables - try multiple locations
+load_dotenv()  # scripts/.env
+backend_env = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
+if os.path.exists(backend_env):
+    load_dotenv(backend_env, override=False)
+root_env = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(root_env):
+    load_dotenv(root_env, override=False)
+
 # Import the improved generator
 from challenge_generator_improved import generate_challenges_with_improved_ai
 
-load_dotenv()
 MONGODB_URL = os.getenv("MONGODB_URL")
-DATABASE_NAME = "language_tutor"
+DATABASE_NAME = os.getenv("DATABASE_NAME", "language_tutor")
+
+if not MONGODB_URL:
+    print("❌ ERROR: MONGODB_URL not found. Please set it in .env file or as environment variable.")
+    sys.exit(1)
 
 # Supported languages
 LANGUAGES = ["english", "spanish", "dutch", "german", "french", "portuguese"]

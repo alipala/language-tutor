@@ -31,9 +31,33 @@ from dotenv import load_dotenv
 # Add backend to path for database import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
+# Load environment variables - try multiple locations
+# 1. Current directory (scripts/.env)
 load_dotenv()
+
+# 2. Backend directory (backend/.env)
+backend_env = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
+if os.path.exists(backend_env):
+    load_dotenv(backend_env, override=False)
+
+# 3. Root directory (.env)
+root_env = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(root_env):
+    load_dotenv(root_env, override=False)
+
 MONGODB_URL = os.getenv("MONGODB_URL")
-DATABASE_NAME = "language_tutor"
+DATABASE_NAME = os.getenv("DATABASE_NAME", "language_tutor")
+
+if not MONGODB_URL:
+    print("❌ ERROR: MONGODB_URL not found in environment variables")
+    print("\nPlease set MONGODB_URL in one of these locations:")
+    print("  1. scripts/.env")
+    print("  2. backend/.env")
+    print("  3. .env (root directory)")
+    print("  4. Export as environment variable")
+    print("\nExample:")
+    print('  export MONGODB_URL="mongodb://..."')
+    sys.exit(1)
 
 
 async def analyze_answer_position_bias(collection_name: str, db):

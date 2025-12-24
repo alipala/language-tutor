@@ -20,9 +20,21 @@ from dotenv import load_dotenv
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
-load_dotenv()
+# Load environment variables - try multiple locations
+load_dotenv()  # scripts/.env
+backend_env = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
+if os.path.exists(backend_env):
+    load_dotenv(backend_env, override=False)
+root_env = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(root_env):
+    load_dotenv(root_env, override=False)
+
 MONGODB_URL = os.getenv("MONGODB_URL")
-DATABASE_NAME = "language_tutor"
+DATABASE_NAME = os.getenv("DATABASE_NAME", "language_tutor")
+
+if not MONGODB_URL:
+    print("❌ ERROR: MONGODB_URL not found. Please set it in .env file or as environment variable.")
+    sys.exit(1)
 
 
 async def get_collection_stats(db, collection_name: str):
