@@ -50,6 +50,7 @@ def check_user_stats(email):
         # Get collections
         users_collection = db.users
         challenge_sessions_collection = db.challenge_sessions
+        conversation_sessions_collection = db.conversation_sessions
         daily_stats_collection = db.daily_stats
         recent_performance_collection = db.recent_performance
 
@@ -126,6 +127,46 @@ def check_user_stats(email):
                 print(f"   Last Session: {newest.get('created_at')}")
         else:
             print(f"   ❌ NO CHALLENGE SESSIONS FOUND")
+
+        # Check conversation_sessions
+        print(f"\n{'='*80}")
+        print(f"2b. CONVERSATION SESSIONS (AI Tutor Practice)")
+        print(f"{'='*80}")
+
+        conv_sessions_count = conversation_sessions_collection.count_documents({"user_id": user_id})
+        print(f"   Total Conversation Sessions: {conv_sessions_count}")
+
+        if conv_sessions_count > 0:
+            # Get recent conversation sessions
+            recent_conv_sessions = list(conversation_sessions_collection.find(
+                {"user_id": user_id}
+            ).sort("created_at", -1).limit(5))
+
+            print(f"\n   Recent 5 Conversation Sessions:")
+            for idx, session in enumerate(recent_conv_sessions, 1):
+                print(f"      {idx}. Date: {session.get('created_at')} | "
+                      f"Language: {session.get('language', 'N/A')} | "
+                      f"Level: {session.get('level', 'N/A')} | "
+                      f"Topic: {session.get('topic', 'N/A')}")
+                print(f"         Duration: {session.get('duration', 0)} sec | "
+                      f"XP: {session.get('xp_earned', 0)} | "
+                      f"Messages: {session.get('total_messages', 0)}")
+
+            # Get date range
+            oldest_conv = conversation_sessions_collection.find_one(
+                {"user_id": user_id},
+                sort=[("created_at", 1)]
+            )
+            newest_conv = conversation_sessions_collection.find_one(
+                {"user_id": user_id},
+                sort=[("created_at", -1)]
+            )
+
+            if oldest_conv and newest_conv:
+                print(f"\n   First Conversation: {oldest_conv.get('created_at')}")
+                print(f"   Last Conversation: {newest_conv.get('created_at')}")
+        else:
+            print(f"   ⚠️  NO CONVERSATION SESSIONS FOUND")
 
         # Check daily_stats
         print(f"\n{'='*80}")
@@ -216,6 +257,11 @@ def check_user_stats(email):
         else:
             print(f"❌ User has NO challenge sessions")
 
+        if conv_sessions_count > 0:
+            print(f"✅ User has {conv_sessions_count} conversation sessions (AI Tutor)")
+        else:
+            print(f"❌ User has NO conversation sessions")
+
         if daily_stats_count > 0:
             print(f"✅ User has {daily_stats_count} daily stats records")
         else:
@@ -225,6 +271,13 @@ def check_user_stats(email):
             print(f"✅ User has recent performance cache")
         else:
             print(f"⚠️  User has NO recent performance cache (will be created on API call)")
+
+        # IMPORTANT: Check for data inconsistency
+        total_activity = sessions_count + conv_sessions_count
+        if total_activity > 0 and daily_stats_count == 0:
+            print(f"\n⚠️  WARNING: User has {total_activity} total sessions but NO daily_stats!")
+            print(f"   This indicates that stats aggregation may not be working properly.")
+            print(f"   Stats should be created when challenge_sessions are completed.")
 
         client.close()
 
