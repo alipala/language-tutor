@@ -20,6 +20,8 @@ from models import (
 )
 from database import database
 from challenge_generator_ai import get_or_generate_daily_challenges
+from services.timezone_utils import convert_to_local_date, get_current_local_date
+from services.stats_service import update_daily_stats, update_lifetime_stats, update_streak
 
 router = APIRouter(prefix="/api/challenges", tags=["challenges"])
 
@@ -496,6 +498,48 @@ async def complete_challenge(
             print(f"[CHALLENGE_POOL] ℹ️ No pool item found (legacy challenge or already completed)")
 
         print(f"[CHALLENGES] ✅ Challenge completed. Streak: {current_streak}, Total: {challenge_stats['totalCompleted']}")
+
+        # NEW: Update new stats system (daily_stats, users.stats) for Recent Performance Card
+        # This bridges the gap between legacy endpoint and new stats architecture
+        try:
+            print(f"[CHALLENGES] 🔄 Updating new stats system...")
+
+            # Get user timezone (fallback to UTC if not set)
+            user_timezone = user.get("timezone", "UTC")
+            local_date = get_current_local_date(user_timezone)
+
+            # Create session data for stats processing
+            # Note: Since this is individual challenge completion (not a full session),
+            # we'll update daily_stats directly with minimal data
+            session_data = {
+                "user_id": user_id,
+                "local_date": local_date,
+                "user_timezone": user_timezone,
+                "language": request.language or "unknown",
+                "level": request.level or "B1",
+                "challenge_type": request.challenge_type or "unknown",
+                "total_challenges": 1,  # Single challenge
+                "correct_answers": 1 if request.correct else 0,
+                "wrong_answers": 0 if request.correct else 1,
+                "total_xp": 10 if request.correct else 5,  # Basic XP
+                "created_at": datetime.utcnow()
+            }
+
+            # Update daily stats (incremental)
+            await update_daily_stats(session_data)
+
+            # Update lifetime stats
+            await update_lifetime_stats(session_data)
+
+            # Update streak (uses conversation_sessions for streak calculation)
+            await update_streak(user_id, local_date, user_timezone)
+
+            print(f"[CHALLENGES] ✅ New stats system updated successfully")
+        except Exception as stats_error:
+            # Don't fail the request if stats update fails
+            print(f"[CHALLENGES] ⚠️ Error updating new stats system: {str(stats_error)}")
+            import traceback
+            print(traceback.format_exc())
 
         return {
             "success": True,

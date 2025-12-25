@@ -585,6 +585,9 @@ class ChallengeCompletionRequest(BaseModel):
     challenge_id: str
     correct: bool  # Whether user answered correctly
     time_spent: int  # Time spent in seconds
+    language: Optional[str] = None  # NEW: Language for stats tracking
+    level: Optional[str] = None  # NEW: CEFR level for stats tracking
+    challenge_type: Optional[str] = None  # NEW: Challenge type for stats tracking
 
 class DailyChallengesResponse(BaseModel):
     challenges: List[Dict[str, Any]]  # List of challenge objects (polymorphic)
