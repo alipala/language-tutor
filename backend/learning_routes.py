@@ -48,6 +48,10 @@ class LearningPlan(BaseModel):
     completed_sessions: Optional[int] = 0
     progress_percentage: Optional[float] = 0.0
     session_summaries: Optional[List[str]] = []
+    # NEW: Final Assessment Fields
+    status: Optional[str] = "in_progress"  # "in_progress" | "awaiting_final_assessment" | "completed" | "failed_assessment"
+    final_assessment: Optional[Dict[str, Any]] = None  # Assessment requirements and attempts
+    all_sessions_completed_at: Optional[str] = None  # When last session was completed
 
 # Initialize learning goals collection
 learning_goals_collection = database.learning_goals

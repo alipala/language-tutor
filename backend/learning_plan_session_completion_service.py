@@ -129,32 +129,64 @@ class LearningPlanSessionCompletionService:
             # Update total completed_sessions for the plan
             total_completed = sum(w.get('sessions_completed', 0) for w in weekly_schedule)
             progress_percentage = (total_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
-            
+
             # Update practice minutes used in learning plan
             current_minutes_used = plan.get("practice_minutes_used", 0.0)
             new_minutes_used = current_minutes_used + enforced_duration
-            
+
             logger.info(f"[SESSION_COMPLETION] Progress update: {current_completed} → {total_completed} sessions, {progress_percentage:.1f}%")
             logger.info(f"[SESSION_COMPLETION] Minutes update: {current_minutes_used} → {new_minutes_used}")
-            
+
+            # CRITICAL: Check if this is the LAST session - trigger final assessment requirement
+            is_last_session = total_completed >= total_sessions
+            update_fields = {
+                "plan_content.weekly_schedule": weekly_schedule,
+                "completed_sessions": total_completed,
+                "progress_percentage": progress_percentage,
+                "practice_minutes_used": new_minutes_used,
+                "updated_at": datetime.utcnow().isoformat()
+            }
+
+            if is_last_session:
+                logger.info(f"[SESSION_COMPLETION] 🎉 LAST SESSION COMPLETED! Triggering final assessment requirement")
+
+                # Get current status and final_assessment
+                current_status = plan.get("status", "in_progress")
+                final_assessment = plan.get("final_assessment", {})
+
+                # Only update if not already completed or awaiting assessment
+                if current_status not in ["completed", "awaiting_final_assessment"]:
+                    update_fields["status"] = "awaiting_final_assessment"
+                    update_fields["all_sessions_completed_at"] = datetime.utcnow().isoformat()
+
+                    # Ensure final_assessment structure exists
+                    if not final_assessment.get("required"):
+                        # Calculate assessment duration based on level
+                        level = plan.get("proficiency_level", "A1").upper()
+                        duration_map = {'A1': 2, 'A2': 3, 'B1': 4, 'B2': 5, 'C1': 5, 'C2': 5}
+                        assessment_duration = duration_map.get(level, 3)
+
+                        update_fields["final_assessment"] = {
+                            "required": True,
+                            "completed": False,
+                            "attempts": final_assessment.get("attempts", []),
+                            "minimum_duration_minutes": assessment_duration,
+                            "passed": False,
+                            "last_attempt_date": final_assessment.get("last_attempt_date")
+                        }
+
+                    logger.info(f"[SESSION_COMPLETION] Status changed: in_progress → awaiting_final_assessment")
+
             # Update the learning plan
             result = await database["learning_plans"].update_one(
                 {"_id": plan["_id"]},
-                {
-                    "$set": {
-                        "plan_content.weekly_schedule": weekly_schedule,
-                        "completed_sessions": total_completed,
-                        "progress_percentage": progress_percentage,
-                        "practice_minutes_used": new_minutes_used,
-                        "updated_at": datetime.utcnow().isoformat()
-                    }
-                }
+                {"$set": update_fields}
             )
             
             if result.modified_count > 0:
                 logger.info(f"[SESSION_COMPLETION] ✅ Successfully updated learning plan")
-                
-                return {
+
+                response = {
                     "success": True,
                     "session_number": session_number,
                     "week": week_index + 1,
@@ -163,8 +195,21 @@ class LearningPlanSessionCompletionService:
                     "duration_minutes": enforced_duration,
                     "total_completed": total_completed,
                     "progress_percentage": progress_percentage,
-                    "status": session_status
+                    "status": session_status,
+                    "is_last_session": is_last_session,
+                    "plan_status": update_fields.get("status", plan.get("status", "in_progress"))
                 }
+
+                # If last session, include assessment information
+                if is_last_session:
+                    response["final_assessment_required"] = True
+                    response["assessment_info"] = {
+                        "minimum_duration_minutes": update_fields.get("final_assessment", {}).get("minimum_duration_minutes", 3),
+                        "can_postpone": True,
+                        "message": "Congratulations on completing all sessions! Please take your final assessment to complete this learning plan."
+                    }
+
+                return response
             else:
                 logger.error(f"[SESSION_COMPLETION] ❌ Failed to update learning plan")
                 return {"success": False, "error": "Failed to update learning plan"}
