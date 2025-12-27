@@ -110,21 +110,18 @@ async def create_a1_test_plan():
     }
 
     # Create 8 completed sessions with realistic timestamps
+    # NOTE: session_summaries must be List[str], not List[dict]!
     session_summaries = []
     base_date = datetime.utcnow() - timedelta(days=28)  # 4 weeks ago
 
     for i in range(8):
         week_num = (i // 2) + 1  # 2 sessions per week
         session_date = base_date + timedelta(days=i * 3.5)  # Every ~3.5 days
+        focus = plan_content["weekly_schedule"][week_num - 1]["focus"]
 
-        session_summaries.append({
-            "session_number": i + 1,
-            "date": session_date.isoformat(),
-            "duration_minutes": 5.0,
-            "week": week_num,
-            "focus": plan_content["weekly_schedule"][week_num - 1]["focus"],
-            "summary": f"Practiced {plan_content['weekly_schedule'][week_num - 1]['focus'].lower()} with good progress"
-        })
+        # Format as string summary (not dict!)
+        summary_str = f"Session {i+1} - Week {week_num}: {focus}. Duration: 5 min. Practiced {focus.lower()} with good progress."
+        session_summaries.append(summary_str)
 
     # Create the learning plan document
     learning_plan = {
@@ -135,6 +132,12 @@ async def create_a1_test_plan():
         "proficiency_level": "A1",
         "target_cefr_level": "A1",
         "duration_months": 1,
+        "goals": [  # REQUIRED field!
+            "Basic Greetings and Introductions",
+            "Family and Daily Routines",
+            "Food and Shopping",
+            "Hobbies and Free Time"
+        ],
         "plan_content": plan_content,
         "created_at": (datetime.utcnow() - timedelta(days=28)).isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
