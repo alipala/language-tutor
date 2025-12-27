@@ -25,7 +25,7 @@ async def create_a1_test_plan():
     learning_plans = db["learning_plans"]
 
     # User info
-    user_id = ObjectId("688921c268819565ef1ce3dc")
+    user_id = "688921c268819565ef1ce3dc"  # Store as STRING to match existing plans
     user_email = "alipala.ist@gmail.com"
 
     # Check if similar plan already exists
