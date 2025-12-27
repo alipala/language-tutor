@@ -18,8 +18,25 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 import logging
 
-from auth import get_current_user_from_request
+from auth import get_current_user
 from models import UserResponse
+from fastapi.security import HTTPBearer
+
+security = HTTPBearer()
+
+async def get_current_user_from_request(token: str = Depends(security)):
+    """Wrapper to get current user from request"""
+    from auth import verify_token
+    payload = verify_token(token.credentials)
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid authentication")
+    from database import users_collection
+    from bson import ObjectId
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return UserResponse(**user)
 from services.learning_plan_final_assessment_service import LearningPlanFinalAssessmentService
 from speaking_assessment import recognize_speech, evaluate_language_proficiency
 
