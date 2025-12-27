@@ -20,23 +20,9 @@ import logging
 
 from auth import get_current_user
 from models import UserResponse
-from fastapi.security import HTTPBearer
 
-security = HTTPBearer()
-
-async def get_current_user_from_request(token: str = Depends(security)):
-    """Wrapper to get current user from request"""
-    from auth import verify_token
-    payload = verify_token(token.credentials)
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid authentication")
-    from database import users_collection
-    from bson import ObjectId
-    user = await users_collection.find_one({"_id": ObjectId(user_id)})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return UserResponse(**user)
+# Use the existing get_current_user function from auth.py
+get_current_user_from_request = get_current_user
 from services.learning_plan_final_assessment_service import LearningPlanFinalAssessmentService
 from speaking_assessment import recognize_speech, evaluate_language_proficiency
 
@@ -418,28 +404,68 @@ async def create_next_level_plan(
         goals = request.goals or suggestion["goals"]
         custom_goal = request.custom_goal
 
-        # Import learning plan creation service
-        from learning_routes import create_learning_plan_route
-        from learning_routes import LearningPlanRequest
-
-        # Create the new plan
-        plan_request = LearningPlanRequest(
-            language=suggestion["language"],
-            proficiency_level=suggestion["proficiency_level"],
-            goals=goals,
-            duration_months=duration_months,
-            custom_goal=custom_goal
-        )
-
-        # Call the existing learning plan creation endpoint logic
-        # Note: This reuses existing functionality to maintain consistency
-        from learning_plan_service import LearningPlanService
+        # Get the current plan to extract assessment data
         from database import database
+        current_plan = await database["learning_plans"].find_one({
+            "id": request.current_plan_id,
+            "user_id": current_user.id
+        })
 
-        result = await LearningPlanService.create_learning_plan_safe(
-            plan_data=plan_request.dict(),
-            user_id=current_user.id,
-            db=database
+        # Extract assessment data from the current plan's final assessment
+        assessment_data = None
+        if current_plan and current_plan.get("final_assessment", {}).get("attempts"):
+            last_attempt = current_plan["final_assessment"]["attempts"][-1]
+
+            # Build assessment_data in the format expected by create_learning_plan
+            assessment_data = {
+                "recognized_text": f"Completed {suggestion['previous_level']} level with score {last_attempt.get('overall_score', 0)}",
+                "overall_score": last_attempt.get("overall_score", 0),
+                "recommended_level": suggestion["proficiency_level"],
+                "pronunciation": {
+                    "score": last_attempt.get("scores", {}).get("pronunciation", 0),
+                    "feedback": f"Ready for {suggestion['proficiency_level']} pronunciation practice"
+                },
+                "grammar": {
+                    "score": last_attempt.get("scores", {}).get("grammar", 0),
+                    "feedback": f"Continue improving grammar at {suggestion['proficiency_level']} level"
+                },
+                "vocabulary": {
+                    "score": last_attempt.get("scores", {}).get("vocabulary", 0),
+                    "feedback": f"Build {suggestion['proficiency_level']} level vocabulary"
+                },
+                "fluency": {
+                    "score": last_attempt.get("scores", {}).get("fluency", 0),
+                    "feedback": f"Enhance fluency for {suggestion['proficiency_level']} level"
+                },
+                "coherence": {
+                    "score": last_attempt.get("scores", {}).get("coherence", 0),
+                    "feedback": f"Develop {suggestion['proficiency_level']} coherence skills"
+                },
+                "strengths": last_attempt.get("strengths", []),
+                "areas_for_improvement": last_attempt.get("areas_for_improvement", []),
+                "next_steps": [f"Progress to {suggestion['proficiency_level']} level", "Practice regularly", "Focus on weak areas"]
+            }
+            logger.info(f"[FINAL_ASSESSMENT_API] Using assessment data from previous plan: overall_score={assessment_data['overall_score']}")
+
+        # Call the learning plan creation directly
+        from learning_routes import create_learning_plan
+
+        # Create plan data matching the expected format
+        plan_data = {
+            "language": suggestion["language"],
+            "proficiency_level": suggestion["proficiency_level"],
+            "goals": goals if goals else [],
+            "duration_months": duration_months,
+            "custom_goal": custom_goal,
+            "assessment_data": assessment_data,  # Add assessment data for proper plan generation
+            "from_final_assessment": True,
+            "previous_plan_id": request.current_plan_id
+        }
+
+        # Create the plan by calling the endpoint
+        result = await create_learning_plan(
+            request_data=plan_data,
+            current_user=current_user
         )
 
         if "error" in result:

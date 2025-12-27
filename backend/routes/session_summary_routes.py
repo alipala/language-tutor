@@ -288,6 +288,24 @@ async def store_session_summary(
                 detail="You don't have permission to update this learning plan"
             )
 
+        # 🎓 DETECT FINAL ASSESSMENT MODE
+        plan_status = plan.get("status", "in_progress")
+        is_final_assessment = plan_status in ["awaiting_final_assessment", "failed_assessment"]
+
+        if is_final_assessment:
+            print(f"[FINAL_ASSESSMENT] 🎓 Processing final assessment session for plan {plan_id}")
+            print(f"[FINAL_ASSESSMENT] Current status: {plan_status}")
+
+            # Delegate to final assessment handler
+            from .final_assessment_handler import process_final_assessment
+            return await process_final_assessment(
+                plan=plan,
+                conversation_data=conversation_data,
+                basic_summary=basic_summary,
+                user_id=current_user.id,
+                learning_plans_collection=learning_plans_collection
+            )
+
         # Generate comprehensive session summary (returns dict with 'full' and 'compressed')
         summary_data = await generate_comprehensive_session_summary(
             plan, conversation_data, basic_summary, current_user.id

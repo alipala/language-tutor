@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, ValidationError
 import os
 import openai
+from openai import OpenAI
 import uuid
 import logging
 import json
@@ -11,10 +12,31 @@ from bson import ObjectId
 from auth import get_current_user
 from models import UserResponse
 from database import database, users_collection
+import httpx
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize OpenAI client with error handling
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    logger.warning("Warning: OPENAI_API_KEY not found in environment variables")
+
+try:
+    openai_client = OpenAI(api_key=api_key)
+    logger.info("OpenAI client initialized successfully (learning_routes)")
+except TypeError as e:
+    if "'proxies'" in str(e):
+        logger.info("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
+        openai_client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        logger.info("OpenAI client initialized with alternative method (learning_routes)")
+    else:
+        logger.error(f"Error initializing OpenAI client: {str(e)}")
+        openai_client = None
+except Exception as e:
+    logger.error(f"Error initializing OpenAI client: {str(e)}")
+    openai_client = None
 
 # Initialize router
 router = APIRouter(prefix="/api/learning", tags=["learning"])
@@ -32,6 +54,8 @@ class LearningPlanRequest(BaseModel):
     duration_months: int
     custom_goal: Optional[str] = None
     assessment_data: Optional[Dict[str, Any]] = None
+    from_final_assessment: Optional[bool] = None
+    previous_plan_id: Optional[str] = None
 
 class LearningPlan(BaseModel):
     id: str
@@ -554,18 +578,78 @@ async def create_learning_plan(
           f"- Learning goals: {goals_text}")
     
     try:
-        # Log what would have been sent to OpenAI
-        print(f"Would have created a plan for {plan_request.proficiency_level} level {plan_request.language} learner focusing on {goals_text}{custom_goal_text} for {plan_request.duration_months} months")
-        
-        # We're using the mock plan content defined above
-        # No need to call OpenAI API or parse the response
+        # Use OpenAI to generate personalized plan content (if client is available)
+        if openai_client and assessment_data:
+            logger.info(f"[LEARNING_PLAN] 🤖 Calling GPT-4o to generate personalized plan content")
+
+            # Build prompt for OpenAI
+            gpt_prompt = f"""Create a personalized {plan_request.duration_months}-month learning plan for a {plan_request.proficiency_level} level {plan_request.language} learner.
+
+Assessment Results:
+- Overall Score: {assessment_data.get('overall_score', 0)}/100
+- Pronunciation: {assessment_data.get('pronunciation', {}).get('score', 0)}/100
+- Grammar: {assessment_data.get('grammar', {}).get('score', 0)}/100
+- Vocabulary: {assessment_data.get('vocabulary', {}).get('score', 0)}/100
+- Fluency: {assessment_data.get('fluency', {}).get('score', 0)}/100
+- Coherence: {assessment_data.get('coherence', {}).get('score', 0)}/100
+
+Strengths: {', '.join(strengths) if strengths else 'Not specified'}
+Areas for Improvement: {', '.join(areas_for_improvement) if areas_for_improvement else 'Not specified'}
+Learning Goals: {goals_text}
+
+Provide a JSON response with:
+1. A motivational overview (2-3 sentences) highlighting their strengths and how this plan addresses their improvement areas
+2. 5 specific learning objectives tailored to their level and goals
+3. 5 recommended resources for {plan_request.language} learners at {plan_request.proficiency_level} level
+
+Format as JSON:
+{{
+  "overview": "string",
+  "learning_objectives": ["objective1", "objective2", ...],
+  "resources": ["resource1", "resource2", ...]
+}}"""
+
+            try:
+                gpt_response = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": "You are an expert language learning curriculum designer. Create personalized, encouraging learning plans."},
+                        {"role": "user", "content": gpt_prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=800
+                )
+
+                gpt_content = json.loads(gpt_response.choices[0].message.content)
+                logger.info(f"[LEARNING_PLAN] ✅ GPT-4o generated personalized content")
+
+                # Use GPT-generated content in the plan
+                plan_content_json["overview"] = gpt_content.get("overview", plan_content_json["overview"])
+                plan_content_json["learning_objectives"] = gpt_content.get("learning_objectives", plan_content_json["learning_objectives"])
+                plan_content_json["resources"] = gpt_content.get("resources", plan_content_json["resources"])
+
+            except Exception as gpt_error:
+                logger.warning(f"[LEARNING_PLAN] ⚠️ GPT-4o generation failed, using default content: {str(gpt_error)}")
+                # Continue with the programmatically generated content
+        else:
+            if not assessment_data:
+                logger.info(f"[LEARNING_PLAN] ℹ️ No assessment data - using template content")
+            else:
+                logger.warning(f"[LEARNING_PLAN] ⚠️ OpenAI client not available - using template content")
         
         # Import the new learning plan service
         from learning_plan_service import LearningPlanService
-        
+
+        # Extract weekly_schedule from plan_content_json
+        weekly_schedule = plan_content_json.get("weekly_schedule", [])
+
         # Ensure proper session structure
         weekly_schedule = LearningPlanService.ensure_session_structure(weekly_schedule)
-        
+
+        # Update the plan_content_json with structured schedule
+        plan_content_json["weekly_schedule"] = weekly_schedule
+
         # Calculate total sessions from the generated weekly schedule
         total_sessions = LearningPlanService.calculate_total_sessions_from_schedule(weekly_schedule)
         
@@ -589,7 +673,9 @@ async def create_learning_plan(
             "completed_sessions": 0,
             "progress_percentage": 0.0,
             "practice_minutes_used": 0.0,
-            "total_practice_minutes": total_sessions * 5.0  # Assume 5 minutes per session average
+            "total_practice_minutes": total_sessions * 5.0,  # Assume 5 minutes per session average
+            "from_final_assessment": plan_request.from_final_assessment if plan_request.from_final_assessment else None,
+            "previous_plan_id": plan_request.previous_plan_id if plan_request.previous_plan_id else None
         }
         
         # ATOMIC SAVE: Use the safe learning plan service with duplicate prevention

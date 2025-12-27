@@ -337,6 +337,10 @@ ASSESSMENT STRUCTURE:
 Duration: {get_assessment_duration(current_level)} minutes minimum
 Format: Natural conversation that progressively increases in complexity
 
+🎬 HOW TO START THE ASSESSMENT:
+Begin with a warm, natural greeting that immediately establishes the assessment context:
+"Hi! Congratulations on completing all your {current_level} sessions! Today is your final speaking assessment. Don't worry - this will be just like a friendly conversation. I'd love to hear about your learning journey. What topics did you enjoy most during your {target_language} plan?"
+
 PHASE 1 - WARM-UP (First 1-2 minutes):
 - Start with {current_level} level topics to build confidence
 - Use familiar vocabulary and grammar structures
@@ -801,10 +805,13 @@ LANGUAGE RULE: {config['rule']}
 {learning_plan_context}
 
 FIRST MESSAGE INSTRUCTIONS:
-- If learning plan context is provided above: Start by referencing the current week's focus and immediately begin practicing the specified activities. Example: "Great to see you! This week we're focusing on [week focus]. Let's start by [first activity]. Tell me about..."
+- If FINAL ASSESSMENT MODE is active (check above): Use the specific opening greeting provided in the "🎬 HOW TO START THE ASSESSMENT" section. Congratulate them on completing all sessions and immediately begin the assessment conversation.
+- If learning plan context is provided (but NOT final assessment): Start by referencing the current week's focus and immediately begin practicing the specified activities. Example: "Great to see you! This week we're focusing on [week focus]. Let's start by [first activity]. Tell me about..."
 - If NO learning plan context: Start with "{config['greeting']}" and ask what the student wants to practice today
 
-CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
+CRITICAL:
+- If FINAL ASSESSMENT MODE is active, follow the assessment structure and opening greeting EXACTLY as specified above.
+- If learning plan context is available (non-assessment), you MUST focus the entire conversation on the current week's learning objectives."""
 
         return instructions
 
@@ -1144,7 +1151,34 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
         # Add session configuration based on authentication status
         is_guest = current_user is None
-        max_duration_seconds = 120 if is_guest else 300  # 2 min for guests, 5 min for registered
+
+        # Check if this is a final assessment to set appropriate duration
+        is_final_assessment = False
+        assessment_level = None
+        if request.assessment_data and 'learning_plan_data' in request.assessment_data:
+            learning_plan_data = request.assessment_data.get('learning_plan_data', {})
+            completed_sessions = learning_plan_data.get('completed_sessions', 0)
+            total_sessions = learning_plan_data.get('total_sessions', 8)
+            is_final_assessment = completed_sessions >= total_sessions
+            if is_final_assessment:
+                assessment_level = request.level  # Use the level from the request
+
+        # Set duration based on context
+        if is_final_assessment and assessment_level:
+            # Final assessment: duration based on CEFR level
+            duration_map = {
+                'A1': 120,  # 2 minutes
+                'A2': 180,  # 3 minutes
+                'B1': 240,  # 4 minutes
+                'B2': 300,  # 5 minutes
+                'C1': 300,  # 5 minutes
+                'C2': 300   # 5 minutes
+            }
+            max_duration_seconds = duration_map.get(assessment_level.upper(), 300)
+            print(f"[SESSION_CONFIG] Final assessment mode - Level {assessment_level} - Duration: {max_duration_seconds}s")
+        else:
+            # Regular practice session
+            max_duration_seconds = 120 if is_guest else 300  # 2 min for guests, 5 min for registered
 
         print(f"[SESSION_CONFIG] User type: {'guest' if is_guest else 'authenticated'}")
         print(f"[SESSION_CONFIG] Max duration: {max_duration_seconds}s ({max_duration_seconds//60} minutes)")
