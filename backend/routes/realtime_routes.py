@@ -154,6 +154,42 @@ def get_language_iso_code(language: str) -> str:
     print(f"Language mapping: '{language}' -> '{iso_code}'")
     return iso_code
 
+def get_next_cefr_level(current_level: str) -> str:
+    """Get the next CEFR level after the current one"""
+    level_progression = {
+        'A1': 'A2',
+        'A2': 'B1',
+        'B1': 'B2',
+        'B2': 'C1',
+        'C1': 'C2',
+        'C2': 'C2'  # C2 is the highest level
+    }
+    return level_progression.get(current_level.upper(), 'B1')
+
+def get_assessment_duration(level: str) -> str:
+    """Get the minimum assessment duration for a CEFR level"""
+    duration_map = {
+        'A1': '2',
+        'A2': '3',
+        'B1': '4',
+        'B2': '5',
+        'C1': '5',
+        'C2': '5'
+    }
+    return duration_map.get(level.upper(), '4')
+
+def get_level_appropriate_topics(level: str) -> str:
+    """Get conversation topics appropriate for a CEFR level"""
+    topics_by_level = {
+        'A1': 'daily routines, family, hobbies, simple descriptions, basic needs',
+        'A2': 'shopping, local geography, work, past experiences, future plans',
+        'B1': 'current events, travel experiences, personal opinions, problems and solutions',
+        'B2': 'abstract ideas, cultural topics, detailed arguments, hypothetical situations',
+        'C1': 'complex academic topics, nuanced opinions, abstract concepts, socio-political issues',
+        'C2': 'specialized topics, sophisticated argumentation, subtle meanings, expert-level discourse'
+    }
+    return topics_by_level.get(level.upper(), topics_by_level['B1'])
+
 def build_universal_instructions(request: TutorSessionRequest) -> str:
     """
     Build instructions that work reliably on all browsers.
@@ -274,29 +310,125 @@ PERSONALIZED APPROACH:
             completed_sessions = learning_plan_data.get('completed_sessions', 0)
             total_sessions = learning_plan_data.get('total_sessions', 8)
 
-            sessions_per_week = 2
-            current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
-            current_session_in_week = (completed_sessions % sessions_per_week) + 1
+            # Detect if this is a FINAL ASSESSMENT
+            is_final_assessment = completed_sessions >= total_sessions
+            if is_final_assessment:
+                print(f"[FINAL_ASSESSMENT] Detected final assessment mode - {completed_sessions}/{total_sessions} sessions completed")
 
-            weekly_schedule = plan_content.get('weekly_schedule', [])
-            current_week = weekly_schedule[current_week_number - 1] if current_week_number <= len(weekly_schedule) else weekly_schedule[0] if weekly_schedule else None
+                # Get current and next level for assessment
+                current_level = level
+                next_level = get_next_cefr_level(current_level)
+                target_language = language
 
-            if current_week:
-                week_focus = current_week.get('focus', 'Building foundational skills')
-                week_activities = current_week.get('activities', [])
+                # Build comprehensive final assessment instructions
+                learning_plan_context = f"""
+🎓 FINAL ASSESSMENT MODE - ACTIVE
 
-                previous_sessions_context = ""
-                session_summaries = learning_plan_data.get('session_summaries', [])
-                if session_summaries:
-                    previous_sessions_context = build_compressed_session_context(session_summaries, max_summaries=3)
+You are conducting a FINAL SPEAKING ASSESSMENT for a {current_level} level {target_language} learning plan.
 
-                    previous_sessions_context += """
+ASSESSMENT OBJECTIVE:
+Evaluate the student's readiness to advance from {current_level} to {next_level} level through natural conversation.
+
+DUAL-CRITERIA EVALUATION (explained to user at the END):
+1. CURRENT LEVEL MASTERY ({current_level}): Student should demonstrate strong command of {current_level} skills
+2. NEXT LEVEL READINESS ({next_level}): Student should show potential for {next_level} level work
+
+ASSESSMENT STRUCTURE:
+Duration: {get_assessment_duration(current_level)} minutes minimum
+Format: Natural conversation that progressively increases in complexity
+
+PHASE 1 - WARM-UP (First 1-2 minutes):
+- Start with {current_level} level topics to build confidence
+- Use familiar vocabulary and grammar structures
+- Create a comfortable, encouraging atmosphere
+- Example: "Let's talk about your experience with this {current_level} learning plan. What topics did you enjoy most?"
+
+PHASE 2 - CURRENT LEVEL ASSESSMENT (Next 2-3 minutes):
+- Test mastery of {current_level} competencies through natural dialogue
+- Evaluate: grammar accuracy, vocabulary range, fluency, coherence, pronunciation
+- Ask questions that require {current_level} skills
+- Gradually increase complexity within {current_level}
+- Listen for: consistent accuracy, natural expression, appropriate vocabulary
+
+PHASE 3 - NEXT LEVEL CHALLENGE (Final 1-2 minutes):
+- Introduce {next_level} topics and complexity
+- Test potential for next level work
+- Use some {next_level} vocabulary and structures
+- Assess: adaptability, comprehension, willingness to tackle challenges
+- Example topics at {next_level}: more abstract concepts, nuanced opinions, complex situations
+
+NATURAL CONVERSATION GUIDELINES:
+✅ DO:
+- Keep it conversational and engaging - NOT a formal test
+- Build topics naturally from student's responses
+- Provide appropriate scaffolding when needed
+- Encourage elaboration: "Tell me more about...", "How did that make you feel?"
+- Maintain positive, supportive tone throughout
+- Mix different skills naturally (describing, narrating, expressing opinions, explaining)
+
+❌ DO NOT:
+- Say "This is a test" or make it feel like an exam
+- Ask drill questions or vocabulary lists
+- Make student repeat phrases
+- Announce phase transitions
+- Make student anxious or uncomfortable
+- Give corrective feedback during the assessment
+
+CONVERSATION TOPICS (vary complexity):
+For {current_level}: {get_level_appropriate_topics(current_level)}
+For {next_level} stretch: {get_level_appropriate_topics(next_level)}
+
+ENDING THE ASSESSMENT:
+After the target duration, NATURALLY conclude the conversation:
+- Thank the student warmly
+- Provide encouraging summary
+- Explain the dual-criteria evaluation system
+- Mention they will receive detailed feedback shortly
+
+Example closing: "Thank you for this great conversation! You've completed your {current_level} final assessment. Our system evaluates based on two criteria: your mastery of {current_level} skills and your readiness for {next_level} level. You'll receive detailed results soon showing your performance in grammar, vocabulary, fluency, coherence, and pronunciation. Great job!"
+
+REMEMBER:
+- This is an ASSESSMENT but should feel like a FRIENDLY CONVERSATION
+- Your role is to ELICIT language, not teach during the assessment
+- Focus on LISTENING and EVALUATING, not correcting
+- Create a SAFE space for the student to demonstrate their best abilities
+- The conversation should flow NATURALLY while covering required competencies
+
+Previous Learning Journey:
+{build_compressed_session_context(learning_plan_data.get('session_summaries', []), max_summaries=5)}
+
+Plan Details:
+- Title: {plan_content.get('title', 'Learning Plan')}
+- Overview: {plan_content.get('overview', 'Comprehensive language learning')}
+"""
+                print(f"[FINAL_ASSESSMENT] Special assessment instructions created: {len(learning_plan_context)} characters")
+                print(f"[FINAL_ASSESSMENT] Current level: {current_level}, Next level: {next_level}")
+
+            else:
+                # Regular learning plan session (not final assessment)
+                sessions_per_week = 2
+                current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
+                current_session_in_week = (completed_sessions % sessions_per_week) + 1
+
+                weekly_schedule = plan_content.get('weekly_schedule', [])
+                current_week = weekly_schedule[current_week_number - 1] if current_week_number <= len(weekly_schedule) else weekly_schedule[0] if weekly_schedule else None
+
+                if current_week:
+                    week_focus = current_week.get('focus', 'Building foundational skills')
+                    week_activities = current_week.get('activities', [])
+
+                    previous_sessions_context = ""
+                    session_summaries = learning_plan_data.get('session_summaries', [])
+                    if session_summaries:
+                        previous_sessions_context = build_compressed_session_context(session_summaries, max_summaries=3)
+
+                        previous_sessions_context += """
 LEARNING PROGRESSION:
 - Build upon insights from previous sessions
 - Reference progress made in earlier conversations
 - Continue developing skills identified in previous summaries"""
 
-                learning_plan_context = f"""
+                    learning_plan_context = f"""
 📚 LEARNING PLAN CONTEXT:
 - Plan Title: {plan_content.get('title', 'Personalized Learning Plan')}
 - Plan Overview: {plan_content.get('overview', 'Customized based on assessment results')}
@@ -314,10 +446,10 @@ CONVERSATION GUIDANCE:
 - Encourage practice of specific skills mentioned in the weekly activities
 - Build upon previous session insights and maintain learning continuity"""
 
-                print(f"Learning plan context integrated: {len(learning_plan_context)} characters")
-                print(f"Current week {current_week_number} focus: {week_focus}")
-                print(f"Current week activities: {week_activities}")
-                print(f"Session {current_session_in_week} of week {current_week_number}")
+                    print(f"Learning plan context integrated: {len(learning_plan_context)} characters")
+                    print(f"Current week {current_week_number} focus: {week_focus}")
+                    print(f"Current week activities: {week_activities}")
+                    print(f"Session {current_session_in_week} of week {current_week_number}")
 
     # Handle custom topic
     if request.topic == "custom" and request.user_prompt:
