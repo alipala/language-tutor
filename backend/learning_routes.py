@@ -76,6 +76,9 @@ class LearningPlan(BaseModel):
     status: Optional[str] = "in_progress"  # "in_progress" | "awaiting_final_assessment" | "completed" | "failed_assessment"
     final_assessment: Optional[Dict[str, Any]] = None  # Assessment requirements and attempts
     all_sessions_completed_at: Optional[str] = None  # When last session was completed
+    # NEW: Plan Lineage Fields
+    from_final_assessment: Optional[bool] = None  # Created from final assessment
+    previous_plan_id: Optional[str] = None  # ID of the plan this was created from
 
 # Initialize learning goals collection
 learning_goals_collection = database.learning_goals
