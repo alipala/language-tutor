@@ -154,6 +154,42 @@ def get_language_iso_code(language: str) -> str:
     print(f"Language mapping: '{language}' -> '{iso_code}'")
     return iso_code
 
+def get_next_cefr_level(current_level: str) -> str:
+    """Get the next CEFR level after the current one"""
+    level_progression = {
+        'A1': 'A2',
+        'A2': 'B1',
+        'B1': 'B2',
+        'B2': 'C1',
+        'C1': 'C2',
+        'C2': 'C2'  # C2 is the highest level
+    }
+    return level_progression.get(current_level.upper(), 'B1')
+
+def get_assessment_duration(level: str) -> str:
+    """Get the minimum assessment duration for a CEFR level"""
+    duration_map = {
+        'A1': '2',
+        'A2': '3',
+        'B1': '4',
+        'B2': '5',
+        'C1': '5',
+        'C2': '5'
+    }
+    return duration_map.get(level.upper(), '4')
+
+def get_level_appropriate_topics(level: str) -> str:
+    """Get conversation topics appropriate for a CEFR level"""
+    topics_by_level = {
+        'A1': 'daily routines, family, hobbies, simple descriptions, basic needs',
+        'A2': 'shopping, local geography, work, past experiences, future plans',
+        'B1': 'current events, travel experiences, personal opinions, problems and solutions',
+        'B2': 'abstract ideas, cultural topics, detailed arguments, hypothetical situations',
+        'C1': 'complex academic topics, nuanced opinions, abstract concepts, socio-political issues',
+        'C2': 'specialized topics, sophisticated argumentation, subtle meanings, expert-level discourse'
+    }
+    return topics_by_level.get(level.upper(), topics_by_level['B1'])
+
 def build_universal_instructions(request: TutorSessionRequest) -> str:
     """
     Build instructions that work reliably on all browsers.
@@ -274,34 +310,149 @@ PERSONALIZED APPROACH:
             completed_sessions = learning_plan_data.get('completed_sessions', 0)
             total_sessions = learning_plan_data.get('total_sessions', 8)
 
-            sessions_per_week = 2
-            current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
-            current_session_in_week = (completed_sessions % sessions_per_week) + 1
+            # Detect if this is a FINAL ASSESSMENT
+            is_final_assessment = completed_sessions >= total_sessions
+            if is_final_assessment:
+                print(f"[FINAL_ASSESSMENT] Detected final assessment mode - {completed_sessions}/{total_sessions} sessions completed")
 
-            weekly_schedule = plan_content.get('weekly_schedule', [])
-            current_week = weekly_schedule[current_week_number - 1] if current_week_number <= len(weekly_schedule) else weekly_schedule[0] if weekly_schedule else None
+                # Get current and next level for assessment
+                current_level = level
+                next_level = get_next_cefr_level(current_level)
+                target_language = language
 
-            if current_week:
-                week_focus = current_week.get('focus', 'Building foundational skills')
-                week_activities = current_week.get('activities', [])
+                # Build comprehensive final assessment instructions
+                learning_plan_context = f"""
+🎓 FINAL ASSESSMENT MODE - ACTIVE
 
-                previous_sessions_context = ""
-                session_summaries = learning_plan_data.get('session_summaries', [])
-                if session_summaries:
-                    previous_sessions_context = build_compressed_session_context(session_summaries, max_summaries=3)
+You are conducting a FINAL SPEAKING ASSESSMENT for a {current_level} level {target_language} learning plan.
 
-                    previous_sessions_context += """
+ASSESSMENT OBJECTIVE:
+Evaluate the student's readiness to advance from {current_level} to {next_level} level through natural conversation.
+
+DUAL-CRITERIA EVALUATION (explained to user at the END):
+1. CURRENT LEVEL MASTERY ({current_level}): Student should demonstrate strong command of {current_level} skills
+2. NEXT LEVEL READINESS ({next_level}): Student should show potential for {next_level} level work
+
+ASSESSMENT STRUCTURE:
+Duration: {get_assessment_duration(current_level)} minutes minimum
+Format: Natural conversation that progressively increases in complexity
+
+🎬 HOW TO START THE ASSESSMENT:
+Begin with a warm, natural greeting that immediately establishes the assessment context:
+"Hi! Congratulations on completing all your {current_level} sessions! Today is your final speaking assessment. Don't worry - this will be just like a friendly conversation. I'd love to hear about your learning journey. What topics did you enjoy most during your {target_language} plan?"
+
+PHASE 1 - WARM-UP (First 1-2 minutes):
+- Start with {current_level} level topics to build confidence
+- Use familiar vocabulary and grammar structures
+- Create a comfortable, encouraging atmosphere
+- Example: "Let's talk about your experience with this {current_level} learning plan. What topics did you enjoy most?"
+
+PHASE 2 - CURRENT LEVEL ASSESSMENT (Next 2-3 minutes):
+- Test mastery of {current_level} competencies through natural dialogue
+- Evaluate: grammar accuracy, vocabulary range, fluency, coherence, pronunciation
+- Ask questions that require {current_level} skills
+- Gradually increase complexity within {current_level}
+- Listen for: consistent accuracy, natural expression, appropriate vocabulary
+
+PHASE 3 - NEXT LEVEL CHALLENGE (Final 1-2 minutes):
+- Introduce {next_level} topics and complexity
+- Test potential for next level work
+- Use some {next_level} vocabulary and structures
+- Assess: adaptability, comprehension, willingness to tackle challenges
+- Example topics at {next_level}: more abstract concepts, nuanced opinions, complex situations
+
+NATURAL CONVERSATION GUIDELINES:
+✅ DO:
+- Keep it conversational and engaging - NOT a formal test
+- Build topics naturally from student's responses
+- Provide appropriate scaffolding when needed
+- Encourage elaboration: "Tell me more about...", "How did that make you feel?"
+- Maintain positive, supportive tone throughout
+- Mix different skills naturally (describing, narrating, expressing opinions, explaining)
+
+❌ DO NOT:
+- Say "This is a test" or make it feel like an exam
+- Ask drill questions or vocabulary lists
+- Make student repeat phrases
+- Announce phase transitions
+- Make student anxious or uncomfortable
+- Give corrective feedback during the assessment
+
+CONVERSATION TOPICS (vary complexity):
+For {current_level}: {get_level_appropriate_topics(current_level)}
+For {next_level} stretch: {get_level_appropriate_topics(next_level)}
+
+ENDING THE ASSESSMENT:
+After the target duration, NATURALLY conclude the conversation:
+- Thank the student warmly
+- Provide encouraging summary
+- Explain the dual-criteria evaluation system
+- Mention they will receive detailed feedback shortly
+
+Example closing: "Thank you for this great conversation! You've completed your {current_level} final assessment. Our system evaluates based on two criteria: your mastery of {current_level} skills and your readiness for {next_level} level. You'll receive detailed results soon showing your performance in grammar, vocabulary, fluency, coherence, and pronunciation. Great job!"
+
+REMEMBER:
+- This is an ASSESSMENT but should feel like a FRIENDLY CONVERSATION
+- Your role is to ELICIT language, not teach during the assessment
+- Focus on LISTENING and EVALUATING, not correcting
+- Create a SAFE space for the student to demonstrate their best abilities
+- The conversation should flow NATURALLY while covering required competencies
+
+Previous Learning Journey:
+{build_compressed_session_context(learning_plan_data.get('session_summaries', []), max_summaries=5)}
+
+Plan Details:
+- Title: {plan_content.get('title', 'Learning Plan')}
+- Overview: {plan_content.get('overview', 'Comprehensive language learning')}
+"""
+                print(f"[FINAL_ASSESSMENT] Special assessment instructions created: {len(learning_plan_context)} characters")
+                print(f"[FINAL_ASSESSMENT] Current level: {current_level}, Next level: {next_level}")
+
+            else:
+                # Regular learning plan session (not final assessment)
+                sessions_per_week = 2
+                current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
+                current_session_in_week = (completed_sessions % sessions_per_week) + 1
+
+                weekly_schedule = plan_content.get('weekly_schedule', [])
+                current_week = weekly_schedule[current_week_number - 1] if current_week_number <= len(weekly_schedule) else weekly_schedule[0] if weekly_schedule else None
+
+                if current_week:
+                    week_focus = current_week.get('focus', 'Building foundational skills')
+                    week_activities = current_week.get('activities', [])
+
+                    previous_sessions_context = ""
+                    session_summaries = learning_plan_data.get('session_summaries', [])
+                    if session_summaries:
+                        previous_sessions_context = build_compressed_session_context(session_summaries, max_summaries=3)
+
+                        previous_sessions_context += """
 LEARNING PROGRESSION:
 - Build upon insights from previous sessions
 - Reference progress made in earlier conversations
 - Continue developing skills identified in previous summaries"""
 
-                learning_plan_context = f"""
+                    learning_plan_context = f"""
+🚨🚨🚨 CRITICAL FIRST MESSAGE INSTRUCTION - READ THIS FIRST 🚨🚨🚨
+
+YOU ARE IN LEARNING PLAN MODE - DO NOT USE GENERIC GREETINGS!
+
+Your FIRST message MUST follow this EXACT structure:
+"Hello! Great to see you again! This week we're focusing on {week_focus}. Let's dive right in - {week_activities[0] if week_activities else 'I want to start by asking you about'} [immediate question or task]."
+
+❌ FORBIDDEN FIRST MESSAGES:
+- "Hello! I am your English language tutor—what would you like to practice today?"
+- "What would you like to practice?"
+- "How can I help you today?"
+- ANY question asking what the user wants to practice
+
+✅ REQUIRED FIRST MESSAGE EXAMPLE:
+"Hello! Great to see you again! This week we're focusing on Email & Written Communication: Write professional emails and documents. Let's dive right in - I'd like you to imagine you need to write a business email to a colleague requesting a meeting. What would you say in that email?"
+
 📚 LEARNING PLAN CONTEXT:
 - Plan Title: {plan_content.get('title', 'Personalized Learning Plan')}
 - Plan Overview: {plan_content.get('overview', 'Customized based on assessment results')}
-
-CURRENT WEEK FOCUS (Week {current_week_number}, Session {current_session_in_week}):
+- Current Session: Week {current_week_number}, Session {current_session_in_week}
 - Focus Area: {week_focus}
 - Key Activities: {', '.join(week_activities[:3]) if week_activities else 'Practice conversation skills'}
 {previous_sessions_context}
@@ -314,10 +465,10 @@ CONVERSATION GUIDANCE:
 - Encourage practice of specific skills mentioned in the weekly activities
 - Build upon previous session insights and maintain learning continuity"""
 
-                print(f"Learning plan context integrated: {len(learning_plan_context)} characters")
-                print(f"Current week {current_week_number} focus: {week_focus}")
-                print(f"Current week activities: {week_activities}")
-                print(f"Session {current_session_in_week} of week {current_week_number}")
+                    print(f"Learning plan context integrated: {len(learning_plan_context)} characters")
+                    print(f"Current week {current_week_number} focus: {week_focus}")
+                    print(f"Current week activities: {week_activities}")
+                    print(f"Session {current_session_in_week} of week {current_week_number}")
 
     # Handle custom topic
     if request.topic == "custom" and request.user_prompt:
@@ -669,10 +820,14 @@ LANGUAGE RULE: {config['rule']}
 {learning_plan_context}
 
 FIRST MESSAGE INSTRUCTIONS:
-- If learning plan context is provided above: Start by referencing the current week's focus and immediately begin practicing the specified activities. Example: "Great to see you! This week we're focusing on [week focus]. Let's start by [first activity]. Tell me about..."
-- If NO learning plan context: Start with "{config['greeting']}" and ask what the student wants to practice today
+- If FINAL ASSESSMENT MODE is active (check above): Use the specific opening greeting provided in the "🎬 HOW TO START THE ASSESSMENT" section. Congratulate them on completing all sessions and immediately begin the assessment conversation.
+- If learning plan context is provided (but NOT final assessment): Follow the "🎬 CRITICAL FIRST MESSAGE INSTRUCTION FOR LEARNING PLANS" section EXACTLY. Start immediately with the week's focus and first activity. DO NOT ask "What would you like to practice?" or any similar question.
+- If NO learning plan context: Start with a brief greeting, then IMMEDIATELY begin a conversation about a relevant topic at the student's level. DO NOT ask "What would you like to practice?" - instead, start with an engaging question or statement about a topic appropriate for their level.
 
-CRITICAL: If learning plan context is available, you MUST focus the entire conversation on the current week's learning objectives. Do not deviate from this focus regardless of what the user requests."""
+CRITICAL:
+- If FINAL ASSESSMENT MODE is active, follow the assessment structure and opening greeting EXACTLY as specified above.
+- If learning plan context is available (non-assessment), you MUST follow the opening format in the "🎬 CRITICAL FIRST MESSAGE INSTRUCTION FOR LEARNING PLANS" section and focus the entire conversation on the current week's learning objectives.
+- NEVER start with generic questions like "What would you like to practice?" - YOU drive the conversation based on the context provided."""
 
         return instructions
 
@@ -1012,7 +1167,34 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
         # Add session configuration based on authentication status
         is_guest = current_user is None
-        max_duration_seconds = 120 if is_guest else 300  # 2 min for guests, 5 min for registered
+
+        # Check if this is a final assessment to set appropriate duration
+        is_final_assessment = False
+        assessment_level = None
+        if request.assessment_data and 'learning_plan_data' in request.assessment_data:
+            learning_plan_data = request.assessment_data.get('learning_plan_data', {})
+            completed_sessions = learning_plan_data.get('completed_sessions', 0)
+            total_sessions = learning_plan_data.get('total_sessions', 8)
+            is_final_assessment = completed_sessions >= total_sessions
+            if is_final_assessment:
+                assessment_level = request.level  # Use the level from the request
+
+        # Set duration based on context
+        if is_final_assessment and assessment_level:
+            # Final assessment: duration based on CEFR level
+            duration_map = {
+                'A1': 120,  # 2 minutes
+                'A2': 180,  # 3 minutes
+                'B1': 240,  # 4 minutes
+                'B2': 300,  # 5 minutes
+                'C1': 300,  # 5 minutes
+                'C2': 300   # 5 minutes
+            }
+            max_duration_seconds = duration_map.get(assessment_level.upper(), 300)
+            print(f"[SESSION_CONFIG] Final assessment mode - Level {assessment_level} - Duration: {max_duration_seconds}s")
+        else:
+            # Regular practice session
+            max_duration_seconds = 120 if is_guest else 300  # 2 min for guests, 5 min for registered
 
         print(f"[SESSION_CONFIG] User type: {'guest' if is_guest else 'authenticated'}")
         print(f"[SESSION_CONFIG] Max duration: {max_duration_seconds}s ({max_duration_seconds//60} minutes)")

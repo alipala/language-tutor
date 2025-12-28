@@ -205,6 +205,7 @@ from routes.session_summary_routes import router as session_summary_router
 from routes.assessment_routes import router as assessment_router
 from routes.transcription_routes import router as transcription_router
 from routes.guest_analysis_routes import router as guest_analysis_router
+from routes.final_assessment_routes import router as final_assessment_router
 
 app.include_router(health_router)
 app.include_router(mock_router)
@@ -217,6 +218,7 @@ app.include_router(session_summary_router)
 app.include_router(assessment_router)
 app.include_router(transcription_router)
 app.include_router(guest_analysis_router)
+app.include_router(final_assessment_router)
 
 
 # Initialize MongoDB on startup
