@@ -955,9 +955,32 @@ async def handle_subscription_updated(subscription):
             {"_id": user["_id"]},
             {"$set": update_data}
         )
-        
+
         logger.info(f"[SUB_UPDATED] Successfully updated subscription for user {user['_id']}")
-        
+
+        # NEW: Update heart system when subscription plan changes
+        if "subscription_plan" in update_data:
+            try:
+                from services.heart_service import HeartService
+                heart_service = HeartService()
+
+                old_plan = user.get("subscription_plan", "try_learn")
+                new_plan = update_data["subscription_plan"]
+
+                if old_plan != new_plan:
+                    logger.info(f"[SUB_UPDATED] Updating heart system: {old_plan} → {new_plan}")
+                    await heart_service.update_hearts_on_subscription_change(
+                        user_id=str(user["_id"]),
+                        old_plan=old_plan,
+                        new_plan=new_plan
+                    )
+                    logger.info(f"[SUB_UPDATED] ✅ Heart system updated successfully")
+            except Exception as heart_error:
+                # Log error but don't fail the webhook
+                logger.error(f"[SUB_UPDATED] Error updating heart system: {str(heart_error)}")
+                import traceback
+                logger.error(traceback.format_exc())
+
         # Log the transition details for debugging
         if current_status == "trialing" and new_status == "active":
             logger.info(f"[SUB_UPDATED] Trial-to-active transition completed:")

@@ -19,6 +19,76 @@ class PyObjectId(str):
     def __get_pydantic_json_schema__(cls, _schema_generator, _field):
         return {"type": "string"}
 
+# ============================================================================
+# HEART SYSTEM MODELS (Focus Energy System)
+# ============================================================================
+
+class HeartPool(BaseModel):
+    """Heart pool for a specific challenge type"""
+    challenge_type: str  # error_spotting, swipe_fix, micro_quiz, etc.
+    current_hearts: int  # Current available hearts
+    max_hearts: int      # Max hearts based on subscription
+    last_heart_lost_at: Optional[datetime] = None  # When last heart was lost
+    refill_started_at: Optional[datetime] = None   # When refill started
+    refill_rate_minutes: int  # Minutes per heart refill
+
+    # Streak Shield
+    streak_shield_active: bool = False
+    streak_shield_activated_at: Optional[datetime] = None
+    current_correct_streak: int = 0  # Consecutive correct in this type
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class HeartSystemState(BaseModel):
+    """User's heart system state"""
+    heart_pools: Dict[str, HeartPool]  # Keyed by challenge_type
+    last_updated: datetime
+    feature_enabled: bool = True  # Feature flag per user
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class HeartEvent(BaseModel):
+    """Analytics event for heart system"""
+    id: str = Field(default_factory=lambda: str(ObjectId()))
+    user_id: str
+    event_type: str  # "heart_lost", "refill_started", "shield_activated", etc.
+    challenge_type: str
+
+    # Event-specific data
+    hearts_before: Optional[int] = None
+    hearts_after: Optional[int] = None
+    refill_complete_at: Optional[datetime] = None
+    user_action: Optional[str] = None  # "upgrade", "wait", "dismissed"
+    session_id: Optional[str] = None
+    session_progress: Optional[Dict[str, Any]] = None  # {completed: 3, total: 10}
+
+    # Context
+    subscription_plan: str
+    subscription_status: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    user_timezone: str
+
+    # Metadata
+    app_version: Optional[str] = None
+    platform: Optional[str] = None  # "ios", "android", "web"
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+# ============================================================================
+# USER MODELS
+# ============================================================================
+
 # User models
 class UserBase(BaseModel):
     email: EmailStr
@@ -85,6 +155,9 @@ class UserInDB(UserBase):
 
     # Statistics (new gamification system)
     stats: Optional[Dict[str, Any]] = None  # Embedded stats document
+
+    # Heart System (Focus Energy)
+    heart_system: Optional[HeartSystemState] = None  # Heart pools and refill state
 
     class Config:
         populate_by_name = True
