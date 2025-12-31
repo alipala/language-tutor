@@ -102,6 +102,14 @@ class LogModalRequest(BaseModel):
     session_progress: Dict[str, int]
 
 
+class LogSessionEndedRequest(BaseModel):
+    """Log session ended early (quit or out of hearts)"""
+    challenge_type: str
+    session_id: str
+    completed: int
+    total: int
+
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -313,24 +321,62 @@ async def log_out_of_hearts_modal(
 
 @router.post("/log-session-ended")
 async def log_session_ended_early(
-    challenge_type: str,
-    session_id: str,
-    completed: int,
-    total: int,
+    request: LogSessionEndedRequest,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Log when session ends early due to no hearts
+    Log when session ends early due to no hearts or user quit
 
-    Called by iOS app when session is terminated due to 0 hearts
+    Called by iOS app when session is terminated due to:
+    - 0 hearts (out of hearts)
+    - User quit voluntarily
     """
     heart_service = HeartService()
 
     await heart_service.log_session_ended_early(
         user_id=current_user.id,
-        challenge_type=challenge_type,
-        session_id=session_id,
-        session_progress={"completed": completed, "total": total}
+        challenge_type=request.challenge_type,
+        session_id=request.session_id,
+        session_progress={"completed": request.completed, "total": request.total}
     )
 
     return {"success": True}
+
+
+@router.post("/sync-with-subscription")
+async def sync_hearts_with_subscription(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Manually sync heart system with current subscription plan
+
+    This endpoint updates heart max_hearts and refill_rate based on the user's
+    current subscription_plan. Useful when:
+    - User upgrades subscription but hearts weren't updated
+    - Fixing sync issues between Stripe and heart system
+
+    Should be called by iOS app after successful subscription upgrade
+    """
+    heart_service = HeartService()
+
+    # Fetch full user document from database
+    user_id = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+    user_doc = await heart_service.db.users.find_one({"_id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    current_plan = user_doc.get("subscription_plan", "try_learn")
+
+    # Update hearts for the new subscription plan
+    # This will upgrade max_hearts and refill_rate_minutes for all challenge types
+    await heart_service.update_hearts_on_subscription_change(
+        user_id=str(user_id),
+        old_plan="try_learn",  # Assume upgrade from free
+        new_plan=current_plan
+    )
+
+    return {
+        "success": True,
+        "subscription_plan": current_plan,
+        "message": f"Heart system synced with {current_plan} plan"
+    }
