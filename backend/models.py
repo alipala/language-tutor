@@ -724,6 +724,7 @@ class ChallengeCountsResponse(BaseModel):
     smart_flashcard: int
     native_check: int
     brain_tickler: int
+    story_builder: int
     total: int
 
     class Config:

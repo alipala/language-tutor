@@ -710,7 +710,7 @@ async def get_challenges_by_type(
         # Validate challenge type
         valid_types = [
             "error_spotting", "swipe_fix", "micro_quiz",
-            "smart_flashcard", "native_check", "brain_tickler"
+            "smart_flashcard", "native_check", "brain_tickler", "story_builder"
         ]
 
         if challenge_type not in valid_types:
