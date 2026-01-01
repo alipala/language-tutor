@@ -151,7 +151,7 @@ async def analyze_user_learning_data(user_id: str, language: str = "english") ->
 
 def build_challenge_generation_prompt(user_analysis: Dict[str, Any]) -> str:
     """
-    Build GPT-4 prompt to generate 6 personalized challenges
+    Build GPT-4 prompt to generate 7 personalized challenges
     Based on user's actual learning data
     """
 
@@ -164,7 +164,7 @@ def build_challenge_generation_prompt(user_analysis: Dict[str, Any]) -> str:
     # Capitalize language name for prompt
     language_display = language.capitalize()
 
-    prompt = f"""You are an expert language learning AI. Generate 6 personalized daily challenges for a {level} level {language_display} learner.
+    prompt = f"""You are an expert language learning AI. Generate 7 personalized daily challenges for a {level} level {language_display} learner.
 
 **User's Learning Data:**
 
@@ -178,7 +178,7 @@ Learning Plan Topics:
 {json.dumps(topics, indent=2) if topics else "No data yet"}
 
 **Required Output:**
-Generate exactly 6 challenges (one of each type below). Base them on the user's actual mistakes and weak areas above.
+Generate exactly 7 challenges (one of each type below). Base them on the user's actual mistakes and weak areas above.
 
 **Challenge Types:**
 
@@ -193,6 +193,8 @@ Generate exactly 6 challenges (one of each type below). Base them on the user's 
 5. **native_check**: Test if a sentence sounds natural. Use patterns from their mistakes.
 
 6. **brain_tickler**: Timed challenge (10 seconds) on a concept they need to practice.
+
+7. **story_builder**: Mini-story (2-4 sentences) with gaps. User drags words to complete. Use real context and natural language. Include 1-2 distractor words.
 
 **JSON Output Format:**
 Return ONLY valid JSON array (no markdown, no extra text):
@@ -299,6 +301,25 @@ Return ONLY valid JSON array (no markdown, no extra text):
     "explanation": "Brief explanation",
     "tags": ["speed", "recall"],
     "completed": false
+  }},
+  {{
+    "id": "unique_id_7",
+    "type": "story_builder",
+    "title": "Story Builder",
+    "emoji": "📖",
+    "description": "Complete the story",
+    "cefrLevel": "{level}",
+    "estimatedSeconds": 30,
+    "storyText": "Yesterday, I ___ to the office and ___ my manager.",
+    "gaps": [
+      {{"id": "gap1", "correctWord": "went", "positionIndex": 0, "alternativeCorrectWords": ["walked", "drove"]}},
+      {{"id": "gap2", "correctWord": "met", "positionIndex": 1, "alternativeCorrectWords": ["saw"]}}
+    ],
+    "wordBank": ["went", "met", "go", "meet", "walked"],
+    "explanation": "This story uses past tense verbs. 'Went' is the past tense of 'go' and 'met' is the past tense of 'meet'.",
+    "styleNote": null,
+    "tags": ["past_tense", "story_context"],
+    "completed": false
   }}
 ]
 
@@ -315,7 +336,7 @@ Return ONLY valid JSON array (no markdown, no extra text):
 
 async def generate_challenges_with_ai(user_id: str, user_level: str, language: str = "english") -> List[Dict[str, Any]]:
     """
-    Use GPT-4 to generate 6 personalized challenges based on user's learning data
+    Use GPT-4 to generate 7 personalized challenges based on user's learning data
 
     Args:
         user_id: User ID
@@ -323,7 +344,7 @@ async def generate_challenges_with_ai(user_id: str, user_level: str, language: s
         language: Target language (default: "english")
 
     Returns:
-        List of 6 AI-generated challenges
+        List of 7 AI-generated challenges
     """
     try:
         print(f"[AI_CHALLENGE] 🤖 Generating AI challenges for user {user_id} (language: {language}, level: {user_level})")
@@ -381,11 +402,11 @@ async def generate_challenges_with_ai(user_id: str, user_level: str, language: s
             print(f"[AI_CHALLENGE] ⚠️ Unexpected response format: {content[:100]}")
             challenges = []
 
-        if not isinstance(challenges, list) or len(challenges) != 6:
-            print(f"[AI_CHALLENGE] ⚠️ Expected 6 challenges, got {len(challenges) if isinstance(challenges, list) else 'invalid'}")
-            # Ensure we have exactly 6
+        if not isinstance(challenges, list) or len(challenges) != 7:
+            print(f"[AI_CHALLENGE] ⚠️ Expected 7 challenges, got {len(challenges) if isinstance(challenges, list) else 'invalid'}")
+            # Ensure we have exactly 7
             if isinstance(challenges, list):
-                challenges = challenges[:6]  # Truncate if too many
+                challenges = challenges[:7]  # Truncate if too many
 
         print(f"[AI_CHALLENGE] ✅ Generated {len(challenges)} AI challenges")
 
@@ -417,7 +438,7 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
     Main function: Get cached challenges or generate new ones with AI
 
     - Checks 24h cache first
-    - If no cache, generates 6 new AI challenges
+    - If no cache, generates 7 new AI challenges
     - Caches for 24 hours
 
     Args:
@@ -426,7 +447,7 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
         language: Target language (default: "english")
 
     Returns:
-        List of 6 challenges (cached or freshly generated)
+        List of 7 challenges (cached or freshly generated)
     """
     try:
         # Check cache first (filter by language!)

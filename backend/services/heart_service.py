@@ -14,7 +14,8 @@ class HeartService:
         "micro_quiz",
         "smart_flashcard",
         "native_check",
-        "brain_tickler"
+        "brain_tickler",
+        "story_builder"
     ]
 
     # Subscription tier configurations

@@ -598,7 +598,7 @@ class SwipeFixExample(BaseModel):
 
 class ChallengeBase(BaseModel):
     id: str
-    type: str  # error_spotting, swipe_fix, micro_quiz, smart_flashcard, native_check, brain_tickler
+    type: str  # error_spotting, swipe_fix, micro_quiz, smart_flashcard, native_check, brain_tickler, story_builder
     title: str
     emoji: str
     description: str
@@ -645,6 +645,21 @@ class BrainTicklerChallenge(ChallengeBase):
     options: List[ChallengeOption]
     timeLimit: int  # in seconds
     explanation: str
+
+class StoryGap(BaseModel):
+    """Represents a gap in the story that needs to be filled"""
+    id: str
+    correctWord: str
+    positionIndex: int  # Position in the story (0-indexed)
+    alternativeCorrectWords: Optional[List[str]] = []  # For flexible answers (e.g., "went"/"traveled")
+
+class StoryBuilderChallenge(ChallengeBase):
+    type: str = "story_builder"
+    storyText: str  # Story with placeholders like "Yesterday, I ___ to the office"
+    gaps: List[StoryGap]  # Gap definitions with correct answers
+    wordBank: List[str]  # All words including distractors
+    explanation: str
+    styleNote: Optional[str] = None  # For C1-C2 nuance explanations
 
 # User challenge progress tracking
 class UserChallengeStats(BaseModel):

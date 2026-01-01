@@ -37,7 +37,7 @@ async def generate_reference_challenges_for_level(
             "cefr_level": level
         })
 
-        if existing_count >= (challenges_per_type * 6):
+        if existing_count >= (challenges_per_type * 7):
             print(f"[REF_SEED] ✅ {language} {level} already has {existing_count} challenges, skipping")
             return 0
 
@@ -49,7 +49,8 @@ async def generate_reference_challenges_for_level(
             "micro_quiz": [],
             "smart_flashcard": [],
             "native_check": [],
-            "brain_tickler": []
+            "brain_tickler": [],
+            "story_builder": []
         }
 
         # Generate batches (use dummy user ID for generic challenges)
@@ -112,7 +113,7 @@ async def seed_all_levels(challenges_per_type: int = 50):
         print(f"\n{'='*70}")
         print(f"[REF_SEED] 🚀 Seeding Reference Challenges")
         print(f"[REF_SEED] 📋 Target: {challenges_per_type} per type per level")
-        print(f"[REF_SEED] 📊 Total: {challenges_per_type * 6 * 6} challenges (6 types × 6 levels)")
+        print(f"[REF_SEED] 📊 Total: {challenges_per_type * 7 * 6} challenges (7 types × 6 levels)")
         print(f"{'='*70}\n")
 
         levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
