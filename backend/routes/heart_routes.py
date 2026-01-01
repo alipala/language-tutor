@@ -56,13 +56,14 @@ class HeartStatusResponse(BaseModel):
 
 
 class AllHeartsStatusResponse(BaseModel):
-    """Heart status for all 6 challenge types"""
+    """Heart status for all 7 challenge types"""
     error_spotting: HeartStatusResponse
     swipe_fix: HeartStatusResponse
     micro_quiz: HeartStatusResponse
     smart_flashcard: HeartStatusResponse
     native_check: HeartStatusResponse
     brain_tickler: HeartStatusResponse
+    story_builder: HeartStatusResponse
     subscription_plan: str = Field(..., alias="subscriptionPlan")
     subscription_status: str = Field(..., alias="subscriptionStatus")
 
@@ -117,7 +118,7 @@ class LogSessionEndedRequest(BaseModel):
 @router.get("/status", response_model=AllHeartsStatusResponse)
 async def get_all_hearts_status(current_user: UserResponse = Depends(get_current_user)):
     """
-    Get current heart status for all 6 challenge types
+    Get current heart status for all 7 challenge types
 
     Used by iOS app on ExploreScreen to show available hearts before starting session
     """

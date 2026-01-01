@@ -372,7 +372,8 @@ async def get_reference_challenge_counts(
             "micro_quiz",
             "smart_flashcard",
             "native_check",
-            "brain_tickler"
+            "brain_tickler",
+            "story_builder"
         ]
 
         # Build aggregation pipeline to count by type
@@ -396,7 +397,7 @@ async def get_reference_challenge_counts(
         # Convert to dict
         counts = {item["_id"]: item["count"] for item in results}
 
-        # Ensure all 6 types exist (even if 0)
+        # Ensure all 7 types exist (even if 0)
         for challenge_type in challenge_types:
             if challenge_type not in counts:
                 counts[challenge_type] = 0
@@ -419,6 +420,7 @@ async def get_reference_challenge_counts(
             "smart_flashcard": 0,
             "native_check": 0,
             "brain_tickler": 0,
+            "story_builder": 0,
             "total": 0
         }
 

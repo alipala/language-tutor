@@ -14,7 +14,8 @@ class HeartService:
         "micro_quiz",
         "smart_flashcard",
         "native_check",
-        "brain_tickler"
+        "brain_tickler",
+        "story_builder"
     ]
 
     # Subscription tier configurations
@@ -95,8 +96,35 @@ class HeartService:
         heart_system = HeartSystemState(**user["heart_system"])
         heart_pool = heart_system.heart_pools.get(challenge_type)
 
+        # Auto-migrate: Add missing heart pool for new challenge types
         if not heart_pool:
-            raise ValueError(f"Invalid challenge type: {challenge_type}")
+            if challenge_type not in self.CHALLENGE_TYPES:
+                raise ValueError(f"Invalid challenge type: {challenge_type}")
+
+            # Create new heart pool for this challenge type
+            tier_config = self.TIER_CONFIG.get(
+                user.get("subscription_plan", "try_learn"),
+                self.TIER_CONFIG["try_learn"]
+            )
+            heart_pool = HeartPool(
+                challenge_type=challenge_type,
+                current_hearts=tier_config["max_hearts"],
+                max_hearts=tier_config["max_hearts"],
+                refill_rate_minutes=tier_config["refill_minutes_per_heart"],
+                last_heart_lost_at=None,
+                refill_started_at=None,
+                streak_shield_active=False,
+                streak_shield_activated_at=None,
+                current_correct_streak=0
+            )
+            heart_system.heart_pools[challenge_type] = heart_pool
+
+            # Save to database
+            await self.db.users.update_one(
+                {"_id": user_id_obj},
+                {"$set": {f"heart_system.heart_pools.{challenge_type}": heart_pool.model_dump()}}
+            )
+            print(f"[HEART_SERVICE] ✅ Auto-migrated {challenge_type} heart pool for user {user_id}")
 
         # Language Mastery: always return max hearts
         user_plan = user.get("subscription_plan", "try_learn")

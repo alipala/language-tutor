@@ -85,6 +85,7 @@ async def populate_challenges_for_users():
             print(f"      - smart_flashcard: {counts.get('smart_flashcard', 0)}")
             print(f"      - native_check: {counts.get('native_check', 0)}")
             print(f"      - brain_tickler: {counts.get('brain_tickler', 0)}")
+            print(f"      - story_builder: {counts.get('story_builder', 0)}")
 
             populated_count += 1
 

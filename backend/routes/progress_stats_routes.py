@@ -56,6 +56,7 @@ async def get_challenge_progress(
             "smart_flashcard": 0,
             "native_check": 0,
             "brain_tickler": 0,
+            "story_builder": 0,
         }
 
         # Recount with type filtering

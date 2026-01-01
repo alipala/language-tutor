@@ -174,7 +174,7 @@ async def get_intelligent_seed_challenges(
         challenges_collection = database.challenges
 
         # Define remaining types needed
-        all_types = ["error_spotting", "swipe_fix", "micro_quiz", "smart_flashcard", "native_check", "brain_tickler"]
+        all_types = ["error_spotting", "swipe_fix", "micro_quiz", "smart_flashcard", "native_check", "brain_tickler", "story_builder"]
         needed_types = [t for t in all_types if t not in exclude_types]
 
         # Limit to num_challenges types
