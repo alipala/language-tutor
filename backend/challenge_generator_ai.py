@@ -194,7 +194,13 @@ Generate exactly 7 challenges (one of each type below). Base them on the user's 
 
 6. **brain_tickler**: Timed challenge (10 seconds) on a concept they need to practice.
 
-7. **story_builder**: Mini-story (2-4 sentences) with gaps. User drags words to complete. Use real context and natural language. Include 1-2 distractor words.
+7. **story_builder**: Mini-story (2-4 sentences) with gaps. User drags words to complete. CRITICAL RULES:
+   - CEFR-based gap count: A1 (2-3 gaps), A2 (3-4 gaps), B1 (4-5 gaps), B2 (5-6 gaps), C1-C2 (6-7 gaps)
+   - CEFR-based scenarios: A1 (daily routines: waking up, eating), A2 (ordering, travel), B1 (workplace, small talk), B2 (polite disagreement), C1 (humor, irony), C2 (subtle tone, register)
+   - Use 2-4 sentences for realistic context (NOT just one sentence!)
+   - Include 2-3 distractor words: wrong tense, similar meaning, OR user's common mistakes
+   - Vary story topics (don't repeat "office" scenarios)
+   - For C1-C2: Add styleNote explaining nuance/register/tone
 
 **JSON Output Format:**
 Return ONLY valid JSON array (no markdown, no extra text):
@@ -309,22 +315,36 @@ Return ONLY valid JSON array (no markdown, no extra text):
     "emoji": "📖",
     "description": "Complete the story",
     "cefrLevel": "{level}",
-    "estimatedSeconds": 30,
-    "storyText": "Yesterday, I ___ to the office and ___ my manager.",
+    "estimatedSeconds": 35,
+    "storyText": "Last week, my friend ___ me to try a new restaurant downtown. We ___ there on Friday evening and ___ the food. The waiter ___ us some dessert, but we ___ too full to eat more.",
     "gaps": [
-      {{"id": "gap1", "correctWord": "went", "positionIndex": 0, "alternativeCorrectWords": ["walked", "drove"]}},
-      {{"id": "gap2", "correctWord": "met", "positionIndex": 1, "alternativeCorrectWords": ["saw"]}}
+      {{"id": "gap1", "correctWord": "invited", "positionIndex": 0, "alternativeCorrectWords": ["asked"]}},
+      {{"id": "gap2", "correctWord": "went", "positionIndex": 1, "alternativeCorrectWords": ["drove", "walked"]}},
+      {{"id": "gap3", "correctWord": "enjoyed", "positionIndex": 2, "alternativeCorrectWords": ["loved", "liked"]}},
+      {{"id": "gap4", "correctWord": "offered", "positionIndex": 3, "alternativeCorrectWords": ["suggested"]}},
+      {{"id": "gap5", "correctWord": "were", "positionIndex": 4, "alternativeCorrectWords": []}}
     ],
-    "wordBank": ["went", "met", "go", "meet", "walked"],
-    "explanation": "This story uses past tense verbs. 'Went' is the past tense of 'go' and 'met' is the past tense of 'meet'.",
-    "styleNote": null,
-    "tags": ["past_tense", "story_context"],
+    "wordBank": ["invited", "went", "enjoyed", "offered", "were", "invite", "go", "offer", "was"],
+    "explanation": "This story practices past tense verbs in a restaurant context. 'Invited' (ask someone to join), 'went' (past of go), 'enjoyed' (liked very much), 'offered' (gave the option), and 'were' (plural past of be).",
+    "styleNote": "For C1-C2 levels: Note the collocation 'too full to eat' - a natural way to decline food politely in English.",
+    "tags": ["past_tense", "restaurant", "social_context"],
     "completed": false
   }}
 ]
 
+**CRITICAL FOR STORY_BUILDER:**
+- VARY story topics each time! Don't use "office" repeatedly. Use: shopping, travel, hobbies, family, friends, cooking, sports, etc.
+- A1: Simple present/past, 2-3 gaps, daily routines (waking up, eating breakfast, going to school)
+- A2: Past tense, prepositions, 3-4 gaps, travel/ordering scenarios (at restaurant, buying tickets, asking directions)
+- B1: Mixed tenses, collocations, 4-5 gaps, workplace/social situations (office meetings, weekend plans, phone calls)
+- B2: Conditionals, phrasal verbs, 5-6 gaps, expressing opinions/disagreement politely (project discussions, giving feedback)
+- C1: Idioms, nuanced vocabulary, 6-7 gaps, humor/irony scenarios (sarcastic remarks, playful banter, cultural references)
+- C2: Register awareness, subtle tone, 6-7 gaps, formal/informal shifting (business negotiations, diplomatic language, literary devices)
+- ALWAYS include styleNote for C1-C2 explaining tone/register/nuance
+- Use 3-4 sentences minimum for B2+ levels (more context = better learning)
+
 **IMPORTANT:**
-- Use unique IDs (e.g., "ai_es_123", "ai_sf_456")
+- Use unique IDs (e.g., "ai_es_123", "ai_sf_456", "ai_sb_789")
 - Base challenges on the user's ACTUAL mistakes and weak vocabulary above
 - Make them personalized and relevant to their learning journey
 - If no user data, create level-appropriate generic challenges
