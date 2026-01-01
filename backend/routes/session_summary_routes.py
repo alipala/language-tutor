@@ -423,6 +423,72 @@ async def store_session_summary(
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
 
+            # 🔥 CRITICAL FIX: GENERATE FLASHCARDS AFTER SESSION COMPLETION
+            # This was missing when the endpoint was refactored!
+            flashcard_generation_success = False
+            generated_flashcards = 0
+
+            try:
+                from flashcard_service import FlashcardService
+                from models import FlashcardGenerationRequest
+
+                # Generate unique session ID for flashcards
+                learning_plan_session_id = f"learning_plan_{plan_id}_{completed_sessions}_{uuid.uuid4()}"
+
+                # Create flashcard generation request
+                flashcard_request = FlashcardGenerationRequest(
+                    session_id=learning_plan_session_id,
+                    language=plan.get("language", "english"),
+                    level=plan.get("proficiency_level", "B1"),
+                    topic=conversation_data.get("topic") if conversation_data else None,
+                    conversation_content=None,  # Could be added later if needed
+                    session_summary=summary_data.get("full", basic_summary),
+                    count=5  # Generate 5 flashcards per session
+                )
+
+                print(f"[FLASHCARD_GENERATION] 🎯 Generating flashcards for learning plan session: {learning_plan_session_id}")
+                print(f"[FLASHCARD_GENERATION] Language: {flashcard_request.language}, Level: {flashcard_request.level}")
+
+                # Generate flashcards
+                flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+
+                if flashcard_set and flashcard_set.flashcards:
+                    # Save flashcards to database
+                    flashcard_set_doc = flashcard_set.dict()
+                    flashcard_set_doc["_id"] = ObjectId()
+                    flashcard_set_doc["created_at"] = datetime.now(timezone.utc)
+
+                    # Save individual flashcards
+                    flashcard_docs = []
+                    for flashcard in flashcard_set.flashcards:
+                        card_doc = flashcard.dict()
+                        card_doc["_id"] = ObjectId()
+                        flashcard_docs.append(card_doc)
+
+                    # Insert flashcard set
+                    flashcard_sets_collection = database.flashcard_sets
+                    set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
+
+                    # Insert individual flashcards
+                    if flashcard_docs:
+                        flashcards_collection = database.flashcards
+                        cards_result = await flashcards_collection.insert_many(flashcard_docs)
+                        print(f"[FLASHCARD_GENERATION] 💾 Saved {len(cards_result.inserted_ids)} flashcards to database")
+
+                    generated_flashcards = len(flashcard_set.flashcards)
+                    flashcard_generation_success = True
+                    print(f"[FLASHCARD_GENERATION] ✅ Generated and saved {generated_flashcards} flashcards successfully")
+                else:
+                    print(f"[FLASHCARD_GENERATION] ⚠️ Flashcard generation returned empty result")
+
+            except Exception as flashcard_error:
+                print(f"[FLASHCARD_GENERATION] ❌ Flashcard generation failed: {str(flashcard_error)}")
+                import traceback
+                print(f"[FLASHCARD_GENERATION] Traceback: {traceback.format_exc()}")
+                # Don't fail the session save if flashcard generation fails
+                flashcard_generation_success = False
+                generated_flashcards = 0
+
             # 🎯 NEW: Calculate enhanced session statistics for learning plan session
             enhanced_stats = {}
             try:
@@ -556,6 +622,8 @@ async def store_session_summary(
                         "current_week": new_week,
                         "session_summary": summary_data.get("full", summary_data),
                         "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
+                        "flashcards_generated": generated_flashcards,  # 🔥 CRITICAL FIX: Return flashcard count
+                        "flashcard_generation_success": flashcard_generation_success,  # 🔥 CRITICAL FIX
                         "plan_adapted": True,  # NEW
                         "adaptation": {  # NEW
                             "tier1_immediate": {
@@ -590,6 +658,8 @@ async def store_session_summary(
                 "current_week": new_week,
                 "session_summary": summary_data.get("full", summary_data),
                 "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
+                "flashcards_generated": generated_flashcards,  # 🔥 CRITICAL FIX: Return flashcard count
+                "flashcard_generation_success": flashcard_generation_success,  # 🔥 CRITICAL FIX
                 "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
                 "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
                 "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
@@ -608,6 +678,8 @@ async def store_session_summary(
                 "current_week": new_week,
                 "session_summary": summary_data.get("full", summary_data),
                 "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
+                "flashcards_generated": 0,  # No flashcards if plan wasn't updated
+                "flashcard_generation_success": False,
                 "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
                 "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
                 "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
