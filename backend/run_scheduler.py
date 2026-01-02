@@ -3,6 +3,7 @@ Background Job Scheduler
 Runs scheduled jobs:
 - Daily challenge pool replenishment (2:00 AM UTC)
 - Heart refill notifications (every 30 minutes)
+- Practice reminders (every hour)
 Can be run as a separate process or integrated into main FastAPI app
 """
 
@@ -14,23 +15,38 @@ from challenge_pool_replenisher import run_daily_job
 from notification_triggers import run_heart_refill_check
 from practice_reminder_trigger import run_practice_reminder_check
 
+# Global event loop for all async operations
+loop = None
+
+
+def get_or_create_event_loop():
+    """Get existing event loop or create a new one"""
+    global loop
+    if loop is None or loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop
+
 
 def daily_job_wrapper():
     """Wrapper to run daily challenge pool replenishment"""
     print(f"\n[SCHEDULER] ⏰ Daily Job Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    asyncio.run(run_daily_job())
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_daily_job())
 
 
 def heart_refill_job_wrapper():
     """Wrapper to run heart refill notification check"""
     print(f"\n[SCHEDULER] 🔔 Heart Refill Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    asyncio.run(run_heart_refill_check())
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_heart_refill_check())
 
 
 def practice_reminder_job_wrapper():
     """Wrapper to run practice reminder check"""
     print(f"\n[SCHEDULER] 📚 Practice Reminder Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    asyncio.run(run_practice_reminder_check())
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_practice_reminder_check())
 
 
 def run_scheduler():
@@ -61,10 +77,9 @@ def run_scheduler():
     # schedule.every(1).minutes.do(daily_job_wrapper)
     # schedule.every(1).minutes.do(heart_refill_job_wrapper)
 
-    # Run jobs immediately on startup (optional)
-    print("[SCHEDULER] 🔄 Running initial jobs...\n")
-    daily_job_wrapper()
-    print()
+    # Run notification jobs immediately on startup (NOT daily replenishment - too expensive!)
+    print("[SCHEDULER] 🔄 Running initial notification checks...\n")
+    print("[SCHEDULER] ⚠️ Skipping daily challenge replenishment on startup (only runs at 2 AM UTC)\n")
     heart_refill_job_wrapper()
     print()
     practice_reminder_job_wrapper()
