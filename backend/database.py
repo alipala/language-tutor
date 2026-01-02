@@ -70,6 +70,7 @@ try:
     learning_plans_collection = database.learning_plans
     notifications_collection = database.notifications
     user_notifications_collection = database.user_notifications
+    notification_preferences_collection = database.notification_preferences
     tutors_collection = database.tutors
     institutions_collection = database.institutions
     usage_logs_collection = database.realtime_usage_logs
@@ -91,6 +92,7 @@ except Exception as e:
     password_reset_collection = None
     email_verification_collection = None
     conversation_sessions_collection = None
+    notification_preferences_collection = None
     reference_challenges_collection = None
     challenge_pool_collection = None
     user_achievements_collection = None
@@ -135,6 +137,9 @@ async def init_db():
             ("user_id", 1),
             ("deleted_at", 1)
         ])
+
+        # Create unique index for notification_preferences (one per user)
+        await notification_preferences_collection.create_index("user_id", unique=True)
 
         # NEW: Create indexes for gamification & statistics collections
         # Challenge sessions indexes

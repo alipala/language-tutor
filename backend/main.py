@@ -116,6 +116,10 @@ app.include_router(upgrade_router)
 from notification_routes import router as notification_router
 app.include_router(notification_router, prefix="/api")
 
+# Include preference routes (notification settings, etc.)
+from preference_routes import router as preference_router
+app.include_router(preference_router)
+
 # Include WebSocket routes for real-time notifications
 from websocket_routes import router as websocket_router
 app.include_router(websocket_router, prefix="/api")
