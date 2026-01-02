@@ -41,8 +41,8 @@ async def get_notification_preferences(
             achievement_alerts_enabled=True,   # Default ON
             learning_plan_updates_enabled=True,  # Default ON
             product_updates_enabled=True,  # Default ON
-            preferred_notification_time=10,  # 10 AM
-            timezone=None,
+            preferred_notification_time=18,  # 6 PM (works well globally: 10 AM PST, 1 PM EST, 6 PM London)
+            timezone="UTC",  # Default to UTC, will work with user's local time when set properly
             quiet_hours_enabled=False,
             quiet_hours_start=22,  # 10 PM
             quiet_hours_end=8,  # 8 AM
@@ -83,8 +83,8 @@ async def update_notification_preferences(
             achievement_alerts_enabled=True,
             learning_plan_updates_enabled=True,
             product_updates_enabled=True,
-            preferred_notification_time=10,
-            timezone=None,
+            preferred_notification_time=18,  # 6 PM (works well globally)
+            timezone="UTC",  # Default to UTC
             quiet_hours_enabled=False,
             quiet_hours_start=22,
             quiet_hours_end=8,

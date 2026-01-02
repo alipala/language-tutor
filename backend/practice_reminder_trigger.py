@@ -54,7 +54,7 @@ class PracticeReminderTrigger:
 
                     # Get user's timezone (default to UTC if not set)
                     user_timezone = prefs.get("timezone", "UTC")
-                    preferred_hour = prefs.get("preferred_notification_time", 10)  # Default 10 AM
+                    preferred_hour = prefs.get("preferred_notification_time", 18)  # Default 6 PM (works well globally)
 
                     # Convert current UTC time to user's local time
                     try:
