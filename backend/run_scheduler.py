@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 from challenge_pool_replenisher import run_daily_job
 from notification_triggers import run_heart_refill_check
+from practice_reminder_trigger import run_practice_reminder_check
 
 
 def daily_job_wrapper():
@@ -26,17 +27,25 @@ def heart_refill_job_wrapper():
     asyncio.run(run_heart_refill_check())
 
 
+def practice_reminder_job_wrapper():
+    """Wrapper to run practice reminder check"""
+    print(f"\n[SCHEDULER] 📚 Practice Reminder Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    asyncio.run(run_practice_reminder_check())
+
+
 def run_scheduler():
     """
     Run the scheduler with multiple jobs:
     - Daily challenge pool replenishment at 2:00 AM UTC
     - Heart refill notifications every 30 minutes
+    - Practice reminders every hour
     """
     print("="*70)
     print("[SCHEDULER] 🚀 Background Job Scheduler Started")
     print(f"[SCHEDULER] 📅 Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("[SCHEDULER] ⏰ Daily challenge pool job: 02:00 AM UTC")
     print("[SCHEDULER] 🔔 Heart refill check: Every 30 minutes")
+    print("[SCHEDULER] 📚 Practice reminders: Every hour")
     print("="*70 + "\n")
 
     # Schedule daily challenge pool replenishment at 2:00 AM UTC
@@ -44,6 +53,9 @@ def run_scheduler():
 
     # Schedule heart refill notifications every 30 minutes
     schedule.every(30).minutes.do(heart_refill_job_wrapper)
+
+    # Schedule practice reminders every hour
+    schedule.every().hour.do(practice_reminder_job_wrapper)
 
     # For testing: uncomment to run jobs every minute
     # schedule.every(1).minutes.do(daily_job_wrapper)
@@ -54,6 +66,8 @@ def run_scheduler():
     daily_job_wrapper()
     print()
     heart_refill_job_wrapper()
+    print()
+    practice_reminder_job_wrapper()
 
     # Keep running
     print("\n[SCHEDULER] 👀 Scheduler is now running. Press Ctrl+C to stop.\n")
