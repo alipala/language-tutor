@@ -1,6 +1,9 @@
 """
-Challenge Pool Scheduler
-Runs the daily replenishment job automatically
+Background Job Scheduler
+Runs scheduled jobs:
+- Daily challenge pool replenishment (2:00 AM UTC)
+- Heart refill notifications (every 30 minutes)
+- Practice reminders (every hour)
 Can be run as a separate process or integrated into main FastAPI app
 """
 
@@ -9,34 +12,77 @@ import schedule
 import time
 from datetime import datetime
 from challenge_pool_replenisher import run_daily_job
+from notification_triggers import run_heart_refill_check
+from practice_reminder_trigger import run_practice_reminder_check
+
+# Global event loop for all async operations
+loop = None
 
 
-def job_wrapper():
-    """Wrapper to run async job in sync context"""
-    print(f"\n[SCHEDULER] ⏰ Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    asyncio.run(run_daily_job())
+def get_or_create_event_loop():
+    """Get existing event loop or create a new one"""
+    global loop
+    if loop is None or loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop
+
+
+def daily_job_wrapper():
+    """Wrapper to run daily challenge pool replenishment"""
+    print(f"\n[SCHEDULER] ⏰ Daily Job Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_daily_job())
+
+
+def heart_refill_job_wrapper():
+    """Wrapper to run heart refill notification check"""
+    print(f"\n[SCHEDULER] 🔔 Heart Refill Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_heart_refill_check())
+
+
+def practice_reminder_job_wrapper():
+    """Wrapper to run practice reminder check"""
+    print(f"\n[SCHEDULER] 📚 Practice Reminder Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_practice_reminder_check())
 
 
 def run_scheduler():
     """
-    Run the scheduler
-    Executes daily job at 2:00 AM UTC every day
+    Run the scheduler with multiple jobs:
+    - Daily challenge pool replenishment at 2:00 AM UTC
+    - Heart refill notifications every 30 minutes
+    - Practice reminders every hour
     """
     print("="*70)
-    print("[SCHEDULER] 🚀 Challenge Pool Scheduler Started")
+    print("[SCHEDULER] 🚀 Background Job Scheduler Started")
     print(f"[SCHEDULER] 📅 Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("[SCHEDULER] ⏰ Daily job scheduled for: 02:00 AM UTC")
+    print("[SCHEDULER] ⏰ Daily challenge pool job: 02:00 AM UTC")
+    print("[SCHEDULER] 🔔 Heart refill check: Every 30 minutes")
+    print("[SCHEDULER] 📚 Practice reminders: Every hour")
     print("="*70 + "\n")
 
-    # Schedule daily job at 2:00 AM UTC
-    schedule.every().day.at("02:00").do(job_wrapper)
+    # Schedule daily challenge pool replenishment at 2:00 AM UTC
+    schedule.every().day.at("02:00").do(daily_job_wrapper)
 
-    # For testing: uncomment to run every minute
-    # schedule.every(1).minutes.do(job_wrapper)
+    # Schedule heart refill notifications every 30 minutes
+    schedule.every(30).minutes.do(heart_refill_job_wrapper)
 
-    # Run immediately on startup (optional)
-    print("[SCHEDULER] 🔄 Running initial replenishment job...\n")
-    job_wrapper()
+    # Schedule practice reminders every hour
+    schedule.every().hour.do(practice_reminder_job_wrapper)
+
+    # For testing: uncomment to run jobs every minute
+    # schedule.every(1).minutes.do(daily_job_wrapper)
+    # schedule.every(1).minutes.do(heart_refill_job_wrapper)
+
+    # Run notification jobs immediately on startup (NOT daily replenishment - too expensive!)
+    print("[SCHEDULER] 🔄 Running initial notification checks...\n")
+    print("[SCHEDULER] ⚠️ Skipping daily challenge replenishment on startup (only runs at 2 AM UTC)\n")
+    heart_refill_job_wrapper()
+    print()
+    practice_reminder_job_wrapper()
 
     # Keep running
     print("\n[SCHEDULER] 👀 Scheduler is now running. Press Ctrl+C to stop.\n")

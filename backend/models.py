@@ -489,6 +489,70 @@ class NotificationListResponse(BaseModel):
     unread_count: int
     total_count: int
 
+# User notification preferences
+class NotificationPreferencesBase(BaseModel):
+    user_id: str
+
+    # Category preferences (matches mobile app settings)
+    practice_reminders_enabled: bool = False  # Default OFF - opt-in
+    achievement_alerts_enabled: bool = True   # Default ON
+    learning_plan_updates_enabled: bool = True  # Default ON
+    product_updates_enabled: bool = True  # Default ON
+
+    # Timing preferences
+    preferred_notification_time: Optional[int] = 10  # Hour of day (0-23), default 10 AM
+    timezone: Optional[str] = None  # IANA timezone (e.g., "America/New_York")
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: Optional[int] = 22  # 10 PM
+    quiet_hours_end: Optional[int] = 8    # 8 AM
+
+    # Engagement settings
+    max_notifications_per_week: int = 3  # Default limit
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class NotificationPreferencesInDB(NotificationPreferencesBase):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Tracking for weekly limits
+    last_notification_sent_at: Optional[datetime] = None
+    notification_count_this_week: int = 0
+    week_start_date: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class NotificationPreferencesResponse(NotificationPreferencesBase):
+    id: str = Field(..., alias="_id")
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class NotificationPreferencesUpdate(BaseModel):
+    practice_reminders_enabled: Optional[bool] = None
+    achievement_alerts_enabled: Optional[bool] = None
+    learning_plan_updates_enabled: Optional[bool] = None
+    product_updates_enabled: Optional[bool] = None
+    preferred_notification_time: Optional[int] = None
+    timezone: Optional[str] = None
+    quiet_hours_enabled: Optional[bool] = None
+    quiet_hours_start: Optional[int] = None
+    quiet_hours_end: Optional[int] = None
+    max_notifications_per_week: Optional[int] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
 # Flashcard models
 class Flashcard(BaseModel):
     id: str

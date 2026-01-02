@@ -70,12 +70,17 @@ class HeartService:
             feature_enabled=True
         )
 
-        # Update user document
-        await self.db.users.update_one(
-            {"_id": user.id},
+        # Update user document (convert string ID to ObjectId if needed)
+        user_id_obj = ObjectId(user.id) if isinstance(user.id, str) else user.id
+        result = await self.db.users.update_one(
+            {"_id": user_id_obj},
             {"$set": {"heart_system": heart_system.dict()}}
         )
 
+        if result.matched_count == 0:
+            raise ValueError(f"Failed to initialize heart system: User {user.id} not found")
+
+        print(f"✅ Heart system initialized for user {user.id}")
         return heart_system
 
     async def get_current_hearts(
