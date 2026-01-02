@@ -350,7 +350,7 @@ async def complete_challenge_session(
             print(f"🎉 First session completed for user {current_user.id}!")
 
             # Check notification preferences
-            from database import notification_preferences_collection
+            from database import notification_preferences_collection, users_collection
             prefs = await notification_preferences_collection.find_one({"user_id": current_user.id})
 
             # Default to True if no preferences set (matches default for achievement_alerts)
@@ -358,39 +358,45 @@ async def complete_challenge_session(
             if prefs:
                 send_notification = prefs.get("achievement_alerts_enabled", True)
 
-            if send_notification and current_user.push_token:
-                print(f"📤 Sending first session welcome notification to user {current_user.id}")
+            if send_notification:
+                # Fetch full user document to get push_token
+                from bson import ObjectId
+                user_id_obj = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+                user_doc = await users_collection.find_one({"_id": user_id_obj})
 
-                try:
-                    from notification_service import NotificationService
-                    notification_service = NotificationService()
+                if user_doc and user_doc.get("push_token"):
+                    push_token = user_doc["push_token"]
+                    print(f"📤 Sending first session welcome notification to user {current_user.id}")
 
-                    # Send push notification
-                    result = notification_service.send_expo_push_notification(
-                        push_tokens=[current_user.push_token],
-                        title="Great First Session! 🎉",
-                        body=f"You earned {request.total_xp} XP! Come back tomorrow to build your streak.",
-                        data={
-                            "type": "first_session_welcome",
-                            "session_id": session_id,
-                            "xp_earned": request.total_xp
-                        },
-                        priority="default"
-                    )
+                    try:
+                        from notification_service import NotificationService
+                        notification_service = NotificationService()
 
-                    if result.get("success"):
-                        print(f"✅ First session welcome notification sent successfully")
-                    else:
-                        print(f"⚠️ Failed to send first session welcome notification: {result.get('message')}")
+                        # Send push notification
+                        result = notification_service.send_expo_push_notification(
+                            push_tokens=[push_token],
+                            title="Great First Session! 🎉",
+                            body=f"You earned {request.total_xp} XP! Come back tomorrow to build your streak.",
+                            data={
+                                "type": "first_session_welcome",
+                                "session_id": session_id,
+                                "xp_earned": request.total_xp
+                            },
+                            priority="default"
+                        )
 
-                except Exception as notif_error:
-                    print(f"❌ Error sending first session welcome notification: {str(notif_error)}")
-                    # Don't fail the session completion if notification fails
-            else:
-                if not current_user.push_token:
-                    print(f"⚠️ No push token for user {current_user.id}, skipping notification")
+                        if result.get("success"):
+                            print(f"✅ First session welcome notification sent successfully")
+                        else:
+                            print(f"⚠️ Failed to send first session welcome notification: {result.get('message')}")
+
+                    except Exception as notif_error:
+                        print(f"❌ Error sending first session welcome notification: {str(notif_error)}")
+                        # Don't fail the session completion if notification fails
                 else:
-                    print(f"⚠️ User {current_user.id} has achievement alerts disabled, skipping notification")
+                    print(f"⚠️ No push token for user {current_user.id}, skipping notification")
+            else:
+                print(f"⚠️ User {current_user.id} has achievement alerts disabled, skipping notification")
         # ===== END FIRST SESSION WELCOME NOTIFICATION =====
 
         return {
