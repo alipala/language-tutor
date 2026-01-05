@@ -6,8 +6,8 @@ httpx==0.28.1
 pydantic==2.10.6
 python-multipart==0.0.9
 
-# OpenAI API
-openai==1.109.1
+# OpenAI API (downgraded for crewai compatibility)
+openai~=1.83.0
 
 # MongoDB and authentication packages
 # Pin specific compatible versions to avoid import errors
