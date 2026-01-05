@@ -47,7 +47,15 @@ CHALLENGE_TYPES = [
     "brain_tickler"
 ]
 
-# How many reference challenges per language/level/type
+# Generation frequency control
+# Options: "weekly", "biweekly", "monthly"
+GENERATION_FREQUENCY = os.getenv("REFERENCE_GENERATION_FREQUENCY", "weekly")
+
+# Target pool size per language/level/type combination
+# This ensures variety - users won't see duplicates if pool is large enough
+TARGET_POOL_SIZE = int(os.getenv("REFERENCE_POOL_SIZE", "50"))
+
+# How many to generate per batch (when replenishing)
 CHALLENGES_PER_TYPE = 10
 
 
@@ -105,16 +113,27 @@ async def generate_reference_challenges(
 
 async def replenish_reference_challenges():
     """
-    Weekly job to replenish reference_challenges collection
+    Periodic job to replenish reference_challenges collection
 
     For each language/level/type combination:
     - Check how many active reference challenges exist
-    - Generate more if below target (50 per type)
+    - Generate more if below target
+
+    Frequency controlled by REFERENCE_GENERATION_FREQUENCY env var:
+    - "weekly": Run every 7 days
+    - "biweekly": Run every 14 days
+    - "monthly": Run every 30 days
     """
     print("\n" + "="*80)
-    print("🔄 WEEKLY REFERENCE CHALLENGE GENERATION")
+    print(f"🔄 REFERENCE CHALLENGE GENERATION ({GENERATION_FREQUENCY.upper()})")
     print("="*80)
     print(f"Started at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"Frequency: {GENERATION_FREQUENCY}")
+    print(f"Target pool size per type: {TARGET_POOL_SIZE}")
+    print(f"Languages: {len(LANGUAGES)}")
+    print(f"Levels: {len(CEFR_LEVELS)}")
+    print(f"Challenge types: {len(CHALLENGE_TYPES)}")
+    print(f"Total combinations: {len(LANGUAGES) * len(CEFR_LEVELS) * len(CHALLENGE_TYPES)}")
     print("="*80)
     print()
 
@@ -139,7 +158,7 @@ async def replenish_reference_challenges():
                     "is_active": True
                 })
 
-                target_count = 50  # Target pool size
+                target_count = TARGET_POOL_SIZE  # Use configurable target
                 needed = target_count - existing_count
 
                 if needed > 0:
@@ -167,10 +186,17 @@ async def replenish_reference_challenges():
                     print(f"  ✓ {challenge_type}: {existing_count}/{target_count} (sufficient)")
 
     print("\n" + "="*80)
-    print("✅ WEEKLY REFERENCE GENERATION COMPLETE")
+    print(f"✅ {GENERATION_FREQUENCY.upper()} REFERENCE GENERATION COMPLETE")
     print("="*80)
     print(f"Total generated: {total_generated} challenges")
     print(f"Completed at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+    # Calculate next run
+    days_map = {"weekly": 7, "biweekly": 14, "monthly": 30}
+    days_until_next = days_map.get(GENERATION_FREQUENCY, 7)
+    from datetime import timedelta
+    next_run = datetime.utcnow() + timedelta(days=days_until_next)
+    print(f"Next run: {next_run.strftime('%Y-%m-%d %H:%M:%S UTC')} ({days_until_next} days)")
     print("="*80)
 
 
@@ -246,6 +272,15 @@ if __name__ == "__main__":
     print()
     print("Example test:")
     print("  python generate_reference_challenges_crew.py test english A2 brain_tickler 3")
+    print()
+    print("Configuration (environment variables):")
+    print("  REFERENCE_GENERATION_FREQUENCY - weekly, biweekly, or monthly (default: weekly)")
+    print("  REFERENCE_POOL_SIZE - target challenges per type (default: 50)")
+    print()
+    print("Current settings:")
+    print(f"  Frequency: {GENERATION_FREQUENCY}")
+    print(f"  Pool size: {TARGET_POOL_SIZE}")
+    print(f"  Total combinations: {len(LANGUAGES)} × {len(CEFR_LEVELS)} × {len(CHALLENGE_TYPES)} = {len(LANGUAGES) * len(CEFR_LEVELS) * len(CHALLENGE_TYPES)}")
     print()
     print("="*80)
     print()
