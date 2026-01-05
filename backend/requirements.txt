@@ -6,8 +6,8 @@ httpx==0.28.1
 pydantic==2.10.6
 python-multipart==0.0.9
 
-# OpenAI API (downgraded for crewai compatibility)
-openai~=1.83.0
+# OpenAI API
+openai==1.109.1
 
 # MongoDB and authentication packages
 # Pin specific compatible versions to avoid import errors
@@ -61,8 +61,8 @@ schedule==1.2.0
 pytz==2024.1
 
 # CrewAI Multi-Agent System (Python 3.10-3.13)
-crewai==1.7.2
-crewai-tools==1.7.2
+# Using latest stable version from PyPI
+crewai==0.5.0
 
 # Additional dependencies for stability
 pillow==10.3.0
