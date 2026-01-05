@@ -4,11 +4,21 @@ Runs daily to replenish completed challenges in users' pools
 Ensures each user always has 50 available challenges per type
 """
 
+import os
 import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from database import database
-from challenge_generator_ai import generate_challenges_with_ai
+
+# Feature flag: Choose between simple AI or CrewAI agents
+USE_CREWAI = os.getenv("USE_CREWAI", "false").lower() == "true"
+
+if USE_CREWAI:
+    print("[REPLENISH] 🤖 Using CrewAI Multi-Agent System")
+    from challenge_generator_crew import generate_challenges_with_ai
+else:
+    print("[REPLENISH] 🔄 Using Simple AI Generation")
+    from challenge_generator_ai import generate_challenges_with_ai
 
 
 async def replenish_user_pool(user_id: str, user_level: str, target_per_type: int = 50) -> Dict[str, Any]:
