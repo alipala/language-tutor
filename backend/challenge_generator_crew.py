@@ -336,7 +336,7 @@ async def generate_challenges_with_ai(
         # Task 2: Challenge Generation
         challenge_types_list = [challenge_type] if challenge_type else [
             "error_spotting", "swipe_fix", "micro_quiz",
-            "smart_flashcard", "native_check", "brain_tickler"
+            "smart_flashcard", "native_check", "brain_tickler", "story_builder"
         ]
 
         generation_task = Task(
@@ -354,7 +354,9 @@ async def generate_challenges_with_ai(
 
             IMPORTANT: Return ONLY a valid JSON array of challenge objects, no markdown, no extra text.
 
-            Example format:
+            Example formats:
+
+            For brain_tickler/micro_quiz/error_spotting/swipe_fix/smart_flashcard/native_check:
             [
               {{
                 "id": "unique_id_1",
@@ -364,7 +366,6 @@ async def generate_challenges_with_ai(
                 "description": "Beat the clock!",
                 "cefrLevel": "{user_level}",
                 "estimatedSeconds": 10,
-                "timeLimit": 10,
                 "question": "Quick question on a weak area",
                 "options": [
                   {{"id": "opt1", "text": "option 1", "isCorrect": false}},
@@ -373,6 +374,28 @@ async def generate_challenges_with_ai(
                 ],
                 "explanation": "Brief explanation",
                 "tags": ["speed", "recall"],
+                "completed": false
+              }}
+            ]
+
+            For story_builder type:
+            [
+              {{
+                "id": "unique_id_1",
+                "type": "story_builder",
+                "title": "Story Builder",
+                "emoji": "📖",
+                "description": "Complete the story",
+                "cefrLevel": "{user_level}",
+                "estimatedSeconds": 35,
+                "storyText": "Every morning, I ___ up at 7 o'clock. I ___ breakfast.",
+                "gaps": [
+                  {{"id": "gap1", "correctWord": "wake", "positionIndex": 0, "alternativeCorrectWords": []}},
+                  {{"id": "gap2", "correctWord": "have", "positionIndex": 1, "alternativeCorrectWords": ["eat"]}}
+                ],
+                "wordBank": ["wake", "have", "eat", "woke"],
+                "explanation": "Brief explanation about grammar/vocabulary",
+                "tags": ["grammar", "vocabulary"],
                 "completed": false
               }}
             ]
