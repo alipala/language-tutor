@@ -1,13 +1,13 @@
 # Core FastAPI and server dependencies
 fastapi==0.115.11
 uvicorn==0.34.0
-python-dotenv==1.0.1
+python-dotenv~=1.1.1
 httpx==0.28.1
-pydantic==2.10.6
+pydantic~=2.11.9
 python-multipart==0.0.9
 
-# OpenAI API
-openai==1.109.1
+# OpenAI API (version for crewai 1.7.2 compatibility)
+openai~=1.83.0
 
 # MongoDB and authentication packages
 # Pin specific compatible versions to avoid import errors
@@ -59,6 +59,10 @@ websockets==12.0
 # Background job scheduler
 schedule==1.2.0
 pytz==2024.1
+
+# CrewAI Multi-Agent System (Python 3.10-3.13)
+crewai==1.7.2
+crewai-tools==1.7.2
 
 # Additional dependencies for stability
 pillow==10.3.0

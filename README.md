@@ -262,6 +262,121 @@ This implementation provides:
 
 The Enhanced Semantic VAD Audio Processing system ensures that every voice conversation is clear, natural, and free from technical distractions, allowing learners to focus entirely on their language learning journey.
 
+### 🤖 AI Challenge Generation with CrewAI
+
+An intelligent challenge generation system powered by CrewAI that creates personalized language learning challenges tailored to each user's level, mistakes, and learning patterns.
+
+#### 🎯 **What It Does**
+- **Personalized User Challenges**: Generates custom challenges for each user based on their:
+  - Common mistakes and error patterns
+  - Weak vocabulary areas
+  - Learning goals and topics of interest
+  - CEFR proficiency level (A1-C2)
+- **Reference Challenge Pool**: Maintains a shared pool of high-quality challenges for freestyle practice
+- **7 Challenge Types**: brain_tickler, micro_quiz, native_check, error_spotting, smart_flashcard, swipe_fix, story_builder
+
+#### 🧠 **How It Works**
+CrewAI uses a **3-agent system** to generate high-quality challenges:
+1. **Learning Analyzer Agent**: Analyzes user performance and identifies learning needs
+2. **Challenge Generator Agent**: Creates targeted challenges based on analysis
+3. **Quality Curator Agent**: Reviews and ensures challenge quality and appropriateness
+
+**AI Model**: GPT-4o (configurable via `GPT_MODEL` environment variable)
+
+#### ⚙️ **Configuration**
+All controlled by environment variables in Railway:
+
+```bash
+# Enable CrewAI for user challenges (default: false)
+USE_CREWAI=true
+
+# User pool replenishment frequency
+USER_POOL_FREQUENCY=biweekly  # Options: daily, weekly, biweekly, monthly
+
+# Reference generation frequency
+REFERENCE_GENERATION_FREQUENCY=biweekly  # Options: weekly, biweekly, monthly
+
+# Reference pool size per type
+REFERENCE_POOL_SIZE=50
+```
+
+#### 🔄 **Two-Tier Replenishment System**
+
+The system uses **two safety nets** to ensure users never run out of challenges:
+
+**1. ⚡ Instant On-Demand Replenishment (Real-time)**
+- **Triggers**: When user requests challenges and any type has < 10 available
+- **Action**: Immediately generates 30 new personalized challenges
+- **Speed**: Happens in real-time during API call (~15-30 seconds)
+- **Purpose**: Emergency backup if user runs low between scheduled runs
+- **Cost**: Only charged when triggered (pay-per-use)
+
+**Example Scenario:**
+```
+User opens app → System checks pool
+- error_spotting: 8 available  ← Below 10! 🚨
+- micro_quiz: 7 available      ← Below 10! 🚨
+→ System instantly generates 30 new challenges
+→ User gets fresh challenges without waiting
+```
+
+**2. ⏰ Scheduled Batch Replenishment (Proactive)**
+- **Triggers**: Runs at 02:00 AM UTC based on `USER_POOL_FREQUENCY`
+- **Action**: Checks ALL active users and tops up pools that need it
+- **Speed**: Processes all users overnight while they sleep
+- **Purpose**: Preventive maintenance to avoid instant triggers
+- **Cost**: Regular scheduled cost (all users processed together)
+
+**Frequency Options:**
+- `daily` - Every night at 2 AM UTC
+- `weekly` - Once per week (every 7 days)
+- `biweekly` - Every 2 weeks (every 14 days)
+- `monthly` - Once per month (every 30 days)
+
+**Reference Pool Scheduling:**
+- Runs at 03:00 AM UTC based on `REFERENCE_GENERATION_FREQUENCY`
+- Maintains shared challenge library for all users
+- Less frequent than user pools (typically weekly or biweekly)
+
+#### 💰 **Cost Tracking**
+Built-in cost tracking system monitors AI usage:
+
+**View Costs:**
+```bash
+# SSH into Railway scheduler service
+railway ssh
+
+# View today's costs
+python view_costs.py
+
+# View this month's costs
+python view_costs.py month
+
+# View specific month (e.g., January 2026)
+python view_costs.py month 2026 1
+```
+
+**What Gets Tracked:**
+- AI model used (GPT-4o)
+- Token usage (input/output)
+- Cost per challenge generation
+- Challenges generated
+- Operation type (user_pool vs reference_pool)
+- Duration and timestamps
+
+**Cost Storage:**
+- All data stored permanently in MongoDB collection `challenge_generation_costs`
+- Can view historical costs from any past month
+- Detailed reports with daily/monthly summaries
+
+#### 📊 **Typical Costs**
+With `USE_CREWAI=true` and `biweekly` frequency:
+- **User Pool**: ~$35-70 per run (based on active users)
+- **Reference Pool**: ~$5-10 per run (maintenance only)
+- **Monthly Total**: ~$75-100 for balanced usage
+
+See `backend/ENVIRONMENT_VARIABLES_GUIDE.md` for detailed configuration options and cost breakdowns.
+
 - **API endpoints** for authentication, learning plan management, real-time conversation, speaking/sentence assessment, and web search.
 - **Authentication** using JWT and Google OAuth, with secure password storage and token validation.
 - **User management** and **learning plan assignment** for both guests and authenticated users.
