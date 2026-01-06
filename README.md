@@ -262,6 +262,88 @@ This implementation provides:
 
 The Enhanced Semantic VAD Audio Processing system ensures that every voice conversation is clear, natural, and free from technical distractions, allowing learners to focus entirely on their language learning journey.
 
+### 🤖 AI Challenge Generation with CrewAI
+
+An intelligent challenge generation system powered by CrewAI that creates personalized language learning challenges tailored to each user's level, mistakes, and learning patterns.
+
+#### 🎯 **What It Does**
+- **Personalized User Challenges**: Generates custom challenges for each user based on their:
+  - Common mistakes and error patterns
+  - Weak vocabulary areas
+  - Learning goals and topics of interest
+  - CEFR proficiency level (A1-C2)
+- **Reference Challenge Pool**: Maintains a shared pool of high-quality challenges for freestyle practice
+- **7 Challenge Types**: brain_tickler, micro_quiz, native_check, error_spotting, smart_flashcard, swipe_fix, story_builder
+
+#### 🧠 **How It Works**
+CrewAI uses a **3-agent system** to generate high-quality challenges:
+1. **Learning Analyzer Agent**: Analyzes user performance and identifies learning needs
+2. **Challenge Generator Agent**: Creates targeted challenges based on analysis
+3. **Quality Curator Agent**: Reviews and ensures challenge quality and appropriateness
+
+**AI Model**: GPT-4o (configurable via `GPT_MODEL` environment variable)
+
+#### ⚙️ **Configuration**
+All controlled by environment variables in Railway:
+
+```bash
+# Enable CrewAI for user challenges (default: false)
+USE_CREWAI=true
+
+# User pool replenishment frequency
+USER_POOL_FREQUENCY=biweekly  # Options: daily, weekly, biweekly, monthly
+
+# Reference generation frequency
+REFERENCE_GENERATION_FREQUENCY=biweekly  # Options: weekly, biweekly, monthly
+
+# Reference pool size per type
+REFERENCE_POOL_SIZE=50
+```
+
+#### 📅 **Automatic Scheduling**
+- **User Pool**: Runs at 02:00 AM UTC based on `USER_POOL_FREQUENCY`
+- **Reference Pool**: Runs at 03:00 AM UTC based on `REFERENCE_GENERATION_FREQUENCY`
+- Fully automated via background scheduler service
+
+#### 💰 **Cost Tracking**
+Built-in cost tracking system monitors AI usage:
+
+**View Costs:**
+```bash
+# SSH into Railway scheduler service
+railway ssh
+
+# View today's costs
+python view_costs.py
+
+# View this month's costs
+python view_costs.py month
+
+# View specific month (e.g., January 2026)
+python view_costs.py month 2026 1
+```
+
+**What Gets Tracked:**
+- AI model used (GPT-4o)
+- Token usage (input/output)
+- Cost per challenge generation
+- Challenges generated
+- Operation type (user_pool vs reference_pool)
+- Duration and timestamps
+
+**Cost Storage:**
+- All data stored permanently in MongoDB collection `challenge_generation_costs`
+- Can view historical costs from any past month
+- Detailed reports with daily/monthly summaries
+
+#### 📊 **Typical Costs**
+With `USE_CREWAI=true` and `biweekly` frequency:
+- **User Pool**: ~$35-70 per run (based on active users)
+- **Reference Pool**: ~$5-10 per run (maintenance only)
+- **Monthly Total**: ~$75-100 for balanced usage
+
+See `backend/ENVIRONMENT_VARIABLES_GUIDE.md` for detailed configuration options and cost breakdowns.
+
 - **API endpoints** for authentication, learning plan management, real-time conversation, speaking/sentence assessment, and web search.
 - **Authentication** using JWT and Google OAuth, with secure password storage and token validation.
 - **User management** and **learning plan assignment** for both guests and authenticated users.
