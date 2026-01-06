@@ -44,7 +44,8 @@ async def replenish_user_pool(user_id: str, user_level: str, target_per_type: in
             "micro_quiz",
             "smart_flashcard",
             "native_check",
-            "brain_tickler"
+            "brain_tickler",
+            "story_builder"
         ]
 
         stats = {
