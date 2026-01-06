@@ -27,6 +27,9 @@ from openai import OpenAI
 # Database connection
 from database import database
 
+# Cost tracking
+from cost_tracker import log_challenge_generation_cost, calculate_cost
+
 # Load environment variables
 load_dotenv()
 
@@ -292,6 +295,9 @@ async def generate_challenges_with_ai(
         List of AI-generated challenges
     """
     try:
+        # Start timing
+        start_time = datetime.utcnow()
+
         print(f"\n[CREWAI] 🤖 Starting intelligent challenge generation")
         print(f"[CREWAI] User: {user_id}, Language: {language}, Level: {user_level}")
         if challenge_type:
@@ -487,6 +493,45 @@ async def generate_challenges_with_ai(
             challenges.append(challenge_data)
 
         print(f"[CREWAI] ✅ Generated {len(challenges)} challenges successfully")
+
+        # Calculate duration
+        end_time = datetime.utcnow()
+        duration = (end_time - start_time).total_seconds()
+
+        # Estimate token usage (CrewAI doesn't expose this directly)
+        # Rough estimate: 3 agents × (input + output) per agent
+        # Input: ~1500 tokens per agent (task description + context)
+        # Output: ~500 tokens per challenge × count
+        estimated_input_tokens = 3 * 1500  # 3 agents with context
+        estimated_output_tokens = count * 500  # Output per challenge
+
+        # Log cost
+        operation_type = "reference_pool" if user_id == "reference_user" else "user_pool"
+
+        try:
+            await log_challenge_generation_cost(
+                operation_type=operation_type,
+                user_id=user_id,
+                model=GPT_MODEL,
+                input_tokens=estimated_input_tokens,
+                output_tokens=estimated_output_tokens,
+                challenges_generated=len(challenges),
+                language=language,
+                level=user_level,
+                challenge_type=challenge_type,
+                duration_seconds=duration,
+                metadata={
+                    "agents_used": 3,
+                    "analysis_data": {
+                        "mistakes": len(user_analysis.get("common_mistakes", [])),
+                        "weak_vocab": len(user_analysis.get("weak_vocabulary", [])),
+                        "topics": len(user_analysis.get("learning_plan_topics", []))
+                    }
+                }
+            )
+        except Exception as cost_err:
+            print(f"[CREWAI] ⚠️ Failed to log cost: {str(cost_err)}")
+
         return challenges
 
     except Exception as e:
