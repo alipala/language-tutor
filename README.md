@@ -300,10 +300,43 @@ REFERENCE_GENERATION_FREQUENCY=biweekly  # Options: weekly, biweekly, monthly
 REFERENCE_POOL_SIZE=50
 ```
 
-#### 📅 **Automatic Scheduling**
-- **User Pool**: Runs at 02:00 AM UTC based on `USER_POOL_FREQUENCY`
-- **Reference Pool**: Runs at 03:00 AM UTC based on `REFERENCE_GENERATION_FREQUENCY`
-- Fully automated via background scheduler service
+#### 🔄 **Two-Tier Replenishment System**
+
+The system uses **two safety nets** to ensure users never run out of challenges:
+
+**1. ⚡ Instant On-Demand Replenishment (Real-time)**
+- **Triggers**: When user requests challenges and any type has < 10 available
+- **Action**: Immediately generates 30 new personalized challenges
+- **Speed**: Happens in real-time during API call (~15-30 seconds)
+- **Purpose**: Emergency backup if user runs low between scheduled runs
+- **Cost**: Only charged when triggered (pay-per-use)
+
+**Example Scenario:**
+```
+User opens app → System checks pool
+- error_spotting: 8 available  ← Below 10! 🚨
+- micro_quiz: 7 available      ← Below 10! 🚨
+→ System instantly generates 30 new challenges
+→ User gets fresh challenges without waiting
+```
+
+**2. ⏰ Scheduled Batch Replenishment (Proactive)**
+- **Triggers**: Runs at 02:00 AM UTC based on `USER_POOL_FREQUENCY`
+- **Action**: Checks ALL active users and tops up pools that need it
+- **Speed**: Processes all users overnight while they sleep
+- **Purpose**: Preventive maintenance to avoid instant triggers
+- **Cost**: Regular scheduled cost (all users processed together)
+
+**Frequency Options:**
+- `daily` - Every night at 2 AM UTC
+- `weekly` - Once per week (every 7 days)
+- `biweekly` - Every 2 weeks (every 14 days)
+- `monthly` - Once per month (every 30 days)
+
+**Reference Pool Scheduling:**
+- Runs at 03:00 AM UTC based on `REFERENCE_GENERATION_FREQUENCY`
+- Maintains shared challenge library for all users
+- Less frequent than user pools (typically weekly or biweekly)
 
 #### 💰 **Cost Tracking**
 Built-in cost tracking system monitors AI usage:
