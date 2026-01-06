@@ -44,7 +44,8 @@ CHALLENGE_TYPES = [
     "micro_quiz",
     "smart_flashcard",
     "native_check",
-    "brain_tickler"
+    "brain_tickler",
+    "story_builder"
 ]
 
 # Generation frequency control
