@@ -16,6 +16,7 @@ motor==3.3.2
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
 email-validator==2.1.1
+PyJWT==2.8.0
 
 # Google Auth packages
 google-auth==2.27.0

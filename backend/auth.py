@@ -2,14 +2,18 @@ import os
 import secrets
 import hashlib
 import base64
+import jwt as pyjwt
+import requests
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import EmailStr
 from dotenv import load_dotenv
 from bson import ObjectId
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 # We're using a simple hashlib implementation to avoid bcrypt issues
 print("Using hashlib for password hashing (bcrypt bypass)")
@@ -34,8 +38,13 @@ def verify_password(plain_password, hashed_password):
     # Simple implementation using hashlib
     # Extract salt and hash from stored password
     try:
+        # Check for OAuth markers (users authenticated via Google or Apple)
+        if hashed_password in ["GOOGLE_OAUTH", "APPLE_OAUTH"]:
+            print(f"[AUTH] Cannot verify password for OAuth user (marker: {hashed_password})")
+            return False
+
         parts = hashed_password.split('$')
-        
+
         # Handle different password formats
         if len(parts) == 3:
             # New format: $salt$hash
@@ -48,10 +57,10 @@ def verify_password(plain_password, hashed_password):
         else:
             print(f"[AUTH] Invalid password format: {len(parts)} parts")
             return False
-        
+
         # Hash the input password with the same salt
         computed_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
-        
+
         # Compare the computed hash with the stored hash
         return computed_hash == stored_hash
     except Exception as e:
@@ -62,13 +71,82 @@ def get_password_hash(password):
     # Simple implementation using hashlib
     # Generate a random salt
     salt = secrets.token_hex(8)
-    
+
     # Hash the password with the salt
     password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
-    
+
     # Return the salt and hash in a format similar to bcrypt
     # Format: $salt$hash
     return f"${salt}${password_hash}"
+
+# Apple Sign-In verification
+async def verify_apple_token(token: str) -> Optional[Dict]:
+    """
+    Verify Apple identity token using Apple's public keys.
+    Returns decoded token payload if valid, None otherwise.
+    """
+    try:
+        # Get Apple's public keys
+        apple_keys_url = "https://appleid.apple.com/auth/keys"
+        response = requests.get(apple_keys_url, timeout=10)
+        response.raise_for_status()
+        apple_keys = response.json()
+
+        # Decode token header to get the key ID (kid)
+        unverified_header = pyjwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+
+        if not kid:
+            print("[APPLE AUTH] No 'kid' found in token header")
+            return None
+
+        # Find the matching public key
+        matching_key = None
+        for key in apple_keys.get("keys", []):
+            if key.get("kid") == kid:
+                matching_key = key
+                break
+
+        if not matching_key:
+            print(f"[APPLE AUTH] No matching key found for kid: {kid}")
+            return None
+
+        # Convert JWK to PEM format for PyJWT
+        from jwt.algorithms import RSAAlgorithm
+        public_key = RSAAlgorithm.from_jwk(matching_key)
+
+        # Verify and decode the token
+        decoded = pyjwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            audience=os.getenv("APPLE_CLIENT_ID", "com.bigdavinci.mytaco"),
+            options={"verify_exp": True}
+        )
+
+        print(f"[APPLE AUTH] Token verified successfully for user: {decoded.get('sub')}")
+        return decoded
+
+    except pyjwt.ExpiredSignatureError:
+        print("[APPLE AUTH] Token has expired")
+        return None
+    except pyjwt.InvalidTokenError as e:
+        print(f"[APPLE AUTH] Invalid token: {str(e)}")
+        return None
+    except requests.RequestException as e:
+        print(f"[APPLE AUTH] Failed to fetch Apple public keys: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"[APPLE AUTH] Unexpected error verifying Apple token: {str(e)}")
+        return None
+
+async def get_user_by_apple_id(apple_user_id: str) -> Optional[UserInDB]:
+    """Get user by Apple user ID"""
+    user_dict = await users_collection.find_one({"apple_user_id": apple_user_id})
+    if user_dict:
+        user_dict["_id"] = str(user_dict["_id"])
+        return UserInDB(**user_dict)
+    return None
 
 # User utilities
 async def get_user_by_email(email: str) -> Optional[UserInDB]:

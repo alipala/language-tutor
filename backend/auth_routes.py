@@ -12,12 +12,13 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 from models import (
-    UserCreate, 
-    UserResponse, 
-    Token, 
-    LoginRequest, 
-    GoogleLoginRequest, 
-    PasswordResetRequest, 
+    UserCreate,
+    UserResponse,
+    Token,
+    LoginRequest,
+    GoogleLoginRequest,
+    AppleLoginRequest,
+    PasswordResetRequest,
     PasswordResetConfirm,
     UserUpdate,
     EmailVerificationRequest,
@@ -37,9 +38,9 @@ class EmailCheckRequest(BaseModel):
     email: str
 
 from auth import (
-    authenticate_user, 
-    create_access_token, 
-    get_current_user, 
+    authenticate_user,
+    create_access_token,
+    get_current_user,
     create_user,
     create_password_reset_token,
     reset_password,
@@ -51,7 +52,9 @@ from auth import (
     mark_existing_users_verified,
     get_user_by_id,
     verify_password,
-    get_password_hash
+    get_password_hash,
+    verify_apple_token,
+    get_user_by_apple_id
 )
 from email_service import send_welcome_email
 from database import users_collection, tutors_collection, institutions_collection
@@ -295,6 +298,127 @@ async def google_login(login_data: GoogleLoginRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+@router.post("/apple-login", response_model=Token)
+async def apple_login(login_data: AppleLoginRequest):
+    """
+    Login with Apple Sign-In token
+    Handles new user creation, existing user login, and account linking
+    """
+    try:
+        # Verify Apple identity token
+        print(f"[APPLE AUTH] Starting Apple Sign-In for user: {login_data.user_identifier}")
+
+        apple_data = await verify_apple_token(login_data.token)
+        if not apple_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Apple token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Extract Apple user ID from verified token
+        apple_user_id = apple_data.get("sub")
+        if not apple_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Apple user ID not found in token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        print(f"[APPLE AUTH] Token verified. Apple user ID: {apple_user_id}")
+
+        # Check if user exists by Apple ID
+        user = await get_user_by_apple_id(apple_user_id)
+
+        if user:
+            # Existing Apple user - just log them in
+            print(f"[APPLE AUTH] Existing Apple user found: {user.email}")
+            user_id = str(user.id)
+            await users_collection.update_one(
+                {"_id": user.id if hasattr(user, 'id') else user["_id"]},
+                {"$set": {"last_login": datetime.utcnow()}}
+            )
+        else:
+            # Check if user exists by email (for account linking)
+            email = login_data.email or apple_data.get("email")
+
+            if not email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email is required for Apple Sign-In. Please try again.",
+                )
+
+            existing_user = await users_collection.find_one({"email": email})
+
+            if existing_user:
+                # Link Apple ID to existing account
+                print(f"[APPLE AUTH] Linking Apple ID to existing account: {email}")
+                user_id = str(existing_user["_id"])
+                await users_collection.update_one(
+                    {"_id": existing_user["_id"]},
+                    {
+                        "$set": {
+                            "apple_user_id": apple_user_id,
+                            "last_login": datetime.utcnow()
+                        }
+                    }
+                )
+                user = await users_collection.find_one({"_id": existing_user["_id"]})
+            else:
+                # Create new user with Apple Sign-In
+                print(f"[APPLE AUTH] Creating new user with Apple Sign-In: {email}")
+                name = login_data.name or apple_data.get("name") or "Apple User"
+
+                user_data = {
+                    "email": email,
+                    "name": name,
+                    "apple_user_id": apple_user_id,
+                    "is_active": True,
+                    "is_verified": True,  # Apple users are automatically verified
+                    "created_at": datetime.utcnow(),
+                    "last_login": datetime.utcnow(),
+                    "hashed_password": "APPLE_OAUTH"  # Special marker for Apple users
+                }
+
+                result = await users_collection.insert_one(user_data)
+                user_id = str(result.inserted_id)
+                user = await users_collection.find_one({"_id": result.inserted_id})
+
+                print(f"[APPLE AUTH] New user created successfully: {user_id}")
+
+        # Create access token
+        access_token_expires = timedelta(minutes=60 * 24 * 7)  # 7 days
+        access_token = create_access_token(
+            data={"sub": user_id},
+            expires_delta=access_token_expires
+        )
+
+        # Create session
+        session_token = await create_session(user_id)
+
+        print(f"[APPLE AUTH] Login successful for user: {user['email']}")
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user_id": user_id,
+            "name": user["name"],
+            "email": user["email"]
+        }
+
+    except HTTPException as he:
+        # Re-raise HTTP exceptions
+        raise he
+    except Exception as e:
+        print(f"[APPLE AUTH] Error during Apple Sign-In: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Apple authentication failed: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 @router.get("/google-callback")
 async def google_callback(code: str = None, error: str = None, state: str = None):
     """
@@ -305,7 +429,7 @@ async def google_callback(code: str = None, error: str = None, state: str = None
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Google authentication error: {error}"
         )
-    
+
     if not code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

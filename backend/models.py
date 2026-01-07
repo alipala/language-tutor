@@ -113,6 +113,7 @@ class UserCreate(UserBase):
 class UserInDB(UserBase):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     hashed_password: str
+    apple_user_id: Optional[str] = None  # Apple Sign-In unique identifier
     stripe_customer_id: Optional[str] = None
     subscription_status: Optional[str] = None  # active, canceled, past_due, expired, trialing
     subscription_plan: Optional[str] = None    # try_learn, fluency_builder, team_mastery
@@ -212,7 +213,13 @@ class LoginRequest(BaseModel):
     
 class GoogleLoginRequest(BaseModel):
     token: str
-    
+
+class AppleLoginRequest(BaseModel):
+    token: str  # Apple identity token (JWT)
+    user_identifier: str  # Apple user ID
+    email: Optional[str] = None  # Email (only provided on first sign-in)
+    name: Optional[str] = None  # Full name (only provided on first sign-in)
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
     
