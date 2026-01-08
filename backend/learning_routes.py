@@ -68,9 +68,11 @@ class LearningPlan(BaseModel):
     plan_content: Dict[str, Any]
     assessment_data: Optional[Dict[str, Any]] = None
     created_at: str
+    updated_at: Optional[str] = None
     total_sessions: Optional[int] = None
     completed_sessions: Optional[int] = 0
     progress_percentage: Optional[float] = 0.0
+    practice_minutes_used: Optional[float] = 0.0
     session_summaries: Optional[List[str]] = []
     # NEW: Final Assessment Fields
     status: Optional[str] = "in_progress"  # "in_progress" | "awaiting_final_assessment" | "completed" | "failed_assessment"
