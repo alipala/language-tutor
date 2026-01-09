@@ -108,6 +108,10 @@ app.include_router(admin_router)
 from stripe_routes import router as stripe_router
 app.include_router(stripe_router)
 
+# Include Apple IAP routes
+from routes.apple_iap_routes import router as apple_iap_router
+app.include_router(apple_iap_router)
+
 # Include upgrade routes
 from routers.upgrade_routes import router as upgrade_router
 app.include_router(upgrade_router)

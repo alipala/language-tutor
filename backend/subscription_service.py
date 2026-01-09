@@ -139,27 +139,28 @@ class SubscriptionService:
             plan_id="fluency_builder",
             name="Fluency Builder",
             monthly_price=19.99,
-            annual_price=199.99,
+            annual_price=119.00,  # UPDATED: Was 199.99
             monthly_sessions=30,
             annual_sessions=360,  # 30 sessions × 12 months
             monthly_assessments=2,
             annual_assessments=24,  # 2 assessments × 12 months
             # NEW: Minute limits for duration-based tracking
-            monthly_minutes=150,  # 30 sessions × 5 minutes
-            annual_minutes=1800,  # 360 sessions × 5 minutes
+            monthly_minutes=150,  # 150 minutes monthly
+            annual_minutes=1800,  # 1800 minutes annually
             features=[
-                "30 practice sessions (5 minutes each) monthly",
+                "150 minutes speaking monthly",
                 "2 speaking assessments monthly",
+                "10 hearts for challenges",
+                "Hearts refill every 1 hour",
                 "Advanced progress tracking",
-                "Learning plan progression",
-                "Achievement badges"
+                "All conversation topics"
             ]
         ),
-        "team_mastery": SubscriptionPlan(
-            plan_id="team_mastery",
-            name="Team Mastery",
+        "language_mastery": SubscriptionPlan(
+            plan_id="language_mastery",
+            name="Language Mastery",
             monthly_price=39.99,
-            annual_price=399.99,
+            annual_price=239.00,  # UPDATED: Was 399.99
             monthly_sessions=-1,  # Unlimited
             annual_sessions=-1,   # Unlimited
             monthly_assessments=-1,  # Unlimited
@@ -168,12 +169,33 @@ class SubscriptionService:
             monthly_minutes=-1,  # Unlimited
             annual_minutes=-1,   # Unlimited
             features=[
-                "Unlimited practice sessions",
-                "Unlimited assessments",
+                "UNLIMITED speaking practice",
+                "UNLIMITED assessments",
+                "UNLIMITED hearts for challenges",
+                "Instant heart refills",
                 "Premium learning plans",
-                "Advanced analytics",
-                "Priority support",
-                "Team collaboration features"
+                "Advanced analytics"
+            ]
+        ),
+        # Backward compatibility for old plan ID
+        "team_mastery": SubscriptionPlan(
+            plan_id="team_mastery",
+            name="Language Mastery",  # Display new name
+            monthly_price=39.99,
+            annual_price=239.00,  # UPDATED: Was 399.99
+            monthly_sessions=-1,  # Unlimited
+            annual_sessions=-1,   # Unlimited
+            monthly_assessments=-1,  # Unlimited
+            annual_assessments=-1,   # Unlimited
+            monthly_minutes=-1,  # Unlimited
+            annual_minutes=-1,   # Unlimited
+            features=[
+                "UNLIMITED speaking practice",
+                "UNLIMITED assessments",
+                "UNLIMITED hearts for challenges",
+                "Instant heart refills",
+                "Premium learning plans",
+                "Advanced analytics"
             ]
         )
     }

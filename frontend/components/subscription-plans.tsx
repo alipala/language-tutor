@@ -107,11 +107,11 @@ const annualPlans: PricingCard[] = [
   },
   {
     name: "Fluency Builder",
-    price: "$199.99",
+    price: "$119.00",
     priceNote: "/year",
     originalPrice: "$239.88",
-    savings: "Save $39.89 (17% off)",
-    monthlyEquivalent: "Only $16.67/month",
+    savings: "Save $120.88 (50% off)",
+    monthlyEquivalent: "Only $9.92/month",
     description: "Ideal for serious language learners",
     features: [
       { text: "1,800 minutes annually speaking time", included: true },
@@ -130,11 +130,11 @@ const annualPlans: PricingCard[] = [
   },
   {
     name: "Language Mastery",
-    price: "$399.99",
+    price: "$239.00",
     priceNote: "/year",
     originalPrice: "$479.88",
-    savings: "Save $79.89 (17% off)",
-    monthlyEquivalent: "Only $33.33/month",
+    savings: "Save $240.88 (50% off)",
+    monthlyEquivalent: "Only $19.92/month",
     description: "For advanced learners seeking fluency",
     features: [
       { text: "Unlimited practice sessions", included: true },

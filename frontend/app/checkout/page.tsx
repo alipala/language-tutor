@@ -23,10 +23,14 @@ export default function CheckoutPage() {
   const STRIPE_PRICES = {
     monthly: {
       fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
+      language_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL",
+      // Backward compatibility
       team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
     },
     annual: {
       fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || "price_1RdxNjJcquSiYwWNIpmYrKSE",
+      language_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_YEARLY || "price_1RdxmRJcquSiYwWN7Oc6NnNe",
+      // Backward compatibility
       team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || "price_1RdxmRJcquSiYwWN7Oc6NnNe"
     }
   };
@@ -36,12 +40,18 @@ export default function CheckoutPage() {
     fluency_builder: {
       name: 'Fluency Builder',
       monthly: { price: '$19.99', priceNote: '/month' },
-      annual: { price: '$199.99', priceNote: '/year', savings: 'Save $39.89 (17% off)' }
+      annual: { price: '$119.00', priceNote: '/year', savings: 'Save $120.88 (50% off)' }
     },
+    language_mastery: {
+      name: 'Language Mastery',
+      monthly: { price: '$39.99', priceNote: '/month' },
+      annual: { price: '$239.00', priceNote: '/year', savings: 'Save $240.88 (50% off)' }
+    },
+    // Backward compatibility
     team_mastery: {
       name: 'Language Mastery',
       monthly: { price: '$39.99', priceNote: '/month' },
-      annual: { price: '$399.99', priceNote: '/year', savings: 'Save $79.89 (17% off)' }
+      annual: { price: '$239.00', priceNote: '/year', savings: 'Save $240.88 (50% off)' }
     }
   };
 

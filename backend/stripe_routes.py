@@ -43,8 +43,11 @@ def map_stripe_product_to_plan_id(product_name: str) -> str:
     plan_name = product_name.lower()
     if "fluency builder" in plan_name:
         return "fluency_builder"
+    elif "language mastery" in plan_name:
+        return "language_mastery"
     elif "team mastery" in plan_name:
-        return "team_mastery"
+        # Backward compatibility - map old name to new plan
+        return "language_mastery"
     elif "try learn" in plan_name:
         return "try_learn"
     else:

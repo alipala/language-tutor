@@ -32,6 +32,17 @@ class UpgradeService:
             "minutes": 1800,
             "period": "annual"
         },
+        "language_mastery_monthly": {
+            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_MONTHLY", "price_1RdxlGJcquSiYwWNWvyEgmgL"),
+            "minutes": -1,  # Unlimited
+            "period": "monthly"
+        },
+        "language_mastery_annual": {
+            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_YEARLY", "price_1RdxmRJcquSiYwWN7Oc6NnNe"),
+            "minutes": -1,  # Unlimited
+            "period": "annual"
+        },
+        # Backward compatibility for old plan names
         "team_mastery_monthly": {
             "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY", "price_1RdxlGJcquSiYwWNWvyEgmgL"),
             "minutes": -1,  # Unlimited
