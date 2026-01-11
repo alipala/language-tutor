@@ -22,16 +22,16 @@ export default function CheckoutPage() {
   // Stripe price IDs from environment variables
   const STRIPE_PRICES = {
     monthly: {
-      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
+      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1SoWXzJcquSiYwWNV5HYiCGU",
       language_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL",
       // Backward compatibility
       team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
     },
     annual: {
-      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || "price_1RdxNjJcquSiYwWNIpmYrKSE",
-      language_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_YEARLY || "price_1RdxmRJcquSiYwWN7Oc6NnNe",
+      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || "price_1SoQw4JcquSiYwWNzi2zSgXt",
+      language_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_YEARLY || "price_1SoQy8JcquSiYwWNalBlWPEQ",
       // Backward compatibility
-      team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || "price_1RdxmRJcquSiYwWN7Oc6NnNe"
+      team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || "price_1SoQy8JcquSiYwWNalBlWPEQ"
     }
   };
 
