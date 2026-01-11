@@ -253,7 +253,7 @@ export default function SubscriptionPlans() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full"
               >
-                Save up to 17%
+                Save 50%
               </motion.div>
             )}
           </div>

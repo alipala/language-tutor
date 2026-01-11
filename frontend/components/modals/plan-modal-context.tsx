@@ -238,7 +238,7 @@ function PlanModal() {
             </span>
             {isAnnual && (
               <div className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                Save up to 17%
+                Save 50%
               </div>
             )}
           </div>
@@ -256,12 +256,9 @@ function PlanModal() {
               <div className="text-center mb-4 md:mb-6">
                 <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Fluency Builder</h3>
                 <div className="mb-2">
-                  {isAnnual && (
-                    <div className="text-xs md:text-sm text-gray-500 line-through">$239.88</div>
-                  )}
                   <div className="flex items-end justify-center">
                     <span className="text-2xl md:text-4xl font-bold text-gray-900">
-                      {isAnnual ? '$199.99' : '$19.99'}
+                      {isAnnual ? '€119.00' : '€19.99'}
                     </span>
                     <span className="text-gray-600 ml-2 mb-1 text-sm md:text-base">
                       {isAnnual ? '/year' : '/month'}
@@ -269,25 +266,22 @@ function PlanModal() {
                   </div>
                   {isAnnual && (
                     <div className="text-green-600 font-semibold text-xs md:text-sm">
-                      Save $39.89 (17% off)
+                      Save €120.88
                     </div>
                   )}
                 </div>
-                <p className="text-gray-600 text-sm md:text-base">Ideal for serious language learners</p>
+                <p className="text-gray-600 text-sm md:text-base">Perfect for consistent learners</p>
               </div>
 
               <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                 {[
                   '🎉 7-day free trial included',
-                  `${isAnnual ? '360' : '30'} practice sessions (5 minutes each) ${isAnnual ? 'annually' : 'monthly'}`,
+                  `${isAnnual ? '1,800 minutes annually' : '150 minutes monthly'} speaking time`,
                   `${isAnnual ? '24' : '2'} speaking assessments ${isAnnual ? 'annually' : 'monthly'}`,
+                  '10 hearts for challenges',
+                  'Refills every 1 hour',
                   'Advanced progress tracking',
-                  'Learning plan progression',
-                  'Achievement badges',
-                  'All conversation topics + custom topics',
-                  '🎤 Choose from multiple AI tutor voices',
-                  'Conversation history & analytics',
-                  'Priority email support'
+                  'All conversation topics'
                 ].map((feature, index) => (
                   <li key={index} className="flex items-start">
                     <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
@@ -311,12 +305,9 @@ function PlanModal() {
               <div className="text-center mb-4 md:mb-6">
                 <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Language Mastery</h3>
                 <div className="mb-2">
-                  {isAnnual && (
-                    <div className="text-xs md:text-sm text-gray-500 line-through">$479.88</div>
-                  )}
                   <div className="flex items-end justify-center">
                     <span className="text-2xl md:text-4xl font-bold text-gray-900">
-                      {isAnnual ? '$399.99' : '$39.99'}
+                      {isAnnual ? '€239.00' : '€39.99'}
                     </span>
                     <span className="text-gray-600 ml-2 mb-1 text-sm md:text-base">
                       {isAnnual ? '/year' : '/month'}
@@ -324,25 +315,22 @@ function PlanModal() {
                   </div>
                   {isAnnual && (
                     <div className="text-green-600 font-semibold text-xs md:text-sm">
-                      Save $79.89 (17% off)
+                      Save €240.88
                     </div>
                   )}
                 </div>
-                <p className="text-gray-600 text-sm md:text-base">For advanced learners seeking fluency</p>
+                <p className="text-gray-600 text-sm md:text-base">Ultimate learning experience</p>
               </div>
 
               <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                 {[
                   '🎉 7-day free trial included',
-                  'Unlimited practice sessions',
-                  'Unlimited speaking assessments',
-                  'Premium learning plans with advanced topics',
-                  '🎤 Choose from multiple AI tutor voices',
-                  '📊 Advanced analytics & detailed insights',
-                  '🎯 Personalized learning recommendations',
-                  '📝 Writing practice & correction',
-                  '🌍 Cultural context & idiom explanations',
-                  '⚡ Priority support & faster response times'
+                  'UNLIMITED speaking',
+                  'UNLIMITED assessments',
+                  'UNLIMITED hearts',
+                  'Instant heart refills',
+                  'Premium learning plans',
+                  'Advanced analytics'
                 ].map((feature, index) => (
                   <li key={index} className="flex items-start">
                     <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
