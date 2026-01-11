@@ -39,19 +39,19 @@ export default function CheckoutPage() {
   const planDetails = {
     fluency_builder: {
       name: 'Fluency Builder',
-      monthly: { price: '$19.99', priceNote: '/month' },
-      annual: { price: '$119.00', priceNote: '/year', savings: 'Save $120.88 (50% off)' }
+      monthly: { price: '€19.99', priceNote: '/month' },
+      annual: { price: '€119.00', priceNote: '/year', savings: 'Save €120.88 (50% off)' }
     },
     language_mastery: {
       name: 'Language Mastery',
-      monthly: { price: '$39.99', priceNote: '/month' },
-      annual: { price: '$239.00', priceNote: '/year', savings: 'Save $240.88 (50% off)' }
+      monthly: { price: '€39.99', priceNote: '/month' },
+      annual: { price: '€239.00', priceNote: '/year', savings: 'Save €240.88 (50% off)' }
     },
     // Backward compatibility
     team_mastery: {
       name: 'Language Mastery',
-      monthly: { price: '$39.99', priceNote: '/month' },
-      annual: { price: '$239.00', priceNote: '/year', savings: 'Save $240.88 (50% off)' }
+      monthly: { price: '€39.99', priceNote: '/month' },
+      annual: { price: '€239.00', priceNote: '/year', savings: 'Save €240.88 (50% off)' }
     }
   };
 
