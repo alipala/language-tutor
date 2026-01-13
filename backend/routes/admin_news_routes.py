@@ -165,3 +165,45 @@ async def get_news_statistics():
             status_code=500,
             detail=f"Failed to fetch statistics: {str(e)}"
         )
+
+
+@router.get("/api/admin/news/today")
+async def get_todays_news_admin():
+    """
+    Get today's news articles (admin endpoint - no auth required)
+    Returns all articles for today without authentication
+    """
+    try:
+        from datetime import datetime
+        import pytz
+
+        # Get today's date in CET (same as news generation)
+        cet = pytz.timezone('CET')
+        today = datetime.now(cet).date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_start = cet.localize(today_start)
+
+        # Find articles for today
+        articles = []
+        async for article in news_articles_collection.find({"date": today_start}).sort("article_index", 1):
+            articles.append({
+                "_id": str(article["_id"]),
+                "article_index": article.get("article_index", 0),
+                "date": article["date"].isoformat() if isinstance(article["date"], datetime) else article["date"],
+                "original": article.get("original", {}),
+                "variations": article.get("variations", {}),
+            })
+
+        return {
+            "success": True,
+            "articles": articles,
+            "count": len(articles),
+            "date": today_start.isoformat()
+        }
+
+    except Exception as e:
+        print(f"[ADMIN] Error fetching today's news: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch today's news: {str(e)}"
+        )
