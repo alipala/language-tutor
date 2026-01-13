@@ -198,6 +198,14 @@ app.include_router(achievement_router)
 from routes.progress_stats_routes import router as progress_stats_router
 app.include_router(progress_stats_router)
 
+# Include news routes (Daily News Tab Feature)
+from news_routes import router as news_router
+app.include_router(news_router)
+
+# Include admin news routes (News Management for Admin Panel)
+from routes.admin_news_routes import router as admin_news_router
+app.include_router(admin_news_router)
+
 # Include gamification stats routes (NEW)
 from routes.stats_routes import router as stats_router
 app.include_router(stats_router)
@@ -233,6 +241,17 @@ app.include_router(guest_analysis_router)
 app.include_router(final_assessment_router)
 
 
+# NEWS FEATURE: Initialize news scheduler (optional - separate Railway service)
+try:
+    from news_generation.news_scheduler import init_news_scheduler, stop_news_scheduler
+    NEWS_SCHEDULER_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ News scheduler not available (missing dependencies): {e}")
+    print("⚠️ News generation should run as a separate Railway service")
+    NEWS_SCHEDULER_AVAILABLE = False
+    init_news_scheduler = None
+    stop_news_scheduler = None
+
 # Initialize MongoDB on startup
 @app.on_event("startup")
 async def startup_db_client():
@@ -242,8 +261,8 @@ async def startup_db_client():
             print(f"Starting in Railway environment")
             # Print available environment variables for MongoDB (with sensitive info masked)
             mongo_vars = {
-                k: ("*****" if "PASSWORD" in k else v) 
-                for k, v in os.environ.items() 
+                k: ("*****" if "PASSWORD" in k else v)
+                for k, v in os.environ.items()
                 if "MONGO" in k
             }
             print(f"Available MongoDB environment variables: {mongo_vars}")
@@ -251,7 +270,19 @@ async def startup_db_client():
         # Initialize database
         await init_db()
         print("MongoDB initialized successfully")
-        
+
+        # NEWS FEATURE: Initialize news generation scheduler (if available)
+        if NEWS_SCHEDULER_AVAILABLE:
+            try:
+                init_news_scheduler()
+                print("📰 News generation scheduler initialized successfully")
+            except Exception as scheduler_error:
+                print(f"⚠️ Warning: Could not initialize news scheduler: {str(scheduler_error)}")
+                print("News generation will not run automatically")
+        else:
+            print("📰 News generation runs as separate Railway service (like challenge generation)")
+            print("📰 News API endpoints are available for reading existing news")
+
         # Email verification migration (DISABLED - run manually if needed)
         # This was automatically marking all users as verified on every startup
         # To run migration manually, use: POST /auth/mark-existing-users-verified
@@ -273,6 +304,20 @@ async def startup_db_client():
     except Exception as e:
         print(f"ERROR initializing MongoDB: {str(e)}")
         print("The application will continue, but database functionality may be limited")
+
+
+# Shutdown handler
+@app.on_event("shutdown")
+async def shutdown_app():
+    """Clean shutdown of application resources"""
+    if NEWS_SCHEDULER_AVAILABLE and stop_news_scheduler:
+        try:
+            # NEWS FEATURE: Stop news scheduler
+            stop_news_scheduler()
+            print("📰 News scheduler stopped")
+        except Exception as e:
+            print(f"Warning: Error stopping news scheduler: {str(e)}")
+
 
 # Enhanced monitoring middleware with Slack integration
 from monitoring import MonitoringMiddleware, RequestLoggingMiddleware

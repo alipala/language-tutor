@@ -82,6 +82,10 @@ try:
     # NEW: Gamification & Statistics collections
     daily_stats_collection = database.daily_stats
     recent_performance_collection = database.recent_performance
+
+    # NEWS FEATURE: Daily news collections
+    news_batches_collection = database.news_batches
+    news_articles_collection = database.news_articles
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -99,6 +103,8 @@ except Exception as e:
     challenge_sessions_collection = None
     daily_stats_collection = None
     recent_performance_collection = None
+    news_batches_collection = None
+    news_articles_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
@@ -155,6 +161,15 @@ async def init_db():
         # Recent performance indexes (with TTL)
         await recent_performance_collection.create_index([("user_id", 1), ("expires_at", 1)])
         await recent_performance_collection.create_index("expires_at", expireAfterSeconds=0)  # TTL index
+
+        # NEWS FEATURE: Create indexes for news collections
+        # News batches: unique date index
+        await news_batches_collection.create_index("date", unique=True)
+
+        # News articles: date-based queries and TTL (expire after 2 days)
+        await news_articles_collection.create_index([("date", -1), ("batch_id", 1)])
+        await news_articles_collection.create_index("expires_at", expireAfterSeconds=0)  # TTL index
+        await news_articles_collection.create_index("original.category")
 
         print("Database indexes initialized successfully")
     except Exception as e:

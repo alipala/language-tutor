@@ -338,12 +338,13 @@ async def save_conversation(
         # Check if this is a learning plan conversation
         learning_plan_id = getattr(request, 'learning_plan_id', None)
         conversation_type = getattr(request, 'conversation_type', 'practice')
-        
+
         print(f"[PROGRESS] Learning Plan ID: {learning_plan_id}")
         print(f"[PROGRESS] Conversation Type: {conversation_type}")
-        
-        # If this has a learning plan ID or is not explicitly marked as practice, handle learning plan progress
-        if learning_plan_id is not None or conversation_type != 'practice':
+
+        # Only handle as learning plan if it explicitly has a learning_plan_id
+        # News and other conversation types should go through normal flow
+        if learning_plan_id is not None:
             print(f"[PROGRESS] 📚 This is a learning plan session - updating learning plan progress")
             print(f"[PROGRESS] Learning plan conversations should not appear in conversation history")
             
@@ -474,6 +475,7 @@ async def save_conversation(
                 "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
                 "message_count": len(conversation_messages),
                 "summary": summary,
+                "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
                 "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "updated_at": datetime.utcnow()
@@ -523,6 +525,7 @@ async def save_conversation(
                 "language": request.language,
                 "level": request.level,
                 "topic": request.topic,
+                "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
                 "messages": [msg.dict() for msg in conversation_messages],
                 "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
                 "message_count": len(conversation_messages),
