@@ -200,14 +200,20 @@ def get_mock_news_articles() -> List[Dict[str, Any]]:
     ]
 
 
-def get_diverse_news() -> List[Dict[str, Any]]:
+def get_diverse_news(exclude_urls: List[str] = None) -> List[Dict[str, Any]]:
     """
     Main function to get diverse news articles
     Searches across multiple categories to ensure variety
 
+    Args:
+        exclude_urls: List of article URLs to exclude (previously used)
+
     Returns:
         List of 5-8 diverse news articles
     """
+    if exclude_urls is None:
+        exclude_urls = []
+
     # MVP: Search these categories
     categories = [
         "technology",
@@ -218,13 +224,22 @@ def get_diverse_news() -> List[Dict[str, Any]]:
         "environment"
     ]
 
-    # Try to get 1-2 articles per category
-    articles = search_multiple_categories(categories, articles_per_category=1)
+    # Try to get more articles per category to allow for filtering
+    articles_per_cat = 3 if exclude_urls else 1
+    articles = search_multiple_categories(categories, articles_per_category=articles_per_cat)
+
+    # Filter out previously used articles
+    if exclude_urls:
+        original_count = len(articles)
+        articles = [a for a in articles if a.get('url') not in exclude_urls]
+        filtered_count = original_count - len(articles)
+        if filtered_count > 0:
+            logger.info(f"[NEWS_TOOLS] Filtered out {filtered_count} previously used articles")
 
     # If we got enough articles, return them
     if len(articles) >= 5:
         return articles[:8]  # Max 8 articles
 
     # Otherwise, fall back to mock data
-    logger.warning("[NEWS_TOOLS] Not enough articles from API, using mock data")
+    logger.warning(f"[NEWS_TOOLS] Only {len(articles)} new articles found, using mock data")
     return get_mock_news_articles()

@@ -91,8 +91,23 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
         # Note: Agent creation may return None if CrewAI not available (MVP mode)
         search_agent = create_search_agent()
 
+        # Get previously used article URLs (last 7 days) to avoid duplicates
+        from datetime import timedelta
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        used_urls = []
+        async for article in news_articles_collection.find(
+            {"created_at": {"$gte": week_ago}},
+            {"original.url": 1}
+        ):
+            url = article.get("original", {}).get("url")
+            if url:
+                used_urls.append(url)
+
+        if used_urls:
+            logger.info(f"[NEWS_GEN] Excluding {len(used_urls)} previously used articles from last 7 days")
+
         # Use our news tools to get articles (works without CrewAI)
-        candidate_articles = get_diverse_news()
+        candidate_articles = get_diverse_news(exclude_urls=used_urls)
 
         if not candidate_articles:
             raise NewsGenerationError("No articles found in search")
