@@ -847,7 +847,18 @@ async def get_learning_plan(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this learning plan"
         )
-    
+
+    # 🔥 FIX: Convert datetime fields to ISO strings for Pydantic validation
+    if "updated_at" in plan and isinstance(plan["updated_at"], datetime):
+        plan["updated_at"] = plan["updated_at"].isoformat()
+        logger.info(f"Converted updated_at to ISO string for plan {plan.get('id', 'unknown')}")
+
+    if "created_at" in plan and isinstance(plan["created_at"], datetime):
+        plan["created_at"] = plan["created_at"].isoformat()
+
+    if "all_sessions_completed_at" in plan and isinstance(plan["all_sessions_completed_at"], datetime):
+        plan["all_sessions_completed_at"] = plan["all_sessions_completed_at"].isoformat()
+
     # Ensure backward compatibility - add missing progress fields for existing plans
     if "total_sessions" not in plan or plan.get("total_sessions") is None:
         def calculate_total_sessions(duration_months: int) -> int:
@@ -998,12 +1009,23 @@ async def get_user_learning_plans(
         
         updated_plans = []
         for plan in plans:
+            # 🔥 FIX: Convert datetime fields to ISO strings for Pydantic validation
+            if "updated_at" in plan and isinstance(plan["updated_at"], datetime):
+                plan["updated_at"] = plan["updated_at"].isoformat()
+                logger.info(f"Converted updated_at to ISO string for plan {plan.get('id', 'unknown')}")
+
+            if "created_at" in plan and isinstance(plan["created_at"], datetime):
+                plan["created_at"] = plan["created_at"].isoformat()
+
+            if "all_sessions_completed_at" in plan and isinstance(plan["all_sessions_completed_at"], datetime):
+                plan["all_sessions_completed_at"] = plan["all_sessions_completed_at"].isoformat()
+
             # Check if plan needs progress tracking fields
             if "total_sessions" not in plan or plan.get("total_sessions") is None:
                 total_sessions = calculate_total_sessions(plan.get("duration_months", 1))
                 completed_sessions = plan.get("completed_sessions", 0)
                 progress_percentage = (completed_sessions / total_sessions) * 100 if total_sessions > 0 else 0.0
-                
+
                 # Update the plan in the database
                 await learning_plans_collection.update_one(
                     {"id": plan["id"]},
@@ -1013,14 +1035,14 @@ async def get_user_learning_plans(
                         "progress_percentage": progress_percentage
                     }}
                 )
-                
+
                 # Update the plan object
                 plan["total_sessions"] = total_sessions
                 plan["completed_sessions"] = completed_sessions
                 plan["progress_percentage"] = progress_percentage
-                
+
                 print(f"Updated existing plan {plan['id']} with progress tracking: {completed_sessions}/{total_sessions} sessions ({progress_percentage:.1f}%)")
-            
+
             updated_plans.append(plan)
         
         return updated_plans
