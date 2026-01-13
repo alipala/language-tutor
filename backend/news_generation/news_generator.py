@@ -330,7 +330,7 @@ async def generate_variation_simple(
     level: str
 ) -> Dict[str, Any]:
     """
-    Generate AI-powered variation using OpenAI
+    Generate AI-powered variation using OpenAI (v1.0+ API)
 
     Args:
         article: Article data
@@ -340,10 +340,11 @@ async def generate_variation_simple(
     Returns:
         Variation data with AI-generated summary, vocabulary, questions
     """
-    import openai
+    from openai import AsyncOpenAI
     import os
+    import json
 
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     title = article.get("title", "")
     summary = article.get("summary", "")
@@ -366,8 +367,8 @@ async def generate_variation_simple(
     level_desc = level_descriptions.get(level, level)
 
     try:
-        # Generate adapted content with GPT-4o
-        response = await openai.ChatCompletion.acreate(
+        # Generate adapted content with GPT-4o-mini
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",  # Using mini for cost efficiency
             messages=[
                 {
@@ -406,7 +407,7 @@ Return as JSON:
             response_format={"type": "json_object"}
         )
 
-        result = eval(response.choices[0].message.content)
+        result = json.loads(response.choices[0].message.content)
 
         return {
             "summary": result.get("summary", f"{title}. {summary}"),
