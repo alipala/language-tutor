@@ -202,6 +202,10 @@ app.include_router(progress_stats_router)
 from news_routes import router as news_router
 app.include_router(news_router)
 
+# Include admin news routes (News Management for Admin Panel)
+from routes.admin_news_routes import router as admin_news_router
+app.include_router(admin_news_router)
+
 # Include gamification stats routes (NEW)
 from routes.stats_routes import router as stats_router
 app.include_router(stats_router)
