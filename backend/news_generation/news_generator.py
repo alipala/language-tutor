@@ -63,12 +63,15 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
     today_start = datetime.combine(today, datetime.min.time())
     today_start = cet.localize(today_start)
 
+    # Convert to UTC naive datetime for MongoDB storage (Motor stores datetimes as UTC naive)
+    today_start_utc = today_start.astimezone(pytz.utc).replace(tzinfo=None)
+
     try:
         # Step 1: Create or update batch record (upsert to avoid duplicate key errors)
         batch_id = ObjectId()
         batch_doc = {
             "_id": batch_id,
-            "date": today_start,
+            "date": today_start_utc,
             "status": "in_progress",
             "generation_started_at": generation_start,
             "retry_count": retry_count,
@@ -77,7 +80,7 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
 
         # Use upsert to replace existing batch for the same date (allows regeneration)
         await news_batches_collection.update_one(
-            {"date": today_start},
+            {"date": today_start_utc},
             {"$set": batch_doc},
             upsert=True
         )
@@ -123,7 +126,7 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
         article_docs = await generate_all_variations_parallel(
             safe_articles,
             batch_id,
-            today_start
+            today_start_utc
         )
 
         # Step 5: Save to MongoDB

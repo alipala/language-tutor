@@ -177,15 +177,18 @@ async def get_todays_news_admin():
         from datetime import datetime
         import pytz
 
-        # Get today's date in CET (same as news generation)
+        # Get today's date in CET
         cet = pytz.timezone('CET')
         today = datetime.now(cet).date()
         today_start = datetime.combine(today, datetime.min.time())
         today_start = cet.localize(today_start)
 
+        # Convert to UTC naive datetime (MongoDB stores dates as UTC naive)
+        today_start_utc = today_start.astimezone(pytz.utc).replace(tzinfo=None)
+
         # Find articles for today
         articles = []
-        async for article in news_articles_collection.find({"date": today_start}).sort("article_index", 1):
+        async for article in news_articles_collection.find({"date": today_start_utc}).sort("article_index", 1):
             articles.append({
                 "_id": str(article["_id"]),
                 "article_index": article.get("article_index", 0),
