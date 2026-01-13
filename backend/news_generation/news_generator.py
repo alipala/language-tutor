@@ -69,21 +69,35 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
     try:
         # Step 1: Create or update batch record (upsert to avoid duplicate key errors)
         batch_id = ObjectId()
-        batch_doc = {
-            "_id": batch_id,
-            "date": today_start_utc,
-            "status": "in_progress",
-            "generation_started_at": generation_start,
-            "retry_count": retry_count,
-            "article_count": 0
-        }
 
-        # Use upsert to replace existing batch for the same date (allows regeneration)
-        await news_batches_collection.update_one(
+        # Use upsert with $setOnInsert for _id (only set on insert, not update)
+        # This prevents "immutable field '_id'" error when updating existing batch
+        result = await news_batches_collection.update_one(
             {"date": today_start_utc},
-            {"$set": batch_doc},
+            {
+                "$set": {
+                    "status": "in_progress",
+                    "generation_started_at": generation_start,
+                    "retry_count": retry_count,
+                    "article_count": 0
+                },
+                "$setOnInsert": {
+                    "_id": batch_id,
+                    "date": today_start_utc
+                }
+            },
             upsert=True
         )
+
+        # If we updated an existing batch, get its _id
+        if result.upserted_id:
+            batch_id = result.upserted_id
+        else:
+            # Find the existing batch to get its _id
+            existing_batch = await news_batches_collection.find_one({"date": today_start_utc})
+            if existing_batch:
+                batch_id = existing_batch["_id"]
+
         logger.info(f"[NEWS_GEN] Created/updated batch record: {batch_id}")
 
         # Step 2: AGENT 1 - Search for news articles
