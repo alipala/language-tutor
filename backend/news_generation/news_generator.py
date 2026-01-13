@@ -64,7 +64,7 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
     today_start = cet.localize(today_start)
 
     try:
-        # Step 1: Create batch record
+        # Step 1: Create or update batch record (upsert to avoid duplicate key errors)
         batch_id = ObjectId()
         batch_doc = {
             "_id": batch_id,
@@ -75,8 +75,13 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
             "article_count": 0
         }
 
-        await news_batches_collection.insert_one(batch_doc)
-        logger.info(f"[NEWS_GEN] Created batch record: {batch_id}")
+        # Use upsert to replace existing batch for the same date (allows regeneration)
+        await news_batches_collection.update_one(
+            {"date": today_start},
+            {"$set": batch_doc},
+            upsert=True
+        )
+        logger.info(f"[NEWS_GEN] Created/updated batch record: {batch_id}")
 
         # Step 2: AGENT 1 - Search for news articles
         logger.info("[NEWS_GEN] STEP 1: Searching for news articles...")
