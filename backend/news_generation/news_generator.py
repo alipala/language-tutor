@@ -330,60 +330,108 @@ async def generate_variation_simple(
     level: str
 ) -> Dict[str, Any]:
     """
-    Generate a simple variation without LLM calls (MVP cost optimization)
-    For production, replace with actual LLM-based adaptation
+    Generate AI-powered variation using OpenAI
 
     Args:
         article: Article data
-        language: Target language code
-        level: CEFR level
+        language: Target language code (en, es, nl)
+        level: CEFR level (A2, B1, B2)
 
     Returns:
-        Variation data with summary, vocabulary, questions
+        Variation data with AI-generated summary, vocabulary, questions
     """
-    # For MVP, use template-based generation
-    # In production, call summarization and vocabulary agents
+    import openai
+    import os
+
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
     title = article.get("title", "")
     summary = article.get("summary", "")
 
-    # Simple adaptation (just use original for MVP)
-    # TODO: Replace with actual LLM adaptation in production
-    adapted_summary = f"{title}. {summary}"
-
-    # Generate sample vocabulary
-    vocabulary = [
-        {
-            "word": "news",
-            "translation": "noticias" if language == "es" else "nieuws" if language == "nl" else None,
-            "example": "I read the news every morning.",
-            "ipa": "/njuːz/"
-        },
-        {
-            "word": "article",
-            "translation": "artículo" if language == "es" else "artikel" if language == "nl" else None,
-            "example": "This article is very interesting.",
-            "ipa": "/ˈɑːtɪkəl/"
-        }
-    ]
-
-    # Generate sample discussion questions
-    discussion_questions = [
-        f"What do you think about {title.lower()}?",
-        "Have you heard about this topic before?",
-        "How does this affect your daily life?"
-    ]
-
-    # AI instructions
-    ai_instructions = f"Discuss this {level} level news article. Practice {'simple past tense' if level == 'A2' else 'expressing opinions' if level == 'B1' else 'complex discussions'} with the learner."
-
-    return {
-        "summary": adapted_summary,
-        "word_count": len(adapted_summary.split()),
-        "vocabulary": vocabulary,
-        "discussion_questions": discussion_questions,
-        "ai_instructions": ai_instructions
+    # Language names for prompts
+    language_names = {
+        "en": "English",
+        "es": "Spanish",
+        "nl": "Dutch"
     }
+
+    # Level descriptions
+    level_descriptions = {
+        "A2": "elementary level (A2) - simple vocabulary, short sentences, present/past tense",
+        "B1": "intermediate level (B1) - everyday vocabulary, varied sentences, common idioms",
+        "B2": "upper-intermediate level (B2) - advanced vocabulary, complex sentences, nuanced language"
+    }
+
+    lang_name = language_names.get(language, "English")
+    level_desc = level_descriptions.get(level, level)
+
+    try:
+        # Generate adapted content with GPT-4o
+        response = await openai.ChatCompletion.acreate(
+            model="gpt-4o-mini",  # Using mini for cost efficiency
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are a language learning content creator. Adapt news articles for {lang_name} learners at {level_desc}."
+                },
+                {
+                    "role": "user",
+                    "content": f"""Adapt this news article for language learners:
+
+Title: {title}
+Original Summary: {summary}
+
+Create:
+1. A clear, engaging summary (150-200 words) in {lang_name} appropriate for {level} level
+2. Extract 8-10 key vocabulary words with:
+   - The word in {lang_name}
+   - Translation to English (if not English)
+   - Example sentence using the word
+   - IPA pronunciation
+3. 5 discussion questions that encourage conversation
+4. Teaching instructions for an AI tutor
+
+Return as JSON:
+{{
+  "summary": "adapted summary text",
+  "vocabulary": [
+    {{"word": "word", "translation": "translation or null", "example": "sentence", "ipa": "/pronunciation/"}}
+  ],
+  "discussion_questions": ["question1", "question2", ...],
+  "ai_instructions": "instructions for AI tutor"
+}}"""
+                }
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
+
+        result = eval(response.choices[0].message.content)
+
+        return {
+            "summary": result.get("summary", f"{title}. {summary}"),
+            "word_count": len(result.get("summary", "").split()),
+            "vocabulary": result.get("vocabulary", []),
+            "discussion_questions": result.get("discussion_questions", []),
+            "ai_instructions": result.get("ai_instructions", f"Discuss this {level} level news article.")
+        }
+
+    except Exception as e:
+        logger.error(f"[NEWS_GEN] Error generating AI variation: {str(e)}")
+        # Fallback to template if AI fails
+        adapted_summary = f"{title}. {summary}"
+        return {
+            "summary": adapted_summary,
+            "word_count": len(adapted_summary.split()),
+            "vocabulary": [
+                {"word": "news", "translation": None, "example": "I read the news.", "ipa": "/njuːz/"}
+            ],
+            "discussion_questions": [
+                f"What do you think about this news?",
+                "Have you heard about this topic?"
+            ],
+            "ai_instructions": f"Discuss this {level} level news article."
+        }
 
 
 # For testing: Run generation manually
