@@ -34,37 +34,49 @@ def search_news_api(query: str = None, category: str = None, page_size: int = 10
         return get_mock_news_articles()
 
     try:
-        # Calculate date range (last 24 hours)
-        today = datetime.utcnow()
-        yesterday = today - timedelta(days=1)
+        # Use top-headlines endpoint (better for free tier)
+        # Free tier has limitations on /everything endpoint
+        if category:
+            url = "https://newsapi.org/v2/top-headlines"
 
-        # NewsAPI endpoint
-        url = "https://newsapi.org/v2/everything"
-
-        # Build parameters
-        params = {
-            "apiKey": NEWS_API_KEY,
-            "language": "en",  # English articles (will be translated)
-            "sortBy": "publishedAt",
-            "pageSize": page_size,
-            "from": yesterday.isoformat(),
-            "to": today.isoformat()
-        }
-
-        if query:
-            params["q"] = query
-        elif category:
-            # Search by category keywords
-            category_queries = {
-                "technology": "technology innovation AI software",
-                "science": "science research discovery breakthrough",
-                "health": "health wellness medical study",
-                "culture": "culture art music film",
-                "sports": "sports championship athlete",
-                "environment": "environment climate nature sustainability",
-                "business": "business innovation startup entrepreneur"
+            # Map our categories to NewsAPI categories
+            category_mapping = {
+                "technology": "technology",
+                "science": "science",
+                "health": "health",
+                "culture": "entertainment",
+                "sports": "sports",
+                "environment": "science",  # Environment news often categorized under science
+                "business": "business",
+                "politics": "general",
+                "finance": "business",
+                "entertainment": "entertainment"
             }
-            params["q"] = category_queries.get(category, "")
+
+            params = {
+                "apiKey": NEWS_API_KEY,
+                "language": "en",
+                "pageSize": page_size,
+                "category": category_mapping.get(category, "general")
+            }
+        else:
+            # Fallback to /everything for custom queries (with date restrictions)
+            today = datetime.utcnow()
+            yesterday = today - timedelta(days=7)  # Extend to 7 days for better results
+
+            url = "https://newsapi.org/v2/everything"
+
+            params = {
+                "apiKey": NEWS_API_KEY,
+                "language": "en",
+                "sortBy": "publishedAt",
+                "pageSize": page_size,
+                "from": yesterday.isoformat(),
+                "to": today.isoformat()
+            }
+
+            if query:
+                params["q"] = query
 
         # Make request
         response = requests.get(url, params=params, timeout=10)
@@ -72,8 +84,12 @@ def search_news_api(query: str = None, category: str = None, page_size: int = 10
 
         data = response.json()
 
+        # Debug logging to see what NewsAPI returns
+        logger.info(f"[NEWS_TOOLS] NewsAPI response status: {data.get('status')}")
+        logger.info(f"[NEWS_TOOLS] NewsAPI totalResults: {data.get('totalResults', 0)}")
         if data.get("status") != "ok":
             logger.error(f"[NEWS_TOOLS] NewsAPI error: {data.get('message')}")
+            logger.error(f"[NEWS_TOOLS] Full response: {data}")
             return []
 
         articles = data.get("articles", [])
