@@ -6,7 +6,7 @@ Maps Apple product IDs to internal plan IDs and provides receipt verification
 import os
 import logging
 from typing import Optional, Dict
-import requests
+import httpx
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -95,12 +95,13 @@ class AppleIAPVerifier:
 
     @classmethod
     async def _send_verification_request(cls, url: str, payload: Dict) -> Dict:
-        """Send verification request to Apple"""
+        """Send verification request to Apple using async httpx"""
         try:
-            response = requests.post(url, json=payload, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
             logger.error(f"[APPLE_IAP] Request to Apple failed: {str(e)}")
             raise
 
