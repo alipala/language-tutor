@@ -277,17 +277,10 @@ async def create_user(user: UserCreate) -> UserResponse:
     user_dict.pop("password")
     user_dict["hashed_password"] = hashed_password
     user_dict["created_at"] = datetime.utcnow()
-
+    
     # New users require email verification
     user_dict["is_verified"] = False
-
-    # Initialize subscription fields for free tier
-    user_dict["subscription_plan"] = "try_learn"
-    user_dict["subscription_period"] = "monthly"
-    user_dict["practice_minutes_used"] = 0
-    user_dict["practice_sessions_used"] = 0
-    user_dict["assessments_used"] = 0
-
+    
     # Insert user into database
     result = await users_collection.insert_one(user_dict)
     
