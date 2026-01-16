@@ -254,7 +254,13 @@ async def google_login(login_data: GoogleLoginRequest):
                     "is_verified": True,  # Google users are automatically verified
                     "created_at": datetime.utcnow(),
                     "last_login": datetime.utcnow(),
-                    "hashed_password": "GOOGLE_OAUTH"  # Special marker for Google users
+                    "hashed_password": "GOOGLE_OAUTH",  # Special marker for Google users
+                    # Initialize subscription fields for free tier
+                    "subscription_plan": "try_learn",
+                    "subscription_period": "monthly",
+                    "practice_minutes_used": 0,
+                    "practice_sessions_used": 0,
+                    "assessments_used": 0
                 }
                 result = await users_collection.insert_one(user_data)
                 user_id = str(result.inserted_id)
@@ -377,7 +383,13 @@ async def apple_login(login_data: AppleLoginRequest):
                     "is_verified": True,  # Apple users are automatically verified
                     "created_at": datetime.utcnow(),
                     "last_login": datetime.utcnow(),
-                    "hashed_password": "APPLE_OAUTH"  # Special marker for Apple users
+                    "hashed_password": "APPLE_OAUTH",  # Special marker for Apple users
+                    # Initialize subscription fields for free tier
+                    "subscription_plan": "try_learn",
+                    "subscription_period": "monthly",
+                    "practice_minutes_used": 0,
+                    "practice_sessions_used": 0,
+                    "assessments_used": 0
                 }
 
                 result = await users_collection.insert_one(user_data)
