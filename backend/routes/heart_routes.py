@@ -56,9 +56,8 @@ class HeartStatusResponse(BaseModel):
 
 
 class AllHeartsStatusResponse(BaseModel):
-    """Heart status for all 7 challenge types"""
+    """Heart status for all 6 challenge types"""
     error_spotting: HeartStatusResponse
-    swipe_fix: HeartStatusResponse
     micro_quiz: HeartStatusResponse
     smart_flashcard: HeartStatusResponse
     native_check: HeartStatusResponse

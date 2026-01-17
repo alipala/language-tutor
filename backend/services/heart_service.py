@@ -11,7 +11,6 @@ class HeartService:
     # Challenge type constants
     CHALLENGE_TYPES = [
         "error_spotting",
-        "swipe_fix",
         "micro_quiz",
         "smart_flashcard",
         "native_check",
