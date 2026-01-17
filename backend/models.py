@@ -37,6 +37,15 @@ class HeartPool(BaseModel):
     streak_shield_activated_at: Optional[datetime] = None
     current_correct_streak: int = 0  # Consecutive correct in this type
 
+    # Undo Support (1-second forgiveness mechanic)
+    last_action_timestamp: Optional[datetime] = None
+    last_action_hearts_before: Optional[int] = None
+    last_action_shield_before: bool = False
+    last_action_streak_before: int = 0
+    last_action_challenge_id: Optional[str] = None
+    last_action_is_correct: Optional[bool] = None
+    last_action_undoable: bool = False
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True

@@ -76,6 +76,26 @@ class ConsumeHeartRequest(BaseModel):
     challenge_type: str
     is_correct: bool
     session_id: Optional[str] = None
+    challenge_id: Optional[str] = None  # For undo tracking
+
+
+class UndoHeartRequest(BaseModel):
+    """Request to undo last heart consumption"""
+    challenge_type: str
+    challenge_id: str
+
+
+class UndoHeartResponse(BaseModel):
+    """Response after undo attempt"""
+    success: bool
+    hearts_restored: int = Field(..., alias="heartsRestored")
+    shield_restored: bool = Field(..., alias="shieldRestored")
+    streak_restored: int = Field(..., alias="streakRestored")
+    error: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        by_alias = True
 
 
 class ConsumeHeartResponse(BaseModel):
@@ -288,6 +308,7 @@ async def consume_heart(
         challenge_type=request.challenge_type,
         is_correct=request.is_correct,
         session_id=request.session_id,
+        challenge_id=request.challenge_id,
         user=user
     )
 
@@ -296,6 +317,61 @@ async def consume_heart(
         result["refill_info"] = RefillInfoResponse(**result["refill_info"])
 
     return ConsumeHeartResponse(**result)
+
+
+@router.post("/undo", response_model=UndoHeartResponse)
+async def undo_last_heart_consumption(
+    request: UndoHeartRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Undo the last heart consumption (3-second forgiveness mechanic)
+
+    Called by iOS app when user taps "Undo" button within 3 seconds of wrong answer.
+    Only available for incorrect answers (correct answers don't show undo button).
+
+    This endpoint:
+    1. Validates undo is for the most recent action
+    2. Checks undo window hasn't expired (5 seconds server-side)
+    3. Restores hearts, shield, and streak to previous state
+    4. Prevents multiple undos on same challenge
+    5. Returns success/failure status
+
+    Undo window: 5 seconds server-side (client shows 3 seconds UI)
+    Only shown for wrong answers to maintain positive UX flow
+    """
+    if request.challenge_type not in HeartService.CHALLENGE_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid challenge type")
+
+    heart_service = HeartService()
+
+    # Fetch full user document from database
+    user_id = ObjectId(current_user.id) if isinstance(current_user.id, str) else current_user.id
+    user_doc = await heart_service.db.users.find_one({"_id": user_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Convert ObjectId to string for Pydantic model
+    user_doc["_id"] = str(user_doc["_id"])
+    user = UserInDB(**user_doc)
+
+    # Ensure heart system is initialized
+    if not user.heart_system:
+        raise HTTPException(status_code=400, detail="Heart system not initialized")
+
+    # Attempt undo
+    result = await heart_service.undo_last_action(
+        user_id=user.id,
+        challenge_type=request.challenge_type,
+        challenge_id=request.challenge_id,
+        user=user
+    )
+
+    if not result["success"]:
+        # Return error response with 200 status (not an HTTP error, just undo failed)
+        return UndoHeartResponse(**result)
+
+    return UndoHeartResponse(**result)
 
 
 @router.post("/log-modal")

@@ -200,6 +200,7 @@ class HeartService:
         challenge_type: str,
         is_correct: bool,
         session_id: Optional[str] = None,
+        challenge_id: Optional[str] = None,
         user: Optional[UserInDB] = None
     ) -> Dict[str, Any]:
         """
@@ -210,6 +211,7 @@ class HeartService:
             challenge_type: Challenge type
             is_correct: Whether answer was correct
             session_id: Optional session ID for logging
+            challenge_id: Optional challenge ID for undo tracking
             user: Optional user object to avoid DB fetch
 
         Returns:
@@ -226,6 +228,14 @@ class HeartService:
         """
         # Pass user object to avoid redundant DB fetch
         current_hearts, heart_pool = await self.get_current_hearts(user_id, challenge_type, user=user)
+
+        # Capture state before changes for undo support
+        state_before = {
+            "hearts": current_hearts,
+            "shield_active": heart_pool.streak_shield_active,
+            "streak": heart_pool.current_correct_streak,
+            "timestamp": datetime.utcnow()
+        }
 
         # If user not provided, fetch it (should not happen with optimization)
         if user is None:
@@ -350,10 +360,137 @@ class HeartService:
             heart_pool.current_correct_streak = 0
             result["current_streak"] = 0
 
+        # Save undo tracking state (only if not team_mastery)
+        if user_plan != "team_mastery" and challenge_id:
+            heart_pool.last_action_timestamp = state_before["timestamp"]
+            heart_pool.last_action_hearts_before = state_before["hearts"]
+            heart_pool.last_action_shield_before = state_before["shield_active"]
+            heart_pool.last_action_streak_before = state_before["streak"]
+            heart_pool.last_action_challenge_id = challenge_id
+            heart_pool.last_action_is_correct = is_correct
+            heart_pool.last_action_undoable = True  # Enable undo for 2 seconds
+
         # Update database
         await self._update_heart_pool(user_id, challenge_type, heart_pool)
 
         return result
+
+    async def undo_last_action(
+        self,
+        user_id: str,
+        challenge_type: str,
+        challenge_id: str,
+        user: Optional[UserInDB] = None
+    ) -> Dict[str, Any]:
+        """
+        Undo the last heart consumption action (1-second forgiveness mechanic)
+
+        Args:
+            user_id: User ID
+            challenge_type: Challenge type
+            challenge_id: Challenge ID to verify undo validity
+            user: Optional user object to avoid DB fetch
+
+        Returns:
+            {
+                "success": bool,
+                "hearts_restored": int,
+                "shield_restored": bool,
+                "streak_restored": int,
+                "error": Optional[str]
+            }
+        """
+        # Get current heart pool state
+        current_hearts, heart_pool = await self.get_current_hearts(user_id, challenge_type, user=user)
+
+        # Validation checks
+        if not heart_pool.last_action_undoable:
+            return {
+                "success": False,
+                "hearts_restored": 0,
+                "shield_restored": False,
+                "streak_restored": 0,
+                "error": "No undoable action found"
+            }
+
+        if heart_pool.last_action_challenge_id != challenge_id:
+            return {
+                "success": False,
+                "hearts_restored": 0,
+                "shield_restored": False,
+                "streak_restored": 0,
+                "error": "Challenge ID mismatch - cannot undo different challenge"
+            }
+
+        if not heart_pool.last_action_timestamp:
+            return {
+                "success": False,
+                "hearts_restored": 0,
+                "shield_restored": False,
+                "streak_restored": 0,
+                "error": "No timestamp found for last action"
+            }
+
+        # Check if undo window has expired (5 seconds - buffer over 3 second UI window)
+        elapsed_seconds = (datetime.utcnow() - heart_pool.last_action_timestamp).total_seconds()
+        if elapsed_seconds > 5.0:
+            # Clear undo state if expired
+            heart_pool.last_action_undoable = False
+            await self._update_heart_pool(user_id, challenge_type, heart_pool)
+            return {
+                "success": False,
+                "hearts_restored": 0,
+                "shield_restored": False,
+                "streak_restored": 0,
+                "error": "Undo window expired (5 seconds)"
+            }
+
+        # Restore previous state
+        hearts_restored = heart_pool.last_action_hearts_before - heart_pool.current_hearts
+        shield_restored = heart_pool.last_action_shield_before and not heart_pool.streak_shield_active
+
+        heart_pool.current_hearts = heart_pool.last_action_hearts_before
+        heart_pool.streak_shield_active = heart_pool.last_action_shield_before
+        heart_pool.current_correct_streak = heart_pool.last_action_streak_before
+
+        # If we're restoring hearts from 0, clear refill state
+        if heart_pool.current_hearts > 0:
+            heart_pool.refill_started_at = None
+
+        # Clear undo state (can only undo once)
+        heart_pool.last_action_undoable = False
+        heart_pool.last_action_timestamp = None
+        heart_pool.last_action_challenge_id = None
+
+        # Update database
+        await self._update_heart_pool(user_id, challenge_type, heart_pool)
+
+        # Log undo event
+        if user is None:
+            user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user_doc = await self.db.users.find_one({"_id": user_id_obj})
+            user_doc["_id"] = str(user_doc["_id"])
+            user = UserInDB(**user_doc)
+
+        asyncio.create_task(
+            self._log_heart_event(
+                user_id=user_id,
+                event_type="action_undone",
+                challenge_type=challenge_type,
+                hearts_before=heart_pool.last_action_hearts_before - hearts_restored,
+                hearts_after=heart_pool.current_hearts,
+                subscription_plan=user.subscription_plan or "try_learn",
+                user=user
+            )
+        )
+
+        return {
+            "success": True,
+            "hearts_restored": hearts_restored,
+            "shield_restored": shield_restored,
+            "streak_restored": heart_pool.current_correct_streak,
+            "error": None
+        }
 
     def _get_refill_info(self, heart_pool: HeartPool) -> Dict[str, Any]:
         """Calculate refill timing information"""
