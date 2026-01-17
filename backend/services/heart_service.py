@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple, Any
 from bson import ObjectId
+import asyncio
 from models import UserInDB, HeartPool, HeartSystemState, HeartEvent
 from database import database
 
@@ -86,19 +87,32 @@ class HeartService:
     async def get_current_hearts(
         self,
         user_id: str,
-        challenge_type: str
+        challenge_type: str,
+        user: Optional[UserInDB] = None
     ) -> Tuple[int, HeartPool]:
         """
         Get current hearts for a challenge type (with real-time refill calculation)
         Returns: (current_hearts, updated_heart_pool)
+
+        Args:
+            user_id: User ID (for DB operations)
+            challenge_type: Challenge type to check
+            user: Optional user object to avoid DB fetch
         """
-        # Convert string ID to ObjectId for MongoDB query
-        user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
-        user = await self.db.users.find_one({"_id": user_id_obj})
-        if not user or "heart_system" not in user:
+        # If user object not provided, fetch from DB
+        if user is None:
+            # Convert string ID to ObjectId for MongoDB query
+            user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user_doc = await self.db.users.find_one({"_id": user_id_obj})
+            if not user_doc or "heart_system" not in user_doc:
+                raise ValueError("Heart system not initialized for user")
+            user_doc["_id"] = str(user_doc["_id"])
+            user = UserInDB(**user_doc)
+
+        if not user.heart_system:
             raise ValueError("Heart system not initialized for user")
 
-        heart_system = HeartSystemState(**user["heart_system"])
+        heart_system = user.heart_system
         heart_pool = heart_system.heart_pools.get(challenge_type)
 
         # Auto-migrate: Add missing heart pool for new challenge types
@@ -108,7 +122,7 @@ class HeartService:
 
             # Create new heart pool for this challenge type
             tier_config = self.TIER_CONFIG.get(
-                user.get("subscription_plan", "try_learn"),
+                user.subscription_plan or "try_learn",
                 self.TIER_CONFIG["try_learn"]
             )
             heart_pool = HeartPool(
@@ -132,7 +146,7 @@ class HeartService:
             print(f"[HEART_SERVICE] ✅ Auto-migrated {challenge_type} heart pool for user {user_id}")
 
         # Language Mastery: always return max hearts
-        user_plan = user.get("subscription_plan", "try_learn")
+        user_plan = user.subscription_plan or "try_learn"
         if user_plan == "team_mastery":
             return (heart_pool.max_hearts, heart_pool)
 
@@ -186,10 +200,18 @@ class HeartService:
         user_id: str,
         challenge_type: str,
         is_correct: bool,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
+        user: Optional[UserInDB] = None
     ) -> Dict[str, Any]:
         """
         Process challenge answer and update hearts/shield
+
+        Args:
+            user_id: User ID (for DB operations)
+            challenge_type: Challenge type
+            is_correct: Whether answer was correct
+            session_id: Optional session ID for logging
+            user: Optional user object to avoid DB fetch
 
         Returns:
             {
@@ -203,11 +225,17 @@ class HeartService:
                 "refill_info": {...}
             }
         """
-        current_hearts, heart_pool = await self.get_current_hearts(user_id, challenge_type)
-        # Convert string ID to ObjectId for MongoDB query
-        user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
-        user = await self.db.users.find_one({"_id": user_id_obj})
-        user_plan = user.get("subscription_plan", "try_learn")
+        # Pass user object to avoid redundant DB fetch
+        current_hearts, heart_pool = await self.get_current_hearts(user_id, challenge_type, user=user)
+
+        # If user not provided, fetch it (should not happen with optimization)
+        if user is None:
+            user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user_doc = await self.db.users.find_one({"_id": user_id_obj})
+            user_doc["_id"] = str(user_doc["_id"])
+            user = UserInDB(**user_doc)
+
+        user_plan = user.subscription_plan or "try_learn"
 
         result = {
             "hearts_lost": False,
@@ -241,15 +269,18 @@ class HeartService:
                 result["shield_activated"] = True
                 result["shield_active"] = True
 
-                # Log shield activation
-                await self._log_heart_event(
-                    user_id=user_id,
-                    event_type="shield_activated",
-                    challenge_type=challenge_type,
-                    hearts_before=current_hearts,
-                    hearts_after=current_hearts,
-                    session_id=session_id,
-                    subscription_plan=user_plan
+                # Log shield activation (non-blocking)
+                asyncio.create_task(
+                    self._log_heart_event(
+                        user_id=user_id,
+                        event_type="shield_activated",
+                        challenge_type=challenge_type,
+                        hearts_before=current_hearts,
+                        hearts_after=current_hearts,
+                        session_id=session_id,
+                        subscription_plan=user_plan,
+                        user=user
+                    )
                 )
         else:
             # Wrong answer: check shield or lose heart
@@ -259,15 +290,18 @@ class HeartService:
                 heart_pool.streak_shield_activated_at = None
                 result["shield_used"] = True
 
-                # Log shield usage
-                await self._log_heart_event(
-                    user_id=user_id,
-                    event_type="shield_used",
-                    challenge_type=challenge_type,
-                    hearts_before=current_hearts,
-                    hearts_after=current_hearts,
-                    session_id=session_id,
-                    subscription_plan=user_plan
+                # Log shield usage (non-blocking)
+                asyncio.create_task(
+                    self._log_heart_event(
+                        user_id=user_id,
+                        event_type="shield_used",
+                        challenge_type=challenge_type,
+                        hearts_before=current_hearts,
+                        hearts_after=current_hearts,
+                        session_id=session_id,
+                        subscription_plan=user_plan,
+                        user=user
+                    )
                 )
             else:
                 # Lose 1 heart
@@ -282,29 +316,35 @@ class HeartService:
                     result["out_of_hearts"] = True
                     result["refill_info"] = self._get_refill_info(heart_pool)
 
-                    # Log refill started
-                    await self._log_heart_event(
-                        user_id=user_id,
-                        event_type="refill_started",
-                        challenge_type=challenge_type,
-                        hearts_before=current_hearts,
-                        hearts_after=0,
-                        refill_complete_at=heart_pool.refill_started_at + timedelta(
-                            minutes=heart_pool.refill_rate_minutes * heart_pool.max_hearts
-                        ),
-                        session_id=session_id,
-                        subscription_plan=user_plan
+                    # Log refill started (non-blocking)
+                    asyncio.create_task(
+                        self._log_heart_event(
+                            user_id=user_id,
+                            event_type="refill_started",
+                            challenge_type=challenge_type,
+                            hearts_before=current_hearts,
+                            hearts_after=0,
+                            refill_complete_at=heart_pool.refill_started_at + timedelta(
+                                minutes=heart_pool.refill_rate_minutes * heart_pool.max_hearts
+                            ),
+                            session_id=session_id,
+                            subscription_plan=user_plan,
+                            user=user
+                        )
                     )
 
-                # Log heart loss
-                await self._log_heart_event(
-                    user_id=user_id,
-                    event_type="heart_lost",
-                    challenge_type=challenge_type,
-                    hearts_before=current_hearts,
-                    hearts_after=heart_pool.current_hearts,
-                    session_id=session_id,
-                    subscription_plan=user_plan
+                # Log heart loss (non-blocking)
+                asyncio.create_task(
+                    self._log_heart_event(
+                        user_id=user_id,
+                        event_type="heart_lost",
+                        challenge_type=challenge_type,
+                        hearts_before=current_hearts,
+                        hearts_after=heart_pool.current_hearts,
+                        session_id=session_id,
+                        subscription_plan=user_plan,
+                        user=user
+                    )
                 )
 
             # Reset streak on wrong answer
@@ -386,12 +426,24 @@ class HeartService:
         refill_complete_at: Optional[datetime] = None,
         user_action: Optional[str] = None,
         session_id: Optional[str] = None,
-        session_progress: Optional[Dict] = None
+        session_progress: Optional[Dict] = None,
+        user: Optional[UserInDB] = None
     ):
-        """Log heart event to analytics collection"""
-        # Convert string ID to ObjectId for MongoDB query
-        user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
-        user = await self.db.users.find_one({"_id": user_id_obj})
+        """
+        Log heart event to analytics collection
+
+        Args:
+            user: Optional user object to avoid DB fetch (optimization)
+        """
+        # If user object not provided, fetch from DB
+        if user is None:
+            user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user_doc = await self.db.users.find_one({"_id": user_id_obj})
+            subscription_status = user_doc.get("subscription_status", "inactive")
+            user_timezone = user_doc.get("timezone", "UTC")
+        else:
+            subscription_status = user.subscription_status or "inactive"
+            user_timezone = user.timezone or "UTC"
 
         event = {
             "user_id": user_id,
@@ -404,9 +456,9 @@ class HeartService:
             "session_id": session_id,
             "session_progress": session_progress,
             "subscription_plan": subscription_plan,
-            "subscription_status": user.get("subscription_status", "inactive"),
+            "subscription_status": subscription_status,
             "timestamp": datetime.utcnow(),
-            "user_timezone": user.get("timezone", "UTC")
+            "user_timezone": user_timezone
         }
 
         await self.db.heart_events.insert_one(event)

@@ -278,12 +278,18 @@ async def consume_heart(
     # Ensure heart system is initialized
     if not user.heart_system:
         await heart_service.initialize_heart_system(user)
+        # Refetch user after initialization
+        user_doc = await heart_service.db.users.find_one({"_id": user_id})
+        user_doc["_id"] = str(user_doc["_id"])
+        user = UserInDB(**user_doc)
 
+    # Pass user object to avoid redundant DB fetches (optimization)
     result = await heart_service.consume_heart(
         user_id=user.id,
         challenge_type=request.challenge_type,
         is_correct=request.is_correct,
-        session_id=request.session_id
+        session_id=request.session_id,
+        user=user
     )
 
     # Convert refill_info dict to RefillInfoResponse if present
