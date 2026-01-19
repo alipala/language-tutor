@@ -112,6 +112,10 @@ app.include_router(stripe_router)
 from routes.apple_iap_routes import router as apple_iap_router
 app.include_router(apple_iap_router)
 
+# Include Google Play Billing routes
+from routes.google_play_routes import router as google_play_router
+app.include_router(google_play_router)
+
 # Include upgrade routes
 from routers.upgrade_routes import router as upgrade_router
 app.include_router(upgrade_router)
