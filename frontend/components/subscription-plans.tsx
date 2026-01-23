@@ -137,7 +137,7 @@ const annualPlans: PricingCard[] = [
 // Stripe price IDs from environment variables
 const STRIPE_PRICES = {
   monthly: {
-    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1SoWXzJcquSiYwWNV5HYiCGU",
+    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
     team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
   },
   annual: {

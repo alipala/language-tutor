@@ -22,7 +22,7 @@ export default function CheckoutPage() {
   // Stripe price IDs from environment variables
   const STRIPE_PRICES = {
     monthly: {
-      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1SoWXzJcquSiYwWNV5HYiCGU",
+      fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
       language_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL",
       // Backward compatibility
       team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
