@@ -200,13 +200,14 @@ def get_mock_news_articles() -> List[Dict[str, Any]]:
     ]
 
 
-def get_diverse_news(exclude_urls: List[str] = None) -> List[Dict[str, Any]]:
+def get_diverse_news(exclude_urls: List[str] = None, categories: List[str] = None) -> List[Dict[str, Any]]:
     """
     Main function to get diverse news articles
     Searches across multiple categories to ensure variety
 
     Args:
         exclude_urls: List of article URLs to exclude (previously used)
+        categories: List of categories to search (optional, defaults to MVP categories)
 
     Returns:
         List of 5-8 diverse news articles
@@ -214,15 +215,18 @@ def get_diverse_news(exclude_urls: List[str] = None) -> List[Dict[str, Any]]:
     if exclude_urls is None:
         exclude_urls = []
 
-    # MVP: Search these categories
-    categories = [
-        "technology",
-        "science",
-        "health",
-        "culture",
-        "sports",
-        "environment"
-    ]
+    # Use provided categories or default MVP categories
+    if categories is None:
+        categories = [
+            "technology",
+            "science",
+            "health",
+            "culture",
+            "sports",
+            "environment"
+        ]
+
+    logger.info(f"[NEWS_TOOLS] Searching categories: {categories}")
 
     # Try to get more articles per category to allow for filtering
     articles_per_cat = 3 if exclude_urls else 1

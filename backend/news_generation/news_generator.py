@@ -40,13 +40,21 @@ class NewsGenerationError(Exception):
     pass
 
 
-async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
+async def generate_daily_news(
+    retry_count: int = 0,
+    languages: List[str] = None,
+    levels: List[str] = None,
+    categories: List[str] = None
+) -> Dict[str, Any]:
     """
     Main function to generate daily news content
     Orchestrates all agents and saves to MongoDB
 
     Args:
         retry_count: Current retry attempt (0-indexed)
+        languages: List of language codes to generate (defaults to MVP_LANGUAGES)
+        levels: List of CEFR levels to generate (defaults to MVP_LEVELS)
+        categories: List of news categories to search (defaults to MVP categories)
 
     Returns:
         Generation statistics and status
@@ -54,7 +62,16 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
     Raises:
         NewsGenerationError: If generation fails after all retries
     """
+    # Use provided parameters or defaults
+    if languages is None:
+        languages = MVP_LANGUAGES
+    if levels is None:
+        levels = MVP_LEVELS
+
     logger.info(f"[NEWS_GEN] Starting daily news generation (attempt {retry_count + 1}/{MAX_RETRY_COUNT})")
+    logger.info(f"[NEWS_GEN] Languages: {languages}")
+    logger.info(f"[NEWS_GEN] Levels: {levels}")
+    logger.info(f"[NEWS_GEN] Categories: {categories or 'default MVP categories'}")
 
     # Get current date in CET
     cet = pytz.timezone('CET')
@@ -121,7 +138,7 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
             logger.info(f"[NEWS_GEN] Excluding {len(used_urls)} previously used articles from last 7 days")
 
         # Use our news tools to get articles (works without CrewAI)
-        candidate_articles = get_diverse_news(exclude_urls=used_urls)
+        candidate_articles = get_diverse_news(exclude_urls=used_urls, categories=categories)
 
         if not candidate_articles:
             raise NewsGenerationError("No articles found in search")
@@ -148,14 +165,16 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
         logger.info("[NEWS_GEN] STEP 3: Generating adaptations (parallel processing)...")
 
         # Calculate total variations
-        total_variations = len(safe_articles) * len(MVP_LANGUAGES) * len(MVP_LEVELS)
-        logger.info(f"[NEWS_GEN] Generating {total_variations} variations ({len(safe_articles)} articles × {len(MVP_LANGUAGES)} langs × {len(MVP_LEVELS)} levels)")
+        total_variations = len(safe_articles) * len(languages) * len(levels)
+        logger.info(f"[NEWS_GEN] Generating {total_variations} variations ({len(safe_articles)} articles × {len(languages)} langs × {len(levels)} levels)")
 
         # Generate all variations in parallel
         article_docs = await generate_all_variations_parallel(
             safe_articles,
             batch_id,
-            today_start_utc
+            today_start_utc,
+            languages=languages,
+            levels=levels
         )
 
         # Step 5: Save to MongoDB
@@ -211,7 +230,7 @@ async def generate_daily_news(retry_count: int = 0) -> Dict[str, Any]:
         if retry_count < MAX_RETRY_COUNT - 1:
             logger.info(f"[NEWS_GEN] Retrying... (attempt {retry_count + 2}/{MAX_RETRY_COUNT})")
             await asyncio.sleep(60)  # Wait 1 minute before retry
-            return await generate_daily_news(retry_count + 1)
+            return await generate_daily_news(retry_count + 1, languages=languages, levels=levels, categories=categories)
         else:
             raise NewsGenerationError(f"Failed after {MAX_RETRY_COUNT} attempts: {str(e)}")
 
@@ -237,8 +256,11 @@ async def evaluate_safety_simple(articles: List[Dict[str, Any]]) -> List[Dict[st
     safe_articles = []
 
     for article in articles:
-        title_lower = article.get("title", "").lower()
-        summary_lower = article.get("summary", "").lower()
+        # Handle None values explicitly
+        title = article.get("title") or ""
+        summary = article.get("summary") or ""
+        title_lower = title.lower()
+        summary_lower = summary.lower()
 
         # Check for avoid keywords
         has_bad_keywords = any(
@@ -264,7 +286,9 @@ async def evaluate_safety_simple(articles: List[Dict[str, Any]]) -> List[Dict[st
 async def generate_all_variations_parallel(
     articles: List[Dict[str, Any]],
     batch_id: ObjectId,
-    date: datetime
+    date: datetime,
+    languages: List[str] = None,
+    levels: List[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Generate all article variations in parallel
@@ -274,14 +298,21 @@ async def generate_all_variations_parallel(
         articles: List of safe articles
         batch_id: Batch ID
         date: Generation date
+        languages: List of language codes (defaults to MVP_LANGUAGES)
+        levels: List of CEFR levels (defaults to MVP_LEVELS)
 
     Returns:
         List of article documents ready for MongoDB
     """
+    if languages is None:
+        languages = MVP_LANGUAGES
+    if levels is None:
+        levels = MVP_LEVELS
+
     tasks = []
 
     for article in articles:
-        task = generate_single_article_all_variations(article, batch_id, date)
+        task = generate_single_article_all_variations(article, batch_id, date, languages=languages, levels=levels)
         tasks.append(task)
 
     # Run all article generations in parallel
@@ -301,7 +332,9 @@ async def generate_all_variations_parallel(
 async def generate_single_article_all_variations(
     article: Dict[str, Any],
     batch_id: ObjectId,
-    date: datetime
+    date: datetime,
+    languages: List[str] = None,
+    levels: List[str] = None
 ) -> Dict[str, Any]:
     """
     Generate all language/level variations for a single article
@@ -310,10 +343,17 @@ async def generate_single_article_all_variations(
         article: Article metadata
         batch_id: Batch ID
         date: Generation date
+        languages: List of language codes (defaults to MVP_LANGUAGES)
+        levels: List of CEFR levels (defaults to MVP_LEVELS)
 
     Returns:
         MongoDB document with all variations
     """
+    if languages is None:
+        languages = MVP_LANGUAGES
+    if levels is None:
+        levels = MVP_LEVELS
+
     logger.info(f"[NEWS_GEN] Generating variations for: {article.get('title', '')}")
 
     # Create base document
@@ -338,10 +378,10 @@ async def generate_single_article_all_variations(
     }
 
     # Generate all variations
-    for language in MVP_LANGUAGES:
+    for language in languages:
         doc["variations"][language] = {}
 
-        for level in MVP_LEVELS:
+        for level in levels:
             logger.info(f"[NEWS_GEN]   → {language}/{level}")
 
             # Generate adaptation (using simple templates for MVP to reduce costs)

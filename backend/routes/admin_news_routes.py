@@ -37,12 +37,12 @@ async def trigger_manual_news_generation(request: NewsGenerationRequest):
         print(f"[ADMIN] Levels: {request.levels}")
         print(f"[ADMIN] Categories: {request.categories}")
 
-        # Temporarily set configuration
-        # Note: In production, you'd want to pass these to generate_daily_news()
-        # For now, generate_daily_news uses MVP defaults
-
-        # Trigger generation
-        result = await generate_daily_news()
+        # Trigger generation with selected parameters
+        result = await generate_daily_news(
+            languages=request.languages,
+            levels=request.levels,
+            categories=request.categories
+        )
 
         return {
             "success": True,
@@ -50,9 +50,9 @@ async def trigger_manual_news_generation(request: NewsGenerationRequest):
             "batch_id": result["batch_id"],
             "article_count": result["article_count"],
             "duration_seconds": result["duration_seconds"],
-            "languages_requested": request.languages,
-            "levels_requested": request.levels,
-            "categories_requested": request.categories,
+            "languages_used": request.languages,
+            "levels_used": request.levels,
+            "categories_used": request.categories,
         }
 
     except Exception as e:
