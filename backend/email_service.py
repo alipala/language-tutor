@@ -243,6 +243,190 @@ async def send_verification_email(email: str, name: str, verification_token: str
         print(f"❌ General error sending verification email to {email}: {str(e)}")
         return False
 
+async def send_password_reset_email(email: str, name: str, reset_token: str) -> bool:
+    """Send password reset email with reset link"""
+    try:
+        print(f"[EMAIL] Attempting to send password reset email to {email}")
+
+        # Create password reset link - points to backend API GET endpoint that serves HTML
+        reset_link = f"{FRONTEND_URL}/api/auth/reset-password?token={reset_token}"
+        print(f"[EMAIL] Password reset link: {reset_link}")
+
+        # Create HTML email content
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reset Your Password - MyTaco AI</title>
+            <style>
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: #f8f9fa;
+                }}
+                .container {{
+                    background-color: #ffffff;
+                    border-radius: 12px;
+                    padding: 40px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 30px;
+                }}
+                .logo {{
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #4ECFBF;
+                    margin-bottom: 10px;
+                }}
+                .title {{
+                    font-size: 24px;
+                    font-weight: 600;
+                    color: #2d3748;
+                    margin-bottom: 20px;
+                }}
+                .content {{
+                    font-size: 16px;
+                    line-height: 1.6;
+                    color: #4a5568;
+                    margin-bottom: 30px;
+                }}
+                .reset-button {{
+                    display: inline-block;
+                    background-color: #4ECFBF;
+                    color: white;
+                    padding: 14px 28px;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 16px;
+                    text-align: center;
+                    margin: 20px 0;
+                }}
+                .alternative-link {{
+                    font-size: 14px;
+                    color: #718096;
+                    margin-top: 20px;
+                    padding: 15px;
+                    background-color: #f7fafc;
+                    border-radius: 6px;
+                    word-break: break-all;
+                }}
+                .security-note {{
+                    background-color: #fef5e7;
+                    border-left: 4px solid #f6ad55;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }}
+                .footer {{
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 1px solid #e2e8f0;
+                    font-size: 14px;
+                    color: #718096;
+                    text-align: center;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">🔐 MyTaco AI</div>
+                    <h1 class="title">Reset Your Password</h1>
+                </div>
+
+                <div class="content">
+                    <p>Hi {name},</p>
+
+                    <p>We received a request to reset the password for your MyTaco AI account.</p>
+
+                    <p>Click the button below to reset your password:</p>
+
+                    <div style="text-align: center;">
+                        <a href="{reset_link}" class="reset-button">Reset Password</a>
+                    </div>
+
+                    <div class="security-note">
+                        <strong>🔒 Security Note:</strong> This password reset link will expire in 1 hour for your security.
+                    </div>
+
+                    <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+                    <div class="alternative-link">
+                        {reset_link}
+                    </div>
+
+                    <p><strong>Didn't request a password reset?</strong> You can safely ignore this email. Your password will not be changed.</p>
+                </div>
+
+                <div class="footer">
+                    <p>Need help? Contact us at <a href="mailto:hello@mytacoai.com" style="color: #4ECFBF;">hello@mytacoai.com</a></p>
+                    <p>&copy; 2025 MyTaco AI. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Create plain text version
+        text_content = f"""
+Hi {name},
+
+We received a request to reset the password for your MyTaco AI account.
+
+Click the link below to reset your password:
+
+{reset_link}
+
+This password reset link will expire in 1 hour for your security.
+
+Didn't request a password reset? You can safely ignore this email. Your password will not be changed.
+
+Need help? Contact us at hello@mytacoai.com
+
+Best regards,
+The MyTaco AI Team
+        """
+
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "Reset Your Password - MyTaco AI"
+        msg['From'] = f"MyTaco AI <{FROM_EMAIL}>"
+        msg['To'] = email
+
+        # Attach both versions
+        text_part = MIMEText(text_content, 'plain')
+        html_part = MIMEText(html_content, 'html')
+
+        msg.attach(text_part)
+        msg.attach(html_part)
+
+        # Send email
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                server.send_message(msg)
+
+        print(f"✅ Password reset email sent successfully to {email}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error sending password reset email to {email}: {str(e)}")
+        return False
+
 async def send_welcome_email(email: str, name: str) -> bool:
     """Send welcome email after successful verification"""
     try:

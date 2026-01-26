@@ -56,7 +56,7 @@ from auth import (
     verify_apple_token,
     get_user_by_apple_id
 )
-from email_service import send_welcome_email
+from email_service import send_welcome_email, send_password_reset_email
 from database import users_collection, tutors_collection, institutions_collection
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
@@ -459,23 +459,260 @@ async def forgot_password(request: PasswordResetRequest, background_tasks: Backg
     """
     Request a password reset token
     """
+    print(f"[FORGOT_PASSWORD] Password reset requested for: {request.email}")
+
     # Create password reset token
     token = await create_password_reset_token(request.email)
-    
-    # In a real application, you would send an email with the reset link
-    # For now, we'll just log it
+
+    # If token was created successfully, send the email
     if token:
-        print(f"Password reset token for {request.email}: {token}")
-        # In production, you would use a background task to send an email
-        # background_tasks.add_task(send_reset_email, request.email, token)
-    
+        print(f"[FORGOT_PASSWORD] Token created: {token[:10]}...")
+
+        # Get user details for personalized email
+        user = await users_collection.find_one({"email": request.email.lower().strip()})
+        if user:
+            name = user.get("name", "User")
+            print(f"[FORGOT_PASSWORD] User found: {name}")
+
+            # Send password reset email in background
+            background_tasks.add_task(send_password_reset_email, request.email, name, token)
+            print(f"[FORGOT_PASSWORD] Email task added to background queue")
+        else:
+            print(f"[FORGOT_PASSWORD] ⚠️ User not found for email: {request.email}")
+    else:
+        print(f"[FORGOT_PASSWORD] ⚠️ Token creation failed for: {request.email}")
+
     # Always return 204 to prevent email enumeration
     return None
+
+@router.get("/reset-password")
+async def show_reset_password_form(token: str):
+    """
+    Show password reset form (web page)
+    """
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password - MyTaco AI</title>
+        <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                background: linear-gradient(135deg, #4ECFBF, #3a9e92);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }}
+            .container {{
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                max-width: 500px;
+                width: 100%;
+                padding: 40px;
+            }}
+            .logo {{
+                text-align: center;
+                font-size: 32px;
+                color: #4ECFBF;
+                margin-bottom: 10px;
+            }}
+            h1 {{
+                text-align: center;
+                color: #2d3748;
+                font-size: 28px;
+                margin-bottom: 10px;
+            }}
+            .subtitle {{
+                text-align: center;
+                color: #718096;
+                margin-bottom: 30px;
+            }}
+            .form-group {{
+                margin-bottom: 20px;
+            }}
+            label {{
+                display: block;
+                color: #4a5568;
+                font-weight: 600;
+                margin-bottom: 8px;
+                font-size: 14px;
+            }}
+            input {{
+                width: 100%;
+                padding: 14px 16px;
+                border: 2px solid #e2e8f0;
+                border-radius: 8px;
+                font-size: 16px;
+                transition: border-color 0.3s;
+            }}
+            input:focus {{
+                outline: none;
+                border-color: #4ECFBF;
+            }}
+            .error {{
+                color: #e53e3e;
+                font-size: 14px;
+                margin-top: 5px;
+                display: none;
+            }}
+            button {{
+                width: 100%;
+                background: #4ECFBF;
+                color: white;
+                padding: 14px;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background 0.3s;
+            }}
+            button:hover {{
+                background: #3bb3a3;
+            }}
+            button:disabled {{
+                background: #a0aec0;
+                cursor: not-allowed;
+            }}
+            .message {{
+                padding: 16px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                display: none;
+            }}
+            .message.success {{
+                background: #c6f6d5;
+                color: #22543d;
+                border: 1px solid #9ae6b4;
+            }}
+            .message.error {{
+                background: #fed7d7;
+                color: #742a2a;
+                border: 1px solid #fc8181;
+            }}
+            .password-requirements {{
+                font-size: 13px;
+                color: #718096;
+                margin-top: 8px;
+                line-height: 1.5;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">🔐</div>
+            <h1>Reset Your Password</h1>
+            <p class="subtitle">Enter your new password below</p>
+
+            <div id="message" class="message"></div>
+
+            <form id="resetForm">
+                <div class="form-group">
+                    <label for="password">New Password</label>
+                    <input type="password" id="password" name="password" required minlength="8">
+                    <p class="password-requirements">Must be at least 8 characters</p>
+                    <p id="passwordError" class="error"></p>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    <p id="confirmError" class="error"></p>
+                </div>
+
+                <button type="submit" id="submitBtn">Reset Password</button>
+            </form>
+        </div>
+
+        <script>
+            const form = document.getElementById('resetForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const message = document.getElementById('message');
+            const token = '{token}';
+
+            form.addEventListener('submit', async (e) => {{
+                e.preventDefault();
+
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const passwordError = document.getElementById('passwordError');
+                const confirmError = document.getElementById('confirmError');
+
+                // Reset errors
+                passwordError.style.display = 'none';
+                confirmError.style.display = 'none';
+                message.style.display = 'none';
+
+                // Validate
+                if (password.length < 8) {{
+                    passwordError.textContent = 'Password must be at least 8 characters';
+                    passwordError.style.display = 'block';
+                    return;
+                }}
+
+                if (password !== confirmPassword) {{
+                    confirmError.textContent = 'Passwords do not match';
+                    confirmError.style.display = 'block';
+                    return;
+                }}
+
+                // Submit
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Resetting...';
+
+                try {{
+                    const response = await fetch('/api/auth/reset-password', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json'
+                        }},
+                        body: JSON.stringify({{
+                            token: token,
+                            new_password: password
+                        }})
+                    }});
+
+                    if (response.ok) {{
+                        message.className = 'message success';
+                        message.textContent = '✅ Password reset successfully! You can now close this page and log in with your new password.';
+                        message.style.display = 'block';
+                        form.style.display = 'none';
+                    }} else {{
+                        const error = await response.json();
+                        message.className = 'message error';
+                        message.textContent = '❌ ' + (error.detail || 'Failed to reset password. The link may have expired.');
+                        message.style.display = 'block';
+                    }}
+                }} catch (error) {{
+                    message.className = 'message error';
+                    message.textContent = '❌ An error occurred. Please try again.';
+                    message.style.display = 'block';
+                }} finally {{
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Reset Password';
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """
+
+    return HTMLResponse(html_content)
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
 async def confirm_reset_password(request: PasswordResetConfirm):
     """
-    Reset password using token
+    Reset password using token (API endpoint)
     """
     success = await reset_password(request.token, request.new_password)
     if not success:
