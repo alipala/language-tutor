@@ -1153,3 +1153,296 @@ class UnifiedStatsResponse(BaseModel):
     daily: DailyStatsResponse
     recent: RecentPerformanceResponse
     lifetime: LifetimeProgressResponse
+
+
+# ============================================================================
+# SPEAKING DNA MODELS
+# Language learning personalization through speaking pattern analysis
+# ============================================================================
+
+class DNAStrandRhythm(BaseModel):
+    """Speaking rhythm characteristics"""
+    type: str  # thoughtful_pacer, rapid_responder, steady_speaker
+    words_per_minute_avg: float
+    pause_duration_avg_ms: float
+    consistency_score: float  # 0-1 scale
+    description: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAStrandConfidence(BaseModel):
+    """Speaking confidence indicators"""
+    level: str  # hesitant, building, comfortable, fluent
+    score: float  # 0-1 scale
+    response_latency_avg_ms: float
+    filler_rate_per_minute: float
+    trend: str  # declining, stable, improving
+    description: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAStrandVocabulary(BaseModel):
+    """Vocabulary usage patterns"""
+    style: str  # adventurous, safety_first, balanced
+    unique_words_per_session: int
+    new_word_attempt_rate: float  # 0-1 scale
+    complexity_level: str  # beginner, intermediate, advanced
+    description: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAStrandAccuracy(BaseModel):
+    """Grammar and accuracy patterns"""
+    pattern: str  # perfectionist, risk_taker, balanced
+    grammar_accuracy: float  # 0-1 scale
+    common_errors: List[str]
+    improving_areas: List[str]
+    description: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAStrandLearning(BaseModel):
+    """Learning style indicators"""
+    type: str  # explorer, persistent, cautious
+    retry_rate: float  # 0-1 scale
+    challenge_acceptance: float  # 0-1 scale
+    description: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAStrandEmotional(BaseModel):
+    """Emotional and confidence progression patterns"""
+    pattern: str  # quick_starter, slow_warmer, consistent
+    session_start_confidence: float  # 0-1 scale
+    session_end_confidence: float  # 0-1 scale
+    anxiety_triggers: List[str]
+    description: str
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAStrands(BaseModel):
+    """Complete DNA strand collection (6 strands)"""
+    rhythm: DNAStrandRhythm
+    confidence: DNAStrandConfidence
+    vocabulary: DNAStrandVocabulary
+    accuracy: DNAStrandAccuracy
+    learning: DNAStrandLearning
+    emotional: DNAStrandEmotional
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class OverallDNAProfile(BaseModel):
+    """Overall speaking DNA profile summary"""
+    speaker_archetype: str  # e.g., "The Thoughtful Builder"
+    summary: str
+    coach_approach: str  # patient_encourager, challenge_provider, balanced_guide
+    strengths: List[str]
+    growth_areas: List[str]
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class BaselineAssessment(BaseModel):
+    """Initial speaking assessment metrics"""
+    date: datetime
+    acoustic_metrics: Dict[str, float]  # pitch_mean, jitter, shimmer, etc.
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class SpeakingDNAProfile(BaseModel):
+    """Complete Speaking DNA profile for a user-language pair"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    language: str
+
+    # Core DNA data
+    dna_strands: DNAStrands
+    overall_profile: OverallDNAProfile
+
+    # Optional baseline assessment
+    baseline_assessment: Optional[BaselineAssessment] = None
+
+    # Metrics
+    sessions_analyzed: int = 0
+    total_speaking_minutes: float = 0
+
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class DNAHistorySnapshot(BaseModel):
+    """Weekly DNA snapshot for evolution tracking"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    language: str
+    week_start: datetime
+    week_number: int  # Week number since user started
+
+    # Simplified strand snapshots
+    strand_snapshots: Dict[str, Dict[str, Any]]  # Simplified strand data
+
+    # Week statistics
+    week_stats: Dict[str, Any]  # sessions_completed, total_minutes, breakthroughs_count
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class SpeakingBreakthrough(BaseModel):
+    """Breakthrough moment detection and storage"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    language: str
+    session_id: Optional[str] = None
+
+    # Breakthrough details
+    breakthrough_type: str  # confidence_jump, vocabulary_expansion, etc.
+    category: str  # Which DNA strand: confidence, vocabulary, etc.
+    title: str
+    description: str
+    emoji: str
+
+    # Metrics
+    metrics: Dict[str, Any]  # before/after comparison
+
+    # Context
+    context: Dict[str, Any]  # session_type, topic, trigger_sentence
+
+    # Status
+    celebrated: bool = False
+    shared: bool = False
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+# API Request/Response Models
+
+class SessionTurnData(BaseModel):
+    """User turn data for DNA analysis"""
+    transcript: str
+    start_time_ms: int
+    end_time_ms: int
+    ai_prompt_end_time_ms: Optional[int] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class SessionAnalysisInput(BaseModel):
+    """Input for DNA session analysis"""
+    session_id: str
+    session_type: str  # learning, freestyle, news
+    duration_seconds: int
+    user_turns: List[SessionTurnData]
+    corrections_received: Optional[List[Dict[str, Any]]] = []
+    challenges_offered: int = 0
+    challenges_accepted: int = 0
+    topics_discussed: Optional[List[str]] = []
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class SessionInsights(BaseModel):
+    """Insights generated from session analysis"""
+    insights: List[str]
+    highlight_stat: Dict[str, Any]
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class AnalyzeSessionResponse(BaseModel):
+    """Response from session analysis"""
+    success: bool
+    breakthroughs: List[SpeakingBreakthrough]
+    session_insights: SessionInsights
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAProfileResponse(BaseModel):
+    """Response with DNA profile data"""
+    profile: Optional[SpeakingDNAProfile] = None
+    has_profile: bool
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNAEvolutionResponse(BaseModel):
+    """Response with DNA evolution history"""
+    evolution: List[DNAHistorySnapshot]
+    weeks_tracked: int
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DNABreakthroughsResponse(BaseModel):
+    """Response with breakthrough moments"""
+    breakthroughs: List[SpeakingBreakthrough]
+    total_count: int
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class CoachInstructionsResponse(BaseModel):
+    """Response with DNA-aware coach instructions"""
+    instructions: str
+    has_profile: bool
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True

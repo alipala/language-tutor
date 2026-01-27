@@ -202,6 +202,10 @@ app.include_router(achievement_router)
 from routes.progress_stats_routes import router as progress_stats_router
 app.include_router(progress_stats_router)
 
+# Include Speaking DNA routes (Premium Feature)
+from routes.speaking_dna_routes import router as speaking_dna_router
+app.include_router(speaking_dna_router)
+
 # Include news routes (Daily News Tab Feature)
 from news_routes import router as news_router
 app.include_router(news_router)
