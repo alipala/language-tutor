@@ -65,6 +65,55 @@ class SpeakingDNAService:
         "speed_improvement": 0.20,         # 20% WPM increase
     }
 
+    # Language-specific filler words and hesitation markers
+    FILLER_WORDS = {
+        "english": [
+            "uh", "um", "ah", "er", "eh", "hmm", "hm",
+            "like", "you know", "i mean", "so", "well",
+            "actually", "basically", "literally", "just",
+            "right", "okay", "ok", "yeah", "yep"
+        ],
+        "dutch": [
+            "eh", "uh", "um", "ah", "nou", "ja", "dus",
+            "eigenlijk", "gewoon", "zeg maar", "nou ja",
+            "tja", "hè", "hoor", "ofzo", "enzo",
+            "soort van", "eh ja", "weet je"
+        ],
+        "spanish": [
+            "eh", "ah", "um", "este", "pues", "bueno",
+            "entonces", "o sea", "como", "verdad",
+            "mmm", "eeeh", "aaah", "este", "estee",
+            "digamos", "sabes", "¿no?", "¿verdad?"
+        ],
+        "french": [
+            "euh", "bah", "ben", "alors", "donc",
+            "voilà", "quoi", "hein", "tu vois",
+            "enfin", "bon", "disons", "genre",
+            "en fait", "c'est-à-dire"
+        ],
+        "german": [
+            "äh", "ähm", "eh", "hm", "also",
+            "sozusagen", "eigentlich", "halt", "ja",
+            "naja", "ne", "oder", "weißt du",
+            "quasi", "irgendwie"
+        ],
+        "italian": [
+            "ehm", "eh", "ah", "allora", "cioè",
+            "diciamo", "insomma", "praticamente", "tipo",
+            "sai", "no?", "vero?", "ecco", "boh"
+        ]
+    }
+
+    # Self-correction markers (language-independent patterns)
+    CORRECTION_MARKERS = [
+        "i mean", "sorry", "no wait", "wait", "actually",
+        "ik bedoel", "sorry", "wacht", "eigenlijk",
+        "quiero decir", "perdón", "espera", "en realidad",
+        "je veux dire", "désolé", "attends",
+        "ich meine", "entschuldigung", "warte",
+        "voglio dire", "scusa", "aspetta"
+    ]
+
     # Speaker archetypes based on DNA combination
     ARCHETYPES = {
         ("thoughtful_pacer", "perfectionist", "persistent"): {
@@ -85,7 +134,10 @@ class SpeakingDNAService:
     }
 
     def __init__(self):
+        """Initialize the Speaking DNA Service with database and caching."""
         self.db = database
+        self._coach_instructions_cache = {}  # {cache_key: (instructions, timestamp)}
+        self._cache_ttl = 600  # 10 minutes TTL in seconds
 
     # =========================================================================
     # CORE ANALYSIS METHODS
@@ -109,8 +161,6 @@ class SpeakingDNAService:
             Dict with updated profile, detected breakthroughs, and coach notes
         """
         try:
-            user_oid = ObjectId(user_id)
-
             # Get existing profile or create new one
             existing_profile = await self.db.speaking_dna_profiles_collection.find_one({
                 "user_id": user_id,
@@ -120,14 +170,15 @@ class SpeakingDNAService:
             logger.info(f"[DNA] Analyzing session for user {user_id}, language {language}")
 
             # Extract metrics from session
-            session_metrics = self._extract_session_metrics(session_data)
+            session_metrics = self._extract_session_metrics(session_data, language)
             logger.info(f"[DNA] Extracted metrics: WPM={session_metrics.get('words_per_minute', 0):.1f}")
 
             # Calculate strand updates
             updated_strands = self._calculate_strand_updates(
                 existing_profile,
                 session_metrics,
-                session_data.get("session_type", "learning")
+                session_data.get("session_type", "learning"),
+                session_data
             )
 
             # Detect any breakthroughs
@@ -195,6 +246,15 @@ class SpeakingDNAService:
                 await self.db.speaking_breakthroughs_collection.insert_many(breakthrough_docs)
                 logger.info(f"[DNA] Stored {len(breakthrough_docs)} breakthroughs")
 
+            # Create/update weekly snapshot for evolution tracking
+            await self._create_weekly_snapshot(
+                user_id=user_id,
+                language=language,
+                strands=updated_strands,
+                session_duration_minutes=session_metrics.get("session_duration_minutes", 5),
+                breakthroughs_count=len(breakthroughs)
+            )
+
             return {
                 "profile": profile_update,
                 "breakthroughs": breakthroughs,
@@ -205,9 +265,13 @@ class SpeakingDNAService:
             logger.error(f"[DNA] Error analyzing session: {str(e)}", exc_info=True)
             raise
 
-    def _extract_session_metrics(self, session_data: Dict) -> Dict:
+    def _extract_session_metrics(self, session_data: Dict, language: str = "english") -> Dict:
         """
         Extract quantifiable metrics from session data.
+
+        Args:
+            session_data: Session data dict
+            language: Target language for language-specific analysis
 
         Expected session_data structure:
         {
@@ -257,27 +321,36 @@ class SpeakingDNAService:
 
         wpm = (total_words / (total_speaking_time_ms / 60000)) if total_speaking_time_ms > 0 else 0
 
-        # Detect filler words (common across languages + language-specific)
-        filler_patterns = [
-            "uh", "um", "eh", "ah", "like", "you know",  # English
-            "nou", "dus", "eigenlijk", "gewoon",   # Dutch
-            "euh", "ben", "pues", "este", "o sea"        # Spanish
-        ]
-        filler_count = sum(
-            1 for word in all_words
-            if word.lower() in filler_patterns
-        )
+        # Detect filler words using language-specific dictionary
+        filler_patterns = self.FILLER_WORDS.get(language.lower(), self.FILLER_WORDS["english"])
+        filler_count = 0
+        transcript_lower = " ".join(word.lower() for word in all_words)
+
+        # Check multi-word fillers (like "you know", "o sea")
+        for filler in filler_patterns:
+            if " " in filler:  # Multi-word filler
+                filler_count += transcript_lower.count(filler)
+            else:  # Single word filler
+                filler_count += sum(1 for word in all_words if word.lower() == filler)
+
         filler_rate = (filler_count / (total_speaking_time_ms / 60000)) if total_speaking_time_ms > 0 else 0
 
-        # Calculate unique vocabulary
-        unique_words = set(word.lower() for word in all_words if len(word) > 2)
+        # Calculate unique vocabulary (excluding filler words)
+        filler_set = set(f.lower() for f in filler_patterns if " " not in f)
+        unique_words = set(
+            word.lower() for word in all_words
+            if len(word) > 2 and word.lower() not in filler_set
+        )
 
-        # Self-corrections (simple heuristic: repeated phrases or correction markers)
+        # Self-corrections using correction markers
         self_corrections = sum(
             1 for turn in user_turns
             if any(marker in turn.get("transcript", "").lower()
-                   for marker in ["i mean", "sorry", "no wait", "ik bedoel", "quiero decir"])
+                   for marker in self.CORRECTION_MARKERS)
         )
+
+        # Also detect pause-based hesitations (long response latencies)
+        hesitation_count = sum(1 for lat in latencies if lat > 3000)  # >3s = hesitation
 
         # Calculate standard deviation of latencies for consistency
         import statistics
@@ -295,7 +368,9 @@ class SpeakingDNAService:
             "turns_count": len(user_turns),
             "challenges_offered": session_data.get("challenges_offered", 0),
             "challenges_accepted": session_data.get("challenges_accepted", 0),
-            "corrections_received": len(session_data.get("corrections_received", []))
+            "corrections_received": len(session_data.get("corrections_received", [])),
+            "corrections_data": session_data.get("corrections_received", []),  # Raw corrections for pattern extraction
+            "hesitation_count": hesitation_count
         }
 
     def _get_default_metrics(self) -> Dict:
@@ -319,7 +394,8 @@ class SpeakingDNAService:
         self,
         existing_profile: Optional[Dict],
         session_metrics: Dict,
-        session_type: str
+        session_type: str,
+        session_data: Dict = None
     ) -> Dict:
         """
         Calculate updated DNA strands using weighted moving average.
@@ -339,7 +415,7 @@ class SpeakingDNAService:
             "vocabulary": self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
             "accuracy": self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
             "learning": self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"]),
-            "emotional": self._update_emotional_strand(existing_strands.get("emotional"), session_metrics, alpha, weights["emotional"])
+            "emotional": self._update_emotional_strand(existing_strands.get("emotional"), session_metrics, alpha, weights["emotional"], session_data)
         }
 
         return updated
@@ -471,6 +547,58 @@ class SpeakingDNAService:
             "description": description
         }
 
+    def _extract_error_patterns(self, corrections_data: List, existing_errors: List[str] = None) -> tuple:
+        """
+        Extract common error patterns from corrections data.
+
+        Returns:
+            tuple: (common_errors, improving_areas)
+        """
+        if not corrections_data:
+            return (existing_errors or [], [])
+
+        # Error categories
+        error_categories = {
+            "verb_conjugation": ["verb", "tense", "conjugation", "past", "present", "future"],
+            "gender_agreement": ["gender", "de", "het", "der", "die", "das", "el", "la"],
+            "word_order": ["word order", "syntax", "sentence structure"],
+            "article_usage": ["article", "definite", "indefinite", "a", "an", "the"],
+            "preposition": ["preposition", "at", "in", "on", "to"],
+            "pronunciation": ["pronunciation", "sound", "accent"],
+            "vocabulary": ["word choice", "vocabulary", "wrong word"]
+        }
+
+        error_counts = {}
+
+        # Analyze corrections (can be dicts or strings)
+        for correction in corrections_data:
+            if isinstance(correction, dict):
+                text = (correction.get("feedback", "") +
+                       " " + correction.get("category", "") +
+                       " " + correction.get("type", "")).lower()
+            else:
+                text = str(correction).lower()
+
+            # Categorize errors
+            for category, keywords in error_categories.items():
+                if any(keyword in text for keyword in keywords):
+                    error_counts[category] = error_counts.get(category, 0) + 1
+
+        # Get top 3 most common errors
+        sorted_errors = sorted(error_counts.items(), key=lambda x: x[1], reverse=True)
+        common_errors = [err[0].replace("_", " ") for err in sorted_errors[:3]]
+
+        # Detect improving areas (errors that decreased)
+        improving_areas = []
+        if existing_errors:
+            # Errors that were common before but not anymore
+            for old_error in existing_errors:
+                old_error_key = old_error.replace(" ", "_")
+                if old_error_key not in error_counts or error_counts.get(old_error_key, 0) < 2:
+                    improving_areas.append(old_error)
+
+        return (common_errors, improving_areas[:3])  # Top 3 improving areas
+
     def _update_accuracy_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
         """Update accuracy strand based on corrections and self-monitoring."""
         corrections = metrics["corrections_received"]
@@ -492,14 +620,22 @@ class SpeakingDNAService:
             pattern = "balanced"
             description = "Good balance between accuracy and spontaneity"
 
+        # Extract error patterns from raw corrections data
+        corrections_data = metrics.get("corrections_data", [])
+        existing_errors = existing.get("common_errors", []) if existing else []
+
+        common_errors, improving_areas = self._extract_error_patterns(
+            corrections_data,
+            existing_errors
+        )
+
         if existing:
             new_accuracy = existing.get("grammar_accuracy", accuracy) * (1 - alpha * weight) + accuracy * alpha * weight
-            common_errors = existing.get("common_errors", [])
-            improving_areas = existing.get("improving_areas", [])
+            # Keep existing errors if no new corrections
+            if not common_errors:
+                common_errors = existing_errors
         else:
             new_accuracy = accuracy
-            common_errors = []
-            improving_areas = []
 
         return {
             "pattern": pattern,
@@ -543,25 +679,82 @@ class SpeakingDNAService:
             "description": description
         }
 
-    def _update_emotional_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
-        """Update emotional strand based on session patterns."""
-        # This would ideally use within-session analysis
-        # For now, use latency as proxy for emotional state
+    def _detect_anxiety_triggers(self, metrics: Dict, session_data: Dict, existing_triggers: List[str] = None) -> List[str]:
+        """
+        Detect anxiety triggers from session data.
 
+        Anxiety indicators:
+        - High response latency (>4000ms)
+        - High filler rate (>8/min)
+        - Low words per minute (<50)
+        - Multiple hesitations
+        """
+        triggers = existing_triggers or []
+        hesitation_count = metrics.get("hesitation_count", 0)
         latency = metrics["response_latency_avg_ms"]
         filler_rate = metrics["filler_rate_per_minute"]
+        wpm = metrics["words_per_minute"]
 
-        # Estimate start vs end confidence (would need actual timestamps)
-        # Using simplified heuristic
+        # Detect anxiety indicators
+        has_anxiety = (
+            latency > 4000 or  # Very slow responses
+            filler_rate > 8 or  # Many fillers
+            (wpm < 50 and hesitation_count > 3)  # Slow speech + hesitations
+        )
+
+        if has_anxiety:
+            # Try to identify what caused anxiety
+            topics = session_data.get("topics_discussed", [])
+            session_type = session_data.get("session_type", "unknown")
+
+            # Add topic-based triggers
+            if topics:
+                for topic in topics:
+                    trigger_text = f"{topic}_discussions"
+                    if trigger_text not in triggers:
+                        triggers.append(trigger_text)
+
+            # Add session-type triggers
+            if session_type == "news":
+                if "complex_news_topics" not in triggers:
+                    triggers.append("complex_news_topics")
+            elif session_type == "learning":
+                if "structured_lessons" not in triggers:
+                    triggers.append("structured_lessons")
+
+            # Add general anxiety triggers based on metrics
+            if latency > 5000 and "spontaneous_speaking" not in triggers:
+                triggers.append("spontaneous_speaking")
+
+            if filler_rate > 10 and "being_corrected" not in triggers:
+                triggers.append("being_corrected")
+
+        # Limit to 5 most recent/relevant triggers
+        return triggers[-5:]
+
+    def _update_emotional_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float, session_data: Dict = None) -> Dict:
+        """Update emotional strand based on session patterns and anxiety triggers."""
+        latency = metrics["response_latency_avg_ms"]
+        filler_rate = metrics["filler_rate_per_minute"]
+        hesitation_count = metrics.get("hesitation_count", 0)
+
+        # Calculate confidence based on multiple factors
+        latency_confidence = max(0, 1 - (latency / 5000))  # <5s is good
+        filler_confidence = max(0, 1 - (filler_rate / 10))  # <10/min is good
+        hesitation_confidence = max(0, 1 - (hesitation_count / 5))  # <5 is good
+
+        current_confidence = (latency_confidence * 0.4 + filler_confidence * 0.3 + hesitation_confidence * 0.3)
+
+        # Estimate start vs end confidence
         if existing:
             prev_end_confidence = existing.get("session_end_confidence", 0.6)
             # Assume we improve during session
             start_confidence = prev_end_confidence * 0.9
-            end_confidence = prev_end_confidence + (0.1 if latency < 2000 else -0.05)
+            end_confidence = prev_end_confidence * (1 - alpha * weight) + current_confidence * alpha * weight
             end_confidence = max(0.3, min(0.95, end_confidence))
         else:
             start_confidence = 0.5
-            end_confidence = 0.6
+            end_confidence = current_confidence
 
         # Determine emotional pattern
         improvement = end_confidence - start_confidence
@@ -575,11 +768,19 @@ class SpeakingDNAService:
             pattern = "quick_starter"
             description = "Starts confident and maintains energy throughout"
 
+        # Detect anxiety triggers
+        existing_triggers = existing.get("anxiety_triggers", []) if existing else []
+        anxiety_triggers = self._detect_anxiety_triggers(
+            metrics,
+            session_data or {},
+            existing_triggers
+        )
+
         return {
             "pattern": pattern,
             "session_start_confidence": round(start_confidence, 2),
             "session_end_confidence": round(end_confidence, 2),
-            "anxiety_triggers": existing.get("anxiety_triggers", []) if existing else [],
+            "anxiety_triggers": anxiety_triggers,
             "description": description
         }
 
@@ -778,15 +979,32 @@ class SpeakingDNAService:
 
         This is called at the start of each session to inject DNA-aware
         context into the tutor's system prompt.
+
+        Results are cached for 10 minutes to improve performance.
         """
         try:
+            # Check cache first
+            cache_key = f"{user_id}:{language}:{session_type}"
+            now = datetime.utcnow().timestamp()
+
+            if cache_key in self._coach_instructions_cache:
+                cached_instructions, cached_time = self._coach_instructions_cache[cache_key]
+                if now - cached_time < self._cache_ttl:
+                    logger.info(f"[DNA] Using cached coach instructions (age: {int(now - cached_time)}s)")
+                    return cached_instructions
+
+            logger.info(f"[DNA] Generating fresh coach instructions")
+
             profile = await self.db.speaking_dna_profiles_collection.find_one({
                 "user_id": user_id,
                 "language": language
             })
 
             if not profile:
-                return self._get_default_coach_instructions(session_type)
+                default_instructions = self._get_default_coach_instructions(session_type)
+                # Cache default instructions too (shorter TTL)
+                self._coach_instructions_cache[cache_key] = (default_instructions, now)
+                return default_instructions
 
             strands = profile.get("dna_strands", {})
             overall = profile.get("overall_profile", {})
@@ -851,11 +1069,20 @@ This learner is "{overall.get('speaker_archetype', 'a unique learner')}" - {over
             if triggers:
                 instructions += f"\n### Be Mindful Of:\nThis learner may feel anxious with: {', '.join(triggers)}. Approach these gently.\n"
 
+            # Cache the instructions before returning
+            cache_key = f"{user_id}:{language}:{session_type}"
+            self._coach_instructions_cache[cache_key] = (instructions, datetime.utcnow().timestamp())
+            logger.info(f"[DNA] Cached coach instructions (TTL: {self._cache_ttl}s)")
+
             return instructions
 
         except Exception as e:
             logger.error(f"[DNA] Error building coach instructions: {str(e)}", exc_info=True)
-            return self._get_default_coach_instructions(session_type)
+            default_instructions = self._get_default_coach_instructions(session_type)
+            # Cache error fallback too
+            cache_key = f"{user_id}:{language}:{session_type}"
+            self._coach_instructions_cache[cache_key] = (default_instructions, datetime.utcnow().timestamp())
+            return default_instructions
 
     def _get_default_coach_instructions(self, session_type: str) -> str:
         """Default instructions for users without a DNA profile yet."""
@@ -870,6 +1097,97 @@ This learner hasn't built their Speaking DNA profile yet. Use this session to:
 
 Session type: {session_type}
 """
+
+    # =========================================================================
+    # WEEKLY SNAPSHOT CREATION
+    # =========================================================================
+
+    async def _create_weekly_snapshot(
+        self,
+        user_id: str,
+        language: str,
+        strands: Dict,
+        session_duration_minutes: float,
+        breakthroughs_count: int
+    ) -> None:
+        """
+        Create or update weekly snapshot for DNA evolution tracking.
+
+        This method stores a weekly snapshot of the user's DNA strands
+        for the evolution timeline visualization. Snapshots are created
+        for the Monday of the current week (week start).
+
+        Args:
+            user_id: User ID string
+            language: Target language
+            strands: Complete DNA strands dict
+            session_duration_minutes: Duration of this session
+            breakthroughs_count: Number of breakthroughs in this session
+        """
+        try:
+            now = datetime.utcnow()
+
+            # Calculate week start (Monday of current week at 00:00:00 UTC)
+            week_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            week_start -= timedelta(days=week_start.weekday())  # Go to Monday
+
+            # Calculate ISO week number
+            week_number = week_start.isocalendar()[1]
+
+            logger.info(f"[DNA] Creating/updating weekly snapshot for week starting {week_start.date()}")
+
+            # Check if snapshot already exists for this week
+            existing_snapshot = await self.db.speaking_dna_history_collection.find_one({
+                "user_id": user_id,
+                "language": language,
+                "week_start": week_start
+            })
+
+            if existing_snapshot:
+                # Update existing snapshot (increment counters)
+                logger.info(f"[DNA] Updating existing snapshot for week {week_number}")
+
+                await self.db.speaking_dna_history_collection.update_one(
+                    {"_id": existing_snapshot["_id"]},
+                    {
+                        "$set": {
+                            "strand_snapshots": strands,  # Always update to latest strands
+                            "updated_at": now
+                        },
+                        "$inc": {
+                            "week_stats.sessions_completed": 1,
+                            "week_stats.total_minutes": session_duration_minutes,
+                            "week_stats.breakthroughs_count": breakthroughs_count
+                        }
+                    }
+                )
+                logger.info(f"[DNA] Weekly snapshot updated successfully")
+
+            else:
+                # Create new snapshot
+                logger.info(f"[DNA] Creating new snapshot for week {week_number}")
+
+                snapshot_doc = {
+                    "user_id": user_id,
+                    "language": language,
+                    "week_start": week_start,
+                    "week_number": week_number,
+                    "strand_snapshots": strands,
+                    "week_stats": {
+                        "sessions_completed": 1,
+                        "total_minutes": session_duration_minutes,
+                        "breakthroughs_count": breakthroughs_count
+                    },
+                    "created_at": now,
+                    "updated_at": now
+                }
+
+                await self.db.speaking_dna_history_collection.insert_one(snapshot_doc)
+                logger.info(f"[DNA] New weekly snapshot created successfully")
+
+        except Exception as e:
+            logger.error(f"[DNA] Error creating weekly snapshot (non-fatal): {str(e)}", exc_info=True)
+            # Don't raise - weekly snapshots are nice-to-have, not critical
 
     # =========================================================================
     # PROFILE RETRIEVAL & EVOLUTION

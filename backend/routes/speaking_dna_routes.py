@@ -416,3 +416,132 @@ async def get_coach_instructions(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get coach instructions: {str(e)}"
         )
+
+
+# ============================================================================
+# ADMIN ENDPOINTS (For Testing & Maintenance)
+# ============================================================================
+
+@router.post("/admin/create-weekly-snapshots")
+async def create_weekly_snapshots_admin(
+    admin_key: str = Query(..., description="Admin API key for authentication"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    **ADMIN ONLY**: Manually trigger weekly snapshot creation for all users.
+
+    This endpoint is protected by admin_key and can be used to:
+    - Test the weekly snapshot functionality
+    - Manually trigger snapshot creation outside of scheduled cron
+    - Backfill missing snapshots
+
+    **Security:** Requires both JWT authentication AND admin API key.
+
+    **Usage:**
+    ```bash
+    curl -X POST "https://api.example.com/api/speaking-dna/admin/create-weekly-snapshots?admin_key=YOUR_KEY" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+
+    Args:
+        admin_key: Admin API key (set via ADMIN_API_KEY env var)
+        current_user: Authenticated user from JWT
+
+    Returns:
+        Summary of snapshot creation results
+    """
+    import os
+    from database import speaking_dna_profiles_collection
+
+    # Verify admin key
+    ADMIN_KEY = os.getenv("ADMIN_API_KEY")
+    if not ADMIN_KEY:
+        logger.error("[DNA ADMIN] ADMIN_API_KEY environment variable not set")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Admin functionality not configured on server"
+        )
+
+    if admin_key != ADMIN_KEY:
+        logger.warning(f"[DNA ADMIN] Invalid admin key attempt from user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid admin key"
+        )
+
+    logger.info(f"[DNA ADMIN] Manual snapshot creation triggered by user {current_user.email}")
+
+    try:
+        from datetime import datetime
+
+        start_time = datetime.utcnow()
+
+        # Get all DNA profiles
+        profiles = await speaking_dna_profiles_collection.find({}).to_list(None)
+        logger.info(f"[DNA ADMIN] Found {len(profiles)} DNA profiles to process")
+
+        results = {
+            "success_list": [],
+            "error_list": []
+        }
+
+        for profile in profiles:
+            try:
+                user_id = profile["user_id"]
+                language = profile["language"]
+
+                # Create/update weekly snapshot
+                await speaking_dna_service._create_weekly_snapshot(
+                    user_id=user_id,
+                    language=language,
+                    strands=profile.get("dna_strands", {}),
+                    session_duration_minutes=0,  # No new session, just maintenance
+                    breakthroughs_count=0
+                )
+
+                results["success_list"].append(f"{user_id}-{language}")
+                logger.debug(f"[DNA ADMIN] ✅ Created snapshot for {user_id}-{language}")
+
+            except Exception as e:
+                error_detail = {
+                    "user_language": f"{user_id}-{language}",
+                    "error": str(e)
+                }
+                results["error_list"].append(error_detail)
+                logger.error(f"[DNA ADMIN] ❌ Error for {user_id}-{language}: {str(e)}")
+
+        end_time = datetime.utcnow()
+        duration_seconds = (end_time - start_time).total_seconds()
+
+        summary = {
+            "success": True,
+            "triggered_by": current_user.email,
+            "triggered_at": start_time.isoformat(),
+            "duration_seconds": round(duration_seconds, 2),
+            "total_profiles": len(profiles),
+            "succeeded": len(results["success_list"]),
+            "failed": len(results["error_list"]),
+            "details": {
+                "successes": results["success_list"][:10],  # First 10
+                "errors": results["error_list"]
+            }
+        }
+
+        if len(results["success_list"]) > 10:
+            summary["details"]["note"] = f"Showing first 10 of {len(results['success_list'])} successes"
+
+        logger.info(
+            f"[DNA ADMIN] Completed. "
+            f"Success: {summary['succeeded']}, "
+            f"Failed: {summary['failed']}, "
+            f"Duration: {duration_seconds:.1f}s"
+        )
+
+        return summary
+
+    except Exception as e:
+        logger.error(f"[DNA ADMIN] Fatal error during snapshot creation: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create weekly snapshots: {str(e)}"
+        )

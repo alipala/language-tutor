@@ -589,10 +589,14 @@ async def store_session_summary(
                     from services.speaking_dna_service import speaking_dna_service
 
                     # Prepare session data for DNA analysis
+                    # IMPORTANT: conversation_data uses "duration_minutes", not "duration_seconds"!
+                    duration_minutes = conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0
+                    duration_seconds = int(duration_minutes * 60)
+
                     dna_session_data = {
                         "session_id": plan_id,  # Use plan_id as session identifier
                         "session_type": "learning",  # This is a learning plan session
-                        "duration_seconds": conversation_data.get("duration_seconds", 300) if conversation_data else 300,
+                        "duration_seconds": duration_seconds,  # Convert minutes to seconds
                         "user_turns": conversation_data.get("user_turns", []) if conversation_data else [],
                         "corrections_received": background_analyses,  # Use sentence analyses as corrections
                         "challenges_offered": 2,  # Estimate based on learning plan
@@ -601,6 +605,7 @@ async def store_session_summary(
                     }
 
                     print(f"[DNA] Analyzing session for user {current_user.id}, language {plan.get('language')}")
+                    print(f"[DNA] Session duration: {duration_minutes} minutes ({duration_seconds} seconds)")
 
                     # Analyze session for DNA
                     dna_result = await speaking_dna_service.analyze_session_for_dna(
