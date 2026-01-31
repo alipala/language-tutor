@@ -69,3 +69,8 @@ crewai-tools==1.7.2
 # Additional dependencies for stability
 pillow==10.3.0
 lxml==5.2.1
+
+# Audio processing for Speaking DNA feature
+librosa==0.10.1
+soundfile==0.12.1
+praat-parselmouth==0.4.3
