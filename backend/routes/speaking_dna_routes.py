@@ -66,8 +66,8 @@ async def analyze_session(
         500: Server error during analysis
     """
     try:
-        # Check if user has premium access
-        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing"]:
+        # Check if user has premium access (allow "canceling" status - user has access until period ends)
+        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Speaking DNA is a premium feature. Please upgrade your subscription to access this feature."
@@ -141,8 +141,8 @@ async def get_dna_profile(
         500: Server error during retrieval
     """
     try:
-        # Check if user has premium access
-        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing"]:
+        # Check if user has premium access (allow "canceling" status - user has access until period ends)
+        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Speaking DNA is a premium feature. Please upgrade your subscription."
@@ -201,8 +201,8 @@ async def get_dna_evolution(
         500: Server error during retrieval
     """
     try:
-        # Check if user has premium access
-        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing"]:
+        # Check if user has premium access (allow "canceling" status - user has access until period ends)
+        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Speaking DNA is a premium feature. Please upgrade your subscription."
@@ -264,8 +264,8 @@ async def get_breakthroughs(
         500: Server error during retrieval
     """
     try:
-        # Check if user has premium access
-        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing"]:
+        # Check if user has premium access (allow "canceling" status - user has access until period ends)
+        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Speaking DNA is a premium feature. Please upgrade your subscription."
@@ -322,8 +322,8 @@ async def celebrate_breakthrough(
         500: Server error
     """
     try:
-        # Check if user has premium access
-        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing"]:
+        # Check if user has premium access (allow "canceling" status - user has access until period ends)
+        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Speaking DNA is a premium feature. Please upgrade your subscription."

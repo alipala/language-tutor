@@ -13,6 +13,7 @@ from bson import ObjectId
 import logging
 
 from database import database
+from services.audio_analysis_service import audio_analysis_service
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,32 @@ class SpeakingDNAService:
         "voglio dire", "scusa", "aspetta"
     ]
 
+    # Error type normalization mapping for common errors extraction
+    ERROR_TYPE_MAPPING = {
+        "subject-verb-agreement": "subject_verb_agreement",
+        "subject verb agreement": "subject_verb_agreement",
+        "subjectverb": "subject_verb_agreement",
+        "article-usage": "article_usage",
+        "article usage": "article_usage",
+        "articles": "article_usage",
+        "tense-conjugation": "tense_conjugation",
+        "verb-tense": "tense_conjugation",
+        "verb tense": "tense_conjugation",
+        "tense": "tense_conjugation",
+        "word-order": "word_order",
+        "word order": "word_order",
+        "syntax": "word_order",
+        "preposition-selection": "preposition_usage",
+        "preposition": "preposition_usage",
+        "prepositions": "preposition_usage",
+        "gender-agreement": "gender_agreement",
+        "gender": "gender_agreement",
+        "spelling-error": "spelling",
+        "spelling": "spelling",
+        "pronunciation-error": "pronunciation",
+        "pronunciation": "pronunciation",
+    }
+
     # Speaker archetypes based on DNA combination
     ARCHETYPES = {
         ("thoughtful_pacer", "perfectionist", "persistent"): {
@@ -162,22 +189,48 @@ class SpeakingDNAService:
         """
         try:
             # Get existing profile or create new one
-            existing_profile = await self.db.speaking_dna_profiles_collection.find_one({
+            existing_profile = await self.db.speaking_dna_profiles.find_one({
                 "user_id": user_id,
                 "language": language
             })
 
             logger.info(f"[DNA] Analyzing session for user {user_id}, language {language}")
 
-            # Extract metrics from session
-            session_metrics = self._extract_session_metrics(session_data, language)
+            # Extract acoustic metrics from first 60 seconds (if audio available)
+            acoustic_metrics = None
+            if session_data.get("audio_base64"):
+                try:
+                    logger.info("[DNA] Extracting acoustic metrics from session audio")
+                    acoustic_metrics = await audio_analysis_service.extract_acoustic_metrics(
+                        audio_base64=session_data["audio_base64"],
+                        audio_format=session_data.get("audio_format", "wav"),
+                        language=language,
+                        max_duration=60.0  # Only analyze first 60 seconds
+                    )
+                    logger.info(
+                        f"[DNA] Acoustic metrics extracted: "
+                        f"pitch={acoustic_metrics.get('pitch_mean', 0):.1f}Hz, "
+                        f"jitter={acoustic_metrics.get('jitter', 0):.4f}"
+                    )
+                except Exception as e:
+                    logger.warning(f"[DNA] Acoustic analysis failed: {str(e)} - continuing without acoustic metrics")
+                    acoustic_metrics = None
+
+            # Extract metrics from session (including acoustic if available)
+            session_metrics = self._extract_session_metrics(
+                session_data,
+                language,
+                acoustic_metrics=acoustic_metrics
+            )
             logger.info(f"[DNA] Extracted metrics: WPM={session_metrics.get('words_per_minute', 0):.1f}")
 
             # Calculate strand updates
-            updated_strands = self._calculate_strand_updates(
+            updated_strands = await self._calculate_strand_updates(
                 existing_profile,
                 session_metrics,
                 session_data.get("session_type", "learning"),
+                user_id,
+                language,
                 session_data
             )
 
@@ -200,6 +253,28 @@ class SpeakingDNAService:
             sessions_analyzed = (existing_profile.get("sessions_analyzed", 0) if existing_profile else 0) + 1
             total_minutes = (existing_profile.get("total_speaking_minutes", 0) if existing_profile else 0) + session_metrics.get("session_duration_minutes", 5)
 
+            # Update baseline assessment with acoustic metrics (ongoing analysis)
+            baseline_assessment = None
+            if acoustic_metrics:
+                # Get existing baseline or create new
+                existing_baseline = existing_profile.get("baseline_assessment") if existing_profile else None
+
+                if existing_baseline:
+                    # Update existing baseline with moving average of last 10 sessions
+                    # For simplicity, we store the latest metrics (future: implement moving average)
+                    baseline_assessment = {
+                        "date": now,
+                        "acoustic_metrics": acoustic_metrics
+                    }
+                    logger.info("[DNA] Updated baseline assessment with new acoustic metrics")
+                else:
+                    # First baseline
+                    baseline_assessment = {
+                        "date": now,
+                        "acoustic_metrics": acoustic_metrics
+                    }
+                    logger.info("[DNA] Created initial baseline assessment")
+
             profile_update = {
                 "user_id": user_id,
                 "language": language,
@@ -210,15 +285,19 @@ class SpeakingDNAService:
                 "updated_at": now
             }
 
+            # Add baseline assessment if we have acoustic metrics
+            if baseline_assessment:
+                profile_update["baseline_assessment"] = baseline_assessment
+
             if existing_profile:
-                await self.db.speaking_dna_profiles_collection.update_one(
+                await self.db.speaking_dna_profiles.update_one(
                     {"_id": existing_profile["_id"]},
                     {"$set": profile_update}
                 )
                 logger.info(f"[DNA] Updated existing profile for user {user_id}")
             else:
                 profile_update["created_at"] = now
-                result = await self.db.speaking_dna_profiles_collection.insert_one(profile_update)
+                result = await self.db.speaking_dna_profiles.insert_one(profile_update)
                 logger.info(f"[DNA] Created new profile for user {user_id}: {result.inserted_id}")
 
             # Store breakthroughs
@@ -243,7 +322,7 @@ class SpeakingDNAService:
                         "created_at": now
                     })
 
-                await self.db.speaking_breakthroughs_collection.insert_many(breakthrough_docs)
+                await self.db.speaking_breakthroughs.insert_many(breakthrough_docs)
                 logger.info(f"[DNA] Stored {len(breakthrough_docs)} breakthroughs")
 
             # Create/update weekly snapshot for evolution tracking
@@ -265,13 +344,19 @@ class SpeakingDNAService:
             logger.error(f"[DNA] Error analyzing session: {str(e)}", exc_info=True)
             raise
 
-    def _extract_session_metrics(self, session_data: Dict, language: str = "english") -> Dict:
+    def _extract_session_metrics(
+        self,
+        session_data: Dict,
+        language: str = "english",
+        acoustic_metrics: Optional[Dict[str, float]] = None
+    ) -> Dict:
         """
         Extract quantifiable metrics from session data.
 
         Args:
             session_data: Session data dict
             language: Target language for language-specific analysis
+            acoustic_metrics: Optional acoustic metrics from audio analysis
 
         Expected session_data structure:
         {
@@ -370,7 +455,9 @@ class SpeakingDNAService:
             "challenges_accepted": session_data.get("challenges_accepted", 0),
             "corrections_received": len(session_data.get("corrections_received", [])),
             "corrections_data": session_data.get("corrections_received", []),  # Raw corrections for pattern extraction
-            "hesitation_count": hesitation_count
+            "hesitation_count": hesitation_count,
+            # Acoustic metrics (if available)
+            **({f"acoustic_{k}": v for k, v in acoustic_metrics.items()} if acoustic_metrics else {})
         }
 
     def _get_default_metrics(self) -> Dict:
@@ -390,11 +477,13 @@ class SpeakingDNAService:
             "corrections_received": 0
         }
 
-    def _calculate_strand_updates(
+    async def _calculate_strand_updates(
         self,
         existing_profile: Optional[Dict],
         session_metrics: Dict,
         session_type: str,
+        user_id: str,
+        language: str,
         session_data: Dict = None
     ) -> Dict:
         """
@@ -415,29 +504,61 @@ class SpeakingDNAService:
             "vocabulary": self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
             "accuracy": self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
             "learning": self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"]),
-            "emotional": self._update_emotional_strand(existing_strands.get("emotional"), session_metrics, alpha, weights["emotional"], session_data)
+            "emotional": await self._update_emotional_strand(
+                existing_strands.get("emotional"),
+                session_metrics,
+                alpha,
+                weights["emotional"],
+                user_id,
+                language,
+                session_data
+            )
         }
 
         return updated
 
     def _update_rhythm_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
-        """Update rhythm strand based on speaking pace and pauses."""
+        """
+        Update rhythm strand based on speaking pace and pauses.
+
+        Enhanced with acoustic analysis for more accurate pause detection.
+        """
         wpm = metrics["words_per_minute"]
 
-        # Determine rhythm type
+        # Use acoustic pause metrics if available (more accurate than text-based)
+        pause_ratio = metrics.get("acoustic_pause_ratio")
+        avg_pause_ms = metrics.get("acoustic_avg_pause_duration_ms")
+
+        # Determine rhythm type (consider acoustic pauses for refinement)
         if wpm < 70:
             rhythm_type = "thoughtful_pacer"
             description = "Takes time to formulate thoughts, speaks deliberately"
+            # Refine based on pause patterns
+            if pause_ratio and pause_ratio > 0.3:
+                description = "Thoughtful pacer with frequent pauses for reflection"
         elif wpm > 120:
             rhythm_type = "rapid_responder"
             description = "Quick and spontaneous, comfortable with fast exchanges"
+            # Refine based on pause patterns
+            if pause_ratio and pause_ratio < 0.15:
+                description = "Rapid responder with minimal pauses, very fluent"
         else:
             rhythm_type = "steady_speaker"
             description = "Maintains a balanced, natural speaking pace"
+            # Refine based on pause patterns
+            if pause_ratio and pause_ratio > 0.25:
+                description = "Steady speaker with natural pauses for clarity"
 
-        # Calculate consistency score based on standard deviation
+        # Calculate consistency score
         latency_std = metrics.get("response_latency_std_ms", 500)
         consistency = max(0, 1 - (latency_std / 2000))  # Lower std = higher consistency
+
+        # Enhance consistency with acoustic speaking_ratio if available
+        if metrics.get("acoustic_speaking_ratio"):
+            speaking_ratio = metrics["acoustic_speaking_ratio"]
+            # High speaking ratio = more consistent flow
+            acoustic_consistency = speaking_ratio  # 0.8-0.9 is good
+            consistency = (consistency * 0.6 + acoustic_consistency * 0.4)  # Blend with text-based
 
         if existing:
             # Exponential moving average
@@ -450,19 +571,51 @@ class SpeakingDNAService:
         return {
             "type": rhythm_type,
             "words_per_minute_avg": round(new_wpm, 1),
-            "pause_duration_avg_ms": round(metrics["response_latency_avg_ms"], 0),
+            "pause_duration_avg_ms": round(avg_pause_ms if avg_pause_ms else metrics["response_latency_avg_ms"], 0),
             "consistency_score": round(new_consistency, 2),
             "description": description
         }
 
     def _update_confidence_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
-        """Update confidence strand based on latency, fillers, and self-corrections."""
+        """
+        Update confidence strand based on latency, fillers, self-corrections, and voice quality.
+
+        Enhanced with acoustic analysis for voice stability assessment.
+        """
         # Calculate raw confidence score (0-1)
         latency_factor = max(0, 1 - (metrics["response_latency_avg_ms"] / 5000))  # <5s is good
         filler_factor = max(0, 1 - (metrics["filler_rate_per_minute"] / 10))  # <10/min is good
         correction_factor = max(0, 1 - (metrics["self_corrections"] / 5))  # <5 per session is good
 
-        raw_score = (latency_factor * 0.4 + filler_factor * 0.3 + correction_factor * 0.3)
+        # Voice quality factor from acoustic analysis
+        voice_quality_factor = None
+        if metrics.get("acoustic_jitter") is not None and metrics.get("acoustic_shimmer") is not None:
+            jitter = metrics["acoustic_jitter"]
+            shimmer = metrics["acoustic_shimmer"]
+
+            # Low jitter/shimmer = steady voice = high confidence
+            # Typical ranges: jitter <1% good, >5% nervous; shimmer <3% good, >10% nervous
+            jitter_score = max(0, 1 - (jitter / 0.05))  # Normalize to 0-1 (5% jitter = 0 score)
+            shimmer_score = max(0, 1 - (shimmer / 0.10))  # Normalize to 0-1 (10% shimmer = 0 score)
+
+            voice_quality_factor = (jitter_score * 0.5 + shimmer_score * 0.5)
+
+        # Calculate weighted raw score
+        if voice_quality_factor is not None:
+            # With acoustic: reduce weight of latency, add voice quality
+            raw_score = (
+                latency_factor * 0.25 +
+                filler_factor * 0.25 +
+                correction_factor * 0.25 +
+                voice_quality_factor * 0.25  # Voice stability
+            )
+        else:
+            # Without acoustic: original weights
+            raw_score = (
+                latency_factor * 0.4 +
+                filler_factor * 0.3 +
+                correction_factor * 0.3
+            )
 
         # Determine level
         if raw_score < 0.3:
@@ -547,9 +700,15 @@ class SpeakingDNAService:
             "description": description
         }
 
+    def _normalize_error_type(self, error_type: str) -> str:
+        """Normalize error type string for consistency."""
+        normalized = error_type.lower().strip().replace("_", "-")
+        return self.ERROR_TYPE_MAPPING.get(normalized, error_type.lower().replace("-", "_"))
+
     def _extract_error_patterns(self, corrections_data: List, existing_errors: List[str] = None) -> tuple:
         """
         Extract common error patterns from corrections data.
+        Enhanced to use structured grammar_issues with severity ranking.
 
         Returns:
             tuple: (common_errors, improving_areas)
@@ -557,47 +716,113 @@ class SpeakingDNAService:
         if not corrections_data:
             return (existing_errors or [], [])
 
-        # Error categories
-        error_categories = {
-            "verb_conjugation": ["verb", "tense", "conjugation", "past", "present", "future"],
-            "gender_agreement": ["gender", "de", "het", "der", "die", "das", "el", "la"],
-            "word_order": ["word order", "syntax", "sentence structure"],
-            "article_usage": ["article", "definite", "indefinite", "a", "an", "the"],
-            "preposition": ["preposition", "at", "in", "on", "to"],
-            "pronunciation": ["pronunciation", "sound", "accent"],
-            "vocabulary": ["word choice", "vocabulary", "wrong word"]
-        }
+        error_patterns = {}
 
-        error_counts = {}
-
-        # Analyze corrections (can be dicts or strings)
+        # Extract from structured grammar_issues (preferred)
         for correction in corrections_data:
+            # Handle different correction structures
+            grammar_issues = []
+
             if isinstance(correction, dict):
-                text = (correction.get("feedback", "") +
-                       " " + correction.get("category", "") +
-                       " " + correction.get("type", "")).lower()
-            else:
-                text = str(correction).lower()
+                # Check for grammar_issues array (from BackgroundAnalysisResponse)
+                if "grammar_issues" in correction and isinstance(correction["grammar_issues"], list):
+                    grammar_issues = correction["grammar_issues"]
+                # Check for direct issue_type field (simplified structure)
+                elif "issue_type" in correction:
+                    grammar_issues = [correction]
 
-            # Categorize errors
-            for category, keywords in error_categories.items():
-                if any(keyword in text for keyword in keywords):
-                    error_counts[category] = error_counts.get(category, 0) + 1
+            # Process grammar issues with structured data
+            for issue in grammar_issues:
+                if isinstance(issue, dict) and "issue_type" in issue:
+                    # Get and normalize error type
+                    error_type_raw = issue.get("issue_type", "unknown")
+                    error_type = self._normalize_error_type(error_type_raw)
 
-        # Get top 3 most common errors
-        sorted_errors = sorted(error_counts.items(), key=lambda x: x[1], reverse=True)
-        common_errors = [err[0].replace("_", " ") for err in sorted_errors[:3]]
+                    # Initialize tracking
+                    if error_type not in error_patterns:
+                        error_patterns[error_type] = {
+                            "count": 0,
+                            "severity_sum": 0.0,
+                        }
+
+                    # Increment count
+                    error_patterns[error_type]["count"] += 1
+
+                    # Track severity
+                    severity_raw = issue.get("severity", "low")
+                    severity_score = {
+                        "critical": 1.0,
+                        "high": 0.75,
+                        "medium": 0.5,
+                        "low": 0.25
+                    }.get(str(severity_raw).lower(), 0.25)
+
+                    error_patterns[error_type]["severity_sum"] += severity_score
+
+        # Fallback: keyword-based extraction if no structured data
+        if not error_patterns:
+            error_categories = {
+                "verb_conjugation": ["verb", "tense", "conjugation", "past", "present", "future"],
+                "gender_agreement": ["gender", "de", "het", "der", "die", "das", "el", "la"],
+                "word_order": ["word order", "syntax", "sentence structure"],
+                "article_usage": ["article", "definite", "indefinite", "a", "an", "the"],
+                "preposition": ["preposition", "at", "in", "on", "to"],
+                "pronunciation": ["pronunciation", "sound", "accent"],
+                "vocabulary": ["word choice", "vocabulary", "wrong word"]
+            }
+
+            error_counts = {}
+
+            # Analyze corrections with keyword matching
+            for correction in corrections_data:
+                if isinstance(correction, dict):
+                    text = (correction.get("feedback", "") +
+                           " " + correction.get("category", "") +
+                           " " + correction.get("type", "") +
+                           " " + correction.get("description", "")).lower()
+                else:
+                    text = str(correction).lower()
+
+                # Categorize errors
+                for category, keywords in error_categories.items():
+                    if any(keyword in text for keyword in keywords):
+                        error_counts[category] = error_counts.get(category, 0) + 1
+
+            # Convert to error_patterns format
+            for category, count in error_counts.items():
+                error_patterns[category] = {
+                    "count": count,
+                    "severity_sum": count * 0.5  # Assume medium severity
+                }
+
+        # Filter by frequency (min 2 occurrences) and calculate average severity
+        common_errors = []
+        min_frequency = 2  # Lower threshold for single session
+
+        for error_type, data in error_patterns.items():
+            if data["count"] >= min_frequency:
+                avg_severity = data["severity_sum"] / data["count"]
+                common_errors.append((error_type, data["count"], avg_severity))
+
+        # Sort by severity (desc), then frequency (desc)
+        common_errors.sort(key=lambda x: (x[2], x[1]), reverse=True)
+
+        # Return top 5 error types
+        top_errors = [error_type for error_type, _, _ in common_errors[:5]]
 
         # Detect improving areas (errors that decreased)
         improving_areas = []
         if existing_errors:
-            # Errors that were common before but not anymore
-            for old_error in existing_errors:
-                old_error_key = old_error.replace(" ", "_")
-                if old_error_key not in error_counts or error_counts.get(old_error_key, 0) < 2:
-                    improving_areas.append(old_error)
+            existing_set = set(err.replace(" ", "_") for err in existing_errors)
+            current_set = set(top_errors)
 
-        return (common_errors, improving_areas[:3])  # Top 3 improving areas
+            # Errors that were common before but not anymore
+            improved = existing_set - current_set
+            improving_areas = [err.replace("_", " ") for err in improved]
+
+        logger.info(f"[ERROR_EXTRACTION] Found {len(top_errors)} common errors, {len(improving_areas)} improving")
+
+        return (top_errors, improving_areas[:3])  # Top 3 improving areas
 
     def _update_accuracy_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
         """Update accuracy strand based on corrections and self-monitoring."""
@@ -679,60 +904,206 @@ class SpeakingDNAService:
             "description": description
         }
 
-    def _detect_anxiety_triggers(self, metrics: Dict, session_data: Dict, existing_triggers: List[str] = None) -> List[str]:
-        """
-        Detect anxiety triggers from session data.
+    # =========================================================================
+    # ANXIETY DETECTION HELPER METHODS
+    # =========================================================================
 
-        Anxiety indicators:
-        - High response latency (>4000ms)
-        - High filler rate (>8/min)
-        - Low words per minute (<50)
-        - Multiple hesitations
-        """
-        triggers = existing_triggers or []
-        hesitation_count = metrics.get("hesitation_count", 0)
-        latency = metrics["response_latency_avg_ms"]
-        filler_rate = metrics["filler_rate_per_minute"]
-        wpm = metrics["words_per_minute"]
+    def _get_baseline_latency(self, recent_sessions: List[Dict]) -> float:
+        """Calculate baseline response latency from recent sessions."""
+        import numpy as np
+        latencies = []
+        for session in recent_sessions:
+            strands = session.get("strand_snapshots", {})
+            confidence = strands.get("confidence", {})
+            # Try different field names for compatibility
+            latency = (confidence.get("response_latency_avg_ms") or
+                      confidence.get("response_latency") or
+                      0)
+            if latency and latency > 0:
+                latencies.append(latency)
 
-        # Detect anxiety indicators
-        has_anxiety = (
-            latency > 4000 or  # Very slow responses
-            filler_rate > 8 or  # Many fillers
-            (wpm < 50 and hesitation_count > 3)  # Slow speech + hesitations
+        return float(np.mean(latencies)) if latencies else 2000.0
+
+    def _get_recent_challenge_rate(self, recent_sessions: List[Dict]) -> float:
+        """Calculate recent challenge acceptance rate from history."""
+        import numpy as np
+        acceptance_rates = []
+        for session in recent_sessions:
+            strands = session.get("strand_snapshots", {})
+            learning = strands.get("learning", {})
+            rate = learning.get("challenge_acceptance")
+            if rate is not None:
+                acceptance_rates.append(rate)
+
+        return float(np.mean(acceptance_rates)) if acceptance_rates else 0.5
+
+    def _get_baseline_correction_density(self, recent_sessions: List[Dict]) -> float:
+        """Calculate baseline correction density from recent sessions."""
+        import numpy as np
+        # Use grammar_accuracy as inverse proxy for correction density
+        accuracies = []
+        for session in recent_sessions:
+            strands = session.get("strand_snapshots", {})
+            accuracy = strands.get("accuracy", {})
+            gram_acc = accuracy.get("grammar_accuracy")
+            if gram_acc is not None and gram_acc > 0:
+                accuracies.append(1.0 - gram_acc)  # Inverse = correction density
+
+        return float(np.mean(accuracies)) if accuracies else 0.2
+
+    def _get_baseline_filler_rate(self, recent_sessions: List[Dict]) -> float:
+        """Calculate baseline filler word rate from recent sessions."""
+        import numpy as np
+        filler_rates = []
+        for session in recent_sessions:
+            strands = session.get("strand_snapshots", {})
+            confidence = strands.get("confidence", {})
+            filler = confidence.get("filler_rate_per_minute") or confidence.get("filler_rate")
+            if filler is not None:
+                filler_rates.append(filler)
+
+        return float(np.mean(filler_rates)) if filler_rates else 2.0
+
+    async def _detect_anxiety_triggers(
+        self,
+        user_id: str,
+        language: str,
+        metrics: Dict,
+        session_data: Dict,
+        existing_triggers: List[str] = None
+    ) -> List[str]:
+        """
+        Detect anxiety triggers from session patterns using historical baseline analysis.
+
+        Enhanced algorithm analyzes multiple factors:
+        - Response latency spikes compared to baseline
+        - Challenge avoidance patterns
+        - Correction sensitivity
+        - Filler word increase
+        - Topic-based confidence drops
+
+        Returns:
+            List of identified anxiety triggers (max 5)
+        """
+        import numpy as np
+        triggers = set()
+
+        # Get recent session history for baseline comparison
+        recent_sessions = await self.db.speaking_dna_history.find({
+            "user_id": user_id,
+            "language": language
+        }).sort("week_start", -1).limit(10).to_list(length=10)
+
+        if len(recent_sessions) < 2:
+            # Not enough data for historical analysis - use simple heuristics
+            logger.info("[ANXIETY] Not enough history - using simple heuristics")
+
+            latency = metrics.get("response_latency_avg_ms", 2000)
+            filler_rate = metrics.get("filler_rate_per_minute", 2.0)
+            hesitation_count = metrics.get("hesitation_count", 0)
+
+            # Simple absolute threshold detection
+            if latency > 4000:
+                triggers.add("thinking_pressure")
+            if filler_rate > 8:
+                triggers.add("speaking_anxiety")
+            if hesitation_count > 5:
+                triggers.add("hesitation_pattern")
+
+            # Topic-based (simple)
+            topics = session_data.get("topics_discussed", [])
+            for topic in topics:
+                if latency > 4000:  # High latency with this topic
+                    triggers.add(f"topic:{topic}")
+                    break  # Only add one topic trigger
+
+            return list(triggers)[:5]
+
+        # Enhanced multi-factor analysis with historical baselines
+        logger.info(f"[ANXIETY] Analyzing with {len(recent_sessions)} historical sessions")
+
+        # Factor 1: Response Latency Spikes
+        baseline_latency = self._get_baseline_latency(recent_sessions)
+        current_latency = metrics.get("response_latency_avg_ms", 2000)
+
+        if current_latency > baseline_latency * 1.5:  # 50% spike
+            triggers.add("thinking_pressure")
+            logger.info(
+                f"[ANXIETY] Latency spike detected: {current_latency}ms vs "
+                f"baseline {baseline_latency}ms"
+            )
+
+        # Factor 2: Challenge Avoidance
+        recent_challenge_rate = self._get_recent_challenge_rate(recent_sessions)
+        current_challenge_rate = (
+            session_data.get("challenges_accepted", 0) /
+            max(session_data.get("challenges_offered", 1), 1)
         )
 
-        if has_anxiety:
-            # Try to identify what caused anxiety
-            topics = session_data.get("topics_discussed", [])
-            session_type = session_data.get("session_type", "unknown")
+        if current_challenge_rate < recent_challenge_rate * 0.7:  # 30% drop
+            triggers.add("difficulty_level")
+            logger.info(
+                f"[ANXIETY] Challenge avoidance detected: {current_challenge_rate:.2f} vs "
+                f"baseline {recent_challenge_rate:.2f}"
+            )
 
-            # Add topic-based triggers
-            if topics:
-                for topic in topics:
-                    trigger_text = f"{topic}_discussions"
-                    if trigger_text not in triggers:
-                        triggers.append(trigger_text)
+        # Factor 3: Correction Sensitivity (perfectionism)
+        baseline_correction_density = self._get_baseline_correction_density(recent_sessions)
+        current_correction_density = (
+            len(session_data.get("corrections_received", [])) /
+            max(len(session_data.get("user_turns", [])), 1)
+        )
 
-            # Add session-type triggers
-            if session_type == "news":
-                if "complex_news_topics" not in triggers:
-                    triggers.append("complex_news_topics")
-            elif session_type == "learning":
-                if "structured_lessons" not in triggers:
-                    triggers.append("structured_lessons")
+        if (current_correction_density > baseline_correction_density * 1.3 and
+            current_challenge_rate < recent_challenge_rate):
+            triggers.add("perfectionism")
+            logger.info(
+                f"[ANXIETY] Correction sensitivity detected: {current_correction_density:.2f} vs "
+                f"baseline {baseline_correction_density:.2f}"
+            )
 
-            # Add general anxiety triggers based on metrics
-            if latency > 5000 and "spontaneous_speaking" not in triggers:
-                triggers.append("spontaneous_speaking")
+        # Factor 4: Filler Word Increase (nervousness)
+        baseline_filler_rate = self._get_baseline_filler_rate(recent_sessions)
+        current_filler_rate = metrics.get("filler_rate_per_minute", 2.0)
 
-            if filler_rate > 10 and "being_corrected" not in triggers:
-                triggers.append("being_corrected")
+        if current_filler_rate > baseline_filler_rate * 1.5:  # 50% increase
+            triggers.add("speaking_anxiety")
+            logger.info(
+                f"[ANXIETY] Filler word spike detected: {current_filler_rate:.1f} vs "
+                f"baseline {baseline_filler_rate:.1f}"
+            )
 
-        # Limit to 5 most recent/relevant triggers
-        return triggers[-5:]
+        # Factor 5: Topic-Based Triggers (if latency spike or filler spike)
+        topics = session_data.get("topics_discussed", [])
+        if topics and (current_latency > baseline_latency * 1.4 or
+                      current_filler_rate > baseline_filler_rate * 1.4):
+            # Only add first topic as trigger (most likely culprit)
+            triggers.add(f"topic:{topics[0]}")
+            logger.info(f"[ANXIETY] Topic trigger detected: {topics[0]}")
 
-    def _update_emotional_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float, session_data: Dict = None) -> Dict:
+        # Merge with existing triggers (keep historical context)
+        if existing_triggers:
+            # Keep only non-topic triggers from history
+            historical_general = [t for t in existing_triggers if not t.startswith("topic:")]
+            all_triggers = set(list(triggers) + historical_general[:2])  # Keep 2 historical
+        else:
+            all_triggers = triggers
+
+        final_triggers = list(all_triggers)[:5]
+        logger.info(f"[ANXIETY] Final triggers: {final_triggers}")
+
+        return final_triggers
+
+    async def _update_emotional_strand(
+        self,
+        existing: Optional[Dict],
+        metrics: Dict,
+        alpha: float,
+        weight: float,
+        user_id: str,
+        language: str,
+        session_data: Dict = None
+    ) -> Dict:
         """Update emotional strand based on session patterns and anxiety triggers."""
         latency = metrics["response_latency_avg_ms"]
         filler_rate = metrics["filler_rate_per_minute"]
@@ -768,9 +1139,11 @@ class SpeakingDNAService:
             pattern = "quick_starter"
             description = "Starts confident and maintains energy throughout"
 
-        # Detect anxiety triggers
+        # Detect anxiety triggers with historical baseline analysis
         existing_triggers = existing.get("anxiety_triggers", []) if existing else []
-        anxiety_triggers = self._detect_anxiety_triggers(
+        anxiety_triggers = await self._detect_anxiety_triggers(
+            user_id,
+            language,
             metrics,
             session_data or {},
             existing_triggers
@@ -995,7 +1368,7 @@ class SpeakingDNAService:
 
             logger.info(f"[DNA] Generating fresh coach instructions")
 
-            profile = await self.db.speaking_dna_profiles_collection.find_one({
+            profile = await self.db.speaking_dna_profiles.find_one({
                 "user_id": user_id,
                 "language": language
             })
@@ -1010,7 +1383,7 @@ class SpeakingDNAService:
             overall = profile.get("overall_profile", {})
 
             # Get recent uncelebrated breakthroughs
-            recent_breakthroughs = await self.db.speaking_breakthroughs_collection.find({
+            recent_breakthroughs = await self.db.speaking_breakthroughs.find({
                 "user_id": user_id,
                 "language": language,
                 "celebrated": False
@@ -1137,7 +1510,7 @@ Session type: {session_type}
             logger.info(f"[DNA] Creating/updating weekly snapshot for week starting {week_start.date()}")
 
             # Check if snapshot already exists for this week
-            existing_snapshot = await self.db.speaking_dna_history_collection.find_one({
+            existing_snapshot = await self.db.speaking_dna_history.find_one({
                 "user_id": user_id,
                 "language": language,
                 "week_start": week_start
@@ -1147,7 +1520,7 @@ Session type: {session_type}
                 # Update existing snapshot (increment counters)
                 logger.info(f"[DNA] Updating existing snapshot for week {week_number}")
 
-                await self.db.speaking_dna_history_collection.update_one(
+                await self.db.speaking_dna_history.update_one(
                     {"_id": existing_snapshot["_id"]},
                     {
                         "$set": {
@@ -1182,7 +1555,7 @@ Session type: {session_type}
                     "updated_at": now
                 }
 
-                await self.db.speaking_dna_history_collection.insert_one(snapshot_doc)
+                await self.db.speaking_dna_history.insert_one(snapshot_doc)
                 logger.info(f"[DNA] New weekly snapshot created successfully")
 
         except Exception as e:
@@ -1196,7 +1569,7 @@ Session type: {session_type}
     async def get_dna_profile(self, user_id: str, language: str) -> Optional[Dict]:
         """Get the current DNA profile for a user."""
         try:
-            profile = await self.db.speaking_dna_profiles_collection.find_one({
+            profile = await self.db.speaking_dna_profiles.find_one({
                 "user_id": user_id,
                 "language": language
             })
@@ -1218,7 +1591,7 @@ Session type: {session_type}
     ) -> List[Dict]:
         """Get DNA evolution history for visualization."""
         try:
-            history = await self.db.speaking_dna_history_collection.find({
+            history = await self.db.speaking_dna_history.find({
                 "user_id": user_id,
                 "language": language
             }).sort("week_start", -1).limit(weeks).to_list(weeks)
@@ -1250,7 +1623,7 @@ Session type: {session_type}
             if uncelebrated_only:
                 query["celebrated"] = False
 
-            breakthroughs = await self.db.speaking_breakthroughs_collection.find(query).sort(
+            breakthroughs = await self.db.speaking_breakthroughs.find(query).sort(
                 "created_at", -1
             ).limit(limit).to_list(limit)
 
@@ -1266,7 +1639,7 @@ Session type: {session_type}
     async def mark_breakthrough_celebrated(self, breakthrough_id: str) -> bool:
         """Mark a breakthrough as celebrated."""
         try:
-            result = await self.db.speaking_breakthroughs_collection.update_one(
+            result = await self.db.speaking_breakthroughs.update_one(
                 {"_id": breakthrough_id},
                 {"$set": {"celebrated": True}}
             )
