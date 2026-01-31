@@ -1237,6 +1237,27 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         instructions = build_universal_instructions(request)
         print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
 
+        # NEW: Add Speaking DNA context for premium users
+        if current_user and current_user.subscription_status in ["active", "trialing"]:
+            try:
+                from services.speaking_dna_service import speaking_dna_service
+
+                # Determine session type
+                session_type = "news" if request.news_context else "freestyle" if request.user_prompt else "learning"
+
+                dna_context = await speaking_dna_service.build_coach_instructions(
+                    user_id=str(current_user.id),
+                    language=request.language.lower(),
+                    session_type=session_type
+                )
+
+                if dna_context:
+                    instructions += f"\n\n{dna_context}"
+                    print(f"[DNA] Added Speaking DNA context: {len(dna_context)} characters")
+            except Exception as e:
+                print(f"[DNA] Error adding DNA context (non-fatal): {str(e)}")
+                # Continue without DNA context - this is a premium feature
+
         # Wait for voice preference (should be done by now)
         preferred_voice = await voice_task
 

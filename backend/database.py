@@ -86,6 +86,11 @@ try:
     # NEWS FEATURE: Daily news collections
     news_batches_collection = database.news_batches
     news_articles_collection = database.news_articles
+
+    # SPEAKING DNA FEATURE: DNA profile collections
+    speaking_dna_profiles_collection = database.speaking_dna_profiles
+    speaking_dna_history_collection = database.speaking_dna_history
+    speaking_breakthroughs_collection = database.speaking_breakthroughs
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -105,6 +110,9 @@ except Exception as e:
     recent_performance_collection = None
     news_batches_collection = None
     news_articles_collection = None
+    speaking_dna_profiles_collection = None
+    speaking_dna_history_collection = None
+    speaking_breakthroughs_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
@@ -170,6 +178,27 @@ async def init_db():
         await news_articles_collection.create_index([("date", -1), ("batch_id", 1)])
         await news_articles_collection.create_index("expires_at", expireAfterSeconds=0)  # TTL index
         await news_articles_collection.create_index("original.category")
+
+        # SPEAKING DNA FEATURE: Create indexes for DNA collections
+        # DNA profiles: unique user-language pair, query by user_id and language
+        await speaking_dna_profiles_collection.create_index(
+            [("user_id", 1), ("language", 1)],
+            unique=True
+        )
+        await speaking_dna_profiles_collection.create_index("updated_at")
+
+        # DNA history: query by user-language pair and week, sorted by date
+        await speaking_dna_history_collection.create_index(
+            [("user_id", 1), ("language", 1), ("week_start", -1)]
+        )
+
+        # DNA breakthroughs: query by user-language pair, filter by celebrated status
+        await speaking_breakthroughs_collection.create_index(
+            [("user_id", 1), ("language", 1), ("created_at", -1)]
+        )
+        await speaking_breakthroughs_collection.create_index(
+            [("user_id", 1), ("celebrated", 1)]
+        )
 
         print("Database indexes initialized successfully")
     except Exception as e:

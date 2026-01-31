@@ -581,6 +581,49 @@ async def store_session_summary(
                 # Continue without enhanced stats if calculation fails
                 enhanced_stats = {}
 
+            # 🧬 NEW: Speaking DNA Analysis (Premium Feature)
+            dna_breakthroughs = []
+            dna_insights = {}
+            if current_user.subscription_status in ["active", "trialing"]:
+                try:
+                    from services.speaking_dna_service import speaking_dna_service
+
+                    # Prepare session data for DNA analysis
+                    # IMPORTANT: conversation_data uses "duration_minutes", not "duration_seconds"!
+                    duration_minutes = conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0
+                    duration_seconds = int(duration_minutes * 60)
+
+                    dna_session_data = {
+                        "session_id": plan_id,  # Use plan_id as session identifier
+                        "session_type": "learning",  # This is a learning plan session
+                        "duration_seconds": duration_seconds,  # Convert minutes to seconds
+                        "user_turns": conversation_data.get("user_turns", []) if conversation_data else [],
+                        "corrections_received": background_analyses,  # Use sentence analyses as corrections
+                        "challenges_offered": 2,  # Estimate based on learning plan
+                        "challenges_accepted": 1,  # Estimate based on session completion
+                        "topics_discussed": [plan.get("language", "language")]
+                    }
+
+                    print(f"[DNA] Analyzing session for user {current_user.id}, language {plan.get('language')}")
+                    print(f"[DNA] Session duration: {duration_minutes} minutes ({duration_seconds} seconds)")
+
+                    # Analyze session for DNA
+                    dna_result = await speaking_dna_service.analyze_session_for_dna(
+                        user_id=str(current_user.id),
+                        language=plan.get("language", "english"),
+                        session_data=dna_session_data
+                    )
+
+                    dna_breakthroughs = dna_result.get("breakthroughs", [])
+                    dna_insights = dna_result.get("session_insights", {})
+
+                    print(f"[DNA] Analysis complete. Breakthroughs: {len(dna_breakthroughs)}")
+
+                except Exception as dna_error:
+                    print(f"[DNA] Error analyzing session (non-fatal): {str(dna_error)}")
+                    # Continue without DNA analysis - premium feature shouldn't block session saving
+                    pass
+
             # 🎯 NEW: Two-Tier Learning Plan Optimization
             try:
                 from services.learning_plan_optimizer import LearningPlanOptimizer
@@ -638,7 +681,9 @@ async def store_session_summary(
                         },
                         "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
                         "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
-                        "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
+                        "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
+                        "dna_breakthroughs": dna_breakthroughs,  # 🧬 NEW: Speaking DNA breakthroughs
+                        "dna_insights": dna_insights  # 🧬 NEW: Speaking DNA insights
                     }
                 else:
                     print(f"[PLAN_OPTIMIZER] No updates needed (Tier1: {optimizer_result.get('tier1_immediate')}, Tier2: {optimizer_result.get('tier2_patterns')})")
@@ -662,7 +707,9 @@ async def store_session_summary(
                 "flashcard_generation_success": flashcard_generation_success,  # 🔥 CRITICAL FIX
                 "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
                 "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
-                "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
+                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
+                "dna_breakthroughs": dna_breakthroughs,  # 🧬 NEW: Speaking DNA breakthroughs
+                "dna_insights": dna_insights  # 🧬 NEW: Speaking DNA insights
             }
         else:
             print(f"[SESSION_SUMMARY] Warning: No documents were modified for plan {plan_id}")
