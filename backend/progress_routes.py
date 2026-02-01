@@ -16,6 +16,26 @@ from database import conversation_sessions_collection, users_collection
 from enhanced_analysis import generate_enhanced_analysis
 from session_statistics import SessionStatistics
 
+# Helper function to sanitize dictionaries by removing None keys
+def sanitize_dict(obj: Any) -> Any:
+    """
+    Recursively remove None keys from dictionaries.
+    MongoDB doesn't allow None as dictionary keys.
+    """
+    if isinstance(obj, dict):
+        # Remove any keys that are None and recursively sanitize values
+        return {
+            k: sanitize_dict(v)
+            for k, v in obj.items()
+            if k is not None
+        }
+    elif isinstance(obj, list):
+        # Recursively sanitize list items
+        return [sanitize_dict(item) for item in obj]
+    else:
+        # Return primitive values as-is
+        return obj
+
 # Initialize OpenAI client with error handling
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
@@ -482,7 +502,10 @@ async def save_conversation(
             }
             
             print(f"[PROGRESS] Update duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
-            
+
+            # Sanitize update_data to remove any None keys before updating MongoDB
+            update_data = sanitize_dict(update_data)
+
             result = await conversation_sessions_collection.update_one(
                 {"_id": existing_session["_id"]},
                 {"$set": update_data}
@@ -530,14 +553,20 @@ async def save_conversation(
                 "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
                 "message_count": len(conversation_messages),
                 "summary": summary,
-                "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
-            
+
+            # Add enhanced_analysis only if it exists and is not None
+            if enhanced_analysis is not None:
+                session_dict["enhanced_analysis"] = enhanced_analysis
+
             print(f"[PROGRESS] Duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
-            
+
+            # Sanitize session_dict to remove any None keys before inserting to MongoDB
+            session_dict = sanitize_dict(session_dict)
+
             result = await conversation_sessions_collection.insert_one(session_dict)
 
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
