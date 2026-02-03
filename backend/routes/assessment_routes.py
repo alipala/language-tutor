@@ -136,6 +136,65 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
             prompt=request.prompt
         )
 
+        # 🧬 NEW: Run DNA analysis on speaking assessment audio for initial acoustic baseline
+        if current_user and request.audio_base64:
+            try:
+                print(f"[DNA_ASSESSMENT] 🧬 Analyzing speaking assessment audio for initial DNA profile")
+                print(f"[DNA_ASSESSMENT] User: {current_user.id}, Language: {request.language}")
+
+                from services.speaking_dna_service import SpeakingDNAService
+                from datetime import datetime
+
+                # Create session data for DNA analysis
+                duration_ms = (request.duration or 60) * 1000  # Convert to milliseconds
+                assessment_session_data = {
+                    "session_id": f"assessment_{datetime.now().isoformat()}",
+                    "session_type": "speaking_assessment",
+                    "duration_seconds": request.duration or 60,
+                    "user_turns": [{
+                        "transcript": recognized_text,  # ✅ Fixed: use "transcript" not "text"
+                        "start_time_ms": 0,  # ✅ Fixed: add start_time_ms
+                        "end_time_ms": duration_ms,  # ✅ Fixed: add end_time_ms
+                        "ai_prompt_end_time_ms": 0  # No AI prompt in assessment
+                    }],
+                    "corrections_received": [],  # No corrections in assessment
+                    "challenges_offered": 0,
+                    "challenges_accepted": 0,
+                    "topics_discussed": [request.prompt or "Speaking Assessment"],
+                    "audio_base64": request.audio_base64,
+                    "audio_format": "wav"  # ✅ Fixed: Mobile app sends WAV, not M4A
+                }
+
+                # Initialize DNA service and analyze
+                dna_service = SpeakingDNAService()
+                dna_result = await dna_service.analyze_session_for_dna(
+                    user_id=current_user.id,
+                    language=request.language.lower(),
+                    session_data=assessment_session_data
+                )
+
+                print(f"[DNA_ASSESSMENT] ✅ Initial DNA profile created/updated")
+                print(f"[DNA_ASSESSMENT] Profile ID: {dna_result.get('profile', {}).get('_id')}")
+                print(f"[DNA_ASSESSMENT] Strands analyzed: {len(dna_result.get('profile', {}).get('dna_strands', {}))}")
+                print(f"[DNA_ASSESSMENT] Acoustic metrics captured: {bool(dna_result.get('profile', {}).get('baseline_assessment', {}).get('acoustic_metrics'))}")
+                print(f"[DNA_ASSESSMENT] Breakthroughs detected: {len(dna_result.get('breakthroughs', []))}")
+
+                # Log acoustic features if available
+                acoustic = dna_result.get('profile', {}).get('baseline_assessment', {}).get('acoustic_metrics', {})
+                if acoustic:
+                    print(f"[DNA_ASSESSMENT] 🎤 Acoustic baseline established:")
+                    print(f"[DNA_ASSESSMENT]    - Words per minute: {acoustic.get('words_per_minute', 'N/A')}")
+                    print(f"[DNA_ASSESSMENT]    - Pause ratio: {acoustic.get('pause_ratio', 'N/A')}")
+                    print(f"[DNA_ASSESSMENT]    - Voice quality: {acoustic.get('voice_quality_factor', 'N/A')}")
+                    print(f"[DNA_ASSESSMENT]    - Filler rate: {acoustic.get('filler_rate_per_minute', 'N/A')}")
+
+            except Exception as dna_error:
+                print(f"[DNA_ASSESSMENT] ⚠️ DNA analysis failed (non-fatal): {str(dna_error)}")
+                import traceback
+                print(f"[DNA_ASSESSMENT] Traceback: {traceback.format_exc()}")
+                # Don't fail assessment if DNA analysis fails
+                pass
+
         # CRITICAL FIX: Track assessment usage AND save assessment data for authenticated users
         if current_user:
             try:
@@ -182,6 +241,27 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 pass
         else:
             print(f"[ASSESSMENT_TRACKING] No authenticated user - skipping usage tracking")
+
+        # Fetch DNA profile if available (for authenticated users)
+        dna_profile = None
+        if current_user:
+            try:
+                from services.speaking_dna_service import SpeakingDNAService
+                dna_service = SpeakingDNAService()
+                dna_profile = await dna_service.get_dna_profile(current_user.id, request.language.lower())
+
+                if dna_profile:
+                    # Convert ObjectId to string for JSON serialization
+                    if "_id" in dna_profile:
+                        dna_profile["_id"] = str(dna_profile["_id"])
+                    print(f"[ASSESSMENT] ✅ DNA profile fetched for response")
+                else:
+                    print(f"[ASSESSMENT] ℹ️ No DNA profile available yet")
+            except Exception as dna_error:
+                print(f"[ASSESSMENT] ⚠️ Failed to fetch DNA profile: {str(dna_error)}")
+
+        # Add DNA profile to assessment response
+        assessment["dna_profile"] = dna_profile
 
         print(f"Successfully analyzed speaking proficiency")
         return assessment

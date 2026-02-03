@@ -1381,6 +1381,8 @@ class SessionAnalysisInput(BaseModel):
     challenges_offered: int = 0
     challenges_accepted: int = 0
     topics_discussed: Optional[List[str]] = []
+    audio_base64: Optional[str] = None  # Base64 encoded audio (first 30s of session)
+    audio_format: Optional[str] = "m4a"  # Audio format: m4a, wav, webm
 
     class Config:
         populate_by_name = True

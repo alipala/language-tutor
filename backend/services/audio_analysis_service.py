@@ -17,6 +17,8 @@ Uses:
 import base64
 import io
 import logging
+import tempfile
+import os
 from typing import Dict, Optional
 import numpy as np
 import librosa
@@ -163,9 +165,17 @@ class AudioAnalysisService:
             - pitch_min: Lowest detected pitch
             - pitch_max: Highest detected pitch
         """
+        temp_file = None
         try:
-            # Load audio with Parselmouth
-            sound = parselmouth.Sound(io.BytesIO(audio_data))
+            # Write audio to temporary file (Parselmouth requires file path)
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
+                temp_file = f.name
+                f.write(audio_data)
+
+            logger.debug(f"[PITCH] Created temp file: {temp_file}")
+
+            # Load audio with Parselmouth from file path
+            sound = parselmouth.Sound(temp_file)
 
             # Extract pitch contour
             pitch = call(
@@ -211,6 +221,14 @@ class AudioAnalysisService:
                 "pitch_min": 0.0,
                 "pitch_max": 0.0
             }
+        finally:
+            # Clean up temporary file
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                    logger.debug(f"[PITCH] Cleaned up temp file: {temp_file}")
+                except Exception as cleanup_error:
+                    logger.warning(f"[PITCH] Failed to cleanup temp file: {cleanup_error}")
 
     def _extract_voice_quality(
         self,
@@ -228,8 +246,17 @@ class AudioAnalysisService:
         - Low shimmer (<3%) = controlled voice
         - High shimmer (>10%) = unsteady voice
         """
+        temp_file = None
         try:
-            sound = parselmouth.Sound(io.BytesIO(audio_data))
+            # Write audio to temporary file (Parselmouth requires file path)
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
+                temp_file = f.name
+                f.write(audio_data)
+
+            logger.debug(f"[VOICE_QUALITY] Created temp file: {temp_file}")
+
+            # Load audio with Parselmouth from file path
+            sound = parselmouth.Sound(temp_file)
 
             # Create point process for jitter/shimmer calculation
             point_process = call(
@@ -272,6 +299,14 @@ class AudioAnalysisService:
                 "jitter": 0.0,
                 "shimmer": 0.0
             }
+        finally:
+            # Clean up temporary file
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                    logger.debug(f"[VOICE_QUALITY] Cleaned up temp file: {temp_file}")
+                except Exception as cleanup_error:
+                    logger.warning(f"[VOICE_QUALITY] Failed to cleanup temp file: {cleanup_error}")
 
     def _extract_rhythm_features(
         self,

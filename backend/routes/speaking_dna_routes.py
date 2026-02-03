@@ -84,7 +84,10 @@ async def analyze_session(
             "corrections_received": session_data.corrections_received or [],
             "challenges_offered": session_data.challenges_offered,
             "challenges_accepted": session_data.challenges_accepted,
-            "topics_discussed": session_data.topics_discussed or []
+            "topics_discussed": session_data.topics_discussed or [],
+            # Voice check audio for acoustic analysis
+            "audio_base64": session_data.audio_base64,
+            "audio_format": session_data.audio_format
         }
 
         # Analyze session

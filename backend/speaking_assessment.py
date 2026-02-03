@@ -33,6 +33,7 @@ class SpeakingAssessmentResponse(BaseModel):
     strengths: List[str]
     areas_for_improvement: List[str]
     next_steps: List[str]
+    dna_profile: Optional[Dict] = None  # DNA profile with strands and acoustic metrics
 
 async def evaluate_language_proficiency(text: str, language: str, duration: int = 60, prompt: str = None) -> Dict:
     """Comprehensive assessment of language proficiency based on spoken text"""

@@ -401,10 +401,14 @@ class SpeakingDNAService:
             total_words += len(words)
             all_words.extend(words)
 
-            if turn.get("start_time_ms") and turn.get("end_time_ms"):
-                total_speaking_time_ms += turn["end_time_ms"] - turn["start_time_ms"]
+            if turn.get("start_time_ms") is not None and turn.get("end_time_ms") is not None:
+                turn_duration = turn["end_time_ms"] - turn["start_time_ms"]
+                total_speaking_time_ms += turn_duration
+                logger.debug(f"[DNA] Turn duration: {turn_duration}ms, words: {len(words)}")
 
+        logger.info(f"[DNA] Total words: {total_words}, Total speaking time: {total_speaking_time_ms}ms")
         wpm = (total_words / (total_speaking_time_ms / 60000)) if total_speaking_time_ms > 0 else 0
+        logger.info(f"[DNA] Calculated WPM: {wpm:.1f}")
 
         # Detect filler words using language-specific dictionary
         filler_patterns = self.FILLER_WORDS.get(language.lower(), self.FILLER_WORDS["english"])
