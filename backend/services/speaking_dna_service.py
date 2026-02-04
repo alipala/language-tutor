@@ -1686,11 +1686,25 @@ Session type: {session_type}
             for bt in breakthroughs:
                 bt["_id"] = str(bt["_id"])
                 # Add defaults for any missing fields
-                bt.setdefault("context", {})
+                if not bt.get("context") or not isinstance(bt.get("context"), dict):
+                    bt["context"] = {"session_type": "learning"}
+                else:
+                    bt["context"].setdefault("session_type", "learning")
+
                 bt.setdefault("celebrated", False)
                 bt.setdefault("shared", False)
-                bt.setdefault("metrics", {})
+
+                if not bt.get("metrics") or not isinstance(bt.get("metrics"), dict):
+                    bt["metrics"] = {"before": {}, "after": {}}
+                else:
+                    bt["metrics"].setdefault("before", {})
+                    bt["metrics"].setdefault("after", {})
+
                 bt.setdefault("emoji", "🎉")
+                bt.setdefault("title", "Breakthrough")
+                bt.setdefault("description", "You made progress!")
+                bt.setdefault("category", "confidence")
+                bt.setdefault("breakthrough_type", "progress")
 
             return breakthroughs
 
