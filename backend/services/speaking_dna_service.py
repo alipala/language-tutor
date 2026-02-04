@@ -1682,8 +1682,15 @@ Session type: {session_type}
                 "created_at", -1
             ).limit(limit).to_list(limit)
 
+            # Ensure all breakthroughs have required fields with defaults
             for bt in breakthroughs:
                 bt["_id"] = str(bt["_id"])
+                # Add defaults for any missing fields
+                bt.setdefault("context", {})
+                bt.setdefault("celebrated", False)
+                bt.setdefault("shared", False)
+                bt.setdefault("metrics", {})
+                bt.setdefault("emoji", "🎉")
 
             return breakthroughs
 

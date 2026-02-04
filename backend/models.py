@@ -1343,7 +1343,7 @@ class SpeakingBreakthrough(BaseModel):
     metrics: Dict[str, Any]  # before/after comparison
 
     # Context
-    context: Dict[str, Any]  # session_type, topic, trigger_sentence
+    context: Optional[Dict[str, Any]] = Field(default_factory=dict)  # session_type, topic, trigger_sentence
 
     # Status
     celebrated: bool = False
