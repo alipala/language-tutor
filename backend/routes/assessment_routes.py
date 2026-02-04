@@ -114,26 +114,49 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 # Continue with assessment if limit check fails (don't block user)
                 pass
 
-        # Transcribe audio if provided
+        # 🔥 NEW: Save audio to temp file for both transcription AND Azure pronunciation assessment
+        temp_audio_path = None
         recognized_text = None
+
         if request.audio_base64:
             try:
                 print("Transcribing audio for speaking assessment...")
+
+                # Create temp audio file that persists for the entire assessment
+                import base64
+                import tempfile
+                from audio_format_validator import AudioFormatValidator
+
+                audio_data = base64.b64decode(request.audio_base64)
+                is_valid, error_message, metadata = AudioFormatValidator.validate_audio_data(request.audio_base64)
+
+                if is_valid:
+                    temp_audio_path, _ = AudioFormatValidator.create_temp_audio_file(audio_data, metadata)
+                    print(f"📁 [ASSESSMENT] Created temp audio file for Azure pronunciation: {temp_audio_path}")
+
+                # Transcribe audio
                 recognized_text = await recognize_speech(request.audio_base64, request.language)
                 print(f"Transcribed text: '{recognized_text}'")
             except Exception as e:
                 print(f"Error transcribing audio: {str(e)}")
+                # Clean up temp file if transcription fails
+                if temp_audio_path:
+                    AudioFormatValidator.cleanup_temp_file(temp_audio_path)
                 raise HTTPException(status_code=400, detail="Failed to transcribe audio")
 
         if not recognized_text or recognized_text.strip() == "":
+            # Clean up temp file if no speech detected
+            if temp_audio_path:
+                AudioFormatValidator.cleanup_temp_file(temp_audio_path)
             raise HTTPException(status_code=400, detail="No speech detected")
 
-        # Evaluate language proficiency
+        # Evaluate language proficiency with audio file path for Azure pronunciation
         assessment = await evaluate_language_proficiency(
             text=recognized_text,
             language=request.language,
             duration=request.duration or 60,
-            prompt=request.prompt
+            prompt=request.prompt,
+            audio_file_path=temp_audio_path  # 🔥 NEW: Pass audio file path
         )
 
         # 🧬 NEW: Run DNA analysis on speaking assessment audio for initial acoustic baseline
@@ -162,7 +185,16 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                     "challenges_accepted": 0,
                     "topics_discussed": [request.prompt or "Speaking Assessment"],
                     "audio_base64": request.audio_base64,
-                    "audio_format": "wav"  # ✅ Fixed: Mobile app sends WAV, not M4A
+                    "audio_format": "wav",  # ✅ Fixed: Mobile app sends WAV, not M4A
+                    # 🔥 NEW: Include assessment scores for accurate DNA strand calculation
+                    "assessment_scores": {
+                        "grammar": assessment.get("grammar", {}).get("score", 50),
+                        "vocabulary": assessment.get("vocabulary", {}).get("score", 50),
+                        "fluency": assessment.get("fluency", {}).get("score", 50),
+                        "pronunciation": assessment.get("pronunciation", {}).get("score", 50),
+                        "coherence": assessment.get("coherence", {}).get("score", 50),
+                        "overall_score": assessment.get("overall_score", 50)
+                    }
                 }
 
                 # Initialize DNA service and analyze
@@ -272,6 +304,15 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
     except Exception as e:
         print(f"Error in speaking assessment: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error assessing speaking: {str(e)}")
+    finally:
+        # 🔥 NEW: Clean up temp audio file
+        if temp_audio_path:
+            try:
+                from audio_format_validator import AudioFormatValidator
+                AudioFormatValidator.cleanup_temp_file(temp_audio_path)
+                print(f"🗑️ [ASSESSMENT] Cleaned up temp audio file: {temp_audio_path}")
+            except Exception as cleanup_error:
+                print(f"⚠️ [ASSESSMENT] Failed to cleanup temp file: {cleanup_error}")
 
 @router.get("/api/speaking/prompts")
 async def get_speaking_prompts(language: str, level: str, count: int = 3):

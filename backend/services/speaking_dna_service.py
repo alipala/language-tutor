@@ -445,7 +445,7 @@ class SpeakingDNAService:
         import statistics
         latency_std = statistics.stdev(latencies) if len(latencies) > 1 else 500
 
-        return {
+        metrics = {
             "session_duration_minutes": session_data.get("duration_seconds", 300) / 60,
             "response_latency_avg_ms": sum(latencies) / len(latencies) if latencies else 2000,
             "response_latency_std_ms": latency_std,
@@ -463,6 +463,13 @@ class SpeakingDNAService:
             # Acoustic metrics (if available)
             **({f"acoustic_{k}": v for k, v in acoustic_metrics.items()} if acoustic_metrics else {})
         }
+
+        # 🔥 NEW: Add assessment scores if this is a speaking assessment
+        if session_data.get("assessment_scores"):
+            metrics["assessment_scores"] = session_data["assessment_scores"]
+            logger.info(f"[DNA] Assessment scores included: grammar={metrics['assessment_scores']['grammar']}, vocabulary={metrics['assessment_scores']['vocabulary']}")
+
+        return metrics
 
     def _get_default_metrics(self) -> Dict:
         """Return default metrics for empty sessions."""
@@ -582,44 +589,55 @@ class SpeakingDNAService:
 
     def _update_confidence_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
         """
-        Update confidence strand based on latency, fillers, self-corrections, and voice quality.
+        Update confidence strand based on latency, fillers, self-corrections, voice quality OR assessment scores.
 
         Enhanced with acoustic analysis for voice stability assessment.
         """
-        # Calculate raw confidence score (0-1)
-        latency_factor = max(0, 1 - (metrics["response_latency_avg_ms"] / 5000))  # <5s is good
-        filler_factor = max(0, 1 - (metrics["filler_rate_per_minute"] / 10))  # <10/min is good
-        correction_factor = max(0, 1 - (metrics["self_corrections"] / 5))  # <5 per session is good
 
-        # Voice quality factor from acoustic analysis
-        voice_quality_factor = None
-        if metrics.get("acoustic_jitter") is not None and metrics.get("acoustic_shimmer") is not None:
-            jitter = metrics["acoustic_jitter"]
-            shimmer = metrics["acoustic_shimmer"]
+        # 🔥 NEW: Use assessment fluency & pronunciation scores if available
+        if metrics.get("assessment_scores"):
+            fluency_score = metrics["assessment_scores"]["fluency"]
+            pronunciation_score = metrics["assessment_scores"]["pronunciation"]
+            logger.info(f"[DNA] Using assessment scores for confidence: fluency={fluency_score}, pronunciation={pronunciation_score}")
 
-            # Low jitter/shimmer = steady voice = high confidence
-            # Typical ranges: jitter <1% good, >5% nervous; shimmer <3% good, >10% nervous
-            jitter_score = max(0, 1 - (jitter / 0.05))  # Normalize to 0-1 (5% jitter = 0 score)
-            shimmer_score = max(0, 1 - (shimmer / 0.10))  # Normalize to 0-1 (10% shimmer = 0 score)
-
-            voice_quality_factor = (jitter_score * 0.5 + shimmer_score * 0.5)
-
-        # Calculate weighted raw score
-        if voice_quality_factor is not None:
-            # With acoustic: reduce weight of latency, add voice quality
-            raw_score = (
-                latency_factor * 0.25 +
-                filler_factor * 0.25 +
-                correction_factor * 0.25 +
-                voice_quality_factor * 0.25  # Voice stability
-            )
+            # Confidence is based on fluency and pronunciation (how well they speak)
+            raw_score = (fluency_score + pronunciation_score) / 200.0  # Average of both, normalized to 0-1
         else:
-            # Without acoustic: original weights
-            raw_score = (
-                latency_factor * 0.4 +
-                filler_factor * 0.3 +
-                correction_factor * 0.3
-            )
+            # Original logic for practice sessions
+            # Calculate raw confidence score (0-1)
+            latency_factor = max(0, 1 - (metrics["response_latency_avg_ms"] / 5000))  # <5s is good
+            filler_factor = max(0, 1 - (metrics["filler_rate_per_minute"] / 10))  # <10/min is good
+            correction_factor = max(0, 1 - (metrics["self_corrections"] / 5))  # <5 per session is good
+
+            # Voice quality factor from acoustic analysis
+            voice_quality_factor = None
+            if metrics.get("acoustic_jitter") is not None and metrics.get("acoustic_shimmer") is not None:
+                jitter = metrics["acoustic_jitter"]
+                shimmer = metrics["acoustic_shimmer"]
+
+                # Low jitter/shimmer = steady voice = high confidence
+                # Typical ranges: jitter <1% good, >5% nervous; shimmer <3% good, >10% nervous
+                jitter_score = max(0, 1 - (jitter / 0.05))  # Normalize to 0-1 (5% jitter = 0 score)
+                shimmer_score = max(0, 1 - (shimmer / 0.10))  # Normalize to 0-1 (10% shimmer = 0 score)
+
+                voice_quality_factor = (jitter_score * 0.5 + shimmer_score * 0.5)
+
+            # Calculate weighted raw score
+            if voice_quality_factor is not None:
+                # With acoustic: reduce weight of latency, add voice quality
+                raw_score = (
+                    latency_factor * 0.25 +
+                    filler_factor * 0.25 +
+                    correction_factor * 0.25 +
+                    voice_quality_factor * 0.25  # Voice stability
+                )
+            else:
+                # Without acoustic: original weights
+                raw_score = (
+                    latency_factor * 0.4 +
+                    filler_factor * 0.3 +
+                    correction_factor * 0.3
+                )
 
         # Determine level
         if raw_score < 0.3:
@@ -668,28 +686,51 @@ class SpeakingDNAService:
         }
 
     def _update_vocabulary_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
-        """Update vocabulary strand based on word variety and complexity."""
-        unique_ratio = metrics["unique_words"] / max(metrics["total_words"], 1)
+        """Update vocabulary strand based on word variety and complexity OR assessment scores."""
 
-        # Determine vocabulary style
-        if unique_ratio > 0.7:
-            style = "adventurous"
-            description = "Actively experiments with new vocabulary"
-        elif unique_ratio < 0.4:
-            style = "safety_first"
-            description = "Prefers familiar words but occasionally experiments"
-        else:
-            style = "balanced"
-            description = "Good mix of familiar and new vocabulary"
+        # 🔥 NEW: Use assessment vocabulary score if available
+        if metrics.get("assessment_scores"):
+            vocab_score = metrics["assessment_scores"]["vocabulary"]
+            logger.info(f"[DNA] Using assessment vocabulary score: {vocab_score}/100")
 
-        # Determine complexity level (simplified - could use word frequency lists)
-        avg_word_length = metrics["total_words"] / max(metrics["turns_count"], 1)
-        if avg_word_length > 15:
-            complexity = "advanced"
-        elif avg_word_length > 8:
-            complexity = "intermediate"
+            # Map vocabulary score to style (based on actual performance)
+            if vocab_score < 30:
+                style = "safety_first"
+                description = "Limited vocabulary range, needs expansion"
+                complexity = "beginner"
+            elif vocab_score < 60:
+                style = "balanced"
+                description = "Developing vocabulary with room to grow"
+                complexity = "intermediate"
+            else:
+                style = "adventurous"
+                description = "Good vocabulary range and word choice"
+                complexity = "advanced"
+
+            unique_ratio = vocab_score / 100.0  # Approximate based on score
         else:
-            complexity = "beginner"
+            # Original logic for practice sessions
+            unique_ratio = metrics["unique_words"] / max(metrics["total_words"], 1)
+
+            # Determine vocabulary style
+            if unique_ratio > 0.7:
+                style = "adventurous"
+                description = "Actively experiments with new vocabulary"
+            elif unique_ratio < 0.4:
+                style = "safety_first"
+                description = "Prefers familiar words but occasionally experiments"
+            else:
+                style = "balanced"
+                description = "Good mix of familiar and new vocabulary"
+
+            # Determine complexity level (simplified - could use word frequency lists)
+            avg_word_length = metrics["total_words"] / max(metrics["turns_count"], 1)
+            if avg_word_length > 15:
+                complexity = "advanced"
+            elif avg_word_length > 8:
+                complexity = "intermediate"
+            else:
+                complexity = "beginner"
 
         if existing:
             new_unique = existing.get("unique_words_per_session", metrics["unique_words"]) * (1 - alpha * weight) + metrics["unique_words"] * alpha * weight
@@ -829,14 +870,24 @@ class SpeakingDNAService:
         return (top_errors, improving_areas[:3])  # Top 3 improving areas
 
     def _update_accuracy_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
-        """Update accuracy strand based on corrections and self-monitoring."""
-        corrections = metrics["corrections_received"]
-        self_corrections = metrics["self_corrections"]
-        turns = max(metrics["turns_count"], 1)
+        """Update accuracy strand based on corrections and self-monitoring OR assessment scores."""
 
-        # Accuracy rate (inverse of correction rate)
-        external_error_rate = corrections / turns
-        accuracy = max(0, 1 - external_error_rate)
+        # 🔥 NEW: Use actual grammar score from speaking assessment if available
+        if metrics.get("assessment_scores"):
+            grammar_score = metrics["assessment_scores"]["grammar"]
+            # Convert 0-100 score to 0-1 accuracy
+            accuracy = grammar_score / 100.0
+            self_corrections = 0  # No self-corrections in assessment
+            logger.info(f"[DNA] Using assessment grammar score for accuracy: {grammar_score}/100 = {accuracy:.2f}")
+        else:
+            # Original logic for practice sessions
+            corrections = metrics["corrections_received"]
+            self_corrections = metrics["self_corrections"]
+            turns = max(metrics["turns_count"], 1)
+
+            # Accuracy rate (inverse of correction rate)
+            external_error_rate = corrections / turns
+            accuracy = max(0, 1 - external_error_rate)
 
         # Determine pattern
         if self_corrections > 2 and accuracy > 0.7:

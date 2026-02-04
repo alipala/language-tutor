@@ -467,8 +467,7 @@ async def evaluate_language_proficiency(
     text: str,
     language: str,
     duration: int = 60,
-    prompt: str = None,
-    audio_file_path: Optional[str] = None  # 🔥 NEW: Support audio file path
+    prompt: str = None
 ) -> Dict:
     """
     Backwards compatible wrapper - calls improved version
@@ -478,7 +477,6 @@ async def evaluate_language_proficiency(
         language: Target language
         duration: Duration in seconds
         prompt: Optional prompt
-        audio_file_path: Optional path to audio file for Azure pronunciation assessment
 
     Returns:
         Assessment result
@@ -488,7 +486,7 @@ async def evaluate_language_proficiency(
         language=language,
         duration=duration,
         prompt=prompt,
-        audio_file_path=audio_file_path  # 🔥 Pass through audio file path
+        audio_file_path=None  # No audio file in old API
     )
 
 
