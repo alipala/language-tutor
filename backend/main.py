@@ -122,7 +122,7 @@ app.include_router(upgrade_router)
 
 # Include notification routes
 from notification_routes import router as notification_router
-app.include_router(notification_router, prefix="/api")
+app.include_router(notification_router)
 
 # Include preference routes (notification settings, etc.)
 from preference_routes import router as preference_router

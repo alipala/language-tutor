@@ -15,7 +15,7 @@ from models import (
 # Import admin authentication from admin_routes
 from admin_routes import get_current_admin
 
-router = APIRouter(tags=["notifications"])
+router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 security = HTTPBearer()
 
 # Admin endpoints for managing notifications
@@ -391,7 +391,7 @@ async def mark_all_notifications_read(
 
     return {"message": f"Marked {result.modified_count} notifications as read"}
 
-@router.post("/notifications/delete")
+@router.post("/delete")
 async def delete_notification(
     request: NotificationDeleteRequest,
     current_user: UserInDB = Depends(get_current_user)
