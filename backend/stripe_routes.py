@@ -1239,7 +1239,7 @@ async def handle_invoice_payment_succeeded(invoice):
                 logger.info(f"[FIRST_SUBSCRIPTION] Reset usage counters for user {user['_id']}")
 
         # Get the plan details
-        if subscription.items and len(subscription.items.data) > 0:
+        if hasattr(subscription.items, 'data') and len(subscription.items.data) > 0:
             price = subscription.items.data[0].price
             if price:
                 update_data["subscription_price_id"] = price.id
