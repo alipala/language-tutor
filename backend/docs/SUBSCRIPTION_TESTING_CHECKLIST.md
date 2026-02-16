@@ -35,6 +35,43 @@
 
 **Fix Applied:** Changed condition to `if is_renewal or old_period_end is None` to reset on both renewal AND first subscription
 
+### Bug #5: Stripe Webhook - Wrong Field Name (CRITICAL)
+**Location:** `stripe_routes.py:1196`
+**Issue:** Used `subscription_id` instead of `stripe_subscription_id`
+- Inconsistent with Apple (`apple_transaction_id`) and Google Play (`google_play_purchase_token`)
+- Not following standardized naming convention (provider prefix)
+
+**Fix Applied:**
+- Changed line 1196: `"subscription_id"` → `"stripe_subscription_id"`
+- Added `"subscription_id": 1` to `unset_data` to remove old field name
+
+**Discovered:** During first production test (2026-02-16)
+
+### Bug #6: Timezone-Naive vs Timezone-Aware Datetime Comparison (CRITICAL)
+**Location:** `stripe_routes.py:1189`
+**Issue:** Comparing timezone-naive datetime from MongoDB with timezone-aware datetime from Stripe
+```python
+old_period_end = user.get("current_period_end")  # MongoDB - might be naive
+new_period_start = datetime.fromtimestamp(..., tz=timezone.utc)  # Aware
+
+if old_period_end and new_period_start > old_period_end:  # ❌ CRASHES!
+    # Error: "can't compare offset-naive and offset-aware datetimes"
+```
+
+**Fix Applied:**
+```python
+# Make old_period_end timezone-aware before comparison
+if old_period_end and old_period_end.tzinfo is None:
+    old_period_end = old_period_end.replace(tzinfo=timezone.utc)
+```
+
+**Impact:**
+- `invoice.payment_succeeded` webhook crashed
+- Bug fixes #1-5 never applied to production subscriptions
+- Fallback webhook (`customer.subscription.created`) used old logic without fixes
+
+**Discovered:** During first production test (2026-02-16) - error in Railway logs
+
 ---
 
 ## Testing Checklist
