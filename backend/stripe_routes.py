@@ -280,6 +280,7 @@ async def get_subscription_status(
             "status": status.status,
             "plan": status.plan,
             "period": status.period,
+            "provider": status.provider,  # stripe, apple, google_play (for mobile conflict detection)
             "limits": status.limits.dict() if status.limits else None,
             "is_in_trial": status.is_in_trial,
             "trial_end_date": status.trial_end_date.isoformat() if status.trial_end_date else None,
