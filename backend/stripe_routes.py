@@ -180,6 +180,26 @@ async def create_checkout_session(
                 payment_methods.append("ideal")
                 logger.info(f"[AUTH_CHECKOUT] iDEAL payment method enabled")
 
+            # Determine if user should get trial
+            # Only NEW customers get trial (no current/previous subscription)
+            user_plan = getattr(current_user, 'subscription_plan', 'try_learn')
+            is_new_customer = user_plan in ['try_learn', 'free', None]
+
+            # Build subscription data
+            subscription_data = {
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "user_email": current_user.email
+                }
+            }
+
+            # Add 7-day trial ONLY for new customers
+            if is_new_customer:
+                subscription_data["trial_period_days"] = 7
+                logger.info(f"[AUTH_CHECKOUT] New customer - adding 7-day free trial")
+            else:
+                logger.info(f"[AUTH_CHECKOUT] Existing customer ({user_plan}) - NO trial, immediate charge")
+
             checkout_session_data = {
                 "customer": customer_id,
                 "payment_method_types": payment_methods,
@@ -199,13 +219,8 @@ async def create_checkout_session(
                     "user_id": str(current_user.id),
                     "user_email": current_user.email
                 },
-                # Add subscription data with metadata
-                "subscription_data": {
-                    "metadata": {
-                        "user_id": str(current_user.id),
-                        "user_email": current_user.email
-                    }
-                }
+                # Add subscription data (with trial for new customers only)
+                "subscription_data": subscription_data
             }
             
             logger.info(f"[AUTH_CHECKOUT] Creating checkout session with full configuration...")
