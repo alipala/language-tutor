@@ -813,7 +813,8 @@ async def handle_subscription_created(subscription):
         # Prepare update data
         update_data = {
             "subscription_status": subscription.get("status"),
-            "subscription_id": subscription.get("id")
+            "stripe_subscription_id": subscription.get("id"),  # 🔥 FIX: Standardized field name
+            "subscription_provider": "stripe"  # 🔥 FIX: Required for mobile conflict detection
         }
         
         # 🔥 FIX ROOT CAUSE 1: PRESERVE remaining free minutes as a bonus!
@@ -851,21 +852,39 @@ async def handle_subscription_created(subscription):
             price = subscription.get("items").get("data")[0].get("price")
             if price:
                 update_data["subscription_price_id"] = price.get("id")
-                
+
                 # Get product details
                 product = stripe.Product.retrieve(price.get("product"))
                 update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
-                
+
                 # Determine if monthly or annual
                 if price.get("recurring") and price.get("recurring").get("interval"):
                     update_data["subscription_period"] = "monthly" if price.get("recurring").get("interval") == "month" else "annual"
 
+        # 🔥 REMOVE old provider data on Stripe subscription
+        unset_data = {
+            "subscription": 1,  # Remove nested object
+            "subscription_id": 1,  # Remove old field name (now using stripe_subscription_id)
+            "apple_transaction_id": 1,
+            "apple_product_id": 1,
+            "apple_original_transaction_id": 1,
+            "apple_is_trial": 1,
+            "google_play_product_id": 1,
+            "google_play_purchase_token": 1,
+            "google_play_order_id": 1,
+            "google_play_is_trial": 1,
+            "google_play_auto_renewing": 1,
+        }
+
         # Update user in MongoDB
         await database["users"].update_one(
             {"_id": user["_id"]},
-            {"$set": update_data}
+            {
+                "$set": update_data,
+                "$unset": unset_data
+            }
         )
-        
+
         logger.info(f"Subscription created for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling subscription created: {str(e)}")
@@ -1177,8 +1196,11 @@ async def handle_invoice_payment_succeeded(invoice):
             logger.warning(f"No user found for Stripe customer ID: {customer_id}")
             return
 
-        # Get subscription details from Stripe
-        subscription = stripe.Subscription.retrieve(subscription_id)
+        # Get subscription details from Stripe (expand items to get price/product data)
+        subscription = stripe.Subscription.retrieve(
+            subscription_id,
+            expand=['items.data.price', 'items.data.price.product']
+        )
 
         # 🔥 FIX: Check if this is a renewal (new billing period started)
         from datetime import timezone
