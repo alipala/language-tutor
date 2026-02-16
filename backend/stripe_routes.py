@@ -1178,34 +1178,71 @@ async def handle_invoice_payment_succeeded(invoice):
 
         # Get subscription details from Stripe
         subscription = stripe.Subscription.retrieve(subscription_id)
-        
+
+        # 🔥 FIX: Check if this is a renewal (new billing period started)
+        from datetime import timezone
+        old_period_end = user.get("current_period_end")
+        new_period_start = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
+        new_period_end = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+
+        is_renewal = False
+        if old_period_end and new_period_start > old_period_end:
+            is_renewal = True
+            logger.info(f"[RENEWAL] Detected renewal for user {user['_id']} - new billing period started")
+
         # Prepare update data
         update_data = {
             "subscription_status": subscription.status,
-            "subscription_id": subscription.id
+            "subscription_id": subscription.id,
+            "subscription_provider": "stripe",
+            "current_period_start": new_period_start,
+            "current_period_end": new_period_end,
+            "subscription_expires_at": new_period_end
         }
-        
+
+        # 🔥 RESET usage counters on renewal
+        if is_renewal:
+            update_data["practice_minutes_used"] = 0.0
+            update_data["practice_sessions_used"] = 0
+            update_data["assessments_used"] = 0
+            logger.info(f"[RENEWAL] Reset usage counters for user {user['_id']}")
+
         # Get the plan details
         if subscription.items and len(subscription.items.data) > 0:
             price = subscription.items.data[0].price
             if price:
                 update_data["subscription_price_id"] = price.id
-                
+
                 # Get product details
                 product = stripe.Product.retrieve(price.product)
                 update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
-                
+
                 # Determine if monthly or annual
                 if price.recurring and price.recurring.interval:
                     update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
 
+        # 🔥 REMOVE old provider data on Stripe subscription
+        unset_data = {
+            "subscription": 1,  # Remove nested object
+            "apple_transaction_id": 1,
+            "apple_product_id": 1,
+            "google_purchase_token": 1,
+            "google_order_id": 1
+        }
+
         # Update user in MongoDB
         await database["users"].update_one(
             {"_id": user["_id"]},
-            {"$set": update_data}
+            {
+                "$set": update_data,
+                "$unset": unset_data
+            }
         )
-        
-        logger.info(f"Invoice payment succeeded - updated subscription for user {user['_id']}")
+
+        if is_renewal:
+            logger.info(f"✅ [RENEWAL] Updated subscription for user {user['_id']} - usage reset")
+        else:
+            logger.info(f"Invoice payment succeeded - updated subscription for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling invoice payment succeeded: {str(e)}")
 

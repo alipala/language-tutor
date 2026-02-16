@@ -61,6 +61,24 @@ async def verify_receipt(
             logger.error(f"[APPLE_IAP] Invalid product ID: {request.product_id}")
             raise HTTPException(status_code=400, detail=f"Invalid product ID: {request.product_id}")
 
+        # 🔥 PROVIDER CONFLICT PROTECTION: Check for active subscription from different provider
+        user = await database.get_collection("users").find_one({"_id": str(current_user.id)})
+        if user:
+            current_provider = user.get("subscription_provider")
+            current_status = user.get("subscription_status")
+            current_expires = user.get("subscription_expires_at")
+
+            # Prevent overwriting active subscription from different provider
+            if (current_provider in ["stripe", "google_play"] and
+                current_status == "active" and
+                current_expires and current_expires > datetime.utcnow()):
+
+                logger.warning(f"[APPLE_IAP] User {current_user.id} has active {current_provider} subscription")
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"You have an active {current_provider} subscription until {current_expires.strftime('%Y-%m-%d')}. Please cancel it before subscribing via Apple."
+                )
+
         # Verify receipt with Apple
         verification_result = await AppleIAPVerifier.verify_receipt(
             receipt_data=request.receipt_data,
@@ -111,30 +129,58 @@ async def _create_or_update_subscription(
 
     # Calculate period end based on plan period
     expires_at = verification_result.get("expires_date")
+    now = datetime.utcnow()
 
-    # Update user document with Apple IAP subscription
+    # 🔥 FIX: Use top-level format (consistent with Stripe)
     update_data = {
-        "subscription.plan": plan_config["plan_id"],
-        "subscription.status": "active",
-        "subscription.provider": "apple",
-        "subscription.apple_product_id": verification_result["product_id"],
-        "subscription.apple_transaction_id": verification_result["transaction_id"],
-        "subscription.apple_original_transaction_id": verification_result["original_transaction_id"],
-        "subscription.current_period_end": expires_at,
-        "subscription.is_trial": verification_result.get("is_trial_period", False),
-        "subscription.updated_at": datetime.utcnow()
+        # Subscription metadata (top-level)
+        "subscription_plan": plan_config["plan_id"],
+        "subscription_status": "active",
+        "subscription_period": plan_config["period"],
+        "subscription_provider": "apple",
+        "subscription_expires_at": expires_at,
+
+        # Apple-specific fields
+        "apple_product_id": verification_result["product_id"],
+        "apple_transaction_id": verification_result["transaction_id"],
+        "apple_original_transaction_id": verification_result["original_transaction_id"],
+        "apple_is_trial": verification_result.get("is_trial_period", False),
+
+        # Period tracking
+        "current_period_start": now,
+        "current_period_end": expires_at,
+
+        # 🔥 RESET usage on new subscription
+        "practice_minutes_used": 0.0,
+        "practice_sessions_used": 0,
+        "assessments_used": 0,
+
+        # Metadata
+        "subscription_updated_at": now
+    }
+
+    # 🔥 REMOVE old provider data and nested subscription object
+    unset_data = {
+        "subscription": 1,  # Remove nested object
+        "stripe_customer_id": 1,
+        "stripe_subscription_id": 1,
+        "google_purchase_token": 1,
+        "google_order_id": 1
     }
 
     result = await users_collection.update_one(
         {"_id": user_id},
-        {"$set": update_data}
+        {
+            "$set": update_data,
+            "$unset": unset_data
+        }
     )
 
     if result.matched_count == 0:
         logger.error(f"[APPLE_IAP] User {user_id} not found")
         raise HTTPException(status_code=404, detail="User not found")
 
-    logger.info(f"[APPLE_IAP] Subscription updated for user {user_id}")
+    logger.info(f"[APPLE_IAP] ✅ Subscription updated for user {user_id} - Apple IAP {plan_config['period']}")
 
 
 @router.get("/products")
