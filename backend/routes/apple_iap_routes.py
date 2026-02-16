@@ -214,7 +214,7 @@ async def get_subscription_status(
 ):
     """
     Get current subscription status for user
-    Returns subscription details from database
+    🔥 FIXED: Use top-level fields (consistent with standardized format)
     """
     try:
         users_collection = database.get_collection("users")
@@ -223,14 +223,13 @@ async def get_subscription_status(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        subscription = user.get("subscription", {})
-
+        # 🔥 Read from top-level fields (standardized format)
         return {
-            "plan": subscription.get("plan", "try_learn"),
-            "status": subscription.get("status", "inactive"),
-            "provider": subscription.get("provider"),
-            "current_period_end": subscription.get("current_period_end"),
-            "is_trial": subscription.get("is_trial", False)
+            "plan": user.get("subscription_plan", "try_learn"),
+            "status": user.get("subscription_status", "inactive"),
+            "provider": user.get("subscription_provider"),
+            "current_period_end": user.get("current_period_end"),
+            "is_trial": user.get("apple_is_trial", False)
         }
 
     except Exception as e:
