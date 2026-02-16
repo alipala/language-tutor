@@ -498,22 +498,61 @@ async def cancel_subscription(
 
         # Handle trial cancellation differently
         if subscription.status == "trialing":
-            # Cancel trial immediately
+            # Cancel trial immediately in Stripe
             canceled_subscription = stripe.Subscription.cancel(subscription.id)
-            
-            # Update user's subscription status in MongoDB
+
+            # 🔥 COMPLETE RESET TO FREE TIER (match webhook behavior)
+            old_plan = current_user.subscription_plan if hasattr(current_user, 'subscription_plan') else "try_learn"
+
+            update_data = {
+                "subscription_status": "free",
+                "subscription_plan": "try_learn",
+                "is_in_trial": False,
+                "cancel_at_period_end": False,
+            }
+
+            # 🔥 CLEAR subscription fields (keep stripe_customer_id for future resubscriptions)
+            unset_data = {
+                "stripe_subscription_id": 1,
+                "subscription_price_id": 1,
+                "subscription_period": 1,
+                "subscription_expires_at": 1,
+                "subscription_started_at": 1,
+                "current_period_start": 1,
+                "current_period_end": 1,
+                "trial_end_date": 1,
+                "cancellation_date": 1,
+            }
+
+            # Update user in MongoDB
+            from bson import ObjectId
             await database["users"].update_one(
-                {"_id": current_user.id},
-                {"$set": {
-                    "subscription_status": "canceled",
-                    "is_in_trial": False,
-                    "trial_end_date": None,
-                    "subscription_plan": "try_learn"  # Revert to free plan
-                }}
+                {"_id": ObjectId(current_user.id)},  # 🔥 FIX: Convert string to ObjectId
+                {
+                    "$set": update_data,
+                    "$unset": unset_data
+                }
             )
 
-            logger.info(f"Trial canceled immediately for user {current_user.id}")
-            
+            logger.info(f"[CANCEL_TRIAL] ✅ User {current_user.id} reset to free tier")
+
+            # 🔥 UPDATE HEART SYSTEM back to free tier
+            try:
+                from services.heart_service import HeartService
+                heart_service = HeartService()
+
+                logger.info(f"[CANCEL_TRIAL] Updating heart system: {old_plan} → try_learn")
+                await heart_service.update_hearts_on_subscription_change(
+                    user_id=str(current_user.id),
+                    old_plan=old_plan,
+                    new_plan="try_learn"
+                )
+                logger.info(f"[CANCEL_TRIAL] ✅ Heart system updated to free tier")
+            except Exception as heart_error:
+                logger.error(f"[CANCEL_TRIAL] ❌ Error updating heart system: {str(heart_error)}")
+                import traceback
+                logger.error(traceback.format_exc())
+
             return {
                 "success": True,
                 "message": "Trial canceled successfully. No charges have been applied.",
