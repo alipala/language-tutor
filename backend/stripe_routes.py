@@ -1200,12 +1200,16 @@ async def handle_invoice_payment_succeeded(invoice):
             "subscription_expires_at": new_period_end
         }
 
-        # 🔥 RESET usage counters on renewal
-        if is_renewal:
+        # 🔥 RESET usage counters on renewal OR first subscription
+        # (Apple/Google always reset, Stripe should too for consistency)
+        if is_renewal or old_period_end is None:
             update_data["practice_minutes_used"] = 0.0
             update_data["practice_sessions_used"] = 0
             update_data["assessments_used"] = 0
-            logger.info(f"[RENEWAL] Reset usage counters for user {user['_id']}")
+            if is_renewal:
+                logger.info(f"[RENEWAL] Reset usage counters for user {user['_id']}")
+            else:
+                logger.info(f"[FIRST_SUBSCRIPTION] Reset usage counters for user {user['_id']}")
 
         # Get the plan details
         if subscription.items and len(subscription.items.data) > 0:
@@ -1226,8 +1230,13 @@ async def handle_invoice_payment_succeeded(invoice):
             "subscription": 1,  # Remove nested object
             "apple_transaction_id": 1,
             "apple_product_id": 1,
-            "google_purchase_token": 1,
-            "google_order_id": 1
+            "apple_original_transaction_id": 1,
+            "apple_is_trial": 1,
+            "google_play_product_id": 1,
+            "google_play_purchase_token": 1,
+            "google_play_order_id": 1,
+            "google_play_is_trial": 1,
+            "google_play_auto_renewing": 1,
         }
 
         # Update user in MongoDB
@@ -1241,6 +1250,8 @@ async def handle_invoice_payment_succeeded(invoice):
 
         if is_renewal:
             logger.info(f"✅ [RENEWAL] Updated subscription for user {user['_id']} - usage reset")
+        elif old_period_end is None:
+            logger.info(f"✅ [FIRST_SUBSCRIPTION] Created subscription for user {user['_id']} - usage reset")
         else:
             logger.info(f"Invoice payment succeeded - updated subscription for user {user['_id']}")
     except Exception as e:

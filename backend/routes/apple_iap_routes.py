@@ -164,8 +164,11 @@ async def _create_or_update_subscription(
         "subscription": 1,  # Remove nested object
         "stripe_customer_id": 1,
         "stripe_subscription_id": 1,
-        "google_purchase_token": 1,
-        "google_order_id": 1
+        "google_play_product_id": 1,
+        "google_play_purchase_token": 1,
+        "google_play_order_id": 1,
+        "google_play_is_trial": 1,
+        "google_play_auto_renewing": 1,
     }
 
     result = await users_collection.update_one(

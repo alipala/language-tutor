@@ -165,7 +165,9 @@ async def _create_or_update_subscription(
         "stripe_customer_id": 1,
         "stripe_subscription_id": 1,
         "apple_transaction_id": 1,
-        "apple_product_id": 1
+        "apple_product_id": 1,
+        "apple_original_transaction_id": 1,
+        "apple_is_trial": 1,
     }
 
     result = await users_collection.update_one(
