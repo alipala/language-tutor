@@ -1185,6 +1185,10 @@ async def handle_invoice_payment_succeeded(invoice):
         new_period_start = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
         new_period_end = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
 
+        # 🔥 FIX: Make old_period_end timezone-aware if it exists
+        if old_period_end and old_period_end.tzinfo is None:
+            old_period_end = old_period_end.replace(tzinfo=timezone.utc)
+
         is_renewal = False
         if old_period_end and new_period_start > old_period_end:
             is_renewal = True
@@ -1193,7 +1197,7 @@ async def handle_invoice_payment_succeeded(invoice):
         # Prepare update data
         update_data = {
             "subscription_status": subscription.status,
-            "subscription_id": subscription.id,
+            "stripe_subscription_id": subscription.id,  # 🔥 FIX: Standardized field name
             "subscription_provider": "stripe",
             "current_period_start": new_period_start,
             "current_period_end": new_period_end,
@@ -1228,6 +1232,7 @@ async def handle_invoice_payment_succeeded(invoice):
         # 🔥 REMOVE old provider data on Stripe subscription
         unset_data = {
             "subscription": 1,  # Remove nested object
+            "subscription_id": 1,  # Remove old field name (now using stripe_subscription_id)
             "apple_transaction_id": 1,
             "apple_product_id": 1,
             "apple_original_transaction_id": 1,
