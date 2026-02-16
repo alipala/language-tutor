@@ -526,13 +526,28 @@ async def cancel_subscription(
 
             # Update user in MongoDB
             from bson import ObjectId
-            await database["users"].update_one(
-                {"_id": ObjectId(current_user.id)},  # 🔥 FIX: Convert string to ObjectId
+
+            user_id_obj = ObjectId(current_user.id)
+            logger.info(f"[CANCEL_TRIAL] Updating MongoDB for user {user_id_obj}")
+            logger.info(f"[CANCEL_TRIAL] Set data: {update_data}")
+            logger.info(f"[CANCEL_TRIAL] Unset fields: {list(unset_data.keys())}")
+
+            result = await database["users"].update_one(
+                {"_id": user_id_obj},
                 {
                     "$set": update_data,
                     "$unset": unset_data
                 }
             )
+
+            logger.info(f"[CANCEL_TRIAL] MongoDB update result: matched={result.matched_count}, modified={result.modified_count}")
+
+            if result.matched_count == 0:
+                logger.error(f"[CANCEL_TRIAL] ❌ No user found with _id: {user_id_obj}")
+                raise HTTPException(status_code=404, detail="User not found")
+
+            if result.modified_count == 0:
+                logger.warning(f"[CANCEL_TRIAL] ⚠️  User found but not modified (already in target state?)")
 
             logger.info(f"[CANCEL_TRIAL] ✅ User {current_user.id} reset to free tier")
 
