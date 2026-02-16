@@ -928,9 +928,18 @@ async def handle_subscription_updated(subscription):
         update_data = {
             "subscription_status": new_status
         }
-        
+
+        # Handle cancellation status
+        # NOTE: subscription.deleted webhook will do full cleanup, but we handle this
+        # for immediate feedback in case there's a delay
+        if new_status == "canceled":
+            logger.info(f"[SUB_UPDATED] Subscription canceled for user {user['_id']}")
+            logger.info(f"[SUB_UPDATED] Will wait for subscription.deleted webhook for full cleanup")
+            # Just update status, subscription.deleted will do complete reset
+            update_data["cancel_at_period_end"] = subscription.get("cancel_at_period_end", False)
+
         # Handle trial-to-active transition
-        if current_status == "trialing" and new_status == "active":
+        elif current_status == "trialing" and new_status == "active":
             logger.info(f"[SUB_UPDATED] Processing trial-to-active transition for user {user['_id']}")
             
             # Update trial status
@@ -1032,28 +1041,92 @@ async def handle_subscription_updated(subscription):
         logger.error(f"[SUB_UPDATED] Error handling subscription updated: {str(e)}")
 
 async def handle_subscription_deleted(subscription):
-    """Handle subscription deleted event"""
+    """
+    Handle subscription deleted event - Reset user to free tier completely
+
+    This fires when:
+    1. User cancels during trial (immediate deletion)
+    2. User cancels after trial (deletion at period end)
+    3. Payment fails and subscription expires
+    """
     try:
         customer_id = subscription.get("customer")
+        subscription_id = subscription.get("id")
+
         if not customer_id:
-            logger.warning("No customer ID in subscription deleted event")
+            logger.warning("[SUB_DELETED] No customer ID in subscription deleted event")
             return
 
         # Find user by Stripe customer ID
         user = await database["users"].find_one({"stripe_customer_id": customer_id})
         if not user:
-            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
+            logger.warning(f"[SUB_DELETED] No user found for Stripe customer ID: {customer_id}")
             return
 
-        # Update user's subscription status
+        old_plan = user.get("subscription_plan", "try_learn")
+        old_status = user.get("subscription_status", "free")
+
+        logger.info(f"[SUB_DELETED] Processing subscription deletion for user {user['_id']}")
+        logger.info(f"[SUB_DELETED] Old plan: {old_plan}, Old status: {old_status}")
+        logger.info(f"[SUB_DELETED] Subscription ID: {subscription_id}")
+
+        # 🔥 COMPLETE RESET TO FREE TIER
+        update_data = {
+            "subscription_status": "free",
+            "subscription_plan": "try_learn",
+            "is_in_trial": False,
+            "cancel_at_period_end": False,
+        }
+
+        # 🔥 CLEAR subscription fields (keep stripe_customer_id for future resubscriptions)
+        unset_data = {
+            "stripe_subscription_id": 1,
+            "subscription_price_id": 1,
+            "subscription_period": 1,
+            "subscription_expires_at": 1,
+            "subscription_started_at": 1,
+            "current_period_start": 1,
+            "current_period_end": 1,
+            "trial_end_date": 1,
+            "cancellation_date": 1,
+        }
+
+        # Update user in MongoDB
         await database["users"].update_one(
             {"_id": user["_id"]},
-            {"$set": {"subscription_status": "canceled"}}
+            {
+                "$set": update_data,
+                "$unset": unset_data
+            }
         )
-        
-        logger.info(f"Subscription deleted for user {user['_id']}")
+
+        logger.info(f"[SUB_DELETED] ✅ User {user['_id']} reset to free tier")
+        logger.info(f"[SUB_DELETED] Kept stripe_customer_id for future resubscriptions")
+
+        # 🔥 UPDATE HEART SYSTEM back to free tier
+        try:
+            from services.heart_service import HeartService
+            heart_service = HeartService()
+
+            logger.info(f"[SUB_DELETED] Updating heart system: {old_plan} → try_learn")
+            await heart_service.update_hearts_on_subscription_change(
+                user_id=str(user["_id"]),
+                old_plan=old_plan,
+                new_plan="try_learn"
+            )
+            logger.info(f"[SUB_DELETED] ✅ Heart system updated to free tier")
+        except Exception as heart_error:
+            # Log error but don't fail the webhook
+            logger.error(f"[SUB_DELETED] ❌ Error updating heart system: {str(heart_error)}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+        logger.info(f"[SUB_DELETED] ✅ Subscription deletion complete for user {user['_id']}")
+
     except Exception as e:
-        logger.error(f"Error handling subscription deleted: {str(e)}")
+        logger.error(f"[SUB_DELETED] ❌ Error handling subscription deleted: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 async def handle_subscription_trial_will_end(subscription):
     """Handle subscription trial_will_end event - prepare for trial-to-monthly transition"""
