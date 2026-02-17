@@ -10,7 +10,7 @@ export default function PromoCodePage() {
       title: 'Sign In',
       description: 'Login or create account',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       )
@@ -20,7 +20,7 @@ export default function PromoCodePage() {
       title: 'Choose Plan',
       description: 'Select monthly or annual',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       )
@@ -30,7 +30,7 @@ export default function PromoCodePage() {
       title: 'Enter Code',
       description: 'Apply your promo code',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
         </svg>
       )
@@ -40,7 +40,7 @@ export default function PromoCodePage() {
       title: 'Pay',
       description: 'Complete checkout',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
       )
@@ -50,7 +50,7 @@ export default function PromoCodePage() {
       title: 'Done!',
       description: 'Return to app',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       )
@@ -61,7 +61,7 @@ export default function PromoCodePage() {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50">
       <NavBar />
 
-      <main className="pt-20 pb-8 px-4 sm:px-6 lg:px-8">
+      <main className="pt-24 pb-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Compact Hero */}
           <div className="text-center mb-8 lg:mb-12">
@@ -86,24 +86,19 @@ export default function PromoCodePage() {
             <div className="hidden lg:block">
               <div className="relative">
                 {/* Progress Line */}
-                <div className="absolute top-12 left-0 right-0 h-1 bg-gradient-to-r from-teal-200 via-teal-300 to-teal-400 rounded-full mx-20"></div>
+                <div className="absolute top-16 left-0 right-0 h-1 bg-gradient-to-r from-teal-200 via-teal-300 to-teal-400 rounded-full mx-20"></div>
 
                 {/* Steps */}
                 <div className="relative grid grid-cols-5 gap-4">
                   {steps.map((step, index) => (
                     <div key={step.number} className="flex flex-col items-center group">
-                      {/* Circle */}
-                      <div className="relative z-10 w-24 h-24 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl shadow-lg flex items-center justify-center transform group-hover:scale-110 transition-all duration-300 group-hover:shadow-2xl">
+                      {/* Card */}
+                      <div className="relative z-10 w-32 h-32 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl shadow-lg flex flex-col items-center justify-center transform group-hover:scale-110 transition-all duration-300 group-hover:shadow-2xl p-4">
                         <div className="text-center text-white">
-                          <div className="mb-1">{step.icon}</div>
-                          <div className="text-xs font-bold">{step.number}</div>
+                          <div className="mb-2">{step.icon}</div>
+                          <h3 className="font-bold text-sm mb-1">{step.title}</h3>
+                          <p className="text-xs opacity-90">{step.description}</p>
                         </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="mt-4 text-center">
-                        <h3 className="font-bold text-gray-900 text-lg mb-1">{step.title}</h3>
-                        <p className="text-sm text-gray-600">{step.description}</p>
                       </div>
                     </div>
                   ))}
@@ -117,10 +112,9 @@ export default function PromoCodePage() {
                 {steps.map((step, index) => (
                   <div key={step.number}>
                     <div className="flex gap-4 items-start">
-                      <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-lg flex items-center justify-center text-white">
+                      <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-lg flex flex-col items-center justify-center text-white p-2">
                         <div className="text-center">
-                          <div className="mb-0.5">{step.icon}</div>
-                          <div className="text-xs font-bold">{step.number}</div>
+                          {step.icon}
                         </div>
                       </div>
                       <div className="flex-1 pt-2">
@@ -129,7 +123,7 @@ export default function PromoCodePage() {
                       </div>
                     </div>
                     {index < steps.length - 1 && (
-                      <div className="ml-7 h-6 w-0.5 bg-gradient-to-b from-teal-300 to-teal-200 my-2"></div>
+                      <div className="ml-8 h-6 w-0.5 bg-gradient-to-b from-teal-300 to-teal-200 my-2"></div>
                     )}
                   </div>
                 ))}
@@ -161,7 +155,7 @@ export default function PromoCodePage() {
               </svg>
             </Link>
             <p className="text-sm text-gray-500">
-              Need help? <a href="mailto:support@mytacoai.com" className="text-teal-600 hover:text-teal-700 font-medium hover:underline">Contact Support</a>
+              Need help? <a href="mailto:hello@mytacoai.com" className="text-teal-600 hover:text-teal-700 font-medium hover:underline">Contact Support</a>
             </p>
           </div>
 
