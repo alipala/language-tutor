@@ -94,10 +94,10 @@ export default function PromoCodePage() {
                     <div key={step.number} className="flex flex-col items-center group">
                       {/* Card */}
                       <div className="relative z-10 w-32 h-32 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl shadow-lg flex flex-col items-center justify-start transform group-hover:scale-110 transition-all duration-300 group-hover:shadow-2xl pt-4 px-3 pb-3">
-                        <div className="text-center text-white">
-                          <div className="mb-2">{step.icon}</div>
-                          <h3 className="font-bold text-sm mb-1">{step.title}</h3>
-                          <p className="text-xs opacity-90 leading-tight">{step.description}</p>
+                        <div className="flex flex-col items-center text-white w-full">
+                          <div className="flex items-center justify-center mb-2">{step.icon}</div>
+                          <h3 className="font-bold text-sm mb-1 text-center">{step.title}</h3>
+                          <p className="text-xs opacity-90 leading-tight text-center">{step.description}</p>
                         </div>
                       </div>
                     </div>
