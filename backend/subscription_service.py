@@ -302,7 +302,8 @@ class SubscriptionService:
             # Get plan details
             plan_id = user.get("subscription_plan", "try_learn")
             period = user.get("subscription_period", "monthly")
-            
+            provider = user.get("subscription_provider")  # stripe, apple, google_play
+
             # Calculate limits and usage
             limits = await cls._calculate_subscription_limits(user_id, plan_id, period, user)
             
@@ -325,6 +326,7 @@ class SubscriptionService:
                 status=subscription_status,
                 plan=plan_id,
                 period=period,
+                provider=provider,  # stripe, apple, google_play
                 price_id=user.get("subscription_price_id"),
                 expires_at=expires_at,
                 limits=limits,

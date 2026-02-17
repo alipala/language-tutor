@@ -180,6 +180,26 @@ async def create_checkout_session(
                 payment_methods.append("ideal")
                 logger.info(f"[AUTH_CHECKOUT] iDEAL payment method enabled")
 
+            # Determine if user should get trial
+            # Only NEW customers get trial (no current/previous subscription)
+            user_plan = getattr(current_user, 'subscription_plan', 'try_learn')
+            is_new_customer = user_plan in ['try_learn', 'free', None]
+
+            # Build subscription data
+            subscription_data = {
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "user_email": current_user.email
+                }
+            }
+
+            # Add 7-day trial ONLY for new customers
+            if is_new_customer:
+                subscription_data["trial_period_days"] = 7
+                logger.info(f"[AUTH_CHECKOUT] New customer - adding 7-day free trial")
+            else:
+                logger.info(f"[AUTH_CHECKOUT] Existing customer ({user_plan}) - NO trial, immediate charge")
+
             checkout_session_data = {
                 "customer": customer_id,
                 "payment_method_types": payment_methods,
@@ -199,13 +219,8 @@ async def create_checkout_session(
                     "user_id": str(current_user.id),
                     "user_email": current_user.email
                 },
-                # Add subscription data with metadata
-                "subscription_data": {
-                    "metadata": {
-                        "user_id": str(current_user.id),
-                        "user_email": current_user.email
-                    }
-                }
+                # Add subscription data (with trial for new customers only)
+                "subscription_data": subscription_data
             }
             
             logger.info(f"[AUTH_CHECKOUT] Creating checkout session with full configuration...")
@@ -280,6 +295,7 @@ async def get_subscription_status(
             "status": status.status,
             "plan": status.plan,
             "period": status.period,
+            "provider": status.provider,  # stripe, apple, google_play (for mobile conflict detection)
             "limits": status.limits.dict() if status.limits else None,
             "is_in_trial": status.is_in_trial,
             "trial_end_date": status.trial_end_date.isoformat() if status.trial_end_date else None,
@@ -482,22 +498,76 @@ async def cancel_subscription(
 
         # Handle trial cancellation differently
         if subscription.status == "trialing":
-            # Cancel trial immediately
+            # Cancel trial immediately in Stripe
             canceled_subscription = stripe.Subscription.cancel(subscription.id)
-            
-            # Update user's subscription status in MongoDB
-            await database["users"].update_one(
-                {"_id": current_user.id},
-                {"$set": {
-                    "subscription_status": "canceled",
-                    "is_in_trial": False,
-                    "trial_end_date": None,
-                    "subscription_plan": "try_learn"  # Revert to free plan
-                }}
+
+            # 🔥 COMPLETE RESET TO FREE TIER (match webhook behavior)
+            old_plan = current_user.subscription_plan if hasattr(current_user, 'subscription_plan') else "try_learn"
+
+            update_data = {
+                "subscription_status": "free",
+                "subscription_plan": "try_learn",
+                "is_in_trial": False,
+                "cancel_at_period_end": False,
+            }
+
+            # 🔥 CLEAR subscription fields (keep stripe_customer_id for future resubscriptions)
+            unset_data = {
+                "stripe_subscription_id": 1,
+                "subscription_price_id": 1,
+                "subscription_period": 1,
+                "subscription_expires_at": 1,
+                "subscription_started_at": 1,
+                "current_period_start": 1,
+                "current_period_end": 1,
+                "trial_end_date": 1,
+                "cancellation_date": 1,
+            }
+
+            # Update user in MongoDB
+            from bson import ObjectId
+
+            user_id_obj = ObjectId(current_user.id)
+            logger.info(f"[CANCEL_TRIAL] Updating MongoDB for user {user_id_obj}")
+            logger.info(f"[CANCEL_TRIAL] Set data: {update_data}")
+            logger.info(f"[CANCEL_TRIAL] Unset fields: {list(unset_data.keys())}")
+
+            result = await database["users"].update_one(
+                {"_id": user_id_obj},
+                {
+                    "$set": update_data,
+                    "$unset": unset_data
+                }
             )
 
-            logger.info(f"Trial canceled immediately for user {current_user.id}")
-            
+            logger.info(f"[CANCEL_TRIAL] MongoDB update result: matched={result.matched_count}, modified={result.modified_count}")
+
+            if result.matched_count == 0:
+                logger.error(f"[CANCEL_TRIAL] ❌ No user found with _id: {user_id_obj}")
+                raise HTTPException(status_code=404, detail="User not found")
+
+            if result.modified_count == 0:
+                logger.warning(f"[CANCEL_TRIAL] ⚠️  User found but not modified (already in target state?)")
+
+            logger.info(f"[CANCEL_TRIAL] ✅ User {current_user.id} reset to free tier")
+
+            # 🔥 UPDATE HEART SYSTEM back to free tier
+            try:
+                from services.heart_service import HeartService
+                heart_service = HeartService()
+
+                logger.info(f"[CANCEL_TRIAL] Updating heart system: {old_plan} → try_learn")
+                await heart_service.update_hearts_on_subscription_change(
+                    user_id=str(current_user.id),
+                    old_plan=old_plan,
+                    new_plan="try_learn"
+                )
+                logger.info(f"[CANCEL_TRIAL] ✅ Heart system updated to free tier")
+            except Exception as heart_error:
+                logger.error(f"[CANCEL_TRIAL] ❌ Error updating heart system: {str(heart_error)}")
+                import traceback
+                logger.error(traceback.format_exc())
+
             return {
                 "success": True,
                 "message": "Trial canceled successfully. No charges have been applied.",
@@ -812,7 +882,8 @@ async def handle_subscription_created(subscription):
         # Prepare update data
         update_data = {
             "subscription_status": subscription.get("status"),
-            "subscription_id": subscription.get("id")
+            "stripe_subscription_id": subscription.get("id"),  # 🔥 FIX: Standardized field name
+            "subscription_provider": "stripe"  # 🔥 FIX: Required for mobile conflict detection
         }
         
         # 🔥 FIX ROOT CAUSE 1: PRESERVE remaining free minutes as a bonus!
@@ -850,21 +921,39 @@ async def handle_subscription_created(subscription):
             price = subscription.get("items").get("data")[0].get("price")
             if price:
                 update_data["subscription_price_id"] = price.get("id")
-                
+
                 # Get product details
                 product = stripe.Product.retrieve(price.get("product"))
                 update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
-                
+
                 # Determine if monthly or annual
                 if price.get("recurring") and price.get("recurring").get("interval"):
                     update_data["subscription_period"] = "monthly" if price.get("recurring").get("interval") == "month" else "annual"
 
+        # 🔥 REMOVE old provider data on Stripe subscription
+        unset_data = {
+            "subscription": 1,  # Remove nested object
+            "subscription_id": 1,  # Remove old field name (now using stripe_subscription_id)
+            "apple_transaction_id": 1,
+            "apple_product_id": 1,
+            "apple_original_transaction_id": 1,
+            "apple_is_trial": 1,
+            "google_play_product_id": 1,
+            "google_play_purchase_token": 1,
+            "google_play_order_id": 1,
+            "google_play_is_trial": 1,
+            "google_play_auto_renewing": 1,
+        }
+
         # Update user in MongoDB
         await database["users"].update_one(
             {"_id": user["_id"]},
-            {"$set": update_data}
+            {
+                "$set": update_data,
+                "$unset": unset_data
+            }
         )
-        
+
         logger.info(f"Subscription created for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling subscription created: {str(e)}")
@@ -893,9 +982,18 @@ async def handle_subscription_updated(subscription):
         update_data = {
             "subscription_status": new_status
         }
-        
+
+        # Handle cancellation status
+        # NOTE: subscription.deleted webhook will do full cleanup, but we handle this
+        # for immediate feedback in case there's a delay
+        if new_status == "canceled":
+            logger.info(f"[SUB_UPDATED] Subscription canceled for user {user['_id']}")
+            logger.info(f"[SUB_UPDATED] Will wait for subscription.deleted webhook for full cleanup")
+            # Just update status, subscription.deleted will do complete reset
+            update_data["cancel_at_period_end"] = subscription.get("cancel_at_period_end", False)
+
         # Handle trial-to-active transition
-        if current_status == "trialing" and new_status == "active":
+        elif current_status == "trialing" and new_status == "active":
             logger.info(f"[SUB_UPDATED] Processing trial-to-active transition for user {user['_id']}")
             
             # Update trial status
@@ -997,28 +1095,92 @@ async def handle_subscription_updated(subscription):
         logger.error(f"[SUB_UPDATED] Error handling subscription updated: {str(e)}")
 
 async def handle_subscription_deleted(subscription):
-    """Handle subscription deleted event"""
+    """
+    Handle subscription deleted event - Reset user to free tier completely
+
+    This fires when:
+    1. User cancels during trial (immediate deletion)
+    2. User cancels after trial (deletion at period end)
+    3. Payment fails and subscription expires
+    """
     try:
         customer_id = subscription.get("customer")
+        subscription_id = subscription.get("id")
+
         if not customer_id:
-            logger.warning("No customer ID in subscription deleted event")
+            logger.warning("[SUB_DELETED] No customer ID in subscription deleted event")
             return
 
         # Find user by Stripe customer ID
         user = await database["users"].find_one({"stripe_customer_id": customer_id})
         if not user:
-            logger.warning(f"No user found for Stripe customer ID: {customer_id}")
+            logger.warning(f"[SUB_DELETED] No user found for Stripe customer ID: {customer_id}")
             return
 
-        # Update user's subscription status
+        old_plan = user.get("subscription_plan", "try_learn")
+        old_status = user.get("subscription_status", "free")
+
+        logger.info(f"[SUB_DELETED] Processing subscription deletion for user {user['_id']}")
+        logger.info(f"[SUB_DELETED] Old plan: {old_plan}, Old status: {old_status}")
+        logger.info(f"[SUB_DELETED] Subscription ID: {subscription_id}")
+
+        # 🔥 COMPLETE RESET TO FREE TIER
+        update_data = {
+            "subscription_status": "free",
+            "subscription_plan": "try_learn",
+            "is_in_trial": False,
+            "cancel_at_period_end": False,
+        }
+
+        # 🔥 CLEAR subscription fields (keep stripe_customer_id for future resubscriptions)
+        unset_data = {
+            "stripe_subscription_id": 1,
+            "subscription_price_id": 1,
+            "subscription_period": 1,
+            "subscription_expires_at": 1,
+            "subscription_started_at": 1,
+            "current_period_start": 1,
+            "current_period_end": 1,
+            "trial_end_date": 1,
+            "cancellation_date": 1,
+        }
+
+        # Update user in MongoDB
         await database["users"].update_one(
             {"_id": user["_id"]},
-            {"$set": {"subscription_status": "canceled"}}
+            {
+                "$set": update_data,
+                "$unset": unset_data
+            }
         )
-        
-        logger.info(f"Subscription deleted for user {user['_id']}")
+
+        logger.info(f"[SUB_DELETED] ✅ User {user['_id']} reset to free tier")
+        logger.info(f"[SUB_DELETED] Kept stripe_customer_id for future resubscriptions")
+
+        # 🔥 UPDATE HEART SYSTEM back to free tier
+        try:
+            from services.heart_service import HeartService
+            heart_service = HeartService()
+
+            logger.info(f"[SUB_DELETED] Updating heart system: {old_plan} → try_learn")
+            await heart_service.update_hearts_on_subscription_change(
+                user_id=str(user["_id"]),
+                old_plan=old_plan,
+                new_plan="try_learn"
+            )
+            logger.info(f"[SUB_DELETED] ✅ Heart system updated to free tier")
+        except Exception as heart_error:
+            # Log error but don't fail the webhook
+            logger.error(f"[SUB_DELETED] ❌ Error updating heart system: {str(heart_error)}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+        logger.info(f"[SUB_DELETED] ✅ Subscription deletion complete for user {user['_id']}")
+
     except Exception as e:
-        logger.error(f"Error handling subscription deleted: {str(e)}")
+        logger.error(f"[SUB_DELETED] ❌ Error handling subscription deleted: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 async def handle_subscription_trial_will_end(subscription):
     """Handle subscription trial_will_end event - prepare for trial-to-monthly transition"""
@@ -1176,36 +1338,92 @@ async def handle_invoice_payment_succeeded(invoice):
             logger.warning(f"No user found for Stripe customer ID: {customer_id}")
             return
 
-        # Get subscription details from Stripe
-        subscription = stripe.Subscription.retrieve(subscription_id)
-        
+        # Get subscription details from Stripe (expand items to get price/product data)
+        subscription = stripe.Subscription.retrieve(
+            subscription_id,
+            expand=['items.data.price', 'items.data.price.product']
+        )
+
+        # 🔥 FIX: Check if this is a renewal (new billing period started)
+        from datetime import timezone
+        old_period_end = user.get("current_period_end")
+        new_period_start = datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc)
+        new_period_end = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+
+        # 🔥 FIX: Make old_period_end timezone-aware if it exists
+        if old_period_end and old_period_end.tzinfo is None:
+            old_period_end = old_period_end.replace(tzinfo=timezone.utc)
+
+        is_renewal = False
+        if old_period_end and new_period_start > old_period_end:
+            is_renewal = True
+            logger.info(f"[RENEWAL] Detected renewal for user {user['_id']} - new billing period started")
+
         # Prepare update data
         update_data = {
             "subscription_status": subscription.status,
-            "subscription_id": subscription.id
+            "stripe_subscription_id": subscription.id,  # 🔥 FIX: Standardized field name
+            "subscription_provider": "stripe",
+            "current_period_start": new_period_start,
+            "current_period_end": new_period_end,
+            "subscription_expires_at": new_period_end
         }
-        
+
+        # 🔥 RESET usage counters on renewal OR first subscription
+        # (Apple/Google always reset, Stripe should too for consistency)
+        if is_renewal or old_period_end is None:
+            update_data["practice_minutes_used"] = 0.0
+            update_data["practice_sessions_used"] = 0
+            update_data["assessments_used"] = 0
+            if is_renewal:
+                logger.info(f"[RENEWAL] Reset usage counters for user {user['_id']}")
+            else:
+                logger.info(f"[FIRST_SUBSCRIPTION] Reset usage counters for user {user['_id']}")
+
         # Get the plan details
-        if subscription.items and len(subscription.items.data) > 0:
+        if hasattr(subscription.items, 'data') and len(subscription.items.data) > 0:
             price = subscription.items.data[0].price
             if price:
                 update_data["subscription_price_id"] = price.id
-                
+
                 # Get product details
                 product = stripe.Product.retrieve(price.product)
                 update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
-                
+
                 # Determine if monthly or annual
                 if price.recurring and price.recurring.interval:
                     update_data["subscription_period"] = "monthly" if price.recurring.interval == "month" else "annual"
 
+        # 🔥 REMOVE old provider data on Stripe subscription
+        unset_data = {
+            "subscription": 1,  # Remove nested object
+            "subscription_id": 1,  # Remove old field name (now using stripe_subscription_id)
+            "apple_transaction_id": 1,
+            "apple_product_id": 1,
+            "apple_original_transaction_id": 1,
+            "apple_is_trial": 1,
+            "google_play_product_id": 1,
+            "google_play_purchase_token": 1,
+            "google_play_order_id": 1,
+            "google_play_is_trial": 1,
+            "google_play_auto_renewing": 1,
+        }
+
         # Update user in MongoDB
         await database["users"].update_one(
             {"_id": user["_id"]},
-            {"$set": update_data}
+            {
+                "$set": update_data,
+                "$unset": unset_data
+            }
         )
-        
-        logger.info(f"Invoice payment succeeded - updated subscription for user {user['_id']}")
+
+        if is_renewal:
+            logger.info(f"✅ [RENEWAL] Updated subscription for user {user['_id']} - usage reset")
+        elif old_period_end is None:
+            logger.info(f"✅ [FIRST_SUBSCRIPTION] Created subscription for user {user['_id']} - usage reset")
+        else:
+            logger.info(f"Invoice payment succeeded - updated subscription for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling invoice payment succeeded: {str(e)}")
 

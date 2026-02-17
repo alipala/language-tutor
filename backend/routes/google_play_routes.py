@@ -60,6 +60,24 @@ async def verify_purchase(
             logger.error(f"[GOOGLE_PLAY] Invalid product ID: {request.product_id}")
             raise HTTPException(status_code=400, detail=f"Invalid product ID: {request.product_id}")
 
+        # 🔥 PROVIDER CONFLICT PROTECTION: Check for active subscription from different provider
+        user = await database.get_collection("users").find_one({"_id": str(current_user.id)})
+        if user:
+            current_provider = user.get("subscription_provider")
+            current_status = user.get("subscription_status")
+            current_expires = user.get("subscription_expires_at")
+
+            # Prevent overwriting active subscription from different provider
+            if (current_provider in ["stripe", "apple"] and
+                current_status == "active" and
+                current_expires and current_expires > datetime.utcnow()):
+
+                logger.warning(f"[GOOGLE_PLAY] User {current_user.id} has active {current_provider} subscription")
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"You have an active {current_provider} subscription until {current_expires.strftime('%Y-%m-%d')}. Please cancel it before subscribing via Google Play."
+                )
+
         # Verify purchase with Google Play
         verification_result = await GooglePlayVerifier.verify_purchase(
             purchase_token=request.purchase_token,
@@ -110,30 +128,61 @@ async def _create_or_update_subscription(
 
     # Calculate period end based on plan period
     expires_at = verification_result.get("expires_date")
+    now = datetime.utcnow()
 
-    # Update user document with Google Play subscription
+    # 🔥 FIX: Use top-level format (consistent with Stripe)
     update_data = {
-        "subscription.plan": plan_config["plan_id"],
-        "subscription.status": "active",
-        "subscription.provider": "google_play",
-        "subscription.google_play_product_id": verification_result["product_id"],
-        "subscription.google_play_purchase_token": verification_result["purchase_token"],
-        "subscription.google_play_order_id": verification_result["order_id"],
-        "subscription.current_period_end": expires_at,
-        "subscription.is_trial": verification_result.get("is_trial_period", False),
-        "subscription.updated_at": datetime.utcnow()
+        # Subscription metadata (top-level)
+        "subscription_plan": plan_config["plan_id"],
+        "subscription_status": "active",
+        "subscription_period": plan_config["period"],
+        "subscription_provider": "google_play",
+        "subscription_expires_at": expires_at,
+
+        # Google Play-specific fields
+        "google_play_product_id": verification_result["product_id"],
+        "google_play_purchase_token": verification_result["purchase_token"],
+        "google_play_order_id": verification_result["order_id"],
+        "google_play_is_trial": verification_result.get("is_trial_period", False),
+        "google_play_auto_renewing": verification_result.get("auto_renewing", False),
+
+        # Period tracking
+        "current_period_start": now,
+        "current_period_end": expires_at,
+
+        # 🔥 RESET usage on new subscription
+        "practice_minutes_used": 0.0,
+        "practice_sessions_used": 0,
+        "assessments_used": 0,
+
+        # Metadata
+        "subscription_updated_at": now
+    }
+
+    # 🔥 REMOVE old provider data and nested subscription object
+    unset_data = {
+        "subscription": 1,  # Remove nested object
+        "stripe_customer_id": 1,
+        "stripe_subscription_id": 1,
+        "apple_transaction_id": 1,
+        "apple_product_id": 1,
+        "apple_original_transaction_id": 1,
+        "apple_is_trial": 1,
     }
 
     result = await users_collection.update_one(
         {"_id": user_id},
-        {"$set": update_data}
+        {
+            "$set": update_data,
+            "$unset": unset_data
+        }
     )
 
     if result.matched_count == 0:
         logger.error(f"[GOOGLE_PLAY] User {user_id} not found")
         raise HTTPException(status_code=404, detail="User not found")
 
-    logger.info(f"[GOOGLE_PLAY] Subscription updated for user {user_id}")
+    logger.info(f"[GOOGLE_PLAY] ✅ Subscription updated for user {user_id} - Google Play {plan_config['period']}")
 
 
 @router.get("/products")
@@ -167,7 +216,7 @@ async def get_subscription_status(
 ):
     """
     Get current subscription status for user
-    Returns subscription details from database
+    🔥 FIXED: Use top-level fields (consistent with standardized format)
     """
     try:
         users_collection = database.get_collection("users")
@@ -176,14 +225,13 @@ async def get_subscription_status(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        subscription = user.get("subscription", {})
-
+        # 🔥 Read from top-level fields (standardized format)
         return {
-            "plan": subscription.get("plan", "try_learn"),
-            "status": subscription.get("status", "inactive"),
-            "provider": subscription.get("provider"),
-            "current_period_end": subscription.get("current_period_end"),
-            "is_trial": subscription.get("is_trial", False)
+            "plan": user.get("subscription_plan", "try_learn"),
+            "status": user.get("subscription_status", "inactive"),
+            "provider": user.get("subscription_provider"),
+            "current_period_end": user.get("current_period_end"),
+            "is_trial": user.get("google_play_is_trial", False)
         }
 
     except Exception as e:

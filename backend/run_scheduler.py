@@ -16,6 +16,7 @@ from datetime import datetime, date
 from challenge_pool_replenisher import run_daily_job
 from notification_triggers import run_heart_refill_check
 from practice_reminder_trigger import run_practice_reminder_check
+from cron_jobs.reset_free_user_usage import reset_expired_free_user_periods
 
 # Global event loop for all async operations
 loop = None
@@ -49,6 +50,13 @@ def practice_reminder_job_wrapper():
     print(f"\n[SCHEDULER] 📚 Practice Reminder Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     event_loop = get_or_create_event_loop()
     event_loop.run_until_complete(run_practice_reminder_check())
+
+
+def free_user_reset_job_wrapper():
+    """Wrapper to run free user monthly reset"""
+    print(f"\n[SCHEDULER] 🆓 Free User Monthly Reset Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(reset_expired_free_user_periods())
 
 
 def reference_generation_job_wrapper():
@@ -134,6 +142,7 @@ def run_scheduler():
     print(f"  🔄 User pool replenishment: {user_pool_freq} at 02:00 AM UTC")
     print(f"  🤖 CrewAI for users: {'ENABLED' if use_crewai else 'DISABLED'}")
     print(f"  📖 Reference generation: {reference_freq} at 03:00 AM UTC")
+    print(f"  🆓 Free user monthly reset: Daily at 02:30 AM UTC")
     print(f"  🔔 Heart refill check: Every 30 minutes")
     print(f"  📚 Practice reminders: Every hour")
     print("="*80 + "\n")
@@ -141,6 +150,10 @@ def run_scheduler():
     # Schedule user challenge pool replenishment at 2:00 AM UTC
     # This checks the frequency inside the wrapper
     schedule.every().day.at("02:00").do(user_pool_replenishment_job_wrapper)
+
+    # 🔥 NEW: Schedule free user monthly reset at 2:30 AM UTC
+    # Runs daily to check for expired free user periods and reset usage
+    schedule.every().day.at("02:30").do(free_user_reset_job_wrapper)
 
     # Schedule reference challenge generation at 3:00 AM UTC
     # This checks the frequency inside the wrapper

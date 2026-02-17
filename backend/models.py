@@ -374,6 +374,7 @@ class SubscriptionStatus(BaseModel):
     status: Optional[str] = None  # active, expired, canceled, past_due, trialing
     plan: Optional[str] = None
     period: Optional[str] = None
+    provider: Optional[str] = None  # stripe, apple, google_play
     price_id: Optional[str] = None
     expires_at: Optional[datetime] = None
     limits: Optional[SubscriptionLimits] = None
