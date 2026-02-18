@@ -262,6 +262,29 @@ class SubscriptionService:
                                         "subscription_status": "trialing"
                                     }}
                                 )
+                        elif stripe_subscription.status == "canceled":
+                            # Subscription was canceled — clear all trial/subscription state
+                            subscription_status = "free"
+                            is_in_trial = False
+                            trial_end_date = None
+                            trial_days_remaining = None
+                            await database["users"].update_one(
+                                get_user_query(user_id),
+                                {
+                                    "$set": {
+                                        "is_in_trial": False,
+                                        "subscription_status": "free",
+                                        "subscription_plan": "try_learn",
+                                    },
+                                    "$unset": {
+                                        "trial_end_date": 1,
+                                        "current_period_start": 1,
+                                        "current_period_end": 1,
+                                    }
+                                }
+                            )
+                            logger.info(f"[SUBSCRIPTION_STATUS] Cleared stale trial data for canceled user {user_id}")
+
                         elif stripe_subscription.status == "active":
                             # Check if subscription is scheduled for cancellation
                             if stripe_subscription.cancel_at_period_end:
@@ -269,7 +292,7 @@ class SubscriptionService:
                                 logger.info(f"User {user_id} subscription is scheduled for cancellation")
                             else:
                                 subscription_status = "active"
-                            
+
                             # Clear trial status if subscription is now active
                             if is_in_trial:
                                 await database["users"].update_one(
