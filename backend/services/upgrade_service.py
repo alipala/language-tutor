@@ -28,17 +28,17 @@ class UpgradeService:
             "period": "monthly"
         },
         "fluency_builder_annual": {
-            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY", "price_1RdxNjJcquSiYwWNIpmYrKSE"),
+            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY", "price_1SoQw4JcquSiYwWNzi2zSgXt"),
             "minutes": 1800,
             "period": "annual"
         },
         "language_mastery_monthly": {
-            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_MONTHLY", "price_1RdxlGJcquSiYwWNWvyEgmgL"),
+            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY", "price_1RdxlGJcquSiYwWNWvyEgmgL"),
             "minutes": -1,  # Unlimited
             "period": "monthly"
         },
         "language_mastery_annual": {
-            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_LANGUAGE_MASTERY_YEARLY", "price_1RdxmRJcquSiYwWN7Oc6NnNe"),
+            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY", "price_1SoQy8JcquSiYwWNalBlWPEQ"),
             "minutes": -1,  # Unlimited
             "period": "annual"
         },
@@ -49,7 +49,7 @@ class UpgradeService:
             "period": "monthly"
         },
         "team_mastery_annual": {
-            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY", "price_1RdxmRJcquSiYwWN7Oc6NnNe"),
+            "price_id": os.getenv("NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY", "price_1SoQy8JcquSiYwWNalBlWPEQ"),
             "minutes": -1,  # Unlimited
             "period": "annual"
         }
@@ -218,17 +218,18 @@ class UpgradeService:
             current_period_start = user.get("current_period_start")
             current_period_end = user.get("current_period_end")
             
-            # Get current subscription from Stripe
+            # Get current subscription from Stripe — include trialing users
             subscriptions = stripe.Subscription.list(
                 customer=stripe_customer_id,
-                status="active",
                 limit=1
             )
+            # Filter to active or trialing only
+            active_subs = [s for s in subscriptions.data if s.status in ("active", "trialing")]
+
+            if not active_subs:
+                raise HTTPException(status_code=400, detail="No active or trialing subscription found")
             
-            if not subscriptions.data:
-                raise HTTPException(status_code=400, detail="No active subscription found")
-            
-            current_subscription = subscriptions.data[0]
+            current_subscription = active_subs[0]
             
             # ========================================
             # DETERMINE NEW PLAN DETAILS
@@ -242,7 +243,19 @@ class UpgradeService:
                 new_plan = "fluency_builder"
                 new_period = "annual"
                 keep_current_period = False
-                
+
+            elif upgrade_type == "upgrade_to_language_mastery_monthly":
+                # Any plan → Language Mastery Monthly: keep current period
+                new_plan = "language_mastery"
+                new_period = "monthly"
+                keep_current_period = True
+
+            elif upgrade_type == "upgrade_to_language_mastery_annual":
+                # Any plan → Language Mastery Annual: new 12-month period
+                new_plan = "language_mastery"
+                new_period = "annual"
+                keep_current_period = False
+
             elif upgrade_type == "upgrade_to_team_mastery":
                 # Fluency → Team Mastery: KEEP current period
                 new_plan = "team_mastery"
@@ -257,11 +270,15 @@ class UpgradeService:
             # ========================================
             logger.info(f"[UPGRADE] Modifying Stripe subscription: {current_subscription.id}")
             
+            # Get the subscription item ID — use dict access for SDK v11 compatibility
+            sub_item_id = current_subscription["items"]["data"][0]["id"]
+            logger.info(f"[UPGRADE] Subscription item ID: {sub_item_id}")
+
             # Modify subscription
             updated_subscription = stripe.Subscription.modify(
                 current_subscription.id,
                 items=[{
-                    "id": current_subscription.items.data[0].id,
+                    "id": sub_item_id,
                     "price": new_price_id,
                 }],
                 # IMPORTANT: No proration for our use case
@@ -282,10 +299,10 @@ class UpgradeService:
             else:
                 # Use new period from Stripe (Monthly → Annual)
                 new_period_start = datetime.fromtimestamp(
-                    updated_subscription.current_period_start
+                    updated_subscription["current_period_start"]
                 )
                 new_period_end = datetime.fromtimestamp(
-                    updated_subscription.current_period_end
+                    updated_subscription["current_period_end"]
                 )
                 logger.info(f"[UPGRADE] New period from Stripe: {new_period_start} to {new_period_end}")
             
@@ -338,7 +355,7 @@ class UpgradeService:
             logger.info(f"[UPGRADE] Usage counters reset to 0")
             
             # Calculate minutes total
-            if new_plan == "team_mastery":
+            if new_plan in ("team_mastery", "language_mastery"):
                 minutes_total = -1  # Unlimited
             elif new_period == "annual":
                 minutes_total = 1800
@@ -350,7 +367,7 @@ class UpgradeService:
             # ========================================
             return {
                 "success": True,
-                "subscription_id": updated_subscription.id,
+                "subscription_id": updated_subscription["id"],
                 "new_plan": new_plan,
                 "new_period": new_period,
                 "period_start": new_period_start.isoformat(),
@@ -358,7 +375,7 @@ class UpgradeService:
                 "usage_reset": True,
                 "period_kept": keep_current_period,
                 "minutes_total": minutes_total,
-                "unlimited": new_plan == "team_mastery"
+                "unlimited": new_plan in ("team_mastery", "language_mastery")
             }
             
         except stripe.error.StripeError as e:

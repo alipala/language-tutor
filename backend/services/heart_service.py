@@ -615,11 +615,20 @@ class HeartService:
         # Convert string ID to ObjectId for MongoDB query
         user_id_obj = ObjectId(user_id) if isinstance(user_id, str) else user_id
         user = await self.db.users.find_one({"_id": user_id_obj})
-        if not user or "heart_system" not in user:
-            # Initialize if doesn't exist
-            user_obj = UserInDB(**user)
+        if not user:
+            logger.warning(f"[HEART_SERVICE] User {user_id} not found, skipping heart update")
+            return
+
+        if "heart_system" not in user:
+            # Initialize if doesn't exist — convert ObjectId to str for Pydantic
+            user_copy = dict(user)
+            user_copy["_id"] = str(user_copy["_id"])
+            user_obj = UserInDB(**user_copy)
             await self.initialize_heart_system(user_obj)
             user = await self.db.users.find_one({"_id": user_id_obj})
+            if not user or "heart_system" not in user:
+                logger.warning(f"[HEART_SERVICE] Could not initialize heart system for user {user_id}")
+                return
 
         heart_system = HeartSystemState(**user["heart_system"])
 

@@ -551,6 +551,15 @@ async def cancel_subscription(
 
             logger.info(f"[CANCEL_TRIAL] ✅ User {current_user.id} reset to free tier")
 
+            # Clear Stripe subscription cache so next status check fetches fresh data
+            stripe_customer_id = getattr(current_user, 'stripe_customer_id', None)
+            if stripe_customer_id:
+                try:
+                    await perf_cache.delete(f"stripe_subscription:{stripe_customer_id}")
+                    logger.info(f"[CANCEL_TRIAL] Cleared Stripe cache for user {current_user.id}")
+                except Exception:
+                    pass
+
             # 🔥 UPDATE HEART SYSTEM back to free tier
             try:
                 from services.heart_service import HeartService
