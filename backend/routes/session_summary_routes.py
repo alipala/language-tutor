@@ -7,8 +7,9 @@ import os
 import json
 import traceback
 import uuid
+import asyncio
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, BackgroundTasks
 from pydantic import BaseModel
 from bson import ObjectId
 import httpx
@@ -39,7 +40,93 @@ except TypeError as e:
         print(f"Error initializing OpenAI client: {str(e)}")
         raise
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Background task functions — run AFTER response is sent to the client
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _generate_flashcards_background(
+    plan_id: str, completed_sessions: int, language: str, level: str,
+    topic, summary_text: str, user_id: str
+):
+    """Generate and persist flashcards without blocking the session-summary response."""
+    try:
+        from flashcard_service import FlashcardService
+        from models import FlashcardGenerationRequest
+        from database import database
+
+        session_id = f"learning_plan_{plan_id}_{completed_sessions}_{uuid.uuid4()}"
+        req = FlashcardGenerationRequest(
+            session_id=session_id,
+            language=language,
+            level=level,
+            topic=topic,
+            conversation_content=None,
+            session_summary=summary_text,
+            count=5,
+        )
+        print(f"[FLASHCARD_BG] Generating flashcards for session {completed_sessions}")
+        flashcard_set = await FlashcardService.generate_flashcards(req, user_id)
+        if flashcard_set and flashcard_set.flashcards:
+            set_doc = flashcard_set.dict()
+            set_doc["_id"] = ObjectId()
+            set_doc["created_at"] = datetime.now(timezone.utc)
+            card_docs = [dict(**c.dict(), _id=ObjectId()) for c in flashcard_set.flashcards]
+            await database.flashcard_sets.insert_one(set_doc)
+            if card_docs:
+                result = await database.flashcards.insert_many(card_docs)
+                print(f"[FLASHCARD_BG] ✅ Saved {len(result.inserted_ids)} flashcards")
+        else:
+            print(f"[FLASHCARD_BG] ⚠️ Empty result from flashcard generation")
+    except Exception as e:
+        print(f"[FLASHCARD_BG] ❌ Failed: {e}\n{traceback.format_exc()}")
+
+
+async def _run_dna_and_optimizer_background(
+    user_id: str, plan_id: str, language: str, duration_minutes: float,
+    user_turns: list, background_analyses: list
+):
+    """Run DNA analysis and plan optimizer after response is sent."""
+    # DNA analysis
+    try:
+        from services.speaking_dna_service import speaking_dna_service
+        dna_session_data = {
+            "session_id": plan_id,
+            "session_type": "learning",
+            "duration_seconds": int(duration_minutes * 60),
+            "user_turns": user_turns,
+            "corrections_received": background_analyses,
+            "challenges_offered": 2,
+            "challenges_accepted": 1,
+            "topics_discussed": [language],
+        }
+        dna_result = await speaking_dna_service.analyze_session_for_dna(
+            user_id=user_id, language=language, session_data=dna_session_data
+        )
+        print(f"[DNA_BG] ✅ Analysis complete. Breakthroughs: {len(dna_result.get('breakthroughs', []))}")
+    except Exception as e:
+        print(f"[DNA_BG] ❌ Failed: {e}")
+
+    # Plan optimizer
+    try:
+        from services.learning_plan_optimizer import LearningPlanOptimizer
+        optimizer_result = await LearningPlanOptimizer.auto_update_plan_after_session(
+            user_id=user_id,
+            plan_id=plan_id,
+            current_session_analyses=background_analyses if background_analyses else None,
+            minimum_sessions_for_update=3,
+        )
+        if optimizer_result.get("auto_updated"):
+            print(f"[OPTIMIZER_BG] ✅ Plan updated in background")
+        else:
+            print(f"[OPTIMIZER_BG] No updates needed")
+    except Exception as e:
+        print(f"[OPTIMIZER_BG] ❌ Failed: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Helper Functions
+# ──────────────────────────────────────────────────────────────────────────────
+
 async def generate_comprehensive_session_summary(plan, conversation_data, basic_summary, user_id):
     """
     Generate a comprehensive session summary with AI analysis.
@@ -232,6 +319,7 @@ This session contributed to the overall learning journey and weekly objectives."
 @router.post("/api/learning/session-summary")
 async def store_session_summary(
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
@@ -306,46 +394,38 @@ async def store_session_summary(
                 learning_plans_collection=learning_plans_collection
             )
 
-        # Generate comprehensive session summary (returns dict with 'full' and 'compressed')
-        summary_data = await generate_comprehensive_session_summary(
-            plan, conversation_data, basic_summary, current_user.id
-        )
-
-        # 🔥 NEW: Batch analyze sentences if provided (CRITICAL FIX!)
-        background_analyses = []
-        if conversation_data and "sentences_for_analysis" in conversation_data:
+        # ⚡ PARALLEL: Run summary generation + sentence analysis at the same time
+        async def _run_sentence_analysis():
+            if not (conversation_data and "sentences_for_analysis" in conversation_data):
+                print(f"[SESSION_SUMMARY] ℹ️ No sentences_for_analysis in conversation data")
+                return []
             sentences_for_analysis = conversation_data["sentences_for_analysis"]
-
-            if sentences_for_analysis:
-                from background_sentence_analysis import batch_analyze_sentences
-
-                # Extract sentence texts
-                sentence_texts = [s.get('text') for s in sentences_for_analysis if s.get('text')]
-
-                print(f"[SESSION_SUMMARY] 🔍 Starting batch analysis of {len(sentence_texts)} sentences")
-
-                try:
-                    # Get language and level from plan
-                    language = plan.get("language", "english")
-                    level = plan.get("proficiency_level", "B1")
-
-                    # Single GPT-4o call for all sentences
-                    analyses = await batch_analyze_sentences(
-                        sentences=sentence_texts,
-                        language=language,
-                        level=level
-                    )
-
-                    background_analyses = [a.dict() for a in analyses]
-                    print(f"[SESSION_SUMMARY] ✅ Batch analysis complete: {len(background_analyses)} results")
-
-                except Exception as analysis_error:
-                    print(f"[SESSION_SUMMARY] ⚠️ Batch analysis failed: {str(analysis_error)}")
-                    # Continue saving session even if analysis fails
-            else:
+            if not sentences_for_analysis:
                 print(f"[SESSION_SUMMARY] ⚠️ No sentences provided for analysis")
-        else:
-            print(f"[SESSION_SUMMARY] ℹ️ No sentences_for_analysis in conversation data")
+                return []
+            from background_sentence_analysis import batch_analyze_sentences
+            sentence_texts = [s.get('text') for s in sentences_for_analysis if s.get('text')]
+            print(f"[SESSION_SUMMARY] 🔍 Starting batch analysis of {len(sentence_texts)} sentences (parallel)")
+            try:
+                analyses = await batch_analyze_sentences(
+                    sentences=sentence_texts,
+                    language=plan.get("language", "english"),
+                    level=plan.get("proficiency_level", "B1")
+                )
+                result = [a.dict() for a in analyses]
+                print(f"[SESSION_SUMMARY] ✅ Batch analysis complete: {len(result)} results")
+                return result
+            except Exception as analysis_error:
+                print(f"[SESSION_SUMMARY] ⚠️ Batch analysis failed: {str(analysis_error)}")
+                return []
+
+        import time as _time
+        _t0 = _time.monotonic()
+        summary_data, background_analyses = await asyncio.gather(
+            generate_comprehensive_session_summary(plan, conversation_data, basic_summary, current_user.id),
+            _run_sentence_analysis()
+        )
+        print(f"[SESSION_SUMMARY] ⚡ Parallel OpenAI calls done in {_time.monotonic()-_t0:.1f}s")
 
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
@@ -375,15 +455,23 @@ async def store_session_summary(
         # CRITICAL FIX: Track subscription usage when session is completed
         try:
             users_collection = database.users
-            user_result = await users_collection.update_one(
-                {"_id": ObjectId(current_user.id)},
-                {"$inc": {"practice_sessions_used": 1}}
-            )
-
-            if user_result.modified_count > 0:
-                print(f"[SESSION_SUMMARY] Incremented subscription usage for user {current_user.id}")
-            else:
-                print(f"[SESSION_SUMMARY] Failed to increment subscription usage for user {current_user.id}")
+            for _attempt in range(3):
+                try:
+                    user_result = await users_collection.update_one(
+                        {"_id": ObjectId(current_user.id)},
+                        {"$inc": {"practice_sessions_used": 1}}
+                    )
+                    if user_result.modified_count > 0:
+                        print(f"[SESSION_SUMMARY] Incremented subscription usage for user {current_user.id}")
+                    else:
+                        print(f"[SESSION_SUMMARY] Failed to increment subscription usage for user {current_user.id}")
+                    break
+                except Exception as retry_err:
+                    if _attempt < 2:
+                        print(f"[SESSION_SUMMARY] Subscription tracking attempt {_attempt+1} failed, retrying: {retry_err}")
+                        await asyncio.sleep(0.5)
+                    else:
+                        raise
         except Exception as subscription_error:
             print(f"[SESSION_SUMMARY] Error tracking subscription usage: {str(subscription_error)}")
             # Don't fail the session saving if subscription tracking fails
@@ -394,100 +482,70 @@ async def store_session_summary(
         session_history = plan.get("session_history", [])
 
         # Store current session data for future comparisons
+        session_duration_minutes = conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0
+        # Cap at 5 minutes; anything over is a frontend timer glitch
+        session_duration_minutes = min(float(session_duration_minutes), 5.0)
+
         current_session_data = {
             "session_number": completed_sessions,
             "messages": conversation_data.get("messages", []) if conversation_data else [],
-            "duration_minutes": conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0,
+            "duration_minutes": session_duration_minutes,
             "completed_at": datetime.now(timezone.utc).isoformat()
         }
         session_history.append(current_session_data)
 
-        print(f"[SESSION_SUMMARY] 💾 Stored session {completed_sessions} messages for future comparison")
-        print(f"[SESSION_SUMMARY] 💾 Message count: {len(current_session_data['messages'])}, Duration: {current_session_data['duration_minutes']} min")
+        # Accumulate spoken time on the learning plan
+        current_practice_minutes = float(plan.get("practice_minutes_used", 0.0))
+        new_practice_minutes = current_practice_minutes + session_duration_minutes
 
-        # Update the learning plan with new data
-        update_result = await learning_plans_collection.update_one(
-            {"id": plan_id},
-            {
-                "$set": {
-                    "session_summaries": session_summaries,
-                    "completed_sessions": completed_sessions,
-                    "progress_percentage": progress_percentage,
-                    "plan_content.weekly_schedule": weekly_schedule,
-                    "session_history": session_history,  # 🎯 NEW: Store session history
-                    "updated_at": datetime.now(timezone.utc)
-                }
-            }
-        )
+        print(f"[SESSION_SUMMARY] 💾 Stored session {completed_sessions} messages for future comparison")
+        print(f"[SESSION_SUMMARY] 💾 Message count: {len(current_session_data['messages'])}, Duration: {session_duration_minutes} min")
+        print(f"[SESSION_SUMMARY] ⏱️ Practice minutes: {current_practice_minutes} + {session_duration_minutes} = {new_practice_minutes} min")
+
+        # Update the learning plan with new data (retry on stale connection)
+        update_result = None
+        for _attempt in range(3):
+            try:
+                update_result = await learning_plans_collection.update_one(
+                    {"id": plan_id},
+                    {
+                        "$set": {
+                            "session_summaries": session_summaries,
+                            "completed_sessions": completed_sessions,
+                            "progress_percentage": progress_percentage,
+                            "plan_content.weekly_schedule": weekly_schedule,
+                            "session_history": session_history,
+                            "practice_minutes_used": new_practice_minutes,
+                            "updated_at": datetime.now(timezone.utc)
+                        }
+                    }
+                )
+                break
+            except Exception as retry_err:
+                if _attempt < 2:
+                    print(f"[SESSION_SUMMARY] Learning plan update attempt {_attempt+1} failed, retrying: {retry_err}")
+                    await asyncio.sleep(0.5)
+                else:
+                    raise
 
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
 
-            # 🔥 CRITICAL FIX: GENERATE FLASHCARDS AFTER SESSION COMPLETION
-            # This was missing when the endpoint was refactored!
-            flashcard_generation_success = False
-            generated_flashcards = 0
-
-            try:
-                from flashcard_service import FlashcardService
-                from models import FlashcardGenerationRequest
-
-                # Generate unique session ID for flashcards
-                learning_plan_session_id = f"learning_plan_{plan_id}_{completed_sessions}_{uuid.uuid4()}"
-
-                # Create flashcard generation request
-                flashcard_request = FlashcardGenerationRequest(
-                    session_id=learning_plan_session_id,
-                    language=plan.get("language", "english"),
-                    level=plan.get("proficiency_level", "B1"),
-                    topic=conversation_data.get("topic") if conversation_data else None,
-                    conversation_content=None,  # Could be added later if needed
-                    session_summary=summary_data.get("full", basic_summary),
-                    count=5  # Generate 5 flashcards per session
-                )
-
-                print(f"[FLASHCARD_GENERATION] 🎯 Generating flashcards for learning plan session: {learning_plan_session_id}")
-                print(f"[FLASHCARD_GENERATION] Language: {flashcard_request.language}, Level: {flashcard_request.level}")
-
-                # Generate flashcards
-                flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
-
-                if flashcard_set and flashcard_set.flashcards:
-                    # Save flashcards to database
-                    flashcard_set_doc = flashcard_set.dict()
-                    flashcard_set_doc["_id"] = ObjectId()
-                    flashcard_set_doc["created_at"] = datetime.now(timezone.utc)
-
-                    # Save individual flashcards
-                    flashcard_docs = []
-                    for flashcard in flashcard_set.flashcards:
-                        card_doc = flashcard.dict()
-                        card_doc["_id"] = ObjectId()
-                        flashcard_docs.append(card_doc)
-
-                    # Insert flashcard set
-                    flashcard_sets_collection = database.flashcard_sets
-                    set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
-
-                    # Insert individual flashcards
-                    if flashcard_docs:
-                        flashcards_collection = database.flashcards
-                        cards_result = await flashcards_collection.insert_many(flashcard_docs)
-                        print(f"[FLASHCARD_GENERATION] 💾 Saved {len(cards_result.inserted_ids)} flashcards to database")
-
-                    generated_flashcards = len(flashcard_set.flashcards)
-                    flashcard_generation_success = True
-                    print(f"[FLASHCARD_GENERATION] ✅ Generated and saved {generated_flashcards} flashcards successfully")
-                else:
-                    print(f"[FLASHCARD_GENERATION] ⚠️ Flashcard generation returned empty result")
-
-            except Exception as flashcard_error:
-                print(f"[FLASHCARD_GENERATION] ❌ Flashcard generation failed: {str(flashcard_error)}")
-                import traceback
-                print(f"[FLASHCARD_GENERATION] Traceback: {traceback.format_exc()}")
-                # Don't fail the session save if flashcard generation fails
-                flashcard_generation_success = False
-                generated_flashcards = 0
+            # ⚡ BACKGROUND: Flashcard generation runs after response is sent (saves 3-10s)
+            flashcard_generation_success = True   # optimistic — will complete in background
+            generated_flashcards = 5              # expected count
+            _summary_text = summary_data.get("full", basic_summary)
+            _flashcard_kwargs = dict(
+                plan_id=plan_id,
+                completed_sessions=completed_sessions,
+                language=plan.get("language", "english"),
+                level=plan.get("proficiency_level", "B1"),
+                topic=conversation_data.get("topic") if conversation_data else None,
+                summary_text=_summary_text,
+                user_id=str(current_user.id),
+            )
+            background_tasks.add_task(_generate_flashcards_background, **_flashcard_kwargs)
+            print(f"[FLASHCARD_GENERATION] ⚡ Scheduled flashcard generation as background task")
 
             # 🎯 NEW: Calculate enhanced session statistics for learning plan session
             enhanced_stats = {}
@@ -581,120 +639,21 @@ async def store_session_summary(
                 # Continue without enhanced stats if calculation fails
                 enhanced_stats = {}
 
-            # 🧬 NEW: Speaking DNA Analysis (Premium Feature)
-            dna_breakthroughs = []
-            dna_insights = {}
+            # ⚡ BACKGROUND: DNA analysis and plan optimization run after response is sent (saves 1-3s)
             if current_user.subscription_status in ["active", "trialing"]:
-                try:
-                    from services.speaking_dna_service import speaking_dna_service
-
-                    # Prepare session data for DNA analysis
-                    # IMPORTANT: conversation_data uses "duration_minutes", not "duration_seconds"!
-                    duration_minutes = conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0
-                    duration_seconds = int(duration_minutes * 60)
-
-                    dna_session_data = {
-                        "session_id": plan_id,  # Use plan_id as session identifier
-                        "session_type": "learning",  # This is a learning plan session
-                        "duration_seconds": duration_seconds,  # Convert minutes to seconds
-                        "user_turns": conversation_data.get("user_turns", []) if conversation_data else [],
-                        "corrections_received": background_analyses,  # Use sentence analyses as corrections
-                        "challenges_offered": 2,  # Estimate based on learning plan
-                        "challenges_accepted": 1,  # Estimate based on session completion
-                        "topics_discussed": [plan.get("language", "language")]
-                    }
-
-                    print(f"[DNA] Analyzing session for user {current_user.id}, language {plan.get('language')}")
-                    print(f"[DNA] Session duration: {duration_minutes} minutes ({duration_seconds} seconds)")
-
-                    # Analyze session for DNA
-                    dna_result = await speaking_dna_service.analyze_session_for_dna(
-                        user_id=str(current_user.id),
-                        language=plan.get("language", "english"),
-                        session_data=dna_session_data
-                    )
-
-                    dna_breakthroughs = dna_result.get("breakthroughs", [])
-                    dna_insights = dna_result.get("session_insights", {})
-
-                    print(f"[DNA] Analysis complete. Breakthroughs: {len(dna_breakthroughs)}")
-
-                except Exception as dna_error:
-                    print(f"[DNA] Error analyzing session (non-fatal): {str(dna_error)}")
-                    # Continue without DNA analysis - premium feature shouldn't block session saving
-                    pass
-
-            # 🎯 NEW: Two-Tier Learning Plan Optimization
-            try:
-                from services.learning_plan_optimizer import LearningPlanOptimizer
-
-                # 🔥 CRITICAL FIX: Use background_analyses that we just calculated above!
-                # Don't try to fetch from conversation_data with wrong key
-                current_session_analyses = background_analyses if background_analyses else []
-
-                print(f"[PLAN_OPTIMIZER] Found {len(current_session_analyses)} sentence analyses for optimization")
-
-                # Run two-tier optimizer
-                optimizer_result = await LearningPlanOptimizer.auto_update_plan_after_session(
+                _dna_kwargs = dict(
                     user_id=str(current_user.id),
                     plan_id=plan_id,
-                    current_session_analyses=current_session_analyses if current_session_analyses else None,
-                    minimum_sessions_for_update=3  # Pattern updates every 3 sessions
+                    language=plan.get("language", "english"),
+                    duration_minutes=conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0,
+                    user_turns=conversation_data.get("user_turns", []) if conversation_data else [],
+                    background_analyses=background_analyses,
                 )
+                background_tasks.add_task(_run_dna_and_optimizer_background, **_dna_kwargs)
+                print(f"[DNA] ⚡ Scheduled DNA analysis + plan optimization as background task")
 
-                # Log results
-                if optimizer_result.get("auto_updated"):
-                    print(f"[PLAN_OPTIMIZER] ✅ Plan updated!")
-
-                    tier1 = optimizer_result.get("tier1_immediate", {})
-                    tier2 = optimizer_result.get("tier2_patterns", {})
-
-                    if tier1.get("update", {}).get("immediate_update"):
-                        print(f"[PLAN_OPTIMIZER]    Tier 1 (Immediate): {len(tier1['update'].get('adjustments_applied', []))} adjustments")
-
-                    if tier2.get("update", {}).get("success"):
-                        print(f"[PLAN_OPTIMIZER]    Tier 2 (Patterns): {tier2['update'].get('weeks_updated', 0)} weeks updated")
-
-                    # Return enriched response with adaptation info
-                    print(f"[SESSION_SUMMARY] 🔍 RETURNING WITH background_analyses: {len(background_analyses)} items")
-                    return {
-                        "success": True,
-                        "message": "Session summary stored successfully",
-                        "completed_sessions": completed_sessions,
-                        "progress_percentage": progress_percentage,
-                        "current_week": new_week,
-                        "session_summary": summary_data.get("full", summary_data),
-                        "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
-                        "flashcards_generated": generated_flashcards,  # 🔥 CRITICAL FIX: Return flashcard count
-                        "flashcard_generation_success": flashcard_generation_success,  # 🔥 CRITICAL FIX
-                        "plan_adapted": True,  # NEW
-                        "adaptation": {  # NEW
-                            "tier1_immediate": {
-                                "applied": tier1.get("update", {}).get("immediate_update", False),
-                                "concerns": tier1.get("analysis", {}).get("immediate_concerns", []),
-                                "regression_detected": tier1.get("regression_check", {}).get("regression_detected", False)
-                            },
-                            "tier2_patterns": {
-                                "applied": tier2.get("update", {}).get("success", False),
-                                "weeks_updated": tier2.get("update", {}).get("weeks_updated", 0)
-                            }
-                        },
-                        "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
-                        "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
-                        "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
-                        "dna_breakthroughs": dna_breakthroughs,  # 🧬 NEW: Speaking DNA breakthroughs
-                        "dna_insights": dna_insights  # 🧬 NEW: Speaking DNA insights
-                    }
-                else:
-                    print(f"[PLAN_OPTIMIZER] No updates needed (Tier1: {optimizer_result.get('tier1_immediate')}, Tier2: {optimizer_result.get('tier2_patterns')})")
-
-            except Exception as optimizer_error:
-                # Don't fail the session if optimizer fails
-                print(f"[PLAN_OPTIMIZER] ❌ Error: {str(optimizer_error)}")
-                print(f"[PLAN_OPTIMIZER] Traceback: {traceback.format_exc()}")
-
-            # Original return (if optimizer didn't return early)
-            print(f"[SESSION_SUMMARY] 🔍 RETURNING (optimizer path) WITH background_analyses: {len(background_analyses)} items")
+            # ⚡ Return immediately — flashcards, DNA, and optimizer run in background
+            print(f"[SESSION_SUMMARY] ✅ Returning response (background tasks scheduled)")
             return {
                 "success": True,
                 "message": "Session summary stored successfully",
@@ -702,14 +661,16 @@ async def store_session_summary(
                 "progress_percentage": progress_percentage,
                 "current_week": new_week,
                 "session_summary": summary_data.get("full", summary_data),
-                "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
-                "flashcards_generated": generated_flashcards,  # 🔥 CRITICAL FIX: Return flashcard count
-                "flashcard_generation_success": flashcard_generation_success,  # 🔥 CRITICAL FIX
-                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
-                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
-                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
-                "dna_breakthroughs": dna_breakthroughs,  # 🧬 NEW: Speaking DNA breakthroughs
-                "dna_insights": dna_insights  # 🧬 NEW: Speaking DNA insights
+                "background_analyses": background_analyses,
+                "flashcards_generated": generated_flashcards,
+                "flashcard_generation_success": flashcard_generation_success,
+                "plan_adapted": False,   # optimizer runs in background; client can poll if needed
+                "adaptation": {},
+                "session_stats": enhanced_stats.get("session_stats"),
+                "comparison": enhanced_stats.get("comparison"),
+                "overall_progress": enhanced_stats.get("overall_progress"),
+                "dna_breakthroughs": [],   # populated by background task
+                "dna_insights": {}         # populated by background task
             }
         else:
             print(f"[SESSION_SUMMARY] Warning: No documents were modified for plan {plan_id}")

@@ -86,8 +86,25 @@ async def assess_sentence_construction(request: SentenceAssessmentRequest):
         print(f"Error in sentence assessment: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error analyzing sentence: {str(e)}")
 
+@router.get("/api/speaking/can-assess")
+async def check_can_assess(current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
+    """Lightweight check: can this user start a speaking assessment? Call before recording."""
+    if not current_user:
+        return {"can_access": True, "message": ""}
+
+    try:
+        from subscription_service import SubscriptionService
+        can_access, message = await SubscriptionService.can_access_feature(current_user.id, "assessment")
+        return {"can_access": can_access, "message": message if not can_access else ""}
+    except Exception as e:
+        print(f"[CAN_ASSESS] Error checking limits: {str(e)}")
+        # Fail open — don't block the user if the check itself fails
+        return {"can_access": True, "message": ""}
+
+
 @router.post("/api/speaking/assess", response_model=SpeakingAssessmentResponse)
 async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
+    temp_audio_path = None  # Initialize early so finally block is safe regardless of exit path
     try:
         # CRITICAL FIX: Check assessment limits BEFORE processing the assessment
         if current_user:
@@ -115,7 +132,6 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 pass
 
         # 🔥 NEW: Save audio to temp file for both transcription AND Azure pronunciation assessment
-        temp_audio_path = None
         recognized_text = None
 
         if request.audio_base64:
@@ -222,7 +238,6 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
 
             except Exception as dna_error:
                 print(f"[DNA_ASSESSMENT] ⚠️ DNA analysis failed (non-fatal): {str(dna_error)}")
-                import traceback
                 print(f"[DNA_ASSESSMENT] Traceback: {traceback.format_exc()}")
                 # Don't fail assessment if DNA analysis fails
                 pass

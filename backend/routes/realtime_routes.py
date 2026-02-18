@@ -3,6 +3,7 @@ Realtime API Routes
 Handles OpenAI Realtime API token generation, usage logging, and model configuration
 """
 
+import traceback
 import os
 import asyncio
 from datetime import datetime, timezone
@@ -1130,7 +1131,6 @@ async def process_usage_log_background(
 
                 except Exception as org_error:
                     print(f"[ORG_COSTS] Error fetching organization costs: {str(org_error)}")
-                    import traceback
                     print(f"[ORG_COSTS] Full traceback: {traceback.format_exc()}")
 
         # Store in MongoDB

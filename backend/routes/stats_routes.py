@@ -175,7 +175,6 @@ async def get_daily_stats(
 
     except Exception as e:
         print(f"[STATS_API] ❌ Error getting daily stats: {str(e)}")
-        import traceback
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500,
@@ -290,7 +289,6 @@ async def get_recent_performance_endpoint(
 
     except Exception as e:
         print(f"[STATS_API] ❌ Error getting recent performance: {str(e)}")
-        import traceback
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500,
@@ -357,7 +355,6 @@ async def get_lifetime_progress_endpoint(
 
     except Exception as e:
         print(f"[STATS_API] ❌ Error getting lifetime progress: {str(e)}")
-        import traceback
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500,
@@ -489,7 +486,6 @@ async def get_all_stats(
 
     except Exception as e:
         print(f"[STATS_API] ❌ Error getting unified stats: {str(e)}")
-        import traceback
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500,

@@ -4,6 +4,7 @@ Provides session analysis for guest users WITHOUT authentication or database per
 Designed for mobile app to show analysis results before signup
 """
 
+import traceback
 import os
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
@@ -388,7 +389,6 @@ async def analyze_guest_session(request: GuestSessionAnalysisRequest):
 
     except Exception as e:
         print(f"[GUEST_ANALYSIS] Error: {str(e)}")
-        import traceback
         print(f"[GUEST_ANALYSIS] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,

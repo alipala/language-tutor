@@ -16,6 +16,7 @@ IMPORTANT: Final assessments DO NOT count toward subscription assessment limits.
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
+import traceback
 import logging
 
 from auth import get_current_user
@@ -325,7 +326,6 @@ async def submit_final_assessment(
         raise
     except Exception as e:
         logger.error(f"[FINAL_ASSESSMENT_API] Error submitting assessment: {str(e)}")
-        import traceback
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -487,7 +487,6 @@ async def create_next_level_plan(
         raise
     except Exception as e:
         logger.error(f"[FINAL_ASSESSMENT_API] Error creating next level plan: {str(e)}")
-        import traceback
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

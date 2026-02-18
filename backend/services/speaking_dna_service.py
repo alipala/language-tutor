@@ -55,6 +55,24 @@ class SpeakingDNAService:
             "accuracy": 0.8,
             "learning": 0.7,
             "emotional": 0.8
+        },
+        # Voice check: pure acoustic baseline — heavy weight on rhythm/confidence/emotional
+        # (no vocabulary/accuracy since there are no AI interactions, just speaking)
+        "voice_check": {
+            "rhythm": 1.0,
+            "confidence": 1.0,
+            "vocabulary": 0.3,
+            "accuracy": 0.3,
+            "learning": 0.3,
+            "emotional": 1.0
+        },
+        "speaking_assessment": {
+            "rhythm": 1.0,
+            "confidence": 1.0,
+            "vocabulary": 0.6,
+            "accuracy": 0.8,
+            "learning": 0.5,
+            "emotional": 1.0
         }
     }
 

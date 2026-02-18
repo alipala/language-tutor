@@ -32,43 +32,42 @@ class VoiceCheckScheduleService:
         """
         Calculate voice check sessions based on plan duration.
 
+        Design principles:
+        - NO check on session 1: the learning plan is created right after a full
+          Speaking Assessment, so session 1 already has a fresh acoustic baseline.
+        - NO check on the final session: it already ends with a full Speaking
+          Assessment that generates the next learning plan.
+        - Checks are placed at natural mid-plan milestones so they feel like
+          progress snapshots, not interruptions (~2-3 per month max).
+
         Args:
             duration_months: Learning plan duration (1, 2, 3, 6, or 12 months)
 
         Returns:
             List of session numbers where voice checks should occur
 
-        Example:
-            >>> VoiceCheckScheduleService.calculate_voice_check_schedule(3)
-            [1, 6, 12, 18, 24]
+        Schedules:
+            1-month  (8 sessions):  [3, 6]              – 2 checks
+            2-month  (16 sessions): [4, 8, 12]          – 3 checks
+            3-month  (24 sessions): [6, 12, 18]         – 3 checks
+            6-month  (48 sessions): [8, 16, 24, 32, 40] – 5 checks
+            12-month (96 sessions): [12,24,36,48,60,72,84] – 7 checks
         """
-        # Calculate total sessions (2 sessions per week × 4 weeks per month)
         total_sessions = duration_months * 8
 
-        # Always include session 1 (Speaking Assessment)
-        schedule = [1]
+        if total_sessions <= 8:       # 1-month
+            schedule = [3, 6]
+        elif total_sessions <= 16:    # 2-month
+            schedule = [4, 8, 12]
+        elif total_sessions <= 24:    # 3-month
+            schedule = [6, 12, 18]
+        elif total_sessions <= 48:    # 6-month
+            schedule = [8, 16, 24, 32, 40]
+        else:                         # 12-month
+            schedule = [12, 24, 36, 48, 60, 72, 84]
 
-        # Determine frequency based on plan duration
-        if total_sessions <= 8:
-            frequency = 3  # 1-month: every 3 sessions
-        elif total_sessions <= 16:
-            frequency = 5  # 2-month: every 5 sessions
-        elif total_sessions <= 24:
-            frequency = 6  # 3-month: every 6 sessions
-        elif total_sessions <= 48:
-            frequency = 8  # 6-month: every 8 sessions
-        else:
-            frequency = 10  # 12-month: every 10 sessions
-
-        # Generate intermediate voice checks
-        next_check = frequency
-        while next_check < total_sessions:
-            schedule.append(next_check)
-            next_check += frequency
-
-        # Always include final session if not already there
-        if schedule[-1] != total_sessions:
-            schedule.append(total_sessions)
+        # Safety: remove any entry that equals the final session or exceeds it
+        schedule = [s for s in schedule if s < total_sessions]
 
         return schedule
 

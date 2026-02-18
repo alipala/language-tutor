@@ -118,7 +118,6 @@ async def get_challenge_progress(
 
     except Exception as e:
         print(f"[PROGRESS_STATS] ❌ Error getting progress stats: {str(e)}")
-        import traceback
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500,

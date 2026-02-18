@@ -742,31 +742,29 @@ Format as JSON:
                         print(f"[IDEMPOTENT_SAVE] ⚠️ No plan ID in history, using newly created plan")
                         new_plan = created_plan
                 else:
-                    # This is a new assessment - proceed with increment
-                    print(f"[IDEMPOTENT_SAVE] ✅ New assessment detected - proceeding with increment")
-                    
+                    # Save assessment data for plan personalization — counter already incremented by /api/speaking/assess
+                    print(f"[IDEMPOTENT_SAVE] ✅ New assessment data detected - saving for plan personalization")
+                    print(f"[IDEMPOTENT_SAVE] ℹ️ assessments_used counter NOT incremented here (already tracked by /api/speaking/assess)")
+
                     # Generate unique assessment ID for tracking
                     assessment_id = f"{assessment_fingerprint}_{assessment_timestamp}"
-                    
-                    # Prepare the update operations with bulletproof idempotency protection
+
+                    # Save assessment data only — do NOT increment assessments_used (already done by assessment endpoint)
                     update_operations = {
                         "$set": {
                             "last_assessment_data": plan_request.assessment_data,
                             "assessment_history": {
-                                "assessment_fingerprint": assessment_fingerprint,  # 🔥 NEW: Use fingerprint
+                                "assessment_fingerprint": assessment_fingerprint,
                                 "assessment_id": assessment_id,
                                 "timestamp": assessment_timestamp,
                                 "data": plan_request.assessment_data,
                                 "language": plan_request.language,
                                 "level": plan_request.proficiency_level,
-                                "learning_plan_id": created_plan['id']  # Link to the created plan
+                                "learning_plan_id": created_plan['id']
                             }
-                        },
-                        "$inc": {"assessments_used": 1}  # Increment counter atomically
+                        }
+                        # NOTE: No $inc on assessments_used — /api/speaking/assess already counted it
                     }
-                    
-                    print(f"[IDEMPOTENT_SAVE] 🔥 BULLETPROOF FIX: Incrementing assessment counter with fingerprint protection")
-                    print(f"[IDEMPOTENT_SAVE] 📊 Assessment counter will be incremented for user {current_user.id}")
                     
                     # 🔥 CRITICAL: Execute atomic update with fingerprint-based conditional check
                     # This ensures only ONE increment happens even with retries/duplicates
@@ -784,8 +782,7 @@ Format as JSON:
                     
                     if update_result.modified_count > 0:
                         print(f"[IDEMPOTENT_SAVE] ✅ Assessment data saved to user profile")
-                        print(f"[IDEMPOTENT_SAVE] ✅ Assessment counter incremented (bulletproof idempotent)")
-                        print(f"[IDEMPOTENT_SAVE] 🎯 BULLETPROOF SAVE COMPLETE: Assessment + Plan saved together")
+                        print(f"[IDEMPOTENT_SAVE] 🎯 SAVE COMPLETE: Assessment data linked to plan (counter unchanged)")
                     else:
                         print(f"[IDEMPOTENT_SAVE] ⚠️ User profile update had no changes - duplicate detected by fingerprint")
                         
@@ -827,9 +824,14 @@ Format as JSON:
             new_plan = created_plan
             print(f"[LEARNING_PLAN] ✅ Learning plan created without assessment data")
         
+        # Convert datetime fields to ISO strings before serialization (Pydantic requires strings)
+        for _dt_field in ("updated_at", "created_at", "all_sessions_completed_at"):
+            if _dt_field in new_plan and isinstance(new_plan[_dt_field], datetime):
+                new_plan[_dt_field] = new_plan[_dt_field].isoformat()
+
         # Return the created plan
         return new_plan
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1661,6 +1663,14 @@ async def get_voice_check_status(
         completed_sessions = plan.get("completed_sessions", 0)
         voice_checks_completed = plan.get("voice_checks_completed", [])
 
+        # Recalculate schedule with current algorithm and sync to DB if stale
+        current_schedule = voice_check_service.calculate_voice_check_schedule(duration_months)
+        if plan.get("voice_check_schedule") != current_schedule:
+            await learning_plans_collection.update_one(
+                {"id": plan_id},
+                {"$set": {"voice_check_schedule": current_schedule}}
+            )
+
         # Calculate if voice check is due
         is_due = voice_check_service.is_voice_check_due(
             completed_sessions=completed_sessions,
@@ -1837,4 +1847,58 @@ async def skip_voice_check(
         raise HTTPException(
             status_code=500,
             detail=f"Error skipping voice check: {str(e)}"
+        )
+
+
+@router.patch("/plan/{plan_id}/add-spoken-time")
+async def add_spoken_time(
+    plan_id: str,
+    duration_minutes: float,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Lightweight endpoint to add spoken minutes to a learning plan's practice_minutes_used.
+    Called on early exit to record actual time spent without triggering full session processing
+    (no AI analysis, no session counting, no subscription tracking).
+    """
+    try:
+        if duration_minutes <= 0:
+            return {"success": True, "message": "No time to add"}
+
+        # Cap at 5 minutes and ensure positive
+        capped_minutes = min(float(duration_minutes), 5.0)
+
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        if not plan:
+            raise HTTPException(status_code=404, detail="Learning plan not found")
+
+        if str(plan.get("user_id")) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        current_minutes = float(plan.get("practice_minutes_used", 0.0))
+        new_minutes = current_minutes + capped_minutes
+
+        await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {
+                "practice_minutes_used": new_minutes,
+                "updated_at": datetime.utcnow().isoformat()
+            }}
+        )
+
+        print(f"[ADD_SPOKEN_TIME] ✅ Plan {plan_id}: {current_minutes} + {capped_minutes} = {new_minutes} min (early exit)")
+
+        return {
+            "success": True,
+            "practice_minutes_used": new_minutes,
+            "added_minutes": capped_minutes
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding spoken time: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error adding spoken time: {str(e)}"
         )
