@@ -206,6 +206,10 @@ app.include_router(progress_stats_router)
 from routes.speaking_dna_routes import router as speaking_dna_router
 app.include_router(speaking_dna_router)
 
+# Include Taal Coach routes (AI Coach)
+from routes.coach_routes import router as coach_router
+app.include_router(coach_router)
+
 # Include news routes (Daily News Tab Feature)
 from news_routes import router as news_router
 app.include_router(news_router)
