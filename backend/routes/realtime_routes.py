@@ -48,6 +48,7 @@ class TutorSessionRequest(BaseModel):
     research_data: Optional[str] = None
     conversation_history: Optional[str] = None
     news_context: Optional[str] = None  # News article context for news conversations
+    learning_plan_data: Optional[Dict[str, Any]] = None  # Learning plan session context
 
 class RealtimeUsageData(BaseModel):
     user_id: Optional[str] = None
@@ -213,10 +214,16 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
 
         # Extract assessment and learning plan data if available
         assessment_data = request.assessment_data if hasattr(request, 'assessment_data') else None
-        learning_plan_data = None
+        learning_plan_data = request.learning_plan_data if hasattr(request, 'learning_plan_data') else None
 
-        if assessment_data and 'learning_plan_data' in assessment_data:
-            learning_plan_data = assessment_data.get('learning_plan_data')
+        # Log if learning plan data is present
+        if learning_plan_data:
+            print(f"[BEGINNER_MODE] ✅ Learning plan data available")
+            completed_sessions = learning_plan_data.get('completed_sessions', 0)
+            total_sessions = learning_plan_data.get('total_sessions', 0)
+            print(f"[BEGINNER_MODE] 📚 Progress: {completed_sessions}/{total_sessions} sessions")
+        else:
+            print(f"[BEGINNER_MODE] ⚠️ NO learning plan data")
 
         # Build beginner-optimized instructions
         research_context = request.research_data if hasattr(request, 'research_data') and request.research_data else None
@@ -1273,10 +1280,74 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 print(f"[VOICE] Error fetching voice: {str(e)}")
                 return "alloy"
 
-        # Run voice fetch and instruction building in parallel
-        voice_task = asyncio.create_task(fetch_voice_preference())
+        async def fetch_active_learning_plan():
+            """Fetch user's active learning plan if not provided"""
+            # If learning_plan_data is already provided, use it
+            if request.learning_plan_data:
+                print(f"[LEARNING_PLAN] Using provided learning plan data")
+                return request.learning_plan_data
 
-        # Build instructions (can run while voice is being fetched)
+            if not current_user:
+                print(f"[LEARNING_PLAN] No current user, skipping")
+                return None
+
+            try:
+                from database import database
+                from bson import ObjectId
+
+                print(f"[LEARNING_PLAN] 🔍 Searching for learning plan:")
+                print(f"[LEARNING_PLAN]    user_id: {current_user.id}")
+                print(f"[LEARNING_PLAN]    language: {request.language.lower()}")
+                print(f"[LEARNING_PLAN]    status: in_progress")
+
+                # Fetch user's active learning plan
+                plans_collection = database.learning_plans
+
+                # First, check what learning plans exist for this user
+                all_plans = await plans_collection.find({"user_id": current_user.id}).to_list(length=10)
+                print(f"[LEARNING_PLAN] 📋 Found {len(all_plans)} total learning plans for user")
+                for plan in all_plans:
+                    print(f"[LEARNING_PLAN]    - Language: {plan.get('language')}, Status: {plan.get('status')}")
+
+                # FIXED: Also match plans where status is missing/null (legacy plans)
+                learning_plan = await plans_collection.find_one({
+                    "user_id": current_user.id,
+                    "$or": [
+                        {"status": "in_progress"},  # New plans with explicit status
+                        {"status": None},           # Legacy plans without status field
+                        {"status": {"$exists": False}}  # Plans missing status entirely
+                    ],
+                    "language": request.language.lower()
+                })
+
+                if learning_plan:
+                    print(f"[LEARNING_PLAN] ✅ Found active learning plan (status: {learning_plan.get('status', 'None')})")
+                    print(f"[LEARNING_PLAN] 📚 Progress: {learning_plan.get('completed_sessions', 0)}/{learning_plan.get('total_sessions', 0)}")
+                    return {
+                        "plan_content": learning_plan.get("plan_content", {}),
+                        "completed_sessions": learning_plan.get("completed_sessions", 0),
+                        "total_sessions": learning_plan.get("total_sessions", 0)
+                    }
+                else:
+                    print(f"[LEARNING_PLAN] ❌ No learning plan found for this language and user")
+                    return None
+            except Exception as e:
+                print(f"[LEARNING_PLAN] ❌ Error fetching learning plan: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return None
+
+        # Run voice fetch and learning plan fetch in parallel
+        voice_task = asyncio.create_task(fetch_voice_preference())
+        learning_plan_task = asyncio.create_task(fetch_active_learning_plan())
+
+        # Wait for learning plan data before building instructions (needed for context)
+        learning_plan_data = await learning_plan_task
+        if learning_plan_data:
+            # Add learning plan data to request
+            request.learning_plan_data = learning_plan_data
+
+        # Build instructions (now with learning plan context if available)
         instructions = build_universal_instructions(request)
         print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
 
