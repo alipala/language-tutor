@@ -7,6 +7,7 @@ Endpoints:
 - POST /api/speaking-dna/analyze-session - Analyze a session and update DNA
 - GET /api/speaking-dna/profile/{language} - Get user's DNA profile
 - GET /api/speaking-dna/evolution/{language} - Get DNA evolution history
+- GET /api/speaking-dna/acoustic-evolution/{language} - Get acoustic metrics evolution
 - GET /api/speaking-dna/breakthroughs/{language} - Get breakthrough moments
 - POST /api/speaking-dna/breakthroughs/{breakthrough_id}/celebrate - Mark breakthrough as celebrated
 - GET /api/speaking-dna/coach-instructions/{language} - Get DNA-aware coach instructions
@@ -231,6 +232,72 @@ async def get_dna_evolution(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get DNA evolution: {str(e)}"
+        )
+
+
+# ============================================================================
+# Acoustic Evolution Endpoint
+# ============================================================================
+
+@router.get("/acoustic-evolution/{language}")
+async def get_acoustic_evolution(
+    language: str,
+    weeks: int = Query(default=12, ge=1, le=52, description="Number of weeks to retrieve"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get the evolution history of acoustic metrics (Voice Fingerprint) over time.
+
+    Returns weekly snapshots of acoustic metrics for visualization:
+    - Vocal Pitch (Hz)
+    - Voice Quality (%)
+    - Speaking Rate (WPM)
+    - Vocal Energy (dB)
+    - Speech Fluency (filler words/min)
+    - Voice Stability (shimmer %)
+
+    **Premium Feature**: Only available to users with active subscription.
+
+    Args:
+        language: Target language code
+        weeks: Number of weeks to retrieve (1-52, default 12)
+        current_user: Authenticated user from JWT token
+
+    Returns:
+        List of weekly acoustic metric snapshots
+
+    Raises:
+        403: User not authorized (not premium subscriber)
+        500: Server error during retrieval
+    """
+    try:
+        # Check if user has premium access (allow "canceling" status - user has access until period ends)
+        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Speaking DNA is a premium feature. Please upgrade your subscription."
+            )
+
+        logger.info(f"[DNA API] Getting acoustic evolution for user {current_user.id}, language {language}, weeks {weeks}")
+
+        evolution = await speaking_dna_service.get_acoustic_evolution(
+            user_id=str(current_user.id),
+            language=language,
+            weeks=weeks
+        )
+
+        return {
+            "evolution": evolution,
+            "weeks_tracked": len(evolution)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DNA API] Error getting acoustic evolution: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get acoustic evolution: {str(e)}"
         )
 
 

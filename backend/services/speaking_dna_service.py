@@ -343,13 +343,14 @@ class SpeakingDNAService:
                 await self.db.speaking_breakthroughs.insert_many(breakthrough_docs)
                 logger.info(f"[DNA] Stored {len(breakthrough_docs)} breakthroughs")
 
-            # Create/update weekly snapshot for evolution tracking
+            # Create/update weekly snapshot for evolution tracking (with acoustic metrics)
             await self._create_weekly_snapshot(
                 user_id=user_id,
                 language=language,
                 strands=updated_strands,
                 session_duration_minutes=session_metrics.get("session_duration_minutes", 5),
-                breakthroughs_count=len(breakthroughs)
+                breakthroughs_count=len(breakthroughs),
+                acoustic_metrics=acoustic_metrics  # Add acoustic metrics to weekly snapshot
             )
 
             return {
@@ -1554,7 +1555,8 @@ Session type: {session_type}
         language: str,
         strands: Dict,
         session_duration_minutes: float,
-        breakthroughs_count: int
+        breakthroughs_count: int,
+        acoustic_metrics: Optional[Dict] = None
     ) -> None:
         """
         Create or update weekly snapshot for DNA evolution tracking.
@@ -1569,6 +1571,7 @@ Session type: {session_type}
             strands: Complete DNA strands dict
             session_duration_minutes: Duration of this session
             breakthroughs_count: Number of breakthroughs in this session
+            acoustic_metrics: Optional acoustic metrics dict (pitch, quality, rate, etc.)
         """
         try:
             now = datetime.utcnow()
@@ -1593,13 +1596,19 @@ Session type: {session_type}
                 # Update existing snapshot (increment counters)
                 logger.info(f"[DNA] Updating existing snapshot for week {week_number}")
 
+                update_set = {
+                    "strand_snapshots": strands,  # Always update to latest strands
+                    "updated_at": now
+                }
+
+                # Update acoustic metrics if provided (always use latest)
+                if acoustic_metrics:
+                    update_set["acoustic_metrics_snapshot"] = acoustic_metrics
+
                 await self.db.speaking_dna_history.update_one(
                     {"_id": existing_snapshot["_id"]},
                     {
-                        "$set": {
-                            "strand_snapshots": strands,  # Always update to latest strands
-                            "updated_at": now
-                        },
+                        "$set": update_set,
                         "$inc": {
                             "week_stats.sessions_completed": 1,
                             "week_stats.total_minutes": session_duration_minutes,
@@ -1627,6 +1636,10 @@ Session type: {session_type}
                     "created_at": now,
                     "updated_at": now
                 }
+
+                # Add acoustic metrics if provided
+                if acoustic_metrics:
+                    snapshot_doc["acoustic_metrics_snapshot"] = acoustic_metrics
 
                 await self.db.speaking_dna_history.insert_one(snapshot_doc)
                 logger.info(f"[DNA] New weekly snapshot created successfully")
@@ -1677,6 +1690,53 @@ Session type: {session_type}
 
         except Exception as e:
             logger.error(f"[DNA] Error getting evolution: {str(e)}", exc_info=True)
+            return []
+
+    async def get_acoustic_evolution(
+        self,
+        user_id: str,
+        language: str,
+        weeks: int = 12
+    ) -> List[Dict]:
+        """
+        Get acoustic metrics evolution history for Voice Fingerprint visualization.
+
+        Returns weekly snapshots containing only acoustic metrics data:
+        - pitch (Hz)
+        - quality (%)
+        - rate (WPM)
+        - energy (dB)
+        - fluency (filler words/min)
+        - stability (shimmer %)
+
+        Args:
+            user_id: User ID string
+            language: Target language
+            weeks: Number of weeks to retrieve (default 12)
+
+        Returns:
+            List of dicts with week_start, week_number, and acoustic_metrics
+        """
+        try:
+            history = await self.db.speaking_dna_history.find({
+                "user_id": user_id,
+                "language": language,
+                "acoustic_metrics_snapshot": {"$exists": True}  # Only get snapshots with acoustic data
+            }).sort("week_start", -1).limit(weeks).to_list(weeks)
+
+            # Extract only acoustic metrics and metadata
+            acoustic_evolution = []
+            for entry in history:
+                acoustic_evolution.append({
+                    "week_start": entry["week_start"],
+                    "week_number": entry["week_number"],
+                    "acoustic_metrics": entry.get("acoustic_metrics_snapshot", {})
+                })
+
+            return list(reversed(acoustic_evolution))  # Chronological order
+
+        except Exception as e:
+            logger.error(f"[DNA] Error getting acoustic evolution: {str(e)}", exc_info=True)
             return []
 
     async def get_breakthroughs(
