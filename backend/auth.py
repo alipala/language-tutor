@@ -204,14 +204,32 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
         token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception
-    
+
     user = await get_user_by_id(token_data.user_id)
     if user is None:
         raise credentials_exception
-    
+
     # Convert UserInDB to UserResponse
     user_dict = user.dict(by_alias=True)
     user_dict.pop("hashed_password", None)
+
+    # Calculate assessments_limit based on subscription plan
+    plan_id = user_dict.get("subscription_plan", "try_learn")
+    period = user_dict.get("subscription_period", "monthly")
+
+    # Plan limits (matching subscription_service.py)
+    PLAN_LIMITS = {
+        "try_learn": {"monthly_assessments": 1, "annual_assessments": 1},
+        "fluency_builder": {"monthly_assessments": 2, "annual_assessments": 24},
+        "language_mastery": {"monthly_assessments": -1, "annual_assessments": -1},  # unlimited
+    }
+
+    plan_limits = PLAN_LIMITS.get(plan_id, PLAN_LIMITS["try_learn"])
+    assessments_limit = plan_limits.get(f"{period}_assessments", plan_limits["monthly_assessments"])
+
+    # Add calculated limit to user dict
+    user_dict["assessments_limit"] = assessments_limit
+
     return UserResponse(**user_dict)
 
 async def get_optional_current_user(token: Optional[str] = None) -> Optional[UserResponse]:

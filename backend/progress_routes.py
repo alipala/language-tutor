@@ -668,33 +668,42 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
         
         conversation_total_sessions = len(conversation_sessions)
         conversation_total_minutes = sum(session.get('duration_minutes', 0) for session in conversation_sessions)
-        
+
         print(f"[PROGRESS] 📝 Conversation sessions: {conversation_total_sessions} sessions, {conversation_total_minutes} minutes")
-        
+
         # Get learning plan sessions
         from database import database
+        from bson import ObjectId
         learning_plans_collection = database["learning_plans"]
         learning_plans_cursor = learning_plans_collection.find({"user_id": current_user.id})
         learning_plans = await learning_plans_cursor.to_list(length=None)
-        
+
         learning_plan_total_sessions = 0
         learning_plan_total_minutes = 0.0
-        
+
         for plan in learning_plans:
             plan_sessions = plan.get("completed_sessions", 0)
             plan_minutes = plan.get("practice_minutes_used", 0.0)
             learning_plan_total_sessions += plan_sessions
             learning_plan_total_minutes += plan_minutes
-            
+
             print(f"[PROGRESS] 📚 Learning plan {plan.get('language', 'unknown')}: {plan_sessions} sessions, {plan_minutes} minutes")
-        
+
         print(f"[PROGRESS] 📚 Learning plan totals: {learning_plan_total_sessions} sessions, {learning_plan_total_minutes} minutes")
-        
+
+        # 🔥 FIXED: Use user document's practice_minutes_used which includes BOTH completed sessions AND early exits
+        # Early exits should count to prevent subscription abuse!
+        users_collection_db = database["users"]
+        user_doc = await users_collection_db.find_one({"_id": ObjectId(current_user.id)})
+
+        # Get total minutes from user document (includes early exits)
+        total_minutes = user_doc.get('practice_minutes_used', 0) if user_doc else 0
+
         # 🔥 UNIFIED TOTALS: Combine both types of sessions
         total_sessions = conversation_total_sessions + learning_plan_total_sessions
-        total_minutes = conversation_total_minutes + learning_plan_total_minutes
-        
-        print(f"[PROGRESS] 🎯 UNIFIED TOTALS: {total_sessions} sessions, {total_minutes} minutes")
+
+        print(f"[PROGRESS] 🎯 UNIFIED TOTALS: {total_sessions} sessions")
+        print(f"[PROGRESS] 🎯 TOTAL MINUTES (from user doc, includes early exits): {total_minutes} minutes")
         
         # Calculate streak (still based on conversation sessions for now)
         current_streak, longest_streak = await calculate_streaks(current_user.id)
@@ -737,16 +746,68 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
         
         print(f"[PROGRESS] 📊 This week: {sessions_this_week} sessions ({conversation_sessions_this_week} conversation + {learning_plan_sessions_this_week} learning plan)")
         print(f"[PROGRESS] 📊 This month: {sessions_this_month} sessions ({conversation_sessions_this_month} conversation + {learning_plan_sessions_this_month} learning plan)")
-        
+
+        # 🔥 NEW: Calculate average minutes per day since first practice
+        average_minutes_per_day = 0.0
+        days_since_first_practice = 0
+        first_practice_date = None
+
+        if conversation_sessions or learning_plans:
+            # Find earliest practice date from both conversation sessions and learning plans
+            earliest_dates = []
+
+            # Get earliest conversation session
+            if conversation_sessions:
+                earliest_conv = min((s.get('created_at') for s in conversation_sessions if s.get('created_at')), default=None)
+                if earliest_conv:
+                    if isinstance(earliest_conv, str):
+                        try:
+                            earliest_conv = datetime.fromisoformat(earliest_conv.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except:
+                            earliest_conv = None
+                    if earliest_conv:
+                        earliest_dates.append(earliest_conv)
+
+            # Get earliest learning plan
+            if learning_plans:
+                earliest_plan = min((p.get('created_at') for p in learning_plans if p.get('created_at')), default=None)
+                if earliest_plan:
+                    if isinstance(earliest_plan, str):
+                        try:
+                            earliest_plan = datetime.fromisoformat(earliest_plan.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except:
+                            earliest_plan = None
+                    if earliest_plan:
+                        earliest_dates.append(earliest_plan)
+
+            # Use the earliest date found
+            if earliest_dates:
+                first_practice_date = min(earliest_dates)
+                now = datetime.utcnow()
+
+                # Calculate days since first practice (minimum 1 day to avoid division by zero)
+                days_since_first_practice = max(1, (now - first_practice_date).days)
+
+                # Calculate average (handles 0 total_minutes gracefully)
+                if total_minutes > 0:
+                    average_minutes_per_day = round(total_minutes / days_since_first_practice, 1)
+
+                print(f"[PROGRESS] 📊 First practice: {first_practice_date.strftime('%Y-%m-%d')}")
+                print(f"[PROGRESS] 📊 Days since first practice: {days_since_first_practice}")
+                print(f"[PROGRESS] 📊 Average minutes per day: {average_minutes_per_day}")
+
         stats = ConversationStats(
             total_sessions=total_sessions,
             total_minutes=total_minutes,
             current_streak=current_streak,
             longest_streak=longest_streak,
             sessions_this_week=sessions_this_week,
-            sessions_this_month=sessions_this_month
+            sessions_this_month=sessions_this_month,
+            average_minutes_per_day=average_minutes_per_day,
+            days_since_first_practice=days_since_first_practice,
+            first_practice_date=first_practice_date.isoformat() if first_practice_date else None
         )
-        
+
         print(f"[PROGRESS] ✅ FIXED STATS calculated: {stats.dict()}")
         return stats
         

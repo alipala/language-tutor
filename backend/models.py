@@ -183,6 +183,16 @@ class UserResponse(UserBase):
     subscription_price_id: Optional[str] = None
     timezone: Optional[str] = "UTC"  # User's timezone for stats calculations
 
+    # Usage tracking - needed for Profile screen
+    assessments_used: int = 0  # Assessments used in current period
+    assessments_limit: Optional[int] = None  # Calculated based on subscription plan
+
+    # Statistics (new gamification system) - needed for Profile screen
+    stats: Optional[Dict[str, Any]] = None  # Embedded stats with lifetime.total_challenges
+
+    # Legacy challenge stats - needed for backwards compatibility
+    challengeStats: Optional[Dict[str, Any]] = None  # totalCompleted, currentStreak, etc.
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -329,6 +339,9 @@ class ConversationStats(BaseModel):
     longest_streak: int
     sessions_this_week: int
     sessions_this_month: int
+    average_minutes_per_day: Optional[float] = 0.0
+    days_since_first_practice: Optional[int] = 0
+    first_practice_date: Optional[str] = None
 
 class ConversationHistoryResponse(BaseModel):
     sessions: List[ConversationSession]
