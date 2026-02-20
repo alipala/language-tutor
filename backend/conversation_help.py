@@ -41,6 +41,7 @@ class SuggestedResponse(BaseModel):
     pronunciation: str
     difficulty_level: str  # "beginner", "intermediate", "advanced"
     explanation: str
+    translation: Optional[str] = None  # Translation in user's app language
 
 class VocabularyItem(BaseModel):
     word: str
@@ -174,8 +175,12 @@ Target language: {request.target_language}
 Student level: {request.proficiency_level}
 Help language: {request.user_language}
 
-Generate 2 contextual responses in JSON:
-{{"summary": "brief summary in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextual response in JSON:
+{{"summary": "brief summary in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Ja, natuurlijk!" and user_language="english", then translation="Yes, of course!"
+"""
 
         print(f"[CONVERSATION_HELP] 📤 Sending optimized prompt to OpenAI...")
         
@@ -196,23 +201,25 @@ Generate 2 contextual responses in JSON:
             return None
 
         content = response.choices[0].message.content.strip()
-        print(f"[CONVERSATION_HELP] Raw content: {content}")
-        
+        print(f"[CONVERSATION_HELP] 🔍 RAW GPT-4o-mini RESPONSE: {content}")
+
         # Clean JSON content
         if content.startswith('```json'):
             content = content[7:]
         elif content.startswith('```'):
             content = content[3:]
-        
+
         if content.endswith('```'):
             content = content[:-3]
-        
+
         content = content.strip()
-        
+        print(f"[CONVERSATION_HELP] 🔍 CLEANED CONTENT: {content}")
+
         # Parse JSON
         try:
             help_data = json.loads(content)
             print(f"[CONVERSATION_HELP] ✅ JSON parsed successfully")
+            print(f"[CONVERSATION_HELP] 🔍 PARSED DATA: {json.dumps(help_data, indent=2)}")
             
             # Extract responses
             responses_key = "responses" if "responses" in help_data else "suggested_responses"
@@ -224,13 +231,16 @@ Generate 2 contextual responses in JSON:
             
             # Build response objects
             suggested_responses = []
-            for resp in raw_responses[:2]:  # Limit to 2 responses
+            for resp in raw_responses[:1]:  # Only take 1 response
                 if isinstance(resp, dict) and resp.get("text"):
+                    translation = resp.get("translation")
+                    print(f"[CONVERSATION_HELP] 🔍 EXTRACTED translation: {translation}")
                     suggested_responses.append(SuggestedResponse(
                         text=resp.get("text", ""),
                         pronunciation=resp.get("pronunciation", ""),
                         difficulty_level=resp.get("difficulty_level", "beginner"),
-                        explanation=resp.get("explanation", "")
+                        explanation=resp.get("explanation", ""),
+                        translation=translation  # Translation in user's app language
                     ))
             
             if not suggested_responses:

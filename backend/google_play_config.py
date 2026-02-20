@@ -6,11 +6,20 @@ Maps Google Play product IDs to internal plan IDs and provides purchase verifica
 import os
 import logging
 from typing import Optional, Dict
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# Try to import Google API dependencies (may not be available in local development)
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    GOOGLE_PLAY_AVAILABLE = True
+except ImportError:
+    logger.warning("Google Play dependencies not available - billing verification disabled for local development")
+    GOOGLE_PLAY_AVAILABLE = False
+    service_account = None
+    build = None
 
 # Google Play Product ID to Internal Plan ID mapping
 GOOGLE_PLAY_PRODUCTS = {
@@ -64,6 +73,11 @@ class GooglePlayVerifier:
             Dict with verification result and subscription info
         """
         logger.info(f"[GOOGLE_PLAY] Verifying purchase for product: {product_id}")
+
+        # Check if Google Play dependencies are available
+        if not GOOGLE_PLAY_AVAILABLE:
+            logger.error("[GOOGLE_PLAY] Google Play dependencies not installed")
+            raise ValueError("Google Play billing not available - install google-api-python-client")
 
         # Get service account credentials path from environment
         credentials_path = os.getenv("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
