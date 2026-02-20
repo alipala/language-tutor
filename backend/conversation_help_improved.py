@@ -225,8 +225,12 @@ Key Focus: {intent.key_focus}
 - Responses should be short and clear for pronunciation practice
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
-{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "IPA or simplified phonetic", "explanation": "why this response helps with pronunciation practice"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextually perfect response in JSON format:
+{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "IPA or simplified phonetic", "explanation": "why this response helps with pronunciation practice", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Ja, ik begrijp het!" and user_language="english", then translation="Yes, I understand it!"
+"""
 
     elif intent.intent == "ERROR_CORRECTION":
         return f"""{base_context}
@@ -245,8 +249,12 @@ Key Focus: {intent.key_focus}
 - Demonstrate that the student learned from the correction
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
-{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response shows understanding of the correction"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextually perfect response in JSON format:
+{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response shows understanding of the correction", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Bedankt voor de correctie!" and user_language="english", then translation="Thanks for the correction!"
+"""
 
     elif intent.intent == "NEW_CONCEPT_INTRODUCTION":
         return f"""{base_context}
@@ -265,8 +273,12 @@ Key Focus: {intent.key_focus}
 - Request examples or practice opportunities
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
-{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response shows engagement with the new concept"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextually perfect response in JSON format:
+{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response shows engagement with the new concept", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Kan je meer uitleggen?" and user_language="english", then translation="Can you explain more?"
+"""
 
     elif intent.intent == "VOCABULARY_PRACTICE":
         return f"""{base_context}
@@ -285,8 +297,12 @@ Key Focus: {intent.key_focus}
 - Make sentences meaningful and realistic
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
-{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this sentence demonstrates proper vocabulary usage"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextually perfect response in JSON format:
+{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this sentence demonstrates proper vocabulary usage", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Ik gebruik dit woord vaak!" and user_language="english", then translation="I use this word often!"
+"""
 
     elif intent.intent == "ASSESSMENT":
         return f"""{base_context}
@@ -305,8 +321,12 @@ Key Focus: {intent.key_focus}
 - Demonstrate learning progress
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
-{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response demonstrates knowledge appropriately"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextually perfect response in JSON format:
+{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response demonstrates knowledge appropriately", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Het antwoord is ja!" and user_language="english", then translation="The answer is yes!"
+"""
 
     else:  # CONVERSATIONAL_PRACTICE or ENCOURAGEMENT
         return f"""{base_context}
@@ -325,8 +345,12 @@ Key Focus: {intent.key_focus}
 - Show personality while practicing the language
 </response_guidelines>
 
-Generate 2 contextually perfect responses in JSON format:
-{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits the conversation naturally"}}]}}"""
+CRITICAL: You MUST include the "translation" field! It is MANDATORY!
+Generate 1 contextually perfect response in JSON format:
+{{"summary": "brief explanation in {request.user_language}", "responses": [{{"text": "response in {request.target_language}", "pronunciation": "phonetic guide", "explanation": "why this response fits the conversation naturally", "translation": "translate the text field to {request.user_language}"}}]}}
+
+Example: If text="Dat klinkt goed!" and user_language="english", then translation="That sounds good!"
+"""
 
 async def generate_contextual_responses(
     request: EnhancedConversationHelpRequest, 
@@ -378,14 +402,17 @@ async def generate_contextual_responses(
                 print(f"[RESPONSE_GEN] ⚠️ Cost tracking failed: {track_error}")
         
         content = response.choices[0].message.content.strip()
-        
+        print(f"[RESPONSE_GEN] 🔍 RAW GPT-4o RESPONSE: {content}")
+
         # Clean JSON content
         if content.startswith('```json'):
             content = content[7:-3]
         elif content.startswith('```'):
             content = content[3:-3]
-        
+
+        print(f"[RESPONSE_GEN] 🔍 CLEANED CONTENT: {content}")
         response_data = json.loads(content)
+        print(f"[RESPONSE_GEN] 🔍 PARSED DATA: {json.dumps(response_data, indent=2)}")
         
         # Cache the result
         RESPONSE_CACHE[cache_key] = response_data
@@ -434,16 +461,22 @@ async def generate_conversation_help_context_aware(request: EnhancedConversation
                 elapsed = (datetime.utcnow() - start_time).total_seconds()
                 print(f"[CONTEXT_HELP] ✅ Context-aware help generated in {elapsed:.2f}s")
                 
+                # Build suggested responses with logging
+                suggested_responses = []
+                for resp in response_data.get("responses", [])[:1]:  # Only take 1 response
+                    translation = resp.get("translation")
+                    print(f"[CONTEXT_HELP] 🔍 EXTRACTED translation: {translation}")
+                    suggested_responses.append({
+                        "text": resp.get("text", ""),
+                        "pronunciation": resp.get("pronunciation", ""),
+                        "difficulty_level": request.proficiency_level,
+                        "explanation": resp.get("explanation", ""),
+                        "translation": translation  # Translation in user's app language
+                    })
+
                 return {
                     "ai_response_summary": response_data.get("summary", "The AI provided guidance."),
-                    "suggested_responses": [
-                        {
-                            "text": resp.get("text", ""),
-                            "pronunciation": resp.get("pronunciation", ""),
-                            "difficulty_level": request.proficiency_level,
-                            "explanation": resp.get("explanation", "")
-                        } for resp in response_data.get("responses", [])[:2]
-                    ],
+                    "suggested_responses": suggested_responses,
                     "vocabulary_highlights": [],
                     "grammar_tips": [],
                     "context_analysis": {

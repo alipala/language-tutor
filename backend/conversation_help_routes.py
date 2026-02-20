@@ -127,7 +127,8 @@ async def generate_help_content(
                         text=resp.get("text", ""),
                         pronunciation=resp.get("pronunciation", ""),
                         difficulty_level=resp.get("difficulty_level", request.proficiency_level),
-                        explanation=resp.get("explanation", "")
+                        explanation=resp.get("explanation", ""),
+                        translation=resp.get("translation")  # CRITICAL FIX: Include translation field!
                     ) for resp in context_result.get("suggested_responses", [])
                 ],
                 vocabulary_highlights=context_result.get("vocabulary_highlights", []),
@@ -137,6 +138,7 @@ async def generate_help_content(
             print(f"[CONVERSATION_HELP] ✅ Context-aware system succeeded!")
             print(f"[CONVERSATION_HELP] 🎯 Intent detected: {context_result.get('context_analysis', {}).get('tutor_intent', 'UNKNOWN')}")
             print(f"[CONVERSATION_HELP]  Teaching phase: {context_result.get('context_analysis', {}).get('teaching_phase', 'unknown')}")
+            print(f"[CONVERSATION_HELP] 🔍 Response includes translation: {help_response.suggested_responses[0].translation if help_response.suggested_responses else 'N/A'}")
         
         # Track usage analytics if user is authenticated
         if current_user:

@@ -198,10 +198,53 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
 
     PHASE 0 OPTIMIZATION: Now includes personality/tone section with 2-sentence limit
     and uses compressed session summaries for 93% token reduction.
+
+    BEGINNER OPTIMIZATION: Routes A1/A2 levels to specialized beginner prompts
+    with vocabulary control, question scaffolding, and simplified structure.
     """
 
     language = request.language.lower()
     level = request.level.upper()
+
+    # ROUTE A1/A2 BEGINNERS TO SPECIALIZED PROMPTS
+    if level in ['A1', 'A2']:
+        print(f"[BEGINNER_MODE] Routing {level} to specialized beginner instructions")
+        from prompt_optimization_helpers import build_beginner_instructions
+
+        # Extract assessment and learning plan data if available
+        assessment_data = request.assessment_data if hasattr(request, 'assessment_data') else None
+        learning_plan_data = None
+
+        if assessment_data and 'learning_plan_data' in assessment_data:
+            learning_plan_data = assessment_data.get('learning_plan_data')
+
+        # Build beginner-optimized instructions
+        research_context = request.research_data if hasattr(request, 'research_data') and request.research_data else None
+        if research_context:
+            print(f"[BEGINNER_MODE] ✅ Research context available: {len(research_context)} characters")
+            print(f"[BEGINNER_MODE] Research preview: {research_context[:200]}...")
+        else:
+            print(f"[BEGINNER_MODE] ⚠️ NO research context available")
+
+        beginner_instructions = build_beginner_instructions(
+            language=language,
+            level=level,
+            topic=request.topic if hasattr(request, 'topic') else None,
+            user_prompt=request.user_prompt if hasattr(request, 'user_prompt') else None,
+            assessment_data=assessment_data,
+            learning_plan_data=learning_plan_data,
+            conversation_history=request.conversation_history if hasattr(request, 'conversation_history') else None,
+            news_context=request.news_context if hasattr(request, 'news_context') else None,
+            research_context=research_context
+        )
+
+        print(f"[BEGINNER_MODE] Created beginner instructions: {len(beginner_instructions)} characters")
+        return beginner_instructions
+
+    # ============================================================================
+    # INTERMEDIATE/ADVANCED (B1-C2) INSTRUCTION BUILDING
+    # Continue with existing optimized prompts for B1+ levels
+    # ============================================================================
 
     # Import optimization helpers
     from prompt_optimization_helpers import (
@@ -1236,6 +1279,19 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Build instructions (can run while voice is being fetched)
         instructions = build_universal_instructions(request)
         print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
+
+        # DEBUG: Check if emoji instructions are included (for A1/A2)
+        if request.level.upper() in ['A1', 'A2']:
+            if '{{emoji:' in instructions:
+                print(f"[DEBUG] ✅ Emoji markers found in instructions")
+            else:
+                print(f"[DEBUG] ❌ NO emoji markers in instructions!")
+
+            # Show a snippet of the topic vocabulary section
+            if 'TOPIC VOCABULARY' in instructions:
+                start_idx = instructions.find('TOPIC VOCABULARY')
+                snippet = instructions[start_idx:start_idx+500]
+                print(f"[DEBUG] Topic vocab snippet:\n{snippet}")
 
         # NEW: Add Speaking DNA context for premium users
         if current_user and current_user.subscription_status in ["active", "trialing"]:
