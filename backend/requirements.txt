@@ -62,8 +62,8 @@ websockets==12.0
 schedule==1.2.0
 pytz==2024.1
 
-# CrewAI Multi-Agent System (Python 3.10-3.13) - Updated to support newer openai
-crewai>=1.9.3
+# CrewAI Multi-Agent System (Python 3.10-3.13) - Using pre-release with relaxed openai constraints
+crewai==1.10.0a1
 crewai-tools>=1.7.2
 
 # Additional dependencies for stability
