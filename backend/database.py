@@ -91,6 +91,11 @@ try:
     speaking_dna_profiles_collection = database.speaking_dna_profiles
     speaking_dna_history_collection = database.speaking_dna_history
     speaking_breakthroughs_collection = database.speaking_breakthroughs
+    
+    # ADDITIONAL COLLECTIONS FOR TAALCOACH
+    heart_events_collection = database.heart_events
+    flashcard_sets_collection = database.flashcard_sets
+    speaking_time_tracking_collection = database.speaking_time_tracking
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -113,6 +118,9 @@ except Exception as e:
     speaking_dna_profiles_collection = None
     speaking_dna_history_collection = None
     speaking_breakthroughs_collection = None
+    heart_events_collection = None
+    flashcard_sets_collection = None
+    speaking_time_tracking_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():

@@ -28,6 +28,10 @@ from database import (
     daily_stats_collection,
     conversation_sessions_collection,
     challenge_sessions_collection,
+    user_achievements_collection,
+    heart_events_collection,
+    flashcard_sets_collection,
+    speaking_time_tracking_collection,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,87 +50,133 @@ class CoachService:
     async def get_user_context(
         self,
         user_id: str,
-        language: str
+        language: str = None
     ) -> Dict[str, Any]:
         """
-        Aggregate all user context for coach AI.
+        Aggregate ALL user context for coach AI - NO language filtering!
 
         This is a FAST endpoint that returns cached/aggregated data
-        so the coach can respond instantly with full context.
+        so the coach can respond instantly with FULL context across ALL languages.
+
+        The coach should be able to answer questions about ANY language the user
+        has practiced in, not just the current learning language.
 
         Args:
             user_id: User's ID
-            language: Target language (e.g., 'dutch', 'spanish')
+            language: Optional - if provided, used as primary language for backwards compat
 
         Returns:
-            Dict with all user context:
+            Dict with ALL user context:
             - user_profile: Basic user info, subscription, level
-            - learning_plan: Current learning plan and progress
-            - speaking_dna: DNA profile and recent evolution
-            - breakthroughs: Recent achievements
-            - stats: Daily stats and streaks
-            - recent_sessions: Last 5 conversation sessions
+            - ALL learning plans (across all languages)
+            - ALL speaking DNA profiles (grouped by language)
+            - ALL breakthroughs (across all languages)
+            - ALL stats, sessions, challenges
+            - Additional data: achievements, hearts, flashcards, etc.
             - is_new_user: Whether user is new (no sessions completed)
         """
         try:
-            logger.info(f"[COACH] Aggregating context for user {user_id}, language {language}")
+            logger.info(f"[COACH] Aggregating FULL context for user {user_id} (ALL LANGUAGES)")
 
             # Parallel data fetching
             user = await users_collection.find_one({"_id": ObjectId(user_id)})
             if not user:
                 raise ValueError(f"User {user_id} not found")
 
-            # Get ALL learning plans for this language
+            # =========================================================================
+            # FIXED: Fetch ALL learning plans - query BOTH string and ObjectId user_id!
+            # =========================================================================
             learning_plans = await learning_plans_collection.find({
-                "user_id": user_id,
-                "language": language
+                "$or": [
+                    {"user_id": user_id},
+                    {"user_id": ObjectId(user_id)}
+                ]
             }).to_list(None)
 
-            logger.info(f"[COACH] Found {len(learning_plans)} learning plans for user {user_id}, language {language}")
+            logger.info(f"[COACH] Found {len(learning_plans)} learning plans (ALL LANGUAGES)")
 
             # Use first plan for detailed info, but track all
             learning_plan = learning_plans[0] if learning_plans else None
 
-            # Get speaking DNA profile
-            dna_profile = await speaking_dna_profiles_collection.find_one({
-                "user_id": user_id,
-                "language": language
-            })
+            # NOTE: Don't determine languages yet - we need to fetch all data first
+            # Will determine all languages after fetching conversation_sessions, challenges, DNA profiles
 
-            # Get recent DNA evolution (last 4 weeks)
+            # =========================================================================
+            # FIXED: Fetch ALL DNA profiles - NO language filter!
+            # =========================================================================
+            all_dna_profiles = await speaking_dna_profiles_collection.find({
+                "user_id": user_id
+            }).to_list(None)
+
+            # Get primary DNA (first one or by the passed language)
+            dna_profile = None
+            if language and all_dna_profiles:
+                # Try to get DNA for the specified language first
+                for profile in all_dna_profiles:
+                    if profile.get("language") == language:
+                        dna_profile = profile
+                        break
+            
+            # Fallback to first available
+            if not dna_profile and all_dna_profiles:
+                dna_profile = all_dna_profiles[0]
+
+            # Format all DNA profiles by language
+            all_dna_by_language = {}
+            for profile in all_dna_profiles:
+                lang = profile.get("language", "unknown")
+                all_dna_by_language[lang] = self._format_dna_profile(profile, [])
+
+            logger.info(f"[COACH] Found {len(all_dna_profiles)} DNA profiles: {list(all_dna_by_language.keys())}")
+
+            # Get recent DNA evolution for primary profile
             dna_evolution = []
             if dna_profile:
                 dna_evolution = await speaking_dna_history_collection.find({
                     "user_id": user_id,
-                    "language": language
+                    "language": dna_profile.get("language")
                 }).sort("week_start", -1).limit(4).to_list(4)
 
-            # Get recent breakthroughs (last 5)
+            # =========================================================================
+            # FIXED: Fetch ALL breakthroughs - NO language filter!
+            # =========================================================================
             breakthroughs = await speaking_breakthroughs_collection.find({
-                "user_id": user_id,
-                "language": language
-            }).sort("detected_at", -1).limit(5).to_list(5)
+                "user_id": user_id
+            }).sort("detected_at", -1).limit(10).to_list(10)
 
-            # Get daily stats (last 7 days)
+            logger.info(f"[COACH] Found {len(breakthroughs)} breakthroughs (ALL LANGUAGES)")
+
+            # Get daily stats (last 7 days) - already language-agnostic
             seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
             daily_stats = await daily_stats_collection.find({
                 "user_id": user_id,
                 "date": {"$gte": seven_days_ago.strftime("%Y-%m-%d")}
             }).sort("date", -1).to_list(7)
 
-            # Get recent conversation sessions (last 5)
-            # NOTE: Don't filter by language - conversation_sessions.language is the interface language, not learning language
+            # =========================================================================
+            # FIXED: Get ALL conversation sessions - query BOTH string and ObjectId user_id!
+            # =========================================================================
+            
+            # Query with string user_id OR ObjectId user_id
             recent_sessions = await conversation_sessions_collection.find({
-                "user_id": user_id
-            }).sort("created_at", -1).limit(5).to_list(5)
+                "$or": [
+                    {"user_id": user_id},
+                    {"user_id": ObjectId(user_id)}
+                ]
+            }).sort("created_at", -1).limit(10).to_list(10)
 
-            # Count ALL conversation sessions for this user
+            # Count ALL conversation sessions
             total_conversation_sessions = await conversation_sessions_collection.count_documents({
-                "user_id": user_id
+                "$or": [
+                    {"user_id": user_id},
+                    {"user_id": ObjectId(user_id)}
+                ]
             })
-            logger.info(f"[COACH] Found {total_conversation_sessions} conversation sessions")
+            logger.info(f"[COACH] Found {total_conversation_sessions} conversation sessions (ALL LANGUAGES)")
 
-            # Get learning plan session count from ALL plans
+            # =========================================================================
+            # FIXED: Get ALL learning plan sessions - across ALL plans
+            # =========================================================================
             learning_plan_sessions = 0
             if learning_plans:
                 for plan in learning_plans:
@@ -134,23 +184,28 @@ class CoachService:
                     learning_plan_sessions += plan_sessions
                     logger.info(f"[COACH] Learning plan {plan.get('language', 'unknown')}: {plan_sessions} completed sessions")
 
-            # Get detailed challenge stats (completed challenges have is_active: False)
+            # =========================================================================
+            # FIXED: Get ALL challenge sessions - NO language filter!
+            # =========================================================================
             challenge_sessions = await challenge_sessions_collection.find({
                 "user_id": user_id,
-                "language": language,
                 "is_active": False
             }).to_list(None)
 
             challenge_stats = len(challenge_sessions)
-            logger.info(f"[COACH] Found {challenge_stats} completed challenges for language {language}")
+            logger.info(f"[COACH] Found {challenge_stats} completed challenges (ALL LANGUAGES)")
 
-            # Breakdown by challenge type
+            # Breakdown by challenge type AND by language
             challenge_breakdown = {}
+            challenge_by_language = {}
             total_correct = 0
             total_wrong = 0
             total_xp = 0
             for session in challenge_sessions:
                 ctype = session.get("challenge_type", "unknown")
+                clang = session.get("language", "unknown")
+                
+                # By type
                 if ctype not in challenge_breakdown:
                     challenge_breakdown[ctype] = {
                         "count": 0,
@@ -162,11 +217,92 @@ class CoachService:
                 challenge_breakdown[ctype]["correct"] += session.get("correct_answers", 0)
                 challenge_breakdown[ctype]["wrong"] += session.get("wrong_answers", 0)
                 challenge_breakdown[ctype]["xp"] += session.get("total_xp", 0)
+                
+                # By language
+                if clang not in challenge_by_language:
+                    challenge_by_language[clang] = {
+                        "count": 0,
+                        "correct": 0,
+                        "wrong": 0,
+                        "xp": 0
+                    }
+                challenge_by_language[clang]["count"] += 1
+                challenge_by_language[clang]["correct"] += session.get("correct_answers", 0)
+                challenge_by_language[clang]["wrong"] += session.get("wrong_answers", 0)
+                challenge_by_language[clang]["xp"] += session.get("total_xp", 0)
+                
                 total_correct += session.get("correct_answers", 0)
                 total_wrong += session.get("wrong_answers", 0)
                 total_xp += session.get("total_xp", 0)
 
             logger.info(f"[COACH] Challenge types: {list(challenge_breakdown.keys())}")
+            logger.info(f"[COACH] Challenge by language: {list(challenge_by_language.keys())}")
+
+            # =========================================================================
+            # NEW: Fetch additional collections for full context
+            # =========================================================================
+            
+            # User achievements
+            user_achievements = await user_achievements_collection.find({
+                "user_id": user_id
+            }).sort("earned_at", -1).limit(10).to_list(10)
+            logger.info(f"[COACH] Found {len(user_achievements)} achievements")
+
+            # Heart events
+            heart_events = await heart_events_collection.find({
+                "user_id": user_id
+            }).sort("created_at", -1).limit(20).to_list(20)
+            logger.info(f"[COACH] Found {len(heart_events)} heart events")
+
+            # Flashcard sets
+            flashcard_sets = await flashcard_sets_collection.find({
+                "user_id": user_id
+            }).to_list(None)
+            logger.info(f"[COACH] Found {len(flashcard_sets)} flashcard sets")
+
+            # Speaking time tracking
+            speaking_time = await speaking_time_tracking_collection.find({
+                "user_id": user_id
+            }).sort("date", -1).limit(30).to_list(30)
+            logger.info(f"[COACH] Found {len(speaking_time)} speaking time entries")
+
+            # =========================================================================
+            # CRITICAL FIX: Gather ALL languages user has practiced in from ALL sources
+            # =========================================================================
+            all_learning_languages = set()
+
+            # 1. From learning plans
+            for plan in learning_plans:
+                plan_lang = plan.get("language")
+                if plan_lang:
+                    all_learning_languages.add(plan_lang.lower())
+
+            # 2. From conversation sessions
+            for session in recent_sessions:
+                session_lang = session.get("language")
+                if session_lang:
+                    all_learning_languages.add(session_lang.lower())
+
+            # 3. From challenge sessions
+            for challenge in challenge_sessions:
+                challenge_lang = challenge.get("language")
+                if challenge_lang:
+                    all_learning_languages.add(challenge_lang.lower())
+
+            # 4. From DNA profiles
+            for profile in all_dna_profiles:
+                profile_lang = profile.get("language")
+                if profile_lang:
+                    all_learning_languages.add(profile_lang.lower())
+
+            # Convert to sorted list for consistent ordering
+            learning_languages = sorted(list(all_learning_languages))
+
+            logger.info(f"[COACH] ALL languages user has practiced: {learning_languages}")
+            logger.info(f"[COACH] Sources - Plans: {[p.get('language') for p in learning_plans]}, "
+                       f"Conversations: {list(set([s.get('language') for s in recent_sessions if s.get('language')]))}, "
+                       f"Challenges: {list(challenge_by_language.keys())}, "
+                       f"DNA: {list(all_dna_by_language.keys())}")
 
             # Calculate derived insights
             total_sessions = total_conversation_sessions + learning_plan_sessions
@@ -191,22 +327,24 @@ class CoachService:
                     else:
                         break
 
-            # Build context object
+            # Build context object - now includes ALL data!
             context = {
                 "user_profile": {
                     "user_id": user_id,
                     "email": user.get("email"),
-                    "target_language": language,
+                    "target_language": learning_languages[0] if learning_languages else language,
                     "cefr_level": user.get("cefr_level", "A1"),
                     "subscription_status": user.get("subscription_status"),
                     "created_at": user.get("created_at"),
+                    "all_learning_languages": learning_languages,
                 },
                 "is_new_user": is_new_user,
                 "has_learning_plan": has_learning_plan,
                 "has_dna_profile": has_dna,
                 "learning_plans": [self._format_learning_plan(plan) for plan in learning_plans] if learning_plans else [],
-                "learning_plan": self._format_learning_plan(learning_plan) if learning_plan else None,  # Keep for backwards compat
+                "learning_plan": self._format_learning_plan(learning_plan) if learning_plan else None,
                 "speaking_dna": self._format_dna_profile(dna_profile, dna_evolution) if dna_profile else None,
+                "all_dna_profiles": all_dna_by_language,
                 "breakthroughs": self._format_breakthroughs(breakthroughs),
                 "stats": {
                     "current_streak": current_streak,
@@ -222,15 +360,31 @@ class CoachService:
                     "total_wrong": total_wrong,
                     "total_xp": total_xp,
                     "accuracy": round((total_correct / (total_correct + total_wrong) * 100), 1) if (total_correct + total_wrong) > 0 else 0,
-                    "by_type": challenge_breakdown
+                    "by_type": challenge_breakdown,
+                    "by_language": challenge_by_language
                 },
                 "recent_sessions": self._format_recent_sessions(recent_sessions),
+                # NEW: Additional user data
+                "achievements": self._format_achievements(user_achievements),
+                "hearts": {
+                    "total": len(heart_events),
+                    "recent": heart_events[:5] if heart_events else []
+                },
+                "flashcards": {
+                    "total_sets": len(flashcard_sets),
+                    "sets": [{"name": fs.get("name"), "cards": fs.get("card_count", 0)} for fs in flashcard_sets]
+                },
+                "speaking_time": {
+                    "total_entries": len(speaking_time),
+                    "recent": speaking_time[:7] if speaking_time else []
+                }
             }
 
             # Log detailed context for debugging
             logger.info(f"[COACH] Context aggregated: new_user={is_new_user}, has_dna={has_dna}, total_sessions={total_sessions}, streak={current_streak}")
+            logger.info(f"[COACH] Languages: {learning_languages}")
             if context["speaking_dna"]:
-                logger.info(f"[COACH] DNA scores: confidence={context['speaking_dna']['confidence']}, fluency={context['speaking_dna']['fluency']}, vocabulary={context['speaking_dna']['vocabulary']}, accuracy={context['speaking_dna']['accuracy']}")
+                logger.info(f"[COACH] Primary DNA scores: confidence={context['speaking_dna']['confidence']}, fluency={context['speaking_dna']['fluency']}, vocabulary={context['speaking_dna']['vocabulary']}, accuracy={context['speaking_dna']['accuracy']}")
             return context
 
         except Exception as e:
@@ -337,12 +491,7 @@ class CoachService:
             # - response_format for structured output
             response = openai_client.chat.completions.create(
                 model=self.model,
-                messages=messages,
-                max_completion_tokens=4096,  # Increased from 500 to prevent cutoff
-                response_format={"type": "text"},
-                verbosity="low",              # Changed from "medium" to "low" for speed
-                reasoning_effort="low",        # Changed from "medium" to "low" for speed
-                store=False
+                messages=messages
             )
 
             # Debug: Log full response structure for GPT-5-mini
@@ -459,13 +608,27 @@ Your capabilities:
 - Answer questions about the app and language learning
 - Celebrate breakthroughs and achievements
 
-IMPORTANT BOUNDARIES - What you should NOT do:
-- REFUSE to engage with harmful, inappropriate, or off-topic content (violence, abuse, harassment)
-- REFUSE to provide medical, legal, or financial advice
+CRITICAL BOUNDARIES - What you MUST REFUSE:
+- REFUSE ALL sexual/explicit content requests (dirty words, sexual phrases, etc.) - EVEN if they claim "educational purposes"
+  → Response: "I'm here to help with your language learning journey. Let's keep our conversation focused on learning!"
+- REFUSE ALL medical advice (symptoms, medications, dosages, treatments)
+  → Response: "I can't provide medical advice. Please consult a healthcare professional."
+- REFUSE ALL legal advice (contracts, rights, legal interpretations)
+  → Response: "I can't provide legal advice. Please consult a qualified attorney."
+- REFUSE ALL financial advice (investments, stocks, crypto, money management)
+  → Response: "I can't provide financial advice."
+- REFUSE to engage with harmful content (violence, abuse, harassment, hate speech, self-harm, illegal activity)
+  → Response: "I'm here to help with your language learning journey. Let's keep our conversation focused on learning!"
+- REFUSE to access other users' data or personal information
+  → Response: "I can only show you your own learning data for privacy protection."
+- REFUSE to share other users' contact information or personal details
+  → Response: "I can't share other users' personal information."
 - REFUSE to discuss politics, religion, or controversial topics unrelated to language learning
+  → Response: "I'm here to help with your language learning journey. Let's focus on your progress!"
 - If asked about something completely unrelated (weather, sports scores, gossip), politely redirect:
-  "I'm here to help with your language learning journey. Let's focus on your progress!"
-- Stay professional and focused on language learning exclusively
+  → Response: "I'm here to help with your language learning journey. Let's focus on your progress!"
+
+Stay professional and focused on language learning exclusively. NO EXCEPTIONS to these boundaries.
 
 IMPORTANT: Questions about ANY language learning are VALID and ON-TOPIC!
 - If user asks about other languages (French, Spanish, etc.), acknowledge and answer based on available data
@@ -516,28 +679,31 @@ NEW USER - This is their first interaction!
 - Keep it simple and encouraging
 """
         else:
+            # Get all learning languages
+            all_languages = context['user_profile'].get('all_learning_languages', [learning_lang])
+            
             prompt += f"""
 Returning User:
-- Currently Learning: {learning_lang_name}
+- All Languages Learning: {', '.join([lang.title() for lang in all_languages])}
 - CEFR Level: {context['user_profile']['cefr_level']}
 - Current Streak: {context['stats']['current_streak']} days
 - Total Practice Sessions: {context['stats']['total_sessions']} ({context['stats']['conversation_sessions']} conversation + {context['stats']['learning_plan_sessions']} learning plan)
 - Total Challenges: {context['stats']['total_challenges']}
 
-Session Breakdown for {learning_lang_name}:
+Session Breakdown (ALL LANGUAGES):
 - Conversation Sessions: {context['stats']['conversation_sessions']} (real-time speaking practice)
 - Learning Plan Sessions: {context['stats']['learning_plan_sessions']} (guided learning practice)
 - Challenge Sessions: {context['stats']['total_challenges']} (gamified practice)
 
-IMPORTANT: You currently have data ONLY for {learning_lang_name} learning.
-If user asks about other languages, politely explain: "I have your {learning_lang_name} learning data. To check other languages, please ask about them specifically in the main app."
+IMPORTANT: You now have data for ALL languages the user is learning: {', '.join([lang.title() for lang in all_languages])}
+When user asks about progress, mention data from ALL their languages!
 """
 
-            # Add challenge breakdown if available
+            # Add challenge breakdown if available (now includes ALL languages!)
             if context.get("challenge_details") and context["challenge_details"]["total"] > 0:
                 chal = context["challenge_details"]
                 prompt += f"""
-Challenge Performance:
+Challenge Performance (ALL LANGUAGES):
 - Total Completed: {chal['total']} challenges
 - Overall Accuracy: {chal['accuracy']}%
 - Correct Answers: {chal['total_correct']} | Wrong: {chal['total_wrong']}
@@ -549,6 +715,12 @@ Challenge Types Completed:
                     type_name = ctype.replace('_', ' ').title()
                     type_accuracy = round((stats['correct'] / (stats['correct'] + stats['wrong']) * 100), 1) if (stats['correct'] + stats['wrong']) > 0 else 0
                     prompt += f"  - {type_name}: {stats['count']} completed, {type_accuracy}% accuracy, {stats['xp']} XP\n"
+                
+                # Add breakdown by language
+                if 'by_language' in chal and len(chal['by_language']) > 1:
+                    prompt += "\nBy Language:\n"
+                    for lang, stats in chal['by_language'].items():
+                        prompt += f"  - {lang.title()}: {stats['count']} challenges\n"
 
             if context["has_dna_profile"]:
                 dna = context["speaking_dna"]
@@ -924,6 +1096,18 @@ Remember: RESPOND IN {interface_lang_name}! User learns {learning_lang_name}, bu
                 "created_at": session.get("created_at"),
             }
             for session in sessions[:5]  # Last 5 sessions
+        ]
+
+    def _format_achievements(self, achievements: List[Dict]) -> List[Dict]:
+        """Format achievements for context"""
+        return [
+            {
+                "title": ach.get("title"),
+                "description": ach.get("description"),
+                "type": ach.get("achievement_type"),
+                "earned_at": ach.get("earned_at"),
+            }
+            for ach in achievements
         ]
 
 
