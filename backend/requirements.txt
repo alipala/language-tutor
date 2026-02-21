@@ -6,8 +6,8 @@ httpx==0.28.1
 pydantic~=2.11.9
 python-multipart==0.0.9
 
-# OpenAI API (version for crewai 1.7.2 compatibility)
-openai~=1.83.0
+# OpenAI API - Updated for GPT-5-mini support (compatible with crewai 1.7.2)
+openai>=1.90.0
 
 # MongoDB and authentication packages
 # Pin specific compatible versions to avoid import errors
