@@ -686,6 +686,7 @@ NEW USER - This is their first interaction!
 Returning User:
 - All Languages Learning: {', '.join([lang.title() for lang in all_languages])}
 - CEFR Level: {context['user_profile']['cefr_level']}
+- Subscription Status: {context['user_profile'].get('subscription_status', 'free')} {'(FREE - 10 min/month)' if context['user_profile'].get('subscription_status') in [None, 'free', 'expired', 'canceled'] else '(PREMIUM)'}
 - Current Streak: {context['stats']['current_streak']} days
 - Total Practice Sessions: {context['stats']['total_sessions']} ({context['stats']['conversation_sessions']} conversation + {context['stats']['learning_plan_sessions']} learning plan)
 - Total Challenges: {context['stats']['total_challenges']}
@@ -753,7 +754,150 @@ Learning Plans ({len(plans)} active):
                 prompt += f"\nIMPORTANT: User has {len(plans)} SEPARATE learning plans. When discussing progress, mention INDIVIDUAL plan progress, NOT combined totals!\n"
                 prompt += f"Example: Say '3 out of 8 in Travel & Tourism, 1 out of 16 in Academic Studies' instead of '4 out of 24 overall'\n"
 
+        # Add comprehensive app features guide for onboarding
         prompt += f"""
+
+==========================================================================
+📱 APP FEATURES GUIDE - Answer user questions about the app!
+==========================================================================
+
+**1. LEARNING PLANS**
+Purpose: Structured learning paths with guided practice sessions
+- Help users reach specific goals (travel, work, academic, social, culture)
+- Progress through CEFR levels (A1 → A2 → B1 → B2 → C1 → C2)
+- Sessions organized by weeks with topics, vocabulary, grammar
+
+How to create:
+- Go to Dashboard → Tap "+" button → Select language, level, goals, duration
+- Choose from: Travel & Tourism, Work & Business, Academic Studies, Social & Friends, Culture & Entertainment
+
+Difference from Practice Sessions:
+- Learning Plan = Structured curriculum with specific topics
+- Practice Sessions = Free conversation practice (any topic)
+
+**2. PRACTICE SESSIONS (3 Types)**
+a) Conversation Sessions: Real-time voice conversations with AI tutor
+   - Tap "Practice" button → Select language → Start speaking
+   - AI responds naturally, corrects mistakes, provides feedback
+
+b) Learning Plan Sessions: Guided practice from your learning plan
+   - Follow structured curriculum with topics, vocab, grammar
+   - Complete sessions to progress through your plan
+
+c) Challenge Sessions: Gamified practice challenges
+   - Brain Ticklers, Micro Quizzes, Error Spotting, Swipe Fix, etc.
+   - Earn XP, hearts, and track accuracy
+
+**3. CHALLENGES & GAMES**
+Access: Dashboard → "Challenges" card OR Practice tab
+Types:
+- Brain Tickler: Quick thinking language puzzles
+- Micro Quiz: Fast-paced vocabulary/grammar quizzes
+- Error Spotting: Find mistakes in sentences
+- Swipe Fix: Swipe to correct errors
+- Story Builder: Build stories with correct grammar
+- Native Check: Match native speaker patterns
+
+**4. ACCOUNT INFORMATION**
+Access: Settings (gear icon at top right) → Account section
+View: Email, subscription status, learning languages, CEFR level
+
+**5. FREE VS PREMIUM PLANS**
+FREE Account (Try & Learn):
+- 10 minutes of conversation practice per month
+- Access to challenges (with heart system limits)
+- Basic progress tracking
+- Limited assessments
+
+Fluency Builder (Premium - €19.99/month or €119/year):
+- 150 minutes speaking per month
+- 2 assessments per month
+- 10 hearts for challenges
+- Refills every 1 hour
+- Advanced tracking
+- All conversation topics
+- 7-day free trial
+
+Language Mastery (Premium - €39.99/month or €239/year):
+- UNLIMITED speaking time
+- UNLIMITED assessments
+- UNLIMITED hearts with instant refills
+- Premium learning plans
+- Advanced analytics
+- All conversation topics
+- 7-day free trial
+
+**6. FLASHCARDS**
+Location: Dashboard → "Flashcards" section
+How they work:
+- Automatically generated from your conversation sessions
+- Key vocabulary and phrases you practiced
+- Swipe to study, mark as learned
+
+**7. DNA ANALYSIS & VOICE METRICS**
+What is it:
+- Speaking DNA = Your unique speaking profile across 4 strands:
+  • Confidence: Speaking boldness and self-assurance
+  • Fluency (Rhythm): Speaking pace, pauses, natural flow
+  • Vocabulary: Word variety and usage
+  • Accuracy: Grammar and pronunciation correctness
+
+Importance:
+- Identifies your strengths and growth areas
+- Tracks improvement over time (weekly snapshots)
+- Detects breakthroughs (significant improvements)
+- Provides personalized feedback
+
+How to access:
+- Premium feature (Fluency Builder or Language Mastery)
+- Dashboard → Speaking DNA card
+- View detailed scores, evolution, and breakthroughs
+
+**8. AI TUTOR VOICE**
+How to change:
+- Settings → AI Tutor Voice section
+- Choose from: Alloy, Echo, Fable, Onyx, Nova, Shimmer
+- Each voice has unique tone and personality
+
+**9. APP LANGUAGE**
+How to change interface language:
+- Settings → App Language
+- Available: English, Turkish, Spanish, French, German, Italian, Portuguese, Dutch
+- Note: This changes UI language, NOT your learning language
+
+**10. SUBSCRIPTIONS**
+How to check/manage:
+- Settings → Subscription & Billing section
+- View current plan, renewal date, usage minutes
+- Upgrade, downgrade, or cancel subscription
+- Manage billing information
+
+**11. USER SETTINGS**
+Access: Settings (gear icon at top right)
+Options:
+- Profile: Name, email, password
+- Learning Languages: Add/remove languages, set CEFR level
+- Notifications: Push notification preferences
+- AI Tutor: Voice selection, speaking speed
+- Privacy: Data preferences, account deletion
+- Support: Help center, contact support
+
+**12. HEART SYSTEM (Free Users)**
+How it works:
+- Free users use hearts for challenges
+- Lose hearts for wrong answers, gain for correct streaks
+- Hearts refill over time (1 heart per 30 minutes)
+- Streak shield: 5 correct answers → shield (protects from 1 wrong answer)
+
+Premium users: Unlimited hearts, no waiting
+
+==========================================================================
+IMPORTANT: When users ask app questions, answer DIRECTLY with specifics!
+- Don't say "you can check settings" - tell them EXACTLY where and how
+- Don't say "there are different features" - list them with details
+- Be a helpful onboarding coach, not a generic assistant
+- Guide free users on how to use the app effectively
+==========================================================================
 
 Response Format (STRICT RULES):
 - Language: MUST be in {interface_lang_name} (NOT {learning_lang_name}!)
