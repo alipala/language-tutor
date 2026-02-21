@@ -63,8 +63,8 @@ schedule==1.2.0
 pytz==2024.1
 
 # CrewAI Multi-Agent System (Python 3.10-3.13) - Using pre-release with relaxed openai constraints
+# Note: crewai-tools is now bundled in crewai monorepo (no separate package needed)
 crewai==1.10.0a1
-crewai-tools>=1.7.2
 
 # Additional dependencies for stability
 pillow==10.3.0
