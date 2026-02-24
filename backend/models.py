@@ -169,6 +169,9 @@ class UserInDB(UserBase):
     # Heart System (Focus Energy)
     heart_system: Optional[HeartSystemState] = None  # Heart pools and refill state
 
+    # 🆕 NEW: Session duration preference (for smart defaults)
+    preferred_session_duration: Optional[int] = None  # 3 or 5, null = use level-based default
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -310,10 +313,11 @@ class ConversationSession(BaseModel):
     topic: Optional[str] = None
     messages: List[ConversationMessage] = []
     duration_minutes: float = 0.0
+    selected_duration: Optional[int] = 5  # 🆕 NEW: User's selected session duration (3 or 5 minutes)
     message_count: int = 0
     summary: Optional[str] = None
     enhanced_analysis: Optional[Dict[str, Any]] = None  # New enhanced analysis data
-    is_streak_eligible: bool = False  # True if session >= 5 minutes
+    is_streak_eligible: bool = False  # True if session >= selected_duration
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -328,6 +332,7 @@ class SaveConversationRequest(BaseModel):
     topic: Optional[str] = None
     messages: List[Dict[str, Any]]
     duration_minutes: float
+    selected_duration: Optional[int] = 5  # 🆕 NEW: User's selected session duration (3 or 5 minutes), default 5 for backward compatibility
     learning_plan_id: Optional[str] = None
     conversation_type: Optional[str] = 'practice'
     sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch sentence analysis
