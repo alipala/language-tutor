@@ -372,7 +372,8 @@ async def save_conversation(
             session_summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
             
             # Save session summary to learning plan using the new endpoint structure
-            await save_learning_plan_session_summary(current_user.id, learning_plan_id, session_summary, request.duration_minutes, conversation_messages)
+            selected_duration = getattr(request, 'selected_duration', None) or 5  # Get selected duration
+            await save_learning_plan_session_summary(current_user.id, learning_plan_id, session_summary, request.duration_minutes, conversation_messages, selected_duration)
             
             # Track subscription usage for learning plan sessions
             await track_subscription_usage(current_user.id, "practice_session")
@@ -438,14 +439,11 @@ async def save_conversation(
                 print(f"[BATCH_SAVE] ⚠️ Batch analysis failed: {str(analysis_error)}")
                 # Continue saving session even if analysis fails
         
-        # Determine analysis level based on session quality
-        analysis_level = determine_analysis_level(request.duration_minutes, len(conversation_messages))
-        print(f"[PROGRESS] Analysis level determined: {analysis_level} (duration: {request.duration_minutes}min, messages: {len(conversation_messages)})")
-        
-        # Generate enhanced analysis only for qualifying sessions
+        # 🆕 UPDATED: Generate enhanced analysis for ALL sessions (no gating)
+        print(f"[PROGRESS] Generating enhanced analysis for session (duration: {request.duration_minutes}min, messages: {len(conversation_messages)})")
+
         enhanced_analysis = None
-        if analysis_level == "enhanced":
-            print(f"[PROGRESS] Generating enhanced analysis for qualifying session")
+        try:
             enhanced_analysis = await generate_enhanced_analysis(
                 conversation_messages,
                 current_user.id,
@@ -454,18 +452,21 @@ async def save_conversation(
                 request.topic or "general",
                 request.duration_minutes
             )
+            print(f"[PROGRESS] ✅ Enhanced analysis generated successfully")
 
             # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
             # Note: Flashcards will be generated after session creation using the actual session ID
 
-        else:
-            print(f"[PROGRESS] Skipping enhanced analysis - session doesn't meet criteria")
+        except Exception as analysis_error:
+            print(f"[PROGRESS] ⚠️ Enhanced analysis failed: {str(analysis_error)}")
+            # Continue without enhanced analysis if it fails
         
-        # CORRECTED: Use integer duration for streak eligibility
-        integer_duration = 5 if request.duration_minutes >= 5.0 else max(1, int(round(request.duration_minutes)))
-        is_streak_eligible = integer_duration >= 5
-        
-        print(f"[PROGRESS] Streak eligibility based on INTEGER duration: {request.duration_minutes} → {integer_duration} minutes, eligible: {is_streak_eligible}")
+        # 🆕 UPDATED: Use selected_duration as threshold for streak eligibility
+        selected_duration = getattr(request, 'selected_duration', None) or 5  # Default 5 for backward compatibility
+        integer_duration = selected_duration if request.duration_minutes >= selected_duration else max(1, int(round(request.duration_minutes)))
+        is_streak_eligible = request.duration_minutes >= selected_duration
+
+        print(f"[PROGRESS] Streak eligibility: selected_duration={selected_duration}, actual={request.duration_minutes}, eligible: {is_streak_eligible}")
         
         # Check if there's an existing session for this user today with the same language/level/topic
         today = datetime.utcnow().date()
@@ -487,12 +488,14 @@ async def save_conversation(
             # Update existing session
             print(f"[PROGRESS] Updating existing session: {existing_session['_id']}")
             
-            # CORRECTED: Enforce INTEGER minutes for conversation updates too
-            integer_duration = 5 if request.duration_minutes >= 5.0 else max(1, int(round(request.duration_minutes)))
-            
+            # 🆕 UPDATED: Use selected_duration as threshold
+            selected_duration = getattr(request, 'selected_duration', None) or 5
+            integer_duration = selected_duration if request.duration_minutes >= selected_duration else max(1, int(round(request.duration_minutes)))
+
             update_data = {
                 "messages": [msg.dict() for msg in conversation_messages],
-                "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
+                "duration_minutes": integer_duration,  # Integer based on selected_duration (3 or 5)
+                "selected_duration": selected_duration,  # 🆕 Store selected duration
                 "message_count": len(conversation_messages),
                 "summary": summary,
                 "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
@@ -540,9 +543,10 @@ async def save_conversation(
             # Create new session
             print(f"[PROGRESS] Creating new conversation session")
             
-            # CORRECTED: Enforce INTEGER minutes for regular conversations too
-            integer_duration = 5 if request.duration_minutes >= 5.0 else max(1, int(round(request.duration_minutes)))
-            
+            # 🆕 UPDATED: Use selected_duration as threshold
+            selected_duration = getattr(request, 'selected_duration', None) or 5
+            integer_duration = selected_duration if request.duration_minutes >= selected_duration else max(1, int(round(request.duration_minutes)))
+
             session_dict = {
                 "user_id": current_user.id,
                 "language": request.language,
@@ -550,7 +554,8 @@ async def save_conversation(
                 "topic": request.topic,
                 "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
                 "messages": [msg.dict() for msg in conversation_messages],
-                "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
+                "duration_minutes": integer_duration,  # Integer based on selected_duration (3 or 5)
+                "selected_duration": selected_duration,  # 🆕 Store selected duration
                 "message_count": len(conversation_messages),
                 "summary": summary,
                 "is_streak_eligible": is_streak_eligible,
@@ -1283,7 +1288,7 @@ async def track_subscription_usage(user_id: str, usage_type: str):
         print(f"[SUBSCRIPTION] ❌ Error tracking subscription usage: {str(e)}")
         # Don't raise the exception - this is a non-critical operation
 
-async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Optional[str], session_summary: str, duration_minutes: float, conversation_messages: List[ConversationMessage]):
+async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Optional[str], session_summary: str, duration_minutes: float, conversation_messages: List[ConversationMessage], selected_duration: int = 5):
     """Save session summary to learning plan using the new weekly structure"""
     try:
         from database import database
@@ -1333,8 +1338,8 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # CORRECTED: Enforce INTEGER minutes - no floating point values
-        integer_duration = 5 if duration_minutes >= 5.0 else max(1, int(round(duration_minutes)))
+        # 🆕 UPDATED: Use selected_duration as threshold
+        integer_duration = selected_duration if duration_minutes >= selected_duration else max(1, int(round(duration_minutes)))
         
         # Create session detail object
         session_detail = {
@@ -1343,6 +1348,7 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
             "summary": session_summary,
             "completed_at": datetime.utcnow().isoformat(),
             "status": "completed",
+            "selected_duration": selected_duration,  # 🆕 Store selected duration
             "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
             "message_count": len(conversation_messages)
         }

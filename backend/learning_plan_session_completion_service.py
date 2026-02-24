@@ -21,11 +21,12 @@ class LearningPlanSessionCompletionService:
     
     @classmethod
     async def complete_session(
-        cls, 
-        user_id: str, 
-        learning_plan_id: str, 
+        cls,
+        user_id: str,
+        learning_plan_id: str,
         session_summary: str,
         duration_minutes: float = 5.0,
+        selected_duration: int = 5,  # 🆕 NEW: User's selected session duration (3 or 5)
         language: Optional[str] = None,
         level: Optional[str] = None,
         topic: Optional[str] = None,
@@ -70,15 +71,17 @@ class LearningPlanSessionCompletionService:
                 week['session_details'] = []
                 logger.info(f"[SESSION_COMPLETION] Initialized session_details for week {week_index + 1}")
             
-            # CRITICAL: ENFORCE EXACTLY 5.0 minutes for completed sessions
-            if duration_minutes >= 5.0:
-                enforced_duration = 5.0
+            # 🆕 UPDATED: Use selected_duration as completion threshold
+            completion_threshold = selected_duration  # User's selected duration (3 or 5)
+
+            if duration_minutes >= completion_threshold:
+                enforced_duration = float(completion_threshold)  # Cap at selected (3 or 5)
                 session_status = "completed"
-                logger.info(f"[SESSION_COMPLETION] Complete session: {duration_minutes} → {enforced_duration} minutes (ENFORCED)")
+                logger.info(f"[SESSION_COMPLETION] Complete session: {duration_minutes} → {enforced_duration} minutes (threshold: {completion_threshold})")
             else:
                 enforced_duration = float(max(1, int(round(duration_minutes))))
                 session_status = "partial"
-                logger.info(f"[SESSION_COMPLETION] Partial session: {duration_minutes} → {enforced_duration} minutes")
+                logger.info(f"[SESSION_COMPLETION] Partial session: {duration_minutes} → {enforced_duration} minutes (threshold: {completion_threshold})")
             
             # Create completion timestamp
             completion_time = datetime.utcnow().isoformat()
@@ -90,6 +93,7 @@ class LearningPlanSessionCompletionService:
                 "focus": week.get("focus", "Language learning session"),
                 "completed_at": completion_time,
                 "duration_minutes": enforced_duration,
+                "selected_duration": selected_duration,  # 🆕 Store selected duration
                 "session_summary": session_summary,
                 "status": session_status
             }

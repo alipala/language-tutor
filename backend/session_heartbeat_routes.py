@@ -37,31 +37,33 @@ async def session_heartbeat(request: Request):
         duration_minutes = heartbeat_data.get('duration_minutes', 0)
         user_id = heartbeat_data.get('user_id')
         status = heartbeat_data.get('status', 'active')
-        
-        logger.info(f"[HEARTBEAT] Received heartbeat: {session_id} - {duration_minutes:.1f}min (status: {status})")
-        
+        selected_duration = heartbeat_data.get('selected_duration', 5)  # 🆕 Get selected duration
+
+        logger.info(f"[HEARTBEAT] Received heartbeat: {session_id} - {duration_minutes:.1f}min (status: {status}, threshold: {selected_duration}min)")
+
         # 🔥 DOUBLE-COUNTING FIX: Heartbeat should NOT track sessions
         # Session tracking is handled by:
         # 1. learning_routes.py for learning plan sessions
         # 2. Frontend saveConversationProgress() for practice sessions
         # The heartbeat is ONLY for monitoring active sessions, not for tracking/deduction
-        
-        if user_id and duration_minutes >= 5.0:
-            logger.info(f"[HEARTBEAT] 📊 Session reached 5-minute threshold: {session_id}")
+
+        if user_id and duration_minutes >= selected_duration:
+            logger.info(f"[HEARTBEAT] 📊 Session reached {selected_duration}-minute threshold: {session_id}")
             logger.info(f"[HEARTBEAT] ℹ️ Tracking will be handled by session completion endpoint")
             logger.info(f"[HEARTBEAT] ℹ️ Heartbeat is for monitoring only - no deduction here")
-            
+
             return {
                 "success": True,
                 "message": "Heartbeat received - session will be tracked on completion",
                 "duration_minutes": duration_minutes,
+                "selected_duration": selected_duration,
                 "monitoring_only": True,
                 "timestamp": datetime.utcnow().isoformat()
             }
         else:
             # Session not yet at threshold - just acknowledge heartbeat
-            if duration_minutes < 5.0:
-                logger.info(f"[HEARTBEAT] Session in progress: {duration_minutes:.1f}/5.0 minutes")
+            if duration_minutes < selected_duration:
+                logger.info(f"[HEARTBEAT] Session in progress: {duration_minutes:.1f}/{selected_duration} minutes")
             else:
                 logger.warning(f"[HEARTBEAT] No user_id provided - cannot track session")
             

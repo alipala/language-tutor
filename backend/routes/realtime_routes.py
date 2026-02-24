@@ -49,6 +49,7 @@ class TutorSessionRequest(BaseModel):
     conversation_history: Optional[str] = None
     news_context: Optional[str] = None  # News article context for news conversations
     learning_plan_data: Optional[Dict[str, Any]] = None  # Learning plan session context
+    selected_duration: Optional[int] = 5  # Session duration in minutes (3 or 5)
 
 class RealtimeUsageData(BaseModel):
     user_id: Optional[str] = None
@@ -1483,8 +1484,14 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             max_duration_seconds = duration_map.get(assessment_level.upper(), 300)
             print(f"[SESSION_CONFIG] Final assessment mode - Level {assessment_level} - Duration: {max_duration_seconds}s")
         else:
-            # Regular practice session
-            max_duration_seconds = 120 if is_guest else 300  # 2 min for guests, 5 min for registered
+            # Regular practice session - use selected_duration from request
+            if is_guest:
+                max_duration_seconds = 120  # 2 min for guests
+            else:
+                # Use selected_duration (3 or 5 minutes) for authenticated users
+                selected_duration = getattr(request, 'selected_duration', None) or 5
+                max_duration_seconds = selected_duration * 60
+                print(f"[SESSION_CONFIG] Using selected_duration: {selected_duration} minutes ({max_duration_seconds}s)")
 
         print(f"[SESSION_CONFIG] User type: {'guest' if is_guest else 'authenticated'}")
         print(f"[SESSION_CONFIG] Max duration: {max_duration_seconds}s ({max_duration_seconds//60} minutes)")

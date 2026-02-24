@@ -482,14 +482,16 @@ async def store_session_summary(
         session_history = plan.get("session_history", [])
 
         # Store current session data for future comparisons
-        session_duration_minutes = conversation_data.get("duration_minutes", 5.0) if conversation_data else 5.0
-        # Cap at 5 minutes; anything over is a frontend timer glitch
-        session_duration_minutes = min(float(session_duration_minutes), 5.0)
+        selected_duration = conversation_data.get("selected_duration", 5) if conversation_data else 5  # 🆕 Get selected duration
+        session_duration_minutes = conversation_data.get("duration_minutes", selected_duration) if conversation_data else selected_duration
+        # Cap at selected_duration; anything over is a frontend timer glitch
+        session_duration_minutes = min(float(session_duration_minutes), float(selected_duration))
 
         current_session_data = {
             "session_number": completed_sessions,
             "messages": conversation_data.get("messages", []) if conversation_data else [],
             "duration_minutes": session_duration_minutes,
+            "selected_duration": selected_duration,  # 🆕 Store selected duration
             "completed_at": datetime.now(timezone.utc).isoformat()
         }
         session_history.append(current_session_data)

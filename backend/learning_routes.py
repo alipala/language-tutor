@@ -1262,42 +1262,43 @@ async def save_session_summary_OLD_DEPRECATED(
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # BULLETPROOF FIX: Ensure INTEGER tracking for all sessions
+        # 🆕 UPDATED: Flexible duration enforcement based on selected_duration
+        selected_duration = getattr(request, 'selected_duration', None) or 5  # Default 5 for backward compatibility
+
         if request and request.duration_minutes:
             # Convert to float first to handle any input type
             raw_duration = float(request.duration_minutes)
-            
-            # BULLETPROOF INTEGER ENFORCEMENT
-            # 1. Cap at 5 minutes maximum (frontend counter issue protection)
-            if raw_duration > 5:
-                duration_minutes = 5
-                print(f"[SESSION_SUMMARY] ⚠️ Capping duration from {raw_duration} to 5 minutes (max allowed)")
+
+            # 1. Cap at selected_duration maximum (frontend counter issue protection)
+            if raw_duration > selected_duration:
+                duration_minutes = selected_duration
+                print(f"[SESSION_SUMMARY] ⚠️ Capping duration from {raw_duration} to {selected_duration} minutes (max allowed)")
             else:
                 # 2. Round to nearest integer
                 duration_minutes = round(raw_duration)
                 if duration_minutes != raw_duration:
                     print(f"[SESSION_SUMMARY] 🔄 Converted float {raw_duration} to integer {duration_minutes}")
-            
+
             # 3. Minimum 1 minute for any session
             if duration_minutes < 1:
                 duration_minutes = 1
                 print(f"[SESSION_SUMMARY] ⚠️ Setting minimum duration to 1 minute")
-            
+
             # 4. Ensure it's an integer
             duration_minutes = int(duration_minutes)
-            
-            # Determine session status based on integer duration
-            if duration_minutes >= 5:
+
+            # Determine session status based on selected_duration threshold
+            if duration_minutes >= selected_duration:
                 session_status = "completed"
-                print(f"[SESSION_SUMMARY] ✅ Complete session: {duration_minutes} minutes (INTEGER)")
+                print(f"[SESSION_SUMMARY] ✅ Complete session: {duration_minutes} minutes (threshold: {selected_duration})")
             else:
                 session_status = "partial"
-                print(f"[SESSION_SUMMARY] ⏰ Partial session: {duration_minutes} minutes (INTEGER)")
+                print(f"[SESSION_SUMMARY] ⏰ Partial session: {duration_minutes} minutes (threshold: {selected_duration})")
         else:
-            # Default: 5 minutes for a complete session (INTEGER)
-            duration_minutes = 5
+            # Default: Use selected_duration for a complete session
+            duration_minutes = selected_duration
             session_status = "completed"
-            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes (INTEGER)")
+            print(f"[SESSION_SUMMARY] 🕐 Default complete session: {duration_minutes} minutes")
         
         # Add completion timestamp for subscription period tracking
         completion_timestamp = datetime.utcnow()
@@ -1310,6 +1311,7 @@ async def save_session_summary_OLD_DEPRECATED(
             "completed_at": completion_timestamp.isoformat(),
             "status": session_status,
             "duration_minutes": duration_minutes,
+            "selected_duration": selected_duration,  # 🆕 Store selected duration
             "subscription_tracked": False  # Will be set to True after tracking
         }
         
@@ -1360,7 +1362,7 @@ async def save_session_summary_OLD_DEPRECATED(
                 user_id=str(current_user.id),
                 session_id=learning_plan_session_id,
                 speaking_minutes=duration_minutes,
-                session_completed=duration_minutes >= 2  # Same business rules as practice sessions
+                session_completed=(duration_minutes >= selected_duration)  # 🆕 FIXED: Use selected_duration threshold
             )
             
             print(f"[SESSION_SUMMARY] 📋 Tracking request:")
