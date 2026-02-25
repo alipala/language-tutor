@@ -407,26 +407,77 @@ export default function Home() {
               </div>
             </div>
             
-            <div 
-              className="flex flex-col items-center justify-center mt-16 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
+            <div
+              className="flex flex-col items-center justify-center mt-8 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
               onClick={() => scrollToSection('how-it-works')}
             >
               <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
-                <svg 
-                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
+                <svg
+                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]"
+                  fill="none"
+                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               </div>
-              
+
               <span className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300">
                 Discover How It Works
               </span>
-              
+
               <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
+            </div>
+          </section>
+
+          {/* App Download Section */}
+          <section id="app-download" className="landing-section landing-app-download">
+            <div className="section-background"></div>
+            <div className="section-content">
+              <motion.a
+                href="https://apps.apple.com/nl/app/mytaco/id6757149290?l=en-GB"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="app-download-link w-[125%] max-w-none -mx-[12.5%] block"
+                initial={{ opacity: 0, y: 60, scale: 0.95 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{
+                  duration: 1.2,
+                  ease: [0.25, 0.1, 0.25, 1],
+                  opacity: { duration: 0.8 },
+                  scale: { duration: 1 }
+                }}
+                whileHover={{ scale: 1.02 }}
+              >
+                <img
+                  src="/App-Download2.png"
+                  alt="AI Speaking Gym - Download our mobile app on App Store"
+                  className="app-download-image border-2 border-gray-200"
+                />
+              </motion.a>
+            </div>
+
+            <div
+              className="flex flex-col items-center justify-center mt-8 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
+              onClick={() => scrollToSection('how-it-works')}
+            >
+              <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
+                <svg
+                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </div>
+
+              <span className="mt-4 text-gray-600 text-sm font-medium tracking-wide group-hover:text-gray-800 transition-colors duration-300">
+                Discover How It Works
+              </span>
+
+              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-gray-400 to-transparent"></div>
             </div>
           </section>
 
@@ -596,25 +647,25 @@ export default function Home() {
               
             </div>
             
-            <div 
-              className="flex flex-col items-center justify-center mt-16 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
+            <div
+              className="flex flex-col items-center justify-center mt-8 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
               onClick={() => scrollToSection('pricing')}
             >
               <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
-                <svg 
-                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
+                <svg
+                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]"
+                  fill="none"
+                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               </div>
-              
+
               <span className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300">
                 Explore Our Plans
               </span>
-              
+
               <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
             </div>
           </section>
