@@ -1681,12 +1681,15 @@ async def handle_invoice_payment_failed(invoice):
         charge_id = invoice.get("charge")
         failure_message = "Unknown reason"
         failure_code = None
+        payment_method_type = "unknown"
 
         if charge_id:
             try:
                 charge = stripe.Charge.retrieve(charge_id)
                 failure_message = charge.get("failure_message") or failure_message
                 failure_code = charge.get("failure_code")
+                payment_method_details = charge.get("payment_method_details", {})
+                payment_method_type = payment_method_details.get("type", "unknown")
             except Exception as charge_error:
                 logger.warning(f"[PAYMENT_FAILED] Could not retrieve charge {charge_id}: {str(charge_error)}")
 
@@ -1696,14 +1699,36 @@ async def handle_invoice_payment_failed(invoice):
             logger.warning(f"[PAYMENT_FAILED] No user found for customer {customer_id}")
             return
 
-        # Log detailed failure information
-        logger.error(f"[PAYMENT_FAILED] ❌ Payment failed for user {user['_id']}")
-        logger.error(f"[PAYMENT_FAILED]    Invoice: {invoice_id}")
-        logger.error(f"[PAYMENT_FAILED]    Amount: {currency} {amount_due:.2f}")
-        logger.error(f"[PAYMENT_FAILED]    Attempt: {attempt_count}")
-        logger.error(f"[PAYMENT_FAILED]    Reason: {failure_message}")
+        # 🔥 CRITICAL: Check if user still has premium access despite payment failure
+        user_plan = user.get("subscription_plan", "try_learn")
+        has_premium_access = user_plan not in ["try_learn", "free"]
+
+        # Log detailed failure information with clear severity indicators
+        logger.error("=" * 80)
+        logger.error(f"[PAYMENT_FAILED] 🚨 PAYMENT FAILURE DETECTED")
+        logger.error("=" * 80)
+        logger.error(f"[PAYMENT_FAILED] User ID: {user['_id']}")
+        logger.error(f"[PAYMENT_FAILED] User Email: {user.get('email')}")
+        logger.error(f"[PAYMENT_FAILED] Invoice ID: {invoice_id}")
+        logger.error(f"[PAYMENT_FAILED] Subscription ID: {subscription_id}")
+        logger.error(f"[PAYMENT_FAILED] Amount Due: {currency} {amount_due:.2f}")
+        logger.error(f"[PAYMENT_FAILED] Payment Method: {payment_method_type}")
+        logger.error(f"[PAYMENT_FAILED] Attempt Count: {attempt_count}")
+        logger.error(f"[PAYMENT_FAILED] Failure Reason: {failure_message}")
         if failure_code:
-            logger.error(f"[PAYMENT_FAILED]    Code: {failure_code}")
+            logger.error(f"[PAYMENT_FAILED] Failure Code: {failure_code}")
+        logger.error(f"[PAYMENT_FAILED] Previous Status: {user.get('subscription_status')}")
+        logger.error(f"[PAYMENT_FAILED] Current Plan: {user_plan}")
+        logger.error(f"[PAYMENT_FAILED] Has Premium Access: {has_premium_access}")
+
+        # 🚨 CRITICAL ALERT: User has premium access without payment
+        if has_premium_access:
+            logger.error("=" * 80)
+            logger.error(f"[PAYMENT_FAILED] ⚠️  REVENUE RISK DETECTED ⚠️")
+            logger.error(f"[PAYMENT_FAILED] User has premium plan '{user_plan}' but payment failed!")
+            logger.error(f"[PAYMENT_FAILED] User continues to have access to premium features")
+            logger.error(f"[PAYMENT_FAILED] Grace period: ~7 days before Stripe cancels subscription")
+            logger.error("=" * 80)
 
         # Prepare update data
         from datetime import datetime, timezone
@@ -1724,18 +1749,81 @@ async def handle_invoice_payment_failed(invoice):
             {"$set": update_data}
         )
 
-        logger.info(f"[PAYMENT_FAILED] ✅ Updated user {user['_id']} to past_due status")
-        logger.info(f"[PAYMENT_FAILED]    Previous status: {user.get('subscription_status')}")
-        logger.info(f"[PAYMENT_FAILED]    User email: {user.get('email')}")
+        logger.info(f"[PAYMENT_FAILED] ✅ Database updated: User status → past_due")
+        logger.info(f"[PAYMENT_FAILED] 🔄 Next steps:")
+        logger.info(f"[PAYMENT_FAILED]    - Stripe will retry payment automatically")
+        logger.info(f"[PAYMENT_FAILED]    - User will see 'Past Due' badge in mobile app")
+        logger.info(f"[PAYMENT_FAILED]    - User retains premium access during retry period")
+        logger.info(f"[PAYMENT_FAILED]    - If all retries fail, Stripe will cancel subscription")
 
-        # Log what will happen next
-        logger.info(f"[PAYMENT_FAILED] Stripe will retry the payment automatically")
-        logger.info(f"[PAYMENT_FAILED] User will see 'Past Due' badge in mobile app")
-        logger.info(f"[PAYMENT_FAILED] User still has access to premium features during retry period")
+        # 🔥 SEND SLACK NOTIFICATION for payment failures
+        try:
+            from monitoring.slack_notifier import send_business_logic_alert, AlertContext, AlertSeverity
 
-        # Optional: Send notification email to user
-        # This can be implemented later if needed
-        # await send_payment_failed_notification(user, amount_due, currency, failure_message)
+            # Determine severity based on access level and amount
+            severity = AlertSeverity.HIGH if has_premium_access else AlertSeverity.MEDIUM
+            if amount_due >= 50:  # Large amounts are more critical
+                severity = AlertSeverity.CRITICAL
+
+            # Build detailed alert message
+            alert_message = f"""
+💳 **Payment Failed**
+
+**User:** {user.get('email')}
+**Amount:** {currency} {amount_due:.2f}
+**Payment Method:** {payment_method_type}
+**Failure Reason:** {failure_message}
+**Retry Attempt:** {attempt_count}
+
+**Current Status:**
+- Plan: `{user_plan}`
+- Premium Access: {'✅ YES (REVENUE RISK!)' if has_premium_access else '❌ NO'}
+- Previous Status: `{user.get('subscription_status')}`
+- New Status: `past_due`
+
+**What's Happening:**
+- Stripe will retry payment automatically
+- User sees "Past Due" badge in mobile app
+- {'User STILL HAS premium access despite failed payment' if has_premium_access else 'User has limited access'}
+
+**Action Required:**
+{'⚠️ Monitor closely - User using premium features without payment' if has_premium_access else 'Low priority - Free user payment failed'}
+
+**Stripe Dashboard:**
+- Invoice: https://dashboard.stripe.com/invoices/{invoice_id}
+- Customer: https://dashboard.stripe.com/customers/{customer_id}
+"""
+
+            context = AlertContext(
+                user_id=str(user['_id']),
+                user_email=user.get('email'),
+                environment=os.getenv("ENVIRONMENT", "production")
+            )
+
+            additional_data = {
+                "Amount": f"{currency} {amount_due:.2f}",
+                "Payment Method": payment_method_type,
+                "Failure Code": failure_code or "N/A",
+                "Retry Attempt": str(attempt_count),
+                "Plan": user_plan,
+                "Has Access": "YES ⚠️" if has_premium_access else "NO"
+            }
+
+            await send_business_logic_alert(
+                operation="Payment Failed",
+                issue=alert_message,
+                context=context,
+                severity=severity,
+                additional_data=additional_data
+            )
+
+            logger.info(f"[PAYMENT_FAILED] 📢 Slack notification sent successfully")
+
+        except Exception as slack_error:
+            logger.error(f"[PAYMENT_FAILED] ❌ Failed to send Slack notification: {str(slack_error)}")
+            # Don't fail the webhook if Slack fails
+
+        logger.error("=" * 80)
 
     except Exception as e:
         logger.error(f"[PAYMENT_FAILED] ❌ Error handling payment failure: {str(e)}")
