@@ -865,6 +865,8 @@ async def stripe_webhook(
             await handle_checkout_completed(event["data"]["object"])
         elif event["type"] == "invoice.payment_succeeded":
             await handle_invoice_payment_succeeded(event["data"]["object"])
+        elif event["type"] == "invoice.payment_failed":
+            await handle_invoice_payment_failed(event["data"]["object"])
         elif event["type"] == "invoice_payment.paid":
             await handle_invoice_payment_paid(event["data"]["object"])
         elif event["type"] == "payment_intent.succeeded":
@@ -1368,6 +1370,14 @@ async def handle_invoice_payment_succeeded(invoice):
             is_renewal = True
             logger.info(f"[RENEWAL] Detected renewal for user {user['_id']} - new billing period started")
 
+        # 🔥 NEW: Check if this is a payment recovery from past_due status
+        old_status = user.get("subscription_status")
+        is_payment_recovery = old_status == "past_due" and subscription.status == "active"
+        if is_payment_recovery:
+            logger.info(f"[PAYMENT_RECOVERY] ✅ Payment succeeded after failure for user {user['_id']}")
+            logger.info(f"[PAYMENT_RECOVERY]    Status: past_due → active")
+            logger.info(f"[PAYMENT_RECOVERY]    User email: {user.get('email')}")
+
         # Prepare update data
         update_data = {
             "subscription_status": subscription.status,
@@ -1377,6 +1387,12 @@ async def handle_invoice_payment_succeeded(invoice):
             "current_period_end": new_period_end,
             "subscription_expires_at": new_period_end
         }
+
+        # 🔥 NEW: Clear payment failure fields on successful payment
+        if is_payment_recovery:
+            update_data["payment_failed_at"] = None
+            update_data["last_payment_failure_reason"] = None
+            update_data["payment_retry_count"] = 0
 
         # 🔥 RESET usage counters on renewal OR first subscription
         # (Apple/Google always reset, Stripe should too for consistency)
@@ -1630,3 +1646,98 @@ async def handle_payment_intent_succeeded(payment_intent):
         
     except Exception as e:
         logger.error(f"[PAYMENT_INTENT] Error handling payment_intent.succeeded: {str(e)}")
+
+async def handle_invoice_payment_failed(invoice):
+    """
+    Handle invoice.payment_failed event
+
+    This fires when:
+    1. SEPA Direct Debit payment is rejected by the bank
+    2. Card payment fails (insufficient funds, expired card, etc.)
+    3. Payment retry attempts fail
+
+    Common failure reasons:
+    - insufficient_funds: Bank account has insufficient balance
+    - account_closed: Bank account is closed
+    - invalid_account_number: Invalid IBAN or account number
+    - debit_not_authorized: Customer revoked the SEPA mandate
+    - card_declined: Credit card was declined
+    """
+    try:
+        customer_id = invoice.get("customer")
+        subscription_id = invoice.get("subscription")
+        invoice_id = invoice.get("id")
+
+        if not customer_id:
+            logger.warning("[PAYMENT_FAILED] No customer ID in invoice payment failed event")
+            return
+
+        # Get invoice details for logging
+        amount_due = invoice.get("amount_due", 0) / 100  # Convert from cents to euros
+        currency = invoice.get("currency", "eur").upper()
+        attempt_count = invoice.get("attempt_count", 0)
+
+        # Get the charge object to understand the failure reason
+        charge_id = invoice.get("charge")
+        failure_message = "Unknown reason"
+        failure_code = None
+
+        if charge_id:
+            try:
+                charge = stripe.Charge.retrieve(charge_id)
+                failure_message = charge.get("failure_message") or failure_message
+                failure_code = charge.get("failure_code")
+            except Exception as charge_error:
+                logger.warning(f"[PAYMENT_FAILED] Could not retrieve charge {charge_id}: {str(charge_error)}")
+
+        # Find user by multiple methods
+        user = await find_user_by_customer_id(customer_id)
+        if not user:
+            logger.warning(f"[PAYMENT_FAILED] No user found for customer {customer_id}")
+            return
+
+        # Log detailed failure information
+        logger.error(f"[PAYMENT_FAILED] ❌ Payment failed for user {user['_id']}")
+        logger.error(f"[PAYMENT_FAILED]    Invoice: {invoice_id}")
+        logger.error(f"[PAYMENT_FAILED]    Amount: {currency} {amount_due:.2f}")
+        logger.error(f"[PAYMENT_FAILED]    Attempt: {attempt_count}")
+        logger.error(f"[PAYMENT_FAILED]    Reason: {failure_message}")
+        if failure_code:
+            logger.error(f"[PAYMENT_FAILED]    Code: {failure_code}")
+
+        # Prepare update data
+        from datetime import datetime, timezone
+        update_data = {
+            "subscription_status": "past_due",
+            "payment_failed_at": datetime.now(timezone.utc),
+            "last_payment_failure_reason": failure_message,
+            "payment_retry_count": attempt_count
+        }
+
+        # Add subscription ID if available
+        if subscription_id:
+            update_data["stripe_subscription_id"] = subscription_id
+
+        # Update user in MongoDB
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+
+        logger.info(f"[PAYMENT_FAILED] ✅ Updated user {user['_id']} to past_due status")
+        logger.info(f"[PAYMENT_FAILED]    Previous status: {user.get('subscription_status')}")
+        logger.info(f"[PAYMENT_FAILED]    User email: {user.get('email')}")
+
+        # Log what will happen next
+        logger.info(f"[PAYMENT_FAILED] Stripe will retry the payment automatically")
+        logger.info(f"[PAYMENT_FAILED] User will see 'Past Due' badge in mobile app")
+        logger.info(f"[PAYMENT_FAILED] User still has access to premium features during retry period")
+
+        # Optional: Send notification email to user
+        # This can be implemented later if needed
+        # await send_payment_failed_notification(user, amount_due, currency, failure_message)
+
+    except Exception as e:
+        logger.error(f"[PAYMENT_FAILED] ❌ Error handling payment failure: {str(e)}")
+        import traceback
+        logger.error(f"[PAYMENT_FAILED] Traceback: {traceback.format_exc()}")
