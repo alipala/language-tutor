@@ -74,3 +74,6 @@ lxml==5.2.1
 librosa==0.10.1
 soundfile==0.12.1
 praat-parselmouth==0.4.3
+
+# Redis caching for performance optimization
+redis==5.0.1
