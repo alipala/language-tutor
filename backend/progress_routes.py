@@ -672,6 +672,17 @@ async def save_conversation(
                 session_id=session_id_str
             )
 
+            # 🔥 CRITICAL: Batch sentence analysis (saves 18-20s) + triggers TaalCoach notification
+            if sentence_texts:
+                background_tasks.add_task(
+                    _batch_analyze_sentences_background,
+                    session_id=session_id_str,
+                    user_id=str(current_user.id),
+                    sentence_texts=sentence_texts,
+                    language=request.language,
+                    level=request.level
+                )
+
             # Enhanced statistics (saves 2-3s)
             background_tasks.add_task(
                 _calculate_statistics_background,
@@ -682,7 +693,7 @@ async def save_conversation(
                 background_analyses=background_analyses
             )
 
-            print(f"[PROGRESS] ⚡ Background tasks scheduled (enhanced analysis + statistics)")
+            print(f"[PROGRESS] ⚡ Background tasks scheduled (batch analysis + enhanced analysis + statistics)")
 
             return {
                 "success": True,
