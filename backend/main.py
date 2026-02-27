@@ -11,6 +11,10 @@ from logging_config import logger
 from database import init_db
 from auth_routes import router as auth_router
 
+# Import Redis caching modules
+from redis_client import init_redis, close_redis
+from cache_helpers import router as cache_router
+
 # Load environment variables
 load_dotenv()
 
@@ -228,6 +232,9 @@ app.include_router(admin_news_router)
 from routes.stats_routes import router as stats_router
 app.include_router(stats_router)
 
+# Include cache monitoring routes (for Redis performance tracking)
+app.include_router(cache_router)
+
 # Include heart system routes (Focus Energy)
 from routes.heart_routes import router as heart_router
 app.include_router(heart_router, prefix="/api/hearts")
@@ -289,6 +296,10 @@ async def startup_db_client():
         await init_db()
         print("MongoDB initialized successfully")
 
+        # Initialize Redis cache
+        await init_redis()
+        print("Redis cache initialization complete")
+
         # NEWS FEATURE: Initialize news generation scheduler (if available)
         if NEWS_SCHEDULER_AVAILABLE:
             try:
@@ -328,6 +339,9 @@ async def startup_db_client():
 @app.on_event("shutdown")
 async def shutdown_app():
     """Clean shutdown of application resources"""
+    # Close Redis connection
+    await close_redis()
+
     if NEWS_SCHEDULER_AVAILABLE and stop_news_scheduler:
         try:
             # NEWS FEATURE: Stop news scheduler
