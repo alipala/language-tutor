@@ -276,3 +276,90 @@ async def send_notification_to_all_users(
     except Exception as exc:
         logger.error(f"Error sending notifications to all users: {exc}")
         return {'success': False, 'message': str(exc)}
+
+
+async def send_sentence_analysis_notification(
+    user_id: str,
+    session_id: str,
+    sentence_count: int
+) -> Dict[str, Any]:
+    """
+    🎯 Send notification when sentence analysis is ready.
+    Triggers a badge on TaalCoach button and push notification.
+
+    Args:
+        user_id: User's MongoDB ObjectId as string
+        session_id: Session's MongoDB ObjectId as string
+        sentence_count: Number of sentences analyzed
+
+    Returns:
+        Dict with success/failure information
+    """
+    try:
+        from database import users_collection
+        from bson import ObjectId
+
+        logger.info(f"[SENTENCE_ANALYSIS_NOTIFICATION] Triggering for user {user_id}, session {session_id}")
+
+        # Get user
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+
+        if not user:
+            logger.warning(f"[SENTENCE_ANALYSIS_NOTIFICATION] User {user_id} not found")
+            return {'success': False, 'message': 'User not found'}
+
+        # Update user with TaalCoach badge (latest unread session analysis)
+        await users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$set": {
+                    "taalcoach_badge": session_id,  # Store session ID for badge
+                    "taalcoach_badge_timestamp": datetime.utcnow()  # Track when badge was set
+                }
+            }
+        )
+
+        logger.info(f"[SENTENCE_ANALYSIS_NOTIFICATION] ✅ TaalCoach badge set for user {user_id}")
+
+        # Send push notification (if user has token and app is in background)
+        expo_push_token = user.get('expo_push_token')
+
+        if not expo_push_token:
+            logger.info(f"[SENTENCE_ANALYSIS_NOTIFICATION] No push token for user {user_id}")
+            return {
+                'success': True,
+                'message': 'Badge set, no push token',
+                'badge_set': True,
+                'notification_sent': False
+            }
+
+        # Send push notification
+        notification_service = NotificationService()
+        result = notification_service.send_expo_push_notification(
+            push_tokens=[expo_push_token],
+            title="Your Session Analysis is Ready! 🎯",
+            body=f"Review {sentence_count} sentences with TaalCoach",
+            data={
+                "type": "sentence_analysis",
+                "session_id": session_id,
+                "screen": "TaalCoach"  # Tell app to open TaalCoach
+            },
+            priority='high',
+            sound='default',
+            badge=1  # Show red badge number
+        )
+
+        logger.info(f"[SENTENCE_ANALYSIS_NOTIFICATION] ✅ Notification sent: {result}")
+
+        return {
+            'success': True,
+            'message': 'Badge set and notification sent',
+            'badge_set': True,
+            'notification_sent': result.get('success', False)
+        }
+
+    except Exception as exc:
+        logger.error(f"[SENTENCE_ANALYSIS_NOTIFICATION] ❌ Error: {exc}")
+        import traceback
+        traceback.print_exc()
+        return {'success': False, 'message': str(exc)}

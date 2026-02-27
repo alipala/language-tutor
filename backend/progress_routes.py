@@ -349,6 +349,7 @@ async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
 
 async def _batch_analyze_sentences_background(
     session_id: str,
+    user_id: str,
     sentence_texts: list,
     language: str,
     level: str
@@ -375,6 +376,22 @@ async def _batch_analyze_sentences_background(
         )
 
         print(f"[BATCH_ANALYSIS_BG] ✅ Batch analysis complete: {len(background_analyses)} results for session {session_id}")
+
+        # 🎯 Trigger TaalCoach notification (badge + push notification)
+        try:
+            from notification_service import send_sentence_analysis_notification
+
+            notification_result = await send_sentence_analysis_notification(
+                user_id=user_id,
+                session_id=session_id,
+                sentence_count=len(background_analyses)
+            )
+
+            print(f"[BATCH_ANALYSIS_BG] 🔔 Notification result: {notification_result}")
+        except Exception as notif_error:
+            print(f"[BATCH_ANALYSIS_BG] ⚠️ Notification failed (non-critical): {notif_error}")
+            # Don't fail the whole task if notification fails
+
     except Exception as e:
         print(f"[BATCH_ANALYSIS_BG] ❌ Failed: {e}")
         import traceback
@@ -719,11 +736,12 @@ async def save_conversation(
             # 🚀 OPTIMIZED: Schedule all background tasks (saves 26-33 seconds!)
             session_id_str = str(result.inserted_id)
 
-            # 🔥 CRITICAL: Batch sentence analysis (saves 18-20s)
+            # 🔥 CRITICAL: Batch sentence analysis (saves 18-20s) + triggers TaalCoach notification
             if sentence_texts:
                 background_tasks.add_task(
                     _batch_analyze_sentences_background,
                     session_id=session_id_str,
+                    user_id=str(current_user.id),
                     sentence_texts=sentence_texts,
                     language=request.language,
                     level=request.level
@@ -1142,6 +1160,156 @@ async def get_conversation_analysis(
     except Exception as e:
         print(f"[PROGRESS] ❌ Error getting conversation analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get conversation analysis: {str(e)}")
+
+
+@router.get("/conversation/{session_id}/sentence-analysis")
+async def get_sentence_analysis(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    🎯 Get sentence-by-sentence analysis for a specific conversation session.
+    Used by TaalCoach to display individual sentence corrections in swipeable modal.
+
+    Returns:
+    - status: "processing" if background task still running, "ready" if complete, "not_found" if no analysis
+    - analyses: List of sentence analyses (empty if still processing)
+    - session_info: Basic session metadata
+    """
+    try:
+        print(f"[SENTENCE_ANALYSIS] Getting sentence analysis for session {session_id}")
+
+        # Validate ObjectId format
+        from bson import ObjectId
+        try:
+            session_object_id = ObjectId(session_id)
+        except:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid session ID format"
+            )
+
+        # Find the session
+        session = await conversation_sessions_collection.find_one({
+            "_id": session_object_id,
+            "user_id": current_user.id
+        })
+
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation session not found"
+            )
+
+        # Get background analyses (sentence-by-sentence analysis)
+        background_analyses = session.get('background_analyses', [])
+
+        # Determine status
+        if not background_analyses:
+            # Check if session is new (created in last 60 seconds)
+            created_at = session.get('created_at')
+            if created_at and (datetime.utcnow() - created_at).total_seconds() < 60:
+                status = "processing"
+                print(f"[SENTENCE_ANALYSIS] Session is new, background task likely still running")
+            else:
+                status = "not_found"
+                print(f"[SENTENCE_ANALYSIS] No sentence analysis found and session is old")
+        else:
+            status = "ready"
+            print(f"[SENTENCE_ANALYSIS] Found {len(background_analyses)} sentence analyses")
+
+        return {
+            "status": status,
+            "analyses": background_analyses,
+            "session_info": {
+                "session_id": session_id,
+                "language": session.get('language'),
+                "level": session.get('level'),
+                "topic": session.get('topic'),
+                "duration_minutes": session.get('duration_minutes'),
+                "message_count": session.get('message_count'),
+                "created_at": session.get('created_at').isoformat() if session.get('created_at') else None
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[SENTENCE_ANALYSIS] ❌ Error getting sentence analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sentence analysis: {str(e)}")
+
+
+@router.post("/taalcoach-badge/clear")
+async def clear_taalcoach_badge(current_user: UserResponse = Depends(get_current_user)):
+    """
+    🔔 Clear TaalCoach badge when user views sentence analysis.
+    Called by frontend when user opens TaalCoach and views the analysis modal.
+
+    Returns:
+        success: Boolean indicating if badge was cleared
+    """
+    try:
+        print(f"[TAALCOACH_BADGE] Clearing badge for user {current_user.id}")
+
+        # Clear the badge
+        result = await users_collection.update_one(
+            {"_id": current_user.id},
+            {
+                "$unset": {
+                    "taalcoach_badge": "",  # Remove the field
+                    "taalcoach_badge_timestamp": ""
+                }
+            }
+        )
+
+        if result.modified_count > 0:
+            print(f"[TAALCOACH_BADGE] ✅ Badge cleared for user {current_user.id}")
+            return {"success": True, "message": "Badge cleared"}
+        else:
+            print(f"[TAALCOACH_BADGE] ⚠️ No badge to clear for user {current_user.id}")
+            return {"success": True, "message": "No badge to clear"}
+
+    except Exception as e:
+        print(f"[TAALCOACH_BADGE] ❌ Error clearing badge: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear badge: {str(e)}")
+
+
+@router.get("/taalcoach-badge/status")
+async def get_taalcoach_badge_status(current_user: UserResponse = Depends(get_current_user)):
+    """
+    🔔 Get TaalCoach badge status for current user.
+    Used by frontend to check if there's an unread sentence analysis.
+
+    Returns:
+        has_badge: Boolean indicating if user has unread analysis
+        session_id: Session ID if badge exists, null otherwise
+    """
+    try:
+        print(f"[TAALCOACH_BADGE] Checking badge status for user {current_user.id}")
+
+        # Get user from database to check for badge
+        user = await users_collection.find_one({"_id": current_user.id})
+
+        if not user:
+            return {"has_badge": False, "session_id": None}
+
+        badge_session_id = user.get('taalcoach_badge')
+
+        if badge_session_id:
+            print(f"[TAALCOACH_BADGE] ✅ User has badge for session {badge_session_id}")
+            return {
+                "has_badge": True,
+                "session_id": badge_session_id,
+                "timestamp": user.get('taalcoach_badge_timestamp')
+            }
+        else:
+            print(f"[TAALCOACH_BADGE] No badge for user {current_user.id}")
+            return {"has_badge": False, "session_id": None}
+
+    except Exception as e:
+        print(f"[TAALCOACH_BADGE] ❌ Error checking badge status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check badge status: {str(e)}")
+
 
 @router.get("/achievements")
 async def get_user_achievements(current_user: UserResponse = Depends(get_current_user)):
