@@ -55,11 +55,29 @@ DATABASE_NAME = os.getenv("DATABASE_NAME") or os.getenv("MONGO_DATABASE") or "la
 print(f"Connecting to MongoDB at: {MONGODB_URL.replace(MONGODB_URL.split('@')[0] if '@' in MONGODB_URL else MONGODB_URL, 'mongodb://***:***')}")
 print(f"Using database: {DATABASE_NAME}")
 
-# Create a MongoDB client with increased timeout for Railway
+# Create a MongoDB client with optimized connection pool for Railway
 try:
-    client = AsyncIOMotorClient(MONGODB_URL, serverSelectionTimeoutMS=30000)
+    client = AsyncIOMotorClient(
+        MONGODB_URL,
+
+        # Connection pool optimization
+        maxPoolSize=100,           # Max connections per replica (default: 100)
+        minPoolSize=10,            # Keep 10 connections warm for faster responses
+        maxIdleTimeMS=45000,       # Close idle connections after 45 seconds
+        waitQueueTimeoutMS=5000,   # Fail fast (5s) if pool is exhausted
+
+        # Timeout optimization
+        serverSelectionTimeoutMS=30000,  # 30s timeout for server selection
+        connectTimeoutMS=10000,    # 10s timeout for initial connection
+        socketTimeoutMS=45000,     # 45s timeout for socket operations
+
+        # Retry optimization
+        retryWrites=True,          # Retry failed writes once
+        retryReads=True,           # Retry failed reads once
+    )
     database = client[DATABASE_NAME]
-    print("MongoDB client initialized successfully")
+    print("MongoDB client initialized successfully with optimized connection pool")
+    print(f"Connection pool: maxPoolSize=100, minPoolSize=10, maxIdleTime=45s")
     
     # Collections - initialize only if database connection was successful
     users_collection = database.users
