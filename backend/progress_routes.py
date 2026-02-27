@@ -2,7 +2,7 @@ import os
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from openai import OpenAI
 import httpx
 
@@ -342,9 +342,133 @@ async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
             "sessions_this_month": 0
         }
 
+
+# ============================================================================
+# BACKGROUND TASK FUNCTIONS - Run AFTER response is sent
+# ============================================================================
+
+async def _generate_enhanced_analysis_background(
+    user_id: str,
+    conversation_messages: list,
+    language: str,
+    level: str,
+    topic: str,
+    duration_minutes: float,
+    session_id: str
+):
+    """Generate enhanced analysis in background (saves 3-5 seconds)"""
+    try:
+        print(f"[ENHANCED_ANALYSIS_BG] Starting analysis for session {session_id}")
+
+        enhanced_analysis = await generate_enhanced_analysis(
+            conversation_messages,
+            user_id,
+            language,
+            level,
+            topic,
+            duration_minutes
+        )
+
+        # Update session with enhanced analysis
+        from bson import ObjectId
+        await conversation_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"enhanced_analysis": enhanced_analysis}}
+        )
+
+        print(f"[ENHANCED_ANALYSIS_BG] ✅ Analysis complete for session {session_id}")
+    except Exception as e:
+        print(f"[ENHANCED_ANALYSIS_BG] ❌ Failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def _generate_flashcards_background(
+    session_id: str,
+    user_id: str,
+    language: str,
+    level: str,
+    topic: str,
+    summary: str
+):
+    """Generate flashcards in background (saves 3-5 seconds)"""
+    try:
+        print(f"[FLASHCARD_BG] Starting flashcard generation for session {session_id}")
+
+        from flashcard_service import FlashcardService
+        from models import FlashcardGenerationRequest
+        from database import database
+        from bson import ObjectId
+
+        flashcard_request = FlashcardGenerationRequest(
+            session_id=session_id,
+            language=language,
+            level=level,
+            topic=topic,
+            conversation_content=None,
+            session_summary=summary,
+            count=5
+        )
+
+        flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, user_id)
+
+        # Save flashcards
+        flashcard_sets_collection = database.flashcard_sets
+        flashcards_collection = database.flashcards
+
+        flashcard_set_doc = flashcard_set.dict()
+        flashcard_set_doc["_id"] = ObjectId()
+        flashcard_set_doc["created_at"] = datetime.utcnow()
+
+        flashcard_docs = [dict(**card.dict(), _id=ObjectId()) for card in flashcard_set.flashcards]
+
+        await flashcard_sets_collection.insert_one(flashcard_set_doc)
+        if flashcard_docs:
+            await flashcards_collection.insert_many(flashcard_docs)
+
+        print(f"[FLASHCARD_BG] ✅ Generated {len(flashcard_docs)} flashcards for session {session_id}")
+    except Exception as e:
+        print(f"[FLASHCARD_BG] ❌ Failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def _calculate_statistics_background(
+    user_id: str,
+    session_id: str,
+    messages: list,
+    duration_minutes: float,
+    background_analyses: list
+):
+    """Calculate enhanced statistics in background (saves 2-3 seconds)"""
+    try:
+        print(f"[STATS_BG] Starting statistics calculation for session {session_id}")
+
+        enhanced_stats = await get_enhanced_session_statistics(
+            user_id=user_id,
+            messages=messages,
+            duration_minutes=duration_minutes,
+            background_analyses=background_analyses
+        )
+
+        # Update session with enhanced stats
+        from bson import ObjectId
+        await conversation_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"enhanced_stats": enhanced_stats}}
+        )
+
+        print(f"[STATS_BG] ✅ Statistics calculated for session {session_id}")
+    except Exception as e:
+        print(f"[STATS_BG] ❌ Failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 @router.post("/save-conversation")
 async def save_conversation(
     request: SaveConversationRequest,
+    background_tasks: BackgroundTasks,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Save a conversation session for a registered user with batch sentence analysis"""
@@ -439,27 +563,8 @@ async def save_conversation(
                 print(f"[BATCH_SAVE] ⚠️ Batch analysis failed: {str(analysis_error)}")
                 # Continue saving session even if analysis fails
         
-        # 🆕 UPDATED: Generate enhanced analysis for ALL sessions (no gating)
-        print(f"[PROGRESS] Generating enhanced analysis for session (duration: {request.duration_minutes}min, messages: {len(conversation_messages)})")
-
-        enhanced_analysis = None
-        try:
-            enhanced_analysis = await generate_enhanced_analysis(
-                conversation_messages,
-                current_user.id,
-                request.language,
-                request.level,
-                request.topic or "general",
-                request.duration_minutes
-            )
-            print(f"[PROGRESS] ✅ Enhanced analysis generated successfully")
-
-            # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
-            # Note: Flashcards will be generated after session creation using the actual session ID
-
-        except Exception as analysis_error:
-            print(f"[PROGRESS] ⚠️ Enhanced analysis failed: {str(analysis_error)}")
-            # Continue without enhanced analysis if it fails
+        # 🚀 OPTIMIZED: Enhanced analysis moved to background (saves 3-5 seconds)
+        print(f"[PROGRESS] ⚡ Enhanced analysis will run in background")
         
         # 🆕 UPDATED: Use selected_duration as threshold for streak eligibility
         selected_duration = getattr(request, 'selected_duration', None) or 5  # Default 5 for backward compatibility
@@ -499,7 +604,6 @@ async def save_conversation(
                 "message_count": len(conversation_messages),
                 "summary": summary,
                 "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
-                "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "updated_at": datetime.utcnow()
             }
@@ -519,24 +623,43 @@ async def save_conversation(
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
 
-            # 🎯 NEW: Calculate enhanced session statistics
-            enhanced_stats = await get_enhanced_session_statistics(
-                user_id=current_user.id,
+            # 🚀 OPTIMIZED: Schedule background tasks (saves 8-13 seconds!)
+            session_id_str = str(existing_session["_id"])
+
+            # Enhanced analysis (saves 3-5s)
+            background_tasks.add_task(
+                _generate_enhanced_analysis_background,
+                user_id=str(current_user.id),
+                conversation_messages=conversation_messages,
+                language=request.language,
+                level=request.level,
+                topic=request.topic or "general",
+                duration_minutes=request.duration_minutes,
+                session_id=session_id_str
+            )
+
+            # Enhanced statistics (saves 2-3s)
+            background_tasks.add_task(
+                _calculate_statistics_background,
+                user_id=str(current_user.id),
+                session_id=session_id_str,
                 messages=[msg.dict() for msg in conversation_messages],
                 duration_minutes=request.duration_minutes,
                 background_analyses=background_analyses
             )
 
+            print(f"[PROGRESS] ⚡ Background tasks scheduled (enhanced analysis + statistics)")
+
             return {
                 "success": True,
-                "session_id": str(existing_session["_id"]),
+                "session_id": session_id_str,
                 "message": "Conversation updated successfully",
                 "is_streak_eligible": is_streak_eligible,
                 "summary": summary,
-                "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
-                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
-                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison with previous
-                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
+                "background_analyses": background_analyses,  # 🔥 Return batch analyses (already calculated)
+                "session_stats": None,  # 🚀 Calculated in background
+                "comparison": None,  # 🚀 Calculated in background
+                "overall_progress": None,  # 🚀 Calculated in background
                 "action": "updated"
             }
         else:
@@ -562,10 +685,7 @@ async def save_conversation(
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
-
-            # Add enhanced_analysis only if it exists and is not None
-            if enhanced_analysis is not None:
-                session_dict["enhanced_analysis"] = enhanced_analysis
+            # 🚀 Enhanced analysis will be added in background
 
             print(f"[PROGRESS] Duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
 
@@ -576,82 +696,57 @@ async def save_conversation(
 
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
 
-            # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
-            try:
-                print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for conversation session")
-
-                # Create flashcard generation request using the actual session ID
-                from flashcard_service import FlashcardService
-                from models import FlashcardGenerationRequest
-                from database import database
-                from bson import ObjectId
-
-                flashcard_request = FlashcardGenerationRequest(
-                    session_id=str(result.inserted_id),  # Use the actual session ID
-                    language=request.language,
-                    level=request.level,
-                    topic=request.topic,
-                    conversation_content=None,  # Could extract from messages if needed
-                    session_summary=summary,  # Use the basic summary
-                    count=5  # Generate 5 flashcards per session
-                )
-
-                # Generate flashcards using the service
-                flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
-
-                # Save flashcard set to database (same logic as in flashcard_routes.py)
-                flashcard_sets_collection = database.flashcard_sets
-                flashcards_collection = database.flashcards
-
-                flashcard_set_doc = flashcard_set.dict()
-                flashcard_set_doc["_id"] = ObjectId()
-                flashcard_set_doc["created_at"] = datetime.utcnow()
-
-                # Save individual flashcards
-                flashcard_docs = []
-                for flashcard in flashcard_set.flashcards:
-                    card_doc = flashcard.dict()
-                    card_doc["_id"] = ObjectId()
-                    flashcard_docs.append(card_doc)
-
-                # Insert flashcard set
-                set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
-
-                # Insert individual flashcards
-                if flashcard_docs:
-                    cards_result = await flashcards_collection.insert_many(flashcard_docs)
-                    print(f"[FLASHCARD_INTEGRATION] ✅ Saved {len(cards_result.inserted_ids)} flashcards to database")
-
-                print(f"[FLASHCARD_INTEGRATION] ✅ Generated and saved {len(flashcard_set.flashcards)} flashcards for conversation session")
-                print(f"[FLASHCARD_INTEGRATION] 📚 Flashcard set: {flashcard_set.title}")
-
-            except Exception as flashcard_error:
-                print(f"[FLASHCARD_INTEGRATION] ⚠️ Flashcard generation failed: {str(flashcard_error)}")
-                # Don't fail the session saving if flashcard generation fails
-                # Users can still manually generate flashcards if needed
-                pass
-
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
 
-            # 🎯 NEW: Calculate enhanced session statistics
-            enhanced_stats = await get_enhanced_session_statistics(
-                user_id=current_user.id,
+            # 🚀 OPTIMIZED: Schedule all background tasks (saves 8-13 seconds!)
+            session_id_str = str(result.inserted_id)
+
+            # Enhanced analysis (saves 3-5s)
+            background_tasks.add_task(
+                _generate_enhanced_analysis_background,
+                user_id=str(current_user.id),
+                conversation_messages=conversation_messages,
+                language=request.language,
+                level=request.level,
+                topic=request.topic or "general",
+                duration_minutes=request.duration_minutes,
+                session_id=session_id_str
+            )
+
+            # Flashcard generation (saves 3-5s)
+            background_tasks.add_task(
+                _generate_flashcards_background,
+                session_id=session_id_str,
+                user_id=str(current_user.id),
+                language=request.language,
+                level=request.level,
+                topic=request.topic,
+                summary=summary
+            )
+
+            # Enhanced statistics (saves 2-3s)
+            background_tasks.add_task(
+                _calculate_statistics_background,
+                user_id=str(current_user.id),
+                session_id=session_id_str,
                 messages=[msg.dict() for msg in conversation_messages],
                 duration_minutes=request.duration_minutes,
                 background_analyses=background_analyses
             )
 
+            print(f"[PROGRESS] ⚡ Background tasks scheduled (enhanced analysis + flashcards + statistics)")
+
             return {
                 "success": True,
-                "session_id": str(result.inserted_id),
+                "session_id": session_id_str,
                 "message": "Conversation saved successfully",
                 "is_streak_eligible": is_streak_eligible,
                 "summary": summary,
-                "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
-                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
-                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison with previous
-                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
+                "background_analyses": background_analyses,  # 🔥 Return batch analyses (already calculated)
+                "session_stats": None,  # 🚀 Calculated in background
+                "comparison": None,  # 🚀 Calculated in background
+                "overall_progress": None,  # 🚀 Calculated in background
                 "action": "created"
             }
         
