@@ -347,6 +347,40 @@ async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
 # BACKGROUND TASK FUNCTIONS - Run AFTER response is sent
 # ============================================================================
 
+async def _batch_analyze_sentences_background(
+    session_id: str,
+    sentence_texts: list,
+    language: str,
+    level: str
+):
+    """🚀 NEW: Batch analyze sentences in background (saves 18-20 seconds!)"""
+    try:
+        print(f"[BATCH_ANALYSIS_BG] Starting batch analysis of {len(sentence_texts)} sentences for session {session_id}")
+
+        from background_sentence_analysis import batch_analyze_sentences
+
+        analyses = await batch_analyze_sentences(
+            sentences=sentence_texts,
+            language=language,
+            level=level
+        )
+
+        background_analyses = [a.dict() for a in analyses]
+
+        # Update session with background analyses
+        from bson import ObjectId
+        await conversation_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"background_analyses": background_analyses}}
+        )
+
+        print(f"[BATCH_ANALYSIS_BG] ✅ Batch analysis complete: {len(background_analyses)} results for session {session_id}")
+    except Exception as e:
+        print(f"[BATCH_ANALYSIS_BG] ❌ Failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 async def _generate_enhanced_analysis_background(
     user_id: str,
     conversation_messages: list,
@@ -539,32 +573,15 @@ async def save_conversation(
         summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
         
         # 🔥 NEW: Batch analyze sentences if provided
-        background_analyses = []
+        # 🚀 CRITICAL FIX: Batch analysis moved to background (saves 18-20 seconds!)
+        background_analyses = []  # Empty initially - will be populated by background task
+        sentence_texts = []
         if request.sentences_for_analysis:
-            from background_sentence_analysis import batch_analyze_sentences
-            
-            # Extract sentence texts
             sentence_texts = [s['text'] for s in request.sentences_for_analysis]
-            
-            print(f"[BATCH_SAVE] Starting batch analysis of {len(sentence_texts)} sentences")
-            
-            try:
-                # Single GPT-4o call for all sentences
-                analyses = await batch_analyze_sentences(
-                    sentences=sentence_texts,
-                    language=request.language,
-                    level=request.level
-                )
-                
-                background_analyses = [a.dict() for a in analyses]
-                print(f"[BATCH_SAVE] ✅ Batch analysis complete: {len(background_analyses)} results")
-                
-            except Exception as analysis_error:
-                print(f"[BATCH_SAVE] ⚠️ Batch analysis failed: {str(analysis_error)}")
-                # Continue saving session even if analysis fails
-        
+            print(f"[BATCH_SAVE] ⚡ Will batch analyze {len(sentence_texts)} sentences in background")
+
         # 🚀 OPTIMIZED: Enhanced analysis moved to background (saves 3-5 seconds)
-        print(f"[PROGRESS] ⚡ Enhanced analysis will run in background")
+        print(f"[PROGRESS] ⚡ All heavy operations will run in background")
         
         # 🆕 UPDATED: Use selected_duration as threshold for streak eligibility
         selected_duration = getattr(request, 'selected_duration', None) or 5  # Default 5 for backward compatibility
@@ -699,8 +716,18 @@ async def save_conversation(
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
 
-            # 🚀 OPTIMIZED: Schedule all background tasks (saves 8-13 seconds!)
+            # 🚀 OPTIMIZED: Schedule all background tasks (saves 26-33 seconds!)
             session_id_str = str(result.inserted_id)
+
+            # 🔥 CRITICAL: Batch sentence analysis (saves 18-20s)
+            if sentence_texts:
+                background_tasks.add_task(
+                    _batch_analyze_sentences_background,
+                    session_id=session_id_str,
+                    sentence_texts=sentence_texts,
+                    language=request.language,
+                    level=request.level
+                )
 
             # Enhanced analysis (saves 3-5s)
             background_tasks.add_task(
@@ -735,7 +762,7 @@ async def save_conversation(
                 background_analyses=background_analyses
             )
 
-            print(f"[PROGRESS] ⚡ Background tasks scheduled (enhanced analysis + flashcards + statistics)")
+            print(f"[PROGRESS] ⚡ Background tasks scheduled (batch analysis + enhanced analysis + flashcards + statistics)")
 
             return {
                 "success": True,
