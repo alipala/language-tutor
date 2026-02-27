@@ -75,6 +75,12 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# 🛡️ SECURITY: Rate limiting middleware to prevent abuse and protect budget
+# This MUST be added AFTER CORS but BEFORE route registration
+from rate_limiter import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware)
+logger.info("✅ Rate limiting enabled - monitoring API usage to prevent abuse")
+
 # Include authentication routes
 app.include_router(auth_router)
 
