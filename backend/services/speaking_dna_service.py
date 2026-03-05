@@ -1307,6 +1307,8 @@ class SpeakingDNAService:
         new_confidence = new_strands["confidence"]["score"]
         if new_confidence - old_confidence >= self.BREAKTHROUGH_THRESHOLDS["confidence_jump"]:
             breakthroughs.append({
+                "user_id": user_id,
+                "language": language,
                 "breakthrough_type": "confidence_jump",
                 "category": "confidence",
                 "title": "Confidence Breakthrough!",
@@ -1328,6 +1330,8 @@ class SpeakingDNAService:
         new_vocab = new_strands["vocabulary"]["unique_words_per_session"]
         if new_vocab - old_vocab >= self.BREAKTHROUGH_THRESHOLDS["vocabulary_expansion"]:
             breakthroughs.append({
+                "user_id": user_id,
+                "language": language,
                 "breakthrough_type": "vocabulary_expansion",
                 "category": "vocabulary",
                 "title": "Vocabulary Explosion!",
@@ -1348,6 +1352,8 @@ class SpeakingDNAService:
         new_challenge_rate = new_strands["learning"]["challenge_acceptance"]
         if old_challenge_rate < 0.5 and new_challenge_rate >= 0.5:
             breakthroughs.append({
+                "user_id": user_id,
+                "language": language,
                 "breakthrough_type": "challenge_accepted",
                 "category": "learning",
                 "title": "Challenge Conqueror!",
@@ -1368,6 +1374,8 @@ class SpeakingDNAService:
         level_order = ["hesitant", "building", "comfortable", "fluent"]
         if level_order.index(new_level) > level_order.index(old_level):
             breakthroughs.append({
+                "user_id": user_id,
+                "language": language,
                 "breakthrough_type": "confidence_level_up",
                 "category": "confidence",
                 "title": f"Level Up: {new_level.title()}!",

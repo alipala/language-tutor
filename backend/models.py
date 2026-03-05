@@ -445,10 +445,17 @@ class NotificationBase(BaseModel):
     send_immediately: bool = True
     scheduled_send_time: Optional[datetime] = None
     created_by: str  # Admin user ID who created the notification
-    
+
+    # Optional metadata fields for custom notification types
+    session_id: Optional[str] = None
+    job_id: Optional[str] = None
+    language: Optional[str] = None
+    sentence_count: Optional[int] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+        extra = "allow"  # Allow additional fields
 
 class NotificationCreate(BaseModel):
     title: str
@@ -467,21 +474,23 @@ class NotificationInDB(NotificationBase):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     sent_at: Optional[datetime] = None
     is_sent: bool = False
-    
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+        extra = "allow"  # Allow additional fields like session_id, job_id, etc.
 
 class NotificationResponse(NotificationBase):
     id: str = Field(..., alias="_id")
     created_at: datetime
     sent_at: Optional[datetime] = None
     is_sent: bool = False
-    
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+        extra = "allow"  # Allow additional fields like session_id, job_id, etc.
 
 # User notification tracking
 class UserNotificationBase(BaseModel):

@@ -114,6 +114,9 @@ try:
     heart_events_collection = database.heart_events
     flashcard_sets_collection = database.flashcard_sets
     speaking_time_tracking_collection = database.speaking_time_tracking
+
+    # SENTENCE ANALYSIS JOBS: Background processing for sentence analysis
+    sentence_analysis_jobs_collection = database.sentence_analysis_jobs
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -139,6 +142,7 @@ except Exception as e:
     heart_events_collection = None
     flashcard_sets_collection = None
     speaking_time_tracking_collection = None
+    sentence_analysis_jobs_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
@@ -225,6 +229,13 @@ async def init_db():
         await speaking_breakthroughs_collection.create_index(
             [("user_id", 1), ("celebrated", 1)]
         )
+
+        # SENTENCE ANALYSIS JOBS: Background processing indexes
+        await sentence_analysis_jobs_collection.create_index("job_id", unique=True)
+        await sentence_analysis_jobs_collection.create_index([("user_id", 1), ("created_at", -1)])
+        await sentence_analysis_jobs_collection.create_index([("status", 1), ("created_at", -1)])
+        # TTL index: Delete jobs older than 7 days to keep collection clean
+        await sentence_analysis_jobs_collection.create_index("created_at", expireAfterSeconds=7 * 24 * 60 * 60)
 
         print("Database indexes initialized successfully")
     except Exception as e:

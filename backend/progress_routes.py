@@ -1,8 +1,10 @@
 import os
 import json
-from datetime import datetime, timedelta
+import uuid
+import traceback
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from openai import OpenAI
 import httpx
 
@@ -56,6 +58,377 @@ except TypeError as e:
         raise
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Background task function for sentence analysis
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _run_sentence_analysis_background(
+    job_id: str,
+    user_id: str,
+    session_id: str,
+    sentences_for_analysis: list,
+    language: str,
+    level: str
+):
+    """
+    Background task: Run sentence analysis and store results.
+
+    This runs AFTER the session response is sent to user.
+    Updates the analysis job document with results when complete.
+    """
+    from database import database
+
+    jobs_collection = database.sentence_analysis_jobs
+
+    try:
+        # Update status to processing
+        await jobs_collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": "processing",
+                    "started_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        print(f"[SENTENCE_ANALYSIS_BG] 🔄 Job {job_id} started processing")
+
+        # Extract sentence texts
+        sentence_texts = [s.get('text') if isinstance(s, dict) else s for s in sentences_for_analysis]
+
+        if not sentence_texts:
+            # No sentences to analyze
+            await jobs_collection.update_one(
+                {"job_id": job_id},
+                {
+                    "$set": {
+                        "status": "completed",
+                        "completed_at": datetime.now(timezone.utc),
+                        "analyses": []
+                    }
+                }
+            )
+            print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed (no sentences)")
+            return
+
+        # Run batch analysis (this is the 15-20 second operation)
+        from background_sentence_analysis import batch_analyze_sentences
+
+        print(f"[SENTENCE_ANALYSIS_BG] 🔍 Analyzing {len(sentence_texts)} sentences...")
+        analyses = await batch_analyze_sentences(
+            sentences=sentence_texts,
+            language=language,
+            level=level
+        )
+
+        # Convert to dict format
+        analyses_dict = [a.dict() for a in analyses]
+
+        # Update job with completed analyses
+        await jobs_collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc),
+                    "analyses": analyses_dict
+                }
+            }
+        )
+
+        print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed: {len(analyses)} sentences analyzed")
+
+        # 🎯 Create TaalCoach notification for user
+        print(f"[TAALCOACH_NOTIFY] 🚀 STARTING notification creation for session {session_id}, user {user_id}")
+        try:
+            print(f"[TAALCOACH_NOTIFY] 🔍 Inside try block, about to import...")
+            from database import user_notifications_collection, notifications_collection
+            from bson import ObjectId
+            import asyncio
+
+            # ⏱️ Small delay to ensure MongoDB write propagation (prevent race condition)
+            await asyncio.sleep(0.5)
+
+            # ✅ Verify analyses were truly saved before creating notification
+            verification_job = await jobs_collection.find_one({"job_id": job_id})
+            if not verification_job or not verification_job.get("analyses"):
+                print(f"[TAALCOACH_NOTIFY] ⚠️ Analyses not found in database, skipping notification")
+                return
+
+            # Step 1: Create notification in notifications_collection
+            notification_id = str(ObjectId())
+            notification_doc = {
+                "_id": notification_id,
+                "title": f"Your {language.title()} practice analysis is ready!",
+                "content": f"I've analyzed {len(analyses)} sentences from your session. Tap to see detailed feedback and tips!",
+                "notification_type": "session_analysis",  # Custom type for TaalCoach
+                "created_by": "system",  # System-generated notification
+                "created_at": datetime.now(timezone.utc),
+                "sent_at": datetime.now(timezone.utc),
+                "is_sent": True,
+                # Store metadata for frontend
+                "session_id": session_id,
+                "job_id": job_id,
+                "language": language,
+                "sentence_count": len(analyses)
+            }
+
+            await notifications_collection.insert_one(notification_doc)
+            print(f"[TAALCOACH_NOTIFY] 📝 Created notification document: {notification_id}")
+
+            # Step 2: Create user notification in user_notifications_collection
+            user_notification_doc = {
+                "_id": str(ObjectId()),
+                "user_id": user_id,
+                "notification_id": notification_id,
+                "is_read": False,
+                "read_at": None,
+                "deleted_at": None,
+                "created_at": datetime.now(timezone.utc)
+            }
+
+            await user_notifications_collection.insert_one(user_notification_doc)
+            print(f"[TAALCOACH_NOTIFY] ✅ Created analysis notification for user {user_id}, session {session_id}")
+
+            # 📤 Send push notification to user's device
+            try:
+                from notification_service import send_notification_to_users
+                from bson import ObjectId as BsonObjectId
+
+                push_result = await send_notification_to_users(
+                    user_ids=[BsonObjectId(user_id)],
+                    title=notification_doc["title"],
+                    content=notification_doc["content"],
+                    notification_type="session_analysis",
+                    users_collection=users_collection,
+                    notification_id=notification_id,
+                    priority='high'
+                )
+
+                print(f"[TAALCOACH_NOTIFY] 📤 Push notification sent: {push_result.get('success', False)}")
+            except Exception as push_error:
+                print(f"[TAALCOACH_NOTIFY] ⚠️ Failed to send push notification: {str(push_error)}")
+                # Continue even if push fails - notification is still in database
+
+        except Exception as notify_error:
+            print(f"[TAALCOACH_NOTIFY] ❌ Failed to create notification: {str(notify_error)}")
+            # Don't fail the analysis if notification creation fails
+
+    except Exception as e:
+        print(f"[SENTENCE_ANALYSIS_BG] ❌ Job {job_id} failed: {str(e)}\n{traceback.format_exc()}")
+
+        # Update job with error
+        await jobs_collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": "failed",
+                    "completed_at": datetime.now(timezone.utc),
+                    "error_message": str(e)
+                }
+            }
+        )
+
+
+async def _generate_flashcards_background(
+    session_id: str,
+    user_id: str,
+    language: str,
+    level: str,
+    topic: str,
+    summary: str
+):
+    """
+    Background task: Generate flashcards for a session.
+
+    This runs AFTER the session response is sent to user.
+    Waits for summary to be available if not provided.
+    """
+    try:
+        print(f"[FLASHCARD_BG] 🎯 Generating flashcards for session {session_id}")
+
+        from flashcard_service import FlashcardService
+        from models import FlashcardGenerationRequest
+        from database import database
+        from bson import ObjectId
+        import asyncio
+
+        # If summary is empty, wait for it to be generated by the summary background task
+        if not summary:
+            print(f"[FLASHCARD_BG] ⏳ Waiting for summary to be generated...")
+            max_wait_seconds = 30
+            wait_interval = 1
+            elapsed = 0
+
+            while elapsed < max_wait_seconds:
+                session = await conversation_sessions_collection.find_one({"_id": ObjectId(session_id)})
+                if session and session.get("summary"):
+                    summary = session["summary"]
+                    print(f"[FLASHCARD_BG] ✅ Summary retrieved from session")
+                    break
+                await asyncio.sleep(wait_interval)
+                elapsed += wait_interval
+
+            if not summary:
+                print(f"[FLASHCARD_BG] ⚠️ Summary not available after {max_wait_seconds}s, using empty string")
+                summary = ""
+
+        flashcard_request = FlashcardGenerationRequest(
+            session_id=session_id,
+            language=language,
+            level=level,
+            topic=topic,
+            conversation_content=None,
+            session_summary=summary,
+            count=5
+        )
+
+        # Generate flashcards using the service
+        flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, user_id)
+
+        # Save flashcard set to database
+        flashcard_sets_collection = database.flashcard_sets
+        flashcards_collection = database.flashcards
+
+        flashcard_set_doc = flashcard_set.dict()
+        flashcard_set_doc["_id"] = ObjectId()
+        flashcard_set_doc["created_at"] = datetime.utcnow()
+
+        # Save individual flashcards
+        flashcard_docs = []
+        for flashcard in flashcard_set.flashcards:
+            card_doc = flashcard.dict()
+            card_doc["_id"] = ObjectId()
+            flashcard_docs.append(card_doc)
+
+        # Insert flashcard set
+        await flashcard_sets_collection.insert_one(flashcard_set_doc)
+
+        # Insert individual flashcards
+        if flashcard_docs:
+            cards_result = await flashcards_collection.insert_many(flashcard_docs)
+            print(f"[FLASHCARD_BG] ✅ Saved {len(cards_result.inserted_ids)} flashcards to database")
+
+        print(f"[FLASHCARD_BG] ✅ Generated and saved {len(flashcard_set.flashcards)} flashcards for session {session_id}")
+        print(f"[FLASHCARD_BG] 📚 Flashcard set: {flashcard_set.title}")
+
+    except Exception as e:
+        print(f"[FLASHCARD_BG] ❌ Failed for session {session_id}: {str(e)}\n{traceback.format_exc()}")
+
+async def _generate_summary_and_analysis_background(
+    session_id: str,
+    user_id: str,
+    messages: List[Dict[str, Any]],
+    language: str,
+    level: str,
+    topic: str,
+    duration_minutes: float
+):
+    """
+    Background task: Generate summary and enhanced analysis, save to session.
+    This runs AFTER the session response is sent to user.
+
+    Generates:
+    - Summary (GPT call - 2-3 seconds)
+    - Enhanced analysis (GPT call + DB queries - 10-15 seconds)
+    Total: ~15-18 seconds in background
+    """
+    try:
+        from enhanced_analysis import generate_enhanced_analysis
+        from bson import ObjectId
+        from models import ConversationMessage
+
+        print(f"[SUMMARY_ANALYSIS_BG] 🔄 Generating summary and enhanced analysis for session {session_id}")
+
+        # Convert dict messages back to ConversationMessage objects
+        conversation_messages = [ConversationMessage(**msg) for msg in messages]
+
+        # Generate summary (2-3 seconds GPT call)
+        summary = await generate_conversation_summary(conversation_messages, language, level)
+        print(f"[SUMMARY_ANALYSIS_BG] ✅ Summary generated: {summary[:50]}...")
+
+        # Generate enhanced analysis (10-15 seconds with GPT + DB queries)
+        enhanced_analysis = await generate_enhanced_analysis(
+            conversation_messages,
+            user_id,
+            language,
+            level,
+            topic or "general",
+            duration_minutes
+        )
+        print(f"[SUMMARY_ANALYSIS_BG] ✅ Enhanced analysis generated")
+
+        # Clean enhanced_analysis to remove None keys (recursively)
+        def clean_dict(d):
+            """Remove None keys and None values recursively"""
+            if not isinstance(d, dict):
+                return d
+            return {
+                str(k) if k is not None else "unknown": clean_dict(v) if isinstance(v, dict) else v
+                for k, v in d.items()
+                if k is not None and v is not None
+            }
+
+        enhanced_analysis_clean = clean_dict(enhanced_analysis)
+
+        # Save both to session document
+        await conversation_sessions_collection.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {
+                "summary": summary,
+                "enhanced_analysis": enhanced_analysis_clean
+            }}
+        )
+
+        print(f"[SUMMARY_ANALYSIS_BG] ✅ Summary and enhanced analysis saved for session {session_id}")
+
+    except Exception as e:
+        print(f"[SUMMARY_ANALYSIS_BG] ❌ Failed for session {session_id}: {str(e)}\n{traceback.format_exc()}")
+
+async def _cache_session_statistics_background(
+    session_id: str,
+    user_id: str,
+    messages: List[Dict[str, Any]],
+    duration_minutes: float,
+    background_analyses: List[Dict[str, Any]],
+    session_number: Optional[int] = None,
+    week_number: Optional[int] = None,
+    week_focus: Optional[str] = None
+):
+    """
+    Background task: Calculate enhanced session statistics and cache in Redis.
+    This runs AFTER the session response is sent to user.
+
+    Cached data includes:
+    - Comparison with previous session (word count, speed, vocabulary)
+    - Overall progress (total sessions, minutes, streaks)
+    """
+    try:
+        print(f"[SESSION_STATS_CACHE] 🔄 Calculating enhanced statistics for session {session_id}")
+
+        # Calculate enhanced statistics (now optimized with aggregation)
+        enhanced_stats = await get_enhanced_session_statistics(
+            user_id=user_id,
+            messages=messages,
+            duration_minutes=duration_minutes,
+            background_analyses=background_analyses,
+            session_number=session_number,
+            week_number=week_number,
+            week_focus=week_focus
+        )
+
+        # Cache in Redis with 5-minute TTL
+        from redis_client import set_cached
+        cache_key = f"session_stats:{session_id}"
+        await set_cached(cache_key, enhanced_stats, ttl_seconds=300)  # 5 minutes
+
+        print(f"[SESSION_STATS_CACHE] ✅ Cached enhanced statistics for session {session_id}")
+        print(f"[SESSION_STATS_CACHE] 📊 Comparison: {enhanced_stats.get('comparison', {}).get('has_previous_session', False)}")
+        print(f"[SESSION_STATS_CACHE] 📈 Total sessions: {enhanced_stats.get('overall_progress', {}).get('total_sessions', 0)}")
+
+    except Exception as e:
+        print(f"[SESSION_STATS_CACHE] ❌ Failed for session {session_id}: {str(e)}\n{traceback.format_exc()}")
 
 @router.get("/dashboard-data")
 async def get_dashboard_data(current_user: UserResponse = Depends(get_current_user)):
@@ -282,44 +655,71 @@ async def get_enhanced_session_statistics(
         }
 
 async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
-    """Calculate overall progress statistics for a user"""
+    """
+    Calculate overall progress statistics for a user using optimized aggregation.
+    OPTIMIZED: Uses aggregation pipeline instead of loading all documents (20-30s → <1s).
+    """
     try:
-        # Get conversation sessions
-        sessions_cursor = conversation_sessions_collection.find({"user_id": user_id})
-        conversation_sessions = await sessions_cursor.to_list(length=None)
+        # Calculate date ranges
+        now = datetime.utcnow()
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
 
-        conversation_total_sessions = len(conversation_sessions)
-        conversation_total_minutes = sum(session.get('duration_minutes', 0) for session in conversation_sessions)
+        # OPTIMIZED: Use aggregation to get counts and sums in one query
+        conversation_pipeline = [
+            {"$match": {"user_id": user_id}},
+            {"$facet": {
+                "total": [
+                    {"$group": {
+                        "_id": None,
+                        "count": {"$sum": 1},
+                        "minutes": {"$sum": "$duration_minutes"}
+                    }}
+                ],
+                "this_week": [
+                    {"$match": {"created_at": {"$gte": week_start}}},
+                    {"$count": "count"}
+                ],
+                "this_month": [
+                    {"$match": {"created_at": {"$gte": month_start}}},
+                    {"$count": "count"}
+                ]
+            }}
+        ]
 
-        # Get learning plan sessions
+        conversation_result = await conversation_sessions_collection.aggregate(conversation_pipeline).to_list(1)
+        conversation_data = conversation_result[0] if conversation_result else {}
+
+        conversation_total_sessions = conversation_data.get("total", [{}])[0].get("count", 0)
+        conversation_total_minutes = conversation_data.get("total", [{}])[0].get("minutes", 0.0)
+        sessions_this_week = conversation_data.get("this_week", [{}])[0].get("count", 0)
+        sessions_this_month = conversation_data.get("this_month", [{}])[0].get("count", 0)
+
+        # OPTIMIZED: Use aggregation for learning plan stats
         from database import database
         learning_plans_collection = database["learning_plans"]
-        learning_plans_cursor = learning_plans_collection.find({"user_id": user_id})
-        learning_plans = await learning_plans_cursor.to_list(length=None)
 
-        learning_plan_total_sessions = 0
-        learning_plan_total_minutes = 0.0
+        learning_plan_pipeline = [
+            {"$match": {"user_id": user_id}},
+            {"$group": {
+                "_id": None,
+                "total_sessions": {"$sum": "$completed_sessions"},
+                "total_minutes": {"$sum": "$practice_minutes_used"}
+            }}
+        ]
 
-        for plan in learning_plans:
-            plan_sessions = plan.get("completed_sessions", 0)
-            plan_minutes = plan.get("practice_minutes_used", 0.0)
-            learning_plan_total_sessions += plan_sessions
-            learning_plan_total_minutes += plan_minutes
+        learning_plan_result = await learning_plans_collection.aggregate(learning_plan_pipeline).to_list(1)
+        learning_plan_data = learning_plan_result[0] if learning_plan_result else {}
+
+        learning_plan_total_sessions = learning_plan_data.get("total_sessions", 0)
+        learning_plan_total_minutes = learning_plan_data.get("total_minutes", 0.0)
 
         # Unified totals
         total_sessions = conversation_total_sessions + learning_plan_total_sessions
         total_minutes = conversation_total_minutes + learning_plan_total_minutes
 
-        # Calculate streak
+        # Calculate streak (this is already optimized)
         current_streak, longest_streak = await calculate_streaks(user_id)
-
-        # Calculate sessions this week/month
-        now = datetime.utcnow()
-        week_start = now - timedelta(days=7)
-        month_start = now - timedelta(days=30)
-
-        sessions_this_week = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= week_start])
-        sessions_this_month = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= month_start])
 
         return SessionStatistics.get_overall_progress(
             user_id=user_id,
@@ -333,6 +733,7 @@ async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         print(f"[ENHANCED_STATS] Error calculating overall progress: {str(e)}")
+        traceback.print_exc()
         return {
             "total_sessions": 0,
             "total_minutes": 0.0,
@@ -345,6 +746,7 @@ async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
 @router.post("/save-conversation")
 async def save_conversation(
     request: SaveConversationRequest,
+    background_tasks: BackgroundTasks,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Save a conversation session for a registered user with batch sentence analysis"""
@@ -411,55 +813,20 @@ async def save_conversation(
                 timestamp=timestamp
             ))
         
-        # Generate conversation summary using OpenAI
-        summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
-        
-        # 🔥 NEW: Batch analyze sentences if provided
+        # 🚀 MOVED TO BACKGROUND: Summary and enhanced analysis will be generated in background task
+        # This removes 15-18 seconds of blocking GPT calls from the response path
+        print(f"[PROGRESS] Summary and enhanced analysis will be generated in background (duration: {request.duration_minutes}min, messages: {len(conversation_messages)})")
+
+        # 🔥 UPDATED: Move sentence analysis to background processing
         background_analyses = []
+        analysis_job_id = None
+
         if request.sentences_for_analysis:
-            from background_sentence_analysis import batch_analyze_sentences
-            
-            # Extract sentence texts
-            sentence_texts = [s['text'] for s in request.sentences_for_analysis]
-            
-            print(f"[BATCH_SAVE] Starting batch analysis of {len(sentence_texts)} sentences")
-            
-            try:
-                # Single GPT-4o call for all sentences
-                analyses = await batch_analyze_sentences(
-                    sentences=sentence_texts,
-                    language=request.language,
-                    level=request.level
-                )
-                
-                background_analyses = [a.dict() for a in analyses]
-                print(f"[BATCH_SAVE] ✅ Batch analysis complete: {len(background_analyses)} results")
-                
-            except Exception as analysis_error:
-                print(f"[BATCH_SAVE] ⚠️ Batch analysis failed: {str(analysis_error)}")
-                # Continue saving session even if analysis fails
-        
-        # 🆕 UPDATED: Generate enhanced analysis for ALL sessions (no gating)
-        print(f"[PROGRESS] Generating enhanced analysis for session (duration: {request.duration_minutes}min, messages: {len(conversation_messages)})")
+            # Generate unique job ID
+            analysis_job_id = str(uuid.uuid4())
 
-        enhanced_analysis = None
-        try:
-            enhanced_analysis = await generate_enhanced_analysis(
-                conversation_messages,
-                current_user.id,
-                request.language,
-                request.level,
-                request.topic or "general",
-                request.duration_minutes
-            )
-            print(f"[PROGRESS] ✅ Enhanced analysis generated successfully")
-
-            # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
-            # Note: Flashcards will be generated after session creation using the actual session ID
-
-        except Exception as analysis_error:
-            print(f"[PROGRESS] ⚠️ Enhanced analysis failed: {str(analysis_error)}")
-            # Continue without enhanced analysis if it fails
+            # We'll create the job after we have the session_id
+            print(f"[BATCH_SAVE] Will create analysis job {analysis_job_id} for {len(request.sentences_for_analysis)} sentences")
         
         # 🆕 UPDATED: Use selected_duration as threshold for streak eligibility
         selected_duration = getattr(request, 'selected_duration', None) or 5  # Default 5 for backward compatibility
@@ -497,11 +864,10 @@ async def save_conversation(
                 "duration_minutes": integer_duration,  # Integer based on selected_duration (3 or 5)
                 "selected_duration": selected_duration,  # 🆕 Store selected duration
                 "message_count": len(conversation_messages),
-                "summary": summary,
                 "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
-                "enhanced_analysis": enhanced_analysis,
                 "is_streak_eligible": is_streak_eligible,
                 "updated_at": datetime.utcnow()
+                # Note: summary and enhanced_analysis will be added by background task
             }
             
             print(f"[PROGRESS] Update duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
@@ -516,29 +882,106 @@ async def save_conversation(
             
             print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
 
-            # Update learning plan progress if this is a learning plan session
-            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+            # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER response is sent)
+            background_tasks.add_task(
+                _generate_summary_and_analysis_background,
+                session_id=str(existing_session["_id"]),
+                user_id=current_user.id,
+                messages=[msg.dict() for msg in conversation_messages],
+                language=request.language,
+                level=request.level,
+                topic=request.topic or "general",
+                duration_minutes=request.duration_minutes
+            )
+            print(f"[SUMMARY_ANALYSIS_BG] 🚀 Scheduled summary and enhanced analysis for session {existing_session['_id']}")
 
-            # 🎯 NEW: Calculate enhanced session statistics
-            enhanced_stats = await get_enhanced_session_statistics(
+            # 🚀 Schedule session statistics caching in background (runs AFTER response is sent)
+            background_tasks.add_task(
+                _cache_session_statistics_background,
+                session_id=str(existing_session["_id"]),
                 user_id=current_user.id,
                 messages=[msg.dict() for msg in conversation_messages],
                 duration_minutes=request.duration_minutes,
                 background_analyses=background_analyses
             )
+            print(f"[SESSION_STATS_CACHE] 🚀 Scheduled statistics caching for session {existing_session['_id']}")
 
-            return {
-                "success": True,
-                "session_id": str(existing_session["_id"]),
-                "message": "Conversation updated successfully",
-                "is_streak_eligible": is_streak_eligible,
-                "summary": summary,
-                "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
-                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
-                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison with previous
-                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
-                "action": "updated"
-            }
+            # 🚀 Create sentence analysis job for background processing (for EXISTING sessions)
+            if analysis_job_id and request.sentences_for_analysis:
+                from database import database
+                jobs_collection = database.sentence_analysis_jobs
+
+                await jobs_collection.insert_one({
+                    "job_id": analysis_job_id,
+                    "user_id": current_user.id,
+                    "plan_id": None,  # Practice sessions don't have plan_id
+                    "session_id": str(existing_session["_id"]),
+                    "status": "pending",
+                    "created_at": datetime.now(timezone.utc),
+                    "sentences": request.sentences_for_analysis,
+                    "language": request.language,
+                    "level": request.level,
+                    "analyses": []
+                })
+                print(f"[BATCH_SAVE] 📝 Created analysis job {analysis_job_id} with {len(request.sentences_for_analysis)} sentences")
+
+                # Schedule background task (runs AFTER response is sent)
+                background_tasks.add_task(
+                    _run_sentence_analysis_background,
+                    job_id=analysis_job_id,
+                    user_id=current_user.id,
+                    session_id=str(existing_session["_id"]),
+                    sentences_for_analysis=request.sentences_for_analysis,
+                    language=request.language,
+                    level=request.level
+                )
+                print(f"[BATCH_SAVE] 🚀 Scheduled background analysis for job {analysis_job_id}")
+
+            # Update learning plan progress if this is a learning plan session
+            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+
+            # 🎯 Check Redis cache for enhanced statistics
+            from redis_client import get_cached
+            cache_key = f"session_stats:{existing_session['_id']}"
+            cached_stats = await get_cached(cache_key)
+
+            if cached_stats:
+                # Return cached enhanced statistics
+                print(f"[SESSION_STATS_CACHE] ✅ Found cached statistics for session {existing_session['_id']}")
+                return {
+                    "success": True,
+                    "session_id": str(existing_session["_id"]),
+                    "message": "Conversation updated successfully",
+                    "is_streak_eligible": is_streak_eligible,
+                    "summary": "",  # Will be generated in background
+                    "background_analyses": background_analyses,
+                    "session_stats": cached_stats.get("session_stats", {}),
+                    "comparison": cached_stats.get("comparison", {}),
+                    "overall_progress": cached_stats.get("overall_progress", {}),
+                    "action": "updated"
+                }
+            else:
+                # Return basic stats - background task will populate cache
+                print(f"[SESSION_STATS_CACHE] ⏳ Cache miss for session {existing_session['_id']}, returning basic stats")
+                basic_session_stats = SessionStatistics.calculate_session_stats(
+                    messages=[msg.dict() for msg in conversation_messages],
+                    duration_minutes=request.duration_minutes,
+                    background_analyses=background_analyses
+                )
+
+                return {
+                    "success": True,
+                    "session_id": str(existing_session["_id"]),
+                    "message": "Conversation updated successfully",
+                    "is_streak_eligible": is_streak_eligible,
+                    "summary": "",  # Will be generated in background
+                    "background_analyses": background_analyses,
+                    "session_stats": basic_session_stats,  # Basic stats only (no DB queries)
+                    "comparison": {"has_previous_session": False},  # Will be available in cache soon
+                    "overall_progress": {"total_sessions": 0, "total_minutes": 0},  # Will be available in cache soon
+                    "stats_loading": True,  # NEW: Indicates stats are being calculated
+                    "action": "updated"
+                }
         else:
             # Create new session
             print(f"[PROGRESS] Creating new conversation session")
@@ -557,15 +1000,11 @@ async def save_conversation(
                 "duration_minutes": integer_duration,  # Integer based on selected_duration (3 or 5)
                 "selected_duration": selected_duration,  # 🆕 Store selected duration
                 "message_count": len(conversation_messages),
-                "summary": summary,
                 "is_streak_eligible": is_streak_eligible,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
+                # Note: summary and enhanced_analysis will be added by background task
             }
-
-            # Add enhanced_analysis only if it exists and is not None
-            if enhanced_analysis is not None:
-                session_dict["enhanced_analysis"] = enhanced_analysis
 
             print(f"[PROGRESS] Duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
 
@@ -576,84 +1015,123 @@ async def save_conversation(
 
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
 
-            # 🔥 INTEGRATE FLASHCARD GENERATION: Generate flashcards for conversation sessions with enhanced analysis
-            try:
-                print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for conversation session")
-
-                # Create flashcard generation request using the actual session ID
-                from flashcard_service import FlashcardService
-                from models import FlashcardGenerationRequest
+            # 🚀 Create sentence analysis job for background processing
+            if analysis_job_id and request.sentences_for_analysis:
                 from database import database
-                from bson import ObjectId
+                jobs_collection = database.sentence_analysis_jobs
 
-                flashcard_request = FlashcardGenerationRequest(
-                    session_id=str(result.inserted_id),  # Use the actual session ID
+                await jobs_collection.insert_one({
+                    "job_id": analysis_job_id,
+                    "user_id": current_user.id,
+                    "plan_id": None,  # Practice sessions don't have plan_id
+                    "session_id": str(result.inserted_id),
+                    "status": "pending",
+                    "created_at": datetime.now(timezone.utc),
+                    "sentences": request.sentences_for_analysis,
+                    "language": request.language,
+                    "level": request.level,
+                    "analyses": []
+                })
+                print(f"[BATCH_SAVE] 📝 Created analysis job {analysis_job_id} with {len(request.sentences_for_analysis)} sentences")
+
+                # Schedule background task (runs AFTER response is sent)
+                background_tasks.add_task(
+                    _run_sentence_analysis_background,
+                    job_id=analysis_job_id,
+                    user_id=current_user.id,
+                    session_id=str(result.inserted_id),
+                    sentences_for_analysis=request.sentences_for_analysis,
                     language=request.language,
-                    level=request.level,
-                    topic=request.topic,
-                    conversation_content=None,  # Could extract from messages if needed
-                    session_summary=summary,  # Use the basic summary
-                    count=5  # Generate 5 flashcards per session
+                    level=request.level
                 )
+                print(f"[BATCH_SAVE] 🚀 Scheduled background analysis for job {analysis_job_id}")
 
-                # Generate flashcards using the service
-                flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+            # 🚀 Schedule flashcard generation in background (runs AFTER response is sent)
+            # Note: Flashcards will generate after summary is available
+            background_tasks.add_task(
+                _generate_flashcards_background,
+                session_id=str(result.inserted_id),
+                user_id=current_user.id,
+                language=request.language,
+                level=request.level,
+                topic=request.topic,
+                summary=""  # Summary will be generated in background, flashcards will fetch from session
+            )
+            print(f"[FLASHCARD_BG] 🚀 Scheduled flashcard generation for session {result.inserted_id}")
 
-                # Save flashcard set to database (same logic as in flashcard_routes.py)
-                flashcard_sets_collection = database.flashcard_sets
-                flashcards_collection = database.flashcards
+            # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER response is sent)
+            background_tasks.add_task(
+                _generate_summary_and_analysis_background,
+                session_id=str(result.inserted_id),
+                user_id=current_user.id,
+                messages=[msg.dict() for msg in conversation_messages],
+                language=request.language,
+                level=request.level,
+                topic=request.topic or "general",
+                duration_minutes=request.duration_minutes
+            )
+            print(f"[SUMMARY_ANALYSIS_BG] 🚀 Scheduled summary and enhanced analysis for session {result.inserted_id}")
 
-                flashcard_set_doc = flashcard_set.dict()
-                flashcard_set_doc["_id"] = ObjectId()
-                flashcard_set_doc["created_at"] = datetime.utcnow()
-
-                # Save individual flashcards
-                flashcard_docs = []
-                for flashcard in flashcard_set.flashcards:
-                    card_doc = flashcard.dict()
-                    card_doc["_id"] = ObjectId()
-                    flashcard_docs.append(card_doc)
-
-                # Insert flashcard set
-                set_result = await flashcard_sets_collection.insert_one(flashcard_set_doc)
-
-                # Insert individual flashcards
-                if flashcard_docs:
-                    cards_result = await flashcards_collection.insert_many(flashcard_docs)
-                    print(f"[FLASHCARD_INTEGRATION] ✅ Saved {len(cards_result.inserted_ids)} flashcards to database")
-
-                print(f"[FLASHCARD_INTEGRATION] ✅ Generated and saved {len(flashcard_set.flashcards)} flashcards for conversation session")
-                print(f"[FLASHCARD_INTEGRATION] 📚 Flashcard set: {flashcard_set.title}")
-
-            except Exception as flashcard_error:
-                print(f"[FLASHCARD_INTEGRATION] ⚠️ Flashcard generation failed: {str(flashcard_error)}")
-                # Don't fail the session saving if flashcard generation fails
-                # Users can still manually generate flashcards if needed
-                pass
-
-            # Update learning plan progress if this is a learning plan session
-            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
-
-            # 🎯 NEW: Calculate enhanced session statistics
-            enhanced_stats = await get_enhanced_session_statistics(
+            # 🚀 Schedule session statistics caching in background (runs AFTER response is sent)
+            background_tasks.add_task(
+                _cache_session_statistics_background,
+                session_id=str(result.inserted_id),
                 user_id=current_user.id,
                 messages=[msg.dict() for msg in conversation_messages],
                 duration_minutes=request.duration_minutes,
                 background_analyses=background_analyses
             )
+            print(f"[SESSION_STATS_CACHE] 🚀 Scheduled statistics caching for session {result.inserted_id}")
 
-            return {
-                "success": True,
-                "session_id": str(result.inserted_id),
-                "message": "Conversation saved successfully",
-                "is_streak_eligible": is_streak_eligible,
-                "summary": summary,
-                "background_analyses": background_analyses,  # 🔥 NEW: Return batch analyses
-                "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
-                "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison with previous
-                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
-                "action": "created"
-            }
+            # Update learning plan progress if this is a learning plan session
+            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+
+            # 🎯 Check Redis cache for enhanced statistics
+            from redis_client import get_cached
+            cache_key = f"session_stats:{result.inserted_id}"
+            cached_stats = await get_cached(cache_key)
+
+            if cached_stats:
+                # Return cached enhanced statistics
+                print(f"[SESSION_STATS_CACHE] ✅ Found cached statistics for session {result.inserted_id}")
+                return {
+                    "success": True,
+                    "session_id": str(result.inserted_id),
+                    "message": "Conversation saved successfully",
+                    "is_streak_eligible": is_streak_eligible,
+                    "summary": "",  # Will be generated in background
+                    "background_analyses": background_analyses,  # Empty initially - being processed
+                    "analysis_job_id": analysis_job_id,
+                    "analysis_status": "processing" if analysis_job_id else "none",
+                    "session_stats": cached_stats.get("session_stats", {}),
+                    "comparison": cached_stats.get("comparison", {}),
+                    "overall_progress": cached_stats.get("overall_progress", {}),
+                    "action": "created"
+                }
+            else:
+                # Return basic stats - background task will populate cache
+                print(f"[SESSION_STATS_CACHE] ⏳ Cache miss for session {result.inserted_id}, returning basic stats")
+                basic_session_stats = SessionStatistics.calculate_session_stats(
+                    messages=[msg.dict() for msg in conversation_messages],
+                    duration_minutes=request.duration_minutes,
+                    background_analyses=background_analyses
+                )
+
+                return {
+                    "success": True,
+                    "session_id": str(result.inserted_id),
+                    "message": "Conversation saved successfully",
+                    "is_streak_eligible": is_streak_eligible,
+                    "summary": "",  # Will be generated in background
+                    "background_analyses": background_analyses,  # Empty - being processed in background
+                    "analysis_job_id": analysis_job_id,
+                    "analysis_status": "processing" if analysis_job_id else "none",
+                    "session_stats": basic_session_stats,  # Basic stats only (no DB queries)
+                    "comparison": {"has_previous_session": False},  # Will be available in cache soon
+                    "overall_progress": {"total_sessions": 0, "total_minutes": 0},  # Will be available in cache soon
+                    "stats_loading": True,  # NEW: Indicates stats are being calculated
+                    "action": "created"
+                }
         
     except Exception as e:
         print(f"[PROGRESS] ❌ Error saving conversation: {str(e)}")
@@ -1498,3 +1976,183 @@ async def update_learning_plan_progress(user_id: str, language: str, level: str,
     except Exception as e:
         print(f"[LEARNING_PLAN] ❌ Error updating learning plan progress: {str(e)}")
         # Don't raise the exception - this is a non-critical operation
+
+
+@router.get("/sentence-analysis-status/{job_id}")
+async def get_sentence_analysis_status(
+    job_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Poll for sentence analysis job status and results.
+
+    Returns:
+    - status: "pending", "processing", "completed", "failed"
+    - analyses: Array of sentence analyses (when completed)
+    - progress: Estimated progress percentage
+    """
+    from database import database
+
+    jobs_collection = database.sentence_analysis_jobs
+
+    # Find job
+    job = await jobs_collection.find_one({
+        "job_id": job_id,
+        "user_id": current_user.id  # Security: ensure user owns this job
+    })
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Analysis job not found"
+        )
+
+    # Calculate progress estimate
+    progress = 0
+    if job["status"] == "pending":
+        progress = 0
+    elif job["status"] == "processing":
+        # Estimate based on time elapsed
+        if job.get("started_at"):
+            elapsed = (datetime.now(timezone.utc) - job["started_at"]).total_seconds()
+            # Assume 20 seconds total processing time
+            progress = min(int((elapsed / 20) * 100), 95)
+        else:
+            progress = 10
+    elif job["status"] == "completed":
+        progress = 100
+    elif job["status"] == "failed":
+        progress = 0
+
+    return {
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": progress,
+        "created_at": job["created_at"].isoformat(),
+        "started_at": job.get("started_at").isoformat() if job.get("started_at") else None,
+        "completed_at": job.get("completed_at").isoformat() if job.get("completed_at") else None,
+        "analyses": job.get("analyses", []),
+        "error_message": job.get("error_message"),
+        "sentence_count": len(job.get("sentences", []))
+    }
+
+@router.get("/conversation/{session_id}/sentence-analysis")
+async def get_session_sentence_analysis(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get sentence analysis for a completed session.
+
+    This endpoint is called from TaalCoach when user clicks "View Analysis" button.
+
+    Returns:
+    - status: "ready" (analyses available), "processing" (still analyzing), "not_found" (no job)
+    - analyses: Array of sentence analyses (when status is "ready")
+    - job_id: The analysis job ID
+    """
+    from database import database
+    from bson import ObjectId
+
+    jobs_collection = database.sentence_analysis_jobs
+
+    # Verify user owns this session
+    session = await conversation_sessions_collection.find_one({
+        "_id": ObjectId(session_id) if ObjectId.is_valid(session_id) else session_id,
+        "user_id": current_user.id
+    })
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found or you don't have permission to access it"
+        )
+
+    # Find the analysis job for this session
+    job = await jobs_collection.find_one({
+        "session_id": session_id,
+        "user_id": current_user.id
+    })
+
+    if not job:
+        return {
+            "status": "not_found",
+            "message": "No sentence analysis found for this session"
+        }
+
+    # Check job status
+    if job["status"] == "completed":
+        analyses = job.get("analyses", [])
+        return {
+            "status": "ready",
+            "analyses": analyses,
+            "job_id": job["job_id"],
+            "sentence_count": len(analyses)
+        }
+    elif job["status"] == "processing":
+        return {
+            "status": "processing",
+            "job_id": job["job_id"],
+            "message": "Analysis is still in progress. Please wait a moment."
+        }
+    elif job["status"] == "failed":
+        return {
+            "status": "failed",
+            "job_id": job["job_id"],
+            "message": "Analysis failed. Please try again later."
+        }
+    else:  # pending
+        return {
+            "status": "processing",
+            "job_id": job["job_id"],
+            "message": "Analysis will start shortly."
+        }
+
+@router.get("/session-stats/{session_id}")
+async def get_session_statistics(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Poll for cached session statistics.
+
+    Mobile app can use this endpoint to check if enhanced statistics are ready.
+
+    Returns:
+    - stats_ready: true if stats are in cache, false otherwise
+    - session_stats: Session statistics (if ready)
+    - comparison: Comparison with previous session (if ready)
+    - overall_progress: Overall user progress (if ready)
+    """
+    from redis_client import get_cached
+
+    # Verify user owns this session
+    session = await conversation_sessions_collection.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": current_user.id  # Security: ensure user owns this session
+    })
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found"
+        )
+
+    # Check Redis cache
+    cache_key = f"session_stats:{session_id}"
+    cached_stats = await get_cached(cache_key)
+
+    if cached_stats:
+        return {
+            "session_id": session_id,
+            "stats_ready": True,
+            "session_stats": cached_stats.get("session_stats", {}),
+            "comparison": cached_stats.get("comparison", {}),
+            "overall_progress": cached_stats.get("overall_progress", {})
+        }
+    else:
+        return {
+            "session_id": session_id,
+            "stats_ready": False,
+            "message": "Statistics are being calculated in background"
+        }

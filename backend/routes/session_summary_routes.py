@@ -81,6 +81,102 @@ async def _generate_flashcards_background(
         print(f"[FLASHCARD_BG] ❌ Failed: {e}\n{traceback.format_exc()}")
 
 
+async def _run_sentence_analysis_background(
+    job_id: str,
+    user_id: str,
+    plan_id: str,
+    session_id: str,
+    sentences_for_analysis: list,
+    language: str,
+    level: str
+):
+    """
+    Background task: Run sentence analysis and store results.
+
+    This runs AFTER the session summary response is sent to user.
+    Updates the analysis job document with results when complete.
+    """
+    from database import database
+    import logging
+
+    logger = logging.getLogger(__name__)
+    jobs_collection = database.sentence_analysis_jobs
+
+    try:
+        # Update status to processing
+        await jobs_collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": "processing",
+                    "started_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        print(f"[SENTENCE_ANALYSIS_BG] 🔄 Job {job_id} started processing")
+
+        # Extract sentence texts
+        sentence_texts = [s.get('text') for s in sentences_for_analysis if s.get('text')]
+
+        if not sentence_texts:
+            # No sentences to analyze
+            await jobs_collection.update_one(
+                {"job_id": job_id},
+                {
+                    "$set": {
+                        "status": "completed",
+                        "completed_at": datetime.now(timezone.utc),
+                        "analyses": []
+                    }
+                }
+            )
+            print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed (no sentences)")
+            return
+
+        # Run batch analysis (this is the 15-20 second operation)
+        from background_sentence_analysis import batch_analyze_sentences
+
+        print(f"[SENTENCE_ANALYSIS_BG] 🔍 Analyzing {len(sentence_texts)} sentences...")
+        analyses = await batch_analyze_sentences(
+            sentences=sentence_texts,
+            language=language,
+            level=level
+        )
+
+        # Convert to dict format
+        analyses_dict = [a.dict() for a in analyses]
+
+        # Update job with completed analyses
+        await jobs_collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc),
+                    "analyses": analyses_dict
+                }
+            }
+        )
+
+        print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed: {len(analyses)} sentences analyzed")
+
+    except Exception as e:
+        logger.error(f"[SENTENCE_ANALYSIS_BG] ❌ Job {job_id} failed: {str(e)}")
+        print(f"[SENTENCE_ANALYSIS_BG] ❌ Job {job_id} failed: {str(e)}\n{traceback.format_exc()}")
+
+        # Update job with error
+        await jobs_collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": "failed",
+                    "completed_at": datetime.now(timezone.utc),
+                    "error_message": str(e)
+                }
+            }
+        )
+
+
 async def _run_dna_and_optimizer_background(
     user_id: str, plan_id: str, language: str, duration_minutes: float,
     user_turns: list, background_analyses: list
@@ -394,38 +490,56 @@ async def store_session_summary(
                 learning_plans_collection=learning_plans_collection
             )
 
-        # ⚡ PARALLEL: Run summary generation + sentence analysis at the same time
-        async def _run_sentence_analysis():
-            if not (conversation_data and "sentences_for_analysis" in conversation_data):
-                print(f"[SESSION_SUMMARY] ℹ️ No sentences_for_analysis in conversation data")
-                return []
+        # Generate ONLY session summary (sentence analysis moved to background)
+        import time as _time
+        _t0 = _time.monotonic()
+        summary_data = await generate_comprehensive_session_summary(
+            plan, conversation_data, basic_summary, current_user.id
+        )
+        print(f"[SESSION_SUMMARY] ⚡ Summary generation done in {_time.monotonic()-_t0:.1f}s")
+
+        # Create sentence analysis job for background processing
+        analysis_job_id = None
+        summary_id = str(uuid.uuid4())  # Generate session ID for linking
+
+        if conversation_data and "sentences_for_analysis" in conversation_data:
             sentences_for_analysis = conversation_data["sentences_for_analysis"]
-            if not sentences_for_analysis:
-                print(f"[SESSION_SUMMARY] ⚠️ No sentences provided for analysis")
-                return []
-            from background_sentence_analysis import batch_analyze_sentences
-            sentence_texts = [s.get('text') for s in sentences_for_analysis if s.get('text')]
-            print(f"[SESSION_SUMMARY] 🔍 Starting batch analysis of {len(sentence_texts)} sentences (parallel)")
-            try:
-                analyses = await batch_analyze_sentences(
-                    sentences=sentence_texts,
+
+            if sentences_for_analysis and len(sentences_for_analysis) > 0:
+                # Generate unique job ID
+                analysis_job_id = str(uuid.uuid4())
+
+                # Create job document in MongoDB
+                from database import database
+                jobs_collection = database.sentence_analysis_jobs
+                await jobs_collection.insert_one({
+                    "job_id": analysis_job_id,
+                    "user_id": current_user.id,
+                    "plan_id": plan_id,
+                    "session_id": summary_id,
+                    "status": "pending",
+                    "created_at": datetime.now(timezone.utc),
+                    "sentences": sentences_for_analysis,
+                    "language": plan.get("language", "english"),
+                    "level": plan.get("proficiency_level", "B1"),
+                    "analyses": []
+                })
+                print(f"[SESSION_SUMMARY] 📝 Created analysis job {analysis_job_id} with {len(sentences_for_analysis)} sentences")
+
+                # Schedule background task (runs AFTER response is sent)
+                background_tasks.add_task(
+                    _run_sentence_analysis_background,
+                    job_id=analysis_job_id,
+                    user_id=current_user.id,
+                    plan_id=plan_id,
+                    session_id=summary_id,
+                    sentences_for_analysis=sentences_for_analysis,
                     language=plan.get("language", "english"),
                     level=plan.get("proficiency_level", "B1")
                 )
-                result = [a.dict() for a in analyses]
-                print(f"[SESSION_SUMMARY] ✅ Batch analysis complete: {len(result)} results")
-                return result
-            except Exception as analysis_error:
-                print(f"[SESSION_SUMMARY] ⚠️ Batch analysis failed: {str(analysis_error)}")
-                return []
+                print(f"[SESSION_SUMMARY] 🚀 Scheduled background analysis for job {analysis_job_id}")
 
-        import time as _time
-        _t0 = _time.monotonic()
-        summary_data, background_analyses = await asyncio.gather(
-            generate_comprehensive_session_summary(plan, conversation_data, basic_summary, current_user.id),
-            _run_sentence_analysis()
-        )
-        print(f"[SESSION_SUMMARY] ⚡ Parallel OpenAI calls done in {_time.monotonic()-_t0:.1f}s")
+        background_analyses = []  # Empty - will be populated by background job
 
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
@@ -654,7 +768,7 @@ async def store_session_summary(
                 background_tasks.add_task(_run_dna_and_optimizer_background, **_dna_kwargs)
                 print(f"[DNA] ⚡ Scheduled DNA analysis + plan optimization as background task")
 
-            # ⚡ Return immediately — flashcards, DNA, and optimizer run in background
+            # ⚡ Return immediately — flashcards, DNA, optimizer, and sentence analysis run in background
             print(f"[SESSION_SUMMARY] ✅ Returning response (background tasks scheduled)")
             return {
                 "success": True,
@@ -663,7 +777,9 @@ async def store_session_summary(
                 "progress_percentage": progress_percentage,
                 "current_week": new_week,
                 "session_summary": summary_data.get("full", summary_data),
-                "background_analyses": background_analyses,
+                "background_analyses": background_analyses,  # Empty - being processed in background
+                "analysis_job_id": analysis_job_id,  # NEW: Job ID for polling
+                "analysis_status": "processing" if analysis_job_id else "none",  # NEW
                 "flashcards_generated": generated_flashcards,
                 "flashcard_generation_success": flashcard_generation_success,
                 "plan_adapted": False,   # optimizer runs in background; client can poll if needed
@@ -687,7 +803,9 @@ async def store_session_summary(
                 "progress_percentage": progress_percentage,
                 "current_week": new_week,
                 "session_summary": summary_data.get("full", summary_data),
-                "background_analyses": background_analyses,  # 🔥 CRITICAL: Return sentence analyses!
+                "background_analyses": background_analyses,  # Empty - being processed in background
+                "analysis_job_id": analysis_job_id,  # NEW: Job ID for polling
+                "analysis_status": "processing" if analysis_job_id else "none",  # NEW
                 "flashcards_generated": 0,  # No flashcards if plan wasn't updated
                 "flashcard_generation_success": False,
                 "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
@@ -704,3 +822,62 @@ async def store_session_summary(
             status_code=500,
             detail=f"Error storing session summary: {str(e)}"
         )
+
+
+@router.get("/api/learning/sentence-analysis-status/{job_id}")
+async def get_sentence_analysis_status(
+    job_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Poll for sentence analysis job status and results.
+
+    Returns:
+    - status: "pending", "processing", "completed", "failed"
+    - analyses: Array of sentence analyses (when completed)
+    - progress: Estimated progress percentage
+    """
+    from database import database
+
+    jobs_collection = database.sentence_analysis_jobs
+
+    # Find job
+    job = await jobs_collection.find_one({
+        "job_id": job_id,
+        "user_id": current_user.id  # Security: ensure user owns this job
+    })
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Analysis job not found"
+        )
+
+    # Calculate progress estimate
+    progress = 0
+    if job["status"] == "pending":
+        progress = 0
+    elif job["status"] == "processing":
+        # Estimate based on time elapsed
+        if job.get("started_at"):
+            elapsed = (datetime.now(timezone.utc) - job["started_at"]).total_seconds()
+            # Assume 20 seconds total processing time
+            progress = min(int((elapsed / 20) * 100), 95)
+        else:
+            progress = 10
+    elif job["status"] == "completed":
+        progress = 100
+    elif job["status"] == "failed":
+        progress = 0
+
+    return {
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": progress,
+        "created_at": job["created_at"].isoformat(),
+        "started_at": job.get("started_at").isoformat() if job.get("started_at") else None,
+        "completed_at": job.get("completed_at").isoformat() if job.get("completed_at") else None,
+        "analyses": job.get("analyses", []),
+        "error_message": job.get("error_message"),
+        "sentence_count": len(job.get("sentences", []))
+    }

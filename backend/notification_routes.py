@@ -264,6 +264,9 @@ async def get_user_notifications(
 ):
     """Get notifications for the current user"""
 
+    print(f"[NOTIFICATION_API] 🔍 Fetching notifications for user: {current_user.id}")
+    print(f"[NOTIFICATION_API] Parameters: skip={skip}, limit={limit}, unread_only={unread_only}")
+
     # Build query - exclude deleted notifications
     query = {"user_id": current_user.id, "deleted_at": None}
     if unread_only:
@@ -286,18 +289,28 @@ async def get_user_notifications(
     
     cursor = user_notifications_collection.aggregate(pipeline)
     notifications = []
-    
+
     async for doc in cursor:
-        notification_data = UserNotificationResponse(
-            id=doc["_id"],
-            user_id=doc["user_id"],
-            notification_id=doc["notification_id"],
-            is_read=doc["is_read"],
-            read_at=doc.get("read_at"),
-            created_at=doc["created_at"],
-            notification=NotificationResponse(**doc["notification"])
-        )
-        notifications.append(notification_data)
+        try:
+            # Debug: Log notification type
+            notif_doc = doc.get("notification", {})
+            print(f"[NOTIFICATION_API] Processing notification type: {notif_doc.get('notification_type')}")
+
+            notification_data = UserNotificationResponse(
+                id=doc["_id"],
+                user_id=doc["user_id"],
+                notification_id=doc["notification_id"],
+                is_read=doc["is_read"],
+                read_at=doc.get("read_at"),
+                created_at=doc["created_at"],
+                notification=NotificationResponse(**doc["notification"])
+            )
+            notifications.append(notification_data)
+        except Exception as e:
+            print(f"[NOTIFICATION_API] ⚠️ Failed to parse notification {doc.get('_id')}: {str(e)}")
+            print(f"[NOTIFICATION_API] Notification data: {doc.get('notification', {})}")
+            # Skip this notification but continue processing others
+            continue
     
     # Get counts - exclude deleted notifications
     total_count = await user_notifications_collection.count_documents({
@@ -309,6 +322,9 @@ async def get_user_notifications(
         "is_read": False,
         "deleted_at": None
     })
+
+    print(f"[NOTIFICATION_API] 📊 Results: {len(notifications)} notifications returned")
+    print(f"[NOTIFICATION_API] 📊 Total: {total_count}, Unread: {unread_count}")
     
     return NotificationListResponse(
         notifications=notifications,

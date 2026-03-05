@@ -215,7 +215,40 @@ class SubscriptionService:
             now = datetime.utcnow()
             subscription_status = user.get("subscription_status")
             expires_at = user.get("subscription_expires_at")
-            
+
+            # 🎁 GRACE PERIOD: Check if grace period has expired
+            if subscription_status == "payment_pending_grace":
+                grace_period_end = user.get("grace_period_end_date")
+                if grace_period_end and now > grace_period_end:
+                    # Grace period expired - downgrade to free tier
+                    logger.warning(f"[GRACE_PERIOD_EXPIRED] Grace period ended for user {user_id} - downgrading to free tier")
+                    logger.info(f"[GRACE_PERIOD_EXPIRED] Grace period end: {grace_period_end}, Current time: {now}")
+
+                    # Downgrade user to free tier
+                    await database["users"].update_one(
+                        get_user_query(user_id),
+                        {
+                            "$set": {
+                                "subscription_status": "free",
+                                "subscription_plan": "try_learn"
+                            },
+                            "$unset": {
+                                "grace_period_end_date": 1,
+                                "pending_subscription_plan": 1,
+                                "pending_subscription_id": 1
+                            }
+                        }
+                    )
+
+                    # Update local variables
+                    subscription_status = "free"
+                    logger.info(f"[GRACE_PERIOD_EXPIRED] User {user_id} downgraded to free tier")
+                else:
+                    # Grace period still active
+                    if grace_period_end:
+                        days_remaining = (grace_period_end - now).days
+                        logger.info(f"[GRACE_PERIOD_ACTIVE] User {user_id} in grace period - {days_remaining} days remaining")
+
             # Trial information
             trial_end_date = user.get("trial_end_date")
             is_in_trial = user.get("is_in_trial", False)
@@ -342,7 +375,8 @@ class SubscriptionService:
             
             # Calculate days until expiry (for non-trial subscriptions)
             days_until_expiry = None
-            if expires_at and subscription_status in ["active", "canceling"] and not is_in_trial:
+            # 🎁 GRACE PERIOD: Include payment_pending_grace in active status check
+            if expires_at and subscription_status in ["active", "canceling", "payment_pending_grace"] and not is_in_trial:
                 days_until_expiry = (expires_at - now).days
             
             return SubscriptionStatus(

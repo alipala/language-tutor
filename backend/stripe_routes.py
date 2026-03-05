@@ -193,10 +193,10 @@ async def create_checkout_session(
                 }
             }
 
-            # Add 7-day trial ONLY for new customers
+            # Add 3-day trial ONLY for new customers
             if is_new_customer:
-                subscription_data["trial_period_days"] = 7
-                logger.info(f"[AUTH_CHECKOUT] New customer - adding 7-day free trial")
+                subscription_data["trial_period_days"] = 3
+                logger.info(f"[AUTH_CHECKOUT] New customer - adding 3-day free trial")
             else:
                 logger.info(f"[AUTH_CHECKOUT] Existing customer ({user_plan}) - NO trial, immediate charge")
 
@@ -1006,24 +1006,83 @@ async def handle_subscription_updated(subscription):
         # Handle trial-to-active transition
         elif current_status == "trialing" and new_status == "active":
             logger.info(f"[SUB_UPDATED] Processing trial-to-active transition for user {user['_id']}")
-            
+
+            # 🔥 NEW: Check if payment has actually succeeded (for SEPA/iDEAL)
+            payment_confirmed = False
+            latest_invoice_id = subscription.get("latest_invoice")
+
+            if latest_invoice_id:
+                try:
+                    # Retrieve the latest invoice to check payment status
+                    latest_invoice = stripe.Invoice.retrieve(latest_invoice_id)
+
+                    if latest_invoice.payment_intent:
+                        # Get payment intent status
+                        payment_intent = stripe.PaymentIntent.retrieve(latest_invoice.payment_intent)
+                        payment_status = payment_intent.status
+
+                        logger.info(f"[SUB_UPDATED] Payment intent status: {payment_status}")
+
+                        if payment_status == "succeeded":
+                            payment_confirmed = True
+                            logger.info(f"[SUB_UPDATED] ✅ Payment confirmed - granting premium access")
+                        elif payment_status in ["processing", "requires_action"]:
+                            payment_confirmed = False
+                            logger.info(f"[SUB_UPDATED] ⏳ Payment pending ({payment_status}) - keeping user on free tier")
+                        else:
+                            payment_confirmed = False
+                            logger.warning(f"[SUB_UPDATED] ⚠️ Unexpected payment status: {payment_status}")
+                    else:
+                        # No payment intent (shouldn't happen for paid subscriptions)
+                        payment_confirmed = True
+                        logger.warning(f"[SUB_UPDATED] No payment intent found - assuming payment confirmed")
+
+                except Exception as payment_check_error:
+                    logger.error(f"[SUB_UPDATED] Error checking payment status: {str(payment_check_error)}")
+                    # Fail safe: assume payment not confirmed to prevent free access
+                    payment_confirmed = False
+            else:
+                # No invoice (shouldn't happen)
+                payment_confirmed = True
+                logger.warning(f"[SUB_UPDATED] No invoice found - assuming payment confirmed")
+
             # Update trial status
             update_data["is_in_trial"] = False
-            
-            # Reset usage counters for new billing period
+
+            # Reset usage counters for new billing period (regardless of payment status)
             update_data["practice_sessions_used"] = 0
             update_data["assessments_used"] = 0
-            
+
+            # Set subscription status based on payment confirmation
+            if payment_confirmed:
+                # Payment succeeded - grant premium access
+                update_data["subscription_status"] = "active"
+                logger.info(f"[SUB_UPDATED] Setting status to 'active' - payment confirmed")
+            else:
+                # 🎁 GRACE PERIOD: Payment pending (SEPA/iDEAL) - give user 5 days grace period
+                # User keeps premium access while bank processes payment
+                update_data["subscription_status"] = "payment_pending_grace"
+                # DON'T downgrade - user keeps premium plan during grace period
+                update_data["pending_subscription_id"] = subscription_id  # Track for later
+
+                # Calculate grace period end (5 days from now)
+                from datetime import datetime, timezone, timedelta
+                grace_period_end = datetime.now(timezone.utc) + timedelta(days=5)
+                update_data["grace_period_end_date"] = grace_period_end
+
+                logger.info(f"[SUB_UPDATED] ⏳ GRACE PERIOD: Payment pending - user keeps premium access until {grace_period_end.date()}")
+                logger.info(f"[SUB_UPDATED] User has 5 days grace period for SEPA/iDEAL payment processing")
+
             # Calculate proper monthly expiry date
             from datetime import datetime, timezone
             from dateutil.relativedelta import relativedelta
-            
+
             # Get trial end date if available
             trial_end_date = None
             if subscription.get("trial_end"):
                 trial_end_date = datetime.fromtimestamp(subscription.get("trial_end"), tz=timezone.utc)
                 update_data["trial_end_date"] = trial_end_date
-            
+
             # Calculate monthly expiry (1 month from trial end or current period start)
             if trial_end_date:
                 monthly_expiry = trial_end_date + relativedelta(months=1)
@@ -1053,11 +1112,19 @@ async def handle_subscription_updated(subscription):
             price = subscription.get("items").get("data")[0].get("price")
             if price:
                 update_data["subscription_price_id"] = price.get("id")
-                
+
                 # Get product details
                 product = stripe.Product.retrieve(price.get("product"))
-                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
-                
+                plan_from_stripe = map_stripe_product_to_plan_id(product.name)
+
+                # 🎁 GRACE PERIOD: Always set premium plan (user keeps it during grace period)
+                update_data["subscription_plan"] = plan_from_stripe
+
+                # Store as pending for tracking purposes
+                if update_data.get("subscription_status") == "payment_pending_grace":
+                    update_data["pending_subscription_plan"] = plan_from_stripe
+                    logger.info(f"[SUB_UPDATED] Grace period: User keeps premium plan {plan_from_stripe} while payment processes")
+
                 # Determine if monthly or annual
                 if price.get("recurring") and price.get("recurring").get("interval"):
                     update_data["subscription_period"] = "monthly" if price.get("recurring").get("interval") == "month" else "annual"
@@ -1378,6 +1445,14 @@ async def handle_invoice_payment_succeeded(invoice):
             logger.info(f"[PAYMENT_RECOVERY]    Status: past_due → active")
             logger.info(f"[PAYMENT_RECOVERY]    User email: {user.get('email')}")
 
+        # 🔥 NEW: Check if this is upgrading from payment_pending_grace to active
+        is_grace_period_upgrade = old_status == "payment_pending_grace" and subscription.status == "active"
+        if is_grace_period_upgrade:
+            logger.info(f"[GRACE_PERIOD_COMPLETE] ✅ SEPA/iDEAL payment confirmed during grace period for user {user['_id']}")
+            logger.info(f"[GRACE_PERIOD_COMPLETE]    Status: payment_pending_grace → active")
+            logger.info(f"[GRACE_PERIOD_COMPLETE]    User had premium access during grace period (no interruption)")
+            logger.info(f"[GRACE_PERIOD_COMPLETE]    User email: {user.get('email')}")
+
         # Prepare update data
         update_data = {
             "subscription_status": subscription.status,
@@ -1413,7 +1488,16 @@ async def handle_invoice_payment_succeeded(invoice):
 
                 # Get product details
                 product = stripe.Product.retrieve(price.product)
-                update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
+                plan_from_stripe = map_stripe_product_to_plan_id(product.name)
+
+                # 🎁 GRACE PERIOD: User already has premium plan, just confirm it
+                if is_grace_period_upgrade and user.get("pending_subscription_plan"):
+                    # Use the stored pending plan (already validated during trial end)
+                    update_data["subscription_plan"] = user.get("pending_subscription_plan")
+                    logger.info(f"[GRACE_PERIOD_COMPLETE] Confirming premium plan: {update_data['subscription_plan']}")
+                else:
+                    # Normal case: set plan from Stripe
+                    update_data["subscription_plan"] = plan_from_stripe
 
                 # Determine if monthly or annual
                 if price.recurring and price.recurring.interval:
@@ -1433,6 +1517,13 @@ async def handle_invoice_payment_succeeded(invoice):
             "google_play_is_trial": 1,
             "google_play_auto_renewing": 1,
         }
+
+        # 🎁 GRACE PERIOD: Clear grace period fields when payment confirms
+        if is_grace_period_upgrade:
+            unset_data["pending_subscription_plan"] = 1
+            unset_data["pending_subscription_id"] = 1
+            unset_data["grace_period_end_date"] = 1
+            logger.info(f"[GRACE_PERIOD_COMPLETE] Clearing grace period fields - payment confirmed")
 
         # Update user in MongoDB
         await database["users"].update_one(
@@ -1721,8 +1812,92 @@ async def handle_invoice_payment_failed(invoice):
         logger.error(f"[PAYMENT_FAILED] Current Plan: {user_plan}")
         logger.error(f"[PAYMENT_FAILED] Has Premium Access: {has_premium_access}")
 
-        # 🚨 CRITICAL ALERT: User has premium access without payment
-        if has_premium_access:
+        # 🔥 NEW: Check for PERMANENT payment failures - cancel immediately, don't retry
+        PERMANENT_FAILURE_CODES = [
+            "debit_not_authorized",      # User cancelled/revoked SEPA mandate
+            "account_closed",             # Bank account is closed
+            "invalid_account_number",     # Invalid IBAN
+            "mandate_invalid",            # SEPA mandate invalid
+            "debit_disputed",             # User disputed the charge
+        ]
+
+        is_permanent_failure = failure_code in PERMANENT_FAILURE_CODES
+
+        if is_permanent_failure:
+            logger.error("=" * 80)
+            logger.error(f"[PAYMENT_FAILED] 🛑 PERMANENT FAILURE DETECTED 🛑")
+            logger.error(f"[PAYMENT_FAILED] Failure code '{failure_code}' indicates user action (cancelled/revoked)")
+            logger.error(f"[PAYMENT_FAILED] NO POINT in retrying - cancelling subscription immediately")
+            logger.error("=" * 80)
+
+            # Cancel subscription in Stripe immediately
+            if subscription_id:
+                try:
+                    logger.info(f"[PAYMENT_FAILED] Cancelling subscription {subscription_id} immediately...")
+                    stripe.Subscription.cancel(subscription_id)
+                    logger.info(f"[PAYMENT_FAILED] ✅ Subscription cancelled in Stripe")
+
+                    # Trigger immediate cleanup (same as subscription.deleted webhook)
+                    old_plan = user.get("subscription_plan", "try_learn")
+
+                    # Complete reset to free tier
+                    update_data = {
+                        "subscription_status": "free",
+                        "subscription_plan": "try_learn",
+                        "is_in_trial": False,
+                        "cancel_at_period_end": False,
+                        "payment_failed_at": datetime.now(timezone.utc),
+                        "last_payment_failure_reason": f"PERMANENT: {failure_message}",
+                    }
+
+                    # Clear subscription fields
+                    unset_data = {
+                        "stripe_subscription_id": 1,
+                        "subscription_price_id": 1,
+                        "subscription_period": 1,
+                        "subscription_expires_at": 1,
+                        "subscription_started_at": 1,
+                        "current_period_start": 1,
+                        "current_period_end": 1,
+                        "trial_end_date": 1,
+                        "grace_period_end_date": 1,
+                        "pending_subscription_plan": 1,
+                        "pending_subscription_id": 1,
+                    }
+
+                    # Update user in MongoDB
+                    await database["users"].update_one(
+                        {"_id": user["_id"]},
+                        {
+                            "$set": update_data,
+                            "$unset": unset_data
+                        }
+                    )
+
+                    logger.info(f"[PAYMENT_FAILED] ✅ User {user['_id']} immediately downgraded to free tier")
+
+                    # Update heart system
+                    try:
+                        from services.heart_service import HeartService
+                        heart_service = HeartService()
+                        await heart_service.update_hearts_on_subscription_change(
+                            user_id=str(user["_id"]),
+                            old_plan=old_plan,
+                            new_plan="try_learn"
+                        )
+                        logger.info(f"[PAYMENT_FAILED] ✅ Heart system updated to free tier")
+                    except Exception as heart_error:
+                        logger.error(f"[PAYMENT_FAILED] ❌ Error updating heart system: {str(heart_error)}")
+
+                    logger.error("=" * 80)
+                    return  # Exit early - no need for retry logic
+
+                except Exception as cancel_error:
+                    logger.error(f"[PAYMENT_FAILED] ❌ Failed to cancel subscription: {str(cancel_error)}")
+                    # Continue with normal past_due flow if cancellation fails
+
+        # 🚨 CRITICAL ALERT: User has premium access without payment (temporary failures only)
+        if has_premium_access and not is_permanent_failure:
             logger.error("=" * 80)
             logger.error(f"[PAYMENT_FAILED] ⚠️  REVENUE RISK DETECTED ⚠️")
             logger.error(f"[PAYMENT_FAILED] User has premium plan '{user_plan}' but payment failed!")
@@ -1730,7 +1905,7 @@ async def handle_invoice_payment_failed(invoice):
             logger.error(f"[PAYMENT_FAILED] Grace period: ~7 days before Stripe cancels subscription")
             logger.error("=" * 80)
 
-        # Prepare update data
+        # Prepare update data (for temporary failures only)
         from datetime import datetime, timezone
         update_data = {
             "subscription_status": "past_due",
