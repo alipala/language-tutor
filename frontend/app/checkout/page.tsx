@@ -235,7 +235,7 @@ export default function CheckoutPage() {
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                         <div className="flex items-center justify-center">
                           <span className="text-blue-800 text-sm font-medium">
-                            🎉 7-day free trial included
+                            🎉 3-day free trial included
                           </span>
                         </div>
                         <div className="text-xs text-blue-600 text-center mt-1">

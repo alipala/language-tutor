@@ -279,7 +279,7 @@ const CustomProjectChatbot: React.FC = () => {
     }
     
     if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('plan') || lowerMessage.includes('subscription')) {
-      return 'Flexible pricing plans for every learner:\n\n💰 **Basic** - $9/month (2 languages, basic tracking)\n🌟 **Premium** - $19/month (All languages, unlimited sessions)\n🏢 **Business** - $49/month (Team features, up to 5 members)\n\n**All plans include 7-day free trial!**';
+      return 'Flexible pricing plans for every learner:\n\n💰 **Basic** - $9/month (2 languages, basic tracking)\n🌟 **Premium** - $19/month (All languages, unlimited sessions)\n🏢 **Business** - $49/month (Team features, up to 5 members)\n\n**All plans include 3-day free trial!**';
     }
     
     if (lowerMessage.includes('tech') || lowerMessage.includes('technology') || lowerMessage.includes('how') || lowerMessage.includes('work')) {

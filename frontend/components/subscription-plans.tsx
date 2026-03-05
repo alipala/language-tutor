@@ -50,7 +50,7 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month",
     description: "Perfect for consistent learners",
     features: [
-      { text: "🎉 7-day free trial included", included: true },
+      { text: "🎉 3-day free trial included", included: true },
       { text: "150 minutes monthly speaking time", included: true },
       { text: "2 speaking assessments monthly", included: true },
       { text: "10 hearts for challenges", included: true },
@@ -67,7 +67,7 @@ const monthlyPlans: PricingCard[] = [
     priceNote: "/month",
     description: "Ultimate learning experience",
     features: [
-      { text: "🎉 7-day free trial included", included: true },
+      { text: "🎉 3-day free trial included", included: true },
       { text: "UNLIMITED speaking", included: true },
       { text: "UNLIMITED assessments", included: true },
       { text: "UNLIMITED hearts", included: true },

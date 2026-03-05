@@ -275,7 +275,7 @@ function PlanModal() {
 
               <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                 {[
-                  '🎉 7-day free trial included',
+                  '🎉 3-day free trial included',
                   `${isAnnual ? '1,800 minutes annually' : '150 minutes monthly'} speaking time`,
                   `${isAnnual ? '24' : '2'} speaking assessments ${isAnnual ? 'annually' : 'monthly'}`,
                   '10 hearts for challenges',
@@ -324,7 +324,7 @@ function PlanModal() {
 
               <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                 {[
-                  '🎉 7-day free trial included',
+                  '🎉 3-day free trial included',
                   'UNLIMITED speaking',
                   'UNLIMITED assessments',
                   'UNLIMITED hearts',
