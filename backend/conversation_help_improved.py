@@ -114,10 +114,10 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
 </instructions>"""
 
     try:
-        # Use GPT-4o for better reasoning, with timeout for performance
+        # Use GPT-5-mini for better reasoning, with timeout for performance
         response = await asyncio.wait_for(
             client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-5-mini",
                 messages=[
                     {"role": "developer", "content": intent_prompt}
                 ],
@@ -126,8 +126,8 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
             ),
             timeout=3.0
         )
-        
-        # Track GPT-4o cost for intent analysis
+
+        # Track GPT-5-mini cost for intent analysis
         usage = response.usage
         if usage:
             try:
@@ -374,17 +374,17 @@ async def generate_contextual_responses(
         # Generate responses with extended timeout for quality responses
         response = await asyncio.wait_for(
             client.chat.completions.create(
-                model="gpt-4o",  # Use GPT-4o for better contextual understanding
+                model="gpt-5-mini",  # Use GPT-5-mini for better contextual understanding
                 messages=[
                     {"role": "developer", "content": context_prompt}
                 ],
                 temperature=0.2,
                 max_tokens=400  # Reduced for speed while maintaining quality
             ),
-            timeout=8.0  # INCREASED: Give GPT-4o enough time for quality responses
+            timeout=8.0  # INCREASED: Give GPT-5-mini enough time for quality responses
         )
-        
-        # Track GPT-4o cost for response generation
+
+        # Track GPT-5-mini cost for response generation
         usage = response.usage
         if usage:
             try:
@@ -402,7 +402,7 @@ async def generate_contextual_responses(
                 print(f"[RESPONSE_GEN] ⚠️ Cost tracking failed: {track_error}")
         
         content = response.choices[0].message.content.strip()
-        print(f"[RESPONSE_GEN] 🔍 RAW GPT-4o RESPONSE: {content}")
+        print(f"[RESPONSE_GEN] 🔍 RAW GPT-5-mini RESPONSE: {content}")
 
         # Clean JSON content
         if content.startswith('```json'):
@@ -421,7 +421,7 @@ async def generate_contextual_responses(
         return response_data
         
     except asyncio.TimeoutError as e:
-        print(f"[RESPONSE_GEN] ⏰ TIMEOUT after 8 seconds - GPT-4o needs more processing time")
+        print(f"[RESPONSE_GEN] ⏰ TIMEOUT after 8 seconds - GPT-5-mini needs more processing time")
         print(f"[RESPONSE_GEN] ⏰ This is expected for complex contextual analysis")
         return None
     except json.JSONDecodeError as e:
