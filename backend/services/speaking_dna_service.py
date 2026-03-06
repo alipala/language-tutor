@@ -1690,9 +1690,16 @@ Session type: {session_type}
                 "language": language
             }).sort("week_start", -1).limit(weeks).to_list(weeks)
 
-            # Convert ObjectIds to strings
+            # Convert ObjectIds and dates to strings for API response
             for entry in history:
                 entry["_id"] = str(entry["_id"])
+                # Convert datetime objects to ISO strings for JavaScript parsing
+                if "week_start" in entry and entry["week_start"]:
+                    entry["week_start"] = entry["week_start"].isoformat()
+                if "created_at" in entry and entry["created_at"]:
+                    entry["created_at"] = entry["created_at"].isoformat()
+                if "updated_at" in entry and entry["updated_at"]:
+                    entry["updated_at"] = entry["updated_at"].isoformat()
 
             return list(reversed(history))  # Chronological order
 
@@ -1735,8 +1742,13 @@ Session type: {session_type}
             # Extract only acoustic metrics and metadata
             acoustic_evolution = []
             for entry in history:
+                # Convert datetime to ISO string for JavaScript parsing
+                week_start = entry["week_start"]
+                if week_start and hasattr(week_start, 'isoformat'):
+                    week_start = week_start.isoformat()
+
                 acoustic_evolution.append({
-                    "week_start": entry["week_start"],
+                    "week_start": week_start,
                     "week_number": entry["week_number"],
                     "acoustic_metrics": entry.get("acoustic_metrics_snapshot", {})
                 })
@@ -1771,6 +1783,13 @@ Session type: {session_type}
             # Ensure all breakthroughs have required fields with defaults
             for bt in breakthroughs:
                 bt["_id"] = str(bt["_id"])
+
+                # Convert datetime fields to ISO strings for JavaScript parsing
+                if "created_at" in bt and bt["created_at"]:
+                    bt["created_at"] = bt["created_at"].isoformat()
+                if "celebrated_at" in bt and bt["celebrated_at"]:
+                    bt["celebrated_at"] = bt["celebrated_at"].isoformat()
+
                 # Add defaults for any missing fields
                 if not bt.get("context") or not isinstance(bt.get("context"), dict):
                     bt["context"] = {"session_type": "learning"}
