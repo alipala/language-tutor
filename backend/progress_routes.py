@@ -2056,19 +2056,25 @@ async def get_session_sentence_analysis(
 
     jobs_collection = database.sentence_analysis_jobs
 
-    # Verify user owns this session
-    session = await conversation_sessions_collection.find_one({
-        "_id": ObjectId(session_id) if ObjectId.is_valid(session_id) else session_id,
-        "user_id": current_user.id
-    })
+    # 🔧 FIX: Handle both practice sessions and learning plan sessions
+    is_learning_plan_session = session_id.startswith("plan_") and "_session_" in session_id
 
-    if not session:
-        raise HTTPException(
-            status_code=404,
-            detail="Session not found or you don't have permission to access it"
-        )
+    if not is_learning_plan_session:
+        # Verify user owns this practice session
+        session = await conversation_sessions_collection.find_one({
+            "_id": ObjectId(session_id) if ObjectId.is_valid(session_id) else session_id,
+            "user_id": current_user.id
+        })
 
-    # Find the analysis job for this session
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Session not found or you don't have permission to access it"
+            )
+    else:
+        print(f"[SENTENCE_ANALYSIS] Detected learning plan session: {session_id}")
+
+    # Find the analysis job for this session (works for both types)
     job = await jobs_collection.find_one({
         "session_id": session_id,
         "user_id": current_user.id

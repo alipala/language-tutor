@@ -1651,6 +1651,19 @@ async def get_voice_check_status(
                 detail="Voice checks are a premium feature. Upgrade to access Speaking DNA acoustic analysis."
             )
 
+        # 🚀 REDIS CACHE: Check cache first (10 second TTL)
+        from redis_client import get_cached, set_cached
+        cache_key = f"voice_check_status:{plan_id}"
+
+        try:
+            cached = await get_cached(cache_key)
+            if cached:
+                print(f"[VOICE_CHECK] ✅ Cache HIT for plan {plan_id}")
+                return cached
+            print(f"[VOICE_CHECK] ❌ Cache MISS for plan {plan_id}")
+        except Exception as cache_error:
+            print(f"[VOICE_CHECK] ⚠️ Cache read error: {cache_error}")
+
         # Get the learning plan
         plan = await learning_plans_collection.find_one({"id": plan_id})
         if not plan:
@@ -1697,7 +1710,7 @@ async def get_voice_check_status(
         check_number = len(voice_checks_completed)
         prompt = voice_check_service.get_voice_check_prompt(check_number)
 
-        return {
+        result = {
             "is_due": is_due,
             "next_check": next_check,
             "current_session": completed_sessions,
@@ -1707,6 +1720,15 @@ async def get_voice_check_status(
             "plan_id": plan_id,
             "language": plan.get("language", "").lower()
         }
+
+        # 🚀 REDIS CACHE: Store result (10 second TTL - invalidated on session completion)
+        try:
+            await set_cached(cache_key, result, ttl_seconds=10)
+            print(f"[VOICE_CHECK] 📦 Cached result for plan {plan_id}")
+        except Exception as cache_error:
+            print(f"[VOICE_CHECK] ⚠️ Cache write error: {cache_error}")
+
+        return result
 
     except HTTPException:
         raise

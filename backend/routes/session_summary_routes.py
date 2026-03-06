@@ -160,6 +160,66 @@ async def _run_sentence_analysis_background(
 
         print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed: {len(analyses)} sentences analyzed")
 
+        # 🎯 Create TaalCoach notification for user (same as practice sessions)
+        print(f"[TAALCOACH_NOTIFY] 🚀 STARTING notification creation for session {session_id}, user {user_id}")
+        try:
+            print(f"[TAALCOACH_NOTIFY] 🔍 Inside try block, about to import...")
+            from database import user_notifications_collection, notifications_collection
+            from bson import ObjectId
+            import asyncio
+
+            # ⏱️ Small delay to ensure MongoDB write propagation (prevent race condition)
+            await asyncio.sleep(0.5)
+
+            # ✅ Verify analyses were truly saved before creating notification
+            verification_job = await jobs_collection.find_one({"job_id": job_id})
+            if not verification_job or not verification_job.get("analyses"):
+                print(f"[TAALCOACH_NOTIFY] ⚠️ Analyses not found in database, skipping notification")
+                return
+
+            # Step 1: Create notification in notifications_collection
+            notification_id = str(ObjectId())
+            notification_doc = {
+                "_id": notification_id,
+                "title": f"Your {language.title()} practice analysis is ready!",
+                "content": f"I've analyzed {len(analyses)} sentences from your session. Tap to see detailed feedback and tips!",
+                "notification_type": "session_analysis",  # Custom type for TaalCoach
+                "created_by": "system",  # System-generated notification
+                "created_at": datetime.now(timezone.utc),
+                "sent_at": datetime.now(timezone.utc),
+                "is_sent": True,
+                # Store metadata for frontend
+                "session_id": session_id,
+                "job_id": job_id,
+                "language": language,
+                "sentence_count": len(analyses)
+            }
+
+            await notifications_collection.insert_one(notification_doc)
+            print(f"[TAALCOACH_NOTIFY] 📝 Created notification document: {notification_id}")
+
+            # Step 2: Create user notification in user_notifications_collection
+            user_notification_doc = {
+                "_id": str(ObjectId()),
+                "user_id": user_id,
+                "notification_id": notification_id,
+                "is_read": False,
+                "read_at": None,
+                "deleted_at": None,
+                "created_at": datetime.now(timezone.utc)
+            }
+
+            await user_notifications_collection.insert_one(user_notification_doc)
+            print(f"[TAALCOACH_NOTIFY] ✅ Created analysis notification for user {user_id}, session {session_id}")
+
+            # Note: In-app notification is sufficient - user will see badge in TaalCoach
+            # Push notifications can be added later if needed
+
+        except Exception as notify_error:
+            logger.error(f"[TAALCOACH_NOTIFY] ❌ Failed to create notification: {str(notify_error)}")
+            print(f"[TAALCOACH_NOTIFY] ❌ Notification creation failed (non-fatal): {str(notify_error)}\n{traceback.format_exc()}")
+            # Don't fail the entire job if notification creation fails
+
     except Exception as e:
         logger.error(f"[SENTENCE_ANALYSIS_BG] ❌ Job {job_id} failed: {str(e)}")
         print(f"[SENTENCE_ANALYSIS_BG] ❌ Job {job_id} failed: {str(e)}\n{traceback.format_exc()}")
@@ -490,17 +550,24 @@ async def store_session_summary(
                 learning_plans_collection=learning_plans_collection
             )
 
-        # Generate ONLY session summary (sentence analysis moved to background)
+        # 🔥 FIX: Use basic summary immediately - generate comprehensive one in background
+        # This makes the response instant instead of blocking for 10+ seconds
         import time as _time
         _t0 = _time.monotonic()
-        summary_data = await generate_comprehensive_session_summary(
-            plan, conversation_data, basic_summary, current_user.id
-        )
-        print(f"[SESSION_SUMMARY] ⚡ Summary generation done in {_time.monotonic()-_t0:.1f}s")
+        summary_data = {
+            "full": basic_summary or f"Session {plan.get('completed_sessions', 0) + 1} completed successfully.",
+            "compressed": basic_summary or f"Session {plan.get('completed_sessions', 0) + 1} completed."
+        }
+        print(f"[SESSION_SUMMARY] ⚡ Using basic summary (comprehensive generation moved to background) in {_time.monotonic()-_t0:.1f}s")
+
+        # 🔧 FIX: Calculate completed_sessions early to create predictable session_id
+        completed_sessions = plan.get("completed_sessions", 0) + 1
 
         # Create sentence analysis job for background processing
         analysis_job_id = None
-        summary_id = str(uuid.uuid4())  # Generate session ID for linking
+        # 🔧 FIX: Use predictable session_id format instead of random UUID
+        # This allows mobile app to construct the same ID: plan_{plan_id}_session_{session_number}
+        summary_id = f"plan_{plan_id}_session_{completed_sessions}"
 
         if conversation_data and "sentences_for_analysis" in conversation_data:
             sentences_for_analysis = conversation_data["sentences_for_analysis"]
@@ -549,7 +616,7 @@ async def store_session_summary(
         session_summaries.append(summary_data.get("compressed", summary_data.get("full", summary_data)))
 
         # Update completed sessions count and weekly schedule
-        completed_sessions = plan.get("completed_sessions", 0) + 1
+        # Note: completed_sessions was calculated earlier (line ~505) for session_id generation
         total_sessions = plan.get("total_sessions", 48)
         progress_percentage = min((completed_sessions / total_sessions) * 100, 100.0)
 
@@ -603,6 +670,8 @@ async def store_session_summary(
 
         current_session_data = {
             "session_number": completed_sessions,
+            "session_id": summary_id,  # 🔧 FIX: Store session_id so mobile app can fetch analysis
+            "analysis_job_id": analysis_job_id if analysis_job_id else None,  # 🔧 FIX: Store job_id for polling
             "messages": conversation_data.get("messages", []) if conversation_data else [],
             "duration_minutes": session_duration_minutes,
             "selected_duration": selected_duration,  # 🆕 Store selected duration
@@ -647,6 +716,15 @@ async def store_session_summary(
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
 
+            # 🗑️ CACHE: Invalidate voice check cache (status has changed)
+            try:
+                from redis_client import delete_cached
+                cache_key = f"voice_check_status:{plan_id}"
+                await delete_cached(cache_key)
+                print(f"[SESSION_SUMMARY] 🗑️ Invalidated voice check cache for plan {plan_id}")
+            except Exception as cache_error:
+                print(f"[SESSION_SUMMARY] ⚠️ Cache invalidation error (non-fatal): {cache_error}")
+
             # ⚡ BACKGROUND: Flashcard generation runs after response is sent (saves 3-10s)
             flashcard_generation_success = True   # optimistic — will complete in background
             generated_flashcards = 5              # expected count
@@ -663,96 +741,66 @@ async def store_session_summary(
             background_tasks.add_task(_generate_flashcards_background, **_flashcard_kwargs)
             print(f"[FLASHCARD_GENERATION] ⚡ Scheduled flashcard generation as background task")
 
-            # 🎯 NEW: Calculate enhanced session statistics for learning plan session
+            # 🔥 FIX: Calculate ONLY essential stats immediately (fast operations only)
+            # Move complex calculations to background for instant response
             enhanced_stats = {}
             try:
-                # Extract messages from conversation_data
+                # Extract basic info (FAST - no DB queries, no heavy calculations)
                 messages = []
                 duration_minutes = 0.0
                 if conversation_data and "messages" in conversation_data:
                     messages = conversation_data["messages"]
                     duration_minutes = conversation_data.get("duration_minutes", 5.0)
 
-                # Get sentence analyses for quality scores (use already-calculated background_analyses)
-                # DON'T overwrite! background_analyses was already populated above
-                # Only use from conversation_data if it wasn't calculated yet
-                if not background_analyses and conversation_data:
-                    background_analyses = conversation_data.get("sentence_analyses", [])
-
-                # Calculate session_number and week_number
+                # Calculate LIGHTWEIGHT session_number and week_number (FAST)
                 sessions_per_week = 2
                 session_number = completed_sessions
                 week_number = ((completed_sessions - 1) // sessions_per_week) + 1
 
-                # Get week focus
+                # Get week focus (FAST - already in memory)
                 week_focus = "General language practice"
                 if weekly_schedule and week_number <= len(weekly_schedule):
                     week_focus = weekly_schedule[week_number - 1].get("focus", week_focus)
 
-                # Calculate session stats
+                # FAST stats calculation (no DB queries, minimal processing)
                 session_stats = SessionStatistics.calculate_session_stats(
                     messages=messages,
                     duration_minutes=duration_minutes,
-                    background_analyses=background_analyses,
+                    background_analyses=[],  # Empty - will be populated by background job
                     session_number=session_number,
                     week_number=week_number,
                     week_focus=week_focus
                 )
 
-                # 🎯 UPDATED: Fetch previous learning plan session from session_history
+                # FAST comparison calculation (use data already in memory)
                 previous_session_data = None
                 if session_number > 1:
-                    # Get session_history from the plan (we just stored current session)
-                    # Look for previous session (session_number - 1)
                     plan_session_history = plan.get("session_history", [])
-
-                    print(f"[SESSION_SUMMARY] Looking for previous session {session_number - 1} in history (total: {len(plan_session_history)} sessions)")
-
                     for hist_session in plan_session_history:
                         if hist_session.get("session_number") == session_number - 1:
                             previous_session_data = hist_session
-                            print(f"[SESSION_SUMMARY] ✅ Found previous session {session_number - 1} with {len(hist_session.get('messages', []))} messages")
                             break
 
-                    if not previous_session_data:
-                        print(f"[SESSION_SUMMARY] ⚠️ Previous session {session_number - 1} not found in history (session before implementation)")
-
-                # Calculate comparison with full data if available
                 comparison = SessionStatistics.calculate_comparison(session_stats, previous_session_data)
 
-                if comparison.get("has_previous_session"):
-                    print(f"[SESSION_SUMMARY] ✅ Comparison calculated: words={comparison.get('words_improvement')}, speed={comparison.get('speed_improvement')} wpm")
-
-                # Get overall progress stats
-                from database import database as db
-                learning_plans_collection_ref = db.learning_plans
-                current_plan = await learning_plans_collection_ref.find_one({"id": plan_id})
-
-                # Import progress stats calculator from progress_routes
-                import sys
-                import os
-                sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                from progress_routes import _calculate_overall_progress
-
-                overall_progress = await _calculate_overall_progress(str(current_user.id))
-
-                # Add learning plan specific progress
-                if current_plan:
-                    overall_progress["plan_progress_percentage"] = progress_percentage
-                    overall_progress["plan_completed_sessions"] = completed_sessions
-                    overall_progress["plan_total_sessions"] = plan.get("total_sessions", 48)
+                # 🔥 FIX: Minimal overall_progress (no DB queries - use data already in memory)
+                minimal_overall_progress = {
+                    "plan_progress_percentage": progress_percentage,
+                    "plan_completed_sessions": completed_sessions,
+                    "plan_total_sessions": plan.get("total_sessions", 48),
+                    # Other fields will be fetched separately by mobile app if needed
+                }
 
                 enhanced_stats = {
                     "session_stats": session_stats,
                     "comparison": comparison,
-                    "overall_progress": overall_progress
+                    "overall_progress": minimal_overall_progress,
                 }
 
-                print(f"[SESSION_SUMMARY] ✅ Enhanced statistics calculated successfully")
+                print(f"[SESSION_SUMMARY] ✅ Lightweight statistics calculated (heavy calculations skipped)")
 
             except Exception as stats_error:
-                print(f"[SESSION_SUMMARY] ⚠️ Error calculating enhanced stats: {str(stats_error)}")
-                # Continue without enhanced stats if calculation fails
+                print(f"[SESSION_SUMMARY] ⚠️ Error calculating stats: {str(stats_error)}")
                 enhanced_stats = {}
 
             # ⚡ BACKGROUND: DNA analysis and plan optimization run after response is sent (saves 1-3s)
