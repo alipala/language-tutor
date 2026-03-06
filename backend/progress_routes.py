@@ -161,7 +161,7 @@ async def _run_sentence_analysis_background(
             notification_doc = {
                 "_id": notification_id,
                 "title": f"Your {language.title()} practice analysis is ready!",
-                "content": f"I've analyzed {len(analyses)} sentences from your session. Tap to see detailed feedback and tips!",
+                "content": f"I've analyzed {len(analyses)} sentences from your practice session. Tap to see detailed feedback and tips!",
                 "notification_type": "session_analysis",  # Custom type for TaalCoach
                 "created_by": "system",  # System-generated notification
                 "created_at": datetime.now(timezone.utc),
@@ -171,7 +171,8 @@ async def _run_sentence_analysis_background(
                 "session_id": session_id,
                 "job_id": job_id,
                 "language": language,
-                "sentence_count": len(analyses)
+                "sentence_count": len(analyses),
+                "session_type": "practice"  # Differentiate from learning plan sessions
             }
 
             await notifications_collection.insert_one(notification_doc)
