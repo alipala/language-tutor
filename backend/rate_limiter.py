@@ -32,10 +32,8 @@ class RateLimiter:
 
         # Rate limit configurations
         self.limits = {
-            "general": {"max_requests": 100, "window_seconds": 60},  # 100/min
-            "realtime": {"max_requests": 10, "window_seconds": 3600},  # 10/hour
-            "gpt4o": {"max_requests": 50, "window_seconds": 3600},  # 50/hour
-            "challenge": {"max_requests": 100, "window_seconds": 3600},  # 100/hour
+            "general": {"max_requests": 100, "window_seconds": 60},  # 100/min (mid-session activities)
+            "realtime": {"max_requests": 10, "window_seconds": 3600},  # 10/hour (NEW conversation sessions)
             "auth": {"max_requests": 10, "window_seconds": 300},  # 10/5min (prevent brute force)
         }
 
@@ -72,15 +70,43 @@ class RateLimiter:
                 del self.requests[user_id]
 
     def _get_category(self, path: str) -> str:
-        """Determine rate limit category from request path"""
-        if "/realtime/" in path:
-            return "realtime"
+        """Determine rate limit category from request path
+
+        CRITICAL RULE: ONLY rate limit NEW conversation session starts.
+        NEVER interrupt active conversations with rate limits.
+
+        Rate limited:
+        - /api/realtime/token - Starting new practice/learning plan session (10/hour)
+        - /api/auth/* - Login/register attempts (10/5min)
+
+        NOT rate limited (use general 100/min):
+        - All mid-conversation activities
+        - All challenge endpoints
+        - All other requests
+        """
+        # Exclude mid-session activities from strict rate limiting
+        # These MUST have very lenient limits to avoid interrupting conversations
+        mid_session_patterns = [
+            "/conversation-help",           # Mid-conversation AI help
+            "/realtime/usage-log",          # Session activity logging
+            "/realtime/semantic-feedback",  # Mid-session feedback
+            "/realtime/session-summary",    # End of session summary
+            "/sentence-assessment",         # Mid-conversation assessments
+            "/chat",                        # Contextual chat during practice
+            "/contextual-chat",             # Alternate chat endpoint
+        ]
+
+        for pattern in mid_session_patterns:
+            if pattern in path:
+                return "general"  # Use very lenient general limit (100/min)
+
+        # ONLY rate limit NEW conversation session starts
+        if "/realtime/token" in path:
+            return "realtime"  # 10 new sessions per hour
+        # Only rate limit auth attempts (prevent brute force)
         elif "/auth/" in path or "/login" in path or "/register" in path:
-            return "auth"
-        elif "/challenge" in path:
-            return "challenge"
-        elif "/gpt4o" in path or "/chat" in path or "/conversation-help" in path:
-            return "gpt4o"
+            return "auth"  # 10 attempts per 5 minutes
+        # Everything else uses general limit (100/min) - includes challenges, etc.
         else:
             return "general"
 
@@ -89,11 +115,9 @@ class RateLimiter:
         minutes = max(1, int(retry_after / 60))
 
         messages = {
-            "realtime": f"You've practiced a lot! Take a {minutes}-minute break to let your learning sink in.",
-            "gpt4o": f"You're learning so fast! Please wait {retry_after if retry_after < 60 else f'{minutes} minute(s)'} before continuing.",
-            "challenge": f"You're on fire! Take a {minutes}-minute break to stay sharp.",
-            "auth": f"For your account security, please wait {minutes} minute(s) before trying again.",
-            "general": f"Please wait {retry_after if retry_after < 60 else f'{minutes} minute(s)'} seconds and try again."
+            "realtime": f"You've practiced a lot! Take a {minutes}-minute break to let your learning sink in. 🧘",
+            "auth": f"For your account security, please wait {minutes} minute(s) before trying again. 🔒",
+            "general": f"Please wait {retry_after if retry_after < 60 else f'{minutes} minute(s)'} and try again."
         }
 
         return messages.get(category, messages["general"])
