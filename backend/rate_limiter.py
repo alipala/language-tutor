@@ -79,10 +79,24 @@ class RateLimiter:
             return "auth"
         elif "/challenge" in path:
             return "challenge"
-        elif "/gpt4o" in path or "/chat" in path:
+        elif "/gpt4o" in path or "/chat" in path or "/conversation-help" in path:
             return "gpt4o"
         else:
             return "general"
+
+    def _get_user_friendly_message(self, category: str, retry_after: int) -> str:
+        """Get user-friendly message based on category"""
+        minutes = max(1, int(retry_after / 60))
+
+        messages = {
+            "realtime": f"You've practiced a lot! Take a {minutes}-minute break to let your learning sink in.",
+            "gpt4o": f"You're learning so fast! Please wait {retry_after if retry_after < 60 else f'{minutes} minute(s)'} before continuing.",
+            "challenge": f"You're on fire! Take a {minutes}-minute break to stay sharp.",
+            "auth": f"For your account security, please wait {minutes} minute(s) before trying again.",
+            "general": f"Please wait {retry_after if retry_after < 60 else f'{minutes} minute(s)'} seconds and try again."
+        }
+
+        return messages.get(category, messages["general"])
 
     def _is_rate_limited(self, user_id: str, category: str) -> tuple[bool, Optional[int]]:
         """
@@ -149,11 +163,14 @@ class RateLimiter:
                 is_authenticated=is_authenticated
             )
 
+            # Get user-friendly message
+            user_message = self._get_user_friendly_message(category, retry_after)
+
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail={
                     "error": "rate_limit_exceeded",
-                    "message": f"Too many requests. Please try again in {retry_after} seconds.",
+                    "message": user_message,
                     "retry_after": retry_after,
                     "category": category,
                     "limit": self.limits[category]["max_requests"],
