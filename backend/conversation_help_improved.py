@@ -122,7 +122,7 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
                     {"role": "developer", "content": intent_prompt}
                 ],
                 temperature=0.1,
-                max_tokens=150
+                max_completion_tokens=150
             ),
             timeout=3.0
         )
@@ -379,7 +379,7 @@ async def generate_contextual_responses(
                     {"role": "developer", "content": context_prompt}
                 ],
                 temperature=0.2,
-                max_tokens=400  # Reduced for speed while maintaining quality
+                max_completion_tokens=400  # Reduced for speed while maintaining quality
             ),
             timeout=8.0  # INCREASED: Give GPT-5-mini enough time for quality responses
         )
