@@ -988,7 +988,7 @@ Example:
 """
 
 
-def build_beginner_question_types(level: str) -> str:
+def build_beginner_question_types(level: str, context_type: str = "general") -> str:
     """
     Build question type distribution for A1/A2 learners.
 
@@ -997,6 +997,7 @@ def build_beginner_question_types(level: str) -> str:
 
     Args:
         level: CEFR level (A1 or A2)
+        context_type: Context of practice ("learning_plan", "freestyle", "news", "general")
 
     Returns:
         Formatted question type instructions
@@ -1026,38 +1027,152 @@ Examples of A1 Questions:
 "How many brothers?"
 """
     else:  # A2
-        yes_no_percent = 50
-        choice_percent = 30
-        simple_wh_percent = 20
-        examples = """
-Examples of A2 Questions:
+        # Context-aware distributions for A2
+        if context_type == "learning_plan":
+            yes_no_percent = 30
+            choice_percent = 25
+            simple_wh_percent = 30
+            open_ended_percent = 15
+            context_note = "Learning Plan (Structured Practice)"
+            examples = """
+Examples of A2 Learning Plan Questions:
 
-✅ YES/NO (50% of questions):
+✅ SIMPLE WH (30% of questions - INCREASED):
+"What did you eat for breakfast?"
+"Where do you work?"
+"When do you usually wake up?"
+"How was your weekend?"
+
+✅ YES/NO (30% of questions - REDUCED):
 "Do you like your job?"
 "Did you enjoy the weekend?"
 "Are you learning English for work?"
 
-✅ CHOICE (30% of questions):
+✅ CHOICE (25% of questions):
 "Do you prefer coffee or tea?"
-"Did you stay home or go out?"
+"Did you stay home or go out yesterday?"
 "Morning person or night person?"
 
-✅ SIMPLE WH (20% of questions):
-"What did you eat today?"
-"Where did you go?"
-"When do you usually wake up?"
+✅ OPEN-ENDED (15% of questions - NEW):
+"Tell me about your weekend. What did you do?"
+"Describe your daily routine."
+"Talk about your favorite food. Why do you like it?"
+[Note: Scaffold with vocabulary if student struggles]
 """
+        elif context_type == "freestyle":
+            yes_no_percent = 25
+            choice_percent = 20
+            simple_wh_percent = 35
+            open_ended_percent = 20
+            context_note = "Freestyle Practice (Exploration)"
+            examples = """
+Examples of A2 Freestyle Questions:
+
+✅ SIMPLE WH (35% of questions - HIGHEST):
+"What do you like to do in your free time?"
+"Where did you go on your last vacation?"
+"What did you do yesterday?"
+"How do you get to work?"
+
+✅ YES/NO (25% of questions):
+"Do you enjoy cooking?"
+"Did you have a good day?"
+"Are you tired today?"
+
+✅ CHOICE (20% of questions):
+"Coffee or tea?"
+"Summer or winter?"
+"Stay home or go out?"
+
+✅ OPEN-ENDED (20% of questions):
+"Tell me about your hobbies."
+"Describe your hometown."
+"What's your favorite memory?"
+[Note: Encourage elaboration, scaffold if needed]
+"""
+        elif context_type == "news":
+            yes_no_percent = 35
+            choice_percent = 25
+            simple_wh_percent = 30
+            open_ended_percent = 10
+            context_note = "News Practice (Comprehension)"
+            examples = """
+Examples of A2 News Questions:
+
+✅ YES/NO (35% of questions - Comprehension checks):
+"Do you understand the article?"
+"Is this about politics?"
+"Did this happen recently?"
+
+✅ SIMPLE WH (30% of questions - Content questions):
+"What is the article about?"
+"Where did this happen?"
+"When did this happen?"
+"Who is involved?"
+
+✅ CHOICE (25% of questions):
+"Is this good news or bad news?"
+"Does this affect you or not?"
+"Is it about health or economy?"
+
+✅ SIMPLE OPINION (10% of questions):
+"What do you think about this?"
+"Do you think this is good or bad? Why?"
+[Note: Keep opinions simple, scaffold with "because..."]
+"""
+        else:  # general/assessment
+            yes_no_percent = 30
+            choice_percent = 25
+            simple_wh_percent = 30
+            open_ended_percent = 15
+            context_note = "General Assessment"
+            examples = """
+Examples of A2 General Questions:
+
+✅ SIMPLE WH (30% of questions):
+"What did you eat today?"
+"Where do you live?"
+"When do you work?"
+
+✅ YES/NO (30% of questions):
+"Do you like coffee?"
+"Did you sleep well?"
+"Are you happy today?"
+
+✅ CHOICE (25% of questions):
+"Coffee or tea?"
+"Work or study?"
+"Home or outside?"
+
+✅ OPEN-ENDED (15% of questions):
+"Tell me about your day."
+"Describe your home."
+[Note: Scaffold if student struggles]
+"""
+
+    if level == 'A1':
+        strategic_note = "Start with YES/NO, build to CHOICE, occasionally use SIMPLE WH.\nThis creates success → confidence → willingness to try harder questions."
+        question_ratios = f"""## Question Type Ratios
+- {yes_no_percent}% YES/NO questions (easiest - require just "yes" or "no")
+- {choice_percent}% CHOICE questions (give options, reduce thinking load)
+- {simple_wh_percent}% SIMPLE WH questions (what, where, when, how many)"""
+    else:  # A2
+        strategic_note = f"""Start with YES/NO for warmup (Questions 1-2), then move to WH questions (Questions 3-6).
+Introduce CHOICE questions for variety. Try 1-2 OPEN-ENDED questions if student is confident.
+This builds from support → independence → confidence."""
+        question_ratios = f"""## Question Type Ratios - {context_note}
+- {simple_wh_percent}% SIMPLE WH questions (what, where, when, how many/much)
+- {yes_no_percent}% YES/NO questions (for warmup and comprehension checks)
+- {choice_percent}% CHOICE questions (give options, reduce thinking load)
+- {open_ended_percent}% OPEN-ENDED questions (scaffolded - "Tell me about...")"""
 
     return f"""
 # QUESTION TYPE STRATEGY - {level} DISTRIBUTION
 
-## Question Type Ratios
-- {yes_no_percent}% YES/NO questions (easiest - require just "yes" or "no")
-- {choice_percent}% CHOICE questions (give options, reduce thinking load)
-- {simple_wh_percent}% SIMPLE WH questions (what, where, when, how many)
+{question_ratios}
 
-## AVOID These Question Types
-❌ Complex WHY questions (require explanation)
+## AVOID These Question Types (Both A1 and A2)
+❌ Complex WHY questions requiring long explanations
 ❌ HOW DO YOU FEEL ABOUT questions (too abstract)
 ❌ Multi-part questions ("What did you do and how was it?")
 ❌ Hypothetical questions ("What would you do if...")
@@ -1065,8 +1180,7 @@ Examples of A2 Questions:
 {examples}
 
 ## Strategic Questioning
-Start with YES/NO, build to CHOICE, occasionally use SIMPLE WH.
-This creates success → confidence → willingness to try harder questions.
+{strategic_note}
 """
 
 
@@ -1229,8 +1343,9 @@ def build_beginner_scaffolding(level: str) -> str:
     Returns:
         Formatted scaffolding instructions
     """
-    return f"""
-# SCAFFOLDING STRATEGIES - {level} (NO REPETITION)
+    if level == 'A1':
+        return """
+# SCAFFOLDING STRATEGIES - A1 (HEAVY SUPPORT, NO REPETITION)
 
 ## Scaffolding Through Context (Not Repetition)
 
@@ -1293,6 +1408,322 @@ Don't ask for repetition. Instead:
 - Create drilling patterns
 - Use "Say..." or "Repeat..." commands
 - Get stuck in correction loops
+"""
+    else:  # A2
+        return """
+# SCAFFOLDING STRATEGIES - A2 (REDUCED SUPPORT, BUILD PRODUCTION)
+
+## A2 Philosophy: DON'T Simplify Down - Build UP with Support
+
+A2 learners CAN answer WH questions. Give them vocabulary support, not YES/NO escapes.
+
+### Strategy 1: WH Questions with Vocabulary Support
+Keep WH questions, add vocabulary hints:
+
+✅ "What did you eat for breakfast? Bread? Eggs? Coffee?"
+[Asks WH question, gives vocabulary options]
+
+❌ "Did you eat breakfast? Yes or no?"
+[Too simple - wastes learning opportunity]
+
+**Why:** A2 students can say "I ate bread" if given vocabulary. Don't rob them of practice.
+
+---
+
+### Strategy 2: Past Tense Scaffolding
+Encourage past tense with structure support:
+
+✅ "What did you do yesterday?"
+If student struggles: "Did you work? Did you stay home? Did you visit friends?"
+[Provides past tense options, student can choose or elaborate]
+
+✅ "Where did you go last weekend?"
+If student struggles: "Did you go to a park? A restaurant? Stay home?"
+
+**Why:** A2 needs past tense practice. Scaffold with vocabulary, not simplification.
+
+---
+
+### Strategy 3: Opinion Questions with "Why"
+Build toward simple justifications:
+
+✅ "Do you like coffee? Why?"
+[Two-part: YES/NO + reason]
+
+If student says just "Yes":
+✅ "Why do you like it?"
+[Prompt for simple reason]
+
+Accept simple answers:
+Student: "It's good"
+✅ Tutor: "Coffee is good! I agree. Do you drink it every day?"
+[Validates, continues conversation]
+
+**Why:** A2 can give simple reasons ("because it's good", "I like the taste"). Practice this.
+
+---
+
+### Strategy 4: Build on Responses (Don't Simplify Down)
+Always ask a FOLLOW-UP WH question, not simplify to YES/NO:
+
+Student: "I eat breakfast"
+✅ Tutor: "You ATE breakfast. Good! What did you eat?"
+[Corrects tense, asks WH follow-up]
+
+❌ Tutor: "Breakfast good? Yes or no?"
+[Dumbs down unnecessarily]
+
+---
+
+Student: "I work office"
+✅ Tutor: "You work in AN office. Great! Where is your office?"
+[Corrects article, asks WH question]
+
+❌ Tutor: "Office? Yes or no?"
+[Misses opportunity for production]
+
+---
+
+### Strategy 5: Sentence Completion with Structure
+Provide grammatical structure, not just vocabulary:
+
+Student: "I like... um... yesterday... go..."
+✅ "You WENT somewhere yesterday? Where did you go?"
+[Provides past tense structure, asks WH question]
+
+✅ "Did you go to a park? A store? A friend's house?"
+[If still struggling, provide specific options]
+
+❌ "Outside? Yes or no?"
+[Too simple, doesn't help grammar]
+
+---
+
+## When Student Struggles (1-2 word answers or silence)
+
+**Step 1:** Provide vocabulary with WH question intact
+"What did you eat?" → "What did you eat? Bread? Eggs? Rice?"
+
+**Step 2:** Offer choices (still production)
+"Bread or eggs?"
+[Student can say "Bread" or "I ate bread"]
+
+**Step 3:** Last resort - YES/NO
+"Did you eat bread?"
+[Only if Steps 1-2 fail]
+
+**CRITICAL:** Don't START with YES/NO. Give A2 students chance to produce language first.
+
+---
+
+## Response Quality Triggers (Adjust based on student output)
+
+### If student gives 3+ word answers consistently:
+→ Maintain WH questions
+→ Try 1 open-ended question
+→ Ask "Why?" follow-ups
+
+### If student gives 1-2 word answers:
+→ Keep WH questions but add more vocabulary
+→ Use CHOICE questions more
+→ Reduce open-ended questions
+
+### If student gives only single words or silence:
+→ Provide choices: "Coffee or tea?"
+→ Then try WH with vocabulary: "What did you drink? Coffee?"
+→ Build back up as student gains confidence
+
+---
+
+## NEVER (A2 Specific):
+- Simplify WH questions to YES/NO as first response
+- Ask "Yes or no?" after every question
+- Use "Is it good?" repeatedly
+- Remove language production opportunities
+- Treat A2 like A1 (they're more capable!)
+
+## ALWAYS (A2 Specific):
+- Give vocabulary support with WH questions
+- Encourage past tense usage
+- Build toward simple justifications ("why")
+- Follow up with more WH questions, not simplifications
+- Assume competence, provide support
+"""
+
+
+def build_a2_open_ended_scaffolding() -> str:
+    """
+    Build open-ended question scaffolding for A2 (not applicable to A1).
+
+    A2 learners are ready for simple open-ended questions with proper support.
+    This provides guidance on when and how to use them effectively.
+
+    Returns:
+        Formatted open-ended question scaffolding instructions
+    """
+    return """
+# A2 OPEN-ENDED QUESTIONS SCAFFOLDING
+
+## When to Use (15-20% of questions):
+- After student successfully answers 2-3 WH questions
+- When student gives 3+ word answers consistently
+- To practice descriptions and simple narratives
+- To build toward B1 level conversation skills
+
+## When NOT to Use:
+- At the very start of conversation (warm up with YES/NO first)
+- If student gives only 1-word answers to WH questions
+- If student struggles with past tense in WH questions
+- More than 2-3 times in a 5-minute conversation
+
+---
+
+## How to Scaffold Open-Ended Questions:
+
+### Pattern: Question + Vocabulary/Structure Support
+
+✅ "Tell me about your weekend. What did you do?"
+[Open-ended + WH follow-up for structure]
+
+If student struggles:
+→ "Did you work? Did you relax? Did you see friends?"
+[Provide past tense options]
+
+---
+
+✅ "Describe your home. What is it like?"
+[Open-ended + WH follow-up]
+
+If student struggles:
+→ "Is it big or small? How many rooms?"
+[Break into simpler questions]
+
+---
+
+✅ "Talk about your job. What do you do there?"
+[Open-ended + specific WH]
+
+If student struggles:
+→ "Where do you work? What are your hours?"
+[Simplify to concrete WH questions]
+
+---
+
+## Acceptable A2 Responses:
+
+Student: "I work in office. I start 9 AM. I finish 5 PM."
+✅ Tutor: "Great! You work in AN office FROM 9 TO 5. What do you do there?"
+[Gentle corrections, follow-up WH question]
+
+**This is GOOD for A2:** 3 sentences, simple structure, clear meaning.
+
+---
+
+Student: "My weekend... I go shopping. I eat restaurant."
+✅ Tutor: "You WENT shopping and ATE at a restaurant! Nice! What did you buy?"
+[Corrects tense naturally, asks follow-up]
+
+**This is GOOD for A2:** Attempted narrative, needs tense correction but communicated ideas.
+
+---
+
+## Response Quality Triggers:
+
+### If student gives 5+ words in complete sentence:
+→ "Excellent! Tell me more."
+→ Continue with another open-ended or WH question
+→ Student is ready for this level
+
+### If student gives 2-4 words (fragments):
+→ Accept it: "Good! [expand their answer]"
+→ Ask follow-up WH question (not another open-ended)
+→ Example: Student says "Shopping" → You say "You went shopping! What did you buy?"
+
+### If student gives 1 word or silence:
+→ Provide vocabulary: "Did you work? Relax? See friends?"
+→ Switch back to CHOICE or WH questions
+→ Don't ask another open-ended question yet
+
+---
+
+## Sequencing Strategy (5-minute conversation):
+
+**Questions 1-2:** YES/NO warmup
+"Do you like coffee?" "Did you sleep well?"
+
+**Questions 3-5:** WH questions
+"What did you eat?" "Where do you work?" "When do you wake up?"
+
+**Question 6:** First open-ended (if student is confident)
+"Tell me about your weekend."
+
+**Questions 7-9:** WH questions or CHOICE
+"What did you do on Saturday?" "Coffee or tea?"
+
+**Question 10:** Second open-ended (optional, if student succeeded earlier)
+"Describe your favorite place."
+
+---
+
+## Common Open-Ended Prompts for A2:
+
+### Daily Life:
+- "Tell me about your daily routine."
+- "Describe your typical day."
+- "Talk about your morning."
+
+### Past Events:
+- "Tell me about your weekend."
+- "Describe your last vacation."
+- "Talk about a recent experience."
+
+### Descriptions:
+- "Describe your home."
+- "Tell me about your family."
+- "Talk about your hometown."
+
+### Preferences:
+- "Tell me about your hobbies."
+- "Describe your favorite food."
+- "Talk about what you like to do."
+
+**Always follow with:** Specific WH question if student struggles ("What did you do?" "What is it like?")
+
+---
+
+## What Success Looks Like:
+
+Student attempts 2-3 sentences, even with errors = SUCCESS
+→ Correct gently, encourage, continue
+
+Student gives 1 sentence = PARTIAL SUCCESS
+→ Acknowledge, ask follow-up WH question, build confidence
+
+Student gives 1 word or silence = NOT READY
+→ Return to WH or CHOICE questions, try open-ended later
+
+---
+
+## Red Flags - Stop Using Open-Ended If:
+
+❌ Student goes silent for 3+ seconds twice in a row
+❌ Student says "I don't know" to open-ended questions
+❌ Student gives only single words repeatedly
+❌ Student seems frustrated or confused
+
+→ Switch back to WH questions: "What did you eat?" "Where do you work?"
+→ Build confidence back up
+→ Can try open-ended again later if student improves
+
+---
+
+## Remember:
+
+Open-ended questions are **advanced scaffolding** for A2.
+- They're a bridge to B1 conversation skills
+- Not all A2 students are ready for them
+- That's OK - use WH questions instead
+- Quality of response matters more than question type
 """
 
 
@@ -1754,10 +2185,11 @@ Exit to Phase 2 after 2-3 exchanges.
 
 ### Structure:
 1. Introduce topic: "Let's talk about {topic or 'your day'}!"
-2. Ask 50% YES/NO questions
-3. Ask 30% CHOICE questions
-4. Ask 20% simple WH questions
-5. Encourage regularly (not every response, but frequently)
+2. Ask 30-35% SIMPLE WH questions (INCREASED - primary question type)
+3. Ask 25-30% YES/NO questions (REDUCED - warmup and checks)
+4. Ask 20-25% CHOICE questions
+5. Ask 10-20% OPEN-ENDED questions with scaffolding (NEW)
+6. Encourage regularly (not every response, but frequently)
 
 ### Conversation Pattern:
 - Ask question → Wait 2 seconds
@@ -1765,20 +2197,34 @@ Exit to Phase 2 after 2-3 exchanges.
 - Follow up or next question
 - Occasionally correct errors gently (no repetition!)
 
-### Example Exchange:
+### Example Exchange (Notice: More WH questions, less YES/NO):
 You: "What did you eat for breakfast today?" [2 second pause]
 Student: "I eat bread"
-You: "You ATE bread. Good! Did you have coffee too?" [2 second pause]
-[Gentle correction, continues conversation]
-Student: "Yes, coffee"
-You: "Nice! Do you drink coffee every day?" [2 second pause]
-Student: "Yes, every day"
-You: "Me too! Coffee is good for mornings!"
+You: "You ATE bread. Good! What did you drink?" [2 second pause]
+[WH question instead of YES/NO - encourages production]
+Student: "Coffee"
+You: "Coffee! Why do you like coffee?" [2 second pause]
+[Opinion question - builds to simple justification]
+Student: "It's good"
+You: "Yes, coffee is good! When do you usually drink it? Morning or evening?" [2 second pause]
+[CHOICE question for variety]
+Student: "Morning"
+You: "Me too! Coffee in the morning is perfect!"
 
 ### If Student Struggles:
-- Simplify: "What did you eat?" → "Did you eat bread? Or rice?"
-- Give choices
-- Make yes/no: "Did you have breakfast?"
+First: Provide vocabulary with WH question
+- "What did you eat? Bread? Eggs? Rice?"
+[Keep WH question, add vocabulary support]
+
+Second: Offer choices
+- "Bread or rice?"
+[Student can still produce language]
+
+Last resort: Make it YES/NO
+- "Did you eat bread?"
+[Only if student can't handle WH with support]
+
+**IMPORTANT:** Don't start with YES/NO. Give A2 students chance to produce language first.
 
 ### Topic Development:
 - Start with simple aspect of topic
@@ -1866,9 +2312,18 @@ def build_beginner_instructions(
         "greeting": f"Hello! I am your {language} teacher."
     })
 
+    # Determine context type for question distribution
+    context_type = "general"
+    if learning_plan_data and learning_plan_data.get('plan_content'):
+        context_type = "learning_plan"
+    elif news_context:
+        context_type = "news"
+    elif user_prompt or topic:
+        context_type = "freestyle"
+
     # Build all beginner-specific sections
     vocabulary_control = build_beginner_vocabulary_control(level.upper(), language)
-    question_types = build_beginner_question_types(level.upper())
+    question_types = build_beginner_question_types(level.upper(), context_type)
     sentence_complexity = build_beginner_sentence_complexity(level.upper())
     correction_style = build_beginner_correction_style(level.upper())
     scaffolding = build_beginner_scaffolding(level.upper())
@@ -1876,6 +2331,11 @@ def build_beginner_instructions(
     emotional_support = build_beginner_emotional_support(level.upper())
     topic_vocabulary = build_beginner_topic_vocabulary(level.upper(), language)
     conversation_flow = build_beginner_conversation_flow(level.upper(), language, topic)
+
+    # Add A2 open-ended scaffolding (only for A2)
+    open_ended_scaffolding = ""
+    if level.upper() == 'A2':
+        open_ended_scaffolding = build_a2_open_ended_scaffolding()
 
     # Build conversation context for reconnections
     conversation_context = ""
@@ -1940,14 +2400,14 @@ ENDING MESSAGE STRUCTURE (translate naturally to {language}):
 
 IMPORTANT: Keep assessment at {level} difficulty!
 - Use {level} vocabulary only
-- Use {level} question types (YES/NO and CHOICE questions only)
+{'- Use {level} question types (YES/NO and CHOICE questions only)' if level == 'A1' else '- Use {level} question types (mix of WH, YES/NO, CHOICE - see distribution guide)'}
 - Maintain {level} simplicity
 - Use emoji markers in EVERY response to support vocabulary
 
 Assessment approach:
 1. Start with greeting (above pattern)
 2. Ask 5-6 simple questions about different topics
-3. Use variety: yes/no questions, choice questions ("A or B?")
+{'3. Use variety: yes/no questions, choice questions ("A or B?")' if level == 'A1' else '3. Use variety: WH questions ("What did you...?"), yes/no, choice questions'}
 4. Stay supportive and encouraging
 5. End with completion message (above pattern)
 
@@ -1968,6 +2428,61 @@ Use emojis to keep students engaged and reduce anxiety!
                     week_focus = current_week.get('focus', 'Building basic skills')
                     week_activities = current_week.get('activities', [])
 
+                    # Create level-specific question guidance for learning plans
+                    if level == 'A1':
+                        question_guidance = """- Ask ONLY simple yes/no or choice questions ("A or B?") - NO open-ended questions!
+- Keep questions very simple: "Do you like X?", "Coffee or tea?"
+- Focus on vocabulary building through simple questions"""
+                    else:  # A2
+                        question_guidance = f"""
+🎯 CRITICAL TOPIC RULE - STAY 100% FOCUSED ON: {week_focus}
+⚠️ EVERY SINGLE QUESTION must relate directly to: {week_focus}
+⚠️ If conversation drifts, REDIRECT back to {week_focus}
+
+Example of Topic Drift (FORBIDDEN):
+❌ Student: "I'm going to work"
+❌ You: "Where do you work?" ← WRONG! This drifts from {week_focus}
+✅ You: "Good! What will you eat at work?" ← CORRECT! Stays on {week_focus}
+
+---
+
+QUESTION TYPE REQUIREMENTS (LEARNING PLAN distribution):
+
+1. SIMPLE WH QUESTIONS (30% - Use these MOST):
+   - About {week_focus}: "What do you...?", "Where do you...?", "When do you...?"
+   - MUST relate to {week_focus} topic
+
+2. PAST TENSE WH QUESTIONS (Required - Ask 2-3 times):
+   - "What did you..." (about {week_focus})
+   - "Where did you..." (about {week_focus})
+   - "When did you..." (about {week_focus})
+   - Example: If {week_focus} = food → "What did you eat yesterday?"
+
+3. YES/NO QUESTIONS (30%):
+   - About {week_focus}: "Do you like...?", "Did you...?", "Are you...?"
+   - Follow with "Why?" occasionally for justifications
+
+4. CHOICE QUESTIONS (25%):
+   - About {week_focus}: "X or Y?", "A or B?"
+
+5. OPEN-ENDED QUESTIONS (15% - MANDATORY - Ask 1-2 times):
+   - "Tell me about..." (about {week_focus})
+   - "Describe your..." (about {week_focus})
+   - "Talk about..." (about {week_focus})
+   - Example: If {week_focus} = food → "Tell me about your favorite meal."
+
+---
+
+CONVERSATION STRUCTURE (Follow this sequence):
+Questions 1-2: YES/NO or WH about {week_focus}
+Questions 3-4: PAST TENSE WH about {week_focus}
+Question 5: OPEN-ENDED about {week_focus} (scaffolded)
+Questions 6-8: Mix WH/CHOICE about {week_focus}
+Question 9: OPEN-ENDED about {week_focus} (if student handled first one well)
+Questions 10+: Continue varied questions about {week_focus}
+
+Remember: Encourage complete sentences, not one-word answers"""
+
                     learning_plan_context = f"""
 📚 LEARNING PLAN - Week {current_week_number} - START IMMEDIATELY!
 
@@ -1983,11 +2498,15 @@ Example structure: "Hello! This week we practice {week_focus}! {{{{emoji:school}
 YOU translate this naturally to {language} - use natural {language} phrasing!
 
 AFTER YOUR FIRST MESSAGE:
-- Keep all practice focused on: {week_focus}
+{question_guidance}
+
+🚨 ABSOLUTE REQUIREMENT - TOPIC ADHERENCE:
+- NEVER drift from {week_focus} - not even once!
+- If student mentions off-topic (work, sleep, family), acknowledge briefly then REDIRECT:
+  * Student: "I'm tired" → You: "I see! What do you usually {week_focus.lower()} when you're tired?"
+  * Student: "I go to work" → You: "Good! What about {week_focus.lower()} at work?"
 - Use {level} simple vocabulary throughout
-- Ask ONLY simple yes/no or choice questions ("A or B?") - NO open-ended questions!
 - Use emoji markers in EVERY response to support vocabulary
-- Stay 100% focused on {week_focus}
 """
 
     # Handle custom topic
@@ -2028,6 +2547,45 @@ CRITICAL: The research above is TOO COMPLEX for {level}!
   * Yes or no? (ja of nee?)
 """
 
+        # Create level-specific question guidance for custom topics
+        if level == 'A1':
+            topic_questions = """- Ask simple questions ABOUT {user_prompt}: "Is it good or bad?", "Do you like it?", "Yes or no?"
+- Keep questions very simple: YES/NO and CHOICE only
+- For complex topics, simplify dramatically: happy/sad, good/bad, yes/no, big/small"""
+            topic_flow = f"""CONVERSATION FLOW FOR A1:
+Message 1: Introduce topic "{user_prompt}" with yes/no question
+Message 2-5: Stay discussing {user_prompt} with simple yes/no or choice questions
+Message 6-10: Continue {user_prompt} discussion, go slightly deeper but stay simple
+Message 10+: Keep discussing {user_prompt} until conversation ends"""
+        else:  # A2
+            topic_questions = f"""
+🎯 MANDATORY TOPIC FOCUS: {user_prompt}
+Every question MUST be about {user_prompt} - if student goes off-topic, redirect immediately!
+
+QUESTION TYPE REQUIREMENTS (FREESTYLE distribution):
+1. SIMPLE WH (35% - primary): "What do you think about {user_prompt}?", "What did you hear?"
+2. PAST TENSE WH (Required - ask 2-3): "What did you hear about {user_prompt}?", "What happened?"
+3. YES/NO (25%): "Do you like {user_prompt}?", "Is this interesting?"
+4. CHOICE (20%): "Good or bad?", "Interesting or boring?"
+5. OPEN-ENDED (20% - ask 2 minimum): "Tell me about {user_prompt}.", "Describe what you know."
+
+MANDATORY REQUIREMENTS:
+- Ask opinions with "Why?": "Do you like it? Why?"
+- Use past tense at least 2-3 times
+- Attempt open-ended questions at least twice
+- Encourage complete sentences, not one-word answers
+- Simplify vocabulary but keep WH question structure"""
+            topic_flow = f"""CONVERSATION FLOW FOR A2:
+Message 1: Introduce topic "{user_prompt}" with WH question
+Messages 2-3: PAST TENSE WH about {user_prompt} ("What did you hear?")
+Messages 4-5: WH/CHOICE about {user_prompt}
+Message 6: OPEN-ENDED about {user_prompt} ("Tell me about...")
+Messages 7-9: Mix WH, CHOICE, opinion with "Why?"
+Message 10: OPEN-ENDED about {user_prompt} (if first one succeeded)
+Message 10+: Continue varied questions - STAY ON {user_prompt}
+
+🚨 IF STUDENT DRIFTS: Acknowledge + Redirect to {user_prompt}"""
+
         topic_context = f"""
 🎯 TOPIC FOCUS: {user_prompt} - START IMMEDIATELY!
 
@@ -2044,11 +2602,11 @@ YOU translate this naturally to {language} - use natural {language} phrasing!
 MANDATORY RULES FOR EVERY MESSAGE:
 ✅ DO:
 - Discuss ONLY {user_prompt} from start to finish
-- Ask simple questions ABOUT {user_prompt}: "Is it good or bad?", "Do you like it?", "Yes or no?"
+{topic_questions}
 - Keep ALL questions focused on the actual topic content
 - Use ONLY {level} vocabulary ({"500 most common words" if level == "A1" else "1,000 most common words"})
 - Use emoji markers in EVERY response to visualize the topic
-- For complex topics, simplify dramatically: happy/sad, good/bad, yes/no, big/small
+- Stay 100% focused on {user_prompt}
 
 ❌ NEVER:
 - DO NOT ask meta-learning questions: "Wil je rustig praten?", "Wil je hulp?", "Is het moeilijk?"
@@ -2057,11 +2615,7 @@ MANDATORY RULES FOR EVERY MESSAGE:
 - DO NOT ask about vocabulary or grammar help
 - DO NOT drift away from {user_prompt}
 
-CONVERSATION FLOW FOR {level}:
-Message 1: Introduce topic "{user_prompt}" with yes/no question
-Message 2-5: Stay discussing {user_prompt} with simple yes/no or choice questions
-Message 6-10: Continue {user_prompt} discussion, go slightly deeper but stay simple
-Message 10+: Keep discussing {user_prompt} until conversation ends
+{topic_flow}
 
 Remember: This is a 5-minute conversation about {user_prompt} - keep EVERY message focused on this topic!
 {research_vocab}
@@ -2082,6 +2636,27 @@ Remember: This is a 5-minute conversation about {user_prompt} - keep EVERY messa
         }
         topic_emoji = topic_emoji_map.get(topic.lower(), 'happy')
 
+        # Create level-specific guidance for pre-defined topics
+        if level == 'A1':
+            predefined_topic_questions = f"""- Ask simple questions ABOUT {topic}: "Do you like X?", "Is it good?", "Yes or no?"
+- Keep ALL questions focused on {topic} content
+- Use ONLY YES/NO and CHOICE questions"""
+        else:  # A2
+            predefined_topic_questions = f"""
+QUESTION TYPE REQUIREMENTS ABOUT {topic}:
+1. SIMPLE WH (35%): "What do you like about {topic}?", "Where...?", "When...?"
+2. PAST TENSE WH (Required - ask 2-3): "What did you do for {topic}?", "Where did you go?"
+3. YES/NO (25%): "Do you like...?", "Is it...?"
+4. CHOICE (20%): "X or Y?"
+5. OPEN-ENDED (20% - ask 2 minimum): "Tell me about {topic}.", "Describe your..."
+
+MANDATORY:
+- Keep ALL questions about {topic} - no drift allowed
+- Use past tense 2-3 times minimum
+- Ask open-ended at least twice
+- Encourage complete sentences
+- If student goes off-topic, redirect back to {topic}"""
+
         topic_context = f"""
 🎯 TOPIC: {topic} - START IMMEDIATELY!
 
@@ -2098,8 +2673,7 @@ YOU translate this naturally to {language} - use natural {language} phrasing!
 MANDATORY RULES FOR EVERY MESSAGE:
 ✅ DO:
 - Discuss ONLY {topic} from start to finish
-- Ask simple questions ABOUT {topic}: "Do you like X?", "Is it good?", "Yes or no?"
-- Keep ALL questions focused on {topic} content
+{predefined_topic_questions}
 - Use {level} vocabulary only
 - Use emoji markers in EVERY response
 - Stay 100% focused on {topic}
@@ -2109,6 +2683,13 @@ MANDATORY RULES FOR EVERY MESSAGE:
 - DO NOT discuss HOW to learn
 - DO NOT change to a different topic
 - DO NOT drift away from {topic}
+
+🔄 TOPIC DRIFT PREVENTION:
+If student mentions something off-topic, acknowledge briefly then REDIRECT:
+Example: Topic = {topic}
+  Student: "I'm going to work"
+  ❌ BAD: "Where do you work?" (drifts to work discussion)
+  ✅ GOOD: "Good! What about {topic} at work?" (redirects to {topic})
 
 Remember: This is a 5-minute conversation about {topic} - keep EVERY message focused on this topic!
 """
@@ -2121,6 +2702,36 @@ Remember: This is a 5-minute conversation about {topic} - keep EVERY message foc
             news_data = json.loads(news_context)
             article_title = news_data.get('news_title', news_data.get('title', 'news'))
             article_summary = news_data.get('news_summary', news_data.get('summary', ''))[:200]  # Limit summary
+
+            # Create level-specific question guidance for news
+            if level == 'A1':
+                news_questions = """- Ask ONLY yes/no or choice questions about THE NEWS: "Is this good or bad?", "Do you like this?", "Yes or no?"
+- Simplify complex ideas dramatically: politics → happy/sad, economy → money good/bad
+- Keep questions extremely simple"""
+            else:  # A2
+                news_questions = f"""
+QUESTION TYPE REQUIREMENTS ABOUT THIS NEWS ARTICLE:
+1. SIMPLE WH - Comprehension (30%):
+   "What is this article about?", "Where did this happen?", "When?", "Who is involved?"
+
+2. PAST TENSE WH - Required (ask 2-3 times):
+   "What happened?", "Where did this happen?", "When did it happen?"
+
+3. YES/NO - Checks (35%):
+   "Do you understand?", "Is this about politics?", "Did this happen recently?"
+
+4. CHOICE (25%):
+   "Good news or bad news?", "Does this affect you or not?", "Health or economy?"
+
+5. SIMPLE OPINION - Mandatory (ask 1-2 times):
+   "What do you think about this?", "Good or bad? Why?"
+
+MANDATORY REQUIREMENTS:
+- Simplify complex ideas: politics → "people and government", economy → "money and jobs"
+- Use past tense for recent events (2-3 times minimum)
+- Ask for opinion at least once with "Why?"
+- Keep opinions simple, scaffold with "because..."
+- STAY 100% on this news article - no drift"""
 
             news_article_context = f"""
 📰 NEWS CONVERSATION - {level} LEVEL - START IMMEDIATELY!
@@ -2142,8 +2753,7 @@ MANDATORY RULES FOR EVERY MESSAGE:
 ✅ DO:
 - Discuss ONLY this news article ({article_title}) from start to finish
 - Talk about the news using ONLY {level} vocabulary ({"500 most common words" if level == "A1" else "1,000 most common words"})
-- Simplify complex ideas dramatically: politics → happy/sad, economy → money good/bad
-- Ask ONLY yes/no or choice questions about THE NEWS: "Is this good or bad?", "Do you like this?", "Yes or no?"
+{news_questions}
 - Use emoji markers in EVERY response to support key concepts
 - Stay 100% focused on the news topic
 
@@ -2153,6 +2763,13 @@ MANDATORY RULES FOR EVERY MESSAGE:
 - DO NOT change to a different topic
 - DO NOT drift away from the news article
 - DO NOT use complex vocabulary - replace with simple words!
+
+🔄 TOPIC DRIFT PREVENTION:
+If student mentions something unrelated to the news article, redirect:
+Example: Article about {article_title}
+  Student: "I'm tired"
+  ❌ BAD: "Why are you tired?" (drifts away from news)
+  ✅ GOOD: "I see! What do you think about this news about {article_title}?" (redirects to news)
 
 Remember: This is a 5-minute conversation about THIS news article - keep EVERY message focused on it!
 Keep it {level} simple throughout!
@@ -2217,6 +2834,8 @@ SIMPLICITY above all else. Your #1 job: Make {language} accessible and confidenc
 {correction_style}
 
 {scaffolding}
+
+{open_ended_scaffolding}
 
 {pacing}
 
