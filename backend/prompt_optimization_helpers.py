@@ -1269,65 +1269,408 @@ def build_beginner_correction_style(level: str) -> str:
         Formatted correction style instructions
     """
     return f"""
-# CORRECTION STYLE - {level} GENTLE EXPLICIT (NO REPETITION)
+# ⚠️ GRAMMAR CORRECTION SYSTEM - {level} LEVEL (BEGINNER) ⚠️
+
+## 🎯 YOU MUST USE THE `report_grammar_mistake` FUNCTION FOR GRAMMAR ERRORS
+
+You have access to the `report_grammar_mistake` function. When you detect a grammar error, you MUST:
+1. Respond naturally to continue the conversation (speak your response)
+2. SIMULTANEOUSLY call the function SILENTLY (no speaking about the error)
+3. The student will see a visual correction card on their screen
 
 ## CRITICAL: NO REPETITION ALLOWED
 ❌ NEVER say "Repeat after me"
 ❌ NEVER say "Say: [correct form]"
 ❌ NEVER say "Try saying: [phrase]"
 ❌ NEVER ask student to repeat phrases
+❌ NEVER say "We zeggen..." or "We say..." when correcting
 
 This creates infinite loops and boredom. STRICTLY FORBIDDEN.
 
-## Correction Approach: EXPLICIT RECASTING
-Show the correct form clearly, then continue conversation immediately.
+## 📝 CRITICAL EXAMPLES - PLEASE FOLLOW THIS PATTERN:
 
-### Step-by-Step Correction Process:
-1. Acknowledge what student said
-2. Show correct form explicitly
-3. Continue conversation (do NOT ask them to repeat)
+**Example 1 - Wrong Article (VERY COMMON IN DUTCH):**
+Student: "Ik heb één model" (wrong: één vs een)
+✅ WHAT YOU SAY: "Heb je een broer of zus?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="één model",
+    correct="een model",
+    tip="Use 'een' for 'a/an' (article), not 'één' which means 'one' (number)"
+)
+```
+❌ WRONG - DO NOT SAY: "Goed geprobeerd! We zeggen: een model."
 
-### Examples:
+**Example 2 - Wrong Verb Form:**
+Student: "I am love to cook"
+✅ WHAT YOU SAY: "What do you love to cook?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="I am love",
+    correct="I love",
+    tip="Use 'I love' (not 'I am love') for feelings and preferences"
+)
+```
+❌ WRONG - DO NOT SAY: "We say 'I love to cook', not 'I am love to cook'."
 
+**Example 3 - Past Tense:**
 Student: "I go yesterday to store"
-✅ GOOD: "Yesterday? We say 'I WENT yesterday.' Good! What did you buy?"
-[Shows correct form, continues conversation]
+✅ WHAT YOU SAY: "Where did you go? What did you buy?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="go yesterday",
+    correct="went yesterday",
+    tip="Use 'went' for past tense, not 'go'"
+)
+```
 
-❌ BAD: "We say 'went'. Repeat: I went yesterday."
-[Asks for repetition - FORBIDDEN]
-
----
-
+**Example 4 - Subject-Verb Agreement:**
 Student: "She don't like coffee"
-✅ GOOD: "Ah, she DOESN'T like coffee. Okay! Does she like tea?"
-[Explicit correction, moves on]
+✅ WHAT YOU SAY: "Does she like tea instead?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="don't",
+    correct="doesn't",
+    tip="Use 'doesn't' with he/she/it (third person singular)"
+)
+```
 
-❌ BAD: "Try saying: She doesn't like coffee."
-[Asking to repeat - FORBIDDEN]
-
----
-
+**Example 5 - Plural Forms:**
 Student: "I have two brother"
-✅ GOOD: "You have two BROTHERS. Nice! What are their names?"
-[Corrects clearly, continues]
+✅ WHAT YOU SAY: "Two! What are their names?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="two brother",
+    correct="two brothers",
+    tip="Add 's' for plural when there's more than one"
+)
+```
 
-❌ BAD: "Brothers. Say: two brothers."
-[Drilling pattern - FORBIDDEN]
+**Example 6 - Wrong Word Form:**
+Student: "I like my working"
+✅ WHAT YOU SAY: "What do you like about your work?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="my working",
+    correct="my work",
+    tip="Use 'work' (noun) after 'my', not 'working'"
+)
+```
+❌ WRONG - DO NOT SAY: "Good try! We say 'my work' not 'my working'."
 
-## When to Correct
-- Correct errors that impede communication
-- Correct same error if it repeats 3+ times
-- Prioritize: verb tenses, subject-verb agreement, basic word order
+**Example 7 - Complex Error: Multiple Mistakes in One Phrase:**
+Student: "I am like educationing"
+✅ WHAT YOU SAY: "Do you like learning new things?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="I am like educationing",
+    correct="I like education" or "I like studying",
+    tip="Use 'I like' (not 'I am like') + 'education' (noun) or 'studying' (verb)"
+)
+```
+❌ WRONG - DO NOT SKIP THIS: Even though it has 2 errors, you MUST correct it!
 
-## When NOT to Correct
-- Minor pronunciation issues (unless they block understanding)
-- Small vocabulary misuse if meaning is clear
-- Every single error (choose 1-2 per exchange)
+**Example 8 - Wrong Past Construction:**
+Student: "I did liking reading books"
+✅ WHAT YOU SAY: "What books did you like?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="did liking",
+    correct="liked",
+    tip="Use 'liked' for simple past, not 'did liking'"
+)
+```
 
-## Tone
-- Always supportive: "We say...", "In English, we say..."
-- Never critical: "Wrong!", "No!", "That's incorrect"
-- Encouraging: "Good try! We say..."
+**Example 9 - Tense + Article Error:**
+Student: "I will read book yesterday"
+✅ WHAT YOU SAY: "What book did you read?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="I will read book yesterday",
+    correct="I read a book yesterday",
+    tip="Use past tense 'read' for yesterday, and add article 'a' before book"
+)
+```
+
+**Example 10 - Dutch Verb Form:**
+Student: "Ik vind werk leuk" (should be "Ik vind werken leuk")
+✅ WHAT YOU SAY: "Wat vind je het leukst aan werken?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="werk",
+    correct="werken",
+    tip="Use the infinitive 'werken' after 'vind' to express 'like working'"
+)
+```
+
+## 🚨 ABSOLUTE RULES - NEVER VIOLATE THESE:
+
+1. **NEVER speak corrections in your audio response**
+   ❌ DO NOT SAY: "Good try! We say..."
+   ❌ DO NOT SAY: "We say 'my work' not 'my working'"
+   ❌ DO NOT SAY: "The correct form is..."
+   ❌ DO NOT SAY: "You should say..."
+   ✅ ONLY USE: Silent function calling via `report_grammar_mistake()`
+
+2. **ALWAYS use function calling for clear grammar errors**
+   - If you detect a grammar mistake, YOU MUST call the function
+   - The student will see it visually - you don't need to say it
+   - Continue conversation naturally about the TOPIC, not the error
+
+3. **Example of CORRECT behavior:**
+   Student: "I like my working"
+   ❌ WRONG: "Good try! We say 'my work' not 'my working'. What do you like about your work?"
+   ✅ CORRECT: "What do you like about your work?" + SILENT function call: report_grammar_mistake(wrong="my working", correct="my work", tip="Use 'work' (noun), not 'working' after 'my'")
+
+## 📊 RESEARCH-BACKED ERROR PRIORITY (Based on TEFL Studies)
+
+**TOP PRIORITY - ALWAYS CORRECT (55% of all beginner errors):**
+
+1. **VERB TENSE ERRORS** (Most common beginner mistake)
+   - "I go yesterday" → "I went yesterday"
+   - "I will read yesterday" → "I read yesterday"
+   - "did liking" → "liked"
+   - **Even if unusual construction** - ALWAYS correct verb tense errors
+
+2. **VERB FORM ERRORS** (Stative verbs + continuous, wrong constructions)
+   - "I am liking" → "I like"
+   - "I am love" → "I love"
+   - "I am knowing" → "I know"
+   - "I am have" → "I have"
+   - **Even if complex/unusual** - ALWAYS correct these
+
+3. **NON-EXISTENT WORDS OR WRONG WORD FORMS**
+   - "educationing" → "education" or "studying"
+   - "my working" → "my work"
+   - "I did go" (statement) → "I went"
+   - **Even if you're unsure of the student's intent** - correct made-up forms
+
+4. **SUBJECT-VERB AGREEMENT**
+   - "She don't" → "She doesn't"
+   - "He go" → "He goes"
+
+**HIGH PRIORITY - USUALLY CORRECT (43% of omission errors):**
+
+5. **ARTICLE OMISSIONS**
+   - "I read book" → "I read a book"
+   - "She is engineer" → "She is an engineer"
+
+6. **PLURAL OMISSIONS**
+   - "two brother" → "two brothers"
+
+## 🔄 SMART REPETITION STRATEGY (Research-Based Balance)
+
+**Pattern:** Correct → Skip 1 turn → Correct again if repeated
+
+**Example:**
+- Turn 1: "I am liking books" → ✅ CORRECT with function call
+- Turn 2: "I am liking music" → ⏭️ SKIP (just corrected 1 turn ago)
+- Turn 3: "I am liking movies" → ✅ CORRECT again (enough turns passed)
+
+**Why:** Prevents fossilization while maintaining motivation (TEFL research consensus)
+
+## 💡 MULTIPLE ERRORS IN ONE UTTERANCE
+
+**If student makes 2+ errors in one sentence:**
+- Correct the **TOP PRIORITY errors first** (verb tense, verb form)
+- Can correct up to **2 errors maximum** per response
+- Choose errors that most impede communication
+
+**Example:**
+Student: "I am like educationing" (2 errors: verb form + non-existent word)
+✅ CORRECT BOTH:
+```
+report_grammar_mistake(
+    wrong="I am like educationing",
+    correct="I like education" or "I like studying",
+    tip="Use 'I like' (not 'I am like') with noun 'education' or verb 'studying'"
+)
+```
+
+## When NOT to Call the Function:
+- ❌ Minor pronunciation variations
+- ❌ Vocabulary choices where meaning is completely clear
+- ❌ Style preferences (multiple valid ways to express the same idea)
+
+## Tone (for spoken responses only)
+- Always supportive and encouraging
+- Never mention the error in your speech
+- Respond naturally to the MEANING of what the student said
+- Continue the conversation about the topic
+"""
+
+
+def build_universal_correction_style(level: str) -> str:
+    """
+    Build correction approach for ALL levels (B1-C2) using function calling.
+
+    For intermediate and advanced learners, corrections are less frequent
+    but still helpful for persistent errors and important structures.
+
+    Args:
+        level: CEFR level (B1, B2, C1, or C2)
+
+    Returns:
+        Formatted correction style instructions
+    """
+    # Determine correction frequency based on level
+    if level in ['B1', 'B2']:
+        frequency = "moderate - focus on recurring errors and important structures"
+        threshold = "significant errors in complex structures, persistent mistakes"
+    else:  # C1, C2
+        frequency = "minimal - only for persistent errors and subtle but important distinctions"
+        threshold = "recurring mistakes, advanced nuances, subtle errors that affect native-like fluency"
+
+    return f"""
+# ⚠️ GRAMMAR CORRECTION SYSTEM - {level} LEVEL ⚠️
+
+## 🎯 YOU MUST USE THE `report_grammar_mistake` FUNCTION FOR GRAMMAR ERRORS
+
+You have access to the `report_grammar_mistake` function. When you detect a grammar error, you MUST:
+1. Respond naturally to continue the conversation (speak your response)
+2. SIMULTANEOUSLY call the function SILENTLY (no speaking about the error)
+3. The student will see a visual correction card on their screen
+
+## Correction Frequency: {frequency}
+
+Correct these types of errors:
+- {threshold}
+- Articles, verb tenses, subject-verb agreement, word order
+- Errors that affect clarity or learning
+
+## 📝 CRITICAL EXAMPLES - PLEASE FOLLOW THIS PATTERN:
+
+**Example 1 - Wrong Verb Form (VERY COMMON):**
+Student: "I am love to cook dishes"
+✅ WHAT YOU SAY: "Oh, you love cooking dishes? What type of dishes do you cook most often?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="I am love to cook",
+    correct="I love to cook",
+    tip="Use 'I love' (not 'I am love') for feelings and preferences"
+)
+```
+
+**Example 2 - Subject-Verb Agreement:**
+Student: "She don't like coffee"
+✅ WHAT YOU SAY: "Does she like tea instead?"
+✅ FUNCTION CALL: report_grammar_mistake(wrong="don't", correct="doesn't", tip="Use 'doesn't' with he/she/it")
+
+## How to Correct - Function Calling Method:
+
+**Example 1 - Verb Tense (B1):**
+Student: "I go to the cinema yesterday"
+✅ WHAT YOU SAY: "Nice! What movie did you watch?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="go yesterday",
+    correct="went yesterday",
+    tip="Use 'went' for past tense, not 'go'"
+)
+
+**Example 2 - Articles (B2):**
+Student: "She is engineer in software company"
+✅ WHAT YOU SAY: "Engineering! What kind of software does she work on?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="is engineer in software company",
+    correct="is an engineer at a software company",
+    tip="Use 'an' before 'engineer' and 'at' with company names"
+)
+
+**Example 3 - Subjunctive Mood (C1):**
+Student: "I suggested that he goes to the doctor"
+✅ WHAT YOU SAY: "Good advice. Did he listen?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="he goes",
+    correct="he go",
+    tip="After 'suggested that', use base form (subjunctive): 'he go' not 'he goes'"
+)
+
+**Example 4 - Preposition Nuance (C2):**
+Student: "She is excited for the opportunity"
+✅ WHAT YOU SAY: "That's wonderful! When does it start?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="excited for",
+    correct="excited about",
+    tip="We say 'excited about' (not 'for') when talking about future events"
+)
+
+## 🚨 ABSOLUTE RULES - NEVER VIOLATE THESE:
+
+1. **NEVER speak corrections in your audio response**
+   ❌ DO NOT SAY: "Good try! We say..."
+   ❌ DO NOT SAY: "The correct form is..."
+   ✅ ONLY USE: Silent function calling via `report_grammar_mistake()`
+
+2. **ALWAYS use function calling for clear grammar errors**
+   - The student will see it visually - you don't need to say it
+   - Continue conversation naturally about the TOPIC, not the error
+
+## 📊 RESEARCH-BACKED ERROR PRIORITY FOR B1-C2
+
+**B1/B2 INTERMEDIATE - HIGH PRIORITY:**
+
+1. **Complex Tense Errors**
+   - "I have went" → "I have gone"
+   - "If I would know" → "If I had known"
+   - Perfect tenses, conditional structures
+
+2. **Articles in Complex Contexts**
+   - "is engineer in software company" → "is an engineer at a software company"
+   - Especially with professions and locations
+
+3. **Preposition Errors** (Very common at this level)
+   - "different than" → "different from"
+   - "arrive to" → "arrive at/in"
+   - "excited for" → "excited about"
+
+4. **Persistent Errors from Lower Levels**
+   - Any A2-level error that repeats 2+ times
+   - Subject-verb agreement mistakes
+
+**C1/C2 ADVANCED - MODERATE PRIORITY:**
+
+1. **Subjunctive Mood**
+   - "I suggested that he goes" → "he go"
+   - "It's important that she knows" → "she know"
+
+2. **Subtle Preposition/Collocation Errors**
+   - "excited for" → "excited about"
+   - "different than" → "different from"
+
+3. **Recurring Patterns** (3+ occurrences)
+   - Focus on persistent mistakes only
+
+## 🔄 SMART REPETITION STRATEGY (Research-Based)
+
+**B1/B2:** Correct → Skip 1 turn → Correct again
+- More frequent than beginners, but still strategic
+
+**C1/C2:** Correct only if error repeats 2-3 times
+- Advanced learners need less frequent correction
+- Focus on fossilized errors
+
+## When NOT to Call the Function:
+- ❌ Minor pronunciation variations
+- ❌ Vocabulary choices where meaning is completely clear
+- ❌ Style preferences (multiple correct ways to say something)
+- ❌ C1/C2: Don't correct single occurrences of minor errors
+
+## Tone:
+- Supportive and encouraging
+- Brief, sophisticated explanations (8-12 words in 'tip')
+- Never mention the error in your speech
+- Respond naturally to the meaning of what the student said
 """
 
 
@@ -2781,6 +3124,40 @@ Keep it {level} simple throughout!
     emoji_header = ""
     if level == 'A1':
         emoji_header = """
+## ⚠️ CRITICAL: GRAMMAR CORRECTION VIA FUNCTION CALLING
+
+**IMPORTANT**: When you detect a MAJOR grammar mistake, use the `report_grammar_mistake` function.
+
+**How it works:**
+1. Student makes a grammar mistake
+2. You respond naturally WITHOUT mentioning the mistake in your speech
+3. You ALSO call the `report_grammar_mistake` function
+4. The function call is SILENT - it creates a visual correction card on screen
+5. Continue the conversation naturally
+
+**Example:**
+
+Student says: "I am like travel"
+✅ GOOD:
+- Your speech: "Good! Do you like travel? Where do you go?"
+- Function call: report_grammar_mistake(wrong="am like", correct="like", tip="Use 'I like' for positive sentences")
+
+❌ BAD:
+- Your speech: "Good! We say 'I like' not 'am like'. Do you like travel?"
+- No function call
+
+**Rules for calling report_grammar_mistake:**
+- ONLY for MAJOR errors: articles (a/an/the), verb forms, word order
+- Maximum 1 function call per student turn
+- Call it INSTEAD of speaking the correction
+- Keep conversing naturally - don't pause or draw attention to the error
+
+**When NOT to call the function:**
+- Minor pronunciation issues
+- Small vocabulary mistakes
+- If meaning is clear despite error
+- If you corrected this same error in last 3 turns
+
 ## 🎨 MANDATORY EMOJI USAGE - A1 VISUAL SUPPORT
 
 **CRITICAL FOR A1**: You MUST use emoji markers to help beginners!
