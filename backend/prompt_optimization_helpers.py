@@ -1269,73 +1269,118 @@ def build_beginner_correction_style(level: str) -> str:
         Formatted correction style instructions
     """
     return f"""
-# CORRECTION STYLE - {level} GENTLE EXPLICIT (NO REPETITION)
+# ⚠️ GRAMMAR CORRECTION SYSTEM - {level} LEVEL (BEGINNER) ⚠️
+
+## 🎯 YOU MUST USE THE `report_grammar_mistake` FUNCTION FOR GRAMMAR ERRORS
+
+You have access to the `report_grammar_mistake` function. When you detect a grammar error, you MUST:
+1. Respond naturally to continue the conversation (speak your response)
+2. SIMULTANEOUSLY call the function SILENTLY (no speaking about the error)
+3. The student will see a visual correction card on their screen
 
 ## CRITICAL: NO REPETITION ALLOWED
 ❌ NEVER say "Repeat after me"
 ❌ NEVER say "Say: [correct form]"
 ❌ NEVER say "Try saying: [phrase]"
 ❌ NEVER ask student to repeat phrases
+❌ NEVER say "We zeggen..." or "We say..." when correcting
 
 This creates infinite loops and boredom. STRICTLY FORBIDDEN.
 
-## Correction Approach: EXPLICIT RECASTING WITH VISUAL MARKERS
-Show the correct form clearly, mark it for UI display, then continue conversation immediately.
+## 📝 CRITICAL EXAMPLES - PLEASE FOLLOW THIS PATTERN:
 
-### Step-by-Step Correction Process:
-1. Acknowledge what student said with encouragement
-2. Show correct form explicitly
-3. Mark MAJOR corrections with special format for visual feedback
-4. Continue conversation (do NOT ask them to repeat)
-
-### FUNCTION CALLING FOR CORRECTIONS (Replaces old text markers)
-
-**NEW APPROACH**: Use the `report_grammar_mistake` function instead of text markers.
-
-### Examples with Function Calling:
-
+**Example 1 - Wrong Article (VERY COMMON IN DUTCH):**
 Student: "Ik heb één model" (wrong: één vs een)
-✅ WHAT YOU SAY: "Goed geprobeerd! Heb je een broer of zus?"
-✅ FUNCTION CALL: report_grammar_mistake(wrong="één", correct="een", tip="Use 'een' for 'a/an', not 'één' which means 'one'")
-[Student hears natural speech. Visual correction appears on screen via function call.]
+✅ WHAT YOU SAY: "Heb je een broer of zus?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="één model",
+    correct="een model",
+    tip="Use 'een' for 'a/an' (article), not 'één' which means 'one' (number)"
+)
+```
+❌ WRONG - DO NOT SAY: "Goed geprobeerd! We zeggen: een model."
 
+**Example 2 - Wrong Verb Form:**
+Student: "I am love to cook"
+✅ WHAT YOU SAY: "What do you love to cook?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="I am love",
+    correct="I love",
+    tip="Use 'I love' (not 'I am love') for feelings and preferences"
+)
+```
+❌ WRONG - DO NOT SAY: "We say 'I love to cook', not 'I am love to cook'."
+
+**Example 3 - Past Tense:**
 Student: "I go yesterday to store"
-✅ WHAT YOU SAY: "Yesterday? Where did you go? What did you buy?"
-✅ FUNCTION CALL: report_grammar_mistake(wrong="go yesterday", correct="went yesterday", tip="Use 'went' for past tense, not 'go'")
-[Natural conversation continues. Function creates silent visual feedback.]
+✅ WHAT YOU SAY: "Where did you go? What did you buy?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="go yesterday",
+    correct="went yesterday",
+    tip="Use 'went' for past tense, not 'go'"
+)
+```
 
+**Example 4 - Subject-Verb Agreement:**
 Student: "She don't like coffee"
 ✅ WHAT YOU SAY: "Does she like tea instead?"
-✅ FUNCTION CALL: report_grammar_mistake(wrong="don't", correct="doesn't", tip="Use 'doesn't' with he/she/it")
-[No mention of error in speech. Function shows correction visually.]
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="don't",
+    correct="doesn't",
+    tip="Use 'doesn't' with he/she/it (third person singular)"
+)
+```
 
+**Example 5 - Plural Forms:**
 Student: "I have two brother"
 ✅ WHAT YOU SAY: "Two! What are their names?"
-✅ FUNCTION CALL: report_grammar_mistake(wrong="brother", correct="brothers", tip="Add 's' for plural (more than one)")
-[Conversation flows naturally. Student sees correction card on screen.]
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="two brother",
+    correct="two brothers",
+    tip="Add 's' for plural when there's more than one"
+)
+```
 
-**When NOT to call the function:**
-- Minor pronunciation issues (model correct pronunciation naturally)
-- Small vocabulary choices (meaning is clear)
-- If you corrected this error in last 3 turns (don't nag)
-- If error is too complex for simple explanation
+**Example 6 - Dutch Verb Form:**
+Student: "Ik vind werk leuk" (should be "Ik vind werken leuk")
+✅ WHAT YOU SAY: "Wat vind je het leukst aan werken?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="werk",
+    correct="werken",
+    tip="Use the infinitive 'werken' after 'vind' to express 'like working'"
+)
+```
 
-## When to Correct
-- Correct errors that impede communication
-- Correct same error if it repeats 3+ times
-- Prioritize: verb tenses, subject-verb agreement, articles, basic word order
-- Maximum 1 marked correction per turn
+## When to Call the Function:
+- ✅ **IMPORTANT structural mistakes** (verb tenses, subject-verb agreement, articles, word order) - CORRECT ON FIRST OCCURRENCE
+- ✅ Errors that affect clarity or communication
+- ✅ Persistent errors (if student repeats the same mistake)
+- ✅ Maximum 1 correction per response
 
-## When NOT to Correct
-- Minor pronunciation issues (unless they block understanding)
-- Small vocabulary misuse if meaning is clear
-- Every single error (choose 1-2 per exchange)
-- If it would disrupt conversational flow
+## When NOT to Call the Function:
+- ❌ Minor pronunciation variations
+- ❌ Vocabulary choices that are acceptable (meaning is clear)
+- ❌ Style preferences or alternative phrasings
+- ❌ If you corrected this exact error in the last 2 turns
+- ❌ If the error is too complex for a brief explanation
+- ❌ Every single tiny error - prioritize the most important ones
 
-## Tone
-- Always supportive: "We say...", "In English, we say..."
+## Tone (for spoken responses only)
+- Always supportive and encouraging
 - Never critical: "Wrong!", "No!", "That's incorrect"
-- Encouraging: "Good try! We say...", "Goed geprobeerd!"
+- Natural conversation flow - respond to meaning, not just correctness
 """
 
 
