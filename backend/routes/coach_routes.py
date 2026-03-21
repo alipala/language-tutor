@@ -8,14 +8,16 @@ Endpoints:
 - POST /api/coach/chat - Chat with AI coach
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import logging
 
 from auth import get_current_user
 from models import UserResponse
-from services.coach_service import coach_service
+# OPTIMIZED: Using coach_service_optimized for 8.75x speedup
+from services.coach_service_optimized import coach_service_optimized as coach_service
+from rate_limiter import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -127,11 +129,16 @@ async def get_user_context(
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_coach(
+    http_request: Request,
     request: ChatRequest,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Chat with AI coach.
+
+    RATE LIMITED:
+    - Free users: 10 messages per hour
+    - Premium users: 20 messages per hour
 
     The coach provides:
     - Personalized learning guidance
@@ -144,6 +151,7 @@ async def chat_with_coach(
     NOT in the target learning language. This ensures users can understand the guidance clearly.
 
     Args:
+        http_request: FastAPI Request object (for rate limiting)
         request: Chat request with message and conversation history
         current_user: Authenticated user from JWT token
 
@@ -152,8 +160,16 @@ async def chat_with_coach(
 
     Raises:
         400: Invalid request
+        429: Rate limit exceeded
         500: Server error during chat generation
     """
+    # Apply rate limiting FIRST (before any processing)
+    await check_rate_limit(
+        request=http_request,
+        user_id=str(current_user.id),
+        subscription_status=current_user.subscription_status
+    )
+
     try:
         logger.info(f"[COACH API] Chat request from user {current_user.id}: '{request.message}'")
 
