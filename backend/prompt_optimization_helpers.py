@@ -1361,27 +1361,42 @@ def build_universal_correction_style(level: str) -> str:
         threshold = "recurring mistakes, advanced nuances, subtle errors that affect native-like fluency"
 
     return f"""
-# CORRECTION STYLE - {level} FUNCTION CALLING
+# ⚠️ GRAMMAR CORRECTION SYSTEM - {level} LEVEL ⚠️
 
-## CRITICAL: Use Silent Function Calling for Grammar Corrections
-You have access to the `report_grammar_mistake` function. Use it to provide visual feedback WITHOUT interrupting the conversation flow.
+## 🎯 YOU MUST USE THE `report_grammar_mistake` FUNCTION FOR GRAMMAR ERRORS
+
+You have access to the `report_grammar_mistake` function. When you detect a grammar error, you MUST:
+1. Respond naturally to continue the conversation (speak your response)
+2. SIMULTANEOUSLY call the function SILENTLY (no speaking about the error)
+3. The student will see a visual correction card on their screen
 
 ## Correction Frequency: {frequency}
-Only correct errors that are:
+
+Correct these types of errors:
 - {threshold}
-- Not minor pronunciation variations
-- Worth learning at this level
+- Articles, verb tenses, subject-verb agreement, word order
+- Errors that affect clarity or learning
+
+## 📝 CRITICAL EXAMPLES - PLEASE FOLLOW THIS PATTERN:
+
+**Example 1 - Wrong Verb Form (VERY COMMON):**
+Student: "I am love to cook dishes"
+✅ WHAT YOU SAY: "Oh, you love cooking dishes? What type of dishes do you cook most often?"
+✅ FUNCTION CALL YOU MUST MAKE:
+```
+report_grammar_mistake(
+    wrong="I am love to cook",
+    correct="I love to cook",
+    tip="Use 'I love' (not 'I am love') for feelings and preferences"
+)
+```
+
+**Example 2 - Subject-Verb Agreement:**
+Student: "She don't like coffee"
+✅ WHAT YOU SAY: "Does she like tea instead?"
+✅ FUNCTION CALL: report_grammar_mistake(wrong="don't", correct="doesn't", tip="Use 'doesn't' with he/she/it")
 
 ## How to Correct - Function Calling Method:
-
-### Step-by-Step Process:
-1. Student makes an error
-2. You respond NATURALLY to their message (continue the conversation)
-3. SILENTLY call `report_grammar_mistake()` function
-4. Student sees visual correction card on screen
-5. Conversation continues uninterrupted
-
-### Function Calling Examples:
 
 **Example 1 - Verb Tense (B1):**
 Student: "I go to the cinema yesterday"
@@ -1420,17 +1435,18 @@ Student: "She is excited for the opportunity"
 )
 
 ## When to Call the Function:
-- ✅ Recurring errors (student makes same mistake 2+ times)
-- ✅ Important structural mistakes (verb tenses, agreement, word order)
-- ✅ Errors that affect clarity or native-like fluency
+- ✅ **IMPORTANT structural mistakes** (verb tenses, subject-verb agreement, articles, word order) - CORRECT ON FIRST OCCURRENCE
+- ✅ Errors that affect clarity or communication
+- ✅ Persistent errors (if student repeats the same mistake)
 - ✅ Maximum 1 correction per response
 
 ## When NOT to Call the Function:
 - ❌ Minor pronunciation variations
-- ❌ Vocabulary choices that are acceptable
-- ❌ Style preferences
-- ❌ If you just corrected the same error recently
+- ❌ Vocabulary choices that are acceptable (meaning is clear)
+- ❌ Style preferences or alternative phrasings
+- ❌ If you corrected this exact error in the last 2 turns
 - ❌ If the error is too complex for a brief explanation
+- ❌ Every single tiny error - prioritize the most important ones
 
 ## Tone:
 - Supportive and encouraging
