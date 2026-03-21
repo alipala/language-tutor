@@ -50,6 +50,7 @@ class TutorSessionRequest(BaseModel):
     news_context: Optional[str] = None  # News article context for news conversations
     learning_plan_data: Optional[Dict[str, Any]] = None  # Learning plan session context
     selected_duration: Optional[int] = 5  # Session duration in minutes (3 or 5)
+    disable_corrections: Optional[bool] = False  # Disable real-time grammar corrections (A1/A2 only)
 
 class RealtimeUsageData(BaseModel):
     user_id: Optional[str] = None
@@ -1228,6 +1229,74 @@ async def process_usage_log_background(
         return False
 
 # Route Handlers
+
+@router.get("/api/realtime/rate-limit-status")
+async def check_rate_limit_status(current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
+    """
+    Check rate limit status for realtime sessions WITHOUT consuming a token.
+    Returns whether user is rate limited and how long to wait.
+
+    This should be called BEFORE attempting to start a conversation session.
+    """
+    from rate_limiter import rate_limiter
+    import time
+
+    try:
+        # Use user_id if authenticated, otherwise use "guest"
+        identifier = str(current_user.id) if current_user else "guest"
+        category = "realtime"  # Check realtime session limit
+
+        # Get rate limit configuration
+        config = rate_limiter.limits[category]
+        window_seconds = config["window_seconds"]
+        max_requests = config["max_requests"]
+
+        # Check if rate limited (WITHOUT consuming a request)
+        is_limited, retry_after = rate_limiter._is_rate_limited(identifier, category)
+
+        if is_limited:
+            # User is rate limited
+            minutes_to_wait = max(1, int(retry_after / 60))
+
+            return {
+                "is_rate_limited": True,
+                "retry_after_seconds": retry_after,
+                "retry_after_minutes": minutes_to_wait,
+                "message": f"You've practiced a lot! Take a {minutes_to_wait}-minute break to let your learning sink in. 🧘",
+                "limit_info": {
+                    "max_sessions": max_requests,
+                    "window_hours": int(window_seconds / 3600),
+                    "category": category
+                }
+            }
+        else:
+            # User is NOT rate limited
+            # Calculate how many sessions they have left
+            timestamps = rate_limiter.requests[identifier].get(category, [])
+            cutoff = time.time() - window_seconds
+            valid_requests = [ts for ts in timestamps if ts > cutoff]
+            remaining_sessions = max_requests - len(valid_requests)
+
+            return {
+                "is_rate_limited": False,
+                "remaining_sessions": remaining_sessions,
+                "message": "You're good to go! Start your practice session.",
+                "limit_info": {
+                    "max_sessions": max_requests,
+                    "window_hours": int(window_seconds / 3600),
+                    "category": category
+                }
+            }
+
+    except Exception as e:
+        print(f"[RATE_LIMIT_CHECK] Error checking rate limit: {str(e)}")
+        # If there's an error, allow the session (fail open)
+        return {
+            "is_rate_limited": False,
+            "message": "Rate limit check unavailable, proceeding...",
+            "error": str(e)
+        }
+
 @router.post("/api/realtime/token")
 async def generate_token(request: TutorSessionRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     from monitoring import send_error_alert, send_business_logic_alert, AlertContext, AlertSeverity
@@ -1402,6 +1471,35 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Import truncation config helper
         from prompt_optimization_helpers import build_truncation_config
 
+        # Define function tools for grammar correction (A1/A2 only, and only if not disabled)
+        tools = []
+        if request.level.upper() in ['A1', 'A2'] and not request.disable_corrections:
+            tools = [
+                {
+                    "type": "function",
+                    "name": "report_grammar_mistake",
+                    "description": "Report a MAJOR grammar mistake made by the student. Only call this for significant errors in articles, verb conjugation, or word order. Do NOT call for minor pronunciation or vocabulary issues.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wrong": {
+                                "type": "string",
+                                "description": "The incorrect word or phrase the student said"
+                            },
+                            "correct": {
+                                "type": "string",
+                                "description": "The correct word or phrase"
+                            },
+                            "tip": {
+                                "type": "string",
+                                "description": "Brief explanation (8-12 words) of why this is the correct form"
+                            }
+                        },
+                        "required": ["wrong", "correct", "tip"]
+                    }
+                }
+            ]
+
         payload = {
             "model": model,
             "voice": selected_voice,
@@ -1422,6 +1520,11 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             },
             "truncation": build_truncation_config()
         }
+
+        # Add tools if available
+        if tools:
+            payload["tools"] = tools
+            print(f"[TOOLS] Added {len(tools)} function tools for {request.level} level")
 
         print(f"[TRUNCATION] Configured with retention_ratio=0.8, post_instructions limit=8000 tokens")
 
