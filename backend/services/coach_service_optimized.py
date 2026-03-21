@@ -762,8 +762,8 @@ class CoachService:
             # Parse AI response into rich messages
             parsed_messages = self._parse_response_with_card(ai_response, show_card, context, user_message)
 
-            # Generate quick replies
-            quick_replies = self._generate_quick_replies(context, language, user_message, conversation_history)
+            # Generate quick replies based on AI's response (not user's message!)
+            quick_replies = self._generate_quick_replies(context, language, ai_response, conversation_history)
 
             return {
                 "messages": parsed_messages,
@@ -1099,84 +1099,136 @@ Remember: Respond in {interface_lang_name} with max 2 sentences, and output vali
         self,
         context: Dict,
         language: str,
-        user_message: str = "",
+        ai_response: str = "",
         conversation_history: List[Dict] = None
     ) -> List[Dict[str, str]]:
-        """Generate context-aware quick reply suggestions"""
+        """
+        Generate context-aware quick reply suggestions based on AI's response.
+
+        Analyzes what the coach just said and suggests relevant next questions.
+        Returns 4-5 suggestions instead of 2-3.
+        """
 
         quick_replies_map = {
             "english": {
-                "progress": "Show my progress", "dna": "Tell me about my DNA",
+                "progress": "Show my progress", "dna": "Show my Speaking DNA",
                 "tips": "Give me tips", "plan": "What's my learning plan?",
-                "challenges": "What challenges I completed?", "start": "Let's start!",
+                "challenges": "What challenges should I try?", "start": "Let's start!",
                 "how_improve": "How can I improve?", "next_steps": "What should I do next?",
-                "streak": "How's my streak?",
+                "streak": "How's my streak?", "continue_plan": "Continue my learning plan",
+                "start_session": "Start my next session", "speaking_practice": "Set up speaking practice",
+                "try_challenge": "Try a challenge", "plan_progress": "How is my plan going?",
+                "improve_weak": "How do I improve my weakest area?",
             },
             "en": {
-                "progress": "Show my progress", "dna": "Tell me about my DNA",
+                "progress": "Show my progress", "dna": "Show my Speaking DNA",
                 "tips": "Give me tips", "plan": "What's my learning plan?",
-                "challenges": "What challenges I completed?", "start": "Let's start!",
+                "challenges": "What challenges should I try?", "start": "Let's start!",
                 "how_improve": "How can I improve?", "next_steps": "What should I do next?",
-                "streak": "How's my streak?",
+                "streak": "How's my streak?", "continue_plan": "Continue my learning plan",
+                "start_session": "Start my next session", "speaking_practice": "Set up speaking practice",
+                "try_challenge": "Try a challenge", "plan_progress": "How is my plan going?",
+                "improve_weak": "How do I improve my weakest area?",
             },
             "turkish": {
-                "progress": "İlerlememi göster", "dna": "DNA'm hakkında bilgi ver",
+                "progress": "İlerlememi göster", "dna": "Konuşma DNA'mı göster",
                 "tips": "Bana ipuçları ver", "plan": "Öğrenme planım nedir?",
-                "challenges": "Hangi zorlukları tamamladım?", "start": "Hadi başlayalım!",
+                "challenges": "Hangi zorlukları denemeliyim?", "start": "Hadi başlayalım!",
                 "how_improve": "Nasıl gelişebilirim?", "next_steps": "Ne yapmalıyım?",
-                "streak": "Serilerim nasıl?",
+                "streak": "Serilerim nasıl?", "continue_plan": "Öğrenme planıma devam et",
+                "start_session": "Bir sonraki oturumu başlat", "speaking_practice": "Konuşma pratiği kur",
+                "try_challenge": "Bir zorluk dene", "plan_progress": "Planım nasıl gidiyor?",
+                "improve_weak": "En zayıf alanımı nasıl geliştirebilirim?",
             },
             "tr": {
-                "progress": "İlerlememi göster", "dna": "DNA'm hakkında bilgi ver",
+                "progress": "İlerlememi göster", "dna": "Konuşma DNA'mı göster",
                 "tips": "Bana ipuçları ver", "plan": "Öğrenme planım nedir?",
-                "challenges": "Hangi zorlukları tamamladım?", "start": "Hadi başlayalım!",
+                "challenges": "Hangi zorlukları denemeliyim?", "start": "Hadi başlayalım!",
                 "how_improve": "Nasıl gelişebilirim?", "next_steps": "Ne yapmalıyım?",
-                "streak": "Serilerim nasıl?",
+                "streak": "Serilerim nasıl?", "continue_plan": "Öğrenme planıma devam et",
+                "start_session": "Bir sonraki oturumu başlat", "speaking_practice": "Konuşma pratiği kur",
+                "try_challenge": "Bir zorluk dene", "plan_progress": "Planım nasıl gidiyor?",
+                "improve_weak": "En zayıf alanımı nasıl geliştirebilirim?",
             },
         }
 
         replies = quick_replies_map.get(language.lower(), quick_replies_map["en"])
         suggestions = []
-        user_msg_lower = user_message.lower()
+        response_lower = ai_response.lower() if ai_response else ""
 
-        if context["is_new_user"]:
-            suggestions.append({"label": replies["start"], "value": "start_first_session"})
-            suggestions.append({"label": replies["plan"], "value": "explain_learning_plan"})
-            return suggestions[:3]
+        # STEP 1: Extract action suggestions from coach's response
+        # Look for what the coach is offering to help with
 
-        # Context-aware suggestions
-        if any(kw in user_msg_lower for kw in ["progress", "streak", "sessions", "stats"]):
-            if context["has_dna_profile"]:
-                suggestions.append({"label": replies["dna"], "value": "show_dna"})
-            if context["stats"]["total_challenges"] > 0:
-                suggestions.append({"label": replies["challenges"], "value": "show_challenges"})
-            suggestions.append({"label": replies["tips"], "value": "give_tips"})
+        # Session/practice suggestions
+        if any(word in response_lower for word in ["start", "begin", "try"]) and ("session" in response_lower or "practice" in response_lower):
+            suggestions.append({"label": replies["start_session"], "value": "start_next_session"})
 
-        elif any(kw in user_msg_lower for kw in ["dna", "speaking dna", "strands"]):
-            suggestions.append({"label": replies["how_improve"], "value": "improvement_tips"})
-            suggestions.append({"label": replies["progress"], "value": "show_progress"})
-            suggestions.append({"label": replies["next_steps"], "value": "next_steps"})
+        # Voice/speaking practice
+        if any(word in response_lower for word in ["voice", "speaking", "conversation", "talk"]) and ("practice" in response_lower or "conversation" in response_lower):
+            if "speaking practice" not in [s["label"].lower() for s in suggestions]:
+                suggestions.append({"label": replies["speaking_practice"], "value": "setup_speaking_practice"})
 
-        elif any(kw in user_msg_lower for kw in ["learning plan", "plan", "path"]):
-            suggestions.append({"label": replies["progress"], "value": "show_progress"})
-            if context["stats"]["total_challenges"] > 0:
-                suggestions.append({"label": replies["challenges"], "value": "show_challenges"})
-            suggestions.append({"label": replies["next_steps"], "value": "next_steps"})
+        # Learning plan
+        if "plan" in response_lower and any(word in response_lower for word in ["continue", "next", "learning", "build", "routine"]):
+            suggestions.append({"label": replies["continue_plan"], "value": "continue_learning_plan"})
 
-        elif any(kw in user_msg_lower for kw in ["challenge", "challenges", "quiz"]):
-            suggestions.append({"label": replies["tips"], "value": "give_tips"})
-            if context["has_dna_profile"]:
-                suggestions.append({"label": replies["dna"], "value": "show_dna"})
-            suggestions.append({"label": replies["progress"], "value": "show_progress"})
+        # Challenges
+        if any(word in response_lower for word in ["challenge", "quiz", "game", "micro", "swipe", "brain"]):
+            suggestions.append({"label": replies["try_challenge"], "value": "try_challenges"})
 
-        else:
-            suggestions.append({"label": replies["progress"], "value": "show_progress"})
-            if context["has_learning_plan"]:
-                suggestions.append({"label": replies["plan"], "value": "show_plan"})
-            if context["has_dna_profile"]:
-                suggestions.append({"label": replies["dna"], "value": "show_dna"})
+        # STEP 2: Add contextual suggestions based on what coach mentioned
 
-        return suggestions[:3]
+        # If coach mentioned weak areas or improvement
+        if any(word in response_lower for word in ["weak", "improve", "work on", "practice"]):
+            if context.get("has_dna_profile"):
+                weak_strand = context.get("speaking_dna", {}).get("weakest_strand", "")
+                if weak_strand and weak_strand in response_lower:
+                    suggestions.append({"label": replies["improve_weak"], "value": "improve_weakness"})
+
+        # If coach mentioned streak
+        if "streak" in response_lower:
+            suggestions.append({"label": replies["streak"], "value": "check_streak"})
+
+        # If coach mentioned progress or stats
+        if any(word in response_lower for word in ["progress", "sessions", "completed", "stats"]):
+            if "Show my progress" not in [s["label"] for s in suggestions]:
+                suggestions.append({"label": replies["progress"], "value": "show_progress"})
+
+        # If coach mentioned learning plan
+        if "plan" in response_lower or "session" in response_lower:
+            if context["has_learning_plan"] and "plan" not in [s["label"].lower() for s in suggestions]:
+                suggestions.append({"label": replies["plan_progress"], "value": "plan_status"})
+
+        # STEP 3: Add general helpful options (always useful)
+        general_options = []
+
+        if "What should I do next?" not in [s["label"] for s in suggestions]:
+            general_options.append({"label": replies["next_steps"], "value": "next_steps"})
+
+        if "Show my progress" not in [s["label"] for s in suggestions]:
+            general_options.append({"label": replies["progress"], "value": "show_progress"})
+
+        if context["has_dna_profile"] and "DNA" not in str(suggestions):
+            general_options.append({"label": replies["dna"], "value": "show_dna"})
+
+        if context["has_learning_plan"] and "plan" not in str(suggestions).lower():
+            general_options.append({"label": replies["plan"], "value": "show_plan"})
+
+        general_options.append({"label": replies["tips"], "value": "give_tips"})
+
+        # Combine: Extracted actions first (priority), then general options
+        all_suggestions = suggestions + general_options
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_suggestions = []
+        for s in all_suggestions:
+            if s["label"] not in seen:
+                seen.add(s["label"])
+                unique_suggestions.append(s)
+
+        # Return top 5 (increased from 3)
+        return unique_suggestions[:5]
 
     # =========================================================================
     # Formatting Methods (unchanged from original)
