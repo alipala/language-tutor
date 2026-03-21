@@ -35,6 +35,8 @@ class RateLimiter:
             "general": {"max_requests": 100, "window_seconds": 60},  # 100/min (mid-session activities)
             "realtime": {"max_requests": 10, "window_seconds": 3600},  # 10/hour (NEW conversation sessions)
             "auth": {"max_requests": 10, "window_seconds": 300},  # 10/5min (prevent brute force)
+            "coach": {"max_requests": 10, "window_seconds": 3600},  # 10/hour (FREE users)
+            "coach_premium": {"max_requests": 20, "window_seconds": 3600},  # 20/hour (PREMIUM users)
         }
 
         # Cleanup old entries every 5 minutes
@@ -69,7 +71,7 @@ class RateLimiter:
             if not self.requests[user_id]:
                 del self.requests[user_id]
 
-    def _get_category(self, path: str) -> str:
+    def _get_category(self, path: str, subscription_status: str = None) -> str:
         """Determine rate limit category from request path
 
         CRITICAL RULE: ONLY rate limit NEW conversation session starts.
@@ -100,6 +102,12 @@ class RateLimiter:
             if pattern in path:
                 return "general"  # Use very lenient general limit (100/min)
 
+        # Coach rate limiting based on subscription
+        if "/coach/chat" in path:
+            if subscription_status in ["active", "trialing"]:
+                return "coach_premium"  # 20/hour for premium
+            return "coach"  # 10/hour for free
+
         # ONLY rate limit NEW conversation session starts
         if "/realtime/token" in path:
             return "realtime"  # 10 new sessions per hour
@@ -117,6 +125,8 @@ class RateLimiter:
         messages = {
             "realtime": f"You've practiced a lot! Take a {minutes}-minute break to let your learning sink in. 🧘",
             "auth": f"For your account security, please wait {minutes} minute(s) before trying again. 🔒",
+            "coach": f"You've chatted a lot with your coach! ☕ Take a {minutes}-minute break to reflect on the advice.",
+            "coach_premium": f"Even premium users need reflection time! 🧘 Please wait {minutes} minute(s) and come back refreshed.",
             "general": f"Please wait {retry_after if retry_after < 60 else f'{minutes} minute(s)'} and try again."
         }
 
@@ -155,13 +165,14 @@ class RateLimiter:
         """Record a new request for rate limiting"""
         self.requests[user_id][category].append(time.time())
 
-    async def check_rate_limit(self, request: Request, user_id: Optional[str] = None):
+    async def check_rate_limit(self, request: Request, user_id: Optional[str] = None, subscription_status: Optional[str] = None):
         """
         Check rate limit for a request
 
         Args:
             request: FastAPI Request object
             user_id: User ID (if authenticated), otherwise uses IP
+            subscription_status: User's subscription status for tier-based limiting
 
         Raises:
             HTTPException: If rate limit exceeded
@@ -170,8 +181,8 @@ class RateLimiter:
         identifier = user_id or request.client.host
         is_authenticated = bool(user_id)
 
-        # Determine category
-        category = self._get_category(request.url.path)
+        # Determine category (with subscription status for coach)
+        category = self._get_category(request.url.path, subscription_status)
 
         # Check rate limit
         is_limited, retry_after = self._is_rate_limited(identifier, category)
@@ -301,7 +312,7 @@ rate_limiter = RateLimiter()
 
 
 # Dependency for FastAPI routes
-async def check_rate_limit(request: Request, user_id: Optional[str] = None):
+async def check_rate_limit(request: Request, user_id: Optional[str] = None, subscription_status: Optional[str] = None):
     """
     FastAPI dependency to check rate limits
 
@@ -314,7 +325,7 @@ async def check_rate_limit(request: Request, user_id: Optional[str] = None):
         ):
             ...
     """
-    await rate_limiter.check_rate_limit(request, user_id)
+    await rate_limiter.check_rate_limit(request, user_id, subscription_status)
 
 
 # Middleware version (applies to all requests)
