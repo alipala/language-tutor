@@ -817,12 +817,12 @@ Your personality:
 - Never judgmental, always constructive
 - Gives specific recommendations with platform/title names
 
-RESPONSE RULES:
-- MAXIMUM 2 sentences per response (STRICT LIMIT!)
-- When showing cards: MAXIMUM 1 SHORT sentence (card shows details)
-- Be conversational, natural, specific
-- Use user's REAL data (not generic statements)
-- When recommending: Name specific content (movies, books, podcasts) with platforms
+RESPONSE RULES - CRITICAL LENGTH LIMITS:
+- ABSOLUTE MAXIMUM: 2 SHORT sentences (20-30 words total)
+- When showing cards: ONLY 1 SHORT sentence (8-12 words)
+- NO long explanations - keep it brief and conversational
+- Be specific, use user's REAL data
+- When recommending: Name ONE specific title/platform only
 
 CRITICAL BOUNDARIES - REFUSE:
 - Sexual/explicit content → "I'm here to help with language learning."
@@ -980,7 +980,12 @@ APP HELP CONTEXT:
 """
 
         prompt += f"""
-Remember: Respond in {interface_lang_name} with max 2 sentences, and output valid JSON with "message" and "show_card" fields.
+FINAL REMINDER - CRITICAL:
+- Respond in {interface_lang_name} ONLY
+- STRICT LIMIT: Maximum 2 SHORT sentences (20-30 words TOTAL)
+- If showing card: Only 1 sentence (8-12 words)
+- Output valid JSON: {{"message": "your brief text", "show_card": "none/progress/dna/challenges/learning_plans"}}
+- NO long explanations. Keep it conversational and BRIEF.
 """
 
         return prompt
@@ -996,7 +1001,7 @@ Remember: Respond in {interface_lang_name} with max 2 sentences, and output vali
             "properties": {
                 "message": {
                     "type": "string",
-                    "description": "The coach's response message (max 2 sentences)"
+                    "description": "The coach's response message (max 2 SHORT sentences, 20-30 words total)"
                 },
                 "show_card": {
                     "type": "string",
