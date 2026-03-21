@@ -50,7 +50,7 @@ class TutorSessionRequest(BaseModel):
     news_context: Optional[str] = None  # News article context for news conversations
     learning_plan_data: Optional[Dict[str, Any]] = None  # Learning plan session context
     selected_duration: Optional[int] = 5  # Session duration in minutes (3 or 5)
-    disable_corrections: Optional[bool] = False  # Disable real-time grammar corrections (A1/A2 only)
+    disable_corrections: Optional[bool] = False  # Disable real-time grammar corrections (all levels)
 
 class RealtimeUsageData(BaseModel):
     user_id: Optional[str] = None
@@ -265,7 +265,8 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
         build_safety_escalation_section,
         build_state_specific_sample_phrases,
         build_speed_instructions,
-        build_optimized_assessment_context
+        build_optimized_assessment_context,
+        build_universal_correction_style
     )
 
     # Language configurations
@@ -557,6 +558,7 @@ CONVERSATION GUIDANCE:
         conversation_flow = build_conversation_flow_section(language, level, request.user_prompt)
         safety_escalation = build_safety_escalation_section(language)
         speed_instructions = build_speed_instructions()
+        correction_style = build_universal_correction_style(level) if not request.disable_corrections else ""
 
         instructions = f"""{personality_section}
 
@@ -565,6 +567,8 @@ CONVERSATION GUIDANCE:
 {sample_phrases}
 
 {speed_instructions}
+
+{correction_style}
 
 {conversation_flow}
 
@@ -678,6 +682,7 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
             conversation_flow = build_conversation_flow_section(language, level, None)
             safety_escalation = build_safety_escalation_section(language)
             speed_instructions = build_speed_instructions()
+            correction_style = build_universal_correction_style(level) if not request.disable_corrections else ""
 
             instructions = f"""{personality_section}
 
@@ -686,6 +691,8 @@ CRITICAL: Keep all conversation about '{request.user_prompt}'. Do not deviate fr
 {sample_phrases}
 
 {speed_instructions}
+
+{correction_style}
 
 {conversation_flow}
 
@@ -875,6 +882,7 @@ CRITICAL: This is a NEWS DISCUSSION, not a free conversation. Keep all discussio
         conversation_flow = build_conversation_flow_section(language, level, topic_name)
         safety_escalation = build_safety_escalation_section(language)
         speed_instructions = build_speed_instructions()
+        correction_style = build_universal_correction_style(level) if not request.disable_corrections else ""
 
         instructions = f"""{personality_section}
 
@@ -883,6 +891,8 @@ CRITICAL: This is a NEWS DISCUSSION, not a free conversation. Keep all discussio
 {sample_phrases}
 
 {speed_instructions}
+
+{correction_style}
 
 {conversation_flow}
 
@@ -960,6 +970,7 @@ If learning plan context is available, connect the topic to the student's learni
         conversation_flow = build_conversation_flow_section(language, level, "general conversation")
         safety_escalation = build_safety_escalation_section(language)
         speed_instructions = build_speed_instructions()
+        correction_style = build_universal_correction_style(level) if not request.disable_corrections else ""
 
         instructions = f"""{personality_section}
 
@@ -968,6 +979,8 @@ If learning plan context is available, connect the topic to the student's learni
 {sample_phrases}
 
 {speed_instructions}
+
+{correction_style}
 
 {conversation_flow}
 
@@ -1471,9 +1484,9 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Import truncation config helper
         from prompt_optimization_helpers import build_truncation_config
 
-        # Define function tools for grammar correction (A1/A2 only, and only if not disabled)
+        # Define function tools for grammar correction (all levels, unless disabled)
         tools = []
-        if request.level.upper() in ['A1', 'A2'] and not request.disable_corrections:
+        if not request.disable_corrections:
             tools = [
                 {
                     "type": "function",

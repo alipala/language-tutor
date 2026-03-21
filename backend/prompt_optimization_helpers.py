@@ -1339,6 +1339,107 @@ Student: "I have two brother"
 """
 
 
+def build_universal_correction_style(level: str) -> str:
+    """
+    Build correction approach for ALL levels (B1-C2) using function calling.
+
+    For intermediate and advanced learners, corrections are less frequent
+    but still helpful for persistent errors and important structures.
+
+    Args:
+        level: CEFR level (B1, B2, C1, or C2)
+
+    Returns:
+        Formatted correction style instructions
+    """
+    # Determine correction frequency based on level
+    if level in ['B1', 'B2']:
+        frequency = "moderate - focus on recurring errors and important structures"
+        threshold = "significant errors in complex structures, persistent mistakes"
+    else:  # C1, C2
+        frequency = "minimal - only for persistent errors and subtle but important distinctions"
+        threshold = "recurring mistakes, advanced nuances, subtle errors that affect native-like fluency"
+
+    return f"""
+# CORRECTION STYLE - {level} FUNCTION CALLING
+
+## CRITICAL: Use Silent Function Calling for Grammar Corrections
+You have access to the `report_grammar_mistake` function. Use it to provide visual feedback WITHOUT interrupting the conversation flow.
+
+## Correction Frequency: {frequency}
+Only correct errors that are:
+- {threshold}
+- Not minor pronunciation variations
+- Worth learning at this level
+
+## How to Correct - Function Calling Method:
+
+### Step-by-Step Process:
+1. Student makes an error
+2. You respond NATURALLY to their message (continue the conversation)
+3. SILENTLY call `report_grammar_mistake()` function
+4. Student sees visual correction card on screen
+5. Conversation continues uninterrupted
+
+### Function Calling Examples:
+
+**Example 1 - Verb Tense (B1):**
+Student: "I go to the cinema yesterday"
+✅ WHAT YOU SAY: "Nice! What movie did you watch?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="go yesterday",
+    correct="went yesterday",
+    tip="Use 'went' for past tense, not 'go'"
+)
+
+**Example 2 - Articles (B2):**
+Student: "She is engineer in software company"
+✅ WHAT YOU SAY: "Engineering! What kind of software does she work on?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="is engineer in software company",
+    correct="is an engineer at a software company",
+    tip="Use 'an' before 'engineer' and 'at' with company names"
+)
+
+**Example 3 - Subjunctive Mood (C1):**
+Student: "I suggested that he goes to the doctor"
+✅ WHAT YOU SAY: "Good advice. Did he listen?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="he goes",
+    correct="he go",
+    tip="After 'suggested that', use base form (subjunctive): 'he go' not 'he goes'"
+)
+
+**Example 4 - Preposition Nuance (C2):**
+Student: "She is excited for the opportunity"
+✅ WHAT YOU SAY: "That's wonderful! When does it start?"
+✅ FUNCTION CALL: report_grammar_mistake(
+    wrong="excited for",
+    correct="excited about",
+    tip="We say 'excited about' (not 'for') when talking about future events"
+)
+
+## When to Call the Function:
+- ✅ Recurring errors (student makes same mistake 2+ times)
+- ✅ Important structural mistakes (verb tenses, agreement, word order)
+- ✅ Errors that affect clarity or native-like fluency
+- ✅ Maximum 1 correction per response
+
+## When NOT to Call the Function:
+- ❌ Minor pronunciation variations
+- ❌ Vocabulary choices that are acceptable
+- ❌ Style preferences
+- ❌ If you just corrected the same error recently
+- ❌ If the error is too complex for a brief explanation
+
+## Tone:
+- Supportive and encouraging
+- Brief explanations (8-12 words in 'tip')
+- Focus on the 'why' not just the 'what'
+- Never say the correction out loud - only via function call
+"""
+
+
 def build_beginner_scaffolding(level: str) -> str:
     """
     Build scaffolding strategies for A1/A2 WITHOUT repetition.
