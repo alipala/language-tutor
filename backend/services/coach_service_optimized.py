@@ -263,6 +263,7 @@ class CoachService:
         return {
             "user_profile": {
                 "user_id": user_id,
+                "name": user.get("name"),
                 "email": user.get("email"),
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
@@ -345,6 +346,7 @@ class CoachService:
         return {
             "user_profile": {
                 "user_id": user_id,
+                "name": user.get("name"),
                 "email": user.get("email"),
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
@@ -399,6 +401,7 @@ class CoachService:
         return {
             "user_profile": {
                 "user_id": user_id,
+                "name": user.get("name"),
                 "email": user.get("email"),
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
@@ -444,6 +447,7 @@ class CoachService:
         return {
             "user_profile": {
                 "user_id": user_id,
+                "name": user.get("name"),
                 "email": user.get("email"),
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
@@ -520,6 +524,7 @@ class CoachService:
         return {
             "user_profile": {
                 "user_id": user_id,
+                "name": user.get("name"),
                 "email": user.get("email"),
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
@@ -922,9 +927,12 @@ NEW USER - First interaction!
         else:
             all_languages = context['user_profile'].get('all_learning_languages', [learning_lang])
 
+            user_name = context['user_profile'].get('name')
+            name_line = f"- Name: {user_name}\n" if user_name else ""
+
             prompt += f"""
 USER CONTEXT:
-- Languages: {', '.join([l.title() for l in all_languages])}
+{name_line}- Languages: {', '.join([l.title() for l in all_languages])}
 - Level: {context['user_profile']['cefr_level']}
 - Subscription: {context['user_profile'].get('subscription_status', 'free')}
 - Streak: {context['stats']['current_streak']} days
