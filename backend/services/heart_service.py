@@ -30,7 +30,12 @@ class HeartService:
             "refill_minutes_per_heart": 6,   # 1 hour total
             "total_refill_minutes": 60
         },
-        "team_mastery": {
+        "language_mastery": {
+            "max_hearts": 999999,  # Unlimited
+            "refill_minutes_per_heart": 0,
+            "total_refill_minutes": 0
+        },
+        "team_mastery": {  # Backward compatibility for old plan ID
             "max_hearts": 999999,  # Unlimited
             "refill_minutes_per_heart": 0,
             "total_refill_minutes": 0
@@ -146,7 +151,7 @@ class HeartService:
 
         # Language Mastery: always return max hearts
         user_plan = user.subscription_plan or "try_learn"
-        if user_plan == "team_mastery":
+        if user_plan in ["team_mastery", "language_mastery"]:
             return (heart_pool.max_hearts, heart_pool)
 
         # Calculate refilled hearts
@@ -258,7 +263,7 @@ class HeartService:
         }
 
         # Language Mastery: no heart consumption
-        if user_plan == "team_mastery":
+        if user_plan in ["team_mastery", "language_mastery"]:
             if is_correct:
                 heart_pool.current_correct_streak += 1
             else:
@@ -360,8 +365,8 @@ class HeartService:
             heart_pool.current_correct_streak = 0
             result["current_streak"] = 0
 
-        # Save undo tracking state (only if not team_mastery)
-        if user_plan != "team_mastery" and challenge_id:
+        # Save undo tracking state (only if not unlimited plan)
+        if user_plan not in ["team_mastery", "language_mastery"] and challenge_id:
             heart_pool.last_action_timestamp = state_before["timestamp"]
             heart_pool.last_action_hearts_before = state_before["hearts"]
             heart_pool.last_action_shield_before = state_before["shield_active"]
