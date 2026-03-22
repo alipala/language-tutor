@@ -2872,22 +2872,36 @@ AFTER YOUR FIRST MESSAGE:
 
             research_vocab = f"""
 
-📚 RESEARCH BACKGROUND (for your reference only - simplify for student!):
+📚 TOPIC INFORMATION - YOU MUST DISCUSS THIS CONTENT:
 {research_summary}
 
-CRITICAL: The research above is TOO COMPLEX for {level}!
-- Extract ONLY the simplest ideas
-- Use ONLY {level} vocabulary ({"500 most common words" if level == "A1" else "1,000 most common words"})
-- Replace difficult words with simple ones:
-  * "Verenigd Koninkrijk" → "Engeland"
-  * "importheffing" → "belasting" (tax)
-  * "handelsbesprekingen" → "praten over geld"
-  * Complex names → first name only
-- Focus on VERY basic questions:
-  * Is [person] happy or angry? (blij of boos?)
-  * Is it about money? (over geld?)
-  * Is it good or bad? (goed of slecht?)
-  * Yes or no? (ja of nee?)
+🎯 HOW TO USE THIS RESEARCH (CRITICAL):
+1. FIRST: Share 1-2 SIMPLE FACTS from the research above
+   - Use ONLY {level} vocabulary ({"500 most common words" if level == "A1" else "1,000 most common words"})
+   - Simplify complex words:
+     * "Verenigd Koninkrijk" → "Engeland" (England)
+     * "importheffing" → "belasting" (tax)
+     * "handelsbesprekingen" → "praten over geld" (talk about money)
+     * Complex names → first name only
+
+2. THEN: Ask about the ACTUAL CONTENT from the research
+   - NOT meta questions like "Is it good or bad?"
+   - ASK about the SPECIFIC facts you just shared
+   - Examples based on research content:
+     * If research says "X and Y had a meeting" → "Who had a meeting?" or "X or Y?"
+     * If research says "Something happened in Iran" → "What happened in Iran?" or "Where did it happen?"
+     * If research says "War started on March 21" → "When did the war start?" or "In March or April?"
+
+3. CONTINUE: Keep discussing the REAL facts from the research
+   - Share more simple facts → Ask about them
+   - Stay focused on the ACTUAL news content
+   - Don't ask generic "good or bad?" - discuss WHAT ACTUALLY HAPPENED
+
+❌ WRONG: "Is this good or bad news?" (too generic)
+✅ RIGHT: "There was a meeting in Iran. Who was at the meeting?" (discusses actual content)
+
+❌ WRONG: "Do you know about this?" (too vague)
+✅ RIGHT: "The USA and Iran talked. What did they talk about?" (engages with facts)
 """
 
         # Create level-specific question guidance for custom topics
