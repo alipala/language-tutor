@@ -1476,3 +1476,55 @@ class CoachInstructionsResponse(BaseModel):
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+
+
+# ============================================================================
+# SESSION FEEDBACK MODELS
+# ============================================================================
+
+class SessionFeedbackRequest(BaseModel):
+    """Request model for session feedback"""
+
+    # User identification
+    user_id: Optional[str] = None
+    is_guest: bool = False
+    device_id: Optional[str] = None
+
+    # Session identification
+    session_id: str = Field(..., min_length=1, max_length=100)
+    session_type: str = Field(
+        ...,
+        pattern="^(conversation_freestyle|conversation_custom_topic|conversation_news|conversation_learning_plan|challenge)$"
+    )
+    challenge_type: Optional[str] = None
+
+    # Feedback data
+    feedback_type: str = Field(..., pattern="^(thumbs_up|thumbs_down)$")
+    comment: Optional[str] = Field(None, max_length=5000)
+
+    # Session context
+    language: str = Field(..., min_length=2, max_length=10)
+    level: str = Field(..., min_length=2, max_length=2)
+    topic: Optional[str] = Field(None, max_length=200)
+
+    # Session metrics
+    session_duration_seconds: Optional[int] = Field(None, ge=0)
+    words_spoken: Optional[int] = Field(None, ge=0)
+    accuracy: Optional[float] = Field(None, ge=0, le=100)
+
+    # Metadata
+    user_agent: Optional[str] = None
+    app_version: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+
+
+class SessionFeedbackResponse(BaseModel):
+    """Response model for session feedback"""
+    success: bool
+    message: str
+    feedback_id: Optional[str] = None
+
+    class Config:
+        populate_by_name = True

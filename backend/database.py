@@ -117,6 +117,9 @@ try:
 
     # SENTENCE ANALYSIS JOBS: Background processing for sentence analysis
     sentence_analysis_jobs_collection = database.sentence_analysis_jobs
+
+    # SESSION FEEDBACK: User feedback for conversations and challenges
+    session_feedback_collection = database.session_feedback
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -143,6 +146,7 @@ except Exception as e:
     flashcard_sets_collection = None
     speaking_time_tracking_collection = None
     sentence_analysis_jobs_collection = None
+    session_feedback_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
@@ -236,6 +240,13 @@ async def init_db():
         await sentence_analysis_jobs_collection.create_index([("status", 1), ("created_at", -1)])
         # TTL index: Delete jobs older than 7 days to keep collection clean
         await sentence_analysis_jobs_collection.create_index("created_at", expireAfterSeconds=7 * 24 * 60 * 60)
+
+        # SESSION FEEDBACK: User feedback indexes
+        await session_feedback_collection.create_index([("user_id", 1), ("created_at", -1)])
+        await session_feedback_collection.create_index([("session_type", 1), ("feedback_type", 1)])
+        await session_feedback_collection.create_index("created_at")
+        await session_feedback_collection.create_index("is_guest")
+        await session_feedback_collection.create_index("session_id", unique=True)
 
         print("Database indexes initialized successfully")
     except Exception as e:
