@@ -3058,7 +3058,10 @@ Remember: This is a 5-minute conversation about {topic} - keep EVERY message foc
         try:
             news_data = json.loads(news_context)
             article_title = news_data.get('news_title', news_data.get('title', 'news'))
-            article_summary = news_data.get('news_summary', news_data.get('summary', ''))[:200]  # Limit summary
+            article_summary = news_data.get('news_summary', news_data.get('summary', ''))[:300]  # Increased limit
+            vocabulary_items = news_data.get('vocabulary', [])
+            discussion_questions = news_data.get('discussion_questions', [])
+            ai_instructions = news_data.get('ai_instructions', '')
 
             # Create level-specific question guidance for news
             if level == 'A1':
@@ -3090,11 +3093,50 @@ MANDATORY REQUIREMENTS:
 - Keep opinions simple, scaffold with "because..."
 - STAY 100% on this news article - no drift"""
 
+            # Format vocabulary for A2 level (simple, with translations)
+            vocab_section = ""
+            if vocabulary_items:
+                vocab_list = []
+                for item in vocabulary_items[:8]:  # Limit to 8 key words for A2
+                    word = item.get('word', '')
+                    translation = item.get('translation', '')
+                    example = item.get('example', '')
+                    if word and translation:
+                        vocab_list.append(f"  • {word} = {translation}")
+                        if example and level == 'A2':  # Only show examples for A2
+                            vocab_list.append(f"    Example: \"{example}\"")
+                if vocab_list:
+                    vocab_section = f"""
+KEY VOCABULARY TO TEACH (use these words naturally in conversation):
+{chr(10).join(vocab_list)}
+
+VOCABULARY TEACHING:
+- Introduce these words naturally while discussing the news
+- Ask student to use these words: "Can you use the word '{vocabulary_items[0].get('word', '')}' in a sentence?"
+- Praise when student uses vocabulary correctly
+- Keep it simple - focus on meaning, not grammar rules"""
+
+            # Format discussion questions (simplified for A2)
+            questions_section = ""
+            if discussion_questions:
+                # Simplify questions for A2 level
+                simple_questions = []
+                for q in discussion_questions[:4]:  # Limit to 4 questions
+                    simple_questions.append(f"  {len(simple_questions) + 1}. {q}")
+                if simple_questions:
+                    questions_section = f"""
+DISCUSSION QUESTIONS (ask these during conversation):
+{chr(10).join(simple_questions)}
+
+💡 Ask these questions naturally throughout the conversation to keep it engaging!"""
+
             news_article_context = f"""
 📰 NEWS CONVERSATION - {level} LEVEL - START IMMEDIATELY!
 
 Topic: {article_title}
 Summary: {article_summary}
+{vocab_section}
+{questions_section}
 
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:
@@ -3127,6 +3169,11 @@ Example: Article about {article_title}
   Student: "I'm tired"
   ❌ BAD: "Why are you tired?" (drifts away from news)
   ✅ GOOD: "I see! What do you think about this news about {article_title}?" (redirects to news)
+
+{f'''
+🎯 TEACHING GUIDANCE:
+{ai_instructions}
+''' if ai_instructions else ''}
 
 Remember: This is a 5-minute conversation about THIS news article - keep EVERY message focused on it!
 Keep it {level} simple throughout!

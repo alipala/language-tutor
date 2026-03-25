@@ -525,6 +525,126 @@ CONVERSATION GUIDANCE:
                     print(f"Current week activities: {week_activities}")
                     print(f"Session {current_session_in_week} of week {current_week_number}")
 
+    # Handle news conversations FIRST (highest priority)
+    if request.news_context:
+        import json
+        try:
+            news_data = json.loads(request.news_context)
+            print(f"[NEWS] Building instructions for news conversation")
+            print(f"[NEWS] Raw news_data keys: {news_data.keys() if isinstance(news_data, dict) else 'not a dict'}")
+            print(f"[NEWS] News data preview: {str(news_data)[:500]}")
+
+            # Extract news article details - FIXED: Use correct key names
+            article_title = news_data.get('news_title', news_data.get('title', 'a news article'))
+            article_summary = news_data.get('news_summary', news_data.get('summary', ''))
+            vocabulary_items = news_data.get('vocabulary', [])
+            discussion_questions = news_data.get('discussion_questions', [])
+            ai_instructions = news_data.get('ai_instructions', '')
+
+            # Format vocabulary list
+            vocab_list = "\n".join([
+                f"- **{item.get('word', '')}** ({item.get('translation', '')}): {item.get('example', '')}"
+                for item in vocabulary_items[:10]  # Limit to 10 key words
+            ])
+
+            # Format discussion questions
+            questions_list = "\n".join([f"{i+1}. {q}" for i, q in enumerate(discussion_questions[:5])])
+
+            # Get language config
+            config = language_configs.get(language, {
+                "rule": f"Respond only in {language}.",
+                "greeting": f"Hello! I am your {language} language tutor."
+            })
+
+            # Build comprehensive news instructions
+            instructions = f"""You are a {language} language tutor conducting a news discussion session with an {level} level student.
+
+LANGUAGE RULE: {config['rule']}
+
+📰 NEWS ARTICLE CONTEXT:
+Title: {article_title}
+Summary: {article_summary}
+
+🎯 YOUR MISSION:
+Guide an engaging discussion about this news article, helping the student:
+1. Understand the key points of the article
+2. Practice using the vocabulary in context
+3. Express their opinions and thoughts
+4. Develop critical thinking skills
+
+📚 KEY VOCABULARY TO TEACH:
+{vocab_list}
+
+💬 DISCUSSION QUESTIONS TO EXPLORE:
+{questions_list}
+
+🎓 TEACHING APPROACH:
+{ai_instructions}
+
+CONVERSATION FLOW:
+1. **Welcome & Introduction** (First message):
+   - Greet the student warmly
+   - Introduce the news topic with enthusiasm
+   - Share 1-2 key facts from the summary
+   - Ask an engaging opening question about the topic
+
+2. **Vocabulary Practice**:
+   - Naturally introduce vocabulary words in context
+   - Ask students to use new words in sentences
+   - Provide examples when needed
+   - Praise correct usage
+
+3. **Content Discussion**:
+   - Guide discussion through the key points of the article
+   - Ask open-ended questions from the discussion list
+   - Encourage students to share personal opinions and reactions
+   - Connect the news to their own experiences or knowledge
+
+4. **Critical Thinking**:
+   - Ask "why" and "how" questions
+   - Encourage students to analyze the implications
+   - Discuss different perspectives on the topic
+
+LANGUAGE LEVEL ADAPTATION ({level}):
+- Use vocabulary and grammar appropriate for {level} level
+- Simplify complex concepts when needed
+- Provide scaffolding for difficult expressions
+- Celebrate progress and correct gently
+
+CORRECTION STYLE:
+- Use natural recasting (embed correct form in your response)
+- Don't explicitly point out every error
+- Focus on meaning first, form second
+- Keep corrections conversational and encouraging
+
+ENGAGEMENT RULES:
+- Be enthusiastic and curious about the topic
+- Share interesting facts from the article
+- Ask for the student's opinions and reactions
+- Make connections to real life
+- Keep the conversation dynamic and interactive
+
+🚨 CRITICAL: This is a NEWS DISCUSSION, not a reading comprehension test:
+- DON'T quiz the student on article details
+- DO have a natural conversation about the topic
+- DON'T ask "Did you understand?" repeatedly
+- DO check comprehension through discussion
+- DON'T lecture - have a dialogue
+- DO encourage the student to lead parts of the conversation
+
+Remember: You're having an engaging conversation about news, using it as a vehicle for language practice and cultural learning!"""
+
+            print(f"[NEWS] News instructions created: {len(instructions)} characters")
+            print(f"[NEWS] Article: {article_title}")
+            print(f"[NEWS] Vocabulary items: {len(vocabulary_items)}")
+            print(f"[NEWS] Discussion questions: {len(discussion_questions)}")
+            return instructions
+
+        except Exception as e:
+            print(f"[NEWS] Error parsing news_context, falling back to default")
+            print(f"[NEWS] Error details: {str(e)}")
+            # Fall through to default instructions
+
     # Handle custom topic
     if request.topic == "custom" and request.user_prompt:
         print(f"[CUSTOM_TOPIC] Creating universal custom topic instructions")
@@ -661,150 +781,6 @@ CRITICAL: Keep all conversation about '{request.user_prompt}' using the specific
 
         print(f"Custom topic instructions: {len(instructions)} characters")
         return instructions
-
-    # Handle news conversations
-    elif request.news_context:
-        import json
-        try:
-            news_data = json.loads(request.news_context)
-            print(f"[NEWS] Building instructions for news conversation")
-            print(f"[NEWS] Raw news_data keys: {news_data.keys() if isinstance(news_data, dict) else 'not a dict'}")
-            print(f"[NEWS] News data preview: {str(news_data)[:500]}")
-
-            # Extract news article details - FIXED: Use correct key names
-            article_title = news_data.get('news_title', news_data.get('title', 'a news article'))
-            article_summary = news_data.get('news_summary', news_data.get('summary', ''))
-            vocabulary_items = news_data.get('vocabulary', [])
-            discussion_questions = news_data.get('discussion_questions', [])
-            ai_instructions = news_data.get('ai_instructions', '')
-            word_count = news_data.get('word_count', 0)
-
-            print(f"[NEWS] ✅ Extracted title: {article_title}")
-            print(f"[NEWS] ✅ Extracted summary length: {len(article_summary)}")
-            print(f"[NEWS] ✅ Vocab items: {len(vocabulary_items)}")
-            print(f"[NEWS] ✅ Discussion questions: {len(discussion_questions)}")
-
-            # Format vocabulary for instructions
-            vocabulary_section = ""
-            if vocabulary_items:
-                vocab_lines = []
-                for item in vocabulary_items[:10]:  # Limit to first 10 words
-                    word = item.get('word', '')
-                    translation = item.get('translation', '')
-                    example = item.get('example', '')
-                    vocab_lines.append(f"  - {word}" + (f" ({translation})" if translation else "") + (f": {example}" if example else ""))
-                vocabulary_section = "\n".join(vocab_lines)
-
-            # Format discussion questions
-            questions_section = ""
-            if discussion_questions:
-                questions_section = "\n".join([f"  {i+1}. {q}" for i, q in enumerate(discussion_questions)])
-
-            # Add all optimization sections
-            personality_section = build_personality_tone_section(language, level)
-            pronunciations = build_reference_pronunciations()
-            sample_phrases = build_sample_phrases(language)
-            conversation_flow = build_conversation_flow_section(language, level, None)
-            safety_escalation = build_safety_escalation_section(language)
-            speed_instructions = build_speed_instructions()
-            correction_style = build_universal_correction_style(level) if not request.disable_corrections else ""
-
-            instructions = f"""{personality_section}
-
-{pronunciations}
-
-{sample_phrases}
-
-{speed_instructions}
-
-{correction_style}
-
-{conversation_flow}
-
-{safety_escalation}
-
-📰 NEWS CONVERSATION MODE - ACTIVE
-
-You are conducting a 5-minute conversation about a current news article with a {level} level {language} learner.
-
-ARTICLE INFORMATION:
-Title: {article_title}
-Summary ({word_count} words): {article_summary}
-
-KEY VOCABULARY TO USE:
-{vocabulary_section}
-
-DISCUSSION QUESTIONS TO EXPLORE:
-{questions_section}
-
-PEDAGOGICAL APPROACH:
-{ai_instructions}
-
-🎬 HOW TO START THE CONVERSATION:
-Begin with a warm, engaging greeting that immediately introduces the news topic:
-"Hi! Today we're going to talk about an interesting news story: {article_title}. Have you heard about this?"
-
-CONVERSATION STRUCTURE (5 minutes):
-1. INTRODUCTION (30 seconds):
-   - Greet and introduce the news topic naturally
-   - Check if they've heard about it
-   - Share 1-2 key facts from the article
-
-2. COMPREHENSION CHECK (1 minute):
-   - Ask what they understand about the story
-   - Clarify any confusing points
-   - Ensure they grasp the main ideas
-
-3. DISCUSSION (2.5 minutes):
-   - Guide conversation through the discussion questions
-   - Encourage opinions and personal reactions
-   - Use the key vocabulary naturally
-   - Ask follow-up questions based on their responses
-
-4. PERSONAL CONNECTION (1 minute):
-   - Ask how this news relates to their life
-   - Encourage them to share similar experiences
-   - Connect to broader themes
-
-LANGUAGE TEACHING GOALS:
-- Practice discussing current events in {language}
-- Use news-related vocabulary ({level} level)
-- Express opinions, reactions, and analysis
-- Improve fluency through meaningful conversation
-- Build confidence in real-world language use
-
-PROACTIVE TUTOR BEHAVIOR - CRITICAL:
-- YOU guide the conversation through the news topics
-- DO NOT ask "What would you like to discuss?" - YOU drive the discussion
-- Move naturally between discussion questions
-- Keep energy high and topic engaging
-- Be an enthusiastic conversation partner about the news
-
-🚨 CRITICAL ANTI-DRILL REMINDER:
-- You are a CONVERSATION PARTNER discussing news, not a drill instructor
-- NEVER ask students to repeat phrases or words
-- NEVER create pronunciation exercises or repetition tasks
-- Correct errors through NATURAL RECASTING only
-- Maintain natural conversation flow about the news
-- Example: Student says "This news is very interest" → You respond "Yes, it's very interesting! What part do you find most interesting?"
-
-LANGUAGE RULE: {config['rule']}
-{assessment_context}
-
-CONTENT FOCUS:
-- Keep conversation focused on the news article and related topics
-- Use the vocabulary and discussion questions provided
-- Adapt to student's interests while maintaining news focus
-- Be educational and engaging about current events
-
-CRITICAL: This is a NEWS DISCUSSION, not a free conversation. Keep all discussion related to the article and its themes."""
-
-            print(f"News conversation instructions: {len(instructions)} characters")
-            return instructions
-
-        except json.JSONDecodeError:
-            print(f"[NEWS] Error parsing news_context, falling back to default")
-            # Fall through to regular topic handling
 
     # Handle regular topics
     elif request.topic and request.topic != "custom":
@@ -1346,6 +1322,15 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"[UNIVERSAL] Language: {request.language}")
         print(f"[UNIVERSAL] Level: {request.level}")
         print(f"[UNIVERSAL] Topic: {request.topic}")
+        print(f"[DEBUG] news_context exists: {hasattr(request, 'news_context')}")
+        if hasattr(request, 'news_context'):
+            nc = request.news_context
+            print(f"[DEBUG] news_context is None: {nc is None}")
+            print(f"[DEBUG] news_context type: {type(nc)}")
+            if nc is not None:
+                print(f"[DEBUG] news_context length: {len(nc)}")
+                print(f"[DEBUG] news_context preview: {nc[:200] if len(nc) > 200 else nc}")
+            print(f"[DEBUG] news_context is truthy: {bool(nc)}")
         print("="*80)
 
         openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -1565,6 +1550,29 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             print(f"[TOOLS] Added {len(tools)} function tools for {request.level} level")
 
         print(f"[TRUNCATION] Configured with retention_ratio=0.8, post_instructions limit=8000 tokens")
+
+        # DEBUG: Check if news context is in instructions
+        if request.news_context:
+            if "NEWS CONVERSATION" in instructions or "NEWS DISCUSSION" in instructions or "📰" in instructions:
+                print(f"[DEBUG] ✅ NEWS CONTEXT FOUND IN INSTRUCTIONS")
+                # Check for vocabulary
+                if "KEY VOCABULARY" in instructions:
+                    print(f"[DEBUG] ✅ Vocabulary section included")
+                else:
+                    print(f"[DEBUG] ⚠️ Vocabulary section NOT found")
+                # Check for discussion questions
+                if "DISCUSSION QUESTIONS" in instructions:
+                    print(f"[DEBUG] ✅ Discussion questions included")
+                else:
+                    print(f"[DEBUG] ⚠️ Discussion questions NOT found")
+                # Find and print the news section
+                if "📰" in instructions:
+                    news_start = instructions.find("📰")
+                    print(f"[DEBUG] News section preview: {instructions[news_start:news_start+500]}")
+            else:
+                print(f"[DEBUG] ❌ WARNING: news_context exists but NOT found in instructions!")
+                print(f"[DEBUG] Instructions length: {len(instructions)}")
+                print(f"[DEBUG] Instructions preview: {instructions[:500]}")
 
         print("[UNIVERSAL] Sending ephemeral token request to OpenAI...")
 

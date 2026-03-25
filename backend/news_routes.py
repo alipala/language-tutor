@@ -276,6 +276,8 @@ class ConversationContext(BaseModel):
     discussion_questions: List[str]
     ai_instructions: str
     news_title: str
+    news_summary: str
+    word_count: int
 
 @router.post("/start-conversation")
 async def start_news_conversation(
@@ -311,7 +313,9 @@ async def start_news_conversation(
             vocabulary=content.vocabulary,
             discussion_questions=content.discussion_questions,
             ai_instructions=content.ai_instructions,
-            news_title=content.original["title"]
+            news_title=content.original["title"],
+            news_summary=content.summary,
+            word_count=content.word_count
         )
 
         logger.info(f"[NEWS] Conversation session created: {session_id}")
