@@ -381,7 +381,7 @@ async def generate_challenges_with_ai(user_id: str, user_level: str, language: s
         print(f"[AI_CHALLENGE] 📡 Calling GPT-4 for challenge generation...")
 
         response = client.chat.completions.create(
-            model="gpt-4o",  # Use GPT-4o for better JSON output
+            model="gpt-5.4-mini",  # Use GPT-5.4-mini for cost-effective generation
             messages=[
                 {
                     "role": "system",
@@ -393,7 +393,7 @@ async def generate_challenges_with_ai(user_id: str, user_level: str, language: s
                 }
             ],
             temperature=0.7,  # Some creativity for variety
-            max_tokens=4000
+            max_completion_tokens=4000
         )
 
         # Parse response
@@ -453,12 +453,80 @@ async def generate_challenges_with_ai(user_id: str, user_level: str, language: s
         return []
 
 
+async def get_challenges_from_reference(user_level: str, language: str = "english", count: int = 7) -> List[Dict[str, Any]]:
+    """
+    Fallback: Pull random challenges from reference_challenges collection
+
+    Args:
+        user_level: CEFR level
+        language: Target language
+        count: Number of challenges to return (default: 7)
+
+    Returns:
+        List of challenges from reference_challenges
+    """
+    try:
+        print(f"[REFERENCE_FALLBACK] 📚 Pulling {count} challenges from reference_challenges...")
+
+        reference_collection = database.reference_challenges
+
+        # Get all available challenge types
+        challenge_types = ["error_spotting", "micro_quiz", "native_check", "brain_tickler", "story_builder"]
+
+        # Calculate how many per type (roughly equal distribution)
+        per_type = count // len(challenge_types)
+        remainder = count % len(challenge_types)
+
+        all_challenges = []
+
+        for idx, challenge_type in enumerate(challenge_types):
+            # First type gets the remainder to reach exact count
+            type_count = per_type + (1 if idx < remainder else 0)
+
+            # Find challenges for this type/language/level
+            cursor = reference_collection.find({
+                "challenge_type": challenge_type,
+                "language": language,
+                "cefr_level": user_level
+            }).limit(type_count * 3)  # Get 3x to allow random selection
+
+            available = await cursor.to_list(None)
+
+            if available:
+                # Randomly select
+                selected = random.sample(available, min(type_count, len(available)))
+
+                # Convert to challenge format
+                for ref_challenge in selected:
+                    challenge = {
+                        "id": f"{challenge_type}_{uuid.uuid4().hex[:8]}",
+                        "type": challenge_type,
+                        "challenge_data": ref_challenge.get("challenge_data", {}),
+                        "language": language,
+                        "level": user_level,
+                        "source": "reference_challenges",
+                        "generated_at": datetime.utcnow().isoformat()
+                    }
+                    all_challenges.append(challenge)
+
+        print(f"[REFERENCE_FALLBACK] ✅ Retrieved {len(all_challenges)} challenges from reference pool")
+        return all_challenges[:count]  # Ensure exact count
+
+    except Exception as e:
+        print(f"[REFERENCE_FALLBACK] ❌ Error pulling from reference_challenges: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return []
+
+
 async def get_or_generate_daily_challenges(user_id: str, user_level: str, language: str = "english") -> List[Dict[str, Any]]:
     """
     Main function: Get cached challenges or generate new ones with AI
+    FALLBACK: If AI fails, pull from reference_challenges collection
 
     - Checks 24h cache first
     - If no cache, generates 7 new AI challenges
+    - If AI fails, falls back to reference_challenges
     - Caches for 24 hours
 
     Args:
@@ -467,7 +535,7 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
         language: Target language (default: "english")
 
     Returns:
-        List of 7 challenges (cached or freshly generated)
+        List of 7 challenges (cached, AI-generated, or from reference pool)
     """
     try:
         # Check cache first (filter by language!)
@@ -485,14 +553,21 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
             print(f"[AI_CHALLENGE] ✅ Found cached challenges for today")
             return cached.get("challenges", [])
 
-        # No cache - generate new AI challenges
+        # No cache - try AI generation first
         print(f"[AI_CHALLENGE] 🆕 Generating new daily challenges with AI for language: {language}...")
 
         challenges = await generate_challenges_with_ai(user_id, user_level, language)
+        generation_method = "ai"
 
+        # FALLBACK: If AI fails, pull from reference_challenges
         if not challenges or len(challenges) == 0:
-            print(f"[AI_CHALLENGE] ⚠️ AI generation failed, returning empty")
-            return []
+            print(f"[AI_CHALLENGE] ⚠️ AI generation failed, falling back to reference_challenges")
+            challenges = await get_challenges_from_reference(user_level, language, count=7)
+            generation_method = "reference_fallback"
+
+            if not challenges or len(challenges) == 0:
+                print(f"[AI_CHALLENGE] ❌ Both AI and reference fallback failed, returning empty")
+                return []
 
         # Cache for 24 hours
         cache_doc = {
@@ -501,7 +576,7 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
             "date": today_start,
             "challenges": challenges,
             "created_at": datetime.utcnow(),
-            "generation_method": "ai",
+            "generation_method": generation_method,
             "level": user_level
         }
 
@@ -511,7 +586,7 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
         # Insert cache
         await cache_collection.insert_one(cache_doc)
 
-        print(f"[AI_CHALLENGE] ✅ Cached {len(challenges)} challenges for 24h")
+        print(f"[AI_CHALLENGE] ✅ Cached {len(challenges)} challenges ({generation_method}) for 24h")
 
         return challenges
 
@@ -519,4 +594,10 @@ async def get_or_generate_daily_challenges(user_id: str, user_level: str, langua
         print(f"[AI_CHALLENGE] ❌ Error in get_or_generate_daily_challenges: {str(e)}")
         import traceback
         print(traceback.format_exc())
-        return []
+
+        # Final fallback attempt
+        print(f"[AI_CHALLENGE] 🔄 Attempting final fallback to reference_challenges...")
+        try:
+            return await get_challenges_from_reference(user_level, language, count=7)
+        except:
+            return []
