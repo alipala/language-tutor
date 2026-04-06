@@ -963,6 +963,9 @@ class ChallengeSessionComplete(BaseModel):
     level: Optional[str] = None
     challenge_type: Optional[str] = None
 
+    # Optional: Challenge IDs for completion tracking (Freestyle Practice)
+    challenge_ids: Optional[List[str]] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True

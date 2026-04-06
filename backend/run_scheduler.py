@@ -1,11 +1,27 @@
 """
-Background Job Scheduler
-Runs scheduled jobs:
-- Challenge pool replenishment (configurable frequency)
-- Reference challenge generation (configurable frequency)
-- Heart refill notifications (every 30 minutes)
-- Practice reminders (every hour)
-Can be run as a separate process or integrated into main FastAPI app
+Background Job Scheduler - Simplified & Optimized
+==================================================
+
+This scheduler runs essential background jobs for the Language Tutor platform:
+
+ACTIVE JOBS:
+- Heart refill notifications (every 30 minutes) - User engagement
+- Practice reminders (every hour) - User retention
+- Free user monthly reset (daily at 2:30 AM UTC) - Business logic
+- Reference challenge generation (monthly at 3:00 AM UTC) - Content refresh
+
+DEPRECATED JOBS:
+- User challenge pool replenishment - No longer needed with new completion tracking system
+  (Users now get challenges from shared reference_challenges with completion filtering)
+
+Architecture:
+- Runs as a separate Railway service for isolation and reliability
+- Uses schedule library for cron-like job scheduling
+- Async operations via asyncio event loop
+- Graceful shutdown on SIGINT
+
+Author: Language Tutor Team
+Last Updated: 2026-04-07
 """
 
 import os
@@ -13,172 +29,297 @@ import asyncio
 import schedule
 import time
 from datetime import datetime, date
-from challenge_pool_replenisher import run_daily_job
+from typing import Optional
+from enum import Enum
+
+# Job imports
 from notification_triggers import run_heart_refill_check
 from practice_reminder_trigger import run_practice_reminder_check
 from cron_jobs.reset_free_user_usage import reset_expired_free_user_periods
 
+
+# ==============================================================================
+# CONFIGURATION
+# ==============================================================================
+
+class JobFrequency(Enum):
+    """Supported job frequencies"""
+    DISABLED = "disabled"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
+FREQUENCY_INTERVALS = {
+    JobFrequency.DAILY: 1,
+    JobFrequency.WEEKLY: 7,
+    JobFrequency.BIWEEKLY: 14,
+    JobFrequency.MONTHLY: 30,
+}
+
+
+# ==============================================================================
+# EVENT LOOP MANAGEMENT
+# ==============================================================================
+
 # Global event loop for all async operations
-loop = None
+_event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
-def get_or_create_event_loop():
-    """Get existing event loop or create a new one"""
-    global loop
-    if loop is None or loop.is_closed():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    return loop
+def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
+    """
+    Get existing event loop or create a new one.
+
+    Returns:
+        asyncio.AbstractEventLoop: The event loop instance
+    """
+    global _event_loop
+
+    if _event_loop is None or _event_loop.is_closed():
+        _event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_event_loop)
+
+    return _event_loop
 
 
-def daily_job_wrapper():
-    """Wrapper to run daily challenge pool replenishment"""
-    print(f"\n[SCHEDULER] ⏰ Daily Job Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    event_loop = get_or_create_event_loop()
-    event_loop.run_until_complete(run_daily_job())
+# ==============================================================================
+# JOB WRAPPERS
+# ==============================================================================
 
+def heart_refill_job_wrapper() -> None:
+    """
+    Wrapper to run heart refill notification check.
+    Sends push notifications when users' hearts have refilled.
+    """
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 🔔 Heart Refill Check Triggered at {timestamp}")
 
-def heart_refill_job_wrapper():
-    """Wrapper to run heart refill notification check"""
-    print(f"\n[SCHEDULER] 🔔 Heart Refill Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     event_loop = get_or_create_event_loop()
     event_loop.run_until_complete(run_heart_refill_check())
 
 
-def practice_reminder_job_wrapper():
-    """Wrapper to run practice reminder check"""
-    print(f"\n[SCHEDULER] 📚 Practice Reminder Check Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+def practice_reminder_job_wrapper() -> None:
+    """
+    Wrapper to run practice reminder check.
+    Sends push notifications to encourage users to practice.
+    """
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 📚 Practice Reminder Check Triggered at {timestamp}")
+
     event_loop = get_or_create_event_loop()
     event_loop.run_until_complete(run_practice_reminder_check())
 
 
-def free_user_reset_job_wrapper():
-    """Wrapper to run free user monthly reset"""
-    print(f"\n[SCHEDULER] 🆓 Free User Monthly Reset Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+def free_user_reset_job_wrapper() -> None:
+    """
+    Wrapper to run free user monthly reset.
+    Resets usage counters for free tier users on a monthly basis.
+    """
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 🆓 Free User Monthly Reset Triggered at {timestamp}")
+
     event_loop = get_or_create_event_loop()
     event_loop.run_until_complete(reset_expired_free_user_periods())
 
 
-def reference_generation_job_wrapper():
-    """Wrapper to run reference challenge generation"""
-    frequency = os.getenv("REFERENCE_GENERATION_FREQUENCY", "weekly").lower()
+def reference_generation_job_wrapper() -> None:
+    """
+    Wrapper to run reference challenge generation.
+
+    Generates new template challenges in the reference_challenges collection.
+    Uses frequency-based scheduling to avoid unnecessary AI costs.
+
+    Note: Uses simple AI generator (gpt-5.4-mini) for cost efficiency.
+          CrewAI is disabled as simple generator produces high-quality results.
+    """
+    # Get configuration
+    frequency_str = os.getenv("REFERENCE_GENERATION_FREQUENCY", "monthly").lower()
+
+    # Parse frequency
+    try:
+        frequency = JobFrequency(frequency_str)
+    except ValueError:
+        print(f"[SCHEDULER] ⚠️ Invalid REFERENCE_GENERATION_FREQUENCY: {frequency_str}, using monthly")
+        frequency = JobFrequency.MONTHLY
+
+    # Check if disabled
+    if frequency == JobFrequency.DISABLED:
+        print(f"\n[SCHEDULER] ⏭️ Reference generation is DISABLED")
+        return
 
     # Calculate if we should run today based on frequency
     days_since_epoch = (date.today() - date(1970, 1, 1)).days
-
-    frequency_map = {
-        "daily": 1,
-        "weekly": 7,
-        "biweekly": 14,
-        "monthly": 30
-    }
-
-    interval = frequency_map.get(frequency, 7)
+    interval = FREQUENCY_INTERVALS[frequency]
 
     if days_since_epoch % interval != 0:
-        print(f"\n[SCHEDULER] ⏭️ Skipping reference generation (frequency: {frequency}, next run in {interval - (days_since_epoch % interval)} days)")
+        days_until_next = interval - (days_since_epoch % interval)
+        print(f"\n[SCHEDULER] ⏭️ Skipping reference generation")
+        print(f"[SCHEDULER]    Frequency: {frequency.value}")
+        print(f"[SCHEDULER]    Next run in: {days_until_next} days")
         return
 
-    print(f"\n[SCHEDULER] 📖 Reference Challenge Generation Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"[SCHEDULER] 🔄 Frequency: {frequency}")
+    # Run generation
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 📖 Reference Challenge Generation Triggered at {timestamp}")
+    print(f"[SCHEDULER] 🔄 Frequency: {frequency.value}")
+    print(f"[SCHEDULER] 🤖 Using: Simple AI Generator (gpt-5.4-mini)")
 
     event_loop = get_or_create_event_loop()
 
-    # Import the reference generation function
+    # Import the simple AI reference generation function
+    # Note: We use simple AI generator instead of CrewAI for cost efficiency
     try:
-        from generate_reference_challenges_crew import replenish_reference_challenges
+        from generate_reference_challenges_ai import replenish_reference_challenges
         event_loop.run_until_complete(replenish_reference_challenges())
+        print(f"[SCHEDULER] ✅ Reference generation completed successfully")
+    except ImportError:
+        # Fallback to CrewAI if simple AI generator not available
+        print(f"[SCHEDULER] ⚠️ Simple AI generator not found, falling back to CrewAI")
+        try:
+            from generate_reference_challenges_crew import replenish_reference_challenges
+            event_loop.run_until_complete(replenish_reference_challenges())
+            print(f"[SCHEDULER] ✅ Reference generation completed successfully (CrewAI)")
+        except Exception as e:
+            print(f"[SCHEDULER] ❌ Error running reference generation: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
     except Exception as e:
         print(f"[SCHEDULER] ❌ Error running reference generation: {str(e)}")
         import traceback
         print(traceback.format_exc())
 
 
-def user_pool_replenishment_job_wrapper():
-    """Wrapper to run user challenge pool replenishment"""
-    frequency = os.getenv("USER_POOL_FREQUENCY", "daily").lower()
+# ==============================================================================
+# DEPRECATED JOB (kept for reference)
+# ==============================================================================
 
-    # Calculate if we should run today based on frequency
-    days_since_epoch = (date.today() - date(1970, 1, 1)).days
+def user_pool_replenishment_job_wrapper() -> None:
+    """
+    [DEPRECATED] Wrapper to run user challenge pool replenishment.
 
-    frequency_map = {
-        "daily": 1,
-        "weekly": 7,
-        "biweekly": 14,
-        "monthly": 30
-    }
+    This job is NO LONGER NEEDED as of 2026-04-07.
 
-    interval = frequency_map.get(frequency, 1)  # Default daily
+    Reason: New completion tracking system introduced in April 2026 eliminates
+    the need for per-user challenge pools. Users now get challenges directly
+    from the shared reference_challenges collection with intelligent completion
+    filtering based on challenge_ids tracking.
 
-    if days_since_epoch % interval != 0:
-        print(f"\n[SCHEDULER] ⏭️ Skipping user pool replenishment (frequency: {frequency}, next run in {interval - (days_since_epoch % interval)} days)")
+    Migration: Set USER_POOL_FREQUENCY=disabled in environment variables.
+
+    For more info, see: docs/COMPLETION_TRACKING_MIGRATION.md
+    """
+    frequency_str = os.getenv("USER_POOL_FREQUENCY", "disabled").lower()
+
+    # Check if explicitly disabled
+    if frequency_str == "disabled":
+        print(f"\n[SCHEDULER] ℹ️ User pool replenishment is DISABLED")
+        print(f"[SCHEDULER]    Reason: New completion tracking system replaces user pools")
+        print(f"[SCHEDULER]    See: docs/COMPLETION_TRACKING_MIGRATION.md")
         return
 
-    print(f"\n[SCHEDULER] ⏰ User Pool Replenishment Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"[SCHEDULER] 🔄 Frequency: {frequency}")
+    # Warn if still enabled
+    print(f"\n[SCHEDULER] ⚠️ WARNING: User pool replenishment is still ENABLED")
+    print(f"[SCHEDULER]    This job is DEPRECATED and should be disabled")
+    print(f"[SCHEDULER]    Set USER_POOL_FREQUENCY=disabled in environment")
+    print(f"[SCHEDULER]    Skipping execution to prevent unnecessary AI costs...")
 
-    event_loop = get_or_create_event_loop()
-    event_loop.run_until_complete(run_daily_job())
 
+# ==============================================================================
+# MAIN SCHEDULER
+# ==============================================================================
 
-def run_scheduler():
+def run_scheduler() -> None:
     """
-    Run the scheduler with multiple jobs:
-    - User challenge pool replenishment (configurable frequency) at 2:00 AM UTC
-    - Reference challenge generation (configurable frequency) at 3:00 AM UTC
-    - Heart refill notifications every 30 minutes
-    - Practice reminders every hour
+    Run the background job scheduler.
+
+    Schedules and executes all background jobs with proper timing:
+    - Heart refill notifications: Every 30 minutes (user engagement)
+    - Practice reminders: Every hour (user retention)
+    - Free user reset: Daily at 2:30 AM UTC (business logic)
+    - Reference generation: Monthly at 3:00 AM UTC (content refresh)
+
+    The scheduler runs in an infinite loop, checking for pending jobs every minute.
+    Gracefully handles SIGINT (Ctrl+C) for clean shutdown.
     """
-    # Get configuration from environment
-    user_pool_freq = os.getenv("USER_POOL_FREQUENCY", "daily")
-    reference_freq = os.getenv("REFERENCE_GENERATION_FREQUENCY", "weekly")
+    # ==============================================================================
+    # LOAD CONFIGURATION
+    # ==============================================================================
+
+    reference_freq = os.getenv("REFERENCE_GENERATION_FREQUENCY", "monthly").lower()
+    user_pool_freq = os.getenv("USER_POOL_FREQUENCY", "disabled").lower()
     use_crewai = os.getenv("USE_CREWAI", "false").lower() == "true"
+    gpt_model = os.getenv("GPT_MODEL", "gpt-5.4-mini")
 
-    print("="*80)
-    print("[SCHEDULER] 🚀 Background Job Scheduler Started")
+    # ==============================================================================
+    # PRINT STARTUP BANNER
+    # ==============================================================================
+
+    print("=" * 80)
+    print("[SCHEDULER] 🚀 Background Job Scheduler Started (Simplified)")
     print(f"[SCHEDULER] 📅 Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*80)
-    print("[SCHEDULER] Configuration:")
-    print(f"  🔄 User pool replenishment: {user_pool_freq} at 02:00 AM UTC")
-    print(f"  🤖 CrewAI for users: {'ENABLED' if use_crewai else 'DISABLED'}")
-    print(f"  📖 Reference generation: {reference_freq} at 03:00 AM UTC")
-    print(f"  🆓 Free user monthly reset: Daily at 02:30 AM UTC")
-    print(f"  🔔 Heart refill check: Every 30 minutes")
+    print("=" * 80)
+
+    print("\n[SCHEDULER] 📋 Active Jobs:")
+    print(f"  🔔 Heart refill notifications: Every 30 minutes")
     print(f"  📚 Practice reminders: Every hour")
-    print("="*80 + "\n")
+    print(f"  🆓 Free user monthly reset: Daily at 02:30 AM UTC")
+    print(f"  📖 Reference generation: {reference_freq} at 03:00 AM UTC")
 
-    # Schedule user challenge pool replenishment at 2:00 AM UTC
-    # This checks the frequency inside the wrapper
-    schedule.every().day.at("02:00").do(user_pool_replenishment_job_wrapper)
+    print("\n[SCHEDULER] ⚙️ Configuration:")
+    print(f"  🤖 AI Generator: {'CrewAI' if use_crewai else 'Simple AI'}")
+    print(f"  🧠 Model: {gpt_model}")
+    print(f"  🔄 User pool replenishment: {user_pool_freq} (deprecated)")
 
-    # 🔥 NEW: Schedule free user monthly reset at 2:30 AM UTC
-    # Runs daily to check for expired free user periods and reset usage
+    print("\n[SCHEDULER] ℹ️ System Architecture:")
+    print(f"  ✅ Completion tracking: ENABLED (Apr 2026)")
+    print(f"  ✅ Challenge source: Shared reference_challenges collection")
+    print(f"  ❌ User challenge pools: DEPRECATED (no longer needed)")
+
+    print("=" * 80 + "\n")
+
+    # ==============================================================================
+    # SCHEDULE JOBS
+    # ==============================================================================
+
+    # 1. Free user monthly reset (daily at 2:30 AM UTC)
+    # Runs daily, checks expiration internally
     schedule.every().day.at("02:30").do(free_user_reset_job_wrapper)
 
-    # Schedule reference challenge generation at 3:00 AM UTC
-    # This checks the frequency inside the wrapper
+    # 2. Reference challenge generation (monthly at 3:00 AM UTC)
+    # Checks frequency internally before running
     schedule.every().day.at("03:00").do(reference_generation_job_wrapper)
 
-    # Schedule heart refill notifications every 30 minutes
+    # 3. Heart refill notifications (every 30 minutes)
+    # Critical for user engagement
     schedule.every(30).minutes.do(heart_refill_job_wrapper)
 
-    # Schedule practice reminders every hour
+    # 4. Practice reminders (every hour)
+    # Drives user retention
     schedule.every().hour.do(practice_reminder_job_wrapper)
 
-    # For testing: uncomment to run jobs every minute
-    # schedule.every(1).minutes.do(daily_job_wrapper)
-    # schedule.every(1).minutes.do(heart_refill_job_wrapper)
+    # 5. [DEPRECATED] User pool replenishment
+    # Only schedule if explicitly not disabled (for migration period)
+    if user_pool_freq != "disabled":
+        print("[SCHEDULER] ⚠️ Scheduling deprecated user pool job (should be disabled)\n")
+        schedule.every().day.at("02:00").do(user_pool_replenishment_job_wrapper)
 
-    # Run notification jobs immediately on startup (NOT challenge generation - too expensive!)
+    # ==============================================================================
+    # RUN INITIAL CHECKS
+    # ==============================================================================
+
     print("[SCHEDULER] 🔄 Running initial notification checks...\n")
-    print("[SCHEDULER] ⚠️ Skipping challenge generation on startup:")
-    print(f"[SCHEDULER]    - User pool: runs at 02:00 AM UTC ({user_pool_freq})")
-    print(f"[SCHEDULER]    - Reference: runs at 03:00 AM UTC ({reference_freq})\n")
+    print("[SCHEDULER] ℹ️ Skipping challenge generation on startup (runs at 03:00 AM UTC)\n")
+
+    # Run notification jobs immediately to verify they work
     heart_refill_job_wrapper()
     print()
     practice_reminder_job_wrapper()
 
-    # Keep running
+    # ==============================================================================
+    # START MAIN LOOP
+    # ==============================================================================
+
     print("\n[SCHEDULER] 👀 Scheduler is now running. Press Ctrl+C to stop.\n")
 
     try:
@@ -186,17 +327,29 @@ def run_scheduler():
             schedule.run_pending()
             time.sleep(60)  # Check every minute
     except KeyboardInterrupt:
-        print("\n[SCHEDULER] 🛑 Scheduler stopped by user")
+        print("\n[SCHEDULER] 🛑 Scheduler stopped by user (SIGINT received)")
+        print("[SCHEDULER] 👋 Shutting down gracefully...")
+    finally:
+        # Clean up event loop
+        global _event_loop
+        if _event_loop and not _event_loop.is_closed():
+            _event_loop.close()
+        print("[SCHEDULER] ✅ Shutdown complete\n")
 
+
+# ==============================================================================
+# ENTRY POINT
+# ==============================================================================
 
 if __name__ == "__main__":
-    # Install schedule package if not already installed
+    # Ensure schedule package is installed
     try:
         import schedule
     except ImportError:
-        print("Installing required package: schedule")
+        print("[SCHEDULER] 📦 Installing required package: schedule")
         import subprocess
         subprocess.check_call(["pip", "install", "schedule"])
         import schedule
 
+    # Start the scheduler
     run_scheduler()

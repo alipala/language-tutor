@@ -462,8 +462,11 @@ async def get_reference_challenges(
 
             # Extract all challenge IDs from completed sessions
             async for session in completed_sessions:
-                # Sessions store challenge data with IDs
-                if "challenges" in session:
+                # NEW format: check for challenge_ids array (added for completion tracking)
+                if "challenge_ids" in session:
+                    exclude_ids.extend(session["challenge_ids"])
+                # OLD format: check for challenges array (backward compatibility)
+                elif "challenges" in session:
                     for challenge in session["challenges"]:
                         if "id" in challenge:
                             exclude_ids.append(challenge["id"])

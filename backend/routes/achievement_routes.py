@@ -245,7 +245,10 @@ async def complete_challenge_session(
                 "duration_seconds": 0,
                 "user_timezone": user_timezone,
                 "local_date": convert_to_local_date(datetime.utcnow(), user_timezone),
-                "start_time": datetime.utcnow()
+                "start_time": datetime.utcnow(),
+
+                # NEW: Store challenge IDs for completion tracking
+                "challenge_ids": request.challenge_ids or []
             }
             await challenge_sessions_collection.insert_one(session_doc)
             session = session_doc
@@ -280,7 +283,10 @@ async def complete_challenge_session(
                 "accuracy": accuracy,
                 "duration_seconds": duration_seconds,
                 "user_timezone": user_timezone,
-                "local_date": local_date
+                "local_date": local_date,
+
+                # NEW: Store challenge IDs for completion tracking
+                "challenge_ids": request.challenge_ids or []
             }
 
             # Update language/level/type if provided by client (overrides existing values)
