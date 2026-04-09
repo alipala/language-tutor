@@ -22,6 +22,7 @@ from database import database
 from challenge_generator_ai import get_or_generate_daily_challenges
 from services.timezone_utils import convert_to_local_date, get_current_local_date
 from services.stats_service import update_daily_stats, update_lifetime_stats, update_streak
+from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 
 router = APIRouter(prefix="/api/challenges", tags=["challenges"])
 
@@ -540,6 +541,14 @@ async def complete_challenge(
             print(f"[CHALLENGES] ⚠️ Error updating new stats system: {str(stats_error)}")
             import traceback
             print(traceback.format_exc())
+
+        # PHASE 4.2: Invalidate TaalCoach cache after challenge completion
+        try:
+            await invalidate_coach_context_smart(user_id, ["challenge", "achievement"])
+            print(f"[COACH CACHE] ✅ Invalidated coach cache for user {user_id} after challenge completion")
+        except Exception as cache_error:
+            # Don't fail the request if cache invalidation fails
+            print(f"[COACH CACHE] ⚠️ Error invalidating coach cache: {str(cache_error)}")
 
         return {
             "success": True,

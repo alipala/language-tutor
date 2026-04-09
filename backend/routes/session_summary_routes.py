@@ -18,6 +18,7 @@ from openai import OpenAI
 from auth import get_current_user
 from models import UserResponse
 from session_statistics import SessionStatistics
+from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 
 # Initialize router
 router = APIRouter()
@@ -816,6 +817,13 @@ async def store_session_summary(
                 )
                 background_tasks.add_task(_run_dna_and_optimizer_background, **_dna_kwargs)
                 print(f"[DNA] ⚡ Scheduled DNA analysis + plan optimization as background task")
+
+            # PHASE 4.2: Invalidate TaalCoach cache after session completion
+            await invalidate_coach_context_smart(
+                str(current_user.id),
+                ["session", "learning_plan", "dna", "sentence_analysis", "achievement"]
+            )
+            print(f"[CACHE] ✅ Invalidated TaalCoach cache after session completion")
 
             # ⚡ Return immediately — flashcards, DNA, optimizer, and sentence analysis run in background
             print(f"[SESSION_SUMMARY] ✅ Returning response (background tasks scheduled)")

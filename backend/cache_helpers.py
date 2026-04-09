@@ -528,6 +528,56 @@ async def invalidate_taalcoach_context(user_id: str):
     await delete_cached(cache_key)
     logger.info(f"🗑️  [CACHE] Invalidated TaalCoach context cache: {user_id}")
 
+async def invalidate_coach_context_smart(user_id: str, changed_types: List[str]):
+    """
+    PHASE 4.1: Smart cache invalidation for TaalCoach - only invalidate affected intent caches.
+
+    This is more granular than invalidating all contexts. It invalidates ONLY the
+    intent-specific caches that are affected by the data change.
+
+    Args:
+        user_id: User ID
+        changed_types: List of data types that changed
+                      ["challenge", "session", "learning_plan", "dna", "achievement",
+                       "hearts", "feedback", "news", "notification", "sentence_analysis"]
+
+    Example usage:
+        # After challenge completion
+        await invalidate_coach_context_smart(user_id, ["challenge", "achievement"])
+
+        # After session completion
+        await invalidate_coach_context_smart(user_id, ["session", "dna", "sentence_analysis"])
+
+        # After learning plan session completion
+        await invalidate_coach_context_smart(user_id, ["learning_plan", "session", "achievement"])
+    """
+    # Map data types → intents that need invalidation
+    intent_map = {
+        "challenge": ["challenges", "progress", "general"],
+        "session": ["general", "progress"],
+        "learning_plan": ["learning_plan", "progress", "general"],
+        "dna": ["dna"],
+        "achievement": ["progress", "general"],
+        "hearts": ["challenges", "general"],
+        "feedback": ["general"],
+        "news": ["general"],
+        "notification": ["general"],
+        "sentence_analysis": ["dna", "general"]
+    }
+
+    # Collect all affected intents
+    intents_to_invalidate = set()
+    for dtype in changed_types:
+        intents_to_invalidate.update(intent_map.get(dtype, ["general"]))
+
+    # Invalidate each intent cache
+    # NOTE: CoachService uses cache key format: coach_context:{user_id}:{intent}
+    for intent in intents_to_invalidate:
+        cache_key = f"coach_context:{user_id}:{intent}"
+        await delete_cached(cache_key)
+
+    logger.info(f"🗑️ [CACHE] Smart invalidation for user {user_id}: intents={list(intents_to_invalidate)}, data_types={changed_types}")
+
 # ============================================================================
 # CACHE MONITORING
 # ============================================================================
@@ -594,5 +644,6 @@ __all__ = [
     "invalidate_all_reference_challenges",
     "get_taalcoach_context_cached",
     "invalidate_taalcoach_context",
+    "invalidate_coach_context_smart",  # PHASE 4.1: Smart cache invalidation
     "router"
 ]
