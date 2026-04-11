@@ -1505,16 +1505,57 @@ RESPONSE RULES:
 - "Personal Goals" = User's personal learning goals set separately (e.g., "Have a 10-minute conversation")
 - When user asks about "learning plan goal", respond about the PLAN's objective, NOT personal goals
 
-APP FEATURES YOU CAN RECOMMEND:
-- Voice Conversations: Real-time speaking practice (recommend by language/level)
-- Learning Plans: Structured curriculum with sessions (suggest next session)
-- Challenges: 7 types - Error Spotting, Swipe Fix, Micro Quiz, Brain Tickler, Story Builder, Smart Flashcard, Native Check (recommend specific type)
-- Flashcards: Vocabulary practice from learning plans (suggest reviewing sets)
-- Speaking DNA: Speaking profile analysis (premium) - pronunciation, fluency, confidence
-- Assessments: Speaking evaluations (suggest retaking for progress)
-- Story Builder: Creative writing practice (suggest contributing stories)
-- Learning Goals: Set and track goals (suggest creating/reviewing goals)
-- Daily News: Read articles in target language (recommend by interest/level)
+MYTACO AI FEATURES (22 total - recommend based on user context):
+
+🎤 VOICE & CONVERSATION:
+- Real-Time Voice Conversations: Practice speaking anytime (6 languages, 6 CEFR levels)
+- AI Conversation Rescue: Get help during conversations (2 suggested responses + translations)
+- 6 AI Coaches: Alloy, Echo, Fable, Onyx, Nova, Shimmer (suggest trying different voices)
+
+🎮 GAMIFICATION & CHALLENGES (7 types):
+- Brain Tickler: Timed quizzes for quick thinking
+- Micro Quiz: Fast decision-making exercises
+- Native Check: Learn natural phrasing
+- Error Spotting: Find and fix mistakes
+- Smart Flashcard: Spaced repetition vocabulary
+- Swipe Fix: Correct sentences quickly
+- Story Builder: Construct sentences from scrambled words
+- Hearts/Focus Energy: 5-10 hearts per challenge type, streak shields (3 correct = 1 free mistake)
+
+📚 LEARNING & PROGRESS:
+- AI Learning Plans: Weekly schedules, skill breakdown (pronunciation/grammar/vocabulary/fluency/coherence)
+- Speaking Assessment: 60-second test for CEFR level recommendation
+
+📖 VOCABULARY & ANALYSIS:
+- Smart Flashcards: Auto-generated from conversations with SRS algorithm
+- Conversation Analysis: Color-coded transcript (green/yellow/red), detailed feedback
+
+💰 SUBSCRIPTIONS:
+- Try & Learn: FREE (15 min/month, 5 hearts)
+- Fluency Builder: €19.99/month (150 min, 10 hearts)
+- Language Mastery: €39.99/month (Unlimited)
+
+🔔 ENGAGEMENT:
+- Streak Tracking: Daily practice counter, badges, longest streak
+- Push Notifications: Practice reminders, achievement unlocks, streak alerts
+
+📰 DAILY ENGAGEMENT:
+- Daily News Practice: Fresh articles daily, 7 categories (World/Tech/Business/Sports/Health/Entertainment/Politics)
+
+⚙️ ACCESSIBILITY:
+- Guest Mode: Try 15 minutes without registration
+- Custom Topics: Talk about anything with web search integration
+- Multi-Language: English, French, Portuguese, German, Dutch, Spanish
+
+CONTEXT-AWARE SUGGESTION RULES:
+• After Practice Session → "Review transcript or try Brain Tickler challenge next?"
+• After Challenge → "Practice those words with Smart Flashcards?" or "Keep your streak going with Error Spotting"
+• After Assessment → "I created a learning plan based on your B1 level. Want to start?"
+• Low Hearts (Free) → "2 hearts left. Hearts refill in 30min or upgrade to Fluency Builder for 10 hearts"
+• Low Minutes (Free) → "5 min left this month. Upgrade for 150 min/month or try Daily News reading"
+• Learning Plan Active → "Week 2, Session 3: Practice Dutch greetings. Ready to start?"
+• High Streak → "7-day streak! Keep going to unlock the 'Week Warrior' badge"
+• Never Tried Feature → "Try Daily News - fresh articles every day in your target language"
 """
 
         # PHASE 3.1: Intent-specific context with COMPREHENSIVE DATA
