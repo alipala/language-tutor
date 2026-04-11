@@ -892,13 +892,9 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         all_languages = self._extract_all_languages(learning_plans, [], challenge_sessions, [])
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        # Only count processed sessions (have summary or enhanced_analysis)
+        # Count ALL practice sessions (including 3-min and 5-min billing-tracked sessions)
         practice_sessions_count = await conversation_sessions_collection.count_documents({
-            "user_id": user_id,
-            "$or": [
-                {"summary": {"$exists": True}},
-                {"enhanced_analysis": {"$exists": True}}
-            ]
+            "user_id": user_id
         })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
@@ -978,13 +974,9 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         all_languages = self._extract_all_languages(learning_plans, [], [], [])
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        # Only count processed sessions (have summary or enhanced_analysis)
+        # Count ALL practice sessions (including 3-min and 5-min billing-tracked sessions)
         practice_sessions_count = await conversation_sessions_collection.count_documents({
-            "user_id": user_id,
-            "$or": [
-                {"summary": {"$exists": True}},
-                {"enhanced_analysis": {"$exists": True}}
-            ]
+            "user_id": user_id
         })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
@@ -1110,13 +1102,9 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         )
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        # Only count processed sessions (have summary or enhanced_analysis)
+        # Count ALL practice sessions (including 3-min and 5-min billing-tracked sessions)
         practice_sessions_count = await conversation_sessions_collection.count_documents({
-            "user_id": user_id,
-            "$or": [
-                {"summary": {"$exists": True}},
-                {"enhanced_analysis": {"$exists": True}}
-            ]
+            "user_id": user_id
         })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 

@@ -1391,23 +1391,15 @@ async def get_conversation_history(
         print(f"[PROGRESS] ===== CONVERSATION HISTORY DEBUG START =====")
         print(f"[PROGRESS] Getting conversation history for user {current_user.id}")
         print(f"[PROGRESS] Limit: {limit}, Offset: {offset}")
-        
-        # 🔧 FIX: Only return PROCESSED sessions (sessions that have summary or enhanced_analysis)
-        # Unprocessed sessions are incomplete/canceled before AI processing
-        query_filter = {
-            "user_id": current_user.id,
-            "$or": [
-                {"summary": {"$exists": True}},
-                {"enhanced_analysis": {"$exists": True}}
-            ]
-        }
 
-        # Get total count of processed sessions
-        total_count = await conversation_sessions_collection.count_documents(query_filter)
-        print(f"[PROGRESS] Total processed sessions count: {total_count}")
+        # Get total count
+        total_count = await conversation_sessions_collection.count_documents({"user_id": current_user.id})
+        print(f"[PROGRESS] Total count: {total_count}")
 
         # Get sessions with pagination, sorted by creation date (newest first)
-        sessions_cursor = conversation_sessions_collection.find(query_filter).sort("created_at", -1).skip(offset).limit(limit)
+        sessions_cursor = conversation_sessions_collection.find(
+            {"user_id": current_user.id}
+        ).sort("created_at", -1).skip(offset).limit(limit)
         
         sessions_data = await sessions_cursor.to_list(length=limit)
         print(f"[PROGRESS] Raw sessions data count: {len(sessions_data)}")
