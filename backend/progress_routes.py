@@ -1392,16 +1392,16 @@ async def get_conversation_history(
         print(f"[PROGRESS] Getting conversation history for user {current_user.id}")
         print(f"[PROGRESS] Limit: {limit}, Offset: {offset}")
         
-        # 🔧 FIX: Only return COMPLETED sessions (message_count > 1)
-        # Incomplete sessions (only system message) should not be displayed
+        # 🔧 FIX: Only return COMPLETED sessions (exclude placeholder "Practice Session (X min)" topics)
+        # Incomplete/canceled sessions have generic "Practice Session" topics
         query_filter = {
             "user_id": current_user.id,
-            "message_count": {"$gt": 1}  # Only completed sessions with actual conversation
+            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}  # Exclude "Practice Session (3 min)", "Practice Session (5 min)", etc.
         }
 
         # Get total count of completed sessions
         total_count = await conversation_sessions_collection.count_documents(query_filter)
-        print(f"[PROGRESS] Total completed sessions count: {total_count}")
+        print(f"[PROGRESS] Total completed sessions count (excluding placeholders): {total_count}")
 
         # Get sessions with pagination, sorted by creation date (newest first)
         sessions_cursor = conversation_sessions_collection.find(query_filter).sort("created_at", -1).skip(offset).limit(limit)

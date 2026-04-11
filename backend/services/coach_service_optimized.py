@@ -412,10 +412,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         )
 
         # Get accurate session counts from actual collections (NOT user.stats.lifetime which includes challenges)
-        # Practice sessions = conversation_sessions_collection
+        # Practice sessions = conversation_sessions_collection (excluding placeholder "Practice Session (X min)" topics)
         # Learning plan sessions = from learning_plans.session_history
         # Challenge sessions = challenge_sessions_collection
-        practice_sessions_count = len(conversations)
+        practice_sessions_count = len([c for c in conversations if not (c.get('topic', '').startswith('Practice Session (') and c.get('topic', '').endswith('min)'))])
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
         challenge_sessions_count = len(challenge_sessions)
 
@@ -892,7 +892,11 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         all_languages = self._extract_all_languages(learning_plans, [], challenge_sessions, [])
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        practice_sessions_count = await conversation_sessions_collection.count_documents({"user_id": user_id, "message_count": {"$gt": 1}})
+        # Exclude placeholder "Practice Session (X min)" topics
+        practice_sessions_count = await conversation_sessions_collection.count_documents({
+            "user_id": user_id,
+            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}
+        })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
         # PHASE 4.4 FIX: Use user.stats.lifetime for challenges and XP only
@@ -971,7 +975,11 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         all_languages = self._extract_all_languages(learning_plans, [], [], [])
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        practice_sessions_count = await conversation_sessions_collection.count_documents({"user_id": user_id, "message_count": {"$gt": 1}})
+        # Exclude placeholder "Practice Session (X min)" topics
+        practice_sessions_count = await conversation_sessions_collection.count_documents({
+            "user_id": user_id,
+            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}
+        })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
         # PHASE 4.4 FIX: Use user.stats.lifetime for challenges and XP only
@@ -1096,7 +1104,11 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         )
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        practice_sessions_count = await conversation_sessions_collection.count_documents({"user_id": user_id, "message_count": {"$gt": 1}})
+        # Exclude placeholder "Practice Session (X min)" topics
+        practice_sessions_count = await conversation_sessions_collection.count_documents({
+            "user_id": user_id,
+            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}
+        })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
         # PHASE 4.4 FIX: Use user.stats.lifetime for challenges and XP only
