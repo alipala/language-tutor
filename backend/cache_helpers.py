@@ -23,7 +23,7 @@ from database import (
     reference_challenges_collection,
     conversation_sessions_collection,
     challenge_sessions_collection,  # CRITICAL: Challenge gameplay data
-    # HIGH PRIORITY COLLECTIONS FOR COMPREHENSIVE DATA COVERAGE
+    # COMPREHENSIVE USER DATA COLLECTIONS (100% COVERAGE)
     flashcard_sets_collection,
     flashcards_collection,
     assessments_collection,
@@ -32,7 +32,20 @@ from database import (
     sentence_analysis_feedback_collection,
     story_contributions_collection,
     user_story_achievements_collection,
-    learning_goals_collection
+    learning_goals_collection,
+    # NEWLY ADDED: Complete TaalCoach awareness (12 critical collections)
+    speaking_dna_profiles_collection,
+    speaking_dna_history_collection,
+    speaking_breakthroughs_collection,
+    user_achievements_collection,
+    recent_performance_collection,
+    session_feedback_collection,
+    news_articles_collection,
+    notifications_collection,
+    heart_events_collection,
+    rescue_events_collection,
+    sharing_activity_collection,
+    user_notifications_collection
 )
 
 logger = logging.getLogger(__name__)
@@ -454,6 +467,20 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         story_achievements = await user_story_achievements_collection.find({"user_id": user_id}).to_list(length=50)
         learning_goals = await learning_goals_collection.find({"user_id": user_id}).to_list(length=20)
 
+        # COMPREHENSIVE COVERAGE: Fetch all 12 missing critical collections
+        speaking_dna_profile = await speaking_dna_profiles_collection.find_one({"user_id": user_id})
+        speaking_dna_history = await speaking_dna_history_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
+        speaking_breakthroughs = await speaking_breakthroughs_collection.find({"user_id": user_id}).sort("detected_at", -1).limit(10).to_list(length=10)
+        user_achievements = await user_achievements_collection.find({"user_id": user_id}).to_list(length=100)
+        recent_performance = await recent_performance_collection.find_one({"user_id": user_id})
+        session_feedback = await session_feedback_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
+        news_articles_read = await news_articles_collection.find({"readers": user_id}).sort("published_at", -1).limit(20).to_list(length=20)
+        notifications = await notifications_collection.find({"user_id": user_id}).sort("created_at", -1).limit(20).to_list(length=20)
+        heart_events = await heart_events_collection.find({"user_id": user_id}).sort("created_at", -1).limit(50).to_list(length=50)
+        rescue_events = await rescue_events_collection.find({"user_id": user_id}).sort("triggered_at", -1).limit(10).to_list(length=10)
+        sharing_activity = await sharing_activity_collection.find({"user_id": user_id}).sort("shared_at", -1).limit(10).to_list(length=10)
+        user_notifications = await user_notifications_collection.find({"user_id": user_id}).sort("created_at", -1).limit(20).to_list(length=20)
+
         # Calculate stats
         total_sessions = len(conversations)
         total_minutes = sum(session.get('duration_minutes', 0) for session in conversations)
@@ -611,6 +638,174 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
                     } for lg in learning_goals if lg.get("status") == "active"
                 ],
                 "completed_goals": len([lg for lg in learning_goals if lg.get("status") == "completed"])
+            },
+
+            # COMPREHENSIVE COVERAGE: 12 critical collections for 100% TaalCoach awareness
+
+            # 1. Speaking DNA Profile (Premium feature)
+            "speaking_dna": {
+                "has_profile": speaking_dna_profile is not None,
+                "latest_profile": {
+                    "confidence": speaking_dna_profile.get("confidence", 0),
+                    "fluency": speaking_dna_profile.get("fluency", 0),
+                    "pronunciation": speaking_dna_profile.get("pronunciation", 0),
+                    "vocabulary": speaking_dna_profile.get("vocabulary", 0),
+                    "grammar": speaking_dna_profile.get("grammar", 0),
+                    "created_at": speaking_dna_profile.get("created_at"),
+                    "language": speaking_dna_profile.get("language")
+                } if speaking_dna_profile else None,
+                "history_count": len(speaking_dna_history),
+                "recent_snapshots": [
+                    {
+                        "confidence": h.get("confidence", 0),
+                        "fluency": h.get("fluency", 0),
+                        "created_at": h.get("created_at")
+                    } for h in speaking_dna_history[:5]
+                ]
+            },
+
+            # 2. Speaking Breakthroughs (Significant improvements)
+            "speaking_breakthroughs": {
+                "total_breakthroughs": len(speaking_breakthroughs),
+                "recent": [
+                    {
+                        "breakthrough_type": sb.get("breakthrough_type"),
+                        "metric": sb.get("metric"),
+                        "improvement": sb.get("improvement_percent", 0),
+                        "detected_at": sb.get("detected_at"),
+                        "description": sb.get("description", "")
+                    } for sb in speaking_breakthroughs[:5]
+                ]
+            },
+
+            # 3. User Achievements/Badges (Gamification)
+            "achievements": {
+                "total_unlocked": len(user_achievements),
+                "recent_unlocked": [
+                    {
+                        "achievement_id": ua.get("achievement_id"),
+                        "category": ua.get("category"),
+                        "unlocked_at": ua.get("unlocked_at"),
+                        "title": ua.get("title", ""),
+                        "description": ua.get("description", "")
+                    } for ua in sorted(user_achievements, key=lambda x: x.get("unlocked_at", ""), reverse=True)[:10]
+                ],
+                "by_category": {}  # Will be filled below
+            },
+
+            # 4. Recent Performance (Accuracy trends)
+            "recent_performance": {
+                "has_data": recent_performance is not None,
+                "accuracy_7d": recent_performance.get("accuracy_last_7_days", 0) if recent_performance else 0,
+                "accuracy_30d": recent_performance.get("accuracy_last_30_days", 0) if recent_performance else 0,
+                "sessions_7d": recent_performance.get("sessions_last_7_days", 0) if recent_performance else 0,
+                "challenges_7d": recent_performance.get("challenges_last_7_days", 0) if recent_performance else 0,
+                "improvement_trend": recent_performance.get("improvement_trend", "stable") if recent_performance else "no_data"
+            },
+
+            # 5. Session Feedback (Post-session evaluations)
+            "session_feedback_history": {
+                "total_feedback": len(session_feedback),
+                "recent": [
+                    {
+                        "session_id": sf.get("session_id"),
+                        "rating": sf.get("rating", 0),
+                        "feedback_text": sf.get("feedback_text", ""),
+                        "areas_improved": sf.get("areas_improved", []),
+                        "created_at": sf.get("created_at")
+                    } for sf in session_feedback[:5]
+                ],
+                "average_rating": sum(sf.get("rating", 0) for sf in session_feedback) / len(session_feedback) if session_feedback else 0
+            },
+
+            # 6. News Articles Read (Reading practice tracking)
+            "news_reading": {
+                "total_articles_read": len(news_articles_read),
+                "recent_articles": [
+                    {
+                        "title": na.get("title", ""),
+                        "language": na.get("language"),
+                        "level": na.get("level"),
+                        "category": na.get("category", ""),
+                        "published_at": na.get("published_at")
+                    } for na in news_articles_read[:10]
+                ]
+            },
+
+            # 7. Hearts/Focus Energy (Free user tracking)
+            "hearts_focus_energy": {
+                "total_events": len(heart_events),
+                "hearts_consumed_30d": len([h for h in heart_events if h.get("event_type") == "consume"]),
+                "hearts_refilled_30d": len([h for h in heart_events if h.get("event_type") == "refill"]),
+                "by_challenge_type": {},  # Will be filled below
+                "recent_events": [
+                    {
+                        "event_type": he.get("event_type"),
+                        "challenge_type": he.get("challenge_type"),
+                        "hearts_delta": he.get("hearts_delta", 0),
+                        "created_at": he.get("created_at")
+                    } for he in heart_events[:10]
+                ]
+            },
+
+            # 8. Rescue Events (AI rescue feature usage)
+            "rescue_events": {
+                "total_rescues": len(rescue_events),
+                "recent": [
+                    {
+                        "rescue_type": re.get("rescue_type"),
+                        "triggered_at": re.get("triggered_at"),
+                        "was_helpful": re.get("was_helpful", False),
+                        "context": re.get("context", "")
+                    } for re in rescue_events[:5]
+                ]
+            },
+
+            # 9. Sharing Activity (Social features)
+            "sharing": {
+                "total_shares": len(sharing_activity),
+                "recent": [
+                    {
+                        "shared_content_type": sa.get("shared_content_type"),
+                        "platform": sa.get("platform", ""),
+                        "shared_at": sa.get("shared_at")
+                    } for sa in sharing_activity[:5]
+                ]
+            },
+
+            # 10. Notifications (User notifications)
+            "notifications": {
+                "total_notifications": len(notifications),
+                "unread_count": len([n for n in notifications if not n.get("read", False)]),
+                "recent": [
+                    {
+                        "notification_type": n.get("notification_type"),
+                        "title": n.get("title", ""),
+                        "read": n.get("read", False),
+                        "created_at": n.get("created_at")
+                    } for n in notifications[:10]
+                ]
+            },
+
+            # 11. User Notifications (Additional notification system)
+            "user_notifications": {
+                "total": len(user_notifications),
+                "recent": [
+                    {
+                        "type": un.get("type"),
+                        "message": un.get("message", ""),
+                        "created_at": un.get("created_at")
+                    } for un in user_notifications[:5]
+                ]
+            },
+
+            # 12. Daily Stats (XP, streaks, daily metrics)
+            "daily_stats": {
+                "current_streak": user_doc.get("stats", {}).get("current_streak", 0),
+                "longest_streak": user_doc.get("stats", {}).get("longest_streak", 0),
+                "total_xp": user_doc.get("stats", {}).get("lifetime", {}).get("total_xp", 0),
+                "xp_today": 0,  # Will be calculated from daily_stats if needed
+                "level": user_doc.get("stats", {}).get("level", 1)
             }
         }
 

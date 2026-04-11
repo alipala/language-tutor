@@ -114,6 +114,8 @@ try:
     heart_events_collection = database.heart_events
     flashcard_sets_collection = database.flashcard_sets
     speaking_time_tracking_collection = database.speaking_time_tracking
+    rescue_events_collection = database.rescue_events
+    sharing_activity_collection = database.sharing_activity
 
     # SENTENCE ANALYSIS JOBS: Background processing for sentence analysis
     sentence_analysis_jobs_collection = database.sentence_analysis_jobs
@@ -154,6 +156,8 @@ except Exception as e:
     heart_events_collection = None
     flashcard_sets_collection = None
     speaking_time_tracking_collection = None
+    rescue_events_collection = None
+    sharing_activity_collection = None
     sentence_analysis_jobs_collection = None
     session_feedback_collection = None
     assessments_collection = None
