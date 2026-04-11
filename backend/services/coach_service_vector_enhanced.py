@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 
 from services.coach_service_optimized import CoachService as BaseCoachService
 from services.vector_db_service import vector_db, search_user_context
+from cache_helpers import get_taalcoach_context_cached
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,28 @@ class VectorEnhancedCoachService(BaseCoachService):
         super().__init__()
         self.vector_db = vector_db
         logger.info("[COACH] Initialized with vector search enhancement")
+
+    async def chat(
+        self,
+        user_id: str,
+        language: str,
+        user_message: str,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        target_language: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Main chat method that routes to vector-enhanced chat.
+
+        This is the compatibility wrapper that maintains the same interface
+        as the base CoachService while using vector search.
+        """
+        return await self.chat_with_vector_search(
+            user_id=user_id,
+            language=language,
+            user_message=user_message,
+            target_language=target_language or language,
+            conversation_history=conversation_history
+        )
 
     async def get_semantic_context(
         self,

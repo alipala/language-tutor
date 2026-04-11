@@ -15,8 +15,9 @@ import logging
 
 from auth import get_current_user
 from models import UserResponse
-# OPTIMIZED: Using coach_service_optimized for 8.75x speedup
-from services.coach_service_optimized import coach_service_optimized as coach_service
+# VECTOR-ENHANCED: Using vector search for semantic context awareness
+from services.coach_service_vector_enhanced import VectorEnhancedCoachService
+coach_service = VectorEnhancedCoachService()
 from rate_limiter import check_rate_limit
 
 logger = logging.getLogger(__name__)
