@@ -1392,14 +1392,19 @@ async def get_conversation_history(
         print(f"[PROGRESS] Getting conversation history for user {current_user.id}")
         print(f"[PROGRESS] Limit: {limit}, Offset: {offset}")
         
-        # Get total count
-        total_count = await conversation_sessions_collection.count_documents({"user_id": current_user.id})
-        print(f"[PROGRESS] Total count: {total_count}")
-        
+        # 🔧 FIX: Only return COMPLETED sessions (message_count > 1)
+        # Incomplete sessions (only system message) should not be displayed
+        query_filter = {
+            "user_id": current_user.id,
+            "message_count": {"$gt": 1}  # Only completed sessions with actual conversation
+        }
+
+        # Get total count of completed sessions
+        total_count = await conversation_sessions_collection.count_documents(query_filter)
+        print(f"[PROGRESS] Total completed sessions count: {total_count}")
+
         # Get sessions with pagination, sorted by creation date (newest first)
-        sessions_cursor = conversation_sessions_collection.find(
-            {"user_id": current_user.id}
-        ).sort("created_at", -1).skip(offset).limit(limit)
+        sessions_cursor = conversation_sessions_collection.find(query_filter).sort("created_at", -1).skip(offset).limit(limit)
         
         sessions_data = await sessions_cursor.to_list(length=limit)
         print(f"[PROGRESS] Raw sessions data count: {len(sessions_data)}")

@@ -411,10 +411,16 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             return_exceptions=False
         )
 
-        # PHASE 4.4 FIX: Use user.stats.lifetime for accurate ALL-TIME totals
-        # (previous code was only counting recent sessions from last 30 days!)
+        # Get accurate session counts from actual collections (NOT user.stats.lifetime which includes challenges)
+        # Practice sessions = conversation_sessions_collection
+        # Learning plan sessions = from learning_plans.session_history
+        # Challenge sessions = challenge_sessions_collection
+        practice_sessions_count = len(conversations)
+        learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
+        challenge_sessions_count = len(challenge_sessions)
+
+        # Use lifetime stats for challenges and XP only (NOT total_sessions!)
         user_lifetime_stats = user.get("stats", {}).get("lifetime", {})
-        total_sessions_lifetime = user_lifetime_stats.get("total_sessions", 0)
         total_challenges_lifetime = user_lifetime_stats.get("total_challenges", 0)
         total_xp_lifetime = user_lifetime_stats.get("total_xp", 0)
 
