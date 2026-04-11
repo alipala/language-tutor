@@ -87,6 +87,11 @@ async def get_user_flashcard_sets(
         # Convert to FlashcardSet objects with populated flashcards
         flashcard_sets = []
         for doc in sets_docs:
+            # Skip documents missing required fields (old/incompatible format)
+            if not all(key in doc for key in ['id', 'session_id', 'description']):
+                print(f"[FLASHCARD_API] ⚠️  Skipping flashcard set with missing required fields: {doc.get('title', 'unknown')}")
+                continue
+
             flashcards = []
 
             # Handle both old format (flashcard IDs as strings) and new format (full objects)
@@ -105,17 +110,41 @@ async def get_user_flashcard_sets(
                     # Convert to Flashcard objects
                     for card_doc in flashcard_docs:
                         card_doc.pop("_id", None)
+                        # Convert string datetime fields to datetime objects
+                        from dateutil import parser
+                        if isinstance(card_doc.get("created_at"), str):
+                            card_doc["created_at"] = parser.parse(card_doc["created_at"])
+                        if isinstance(card_doc.get("last_reviewed"), str):
+                            card_doc["last_reviewed"] = parser.parse(card_doc["last_reviewed"])
+                        if isinstance(card_doc.get("next_review_date"), str):
+                            card_doc["next_review_date"] = parser.parse(card_doc["next_review_date"])
                         flashcards.append(Flashcard(**card_doc))
                 else:
                     # New format: flashcards field contains full objects
                     for card_data in flashcards_field:
                         if isinstance(card_data, dict):
+                            # Convert string datetime fields to datetime objects
+                            from dateutil import parser
+                            if isinstance(card_data.get("created_at"), str):
+                                card_data["created_at"] = parser.parse(card_data["created_at"])
+                            if isinstance(card_data.get("last_reviewed"), str):
+                                card_data["last_reviewed"] = parser.parse(card_data["last_reviewed"])
+                            if isinstance(card_data.get("next_review_date"), str):
+                                card_data["next_review_date"] = parser.parse(card_data["next_review_date"])
                             flashcards.append(Flashcard(**card_data))
 
             # Remove MongoDB _id field and update flashcards
             doc.pop("_id", None)
             doc["flashcards"] = flashcards
             doc["total_cards"] = len(flashcards)
+
+            # Convert string datetime fields to datetime objects if needed
+            if isinstance(doc.get("created_at"), str):
+                from dateutil import parser
+                doc["created_at"] = parser.parse(doc["created_at"])
+            if isinstance(doc.get("completed_at"), str):
+                from dateutil import parser
+                doc["completed_at"] = parser.parse(doc["completed_at"])
 
             flashcard_sets.append(FlashcardSet(**doc))
 
