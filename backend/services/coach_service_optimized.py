@@ -804,9 +804,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             achievements_raw,
             recent_performance,
         ) = await asyncio.gather(
+            # FIXED: Removed "is_active": False filter - field doesn't exist in production data
+            # All challenge_sessions documents represent completed challenges
             challenge_sessions_collection.find({
-                "user_id": user_id,
-                "is_active": False
+                "user_id": user_id
             }).to_list(None),
 
             # PHASE 1.5: Challenge pool data
@@ -1556,7 +1557,16 @@ APP FEATURES YOU CAN RECOMMEND:
             chal = context.get("challenge_details", {})
             pool = context.get("challenge_pool", {})
             hearts = context.get("hearts", {})
-            prompt += f"\nCHALLENGES: {chal.get('total', 0)} done, {chal.get('accuracy', 0)}% accuracy"
+            # FIXED: Use stats.total_challenges (lifetime) instead of challenge_details.total (recent sessions only)
+            total_challenges = stats.get('total_challenges', 0)
+            prompt += f"\nCHALLENGES: {total_challenges} done"
+            if total_challenges > 0:
+                # Add breakdown by type (from stats.by_type)
+                by_type = stats.get('by_type', {})
+                if by_type:
+                    top_types = sorted(by_type.items(), key=lambda x: x[1].get('total_challenges', 0), reverse=True)[:3]
+                    type_summary = ', '.join([f"{t}: {d.get('total_challenges', 0)}" for t, d in top_types])
+                    prompt += f" ({type_summary})"
             if pool.get("total_available"):
                 prompt += f", {pool['total_available']} available"
             if hearts.get("consumed_30d"):

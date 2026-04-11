@@ -22,6 +22,7 @@ from database import (
     daily_stats_collection,
     reference_challenges_collection,
     conversation_sessions_collection,
+    challenge_sessions_collection,  # CRITICAL: Challenge gameplay data
     # HIGH PRIORITY COLLECTIONS FOR COMPREHENSIVE DATA COVERAGE
     flashcard_sets_collection,
     flashcards_collection,
@@ -440,6 +441,9 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         learning_plans = await learning_plans_collection.find({"user_id": user_id}).to_list(length=10)
         conversations = await conversation_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(5).to_list(length=5)
 
+        # CRITICAL: Challenge sessions data (was missing - caused TaalCoach to not respond to challenge queries)
+        challenge_sessions = await challenge_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).to_list(length=100)
+
         # HIGH PRIORITY: Fetch all missing user activity data
         flashcard_sets = await flashcard_sets_collection.find({"user_id": user_id}).to_list(length=100)
         assessments = await assessments_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
@@ -474,6 +478,35 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
             },
             "features_available": get_features_for_plan(user_doc.get("subscription_plan", "try_learn")),
             "limitations": get_limitations_for_plan(user_doc.get("subscription_plan", "try_learn")),
+
+            # CRITICAL: Challenge sessions data (was missing - caused TaalCoach to not respond to challenge queries)
+            "challenges": {
+                "total_completed": len(challenge_sessions),
+                "by_type": {
+                    "micro_quiz": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "micro_quiz"]),
+                    "error_spotting": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "error_spotting"]),
+                    "swipe_fix": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "swipe_fix"]),
+                    "brain_tickler": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "brain_tickler"]),
+                    "story_builder": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "story_builder"]),
+                    "smart_flashcard": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "smart_flashcard"]),
+                    "native_check": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "native_check"])
+                },
+                "recent_sessions": [
+                    {
+                        "challenge_type": cs.get("challenge_type"),
+                        "language": cs.get("language"),
+                        "level": cs.get("level"),
+                        "score": cs.get("score", 0),
+                        "correct_answers": cs.get("correct_answers", 0),
+                        "total_questions": cs.get("total_questions", 0),
+                        "completed_at": cs.get("created_at"),
+                        "duration_seconds": cs.get("duration_seconds", 0)
+                    } for cs in challenge_sessions[:20]
+                ],
+                "total_correct": sum(cs.get("correct_answers", 0) for cs in challenge_sessions),
+                "total_questions": sum(cs.get("total_questions", 0) for cs in challenge_sessions),
+                "average_score": round(sum(cs.get("score", 0) for cs in challenge_sessions) / len(challenge_sessions), 1) if challenge_sessions else 0
+            },
 
             # NEW: Flashcard data (HIGH PRIORITY)
             "flashcards": {
