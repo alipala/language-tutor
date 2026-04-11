@@ -120,6 +120,15 @@ try:
 
     # SESSION FEEDBACK: User feedback for conversations and challenges
     session_feedback_collection = database.session_feedback
+
+    # HIGH PRIORITY COLLECTIONS FOR COMPREHENSIVE TAALCOACH DATA COVERAGE
+    assessments_collection = database.assessments
+    session_completions_collection = database.session_completions
+    sentence_analysis_feedback_collection = database.sentence_analysis_feedback
+    story_contributions_collection = database.story_contributions
+    user_story_achievements_collection = database.user_story_achievements
+    learning_goals_collection = database.learning_goals
+    flashcards_collection = database.flashcards
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -147,6 +156,13 @@ except Exception as e:
     speaking_time_tracking_collection = None
     sentence_analysis_jobs_collection = None
     session_feedback_collection = None
+    assessments_collection = None
+    session_completions_collection = None
+    sentence_analysis_feedback_collection = None
+    story_contributions_collection = None
+    user_story_achievements_collection = None
+    learning_goals_collection = None
+    flashcards_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():

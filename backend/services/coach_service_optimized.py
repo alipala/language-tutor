@@ -42,7 +42,18 @@ from database import (
     news_articles_collection,
     user_notifications_collection,
     usage_logs_collection,
+    # HIGH PRIORITY: Comprehensive data collections
+    flashcard_sets_collection,
+    flashcards_collection,
+    assessments_collection,
+    session_completions_collection,
+    speaking_time_tracking_collection,
+    sentence_analysis_feedback_collection,
+    story_contributions_collection,
+    user_story_achievements_collection,
+    learning_goals_collection,
 )
+from cache_helpers import get_taalcoach_context_cached
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +250,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
 
             logger.info(f"[COACH] Cache MISS - Fetching context for user {user_id}, intent={intent}")
 
+            # HIGH PRIORITY: Get comprehensive cached context with ALL user data
+            # This includes flashcards, assessments, story builder, goals, etc.
+            comprehensive_context = await get_taalcoach_context_cached(user_id)
+
             # P0: PARALLEL fetching of core data (always needed)
             core_data = await self._fetch_core_data_parallel(user_id)
             user, learning_plans = core_data["user"], core_data["learning_plans"]
@@ -254,6 +269,17 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 context = await self._build_learning_plan_context(user_id, user, learning_plans, language)
             else:  # "general" or "app_help"
                 context = await self._build_general_context(user_id, user, learning_plans, language)
+
+            # MERGE comprehensive context into intent-specific context
+            # This ensures TaalCoach has access to ALL user data regardless of intent
+            if comprehensive_context:
+                context["flashcards"] = comprehensive_context.get("flashcards", {"total_sets": 0, "sets": []})
+                context["assessments"] = comprehensive_context.get("assessments", {"total_count": 0, "recent_scores": []})
+                context["session_completions"] = comprehensive_context.get("session_completions", {"total_completed": 0})
+                context["speaking_time"] = comprehensive_context.get("speaking_time", {"total_entries": 0, "recent": []})
+                context["sentence_feedback"] = comprehensive_context.get("sentence_feedback", {"total_feedback": 0})
+                context["story_builder"] = comprehensive_context.get("story_builder", {"total_contributions": 0})
+                context["learning_goals"] = comprehensive_context.get("learning_goals", {"total_goals": 0, "active_goals": []})
 
             # P1: Cache the result
             if self.redis_client:
@@ -612,8 +638,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "most_used_feature": most_used_feature,
                 "underused_features": underused_features
             },
-            "flashcards": {"total_sets": 0, "sets": []},  # TODO: Add flashcard data when collection is populated
-            "speaking_time": {"total_entries": 0, "recent": []},  # TODO: Add speaking time when collection is populated
+            # NOTE: Flashcards and speaking_time now fetched via get_taalcoach_context_cached()
+            # These will be populated from the cached comprehensive context
+            "flashcards": {"total_sets": 0, "sets": []},  # Populated via cache
+            "speaking_time": {"total_entries": 0, "recent": []},  # Populated via cache
         }
 
     async def _build_dna_context(
@@ -1452,7 +1480,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         subscription = context['user_profile'].get('subscription_status', 'free')
         stats = context.get('stats', {})
 
-        # PHASE 3.1: MINIMAL CORE PROMPT (~150 tokens instead of ~500)
+        # PHASE 3.1: MINIMAL CORE PROMPT with COMPREHENSIVE FEATURE AWARENESS
         prompt = f"""You are Taal Coach, an AI language learning guide for MyTacoAI.
 Respond in {interface_lang_name}. User is learning {learning_lang_name} at {level} level.
 
@@ -1462,12 +1490,33 @@ Streak: {stats.get('current_streak', 0)} days, Sessions: {stats.get('total_sessi
 RESPONSE RULES:
 - Maximum 2 SHORT sentences (25 words total)
 - Be specific, use user's REAL data from context below
+- When suggesting features, recommend SPECIFIC actions: "Try Error Spotting challenge", "Review your Dutch flashcards", "Practice Story Builder"
 - Output JSON: {{"message": "text", "show_card": "none|progress|dna|challenges|learning_plans"}}
 
-FEATURES: Voice conversations, Learning Plans, Challenges (7 types), Speaking DNA (premium), Daily News
+⚠️ CRITICAL: NEVER MAKE UP NUMBERS OR DATA
+- ONLY use numbers that appear EXACTLY in the context data below
+- If data is missing or zero, say so honestly: "You haven't done any X yet"
+- DO NOT estimate, guess, or invent session counts, minutes, scores, or any metrics
+- If unsure about a number, DO NOT mention it
+
+⚠️ IMPORTANT: Distinguish between concepts:
+- "Learning Plan Goal/Objective" = The goal OF the learning plan itself (e.g., "Master Dutch A1")
+- "Personal Goals" = User's personal learning goals set separately (e.g., "Have a 10-minute conversation")
+- When user asks about "learning plan goal", respond about the PLAN's objective, NOT personal goals
+
+APP FEATURES YOU CAN RECOMMEND:
+- Voice Conversations: Real-time speaking practice (recommend by language/level)
+- Learning Plans: Structured curriculum with sessions (suggest next session)
+- Challenges: 7 types - Error Spotting, Swipe Fix, Micro Quiz, Brain Tickler, Story Builder, Smart Flashcard, Native Check (recommend specific type)
+- Flashcards: Vocabulary practice from learning plans (suggest reviewing sets)
+- Speaking DNA: Speaking profile analysis (premium) - pronunciation, fluency, confidence
+- Assessments: Speaking evaluations (suggest retaking for progress)
+- Story Builder: Creative writing practice (suggest contributing stories)
+- Learning Goals: Set and track goals (suggest creating/reviewing goals)
+- Daily News: Read articles in target language (recommend by interest/level)
 """
 
-        # PHASE 3.1: Intent-specific context (only relevant data)
+        # PHASE 3.1: Intent-specific context with COMPREHENSIVE DATA
         if intent == "progress":
             recent_ach = context.get("achievements", {}).get("recent", [])
             recent_perf = context.get("recent_performance", {})
@@ -1476,13 +1525,32 @@ FEATURES: Voice conversations, Learning Plans, Challenges (7 types), Speaking DN
                 prompt += f", Accuracy: {recent_perf['accuracy_7d']}%"
             if recent_ach:
                 prompt += f"\nLatest achievement: {recent_ach[0].get('achievement_id')}"
+            # NEW: Add comprehensive data
+            assessments = context.get("assessments", {})
+            if assessments.get("total_count", 0) > 0:
+                prompt += f"\nAssessments: {assessments['total_count']} taken, avg score {assessments.get('average_score', 0)}%"
+            goals = context.get("learning_goals", {})
+            if goals.get("active_goals"):
+                prompt += f"\nActive goals: {len(goals['active_goals'])}"
 
         elif intent == "learning_plan":
             plan = context.get("learning_plan")
             if plan:
-                prompt += f"\nPLAN: {plan.get('language')} {plan.get('level')} - {plan.get('completed_sessions')}/{plan.get('total_sessions')} done"
+                prompt += f"\nLEARNING PLAN: {plan.get('language')} {plan.get('level')} - {plan.get('completed_sessions')}/{plan.get('total_sessions')} done"
                 if plan.get("next_session"):
                     prompt += f", Next: {plan['next_session'].get('title')}"
+                # Add plan objective/focus if available
+                if plan.get("plan_objective") or plan.get("plan_focus"):
+                    prompt += f"\nPlan Goal: {plan.get('plan_objective') or plan.get('plan_focus')}"
+            # NEW: Add flashcards and personal learning goals
+            flashcards = context.get("flashcards", {})
+            if flashcards.get("total_sets", 0) > 0:
+                prompt += f"\nFlashcard sets: {flashcards['total_sets']}"
+            # IMPORTANT: These are PERSONAL GOALS, not learning plan goals
+            personal_goals = context.get("learning_goals", {})
+            if personal_goals.get("active_goals"):
+                active = personal_goals['active_goals']
+                prompt += f"\nPersonal Goals (separate from plan): {', '.join([g.get('goal', '')[:30] for g in active[:2]])}"
 
         elif intent == "challenges":
             chal = context.get("challenge_details", {})
@@ -1493,15 +1561,33 @@ FEATURES: Voice conversations, Learning Plans, Challenges (7 types), Speaking DN
                 prompt += f", {pool['total_available']} available"
             if hearts.get("consumed_30d"):
                 prompt += f"\nHearts used (30d): {hearts['consumed_30d']}"
+            # NEW: Add story builder
+            stories = context.get("story_builder", {})
+            if stories.get("total_contributions", 0) > 0:
+                prompt += f"\nStories: {stories['total_contributions']} contributions, {stories.get('total_achievements', 0)} achievements"
 
         elif intent == "dna" and context.get("speaking_dna"):
             dna = context["speaking_dna"]
             prompt += f"\nDNA: Confidence {int(dna.get('confidence', 0)*100)}%, Fluency {int(dna.get('fluency', 0)*100)}%"
             if context.get("sentence_analysis", {}).get("total_completed"):
                 prompt += f"\nSentences analyzed: {context['sentence_analysis']['total_completed']}"
+            # NEW: Add sentence feedback
+            sent_feedback = context.get("sentence_feedback", {})
+            if sent_feedback.get("total_feedback", 0) > 0:
+                prompt += f"\nCommon mistakes: {sent_feedback['total_feedback']} recorded"
 
         elif intent == "general":
             prompt += f"\nSessions: {stats.get('total_sessions', 0)}, Streak: {stats.get('current_streak', 0)} days"
+            # NEW: Add overview of all features
+            flashcards = context.get("flashcards", {})
+            if flashcards.get("total_sets", 0) > 0:
+                prompt += f", Flashcards: {flashcards['total_sets']} sets"
+            stories = context.get("story_builder", {})
+            if stories.get("total_contributions", 0) > 0:
+                prompt += f", Stories: {stories['total_contributions']}"
+            goals = context.get("learning_goals", {})
+            if goals.get("active_goals"):
+                prompt += f", Active goals: {len(goals['active_goals'])}"
 
         return prompt
 

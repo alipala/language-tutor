@@ -21,7 +21,17 @@ from database import (
     learning_plans_collection,
     daily_stats_collection,
     reference_challenges_collection,
-    conversation_sessions_collection
+    conversation_sessions_collection,
+    # HIGH PRIORITY COLLECTIONS FOR COMPREHENSIVE DATA COVERAGE
+    flashcard_sets_collection,
+    flashcards_collection,
+    assessments_collection,
+    session_completions_collection,
+    speaking_time_tracking_collection,
+    sentence_analysis_feedback_collection,
+    story_contributions_collection,
+    user_story_achievements_collection,
+    learning_goals_collection
 )
 
 logger = logging.getLogger(__name__)
@@ -426,18 +436,27 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         if not user_doc:
             return None
 
-        # Get learning plans
+        # EXISTING: Core data
         learning_plans = await learning_plans_collection.find({"user_id": user_id}).to_list(length=10)
-
-        # Get recent conversations
         conversations = await conversation_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(5).to_list(length=5)
+
+        # HIGH PRIORITY: Fetch all missing user activity data
+        flashcard_sets = await flashcard_sets_collection.find({"user_id": user_id}).to_list(length=100)
+        assessments = await assessments_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
+        session_completions = await session_completions_collection.find({"user_id": user_id}).to_list(length=100)
+        speaking_time_logs = await speaking_time_tracking_collection.find({"user_id": user_id}).sort("date", -1).limit(30).to_list(length=30)
+        sentence_feedback = await sentence_analysis_feedback_collection.find({"user_id": user_id}).sort("created_at", -1).limit(50).to_list(length=50)
+        story_contributions = await story_contributions_collection.find({"user_id": user_id}).to_list(length=50)
+        story_achievements = await user_story_achievements_collection.find({"user_id": user_id}).to_list(length=50)
+        learning_goals = await learning_goals_collection.find({"user_id": user_id}).to_list(length=20)
 
         # Calculate stats
         total_sessions = len(conversations)
         total_minutes = sum(session.get('duration_minutes', 0) for session in conversations)
 
-        # Build context
+        # Build comprehensive context with ALL user data
         context = {
+            # EXISTING: Core user info
             "user_type": "registered",
             "subscription_plan": user_doc.get("subscription_plan", "try_learn"),
             "subscription_status": user_doc.get("subscription_status", "active"),
@@ -454,7 +473,112 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
                 "assessments_used": user_doc.get("assessments_used", 0)
             },
             "features_available": get_features_for_plan(user_doc.get("subscription_plan", "try_learn")),
-            "limitations": get_limitations_for_plan(user_doc.get("subscription_plan", "try_learn"))
+            "limitations": get_limitations_for_plan(user_doc.get("subscription_plan", "try_learn")),
+
+            # NEW: Flashcard data (HIGH PRIORITY)
+            "flashcards": {
+                "total_sets": len(flashcard_sets),
+                "sets": [
+                    {
+                        "id": str(fs.get("_id", "")),
+                        "language": fs.get("language"),
+                        "level": fs.get("level"),
+                        "title": fs.get("title", ""),
+                        "total_cards": fs.get("total_cards", 0),
+                        "mastered_cards": fs.get("mastered_cards", 0),
+                        "created_from": fs.get("created_from", "")  # learning_plan, challenge, etc.
+                    } for fs in flashcard_sets
+                ]
+            },
+
+            # NEW: Assessment history (HIGH PRIORITY)
+            "assessments": {
+                "total_count": len(assessments),
+                "recent_scores": [
+                    {
+                        "date": a.get("created_at"),
+                        "language": a.get("language"),
+                        "level": a.get("level"),
+                        "score": a.get("score"),
+                        "feedback": a.get("feedback", "")
+                    } for a in assessments[:5]
+                ],
+                "average_score": round(sum(a.get("score", 0) for a in assessments) / len(assessments), 1) if assessments else 0
+            },
+
+            # NEW: Session completion tracking (HIGH PRIORITY)
+            "session_completions": {
+                "total_completed": len(session_completions),
+                "recent_completions": [
+                    {
+                        "date": sc.get("completed_at"),
+                        "session_type": sc.get("session_type"),
+                        "language": sc.get("language"),
+                        "duration_minutes": sc.get("duration_minutes", 0)
+                    } for sc in session_completions[:10]
+                ]
+            },
+
+            # NEW: Speaking time breakdown (HIGH PRIORITY)
+            "speaking_time": {
+                "total_entries": len(speaking_time_logs),
+                "recent": [
+                    {
+                        "date": st.get("date"),
+                        "minutes": st.get("minutes"),
+                        "language": st.get("language")
+                    } for st in speaking_time_logs[:7]
+                ],
+                "total_speaking_minutes": sum(st.get("minutes", 0) for st in speaking_time_logs)
+            },
+
+            # NEW: Sentence-level feedback (HIGH PRIORITY)
+            "sentence_feedback": {
+                "total_feedback": len(sentence_feedback),
+                "common_mistakes": [
+                    {
+                        "sentence": sf.get("original_sentence", ""),
+                        "correction": sf.get("corrected_sentence", ""),
+                        "error_type": sf.get("error_type", ""),
+                        "date": sf.get("created_at")
+                    } for sf in sentence_feedback[:10]
+                ]
+            },
+
+            # NEW: Story builder data (HIGH PRIORITY)
+            "story_builder": {
+                "total_contributions": len(story_contributions),
+                "total_achievements": len(story_achievements),
+                "recent_stories": [
+                    {
+                        "title": sc.get("title", ""),
+                        "language": sc.get("language"),
+                        "created_at": sc.get("created_at"),
+                        "word_count": sc.get("word_count", 0)
+                    } for sc in story_contributions[:5]
+                ],
+                "achievements": [
+                    {
+                        "achievement_type": sa.get("achievement_type", ""),
+                        "earned_at": sa.get("earned_at"),
+                        "description": sa.get("description", "")
+                    } for sa in story_achievements
+                ]
+            },
+
+            # NEW: Learning goals (HIGH PRIORITY)
+            "learning_goals": {
+                "total_goals": len(learning_goals),
+                "active_goals": [
+                    {
+                        "goal": lg.get("goal_text", ""),
+                        "target_date": lg.get("target_date"),
+                        "progress": lg.get("progress_percent", 0),
+                        "created_at": lg.get("created_at")
+                    } for lg in learning_goals if lg.get("status") == "active"
+                ],
+                "completed_goals": len([lg for lg in learning_goals if lg.get("status") == "completed"])
+            }
         }
 
         # Cache for 5 minutes
@@ -539,7 +663,9 @@ async def invalidate_coach_context_smart(user_id: str, changed_types: List[str])
         user_id: User ID
         changed_types: List of data types that changed
                       ["challenge", "session", "learning_plan", "dna", "achievement",
-                       "hearts", "feedback", "news", "notification", "sentence_analysis"]
+                       "hearts", "feedback", "news", "notification", "sentence_analysis",
+                       "flashcard", "assessment", "story_contribution", "story_achievement",
+                       "learning_goal", "speaking_time", "sentence_feedback"]
 
     Example usage:
         # After challenge completion
@@ -550,9 +676,19 @@ async def invalidate_coach_context_smart(user_id: str, changed_types: List[str])
 
         # After learning plan session completion
         await invalidate_coach_context_smart(user_id, ["learning_plan", "session", "achievement"])
+
+        # After flashcard creation
+        await invalidate_coach_context_smart(user_id, ["flashcard"])
+
+        # After story contribution
+        await invalidate_coach_context_smart(user_id, ["story_contribution", "story_achievement"])
+
+        # After goal update
+        await invalidate_coach_context_smart(user_id, ["learning_goal"])
     """
     # Map data types → intents that need invalidation
     intent_map = {
+        # EXISTING: Core data types
         "challenge": ["challenges", "progress", "general"],
         "session": ["general", "progress"],
         "learning_plan": ["learning_plan", "progress", "general"],
@@ -562,7 +698,16 @@ async def invalidate_coach_context_smart(user_id: str, changed_types: List[str])
         "feedback": ["general"],
         "news": ["general"],
         "notification": ["general"],
-        "sentence_analysis": ["dna", "general"]
+        "sentence_analysis": ["dna", "general"],
+
+        # NEW: High-priority data types
+        "flashcard": ["learning_plan", "progress", "general"],
+        "assessment": ["progress", "general"],
+        "story_contribution": ["progress", "general"],
+        "story_achievement": ["progress", "general"],
+        "learning_goal": ["learning_plan", "general"],
+        "speaking_time": ["progress", "general"],
+        "sentence_feedback": ["dna", "progress", "general"]
     }
 
     # Collect all affected intents
