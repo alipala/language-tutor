@@ -570,7 +570,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "subscription_status": user.get("subscription_status"),
                 "all_learning_languages": all_languages,
             },
-            "is_new_user": total_sessions_lifetime == 0 and total_challenges_lifetime == 0,
+            "is_new_user": (practice_sessions_count + learning_plan_sessions_count) == 0 and total_challenges_lifetime == 0,
             "has_learning_plan": len(learning_plans) > 0,
             "has_dna_profile": False,  # Not needed for progress view
             "learning_plans": [self._format_learning_plan(p) for p in learning_plans],
@@ -580,8 +580,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             "breakthroughs": [],
             "stats": {
                 "current_streak": current_streak,
-                # PHASE 4.4: Use lifetime stats from user.stats.lifetime for accuracy
-                "total_sessions": total_sessions_lifetime,
+                # 🔧 FIX: Separate practice, learning plan, and challenge sessions
+                "practice_sessions": practice_sessions_count,
+                "learning_plan_sessions": learning_plan_sessions_count,
+                "total_sessions": practice_sessions_count + learning_plan_sessions_count,
                 "total_challenges": total_challenges_lifetime,
                 "total_xp": total_xp_lifetime,
                 # Recent activity (last 30 days)
@@ -889,9 +891,12 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         # Determine languages
         all_languages = self._extract_all_languages(learning_plans, [], challenge_sessions, [])
 
-        # PHASE 4.4 FIX: Use user.stats.lifetime for accurate totals
+        # 🔧 FIX: Calculate accurate session counts from actual collections
+        practice_sessions_count = await conversation_sessions_collection.count_documents({"user_id": user_id, "message_count": {"$gt": 1}})
+        learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
+
+        # PHASE 4.4 FIX: Use user.stats.lifetime for challenges and XP only
         user_lifetime_stats = user.get("stats", {}).get("lifetime", {})
-        total_sessions_lifetime = user_lifetime_stats.get("total_sessions", 0)
         total_challenges_lifetime = user_lifetime_stats.get("total_challenges", 0)
         total_xp_lifetime = user_lifetime_stats.get("total_xp", 0)
 
@@ -915,8 +920,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             "breakthroughs": [],
             "stats": {
                 "current_streak": 0,
-                # PHASE 4.4: Use lifetime stats
-                "total_sessions": total_sessions_lifetime,
+                # 🔧 FIX: Separate practice, learning plan, and challenge sessions
+                "practice_sessions": practice_sessions_count,
+                "learning_plan_sessions": learning_plan_sessions_count,
+                "total_sessions": practice_sessions_count + learning_plan_sessions_count,
                 "total_challenges": total_challenges_lifetime,
                 "total_xp": total_xp_lifetime,
                 # Recent challenges
@@ -963,9 +970,12 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         # Determine languages
         all_languages = self._extract_all_languages(learning_plans, [], [], [])
 
-        # PHASE 4.4 FIX: Use user.stats.lifetime for accurate totals
+        # 🔧 FIX: Calculate accurate session counts from actual collections
+        practice_sessions_count = await conversation_sessions_collection.count_documents({"user_id": user_id, "message_count": {"$gt": 1}})
+        learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
+
+        # PHASE 4.4 FIX: Use user.stats.lifetime for challenges and XP only
         user_lifetime_stats = user.get("stats", {}).get("lifetime", {})
-        total_sessions_lifetime = user_lifetime_stats.get("total_sessions", 0)
         total_challenges_lifetime = user_lifetime_stats.get("total_challenges", 0)
         total_xp_lifetime = user_lifetime_stats.get("total_xp", 0)
 
@@ -989,12 +999,12 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             "breakthroughs": [],
             "stats": {
                 "current_streak": 0,
-                # PHASE 4.4: Use lifetime stats
-                "total_sessions": total_sessions_lifetime,
+                # 🔧 FIX: Separate practice, learning plan, and challenge sessions
+                "practice_sessions": practice_sessions_count,
+                "learning_plan_sessions": learning_plan_sessions_count,
+                "total_sessions": practice_sessions_count + learning_plan_sessions_count,
                 "total_challenges": total_challenges_lifetime,
                 "total_xp": total_xp_lifetime,
-                # Learning plan specific
-                "learning_plan_sessions": sum(p.get("completed_sessions", 0) for p in learning_plans),
                 "last_7_days": [],
                 # Detailed breakdown
                 "by_language": user_lifetime_stats.get("by_language", {}),
@@ -1085,9 +1095,12 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             return_exceptions=False
         )
 
-        # PHASE 4.4 FIX: Use user.stats.lifetime for accurate ALL-TIME totals
+        # 🔧 FIX: Calculate accurate session counts from actual collections
+        practice_sessions_count = await conversation_sessions_collection.count_documents({"user_id": user_id, "message_count": {"$gt": 1}})
+        learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
+
+        # PHASE 4.4 FIX: Use user.stats.lifetime for challenges and XP only
         user_lifetime_stats = user.get("stats", {}).get("lifetime", {})
-        total_sessions_lifetime = user_lifetime_stats.get("total_sessions", 0)
         total_challenges_lifetime = user_lifetime_stats.get("total_challenges", 0)
         total_xp_lifetime = user_lifetime_stats.get("total_xp", 0)
 
@@ -1156,7 +1169,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "subscription_status": user.get("subscription_status"),
                 "all_learning_languages": all_languages,
             },
-            "is_new_user": total_sessions_lifetime == 0 and total_challenges_lifetime == 0,
+            "is_new_user": (practice_sessions_count + learning_plan_sessions_count) == 0 and total_challenges_lifetime == 0,
             "has_learning_plan": len(learning_plans) > 0,
             "has_dna_profile": False,
             "learning_plans": [self._format_learning_plan(p) for p in learning_plans],
@@ -1166,8 +1179,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             "breakthroughs": [],
             "stats": {
                 "current_streak": current_streak,
-                # PHASE 4.4: Use lifetime stats from user.stats.lifetime
-                "total_sessions": total_sessions_lifetime,
+                # 🔧 FIX: Separate practice, learning plan, and challenge sessions
+                "practice_sessions": practice_sessions_count,
+                "learning_plan_sessions": learning_plan_sessions_count,
+                "total_sessions": practice_sessions_count + learning_plan_sessions_count,
                 "total_challenges": total_challenges_lifetime,
                 "total_xp": total_xp_lifetime,
                 # Recent activity
