@@ -18,19 +18,20 @@ logger = logging.getLogger(__name__)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-if not PINECONE_API_KEY:
-    logger.error("❌ PINECONE_API_KEY not found in environment variables")
-    raise ValueError("PINECONE_API_KEY must be set")
+# Graceful initialization - Pinecone is optional for development/testing
+PINECONE_ENABLED = bool(PINECONE_API_KEY and OPENAI_API_KEY)
 
-if not OPENAI_API_KEY:
-    logger.error("❌ OPENAI_API_KEY not found in environment variables")
-    raise ValueError("OPENAI_API_KEY must be set")
-
-# Initialize Pinecone
-pc = Pinecone(api_key=PINECONE_API_KEY)
-
-# Initialize OpenAI async client
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+if not PINECONE_ENABLED:
+    logger.warning("⚠️  Pinecone vector DB is DISABLED (PINECONE_API_KEY or OPENAI_API_KEY not set)")
+    logger.warning("⚠️  TaalCoach will work without semantic search capability")
+    pc = None
+    openai_client = None
+else:
+    logger.info("✅ Pinecone vector DB is ENABLED")
+    # Initialize Pinecone
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    # Initialize OpenAI async client
+    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 # Index configuration
 INDEX_NAME = "taalcoach-semantic-search"
@@ -55,10 +56,16 @@ class VectorDBService:
     def __init__(self):
         self.index_name = INDEX_NAME
         self.index = None
-        self._initialize_index()
+        self.enabled = PINECONE_ENABLED
+        if self.enabled:
+            self._initialize_index()
 
     def _initialize_index(self):
         """Initialize or connect to Pinecone index"""
+        if not self.enabled:
+            logger.warning("⚠️  Pinecone is disabled - skipping index initialization")
+            return
+
         try:
             # Check if index exists
             existing_indexes = pc.list_indexes()
@@ -88,7 +95,9 @@ class VectorDBService:
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Pinecone index: {str(e)}")
-            raise
+            logger.warning("⚠️  Pinecone will be disabled for this session")
+            self.enabled = False
+            self.index = None
 
     async def generate_embedding(self, text: str) -> List[float]:
         """
@@ -143,6 +152,10 @@ class VectorDBService:
         Returns:
             True if successful
         """
+        if not self.enabled:
+            logger.debug(f"⏭️  Pinecone disabled - skipping embedding for {content_id}")
+            return False
+
         try:
             # Generate embedding
             embedding = await self.generate_embedding(text)

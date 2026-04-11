@@ -60,8 +60,61 @@ except TypeError as e:
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Background task function for sentence analysis
+# Background task functions for sentence analysis and vector embeddings
 # ──────────────────────────────────────────────────────────────────────────────
+
+async def _embed_conversation_background(
+    session_id: str,
+    user_id: str,
+    language: str,
+    level: str,
+    topic: str,
+    transcript: str,
+    created_at: datetime
+):
+    """
+    Background task: Embed conversation to Pinecone for semantic search.
+
+    This runs AFTER the session response is sent to user.
+    Enables TaalCoach semantic search for new users from their first conversation.
+    """
+    try:
+        from services.vector_db_service import vector_db
+
+        # Build searchable text from conversation metadata + transcript
+        text_parts = [
+            f"Language: {language}",
+            f"Level: {level}",
+            f"Topic: {topic}",
+        ]
+
+        if transcript:
+            text_parts.append(f"Conversation: {transcript}")
+
+        text = " | ".join(text_parts)
+
+        # Embed to Pinecone with metadata
+        success = await vector_db.upsert_content(
+            content_id=f"conv_{user_id}_{session_id}",
+            text=text,
+            metadata={
+                "user_id": user_id,
+                "content_type": "conversation",
+                "language": language,
+                "level": level,
+                "topic": topic,
+                "created_at": created_at.isoformat() if created_at else datetime.utcnow().isoformat(),
+            }
+        )
+
+        if success:
+            print(f"[VECTOR_EMBED_BG] ✅ Embedded conversation {session_id} for user {user_id}")
+        else:
+            print(f"[VECTOR_EMBED_BG] ⏭️  Skipped embedding (Pinecone disabled or failed)")
+
+    except Exception as e:
+        print(f"[VECTOR_EMBED_BG] ❌ Failed to embed conversation {session_id}: {e}")
+        # Non-fatal - app continues without embedding
 
 async def _run_sentence_analysis_background(
     job_id: str,
@@ -896,6 +949,20 @@ async def save_conversation(
             )
             print(f"[SUMMARY_ANALYSIS_BG] 🚀 Scheduled summary and enhanced analysis for session {existing_session['_id']}")
 
+            # 🔍 VECTOR EMBEDDING: Schedule conversation embedding for semantic search
+            transcript = " ".join([msg.content for msg in conversation_messages if msg.role == "user"])
+            background_tasks.add_task(
+                _embed_conversation_background,
+                session_id=str(existing_session["_id"]),
+                user_id=current_user.id,
+                language=request.language,
+                level=request.level,
+                topic=request.topic or "general",
+                transcript=transcript,
+                created_at=existing_session.get("created_at", datetime.utcnow())
+            )
+            print(f"[VECTOR_EMBED] 🚀 Scheduled embedding for session {existing_session['_id']}")
+
             # 🚀 Schedule session statistics caching in background (runs AFTER response is sent)
             background_tasks.add_task(
                 _cache_session_statistics_background,
@@ -1072,6 +1139,20 @@ async def save_conversation(
                 duration_minutes=request.duration_minutes
             )
             print(f"[SUMMARY_ANALYSIS_BG] 🚀 Scheduled summary and enhanced analysis for session {result.inserted_id}")
+
+            # 🔍 VECTOR EMBEDDING: Schedule conversation embedding for semantic search
+            transcript = " ".join([msg.content for msg in conversation_messages if msg.role == "user"])
+            background_tasks.add_task(
+                _embed_conversation_background,
+                session_id=str(result.inserted_id),
+                user_id=current_user.id,
+                language=request.language,
+                level=request.level,
+                topic=request.topic or "general",
+                transcript=transcript,
+                created_at=datetime.utcnow()
+            )
+            print(f"[VECTOR_EMBED] 🚀 Scheduled embedding for NEW session {result.inserted_id}")
 
             # 🚀 Schedule session statistics caching in background (runs AFTER response is sent)
             background_tasks.add_task(
