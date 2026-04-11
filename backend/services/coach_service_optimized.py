@@ -412,10 +412,10 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         )
 
         # Get accurate session counts from actual collections (NOT user.stats.lifetime which includes challenges)
-        # Practice sessions = conversation_sessions_collection (excluding placeholder "Practice Session (X min)" topics)
+        # Practice sessions = conversation_sessions_collection (only sessions with summary or enhanced_analysis)
         # Learning plan sessions = from learning_plans.session_history
         # Challenge sessions = challenge_sessions_collection
-        practice_sessions_count = len([c for c in conversations if not (c.get('topic', '').startswith('Practice Session (') and c.get('topic', '').endswith('min)'))])
+        practice_sessions_count = len([c for c in conversations if c.get('summary') or c.get('enhanced_analysis')])
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
         challenge_sessions_count = len(challenge_sessions)
 
@@ -892,10 +892,13 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         all_languages = self._extract_all_languages(learning_plans, [], challenge_sessions, [])
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        # Exclude placeholder "Practice Session (X min)" topics
+        # Only count processed sessions (have summary or enhanced_analysis)
         practice_sessions_count = await conversation_sessions_collection.count_documents({
             "user_id": user_id,
-            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}
+            "$or": [
+                {"summary": {"$exists": True}},
+                {"enhanced_analysis": {"$exists": True}}
+            ]
         })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
@@ -975,10 +978,13 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         all_languages = self._extract_all_languages(learning_plans, [], [], [])
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        # Exclude placeholder "Practice Session (X min)" topics
+        # Only count processed sessions (have summary or enhanced_analysis)
         practice_sessions_count = await conversation_sessions_collection.count_documents({
             "user_id": user_id,
-            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}
+            "$or": [
+                {"summary": {"$exists": True}},
+                {"enhanced_analysis": {"$exists": True}}
+            ]
         })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
@@ -1104,10 +1110,13 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
         )
 
         # 🔧 FIX: Calculate accurate session counts from actual collections
-        # Exclude placeholder "Practice Session (X min)" topics
+        # Only count processed sessions (have summary or enhanced_analysis)
         practice_sessions_count = await conversation_sessions_collection.count_documents({
             "user_id": user_id,
-            "topic": {"$not": {"$regex": "^Practice Session \\(\\d+ min\\)$"}}
+            "$or": [
+                {"summary": {"$exists": True}},
+                {"enhanced_analysis": {"$exists": True}}
+            ]
         })
         learning_plan_sessions_count = sum(len(plan.get("session_history", [])) for plan in learning_plans)
 
