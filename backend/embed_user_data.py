@@ -21,6 +21,7 @@ from database import (
     assessments_collection
 )
 from services.vector_db_service import vector_db
+from services.rich_embedding_service import RichEmbeddingBuilder, RichEmbeddingQualityValidator
 from bson import ObjectId
 
 import logging
@@ -29,7 +30,14 @@ logger = logging.getLogger(__name__)
 
 
 async def embed_conversations(user_id: str) -> int:
-    """Embed user's conversation sessions"""
+    """
+    Embed user's conversation sessions with RICH CONTENT.
+
+    NEW: Uses RichEmbeddingBuilder for high-quality embeddings
+    - Includes actual conversation content
+    - Extracts topics, vocabulary, highlights
+    - Validates quality before embedding
+    """
     try:
         conversations = await conversation_sessions_collection.find(
             {"user_id": user_id}
@@ -39,38 +47,55 @@ async def embed_conversations(user_id: str) -> int:
             logger.info(f"  No conversations found for user {user_id}")
             return 0
 
-        logger.info(f"  Embedding {len(conversations)} conversations...")
+        logger.info(f"  Embedding {len(conversations)} conversations with rich content...")
 
         contents = []
+        quality_stats = {"high": 0, "medium": 0, "low": 0, "invalid": 0, "filtered": 0}
+
         for conv in conversations:
-            # Build searchable text from conversation
-            text_parts = [
-                f"Language: {conv.get('language', 'unknown')}",
-                f"Level: {conv.get('level', 'unknown')}",
-            ]
+            # PHASE 1 FIX: Filter low-quality sessions BEFORE embedding
+            should_embed, reason = RichEmbeddingBuilder.should_embed_session(conv)
 
-            # Add transcript if available
-            if conv.get("transcript"):
-                text_parts.append(f"Conversation: {conv['transcript']}")
+            if not should_embed:
+                quality_stats["filtered"] += 1
+                logger.debug(f"    Session {conv.get('_id')} SKIPPED: {reason}")
+                continue
 
-            # Add summary if available
-            if conv.get("summary"):
-                text_parts.append(f"Summary: {conv['summary']}")
+            # Build RICH embedding text (topic + conversation + highlights + vocabulary)
+            text = RichEmbeddingBuilder.build_conversation_embedding(conv)
 
-            text = " | ".join(text_parts)
+            # Build metadata
+            metadata = RichEmbeddingBuilder.build_metadata(conv, user_id)
 
+            # Validate quality
+            validation = RichEmbeddingQualityValidator.validate(text, metadata)
+
+            # Track quality stats
+            score = validation["quality_score"]
+            if score >= 0.8:
+                quality_stats["high"] += 1
+            elif score >= 0.6:
+                quality_stats["medium"] += 1
+            elif score >= 0.4:
+                quality_stats["low"] += 1
+            else:
+                quality_stats["invalid"] += 1
+
+            # Log warnings for low-quality embeddings
+            if validation["warnings"]:
+                logger.debug(f"    Session {conv.get('_id')}: Quality {score:.2f} - {validation['warnings'][0]}")
+
+            # Add to batch (even low quality - better than nothing)
             contents.append({
                 "id": f"conv_{user_id}_{str(conv['_id'])}",
                 "text": text,
-                "metadata": {
-                    "user_id": user_id,
-                    "content_type": "conversation",
-                    "language": conv.get("language", "unknown"),
-                    "level": conv.get("level", "unknown"),
-                    "duration_minutes": conv.get("duration_minutes", 0),
-                    "created_at": conv.get("created_at", datetime.utcnow()).isoformat(),
-                }
+                "metadata": metadata
             })
+
+        # Log quality summary
+        logger.info(f"    Quality: {quality_stats['high']} high, {quality_stats['medium']} medium, "
+                   f"{quality_stats['low']} low, {quality_stats['invalid']} invalid, "
+                   f"{quality_stats['filtered']} filtered (billing placeholders)")
 
         return await vector_db.upsert_batch(contents)
 

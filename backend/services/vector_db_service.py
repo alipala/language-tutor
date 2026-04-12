@@ -330,7 +330,7 @@ class VectorDBService:
         top_k: int = 10,
         filters: Optional[Dict[str, Any]] = None,
         recency_boost: float = 0.1,
-        relevance_threshold: float = 0.7
+        relevance_threshold: float = 0.50
     ) -> List[Dict[str, Any]]:
         """
         Advanced hybrid search with semantic similarity + recency boost + relevance filtering
@@ -341,7 +341,7 @@ class VectorDBService:
             top_k: Results to return
             filters: Metadata filters
             recency_boost: Weight for recency (0.0-1.0, default 0.1)
-            relevance_threshold: Minimum similarity score (0.0-1.0, default 0.7)
+            relevance_threshold: Minimum similarity score (0.0-1.0, default 0.50)
 
         Returns:
             Ranked results with hybrid scores
@@ -362,6 +362,19 @@ class VectorDBService:
             if not matches:
                 logger.warning(f"⚠️  No matches above relevance threshold {relevance_threshold}")
                 return []
+
+            # PHASE 1 FIX: Add confidence scoring for each match
+            for match in matches:
+                score = match.get("hybrid_score", match["score"])
+                if score >= 0.80:
+                    match["confidence"] = "high"
+                    match["confidence_score"] = 0.9
+                elif score >= 0.70:
+                    match["confidence"] = "medium"
+                    match["confidence_score"] = 0.7
+                else:
+                    match["confidence"] = "low"
+                    match["confidence_score"] = 0.5
 
             # Apply recency boost
             now = datetime.utcnow()
@@ -490,8 +503,8 @@ async def search_user_context(query: str, user_id: str, filters: Optional[Dict] 
     return await vector_db.hybrid_search(
         query=query,
         user_id=user_id,
-        top_k=10,
+        top_k=20,  # Get more results for better coverage
         filters=filters,
         recency_boost=0.15,  # 15% recency weight
-        relevance_threshold=0.65  # 65% minimum similarity
+        relevance_threshold=0.55  # PHASE 1: Adjusted for limited data (will raise to 0.65 as data grows)
     )

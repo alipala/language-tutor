@@ -14,6 +14,7 @@ Key Caching Strategies:
 from typing import Optional, Dict, Any, List
 from bson import ObjectId
 import logging
+from datetime import datetime
 
 from redis_client import get_cached, set_cached, delete_cached, delete_pattern
 from database import (
@@ -452,7 +453,7 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
 
         # EXISTING: Core data
         learning_plans = await learning_plans_collection.find({"user_id": user_id}).to_list(length=10)
-        conversations = await conversation_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(5).to_list(length=5)
+        conversations = await conversation_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(30).to_list(length=30)
 
         # CRITICAL: Challenge sessions data (was missing - caused TaalCoach to not respond to challenge queries)
         challenge_sessions = await challenge_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).to_list(length=100)
@@ -485,6 +486,66 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         total_sessions = len(conversations)
         total_minutes = sum(session.get('duration_minutes', 0) for session in conversations)
 
+        # CRITICAL FIX: Extract practice session topics and highlights for TaalCoach
+        # This fixes "I don't have topic details" responses
+        practice_sessions_topics = []
+        practice_sessions_details = []
+
+        for session in conversations:
+            # Extract topic (filter out generic placeholders)
+            topic = session.get('topic', 'conversation')
+            if topic.startswith('Practice Session'):
+                # Try custom_topic or enhanced_analysis topic
+                if session.get('custom_topic'):
+                    topic = session.get('custom_topic')
+                else:
+                    enhanced = session.get('enhanced_analysis')
+                    if enhanced and isinstance(enhanced, dict):
+                        ai_insights = enhanced.get('ai_insights')
+                        if ai_insights and isinstance(ai_insights, dict):
+                            topic_focus = ai_insights.get('topic_focus')
+                            if topic_focus:
+                                topic = topic_focus
+
+            # Extract enhanced analysis highlights
+            highlights = []
+            vocabulary = []
+            enhanced = session.get('enhanced_analysis')
+            if enhanced and isinstance(enhanced, dict):
+                ai_insights = enhanced.get('ai_insights', {})
+                if ai_insights and isinstance(ai_insights, dict):
+                    # Get breakthrough moments
+                    breakthroughs = ai_insights.get('breakthrough_moments', [])
+                    if breakthroughs:
+                        highlights.extend(breakthroughs[:2])
+
+                    # Get vocabulary highlights
+                    vocab_list = ai_insights.get('vocabulary_highlights', [])
+                    if vocab_list:
+                        vocabulary = vocab_list[:5]
+
+            # Build topic entry
+            session_date = session.get('created_at')
+            practice_sessions_topics.append({
+                "topic": topic,
+                "language": session.get('language', 'unknown'),
+                "level": session.get('level', 'unknown'),
+                "date": session_date.strftime("%Y-%m-%d") if session_date else "unknown"
+            })
+
+            # Build detailed entry
+            practice_sessions_details.append({
+                "date": session_date.strftime("%Y-%m-%d") if session_date else "unknown",
+                "topic": topic,
+                "language": session.get('language', 'unknown'),
+                "level": session.get('level', 'unknown'),
+                "duration_minutes": session.get('duration_minutes', 0),
+                "message_count": session.get('message_count', 0),
+                "highlights": highlights,
+                "vocabulary": vocabulary,
+                "summary": session.get('summary', '')[:200]  # First 200 chars
+            })
+
         # Build comprehensive context with ALL user data
         context = {
             # EXISTING: Core user info
@@ -505,6 +566,10 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
             },
             "features_available": get_features_for_plan(user_doc.get("subscription_plan", "try_learn")),
             "limitations": get_limitations_for_plan(user_doc.get("subscription_plan", "try_learn")),
+
+            # CRITICAL FIX: Practice session topics and details (fixes "I don't have topic details")
+            "practice_sessions_topics": practice_sessions_topics,
+            "practice_sessions_details": practice_sessions_details,
 
             # CRITICAL: Challenge sessions data (was missing - caused TaalCoach to not respond to challenge queries)
             "challenges": {
@@ -806,6 +871,22 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
                 "total_xp": user_doc.get("stats", {}).get("lifetime", {}).get("total_xp", 0),
                 "xp_today": 0,  # Will be calculated from daily_stats if needed
                 "level": user_doc.get("stats", {}).get("level", 1)
+            },
+
+            # CRITICAL FIX: Add "stats" key for compatibility with base CoachService
+            # The _parse_response_with_card() and _generate_quick_replies() methods
+            # expect context["stats"] to exist with session counts and streaks
+            "stats": {
+                "current_streak": user_doc.get("stats", {}).get("current_streak", 0),
+                "longest_streak": user_doc.get("stats", {}).get("longest_streak", 0),
+                "total_sessions": total_sessions,  # From conversations
+                "conversation_sessions": len(conversations),
+                "learning_plan_sessions": len(session_completions),
+                "total_challenges": len(challenge_sessions),
+                "last_7_days": {
+                    "sessions": len([c for c in conversations if c.get('created_at') and (datetime.utcnow() - c['created_at']).days <= 7]),
+                    "challenges": len([c for c in challenge_sessions if c.get('created_at') and (datetime.utcnow() - c['created_at']).days <= 7])
+                }
             }
         }
 
@@ -816,7 +897,9 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         return context
 
     except Exception as e:
+        import traceback
         logger.error(f"❌ Error building TaalCoach context for {user_id}: {str(e)}")
+        logger.error(traceback.format_exc())
         return None
 
 def get_features_for_plan(plan: str) -> List[str]:

@@ -13,14 +13,23 @@ NEW FEATURES:
 import logging
 import json
 import asyncio
+import openai
+import os
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 
 from services.coach_service_optimized import CoachService as BaseCoachService
 from services.vector_db_service import vector_db, search_user_context
 from cache_helpers import get_taalcoach_context_cached
+from services.query_enhancement_service import query_enhancer  # PHASE 1 FIX
+from services.semantic_reranker import semantic_reranker  # PHASE 2: Reranking
+from services.learning_trajectory_analyzer import trajectory_analyzer  # PHASE 2: Trajectory
+from services.hybrid_search_service import hybrid_search_service  # PHASE 3: Hybrid Search
 
 logger = logging.getLogger(__name__)
+
+# OpenAI client
+openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class VectorEnhancedCoachService(BaseCoachService):
@@ -34,10 +43,12 @@ class VectorEnhancedCoachService(BaseCoachService):
     - Hybrid search with recency boost
     """
 
-    def __init__(self):
+    def __init__(self, use_hybrid_search: bool = True):
         super().__init__()
         self.vector_db = vector_db
-        logger.info("[COACH] Initialized with vector search enhancement")
+        self.use_hybrid_search = use_hybrid_search  # PHASE 3: Configurable hybrid search
+        search_type = "hybrid (BM25 + Semantic)" if use_hybrid_search else "semantic only"
+        logger.info(f"[COACH] Initialized with vector search enhancement - Mode: {search_type}")
 
     async def chat(
         self,
@@ -99,29 +110,69 @@ class VectorEnhancedCoachService(BaseCoachService):
                 filters["content_type"] = ["conversation", "assessment"]
             # For "general" and "app_help", search all content types
 
-            # Perform hybrid semantic search
-            logger.info(f"[COACH] Semantic search for user {user_id}: '{query[:50]}...'")
-            logger.debug(f"[COACH] Filters: {filters}")
-
-            matches = await search_user_context(
+            # PHASE 1 FIX: Enhance query before searching
+            enhanced_query = await query_enhancer.enhance_query(
                 query=query,
-                user_id=user_id,
-                filters=filters if filters else None
+                user_context={
+                    'target_language': language,
+                    'current_level': None,  # Will be determined from context
+                    'learning_goals': None
+                }
             )
+            logger.info(f"[COACH] Query enhanced: '{query[:40]}...' → {len(enhanced_query.split())} terms")
+
+            # PHASE 3: Choose between hybrid search (BM25 + Semantic) or pure semantic
+            if self.use_hybrid_search:
+                logger.info(f"[COACH] Hybrid search (BM25 + Semantic) for user {user_id}")
+                logger.debug(f"[COACH] Filters: {filters}")
+
+                # Use hybrid search service
+                hybrid_results = await hybrid_search_service.hybrid_search(
+                    query=enhanced_query,  # PHASE 1 FIX: Use enhanced query
+                    user_id=user_id,
+                    top_k=20,  # Get more for reranking
+                    semantic_weight=0.6,
+                    bm25_weight=0.4,
+                    filters=filters if filters else None
+                )
+
+                matches = hybrid_results.get('matches', [])
+                logger.info(f"[COACH] Hybrid search: {hybrid_results['semantic_count']} semantic + {hybrid_results['bm25_count']} BM25 = {len(matches)} fused results")
+            else:
+                logger.info(f"[COACH] Semantic-only search for user {user_id}")
+                logger.debug(f"[COACH] Filters: {filters}")
+
+                # Use traditional semantic search
+                matches = await search_user_context(
+                    query=enhanced_query,  # PHASE 1 FIX: Use enhanced query
+                    user_id=user_id,
+                    filters=filters if filters else None
+                )
+                logger.info(f"[COACH] Semantic search: {len(matches)} results")
 
             if not matches:
-                logger.warning(f"[COACH] No semantic matches found for query")
+                logger.warning(f"[COACH] No matches found for query")
                 return {"matches": [], "total": 0}
+
+            # PHASE 2: Rerank matches using cross-encoder for better precision
+            logger.info(f"[COACH] Reranking {len(matches)} matches with cross-encoder")
+            matches = await semantic_reranker.rerank(
+                query=query,  # Use original query (not enhanced) for reranking
+                matches=matches,
+                top_k=10  # Return top 10 most relevant
+            )
+            logger.info(f"[COACH] After reranking: {len(matches)} results (top final_score: {matches[0].get('final_score', 0):.3f})")
 
             # Format results for LLM consumption
             semantic_context = {
                 "matches": matches,
                 "total": len(matches),
-                "top_match_score": matches[0]["score"] if matches else 0,
+                "top_match_score": matches[0].get("final_score", matches[0].get("score", 0)) if matches else 0,
                 "content_summary": self._summarize_matches(matches)
             }
 
-            logger.info(f"[COACH] Found {len(matches)} semantic matches (top score: {matches[0]['score']:.3f})")
+            top_score = matches[0].get("final_score", matches[0].get("score", 0)) if matches else 0
+            logger.info(f"[COACH] Vector search returned {len(matches)} matches (top score: {top_score:.3f})")
 
             return semantic_context
 
@@ -159,7 +210,8 @@ class VectorEnhancedCoachService(BaseCoachService):
 
         # Add top match details
         top = matches[0]
-        summary += f"\nTop match ({top['score']:.2f} similarity): {top['text'][:200]}..."
+        top_score = top.get('final_score', top.get('score', 0.0))
+        summary += f"\nTop match ({top_score:.2f} similarity): {top['text'][:200]}..."
 
         return summary
 
@@ -195,7 +247,7 @@ class VectorEnhancedCoachService(BaseCoachService):
             logger.info(f"[COACH] Vector-enhanced chat for user {user_id}: '{user_message[:50]}...'")
 
             # Step 1: Detect intent (reuse base method)
-            intent = await self._detect_intent_ai(user_message, language, target_language)
+            intent = await self._detect_user_intent(user_message)
             logger.info(f"[COACH] Detected intent: {intent}")
 
             # Step 2: Get regular cached context (reuse base method)
@@ -235,12 +287,76 @@ class VectorEnhancedCoachService(BaseCoachService):
                 language=target_language
             )
 
+            # PHASE 1 FIX: ALWAYS use MongoDB data to SUPPLEMENT vector search (not replace)
+            # This provides complete context even when vector search is strong
+            logger.info(f"[COACH] Vector search returned {semantic_context['total']} matches "
+                       f"(top score: {semantic_context.get('top_match_score', 0):.3f})")
+
+            # PHASE 1 FIX: Always supplement with MongoDB data for complete context
+            if cached_context:
+                mongodb_sessions = cached_context.get('practice_sessions_details', [])
+                if mongodb_sessions:
+                        # 🎯 SMART LANGUAGE FILTERING: Detect if query is cross-language
+                        query_lower = user_message.lower()
+                        cross_language_keywords = [
+                            'other language', 'all language', 'different language', 'multiple language',
+                            'english', 'spanish', 'french', 'german', 'italian', 'portuguese', 'dutch',
+                            'what language', 'how many language', 'which language', 'compare',
+                            'not only', 'also practice', 'besides', 'other than'
+                        ]
+                        is_cross_language_query = any(keyword in query_lower for keyword in cross_language_keywords)
+
+                        # If user asks about other languages, show ALL sessions
+                        if is_cross_language_query:
+                            fallback_sessions = mongodb_sessions[:15]  # Show more for cross-language
+                            filter_info = f"all languages (cross-language query detected)"
+                            logger.info(f"[COACH] 🌐 Cross-language query detected - showing {len(fallback_sessions)} sessions across all languages")
+                        # Otherwise, filter by target language if specified
+                        elif target_language and target_language != 'all':
+                            language_sessions = [s for s in mongodb_sessions if s.get('language', '').lower() == target_language.lower()]
+                            # If we have language-specific sessions, prioritize them
+                            if language_sessions:
+                                fallback_sessions = language_sessions[:10]
+                                filter_info = f"{target_language} only"
+                            else:
+                                # Fall back to all sessions if no language match
+                                fallback_sessions = mongodb_sessions[:10]
+                                filter_info = f"all languages (no {target_language} sessions found)"
+                        else:
+                            fallback_sessions = mongodb_sessions[:10]  # Top 10 most recent
+                            filter_info = "all languages"
+
+                        semantic_context['mongodb_fallback'] = {
+                            'sessions': fallback_sessions,
+                            'source': 'mongodb_direct',
+                            'target_language': target_language,
+                            'filter_applied': filter_info,
+                            'message': f'Semantic search found {semantic_context["total"]} matches - supplemented with {len(fallback_sessions)} MongoDB sessions'
+                        }
+                        logger.info(f"[COACH] Added {len(fallback_sessions)} MongoDB sessions as fallback (from {len(mongodb_sessions)} available, filtered for {filter_info})")
+
+            # Step 3.5: **PHASE 2** Analyze learning trajectory
+            trajectory_context = None
+            try:
+                logger.info(f"[COACH] Analyzing learning trajectory for user {user_id}")
+                trajectory_context = await trajectory_analyzer.analyze(
+                    user_id=user_id,
+                    context=cached_context if cached_context else {}
+                )
+                if trajectory_context and not trajectory_context.get('insufficient_data'):
+                    logger.info(f"[COACH] Trajectory analysis complete: trend={trajectory_context.get('trend')}")
+                else:
+                    logger.debug(f"[COACH] Insufficient data for trajectory analysis")
+            except Exception as e:
+                logger.warning(f"[COACH] Trajectory analysis failed: {e}")
+
             # Step 4: Build enhanced prompt with BOTH contexts
             enhanced_prompt = self._build_enhanced_prompt(
                 intent=intent,
                 query=user_message,
                 cached_context=cached_context,
                 semantic_context=semantic_context,
+                trajectory_context=trajectory_context,
                 language=language,
                 target_language=target_language
             )
@@ -264,7 +380,8 @@ class VectorEnhancedCoachService(BaseCoachService):
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature,
-                max_tokens=300
+                max_completion_tokens=300,
+                response_format={"type": "json_object"}
             )
 
             response_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -276,24 +393,31 @@ class VectorEnhancedCoachService(BaseCoachService):
             # Parse response (expects JSON)
             try:
                 parsed = json.loads(raw_response)
-                message = parsed.get("message", raw_response)
-                show_card = parsed.get("show_card")
+                ai_response = parsed.get("message", raw_response)
+                show_card = parsed.get("show_card", "none")
             except json.JSONDecodeError:
                 logger.warning(f"[COACH] Response not valid JSON, using as plain text")
-                message = raw_response
-                show_card = None
+                ai_response = raw_response
+                show_card = "none"
 
-            # Build result
+            # Parse AI response into rich messages (using base class method)
+            parsed_messages = self._parse_response_with_card(ai_response, show_card, cached_context, user_message)
+
+            # Generate quick replies based on AI's response (using base class method)
+            quick_replies = self._generate_quick_replies(cached_context, language, ai_response, conversation_history)
+
+            # Build result (same format as base service)
             result = {
-                "message": message,
-                "show_card": show_card,
-                "intent": intent,
+                "messages": parsed_messages,
+                "quick_replies": quick_replies,
+                "raw_response": ai_response,
                 "response_time_ms": response_time_ms,
-                "raw_response": raw_response,
-                "messages": messages,
-                "semantic_matches": len(semantic_context.get("matches", [])),
-                "semantic_top_score": semantic_context.get("top_match_score", 0),
-                "model": self.model
+                "intent": intent,
+                "semantic_context": {
+                    "matches": len(semantic_context.get("matches", [])),
+                    "top_score": semantic_context.get("top_match_score", 0),
+                    "total": semantic_context.get("total", 0)
+                }
             }
 
             return result
@@ -316,6 +440,7 @@ class VectorEnhancedCoachService(BaseCoachService):
         query: str,
         cached_context: Dict[str, Any],
         semantic_context: Dict[str, Any],
+        trajectory_context: Optional[Dict[str, Any]],
         language: str,
         target_language: str
     ) -> str:
@@ -330,24 +455,184 @@ class VectorEnhancedCoachService(BaseCoachService):
         5. **NEW**: Temporal trend information
         """
         # Start with core system prompt
-        prompt = f"""You are TaalCoach, an AI language learning assistant for the MyTacoAI app.
+        prompt = f"""You are TaalCoach, an expert AI language progress coach for the MyTacoAI app.
+
+🎯 YOUR SINGULAR PURPOSE:
+Help users IMPROVE from their initial assessment level by guiding them through the app's features with expert teaching strategies.
+
+🎓 YOUR EXPERTISE (Language Teaching & Progress Coaching):
+You are a certified language teacher + progress coach with deep knowledge of:
+- Second Language Acquisition (SLA) theory and methodology
+- CEFR levels (A1-C2) and proficiency assessment
+- Personalized learning paths and curriculum design
+- Speaking DNA analysis and pronunciation improvement
+- Motivation and engagement strategies for language learners
+- Error correction techniques and formative feedback
+- Spaced repetition and memory retention optimization
+- Progress tracking and milestone celebration
+
+🎓 EXPERT TEACHING STRATEGIES YOU MUST USE:
+
+**1. Spaced Repetition (Ebbinghaus Forgetting Curve)**:
+   - Vocabulary review schedule: Day+1, Day+3, Day+7, Day+14, Day+30
+   - Example: "You learned 'restaurant' vocab 3 days ago - review today to cement long-term memory"
+   - Always cite specific timing: "Review in 3 days" not "review soon"
+
+**2. Zone of Proximal Development (Vygotsky's i+1)**:
+   - Recommend content at current_level + 1 difficulty
+   - Example: "You're A2 - try B1 reading with support. A1 is too easy, C1 too frustrating"
+   - Optimal challenge: 90-95% comprehension + 5-10% stretch
+
+**3. Comprehensible Input (Krashen)**:
+   - Input slightly above current level aids acquisition
+   - Example: "Practice sessions should have 90%+ comprehension with new challenges each time"
+
+**4. Output Hypothesis (Swain)**:
+   - Speaking/writing production aids language learning
+   - Example: "Pronunciation stuck at 70%? Do 10min shadowing (active production), not passive listening"
+
+**5. Error Pattern Analysis**:
+   - Identify SYSTEMATIC errors (not random)
+   - Example: "You confuse 'de/het' in 67% of cases - article gender issue. Practice minimal pairs: de man/het kind"
+
+**6. Motivation & Self-Efficacy (Dörnyei)**:
+   - Celebrate wins, normalize plateaus
+   - Example: "15% pronunciation gain in 2 weeks! A2→B1 transition naturally has slower fluency gains"
+
+**7. CEFR Can-Do Descriptors**:
+   - Map current abilities to CEFR benchmarks
+   - Example: "A2 listening: understand familiar topics. Next B1 goal: main points in clear standard speech"
+
+📱 MYTACOAI APP FEATURES - ACCURATE DETAILS:
+
+**1. Speaking Assessment** (1 minute, 6 languages):
+   - Quick 1-minute speaking test to determine CEFR level
+   - Available in: English, Spanish, French, German, Italian, Portuguese, Dutch
+   - User can pick from predefined subjects/topics
+   - This is the FIRST step for new users
+
+**2. Learning Plan** (Created AFTER assessment):
+   - User creates personalized plan for: 1, 2, 3, 6, or 12 months
+   - Session duration is FLEXIBLE:
+     * A1/A2 users can choose: 3 minutes OR 5 minutes (flexible!)
+     * B1+ users: 5 minutes only (intermediate/advanced)
+   - System adapts plan based on Speaking DNA analysis and progress
+
+**3. Practice Sessions** (Freestyle or Structured):
+   - **Predefined Topics**: Common scenarios (restaurant, travel, etc.)
+   - **Custom Search Topics**: User can search any topic
+   - **News Practice**: Practice with daily news articles
+   - Duration is FLEXIBLE:
+     * A1/A2 users: 3 minutes OR 5 minutes (user's choice!)
+     * B1+ users: 5 minutes only
+   - Available in all 6 languages, all CEFR levels
+
+**4. Challenges** (5 types to support learning):
+   - Micro Quiz - Quick vocabulary and grammar questions
+   - Error Spotting - Find and fix mistakes in sentences
+   - Swipe Fix - Swipe to correct word order/grammar
+   - Brain Tickler - Advanced reasoning challenges
+   - Story Builder - Build stories with correct grammar/vocab
+   - User picks: language, level, challenge type
+
+   IMPORTANT: When mentioning challenge types to users, use friendly names:
+   - "Micro Quiz" NOT "micro_quiz"
+   - "Error Spotting" NOT "error_spotting"
+   - "Swipe Fix" NOT "swipe_fix"
+   - "Brain Tickler" NOT "brain_tickler"
+   - "Story Builder" NOT "story_builder"
+
+**5. Flashcards** (Review vocabulary from learning plans):
+   - Created from practice sessions and challenges
+   - Spaced repetition for retention
+
+**6. Speaking DNA** (Deep Acoustic Analysis - Premium):
+   - Periodic deep dive analysis of pronunciation, fluency, confidence
+   - System adapts learning plan based on DNA insights
+   - Tracks improvement over time
+
+**7. Daily News** (Reading practice at user's level):
+   - Real news articles adapted to CEFR level
+   - All 6 languages available
+
+💳 SUBSCRIPTION PLANS (IMPORTANT - Be accurate!):
+
+**FREE TIER**:
+- New users get 15 MINUTES free practice (no payment required!)
+- After 15 min, must upgrade to premium
+
+**PREMIUM PLANS**:
+
+1. **Language Mastery** (Top Tier):
+   - Monthly: UNLIMITED practice minutes
+   - Annual: UNLIMITED practice minutes (discounted, cost-effective)
+
+2. **Fluency Builder**:
+   - Monthly: 150 minutes
+   - Annual: 1,800 minutes (discounted, cost-effective)
+
+IMPORTANT: Always recommend annual plans as "cost-effective and discounted" vs monthly!
+
+🎓 YOUR COACHING APPROACH (Based on Their Journey):
+STEP 1: Speaking Assessment (1 min) → User discovers initial level (A1-C2)
+STEP 2: Learning Plan Creation (1-12 months) → Structured curriculum
+   - A1/A2 users choose: 3 min OR 5 min sessions (flexible!)
+   - B1+ users: 5 min sessions only
+STEP 3: Progress Tracking → Monitor DNA analysis, session completion, challenge accuracy
+STEP 4: Adaptive Guidance → System adapts plan based on Speaking DNA insights
+STEP 5: Recommend NEXT STEPS based on:
+   - Learning plan progress (X of Y sessions completed)
+   - DNA analysis trends (pronunciation, fluency, confidence improving?)
+   - Challenge performance (accuracy %, struggle areas)
+   - Practice consistency (daily streak, speaking minutes used)
+   - Weak skills identification (what needs more practice?)
+
+💡 YOUR GUIDANCE PHILOSOPHY:
+- **Data-Driven**: Use assessment results, DNA analysis, session data to give specific advice
+- **Proactive**: Don't just answer questions - suggest NEXT ACTIONS
+- **Feature-Focused**: Guide users to the RIGHT app feature for their current need
+- **Progress-Oriented**: Always tie advice back to improving from initial level
+- **Encouraging**: Celebrate wins, normalize struggles, maintain growth mindset
+- **Theory-Grounded**: ALWAYS cite a teaching strategy when giving advice (Spaced Repetition, ZPD, etc.)
+- **Specific Numbers**: Give exact timings ("review in 3 days"), percentages ("73% accuracy"), counts ("5 sessions")
 
 RESPONSE RULES:
-- Maximum 2 SHORT sentences (25 words total)
-- Be specific, use user's REAL data from context below
-- When suggesting features, recommend SPECIFIC actions
+- Maximum 2-3 SHORT sentences (40 words max) - be concise but actionable
+- ALWAYS include a SPECIFIC NEXT ACTION (which feature to use, what to practice)
+- Use user's REAL data: assessment level, DNA scores, session topics, challenge accuracy
+- Give EXPERT ADVICE based on SLA principles + their specific progress data
 - Output JSON: {{"message": "text", "show_card": "..."}}
 
-⚠️ CRITICAL: NEVER MAKE UP NUMBERS OR DATA
-- ONLY use numbers that appear EXACTLY in the context data below
-- If data is missing or zero, say so honestly: "You haven't done any X yet"
-- DO NOT estimate, guess, or invent session counts, minutes, scores, or any metrics
-- If unsure about a number, DO NOT mention it
+🎯 WHEN GIVING GUIDANCE, ALWAYS:
+1. Reference their INITIAL ASSESSMENT level (from speaking_dna or assessments)
+2. Show CURRENT PROGRESS (learning plan completion %, DNA improvements, streak)
+3. Identify NEXT STEP (specific session topic, challenge type, or feature to use)
+4. Explain WHY (SLA principle: comprehensible input, spaced repetition, etc.)
 
-⚠️ IMPORTANT: Distinguish between concepts:
-- "Learning Plan Goal/Objective" = The goal OF the learning plan itself (e.g., "Master Dutch A1")
-- "Personal Goals" = User's personal learning goals set separately (e.g., "Have a 10-minute conversation")
-- When user asks about "learning plan goal", respond about the PLAN's objective, NOT personal goals
+EXAMPLE RESPONSES (USE TEACHING STRATEGIES):
+❌ BAD: "You have 5 sessions." (just data, no guidance, no theory)
+✅ GOOD: "You've completed 5 of 20 learning plan sessions (25% - Zone of Proximal Development). Next: 'restaurant ordering' (B1) stretches your A2 skills appropriately."
+
+❌ BAD: "Practice more challenges." (vague, no specific strategy)
+✅ GOOD: "Micro_quiz accuracy 75% - do 3 more today. Spaced Repetition: review tomorrow, Friday, next week to cement vocabulary long-term."
+
+❌ BAD: "You're doing well." (generic, no data, no next step)
+✅ GOOD: "DNA: pronunciation 60%→75% (+15% in 2 weeks)! Output Hypothesis: Now do 10min shadowing for fluency. A2→B1 plateaus are normal."
+
+⚠️ CRITICAL: NEVER MAKE UP NUMBERS OR DATA
+- ONLY use numbers from context: assessment scores, DNA metrics, session counts, challenge accuracy
+- Use practice_sessions_topics and practice_sessions_details to answer topic questions
+- If data is missing, guide to START: "Complete a Speaking Assessment first to unlock your learning plan."
+
+⚠️ NEVER SAY "I don't have data" WHEN DATA EXISTS
+- CHECK practice_sessions_details, practice_sessions_topics, speaking_dna, assessments, learning_plans
+- CHECK mongodb_fallback sessions if vector search found nothing
+- If sessions exist but details limited: "You have X sessions - check [feature] for details on what to practice next."
+
+⚠️ LEARNING PLAN CONTEXT:
+- Users create learning plans AFTER speaking assessment
+- Learning plans have: total_sessions, completed_sessions, plan_objective, goal, level
+- Always tie guidance back to learning plan progress and objective
 
 User is asking in: {language}
 Learning language: {target_language}
@@ -394,6 +679,24 @@ Query intent: {intent}
 
                 prompt += "\n"
 
+        # **NEW**: Add MongoDB fallback data if vector search was weak
+        mongodb_fallback = semantic_context.get("mongodb_fallback")
+        if mongodb_fallback:
+            sessions = mongodb_fallback.get('sessions', [])
+            prompt += f"\n\n📋 PRACTICE SESSIONS FROM DATABASE (Recent sessions - use this data!):\n"
+            prompt += f"IMPORTANT: These are REAL user sessions. Use this data to answer topic questions!\n\n"
+
+            for i, session in enumerate(sessions[:8], 1):  # Top 8 most recent
+                prompt += f"{i}. {session.get('topic', 'conversation')} - {session.get('language', 'unknown')} ({session.get('level', 'unknown')})\n"
+                prompt += f"   Date: {session.get('date', 'unknown')}\n"
+                if session.get('highlights'):
+                    prompt += f"   Highlights: {', '.join(session['highlights'][:2])}\n"
+                if session.get('vocabulary'):
+                    prompt += f"   Vocabulary: {', '.join(session['vocabulary'][:3])}\n"
+                prompt += f"   Duration: {session.get('duration_minutes', 0)} min\n\n"
+
+            prompt += f"USE THIS SESSION DATA to answer the user's question!\n"
+
         # **NEW**: Add cross-feature correlation hints
         if matches and len(matches) >= 2:
             content_types = set(m["metadata"].get("content_type") for m in matches)
@@ -406,7 +709,21 @@ Query intent: {intent}
         if matches and intent in ["progress", "general"]:
             prompt += self._add_temporal_trends(matches)
 
-        prompt += f"\n\nNow answer the user's question: \"{query}\""
+        # **PHASE 2**: Add learning trajectory analysis
+        if trajectory_context and not trajectory_context.get('insufficient_data'):
+            prompt += trajectory_analyzer.format_for_prompt(trajectory_context)
+
+        # **CRITICAL**: Add progress coaching summary
+        # Pass target_language in context for language-specific level detection
+        context_with_lang = {**cached_context, "target_language": target_language} if cached_context else {"target_language": target_language}
+        prompt += self._build_progress_coaching_summary(context_with_lang, intent)
+
+        prompt += f"\n\n🎯 NOW ANSWER THE USER'S QUESTION: \"{query}\"\n"
+        prompt += f"Remember:\n"
+        prompt += f"1. Give SPECIFIC next action (which feature, what to practice)\n"
+        prompt += f"2. Reference their REAL data (assessment, DNA, sessions, challenges)\n"
+        prompt += f"3. Explain WHY (SLA principle, learning science)\n"
+        prompt += f"4. Keep it SHORT (2-3 sentences, 40 words max)\n"
 
         return prompt
 
@@ -475,6 +792,153 @@ Query intent: {intent}
         except Exception as e:
             logger.warning(f"[COACH] Failed to calculate trends: {e}")
             return ""
+
+    def _build_progress_coaching_summary(self, context: Dict, intent: str) -> str:
+        """
+        Build a concise progress coaching summary highlighting:
+        - Initial assessment level
+        - Current progress (learning plan, DNA, sessions)
+        - Recommended next steps
+
+        This helps TaalCoach give actionable, data-driven guidance
+        """
+        if not context:
+            return ""
+
+        summary = "\n\n" + "="*80 + "\n"
+        summary += "🎯 PROGRESS COACHING SUMMARY (Use this to guide your response!)\n"
+        summary += "="*80 + "\n\n"
+
+        # 1. Initial Assessment & Current Level
+        assessments = context.get("assessments", {})
+        speaking_dna = context.get("speaking_dna", {})
+
+        # Determine user's current level
+        current_level = None
+        if assessments.get("total_count", 0) > 0:
+            recent = assessments.get("recent_scores", [])
+            if recent:
+                latest = recent[0]
+                current_level = latest.get('level')
+                summary += f"📊 INITIAL ASSESSMENT:\n"
+                summary += f"   Level: {current_level}\n"
+                summary += f"   Score: {latest.get('score', 0)}%\n"
+                summary += f"   Date: {latest.get('date', 'unknown')}\n\n"
+
+        # If no assessment, infer from recent sessions for the target language
+        if not current_level:
+            sessions = context.get("practice_sessions_details", [])
+            target_lang = context.get("target_language")
+
+            if sessions:
+                # Filter by target language if specified
+                language_sessions = sessions
+                if target_lang and target_lang != 'all':
+                    language_sessions = [s for s in sessions if s.get('language', '').lower() == target_lang.lower()]
+
+                # Get most recent session with a valid level for this language
+                for session in (language_sessions if language_sessions else sessions):
+                    level = session.get('level')
+                    if level and level != 'unknown':
+                        current_level = level
+                        lang = session.get('language', 'unknown')
+                        summary += f"📊 CURRENT LEVEL (from recent {lang} sessions):\n"
+                        summary += f"   Level: {current_level}\n"
+                        summary += f"   Language: {lang}\n\n"
+                        break
+
+        # 2. Learning Plan Progress
+        learning_plans = context.get("learning_plans", [])
+        if learning_plans:
+            for plan in learning_plans[:1]:  # Most recent plan
+                completed = plan.get("completed_sessions", 0)
+                total = plan.get("total_sessions", 0)
+                if total > 0:
+                    progress_pct = (completed / total) * 100
+                    summary += f"📚 LEARNING PLAN PROGRESS:\n"
+                    summary += f"   Objective: {plan.get('plan_objective', 'N/A')}\n"
+                    summary += f"   Progress: {completed}/{total} sessions ({progress_pct:.0f}%)\n"
+                    summary += f"   Language: {plan.get('language', 'N/A')} - Level: {plan.get('level', 'N/A')}\n"
+
+                    if progress_pct < 25:
+                        summary += f"   ⚠️  EARLY STAGE - Guide them to complete more sessions\n"
+                    elif progress_pct < 50:
+                        summary += f"   ✅ BUILDING MOMENTUM - Encourage consistency\n"
+                    elif progress_pct < 75:
+                        summary += f"   💪 SOLID PROGRESS - Identify weak areas to focus\n"
+                    else:
+                        summary += f"   🎉 NEARLY COMPLETE - Prepare for level assessment\n"
+                    summary += "\n"
+
+        # 3. Speaking DNA Progress
+        if speaking_dna.get("has_profile"):
+            latest_profile = speaking_dna.get("latest_profile")
+            if latest_profile:
+                summary += f"🧬 SPEAKING DNA (Current Scores):\n"
+                summary += f"   Pronunciation: {latest_profile.get('pronunciation', 0)}%\n"
+                summary += f"   Fluency: {latest_profile.get('fluency', 0)}%\n"
+                summary += f"   Confidence: {latest_profile.get('confidence', 0)}%\n"
+                summary += f"   Vocabulary: {latest_profile.get('vocabulary', 0)}%\n"
+                summary += f"   Grammar: {latest_profile.get('grammar', 0)}%\n"
+
+                # Identify weakest area
+                scores = {
+                    "pronunciation": latest_profile.get('pronunciation', 0),
+                    "fluency": latest_profile.get('fluency', 0),
+                    "confidence": latest_profile.get('confidence', 0),
+                    "vocabulary": latest_profile.get('vocabulary', 0),
+                    "grammar": latest_profile.get('grammar', 0)
+                }
+                weakest = min(scores, key=scores.get)
+                summary += f"   ⚠️  WEAKEST AREA: {weakest.upper()} ({scores[weakest]}%)\n"
+                summary += f"   💡 RECOMMEND: Practice sessions focusing on {weakest}\n\n"
+
+        # 4. Practice Session Topics
+        topics = context.get("practice_sessions_topics", [])
+        if topics:
+            unique_topics = list(set([t.get('topic', 'conversation') for t in topics]))
+            summary += f"📝 TOPICS PRACTICED ({len(topics)} sessions):\n"
+            summary += f"   {', '.join(unique_topics[:5])}\n"
+            summary += f"   💡 RECOMMEND: Vary topics for broader vocabulary\n\n"
+
+        # 5. Challenge Performance
+        challenges = context.get("challenges", {})
+        if challenges.get("total_completed", 0) > 0:
+            total = challenges["total_completed"]
+            correct = challenges.get("total_correct", 0)
+            accuracy = (correct / challenges.get("total_questions", 1)) * 100 if challenges.get("total_questions", 0) > 0 else 0
+
+            summary += f"🎮 CHALLENGE PERFORMANCE:\n"
+            summary += f"   Total Completed: {total}\n"
+            summary += f"   Accuracy: {accuracy:.0f}%\n"
+
+            if accuracy < 60:
+                summary += f"   ⚠️  LOW ACCURACY - Recommend easier challenges or review\n"
+            elif accuracy < 75:
+                summary += f"   ✅ GOOD - Keep practicing for mastery\n"
+            else:
+                summary += f"   🎉 EXCELLENT - Ready for harder challenges\n"
+            summary += "\n"
+
+        # 6. Engagement & Consistency
+        stats = context.get("stats", {})
+        streak = stats.get("current_streak", 0)
+        total_sessions = stats.get("total_sessions", 0)
+
+        summary += f"📈 ENGAGEMENT:\n"
+        summary += f"   Current Streak: {streak} days\n"
+        summary += f"   Total Sessions: {total_sessions}\n"
+
+        if streak == 0:
+            summary += f"   ⚠️  NO STREAK - Encourage daily practice for spaced repetition\n"
+        elif streak < 7:
+            summary += f"   💪 BUILDING HABIT - Encourage to reach 7-day streak\n"
+        else:
+            summary += f"   🔥 STRONG HABIT - Celebrate and maintain momentum\n"
+
+        summary += "\n" + "="*80 + "\n"
+
+        return summary
 
     def _add_progress_context(self, context: Dict) -> str:
         """Add progress-specific context (reuse from base)"""
