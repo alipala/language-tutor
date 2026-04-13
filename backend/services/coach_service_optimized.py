@@ -1717,18 +1717,24 @@ CONTEXT-AWARE SUGGESTION RULES:
         })
 
         # Add card based on structured output
+        # DISABLED: progress_card - now using inline stats (Duolingo-style chips)
+        # The inline_stats_formatter in coach_service_vector_enhanced.py handles progress display
+        # if show_card == "progress":
+        #     if context["stats"]["total_sessions"] > 0 or context["stats"]["current_streak"] > 0:
+        #         messages.append({
+        #             "type": "progress_card",
+        #             "data": {
+        #                 "streak": context["stats"]["current_streak"],
+        #                 "total_sessions": context["stats"]["total_sessions"],
+        #                 "total_challenges": context["stats"]["total_challenges"],
+        #                 "last_7_days": context["stats"]["last_7_days"]
+        #             },
+        #             "timestamp": datetime.now(timezone.utc).isoformat()
+        #         })
+
         if show_card == "progress":
-            if context["stats"]["total_sessions"] > 0 or context["stats"]["current_streak"] > 0:
-                messages.append({
-                    "type": "progress_card",
-                    "data": {
-                        "streak": context["stats"]["current_streak"],
-                        "total_sessions": context["stats"]["total_sessions"],
-                        "total_challenges": context["stats"]["total_challenges"],
-                        "last_7_days": context["stats"]["last_7_days"]
-                    },
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
+            # Just return text - inline_stats_formatter will add visual chips
+            pass
 
         elif show_card == "dna":
             if context["has_dna_profile"]:
