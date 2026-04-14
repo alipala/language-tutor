@@ -27,8 +27,8 @@ class SubscriptionChipFormatter:
         # Patterns that indicate subscription chips should be shown
         self.pricing_triggers = [
             # Direct pricing queries (HIGH INTENT - always show)
-            r'\b(price|pricing|cost|how much|rate|fee)\b',
-            r'\b(premium|subscription|plan|upgrade)\b',
+            r'\b(prices?|pricing|costs?|how much|rates?|fees?)\b',
+            r'\b(premium|subscription|plans?|upgrade)\b',
             r'\b(fluency builder|language mastery|try.?learn)\b',
             r'\b(pay|payment|billing)\b',
             r'\b(free trial|trial period)\b',
@@ -122,21 +122,14 @@ class SubscriptionChipFormatter:
                 logger.info(f"[SUBSCRIPTION_CHIPS] User dismissed within 7 days, skipping")
                 return result
 
-        # 5. Check if user is already premium
-        subscription_status = user_context.get('subscription_status', 'free')
-        if subscription_status in ['active', 'trialing']:
-            subscription_plan = user_context.get('subscription_plan', '')
-            if subscription_plan in ['language_mastery', 'team_mastery']:
-                logger.info(f"[SUBSCRIPTION_CHIPS] User already has premium plan, skipping")
-                return result
-
-        # 6. Skip if user asking about learning (not pricing)
+        # 5. Skip if user asking about learning (not pricing)
         for pattern in self.skip_patterns:
             if re.search(pattern, user_lower, re.IGNORECASE):
                 logger.info(f"[SUBSCRIPTION_CHIPS] Learning query detected, skipping: {pattern}")
                 return result
 
-        # 7. HIGH INTENT - Check for pricing triggers
+        # 6. HIGH INTENT - Check for pricing triggers (CHECK THIS FIRST BEFORE PREMIUM STATUS)
+        # Even premium users should see pricing when explicitly requested
         for pattern in self.pricing_triggers:
             if re.search(pattern, user_lower, re.IGNORECASE):
                 logger.info(f"[SUBSCRIPTION_CHIPS] Pricing trigger matched: {pattern}")
@@ -151,6 +144,14 @@ class SubscriptionChipFormatter:
                 else:
                     result["recommended_plan"] = "fluency_builder_monthly"
 
+                return result
+
+        # 7. Check if user is already premium (only blocks AUTOMATIC suggestions, not explicit pricing queries)
+        subscription_status = user_context.get('subscription_status', 'free')
+        if subscription_status in ['active', 'trialing']:
+            subscription_plan = user_context.get('subscription_plan', '')
+            if subscription_plan in ['language_mastery', 'team_mastery']:
+                logger.info(f"[SUBSCRIPTION_CHIPS] User already has premium plan, skipping automatic suggestions")
                 return result
 
         # 8. Check for "out of minutes" scenario
@@ -241,7 +242,8 @@ class SubscriptionChipFormatter:
             ],
             "accentColor": "#6B7280",  # Gray - solid color, no gradient!
             "backgroundColor": "#FFFFFF",  # White card
-            "borderColor": "#E5E7EB",  # Light gray border
+            "borderColor": "#6B7280",  # Gray border - use accent color!
+            "borderWidth": 2,
             "ctaText": "CURRENT" if is_current else "FREE",
             "ctaBackgroundColor": "#F3F4F6" if is_current else "#6B7280",
             "ctaTextColor": "#6B7280" if is_current else "#FFFFFF",
@@ -273,8 +275,8 @@ class SubscriptionChipFormatter:
             ],
             "accentColor": "#14B8A6",  # Teal - solid color, no gradient!
             "backgroundColor": "#FFFFFF",  # White card
-            "borderColor": "#14B8A6" if is_recommended else "#E5E7EB",
-            "borderWidth": 2 if is_recommended else 1,
+            "borderColor": "#14B8A6",  # Teal border - always use accent color!
+            "borderWidth": 2,
             "ctaText": "FREE TRIAL" if not is_current else "CURRENT",
             "ctaBackgroundColor": "#14B8A6" if not is_current else "#F3F4F6",
             "ctaTextColor": "#FFFFFF" if not is_current else "#6B7280",
@@ -307,8 +309,8 @@ class SubscriptionChipFormatter:
             ],
             "accentColor": "#F59E0B",  # Amber - solid color, no gradient!
             "backgroundColor": "#FFFFFF",  # White card
-            "borderColor": "#F59E0B" if is_recommended else "#E5E7EB",
-            "borderWidth": 2 if is_recommended else 1,
+            "borderColor": "#F59E0B",  # Amber border - always use accent color!
+            "borderWidth": 2,
             "ctaText": "FREE TRIAL" if not is_current else "CURRENT",
             "ctaBackgroundColor": "#F59E0B" if not is_current else "#F3F4F6",
             "ctaTextColor": "#FFFFFF" if not is_current else "#6B7280",
