@@ -604,6 +604,16 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
             # NEW: Flashcard data (HIGH PRIORITY)
             "flashcards": {
                 "total_sets": len(flashcard_sets),
+                "total_cards": sum(fs.get("total_cards", 0) for fs in flashcard_sets),
+                "total_mastered": sum(fs.get("mastered_cards", 0) for fs in flashcard_sets),
+                "sets_by_language": {
+                    lang: {
+                        "count": len([fs for fs in flashcard_sets if fs.get("language") == lang]),
+                        "total_cards": sum(fs.get("total_cards", 0) for fs in flashcard_sets if fs.get("language") == lang),
+                        "mastered": sum(fs.get("mastered_cards", 0) for fs in flashcard_sets if fs.get("language") == lang)
+                    }
+                    for lang in set(fs.get("language") for fs in flashcard_sets if fs.get("language"))
+                },
                 "sets": [
                     {
                         "id": str(fs.get("_id", "")),
@@ -712,19 +722,27 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
             "speaking_dna": {
                 "has_profile": speaking_dna_profile is not None,
                 "latest_profile": {
-                    "confidence": speaking_dna_profile.get("confidence", 0),
-                    "fluency": speaking_dna_profile.get("fluency", 0),
-                    "pronunciation": speaking_dna_profile.get("pronunciation", 0),
-                    "vocabulary": speaking_dna_profile.get("vocabulary", 0),
-                    "grammar": speaking_dna_profile.get("grammar", 0),
-                    "created_at": speaking_dna_profile.get("created_at"),
-                    "language": speaking_dna_profile.get("language")
+                    # Extract from nested dna_strands structure
+                    "confidence": int(speaking_dna_profile.get("dna_strands", {}).get("confidence", {}).get("score", 0) * 100) if speaking_dna_profile else 0,
+                    "vocabulary": int(speaking_dna_profile.get("dna_strands", {}).get("vocabulary", {}).get("unique_words_per_session", 0)) if speaking_dna_profile else 0,
+                    "accuracy": int(speaking_dna_profile.get("dna_strands", {}).get("accuracy", {}).get("grammar_accuracy", 0) * 100) if speaking_dna_profile else 0,
+                    "rhythm": int(speaking_dna_profile.get("dna_strands", {}).get("rhythm", {}).get("words_per_minute_avg", 0)) if speaking_dna_profile else 0,
+                    "learning": speaking_dna_profile.get("dna_strands", {}).get("learning", {}).get("type", "unknown") if speaking_dna_profile else "unknown",
+                    "emotional": int(speaking_dna_profile.get("dna_strands", {}).get("emotional", {}).get("session_end_confidence", 0) * 100) if speaking_dna_profile else 0,
+                    "speaker_archetype": speaking_dna_profile.get("overall_profile", {}).get("speaker_archetype", "Unknown") if speaking_dna_profile else "Unknown",
+                    "sessions_analyzed": speaking_dna_profile.get("sessions_analyzed", 0) if speaking_dna_profile else 0,
+                    "total_speaking_minutes": round(speaking_dna_profile.get("total_speaking_minutes", 0), 1) if speaking_dna_profile else 0,
+                    "created_at": speaking_dna_profile.get("created_at") if speaking_dna_profile else None,
+                    "updated_at": speaking_dna_profile.get("updated_at") if speaking_dna_profile else None,
+                    "language": speaking_dna_profile.get("language") if speaking_dna_profile else None,
+                    "strengths": speaking_dna_profile.get("overall_profile", {}).get("strengths", []) if speaking_dna_profile else [],
+                    "growth_areas": speaking_dna_profile.get("overall_profile", {}).get("growth_areas", []) if speaking_dna_profile else []
                 } if speaking_dna_profile else None,
                 "history_count": len(speaking_dna_history),
                 "recent_snapshots": [
                     {
-                        "confidence": h.get("confidence", 0),
-                        "fluency": h.get("fluency", 0),
+                        "confidence": int(h.get("dna_strands", {}).get("confidence", {}).get("score", 0) * 100),
+                        "vocabulary": int(h.get("dna_strands", {}).get("vocabulary", {}).get("unique_words_per_session", 0)),
                         "created_at": h.get("created_at")
                     } for h in speaking_dna_history[:5]
                 ]
