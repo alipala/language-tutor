@@ -45,6 +45,11 @@ class SubscriptionChipFormatter:
 
         # Patterns that indicate user is NOT interested (skip chips)
         self.skip_patterns = [
+            # Learning plan queries (NOT pricing queries)
+            r'\blearning plans?\b',
+            r'\bstudy plans?\b',
+            r'\bcourse plans?\b',
+
             # Learning/educational queries
             r'\b(how to|teach me|explain|what does)\b.*\b(grammar|vocabulary)\b',
             r'\b(practice|session)\b.*\b(how|what|why|when)\b',
