@@ -256,7 +256,7 @@ class InlineStatsFormatter:
             }]
 
         # Format response with inline stats
-        messages = self._split_response_with_stats(ai_response, stats)
+        messages = self._split_response_with_stats(ai_response, stats, user_message)
 
         logger.info(f"[INLINE_STATS] Formatted response: {len(messages)} messages ({len([m for m in messages if m['type'] == 'inline_stats'])} with stats)")
 
@@ -265,12 +265,14 @@ class InlineStatsFormatter:
     def _split_response_with_stats(
         self,
         response: str,
-        stats: List[Dict[str, Any]]
+        stats: List[Dict[str, Any]],
+        user_message: str = ""
     ) -> List[Dict[str, Any]]:
         """
         Split response into introduction + stats + continuation.
 
         Strategy (DUOLINGO-STYLE):
+        - For PURE STATS QUERIES: Show ONLY stat cards (no text)
         - For GREETING messages: Show stats FIRST, then minimal text
         - For other messages: Find complete sentence before stats
         - NEVER cut mid-sentence (avoid "You started at A1 (")
@@ -278,11 +280,32 @@ class InlineStatsFormatter:
         Args:
             response: AI response text
             stats: List of stat objects
+            user_message: User's original query
 
         Returns:
             List of message objects
         """
         messages = []
+
+        # Check if this is a PURE statistics query
+        user_lower = user_message.lower()
+        pure_stats_keywords = [
+            r'\b(show|display|view|see)\s+(me\s+)?(my\s+)?(stats|statistics|progress)\b',
+            r'\b(what|how)\s+(is|are)\s+my\s+(stats|statistics|progress)\b',
+            r'\b(stats|statistics)\s*$',  # Ends with stats/statistics
+        ]
+
+        is_pure_stats_query = any(re.search(pattern, user_lower) for pattern in pure_stats_keywords)
+
+        if is_pure_stats_query:
+            # ONLY show stat cards, NO text
+            logger.info(f"[INLINE_STATS] Pure stats query detected - showing ONLY cards")
+            messages.append({
+                "type": "inline_stats",
+                "data": {"stats": stats[:4]},
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            return messages
 
         # Find first sentence boundary
         first_sentence_end = re.search(r'[.!?]+[\s—]+', response)

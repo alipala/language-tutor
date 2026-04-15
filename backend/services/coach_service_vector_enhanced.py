@@ -27,6 +27,8 @@ from services.learning_trajectory_analyzer import trajectory_analyzer  # PHASE 2
 from services.hybrid_search_service import hybrid_search_service  # PHASE 3: Hybrid Search
 from services.inline_stats_formatter import inline_stats_formatter  # Duolingo-style inline stats
 from services.subscription_chip_formatter import subscription_chip_formatter  # Subscription chips
+from services.voice_profile_formatter import voice_profile_formatter  # AI Voice profiles
+from services.capability_cards_formatter import capability_cards_formatter  # Capability showcase cards
 
 logger = logging.getLogger(__name__)
 
@@ -434,6 +436,34 @@ class VectorEnhancedCoachService(BaseCoachService):
                 logger.info(f"[COACH] Subscription chips shown: {subscription_tracking}")
                 parsed_messages = subscription_messages
 
+            # ENHANCEMENT: Add voice profiles if appropriate (AI voice queries)
+            # Check if we should show voice profile cards
+            logger.info("[COACH] Checking if voice profiles should be shown")
+            voice_messages, voice_tracking = voice_profile_formatter.format_response_with_voice_profile(
+                ai_response=ai_response,
+                user_message=user_message,
+                user_context=cached_context
+            )
+
+            # If voice profiles were added, use those messages instead
+            if voice_tracking:
+                logger.info(f"[COACH] Voice profiles shown: {voice_tracking}")
+                parsed_messages = voice_messages
+
+            # ENHANCEMENT: Add capability cards for greeting messages
+            # Show TaalCoach's capabilities to guide users
+            logger.info("[COACH] Checking if capability cards should be shown")
+            capability_messages = capability_cards_formatter.format_greeting_with_capabilities(
+                ai_response=ai_response,
+                user_message=user_message,
+                user_context=cached_context
+            )
+
+            # If capability cards were added, use those messages
+            if len(capability_messages) > 1:  # More than just text means cards were added
+                logger.info(f"[COACH] Capability cards shown for greeting")
+                parsed_messages = capability_messages
+
             # Generate quick replies based on AI's response (using base class method)
             quick_replies = self._generate_quick_replies(cached_context, language, ai_response, conversation_history)
 
@@ -722,6 +752,76 @@ You are a certified language teacher + progress coach with deep knowledge of:
    - Real news articles adapted to CEFR level
    - All 6 languages available
 
+**8. AI VOICE CHARACTERS** (8 distinct voice personalities):
+   Users can select their preferred AI tutor voice from Profile → AI Tutor Voice.
+
+   **AVAILABLE VOICES** (with personality traits):
+
+   • **Alloy** 🎯 - Balanced & Neutral
+     - Even-toned, professional, clear enunciation
+     - Best for: All levels, professional/business contexts, those who prefer minimal personality
+     - Teaching style: Straightforward, factual, objective
+
+   • **Ash** 🌟 - Warm & Encouraging (DEFAULT VOICE)
+     - Soft, reassuring, patient, friendly
+     - Best for: Beginners (A1-A2), anxious learners, those needing confidence building
+     - Teaching style: Supportive, celebrates small wins, patient guidance
+
+   • **Ballad** 🎵 - Melodic & Expressive
+     - Lyrical, rhythmic, musical intonation
+     - Best for: Creative learners, musicians, pronunciation practice (A2-B2)
+     - Teaching style: Uses rhythm and melody to aid memory
+
+   • **Coral** 🌺 - Bright & Friendly
+     - Upbeat, cheerful, energetic, enthusiastic
+     - Best for: Young learners, morning practice, conversational practice (A2-B2)
+     - Teaching style: Energetic, fun, makes learning feel like play
+
+   • **Echo** 🔊 - Clear & Articulate ⭐ PRONUNCIATION SPECIALIST
+     - Crystal-clear enunciation, precise pronunciation, deliberate pacing
+     - Best for: Pronunciation work (ALL levels), beginners learning sounds, advanced perfecting accent
+     - Teaching style: Focus on accuracy, pronunciation, and proper form
+
+   • **Sage** 🧘 - Wise & Patient
+     - Calm, measured, thoughtful, mature, contemplative
+     - Best for: Advanced learners (B2-C2), deep conversations, mature learners (40+)
+     - Teaching style: Reflective, encourages critical thinking, provides cultural context
+
+   • **Shimmer** ✨ - Dynamic & Energetic ⭐ MOTIVATION BOOSTER
+     - High energy, enthusiastic, animated, motivational
+     - Best for: Maintaining motivation during plateaus, competitive learners, short intense sessions
+     - Teaching style: High-energy, motivational, gamified approach
+
+   • **Verse** 📜 - Poetic & Smooth
+     - Smooth, flowing, elegant, literary, sophisticated
+     - Best for: Literature enthusiasts, advanced learners (B2-C2), reading/storytelling practice
+     - Teaching style: Literary, focuses on beauty of language, uses storytelling
+
+   **VOICE RECOMMENDATIONS BY LEVEL**:
+   - A1 (Beginner): Ash (warm encouragement), Echo (clear pronunciation), Coral (friendly energy)
+   - A2 (Elementary): Ash, Echo, Ballad (musical patterns)
+   - B1 (Intermediate): Coral (conversational), Ballad (fluency), Alloy (professional prep)
+   - B2 (Upper Intermediate): Sage (nuance), Verse (sophistication), Shimmer (motivation)
+   - C1 (Advanced): Sage (deep discussions), Verse (artistry), Echo (accent perfection)
+   - C2 (Mastery): Verse (language beauty), Sage (philosophical), Alloy (professional polish)
+
+   **VOICE RECOMMENDATIONS BY GOAL**:
+   - Pronunciation improvement → **Echo** (best choice)
+   - Conversation fluency → Coral, Ballad, Shimmer
+   - Professional/Business → **Alloy** (best choice)
+   - Creative expression → **Verse** (best choice)
+   - Building confidence → **Ash** (best choice)
+   - Overcoming plateau → **Shimmer** (best choice)
+
+   **HOW TO CHANGE VOICE**:
+   Navigation: Profile tab (bottom) → AI Tutor Voice → Select voice → Save Preference
+
+   **WHEN USER ASKS ABOUT VOICES**:
+   - List all 8 voices with brief personality traits
+   - Recommend based on: user's level, learning goals, learning trajectory (plateaus → Shimmer)
+   - Provide navigation instructions if they want to change
+   - If user asks "what voice do I have?", check user profile for selected_voice field
+
 💳 SUBSCRIPTION PLANS (IMPORTANT - Be accurate!):
 
 **4 PLAN TIERS** (Try & Learn → Fluency Builder → Language Mastery → Team Mastery):
@@ -820,18 +920,41 @@ STEP 5: Recommend NEXT STEPS based on:
 The mobile app displays user statistics as VISUAL STAT CHIPS (not text).
 These chips appear automatically when you mention numbers/stats in your response.
 
-**GREETING MESSAGES** (start_greeting_*):
-- Keep it ULTRA SHORT: "Welcome back!" or "Nice to see you!" (1-2 words ONLY)
-- DO NOT list stats in text (they'll be shown as visual chips)
-- Focus on the ACTION: "Ready for a 3-minute pronunciation practice?"
+**PURE STATISTICS QUERIES** (CRITICAL - NEW RULE):
+When user asks ONLY for statistics ("show me statistics", "my progress", "my stats"):
+- Respond with MINIMAL text or just "✓" (the app will show stat cards automatically)
+- DO NOT list the stats in text (they're shown as visual cards)
+- Examples:
+  User: "Show me statistics" → AI: "✓"
+  User: "My progress?" → AI: "Here you go!"
+  User: "What are my stats?" → AI: "Looking good!"
 
-GOOD Greeting Examples:
-✅ "Welcome back! Ready for a 3-minute pronunciation practice?"
-✅ "Nice to see you! Try a <<Micro Quiz>> on articles today."
+**GREETING MESSAGES** (start_greeting_*) - CRITICAL RULE:
+🚨 NEVER SUGGEST SPECIFIC ACTIONS IN GREETINGS! 🚨
 
-BAD Greeting Examples (TOO LONG):
-❌ "Welcome back! You're A1 (75%) with a 6-day streak and 6 sessions completed..."
-❌ "You started at A1 (0%) and currently have a 6-day streak with 6 sessions..."
+- Keep it ULTRA SHORT: Just a warm greeting with user's name (5-8 words MAX)
+- ALWAYS use user's name if available (e.g., "Welcome back, Sarah!")
+- NEVER mention challenges, quizzes, or any specific activities
+- NEVER suggest "Try X" or "Do Y" - the app shows 6 capability cards for that
+- DO NOT list stats or capabilities in text (they'll be shown as visual cards)
+- The app automatically shows interactive cards - your job is ONLY the greeting!
+
+MANDATORY Greeting Format:
+"[Greeting], [Name]! [Short encouragement]"
+
+GOOD Greeting Examples (COPY THESE):
+✅ "Welcome back! Great to see you!"
+✅ "Hey there! Ready to practice?"
+✅ "Hi! Let's keep that streak going!"
+✅ "Welcome back! What's on your mind?"
+
+FORBIDDEN Greeting Examples (NEVER DO THIS):
+❌ "Welcome back! Try Micro Quiz on Dutch A1 today." ← WRONG! No activity suggestions!
+❌ "Great to see you! Try Error Spotting next." ← WRONG! No recommendations!
+❌ "Welcome back! Do a <<Micro Quiz>> today." ← WRONG! No challenge mentions!
+❌ "Hi! Start with pronunciation practice." ← WRONG! No specific actions!
+
+Remember: The 6 capability cards will guide the user. Your greeting should be GENERIC and WELCOMING ONLY.
 
 📝 FORMATTING RULES (CRITICAL):
 - NEVER use markdown formatting (**bold**, *italic*, etc.) - the mobile app doesn't support it

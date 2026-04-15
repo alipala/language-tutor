@@ -568,6 +568,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
                 "subscription_status": user.get("subscription_status"),
+                "selected_voice": user.get("selected_voice", "ash"),  # Default: Ash (Warm & Encouraging)
                 "all_learning_languages": all_languages,
             },
             "is_new_user": (practice_sessions_count + learning_plan_sessions_count) == 0 and total_challenges_lifetime == 0,
@@ -759,6 +760,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
                 "subscription_status": user.get("subscription_status"),
+                "selected_voice": user.get("selected_voice", "ash"),  # Default: Ash (Warm & Encouraging)
                 "all_learning_languages": all_languages,
             },
             "is_new_user": False,  # If they have DNA, not new
@@ -911,6 +913,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
                 "subscription_status": user.get("subscription_status"),
+                "selected_voice": user.get("selected_voice", "ash"),  # Default: Ash (Warm & Encouraging)
                 "all_learning_languages": all_languages,
             },
             "is_new_user": total_challenges_lifetime == 0,
@@ -993,6 +996,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
                 "subscription_status": user.get("subscription_status"),
+                "selected_voice": user.get("selected_voice", "ash"),  # Default: Ash (Warm & Encouraging)
                 "all_learning_languages": all_languages,
             },
             "is_new_user": len(learning_plans) == 0 and total_sessions_lifetime == 0,
@@ -1176,6 +1180,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
                 "target_language": all_languages[0] if all_languages else language,
                 "cefr_level": user.get("cefr_level", "A1"),
                 "subscription_status": user.get("subscription_status"),
+                "selected_voice": user.get("selected_voice", "ash"),  # Default: Ash (Warm & Encouraging)
                 "all_learning_languages": all_languages,
             },
             "is_new_user": (practice_sessions_count + learning_plan_sessions_count) == 0 and total_challenges_lifetime == 0,
