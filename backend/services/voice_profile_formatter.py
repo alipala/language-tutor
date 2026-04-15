@@ -174,7 +174,14 @@ class VoiceProfileFormatter:
         logger.info(f"[VOICE_PROFILE] Voice trigger detected for: '{user_message}'")
 
         # Determine what kind of voice query this is
-        current_voice = user_context.get("user_profile", {}).get("selected_voice", "ash")
+        # Get voice from root level (preferred_voice) or nested user_profile, with fallback
+        current_voice = (
+            user_context.get("preferred_voice") or  # Root level (where it's actually saved)
+            user_context.get("user_profile", {}).get("preferred_voice") or  # Nested (legacy)
+            user_context.get("user_profile", {}).get("selected_voice") or  # Old field name
+            "ash"
+        )
+        logger.info(f"[VOICE_PROFILE] Current voice resolved: {current_voice}")
 
         # "What voice do I have?" / "My current voice" / "What is ai tutor of me"
         if (re.search(r'\b(current|my|what).*voice', user_lower) or
@@ -279,7 +286,13 @@ class VoiceProfileFormatter:
                 }
             }
         """
-        current_voice = user_context.get("user_profile", {}).get("selected_voice", "ash")
+        # Get voice from root level (preferred_voice) or nested user_profile, with fallback
+        current_voice = (
+            user_context.get("preferred_voice") or  # Root level (where it's actually saved)
+            user_context.get("user_profile", {}).get("preferred_voice") or  # Nested (legacy)
+            user_context.get("user_profile", {}).get("selected_voice") or  # Old field name
+            "ash"
+        )
 
         voices_data = []
         for voice_id in voice_ids:

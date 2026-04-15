@@ -28,6 +28,7 @@ class CapabilityCardsFormatter:
                 "title": "Track Progress",
                 "description": "View stats & achievements",
                 "color": "#9333EA",  # Purple
+                "query": "Show me my progress"
             },
             {
                 "id": "practice",
@@ -35,6 +36,7 @@ class CapabilityCardsFormatter:
                 "title": "Get Recommendations",
                 "description": "Personalized practice tips",
                 "color": "#3B82F6",  # Blue
+                "query": "What should I practice?"
             },
             {
                 "id": "challenges",
@@ -42,6 +44,7 @@ class CapabilityCardsFormatter:
                 "title": "Challenge Tips",
                 "description": "Improve your skills",
                 "color": "#EC4899",  # Pink
+                "query": "Help me with challenges"
             },
             {
                 "id": "voice",
@@ -49,6 +52,7 @@ class CapabilityCardsFormatter:
                 "title": "Voice Tutor",
                 "description": "Choose AI voice style",
                 "color": "#14B8A6",  # Turquoise
+                "query": "Tell me about AI voices"
             },
             {
                 "id": "learning",
@@ -56,6 +60,7 @@ class CapabilityCardsFormatter:
                 "title": "Learning Plan",
                 "description": "Structured path to fluency",
                 "color": "#F59E0B",  # Amber
+                "query": "How do learning plans work?"
             },
             {
                 "id": "help",
@@ -63,6 +68,7 @@ class CapabilityCardsFormatter:
                 "title": "Ask Anything",
                 "description": "I'm here to help!",
                 "color": "#10B981",  # Green
+                "query": "What can you help me with?"
             }
         ]
 

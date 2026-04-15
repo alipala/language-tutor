@@ -559,6 +559,7 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
             "current_streak": user_doc.get("stats", {}).get("current_streak", 0),
             "preferred_language": user_doc.get("preferred_language"),
             "preferred_level": user_doc.get("preferred_level"),
+            "preferred_voice": user_doc.get("preferred_voice", "ash"),  # AI voice tutor selection
             "recent_languages": list(set([conv.get('language') for conv in conversations if conv.get('language')])),
             "usage_this_month": {
                 "sessions_used": user_doc.get("practice_sessions_used", 0),
