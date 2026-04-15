@@ -310,6 +310,17 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
         # Add DNA profile to assessment response
         assessment["dna_profile"] = dna_profile
 
+        # HIGH PRIORITY: Invalidate TaalCoach cache so it knows about the new assessment
+        if current_user:
+            try:
+                from cache_helpers import invalidate_coach_context_smart, invalidate_taalcoach_context
+                await invalidate_coach_context_smart(current_user.id, ["assessment", "progress"])
+                await invalidate_taalcoach_context(current_user.id)
+                print(f"[CACHE] Invalidated TaalCoach cache for user {current_user.id} after assessment")
+            except Exception as cache_error:
+                print(f"[CACHE] Warning: Failed to invalidate cache: {str(cache_error)}")
+                # Don't fail assessment if cache invalidation fails
+
         print(f"Successfully analyzed speaking proficiency")
         return assessment
 

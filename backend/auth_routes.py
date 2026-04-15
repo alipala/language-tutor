@@ -1265,7 +1265,11 @@ async def select_voice(request: VoiceSelectionRequest, current_user: UserRespons
             )
         
         print(f"✅ Voice preference updated for user {current_user.email}: {request.voice}")
-        
+
+        # Invalidate TaalCoach context cache so it picks up the new voice
+        from cache_helpers import invalidate_taalcoach_context
+        await invalidate_taalcoach_context(str(current_user.id))
+
         return VoiceSelectionResponse(
             success=True,
             voice=request.voice,

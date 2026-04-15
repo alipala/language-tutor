@@ -28,6 +28,7 @@ from models import (
     UserResponse
 )
 from services.speaking_dna_service import speaking_dna_service
+from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,13 @@ async def analyze_session(
         )
 
         logger.info(f"[DNA API] Analysis complete. Breakthroughs: {len(result['breakthroughs'])}")
+
+        # PHASE 4.2: Invalidate TaalCoach cache after DNA analysis
+        await invalidate_coach_context_smart(
+            str(current_user.id),
+            ["dna", "sentence_analysis"]
+        )
+        logger.info(f"[CACHE] ✅ Invalidated TaalCoach cache after DNA analysis")
 
         return AnalyzeSessionResponse(
             success=True,

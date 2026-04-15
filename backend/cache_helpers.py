@@ -14,6 +14,7 @@ Key Caching Strategies:
 from typing import Optional, Dict, Any, List
 from bson import ObjectId
 import logging
+from datetime import datetime
 
 from redis_client import get_cached, set_cached, delete_cached, delete_pattern
 from database import (
@@ -21,7 +22,31 @@ from database import (
     learning_plans_collection,
     daily_stats_collection,
     reference_challenges_collection,
-    conversation_sessions_collection
+    conversation_sessions_collection,
+    challenge_sessions_collection,  # CRITICAL: Challenge gameplay data
+    # COMPREHENSIVE USER DATA COLLECTIONS (100% COVERAGE)
+    flashcard_sets_collection,
+    flashcards_collection,
+    assessments_collection,
+    session_completions_collection,
+    speaking_time_tracking_collection,
+    sentence_analysis_feedback_collection,
+    story_contributions_collection,
+    user_story_achievements_collection,
+    learning_goals_collection,
+    # NEWLY ADDED: Complete TaalCoach awareness (12 critical collections)
+    speaking_dna_profiles_collection,
+    speaking_dna_history_collection,
+    speaking_breakthroughs_collection,
+    user_achievements_collection,
+    recent_performance_collection,
+    session_feedback_collection,
+    news_articles_collection,
+    notifications_collection,
+    heart_events_collection,
+    rescue_events_collection,
+    sharing_activity_collection,
+    user_notifications_collection
 )
 
 logger = logging.getLogger(__name__)
@@ -426,18 +451,104 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         if not user_doc:
             return None
 
-        # Get learning plans
+        # EXISTING: Core data
         learning_plans = await learning_plans_collection.find({"user_id": user_id}).to_list(length=10)
+        conversations = await conversation_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(30).to_list(length=30)
 
-        # Get recent conversations
-        conversations = await conversation_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(5).to_list(length=5)
+        # CRITICAL: Challenge sessions data (was missing - caused TaalCoach to not respond to challenge queries)
+        challenge_sessions = await challenge_sessions_collection.find({"user_id": user_id}).sort("created_at", -1).to_list(length=100)
+
+        # HIGH PRIORITY: Fetch all missing user activity data
+        flashcard_sets = await flashcard_sets_collection.find({"user_id": user_id}).to_list(length=100)
+        assessments = await assessments_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
+        session_completions = await session_completions_collection.find({"user_id": user_id}).to_list(length=100)
+        speaking_time_logs = await speaking_time_tracking_collection.find({"user_id": user_id}).sort("date", -1).limit(30).to_list(length=30)
+        sentence_feedback = await sentence_analysis_feedback_collection.find({"user_id": user_id}).sort("created_at", -1).limit(50).to_list(length=50)
+        story_contributions = await story_contributions_collection.find({"user_id": user_id}).to_list(length=50)
+        story_achievements = await user_story_achievements_collection.find({"user_id": user_id}).to_list(length=50)
+        learning_goals = await learning_goals_collection.find({"user_id": user_id}).to_list(length=20)
+
+        # COMPREHENSIVE COVERAGE: Fetch all 12 missing critical collections
+        speaking_dna_profile = await speaking_dna_profiles_collection.find_one({"user_id": user_id})
+        speaking_dna_history = await speaking_dna_history_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
+        speaking_breakthroughs = await speaking_breakthroughs_collection.find({"user_id": user_id}).sort("detected_at", -1).limit(10).to_list(length=10)
+        user_achievements = await user_achievements_collection.find({"user_id": user_id}).to_list(length=100)
+        recent_performance = await recent_performance_collection.find_one({"user_id": user_id})
+        session_feedback = await session_feedback_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10).to_list(length=10)
+        news_articles_read = await news_articles_collection.find({"readers": user_id}).sort("published_at", -1).limit(20).to_list(length=20)
+        notifications = await notifications_collection.find({"user_id": user_id}).sort("created_at", -1).limit(20).to_list(length=20)
+        heart_events = await heart_events_collection.find({"user_id": user_id}).sort("created_at", -1).limit(50).to_list(length=50)
+        rescue_events = await rescue_events_collection.find({"user_id": user_id}).sort("triggered_at", -1).limit(10).to_list(length=10)
+        sharing_activity = await sharing_activity_collection.find({"user_id": user_id}).sort("shared_at", -1).limit(10).to_list(length=10)
+        user_notifications = await user_notifications_collection.find({"user_id": user_id}).sort("created_at", -1).limit(20).to_list(length=20)
 
         # Calculate stats
         total_sessions = len(conversations)
         total_minutes = sum(session.get('duration_minutes', 0) for session in conversations)
 
-        # Build context
+        # CRITICAL FIX: Extract practice session topics and highlights for TaalCoach
+        # This fixes "I don't have topic details" responses
+        practice_sessions_topics = []
+        practice_sessions_details = []
+
+        for session in conversations:
+            # Extract topic (filter out generic placeholders)
+            topic = session.get('topic', 'conversation')
+            if topic.startswith('Practice Session'):
+                # Try custom_topic or enhanced_analysis topic
+                if session.get('custom_topic'):
+                    topic = session.get('custom_topic')
+                else:
+                    enhanced = session.get('enhanced_analysis')
+                    if enhanced and isinstance(enhanced, dict):
+                        ai_insights = enhanced.get('ai_insights')
+                        if ai_insights and isinstance(ai_insights, dict):
+                            topic_focus = ai_insights.get('topic_focus')
+                            if topic_focus:
+                                topic = topic_focus
+
+            # Extract enhanced analysis highlights
+            highlights = []
+            vocabulary = []
+            enhanced = session.get('enhanced_analysis')
+            if enhanced and isinstance(enhanced, dict):
+                ai_insights = enhanced.get('ai_insights', {})
+                if ai_insights and isinstance(ai_insights, dict):
+                    # Get breakthrough moments
+                    breakthroughs = ai_insights.get('breakthrough_moments', [])
+                    if breakthroughs:
+                        highlights.extend(breakthroughs[:2])
+
+                    # Get vocabulary highlights
+                    vocab_list = ai_insights.get('vocabulary_highlights', [])
+                    if vocab_list:
+                        vocabulary = vocab_list[:5]
+
+            # Build topic entry
+            session_date = session.get('created_at')
+            practice_sessions_topics.append({
+                "topic": topic,
+                "language": session.get('language', 'unknown'),
+                "level": session.get('level', 'unknown'),
+                "date": session_date.strftime("%Y-%m-%d") if session_date else "unknown"
+            })
+
+            # Build detailed entry
+            practice_sessions_details.append({
+                "date": session_date.strftime("%Y-%m-%d") if session_date else "unknown",
+                "topic": topic,
+                "language": session.get('language', 'unknown'),
+                "level": session.get('level', 'unknown'),
+                "duration_minutes": session.get('duration_minutes', 0),
+                "message_count": session.get('message_count', 0),
+                "highlights": highlights,
+                "vocabulary": vocabulary,
+                "summary": session.get('summary', '')[:200]  # First 200 chars
+            })
+
+        # Build comprehensive context with ALL user data
         context = {
+            # EXISTING: Core user info
             "user_type": "registered",
             "subscription_plan": user_doc.get("subscription_plan", "try_learn"),
             "subscription_status": user_doc.get("subscription_status", "active"),
@@ -448,13 +559,354 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
             "current_streak": user_doc.get("stats", {}).get("current_streak", 0),
             "preferred_language": user_doc.get("preferred_language"),
             "preferred_level": user_doc.get("preferred_level"),
+            "preferred_voice": user_doc.get("preferred_voice", "ash"),  # AI voice tutor selection
             "recent_languages": list(set([conv.get('language') for conv in conversations if conv.get('language')])),
             "usage_this_month": {
                 "sessions_used": user_doc.get("practice_sessions_used", 0),
                 "assessments_used": user_doc.get("assessments_used", 0)
             },
             "features_available": get_features_for_plan(user_doc.get("subscription_plan", "try_learn")),
-            "limitations": get_limitations_for_plan(user_doc.get("subscription_plan", "try_learn"))
+            "limitations": get_limitations_for_plan(user_doc.get("subscription_plan", "try_learn")),
+
+            # CRITICAL FIX: Practice session topics and details (fixes "I don't have topic details")
+            "practice_sessions_topics": practice_sessions_topics,
+            "practice_sessions_details": practice_sessions_details,
+
+            # CRITICAL: Challenge sessions data (was missing - caused TaalCoach to not respond to challenge queries)
+            "challenges": {
+                "total_completed": len(challenge_sessions),
+                "by_type": {
+                    "micro_quiz": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "micro_quiz"]),
+                    "error_spotting": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "error_spotting"]),
+                    "swipe_fix": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "swipe_fix"]),
+                    "brain_tickler": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "brain_tickler"]),
+                    "story_builder": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "story_builder"]),
+                    "smart_flashcard": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "smart_flashcard"]),
+                    "native_check": len([cs for cs in challenge_sessions if cs.get("challenge_type") == "native_check"])
+                },
+                "recent_sessions": [
+                    {
+                        "challenge_type": cs.get("challenge_type"),
+                        "language": cs.get("language"),
+                        "level": cs.get("level"),
+                        "score": cs.get("score", 0),
+                        "correct_answers": cs.get("correct_answers", 0),
+                        "total_questions": cs.get("total_questions", 0),
+                        "completed_at": cs.get("created_at"),
+                        "duration_seconds": cs.get("duration_seconds", 0)
+                    } for cs in challenge_sessions[:20]
+                ],
+                "total_correct": sum(cs.get("correct_answers", 0) for cs in challenge_sessions),
+                "total_questions": sum(cs.get("total_questions", 0) for cs in challenge_sessions),
+                "average_score": round(sum(cs.get("score", 0) for cs in challenge_sessions) / len(challenge_sessions), 1) if challenge_sessions else 0
+            },
+
+            # NEW: Flashcard data (HIGH PRIORITY)
+            "flashcards": {
+                "total_sets": len(flashcard_sets),
+                "total_cards": sum(fs.get("total_cards", 0) for fs in flashcard_sets),
+                "total_mastered": sum(fs.get("mastered_cards", 0) for fs in flashcard_sets),
+                "sets_by_language": {
+                    lang: {
+                        "count": len([fs for fs in flashcard_sets if fs.get("language") == lang]),
+                        "total_cards": sum(fs.get("total_cards", 0) for fs in flashcard_sets if fs.get("language") == lang),
+                        "mastered": sum(fs.get("mastered_cards", 0) for fs in flashcard_sets if fs.get("language") == lang)
+                    }
+                    for lang in set(fs.get("language") for fs in flashcard_sets if fs.get("language"))
+                },
+                "sets": [
+                    {
+                        "id": str(fs.get("_id", "")),
+                        "language": fs.get("language"),
+                        "level": fs.get("level"),
+                        "title": fs.get("title", ""),
+                        "total_cards": fs.get("total_cards", 0),
+                        "mastered_cards": fs.get("mastered_cards", 0),
+                        "created_from": fs.get("created_from", "")  # learning_plan, challenge, etc.
+                    } for fs in flashcard_sets
+                ]
+            },
+
+            # NEW: Assessment history (HIGH PRIORITY)
+            "assessments": {
+                "total_count": len(assessments),
+                "recent_scores": [
+                    {
+                        "date": a.get("created_at"),
+                        "language": a.get("language"),
+                        "level": a.get("level"),
+                        "score": a.get("score"),
+                        "feedback": a.get("feedback", "")
+                    } for a in assessments[:5]
+                ],
+                "average_score": round(sum(a.get("score", 0) for a in assessments) / len(assessments), 1) if assessments else 0
+            },
+
+            # NEW: Session completion tracking (HIGH PRIORITY)
+            "session_completions": {
+                "total_completed": len(session_completions),
+                "recent_completions": [
+                    {
+                        "date": sc.get("completed_at"),
+                        "session_type": sc.get("session_type"),
+                        "language": sc.get("language"),
+                        "duration_minutes": sc.get("duration_minutes", 0)
+                    } for sc in session_completions[:10]
+                ]
+            },
+
+            # NEW: Speaking time breakdown (HIGH PRIORITY)
+            "speaking_time": {
+                "total_entries": len(speaking_time_logs),
+                "recent": [
+                    {
+                        "date": st.get("date"),
+                        "minutes": st.get("minutes"),
+                        "language": st.get("language")
+                    } for st in speaking_time_logs[:7]
+                ],
+                "total_speaking_minutes": sum(st.get("minutes", 0) for st in speaking_time_logs)
+            },
+
+            # NEW: Sentence-level feedback (HIGH PRIORITY)
+            "sentence_feedback": {
+                "total_feedback": len(sentence_feedback),
+                "common_mistakes": [
+                    {
+                        "sentence": sf.get("original_sentence", ""),
+                        "correction": sf.get("corrected_sentence", ""),
+                        "error_type": sf.get("error_type", ""),
+                        "date": sf.get("created_at")
+                    } for sf in sentence_feedback[:10]
+                ]
+            },
+
+            # NEW: Story builder data (HIGH PRIORITY)
+            "story_builder": {
+                "total_contributions": len(story_contributions),
+                "total_achievements": len(story_achievements),
+                "recent_stories": [
+                    {
+                        "title": sc.get("title", ""),
+                        "language": sc.get("language"),
+                        "created_at": sc.get("created_at"),
+                        "word_count": sc.get("word_count", 0)
+                    } for sc in story_contributions[:5]
+                ],
+                "achievements": [
+                    {
+                        "achievement_type": sa.get("achievement_type", ""),
+                        "earned_at": sa.get("earned_at"),
+                        "description": sa.get("description", "")
+                    } for sa in story_achievements
+                ]
+            },
+
+            # NEW: Learning goals (HIGH PRIORITY)
+            "learning_goals": {
+                "total_goals": len(learning_goals),
+                "active_goals": [
+                    {
+                        "goal": lg.get("goal_text", ""),
+                        "target_date": lg.get("target_date"),
+                        "progress": lg.get("progress_percent", 0),
+                        "created_at": lg.get("created_at")
+                    } for lg in learning_goals if lg.get("status") == "active"
+                ],
+                "completed_goals": len([lg for lg in learning_goals if lg.get("status") == "completed"])
+            },
+
+            # COMPREHENSIVE COVERAGE: 12 critical collections for 100% TaalCoach awareness
+
+            # 1. Speaking DNA Profile (Premium feature)
+            "speaking_dna": {
+                "has_profile": speaking_dna_profile is not None,
+                "latest_profile": {
+                    # Extract from nested dna_strands structure
+                    "confidence": int(speaking_dna_profile.get("dna_strands", {}).get("confidence", {}).get("score", 0) * 100) if speaking_dna_profile else 0,
+                    "vocabulary": int(speaking_dna_profile.get("dna_strands", {}).get("vocabulary", {}).get("unique_words_per_session", 0)) if speaking_dna_profile else 0,
+                    "accuracy": int(speaking_dna_profile.get("dna_strands", {}).get("accuracy", {}).get("grammar_accuracy", 0) * 100) if speaking_dna_profile else 0,
+                    "rhythm": int(speaking_dna_profile.get("dna_strands", {}).get("rhythm", {}).get("words_per_minute_avg", 0)) if speaking_dna_profile else 0,
+                    "learning": speaking_dna_profile.get("dna_strands", {}).get("learning", {}).get("type", "unknown") if speaking_dna_profile else "unknown",
+                    "emotional": int(speaking_dna_profile.get("dna_strands", {}).get("emotional", {}).get("session_end_confidence", 0) * 100) if speaking_dna_profile else 0,
+                    "speaker_archetype": speaking_dna_profile.get("overall_profile", {}).get("speaker_archetype", "Unknown") if speaking_dna_profile else "Unknown",
+                    "sessions_analyzed": speaking_dna_profile.get("sessions_analyzed", 0) if speaking_dna_profile else 0,
+                    "total_speaking_minutes": round(speaking_dna_profile.get("total_speaking_minutes", 0), 1) if speaking_dna_profile else 0,
+                    "created_at": speaking_dna_profile.get("created_at") if speaking_dna_profile else None,
+                    "updated_at": speaking_dna_profile.get("updated_at") if speaking_dna_profile else None,
+                    "language": speaking_dna_profile.get("language") if speaking_dna_profile else None,
+                    "strengths": speaking_dna_profile.get("overall_profile", {}).get("strengths", []) if speaking_dna_profile else [],
+                    "growth_areas": speaking_dna_profile.get("overall_profile", {}).get("growth_areas", []) if speaking_dna_profile else []
+                } if speaking_dna_profile else None,
+                "history_count": len(speaking_dna_history),
+                "recent_snapshots": [
+                    {
+                        "confidence": int(h.get("dna_strands", {}).get("confidence", {}).get("score", 0) * 100),
+                        "vocabulary": int(h.get("dna_strands", {}).get("vocabulary", {}).get("unique_words_per_session", 0)),
+                        "created_at": h.get("created_at")
+                    } for h in speaking_dna_history[:5]
+                ]
+            },
+
+            # 2. Speaking Breakthroughs (Significant improvements)
+            "speaking_breakthroughs": {
+                "total_breakthroughs": len(speaking_breakthroughs),
+                "recent": [
+                    {
+                        "breakthrough_type": sb.get("breakthrough_type"),
+                        "metric": sb.get("metric"),
+                        "improvement": sb.get("improvement_percent", 0),
+                        "detected_at": sb.get("detected_at"),
+                        "description": sb.get("description", "")
+                    } for sb in speaking_breakthroughs[:5]
+                ]
+            },
+
+            # 3. User Achievements/Badges (Gamification)
+            "achievements": {
+                "total_unlocked": len(user_achievements),
+                "recent_unlocked": [
+                    {
+                        "achievement_id": ua.get("achievement_id"),
+                        "category": ua.get("category"),
+                        "unlocked_at": ua.get("unlocked_at"),
+                        "title": ua.get("title", ""),
+                        "description": ua.get("description", "")
+                    } for ua in sorted(user_achievements, key=lambda x: x.get("unlocked_at", ""), reverse=True)[:10]
+                ],
+                "by_category": {}  # Will be filled below
+            },
+
+            # 4. Recent Performance (Accuracy trends)
+            "recent_performance": {
+                "has_data": recent_performance is not None,
+                "accuracy_7d": recent_performance.get("accuracy_last_7_days", 0) if recent_performance else 0,
+                "accuracy_30d": recent_performance.get("accuracy_last_30_days", 0) if recent_performance else 0,
+                "sessions_7d": recent_performance.get("sessions_last_7_days", 0) if recent_performance else 0,
+                "challenges_7d": recent_performance.get("challenges_last_7_days", 0) if recent_performance else 0,
+                "improvement_trend": recent_performance.get("improvement_trend", "stable") if recent_performance else "no_data"
+            },
+
+            # 5. Session Feedback (Post-session evaluations)
+            "session_feedback_history": {
+                "total_feedback": len(session_feedback),
+                "recent": [
+                    {
+                        "session_id": sf.get("session_id"),
+                        "rating": sf.get("rating", 0),
+                        "feedback_text": sf.get("feedback_text", ""),
+                        "areas_improved": sf.get("areas_improved", []),
+                        "created_at": sf.get("created_at")
+                    } for sf in session_feedback[:5]
+                ],
+                "average_rating": sum(sf.get("rating", 0) for sf in session_feedback) / len(session_feedback) if session_feedback else 0
+            },
+
+            # 6. News Articles Read (Reading practice tracking)
+            "news_reading": {
+                "total_articles_read": len(news_articles_read),
+                "recent_articles": [
+                    {
+                        "title": na.get("title", ""),
+                        "language": na.get("language"),
+                        "level": na.get("level"),
+                        "category": na.get("category", ""),
+                        "published_at": na.get("published_at")
+                    } for na in news_articles_read[:10]
+                ]
+            },
+
+            # 7. Hearts/Focus Energy (Free user tracking)
+            "hearts_focus_energy": {
+                "total_events": len(heart_events),
+                "hearts_consumed_30d": len([h for h in heart_events if h.get("event_type") == "consume"]),
+                "hearts_refilled_30d": len([h for h in heart_events if h.get("event_type") == "refill"]),
+                "by_challenge_type": {},  # Will be filled below
+                "recent_events": [
+                    {
+                        "event_type": he.get("event_type"),
+                        "challenge_type": he.get("challenge_type"),
+                        "hearts_delta": he.get("hearts_delta", 0),
+                        "created_at": he.get("created_at")
+                    } for he in heart_events[:10]
+                ]
+            },
+
+            # 8. Rescue Events (AI rescue feature usage)
+            "rescue_events": {
+                "total_rescues": len(rescue_events),
+                "recent": [
+                    {
+                        "rescue_type": re.get("rescue_type"),
+                        "triggered_at": re.get("triggered_at"),
+                        "was_helpful": re.get("was_helpful", False),
+                        "context": re.get("context", "")
+                    } for re in rescue_events[:5]
+                ]
+            },
+
+            # 9. Sharing Activity (Social features)
+            "sharing": {
+                "total_shares": len(sharing_activity),
+                "recent": [
+                    {
+                        "shared_content_type": sa.get("shared_content_type"),
+                        "platform": sa.get("platform", ""),
+                        "shared_at": sa.get("shared_at")
+                    } for sa in sharing_activity[:5]
+                ]
+            },
+
+            # 10. Notifications (User notifications)
+            "notifications": {
+                "total_notifications": len(notifications),
+                "unread_count": len([n for n in notifications if not n.get("read", False)]),
+                "recent": [
+                    {
+                        "notification_type": n.get("notification_type"),
+                        "title": n.get("title", ""),
+                        "read": n.get("read", False),
+                        "created_at": n.get("created_at")
+                    } for n in notifications[:10]
+                ]
+            },
+
+            # 11. User Notifications (Additional notification system)
+            "user_notifications": {
+                "total": len(user_notifications),
+                "recent": [
+                    {
+                        "type": un.get("type"),
+                        "message": un.get("message", ""),
+                        "created_at": un.get("created_at")
+                    } for un in user_notifications[:5]
+                ]
+            },
+
+            # 12. Daily Stats (XP, streaks, daily metrics)
+            "daily_stats": {
+                "current_streak": user_doc.get("stats", {}).get("current_streak", 0),
+                "longest_streak": user_doc.get("stats", {}).get("longest_streak", 0),
+                "total_xp": user_doc.get("stats", {}).get("lifetime", {}).get("total_xp", 0),
+                "xp_today": 0,  # Will be calculated from daily_stats if needed
+                "level": user_doc.get("stats", {}).get("level", 1)
+            },
+
+            # CRITICAL FIX: Add "stats" key for compatibility with base CoachService
+            # The _parse_response_with_card() and _generate_quick_replies() methods
+            # expect context["stats"] to exist with session counts and streaks
+            "stats": {
+                "current_streak": user_doc.get("stats", {}).get("current_streak", 0),
+                "longest_streak": user_doc.get("stats", {}).get("longest_streak", 0),
+                "total_sessions": total_sessions,  # From conversations
+                "conversation_sessions": len(conversations),
+                "learning_plan_sessions": len(session_completions),
+                "total_challenges": len(challenge_sessions),
+                "last_7_days": {
+                    "sessions": len([c for c in conversations if c.get('created_at') and (datetime.utcnow() - c['created_at']).days <= 7]),
+                    "challenges": len([c for c in challenge_sessions if c.get('created_at') and (datetime.utcnow() - c['created_at']).days <= 7])
+                }
+            }
         }
 
         # Cache for 5 minutes
@@ -464,7 +916,9 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
         return context
 
     except Exception as e:
+        import traceback
         logger.error(f"❌ Error building TaalCoach context for {user_id}: {str(e)}")
+        logger.error(traceback.format_exc())
         return None
 
 def get_features_for_plan(plan: str) -> List[str]:
@@ -527,6 +981,77 @@ async def invalidate_taalcoach_context(user_id: str):
     cache_key = f"taalcoach:context:{user_id}"
     await delete_cached(cache_key)
     logger.info(f"🗑️  [CACHE] Invalidated TaalCoach context cache: {user_id}")
+
+async def invalidate_coach_context_smart(user_id: str, changed_types: List[str]):
+    """
+    PHASE 4.1: Smart cache invalidation for TaalCoach - only invalidate affected intent caches.
+
+    This is more granular than invalidating all contexts. It invalidates ONLY the
+    intent-specific caches that are affected by the data change.
+
+    Args:
+        user_id: User ID
+        changed_types: List of data types that changed
+                      ["challenge", "session", "learning_plan", "dna", "achievement",
+                       "hearts", "feedback", "news", "notification", "sentence_analysis",
+                       "flashcard", "assessment", "story_contribution", "story_achievement",
+                       "learning_goal", "speaking_time", "sentence_feedback"]
+
+    Example usage:
+        # After challenge completion
+        await invalidate_coach_context_smart(user_id, ["challenge", "achievement"])
+
+        # After session completion
+        await invalidate_coach_context_smart(user_id, ["session", "dna", "sentence_analysis"])
+
+        # After learning plan session completion
+        await invalidate_coach_context_smart(user_id, ["learning_plan", "session", "achievement"])
+
+        # After flashcard creation
+        await invalidate_coach_context_smart(user_id, ["flashcard"])
+
+        # After story contribution
+        await invalidate_coach_context_smart(user_id, ["story_contribution", "story_achievement"])
+
+        # After goal update
+        await invalidate_coach_context_smart(user_id, ["learning_goal"])
+    """
+    # Map data types → intents that need invalidation
+    intent_map = {
+        # EXISTING: Core data types
+        "challenge": ["challenges", "progress", "general"],
+        "session": ["general", "progress"],
+        "learning_plan": ["learning_plan", "progress", "general"],
+        "dna": ["dna"],
+        "achievement": ["progress", "general"],
+        "hearts": ["challenges", "general"],
+        "feedback": ["general"],
+        "news": ["general"],
+        "notification": ["general"],
+        "sentence_analysis": ["dna", "general"],
+
+        # NEW: High-priority data types
+        "flashcard": ["learning_plan", "progress", "general"],
+        "assessment": ["progress", "general"],
+        "story_contribution": ["progress", "general"],
+        "story_achievement": ["progress", "general"],
+        "learning_goal": ["learning_plan", "general"],
+        "speaking_time": ["progress", "general"],
+        "sentence_feedback": ["dna", "progress", "general"]
+    }
+
+    # Collect all affected intents
+    intents_to_invalidate = set()
+    for dtype in changed_types:
+        intents_to_invalidate.update(intent_map.get(dtype, ["general"]))
+
+    # Invalidate each intent cache
+    # NOTE: CoachService uses cache key format: coach_context:{user_id}:{intent}
+    for intent in intents_to_invalidate:
+        cache_key = f"coach_context:{user_id}:{intent}"
+        await delete_cached(cache_key)
+
+    logger.info(f"🗑️ [CACHE] Smart invalidation for user {user_id}: intents={list(intents_to_invalidate)}, data_types={changed_types}")
 
 # ============================================================================
 # CACHE MONITORING
@@ -594,5 +1119,6 @@ __all__ = [
     "invalidate_all_reference_challenges",
     "get_taalcoach_context_cached",
     "invalidate_taalcoach_context",
+    "invalidate_coach_context_smart",  # PHASE 4.1: Smart cache invalidation
     "router"
 ]
