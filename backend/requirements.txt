@@ -47,6 +47,7 @@ kaleido==0.2.1
 # Vector chatbot dependencies - use compatible versions
 numpy==1.24.4
 scikit-learn==1.4.2
+pinecone-client==5.0.1
 
 # Stripe payment processing
 stripe==11.1.1
