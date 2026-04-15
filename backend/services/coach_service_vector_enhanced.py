@@ -27,6 +27,7 @@ from services.learning_trajectory_analyzer import trajectory_analyzer  # PHASE 2
 from services.hybrid_search_service import hybrid_search_service  # PHASE 3: Hybrid Search
 from services.inline_stats_formatter import inline_stats_formatter  # Duolingo-style inline stats
 from services.subscription_chip_formatter import subscription_chip_formatter  # Subscription chips
+from services.challenge_card_formatter import challenge_card_formatter  # Challenge cards
 from services.voice_profile_formatter import voice_profile_formatter  # AI Voice profiles
 from services.capability_cards_formatter import capability_cards_formatter  # Capability showcase cards
 
@@ -421,20 +422,34 @@ class VectorEnhancedCoachService(BaseCoachService):
                 logger.info(f"[COACH] Preserving rich messages: {[m.get('type') for m in base_messages]}")
                 parsed_messages = base_messages
 
-            # ENHANCEMENT: Add subscription chips if appropriate (pricing queries)
-            # Check if we should show subscription upgrade cards
-            logger.info("[COACH] Checking if subscription chips should be shown")
-            subscription_messages, subscription_tracking = subscription_chip_formatter.format_response_with_subscription_chips(
-                ai_response=ai_response,
+            # ENHANCEMENT: Add challenge cards if appropriate (challenge queries)
+            # Check if we should show challenge cards (BEFORE subscription chips!)
+            logger.info("[COACH] Checking if challenge cards should be shown")
+            if challenge_card_formatter.should_show_challenge_cards(
                 user_message=user_message,
-                user_context=cached_context,
                 conversation_history=conversation_history
-            )
+            ):
+                logger.info("[COACH] Showing challenge cards")
+                challenge_card_data = challenge_card_formatter.format_challenge_cards(
+                    user_language=language
+                )
+                # Add challenge cards as a rich message
+                parsed_messages.append(challenge_card_data)
+            else:
+                # ENHANCEMENT: Add subscription chips if appropriate (pricing queries)
+                # Check if we should show subscription upgrade cards (ONLY if NOT showing challenges)
+                logger.info("[COACH] Checking if subscription chips should be shown")
+                subscription_messages, subscription_tracking = subscription_chip_formatter.format_response_with_subscription_chips(
+                    ai_response=ai_response,
+                    user_message=user_message,
+                    user_context=cached_context,
+                    conversation_history=conversation_history
+                )
 
-            # If subscription chips were added, use those messages instead
-            if subscription_tracking:
-                logger.info(f"[COACH] Subscription chips shown: {subscription_tracking}")
-                parsed_messages = subscription_messages
+                # If subscription chips were added, use those messages instead
+                if subscription_tracking:
+                    logger.info(f"[COACH] Subscription chips shown: {subscription_tracking}")
+                    parsed_messages = subscription_messages
 
             # ENHANCEMENT: Add voice profiles if appropriate (AI voice queries)
             # Check if we should show voice profile cards

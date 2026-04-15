@@ -165,10 +165,10 @@ class SubscriptionChipFormatter:
                 result["recommended_plan"] = "fluency_builder_monthly"
                 return result
 
-        # 9. Check for "low hearts" scenario
-        if 'heart' in user_lower or 'challenge' in user_lower:
+        # 9. Check for "low hearts" scenario (ONLY hearts, NOT challenges)
+        if 'heart' in user_lower and 'challenge' not in user_lower:
             # Check if user has low hearts (implementation would need heart system data)
-            logger.info(f"[SUBSCRIPTION_CHIPS] Hearts/challenge query, showing subscription chips")
+            logger.info(f"[SUBSCRIPTION_CHIPS] Hearts query, showing subscription chips")
             result["show"] = True
             result["trigger"] = "hearts_query"
             result["display_mode"] = "single_highlight"
