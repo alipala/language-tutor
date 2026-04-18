@@ -210,15 +210,23 @@ class SubscriptionService:
             
             # Skip validation for now - focus on core functionality
             logger.info(f"Getting subscription status for user {user_id}")
-            
+
             # Check if subscription is expired
-            now = datetime.utcnow()
+            from datetime import timezone
+            now = datetime.now(timezone.utc)
             subscription_status = user.get("subscription_status")
             expires_at = user.get("subscription_expires_at")
+
+            # Make expires_at timezone-aware if needed
+            if expires_at and expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
 
             # 🎁 GRACE PERIOD: Check if grace period has expired
             if subscription_status == "payment_pending_grace":
                 grace_period_end = user.get("grace_period_end_date")
+                # Make timezone-aware if needed
+                if grace_period_end and grace_period_end.tzinfo is None:
+                    grace_period_end = grace_period_end.replace(tzinfo=timezone.utc)
                 if grace_period_end and now > grace_period_end:
                     # Grace period expired - downgrade to free tier
                     logger.warning(f"[GRACE_PERIOD_EXPIRED] Grace period ended for user {user_id} - downgrading to free tier")
@@ -354,11 +362,31 @@ class SubscriptionService:
                     get_user_query(user_id),
                     {"$set": {"subscription_status": "expired"}}
                 )
-            
+
             # Get plan details
             plan_id = user.get("subscription_plan", "try_learn")
             period = user.get("subscription_period", "monthly")
             provider = user.get("subscription_provider")  # stripe, apple, google_play
+
+            # 🔥 FIX: For free users, check if current_period_end has expired
+            # This handles the case where cron job hasn't run yet
+            if plan_id == "try_learn":
+                current_period_end = user.get("current_period_end")
+                if current_period_end:
+                    # Make timezone-aware if needed
+                    if current_period_end.tzinfo is None:
+                        from datetime import timezone
+                        current_period_end = current_period_end.replace(tzinfo=timezone.utc)
+
+                    if now > current_period_end:
+                        logger.warning(f"Free user {user_id} period expired at {current_period_end}, current time {now}")
+                        logger.warning(f"This should have been reset by cron job. Auto-resetting as fallback.")
+                        # Auto-reset the period as a fallback (cron job should have done this)
+                        await cls.reset_monthly_usage(user_id)
+                        # Re-fetch user data after reset
+                        user = await database["users"].find_one(get_user_query(user_id))
+                        if not user:
+                            return SubscriptionStatus()
 
             # Calculate limits and usage
             limits = await cls._calculate_subscription_limits(user_id, plan_id, period, user)

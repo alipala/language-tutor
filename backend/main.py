@@ -150,6 +150,10 @@ app.include_router(low_minutes_router)
 from health_ping_routes import router as health_ping_router
 app.include_router(health_ping_router)
 
+# Include cron health monitoring routes
+from cron_health_routes import router as cron_health_router
+app.include_router(cron_health_router)
+
 # Include share routes
 from share_routes import router as share_router
 app.include_router(share_router)

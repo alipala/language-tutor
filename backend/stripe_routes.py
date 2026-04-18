@@ -1203,22 +1203,40 @@ async def handle_subscription_deleted(subscription):
         logger.info(f"[SUB_DELETED] Subscription ID: {subscription_id}")
 
         # 🔥 COMPLETE RESET TO FREE TIER
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+
+        # Calculate new free tier period (current month)
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if period_start.month == 12:
+            period_end = period_start.replace(year=period_start.year + 1, month=1)
+        else:
+            period_end = period_start.replace(month=period_start.month + 1)
+
         update_data = {
             "subscription_status": "free",
             "subscription_plan": "try_learn",
             "is_in_trial": False,
             "cancel_at_period_end": False,
+            # 🔥 FIX: Reset usage counters when downgrading to free tier
+            "practice_minutes_used": 0.0,
+            "practice_sessions_used": 0,
+            "assessments_used": 0,
+            # 🔥 FIX: Set new free tier period boundaries
+            "current_period_start": period_start,
+            "current_period_end": period_end,
         }
 
+        logger.info(f"[SUB_DELETED] Resetting usage counters and setting free tier period: {period_start} to {period_end}")
+
         # 🔥 CLEAR subscription fields (keep stripe_customer_id for future resubscriptions)
+        # NOTE: current_period_start and current_period_end are NOT unset - they're set above for free tier
         unset_data = {
             "stripe_subscription_id": 1,
             "subscription_price_id": 1,
             "subscription_period": 1,
             "subscription_expires_at": 1,
             "subscription_started_at": 1,
-            "current_period_start": 1,
-            "current_period_end": 1,
             "trial_end_date": 1,
             "cancellation_date": 1,
         }

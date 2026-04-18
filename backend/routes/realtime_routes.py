@@ -1348,6 +1348,56 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             )
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
+        # 🔥 CRITICAL FIX: Validate subscription and minutes before generating token
+        if current_user:
+            from subscription_service import SubscriptionService
+            from database import database
+            from bson import ObjectId
+
+            print(f"[SUBSCRIPTION_CHECK] Validating access for user {current_user.id}")
+
+            # Get fresh user data from database
+            user_doc = await database["users"].find_one({"_id": ObjectId(current_user.id)})
+
+            if user_doc:
+                # Check if free user's period has expired (should have been reset by cron job)
+                subscription_plan = user_doc.get("subscription_plan", "try_learn")
+                period_end = user_doc.get("current_period_end")
+
+                print(f"[SUBSCRIPTION_CHECK] Plan: {subscription_plan}, Period end: {period_end}")
+
+                # Auto-reset fallback for free users with expired periods (in case cron job missed it)
+                if subscription_plan == "try_learn" and period_end:
+                    from datetime import datetime, timezone
+                    now = datetime.now(timezone.utc)
+
+                    # Make period_end timezone-aware if it isn't
+                    if period_end.tzinfo is None:
+                        period_end = period_end.replace(tzinfo=timezone.utc)
+
+                    if now > period_end:
+                        print(f"[SUBSCRIPTION_CHECK] ⚠️ Period expired {(now - period_end).days} days ago - auto-resetting as fallback")
+                        await SubscriptionService.reset_monthly_usage(str(current_user.id))
+                        print(f"[SUBSCRIPTION_CHECK] ✅ Period reset completed for user {current_user.id}")
+
+            # Now validate if user can start a session
+            can_start, message = await SubscriptionService.can_start_session(str(current_user.id))
+
+            print(f"[SUBSCRIPTION_CHECK] Can start: {can_start}, Message: {message}")
+
+            if not can_start:
+                print(f"[SUBSCRIPTION_CHECK] ❌ Access denied for user {current_user.id}: {message}")
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "error": "insufficient_minutes",
+                        "message": message,
+                        "can_start": False
+                    }
+                )
+
+            print(f"[SUBSCRIPTION_CHECK] ✅ Access granted for user {current_user.id}")
+
         # PERFORMANCE OPTIMIZATION: Run voice fetch and instruction building in parallel
         async def fetch_voice_preference():
             """Fetch voice preference without blocking token generation"""
