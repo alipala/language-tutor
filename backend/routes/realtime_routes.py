@@ -1716,6 +1716,9 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             }
         }
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 403 for insufficient minutes) without modification
+        raise
     except Exception as e:
         print(f"[UNIVERSAL] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
