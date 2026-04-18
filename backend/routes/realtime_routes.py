@@ -1380,10 +1380,17 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                         await SubscriptionService.reset_monthly_usage(str(current_user.id))
                         print(f"[SUBSCRIPTION_CHECK] ✅ Period reset completed for user {current_user.id}")
 
-            # Now validate if user can start a session
-            can_start, message = await SubscriptionService.can_start_session(str(current_user.id))
+            # Now validate if user can start a session with selected duration
+            # Get selected duration from request (A1/A2 can select 3 or 5, others only 5)
+            selected_duration = getattr(request, 'selected_duration', None) or 5
+
+            can_start, message = await SubscriptionService.can_start_session(
+                str(current_user.id),
+                selected_duration_minutes=selected_duration
+            )
 
             print(f"[SUBSCRIPTION_CHECK] Can start: {can_start}, Message: {message}")
+            print(f"[SUBSCRIPTION_CHECK] Selected duration: {selected_duration} minutes")
 
             if not can_start:
                 print(f"[SUBSCRIPTION_CHECK] ❌ Access denied for user {current_user.id}: {message}")
@@ -1392,7 +1399,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                     detail={
                         "error": "insufficient_minutes",
                         "message": message,
-                        "can_start": False
+                        "can_start": False,
+                        "selected_duration": selected_duration
                     }
                 )
 

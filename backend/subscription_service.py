@@ -683,13 +683,14 @@ class SubscriptionService:
             return False, "Unable to verify access. Please try again."
     
     @classmethod
-    async def can_start_session(cls, user_id: str, minimum_minutes_required: int = 3) -> tuple[bool, str]:
+    async def can_start_session(cls, user_id: str, selected_duration_minutes: Optional[int] = None) -> tuple[bool, str]:
         """
-        Check if user can start a new session based on minute limits
+        Check if user can start a new session based on minute limits and selected duration
 
         Args:
             user_id: User ID to check
-            minimum_minutes_required: Minimum minutes required to start a session (default: 3)
+            selected_duration_minutes: Duration user wants to practice (3 or 5 minutes)
+                                      If None, checks for minimum 3 minutes
 
         Returns:
             Tuple of (can_start: bool, message: str)
@@ -697,17 +698,21 @@ class SubscriptionService:
         try:
             status = await cls.get_user_subscription_status(user_id)
 
+            # Determine minimum minutes required based on selected duration
+            # If no duration selected, require at least 3 minutes (A1/A2 minimum)
+            minimum_required = selected_duration_minutes if selected_duration_minutes else 3
+
             # Check minute limit first
             if status.limits and status.limits.minutes_remaining is not None:
                 if status.limits.minutes_limit == -1:
                     # Unlimited plan
                     return True, f"✨ Unlimited speaking time remaining"
-                elif status.limits.minutes_remaining < minimum_minutes_required:
+                elif status.limits.minutes_remaining < minimum_required:
                     # Not enough minutes to start a session
                     if status.limits.minutes_remaining <= 0:
                         return False, f"🚫 No speaking time remaining. Upgrade to continue learning!"
                     else:
-                        return False, f"🚫 You need at least {minimum_minutes_required} minutes to start a session. You have {status.limits.minutes_remaining:.0f} minutes left. Upgrade to continue learning!"
+                        return False, f"🚫 You need at least {minimum_required} minutes to start a {minimum_required}-minute session. You have {status.limits.minutes_remaining:.0f} minute{'s' if status.limits.minutes_remaining != 1 else ''} left. Upgrade to continue learning!"
                 else:
                     return True, f"You have {status.limits.minutes_remaining:.0f} minutes remaining this {status.period}"
 
