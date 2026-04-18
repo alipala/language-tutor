@@ -633,57 +633,86 @@ class SubscriptionService:
     
     
     @classmethod
-    async def can_access_feature(cls, user_id: str, feature_type: str) -> tuple[bool, str]:
-        """Check if user can access a specific feature"""
+    async def can_access_feature(cls, user_id: str, feature_type: str, minimum_minutes_required: int = 3) -> tuple[bool, str]:
+        """
+        Check if user can access a specific feature
+
+        Args:
+            user_id: User ID to check
+            feature_type: Type of feature ("practice_session", "assessment", "learning_plan_progression")
+            minimum_minutes_required: Minimum minutes required for practice sessions (default: 3)
+
+        Returns:
+            Tuple of (can_access: bool, message: str)
+        """
         try:
             status = await cls.get_user_subscription_status(user_id)
-            
+
             if feature_type == "practice_session":
-                # FIXED: Only check minute limits - session count is just for tracking
+                # Check minute limits with minimum requirement
                 # We give users "150 minutes speaking regardless of practice session OR learning plan session"
-                if status.limits and status.limits.minutes_remaining is not None and status.limits.minutes_remaining <= 0:
+                if status.limits and status.limits.minutes_remaining is not None:
                     if status.limits.minutes_limit == -1:
                         # Unlimited plan
                         return True, ""
-                    return False, f"No speaking time remaining this {status.period}. You have used {status.limits.minutes_used:.1f} of {status.limits.minutes_limit} minutes. Upgrade to continue learning!"
-                
-                # Session count is tracked but doesn't block access - only minutes matter
+
+                    # Require minimum minutes to start a session
+                    if status.limits.minutes_remaining < minimum_minutes_required:
+                        if status.limits.minutes_remaining <= 0:
+                            return False, f"No speaking time remaining this {status.period}. You have used {status.limits.minutes_used:.1f} of {status.limits.minutes_limit} minutes. Upgrade to continue learning!"
+                        else:
+                            return False, f"You need at least {minimum_minutes_required} minutes to start a session. You have {status.limits.minutes_remaining:.0f} minutes left. Upgrade to continue learning!"
+
+                # Has enough minutes to start
                 return True, ""
-            
+
             elif feature_type == "assessment":
                 if status.limits and status.limits.assessments_remaining == 0:
                     return False, f"You've used all {status.limits.assessments_limit} assessments for this {status.period}. Upgrade to unlock more!"
                 return True, ""
-            
+
             elif feature_type == "learning_plan_progression":
                 if status.status == "expired" or status.is_preserved:
                     return False, "Your learning plan is in preservation mode. Resubscribe to continue your progress!"
                 return True, ""
-            
+
             return True, ""
-            
+
         except Exception as e:
             logger.error(f"Error checking feature access for user {user_id}: {str(e)}")
             return False, "Unable to verify access. Please try again."
     
     @classmethod
-    async def can_start_session(cls, user_id: str) -> tuple[bool, str]:
-        """Check if user can start a new session based on minute limits"""
+    async def can_start_session(cls, user_id: str, minimum_minutes_required: int = 3) -> tuple[bool, str]:
+        """
+        Check if user can start a new session based on minute limits
+
+        Args:
+            user_id: User ID to check
+            minimum_minutes_required: Minimum minutes required to start a session (default: 3)
+
+        Returns:
+            Tuple of (can_start: bool, message: str)
+        """
         try:
             status = await cls.get_user_subscription_status(user_id)
-            
+
             # Check minute limit first
             if status.limits and status.limits.minutes_remaining is not None:
                 if status.limits.minutes_limit == -1:
                     # Unlimited plan
                     return True, f"✨ Unlimited speaking time remaining"
-                elif status.limits.minutes_remaining <= 0:
-                    return False, f"🚫 No speaking time remaining. Upgrade to continue learning!"
+                elif status.limits.minutes_remaining < minimum_minutes_required:
+                    # Not enough minutes to start a session
+                    if status.limits.minutes_remaining <= 0:
+                        return False, f"🚫 No speaking time remaining. Upgrade to continue learning!"
+                    else:
+                        return False, f"🚫 You need at least {minimum_minutes_required} minutes to start a session. You have {status.limits.minutes_remaining:.0f} minutes left. Upgrade to continue learning!"
                 else:
                     return True, f"You have {status.limits.minutes_remaining:.0f} minutes remaining this {status.period}"
-            
+
             return True, ""
-            
+
         except Exception as e:
             logger.error(f"Error checking session access for user {user_id}: {str(e)}")
             return False, "Unable to verify access. Please try again."
