@@ -1368,7 +1368,6 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
                 # Auto-reset fallback for free users with expired periods (in case cron job missed it)
                 if subscription_plan == "try_learn" and period_end:
-                    from datetime import datetime, timezone
                     now = datetime.now(timezone.utc)
 
                     # Make period_end timezone-aware if it isn't
