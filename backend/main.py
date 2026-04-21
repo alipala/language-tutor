@@ -243,6 +243,10 @@ app.include_router(cache_router)
 from routes.heart_routes import router as heart_router
 app.include_router(heart_router, prefix="/api/hearts")
 
+# Include journey orchestrator routes (Learning Journey Guidance)
+from routes.journey_routes import router as journey_router
+app.include_router(journey_router, prefix="/api")
+
 # Include modular routes (refactored from main.py)
 from routes import health_router, mock_router
 from routes.image_routes import router as image_router

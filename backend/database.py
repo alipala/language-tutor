@@ -131,6 +131,11 @@ try:
     user_story_achievements_collection = database.user_story_achievements
     learning_goals_collection = database.learning_goals
     flashcards_collection = database.flashcards
+
+    # LEARNING JOURNEY ORCHESTRATOR: Intelligent journey guidance collections
+    recommended_actions_collection = database.recommended_actions
+    journey_checkpoints_collection = database.journey_checkpoints
+    daily_digest_messages_collection = database.daily_digest_messages
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -167,6 +172,9 @@ except Exception as e:
     user_story_achievements_collection = None
     learning_goals_collection = None
     flashcards_collection = None
+    recommended_actions_collection = None
+    journey_checkpoints_collection = None
+    daily_digest_messages_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
@@ -267,6 +275,24 @@ async def init_db():
         await session_feedback_collection.create_index("created_at")
         await session_feedback_collection.create_index("is_guest")
         await session_feedback_collection.create_index("session_id", unique=True)
+
+        # LEARNING JOURNEY ORCHESTRATOR: Recommendation and checkpoint indexes
+        # Recommended actions: Query by user + status, with TTL for expired recommendations
+        await recommended_actions_collection.create_index([("user_id", 1), ("completed", 1), ("dismissed", 1), ("expires_at", -1)])
+        await recommended_actions_collection.create_index([("user_id", 1), ("priority", 1), ("recommended_at", -1)])
+        await recommended_actions_collection.create_index("expires_at", expireAfterSeconds=0)  # TTL index
+
+        # Journey checkpoints: Query by user + type, chronological order
+        await journey_checkpoints_collection.create_index([("user_id", 1), ("timestamp", -1)])
+        await journey_checkpoints_collection.create_index([("user_id", 1), ("checkpoint_type", 1), ("timestamp", -1)])
+        await journey_checkpoints_collection.create_index([("user_id", 1), ("celebrated", 1), ("notified", 1)])
+
+        # Daily digest messages: Query by user + scheduled time, delivery tracking
+        await daily_digest_messages_collection.create_index([("user_id", 1), ("scheduled_for", -1)])
+        await daily_digest_messages_collection.create_index([("user_id", 1), ("sent", 1), ("scheduled_for", -1)])
+        await daily_digest_messages_collection.create_index("scheduled_for")  # For batch sending jobs
+        # TTL index: Delete old digest messages after 30 days
+        await daily_digest_messages_collection.create_index("generated_at", expireAfterSeconds=30 * 24 * 60 * 60)
 
         print("Database indexes initialized successfully")
     except Exception as e:

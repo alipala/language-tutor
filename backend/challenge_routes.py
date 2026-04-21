@@ -550,6 +550,20 @@ async def complete_challenge(
             # Don't fail the request if cache invalidation fails
             print(f"[COACH CACHE] ⚠️ Error invalidating coach cache: {str(cache_error)}")
 
+        # 🎯 JOURNEY ORCHESTRATOR: Update journey state after challenge completion
+        try:
+            from services.journey_state_detector import journey_state_detector
+
+            # Trigger journey state update (non-blocking)
+            import asyncio
+            asyncio.create_task(
+                journey_state_detector.detect_journey_stage(user_id, force_recalculate=True)
+            )
+            print(f"[JOURNEY] ✅ Triggered journey state update for user {user_id}")
+        except Exception as journey_error:
+            # Don't fail the request if journey update fails
+            print(f"[JOURNEY] ⚠️ Error updating journey state: {str(journey_error)}")
+
         return {
             "success": True,
             "message": "Challenge completed successfully",
