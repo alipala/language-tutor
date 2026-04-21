@@ -36,6 +36,7 @@ database = client[DATABASE_NAME]
 
 users_collection = database.users
 daily_digest_messages_collection = database.daily_digest_messages
+notification_preferences_collection = database.notification_preferences
 
 # Import services (after DB setup)
 from services.daily_digest_generator import daily_digest_generator
@@ -70,6 +71,25 @@ async def generate_digests_for_active_users():
         }).to_list(None)
 
         print(f"Found {len(active_users)} active users with push tokens")
+
+        # ✅ FILTER: Only generate for users who have practice reminders enabled
+        # Respect user preferences - don't bother users who opted out
+        filtered_users = []
+        for user in active_users:
+            prefs = await notification_preferences_collection.find_one({"user_id": str(user["_id"])})
+
+            # Default to False (opt-in model)
+            practice_reminders_enabled = False
+            if prefs:
+                practice_reminders_enabled = prefs.get("practice_reminders_enabled", False)
+
+            if practice_reminders_enabled:
+                filtered_users.append(user)
+            else:
+                print(f"  Skip generation: Practice reminders disabled for {user.get('name', 'User')}")
+
+        active_users = filtered_users
+        print(f"After filtering preferences: {len(active_users)} users opted-in to practice reminders")
 
         # Generate digests
         generated_count = 0
@@ -148,6 +168,24 @@ async def send_pending_digest_messages():
                     await daily_digest_messages_collection.update_one(
                         {"_id": digest["_id"]},
                         {"$set": {"sent": True, "sent_at": datetime.utcnow()}}
+                    )
+                    continue
+
+                # ✅ CHECK NOTIFICATION PREFERENCES - Respect user's settings!
+                # Daily digest = Practice Reminders
+                prefs = await notification_preferences_collection.find_one({"user_id": str(user_id)})
+
+                # Default to False if no preferences set (opt-in model - don't bother users)
+                practice_reminders_enabled = False
+                if prefs:
+                    practice_reminders_enabled = prefs.get("practice_reminders_enabled", False)
+
+                if not practice_reminders_enabled:
+                    print(f"  Skip: Practice reminders disabled for user {user.get('name', 'Unknown')}")
+                    # Mark as sent (user has opted out)
+                    await daily_digest_messages_collection.update_one(
+                        {"_id": digest["_id"]},
+                        {"$set": {"sent": True, "sent_at": datetime.utcnow(), "skipped_reason": "practice_reminders_disabled"}}
                     )
                     continue
 

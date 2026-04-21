@@ -456,10 +456,7 @@ class DailyDigestGenerator:
             "type": "celebration",
             "subject": f"🎉 {metric_name} Breakthrough!",
             "message": message,
-            "quick_actions": [
-                {"label": "View My DNA", "action": "view_dna", "icon": "🧬"},
-                {"label": "Practice More", "action": "start_session", "icon": "💬"}
-            ]
+            "quick_actions": []
         }
 
     def _create_streak_milestone_message(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -481,10 +478,7 @@ class DailyDigestGenerator:
             "type": "celebration",
             "subject": f"🔥 {streak}-Day Streak!",
             "message": message,
-            "quick_actions": [
-                {"label": "Keep It Going", "action": "start_session", "icon": "🚀"},
-                {"label": "View Progress", "action": "view_stats", "icon": "📊"}
-            ]
+            "quick_actions": []
         }
 
     def _create_streak_lost_message(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -497,10 +491,7 @@ class DailyDigestGenerator:
             "type": "motivation",
             "subject": "Start Fresh Today",
             "message": message,
-            "quick_actions": [
-                {"label": "Start New Streak", "action": "start_session", "icon": "🔄"},
-                {"label": "Try Challenges", "action": "try_challenges", "icon": "🎯"}
-            ]
+            "quick_actions": []
         }
 
     def _create_intervention_message(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -521,10 +512,7 @@ class DailyDigestGenerator:
                 "type": "intervention",
                 "subject": "We've Missed You!",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Quick 3-Min Session", "action": "start_session", "duration": 3, "icon": "⏱️"},
-                    {"label": "See Your Progress", "action": "view_stats", "icon": "📈"}
-                ]
+                "quick_actions": []
             }
 
         elif stage == JourneyStage.STRUGGLING:
@@ -536,10 +524,7 @@ class DailyDigestGenerator:
                 "type": "intervention",
                 "subject": "You've Got This!",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Easy Session", "action": "start_session", "difficulty": "easy", "icon": "🌱"},
-                    {"label": "Talk to Coach", "action": "open_coach", "icon": "💬"}
-                ]
+                "quick_actions": []
             }
 
         # Default intervention
@@ -561,10 +546,7 @@ class DailyDigestGenerator:
                 "type": "motivation",
                 "subject": "Continue Exploring",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Start Session", "action": "start_session", "icon": "🚀"},
-                    {"label": "Try Challenges", "action": "try_challenges", "icon": "🎯"}
-                ]
+                "quick_actions": []
             }
 
         elif stage == JourneyStage.BUILDING_HABIT:
@@ -579,10 +561,7 @@ class DailyDigestGenerator:
                 "type": "motivation",
                 "subject": "Build Your Habit",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Practice Now", "action": "start_session", "icon": "💪"},
-                    {"label": "Quick Challenges", "action": "try_challenges", "icon": "⚡"}
-                ]
+                "quick_actions": []
             }
 
         elif stage == JourneyStage.PROGRESSING:
@@ -593,10 +572,7 @@ class DailyDigestGenerator:
                 "type": "motivation",
                 "subject": "Keep Progressing!",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Continue Plan", "action": "continue_plan", "icon": "📚"},
-                    {"label": "Start Session", "action": "start_session", "icon": "💬"}
-                ]
+                "quick_actions": []
             }
 
         elif stage == JourneyStage.ACCELERATING:
@@ -611,10 +587,7 @@ class DailyDigestGenerator:
                 "type": "motivation",
                 "subject": "You're Accelerating!",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Challenge Yourself", "action": "start_session", "difficulty": "hard", "icon": "🔥"},
-                    {"label": "View DNA Growth", "action": "view_dna", "icon": "📈"}
-                ]
+                "quick_actions": []
             }
 
         elif stage == JourneyStage.MAINTAINING:
@@ -625,10 +598,7 @@ class DailyDigestGenerator:
                 "type": "motivation",
                 "subject": "Maintain Your Momentum",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Today's Practice", "action": "start_session", "icon": "✨"},
-                    {"label": "Read News", "action": "read_news", "icon": "📰"}
-                ]
+                "quick_actions": []
             }
 
         elif stage == JourneyStage.RETURNING:
@@ -639,10 +609,7 @@ class DailyDigestGenerator:
                 "type": "motivation",
                 "subject": "Welcome Back!",
                 "message": message,
-                "quick_actions": [
-                    {"label": "Easy Comeback Session", "action": "start_session", "duration": 3, "icon": "🎉"},
-                    {"label": "See What's New", "action": "view_dashboard", "icon": "👀"}
-                ]
+                "quick_actions": []
             }
 
         # Default fallback
@@ -653,10 +620,7 @@ class DailyDigestGenerator:
             "type": "motivation",
             "subject": "Time to Practice!",
             "message": message,
-            "quick_actions": [
-                {"label": "Start Session", "action": "start_session", "icon": "🚀"},
-                {"label": "Try Challenges", "action": "try_challenges", "icon": "🎯"}
-            ]
+            "quick_actions": []
         }
 
     def _calculate_morning_time(self, timezone: str) -> datetime:
