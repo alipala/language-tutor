@@ -1,3 +1,5 @@
+from __future__ import annotations  # Enable forward references for type hints
+
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field
@@ -171,6 +173,9 @@ class UserInDB(UserBase):
 
     # 🆕 NEW: Session duration preference (for smart defaults)
     preferred_session_duration: Optional[int] = None  # 3 or 5, null = use level-based default
+
+    # 🆕 LEARNING JOURNEY ORCHESTRATOR: Journey state tracking
+    journey_state: Optional["LearningJourneyState"] = None  # Current learning journey stage and metrics (forward reference)
 
     class Config:
         populate_by_name = True
@@ -1531,3 +1536,246 @@ class SessionFeedbackResponse(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+# ============================================================================
+# LEARNING JOURNEY ORCHESTRATOR MODELS
+# Intelligent system for guiding users through personalized learning journeys
+# ============================================================================
+
+class JourneyStage(str):
+    """Enumeration of learning journey stages"""
+    EXPLORING = "exploring"  # First 3 sessions, discovering features
+    BUILDING_HABIT = "building_habit"  # 4-14 sessions, forming consistency
+    PROGRESSING = "progressing"  # Active learning, positive trends
+    STRUGGLING = "struggling"  # Declining metrics, needs intervention
+    ACCELERATING = "accelerating"  # Rapid improvement, high engagement
+    MAINTAINING = "maintaining"  # Consistent practice, stable performance
+    DORMANT = "dormant"  # No activity for 7+ days
+    RETURNING = "returning"  # Coming back after dormancy
+
+
+class LearningJourneyState(BaseModel):
+    """User's current learning journey state and confidence metrics"""
+    stage: str = JourneyStage.EXPLORING
+    detected_at: datetime = Field(default_factory=datetime.utcnow)
+    confidence_level: float = 0.5  # 0-1 scale, based on DNA + stats
+    intervention_needed: bool = False
+    intervention_reason: Optional[str] = None
+    last_reviewed_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Performance indicators
+    total_sessions: int = 0
+    total_challenges: int = 0
+    current_streak: int = 0
+    days_since_last_activity: int = 0
+    average_session_quality: float = 0.0  # 0-1 scale
+    dna_improvement_trend: str = "stable"  # improving, stable, declining
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class RecommendedActionType(str):
+    """Types of recommended actions"""
+    CONTINUE_PLAN = "continue_plan"
+    START_SESSION = "start_session"
+    TRY_CHALLENGES = "try_challenges"
+    READ_NEWS = "read_news"
+    REVIEW_DNA = "review_dna"
+    CELEBRATE_MILESTONE = "celebrate_milestone"
+
+
+class RecommendedAction(BaseModel):
+    """A recommended action for the user to take"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    action_type: str  # RecommendedActionType
+    priority: int = 1  # 1=highest, 5=lowest
+
+    # Rationale and context
+    title: str  # "Continue Your Learning Plan"
+    description: str  # "You're 60% through B1 Spanish - keep going!"
+    rationale: str  # Internal: why this was recommended
+
+    # Action-specific data
+    action_data: Dict[str, Any] = {}  # challenge_ids, learning_plan_id, topic, etc.
+
+    # Source and timing
+    source: str  # "journey_orchestrator", "dna_review", "coach", "session_analysis"
+    recommended_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime  # When this recommendation is no longer relevant
+
+    # User interaction
+    completed: bool = False
+    completed_at: Optional[datetime] = None
+    dismissed: bool = False
+    dismissed_at: Optional[datetime] = None
+    viewed: bool = False
+    viewed_at: Optional[datetime] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class JourneyCheckpointType(str):
+    """Types of journey checkpoints"""
+    FEATURE_DISCOVERED = "feature_discovered"
+    MILESTONE_REACHED = "milestone_reached"
+    STRUGGLE_DETECTED = "struggle_detected"
+    BREAKTHROUGH_ACHIEVED = "breakthrough_achieved"
+    STREAK_MILESTONE = "streak_milestone"
+    LEVEL_COMPLETED = "level_completed"
+    PLAN_COMPLETED = "plan_completed"
+    DNA_IMPROVEMENT = "dna_improvement"
+
+
+class JourneyCheckpoint(BaseModel):
+    """Milestone or event in the user's learning journey"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    checkpoint_type: str  # JourneyCheckpointType
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+    # Checkpoint details
+    title: str  # "First Session Complete!"
+    description: str  # "You completed your first practice session"
+    data: Dict[str, Any] = {}  # Context-specific data
+
+    # Celebration and notification
+    celebrated: bool = False
+    celebrated_at: Optional[datetime] = None
+    notified: bool = False
+    notified_at: Optional[datetime] = None
+    notification_id: Optional[str] = None
+
+    # Metadata
+    language: Optional[str] = None
+    level: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class DailyDigestMessage(BaseModel):
+    """Proactive coach message for daily digest"""
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    user_id: str
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    scheduled_for: datetime  # When to send (user's morning time)
+
+    # Message content
+    message_type: str  # "motivation", "tip", "celebration", "intervention", "reminder"
+    subject: str  # "Great progress this week!"
+    message: str  # Full message text
+    quick_actions: List[Dict[str, Any]] = []  # Suggested actions user can take
+
+    # Context that generated this message
+    context: Dict[str, Any] = {}  # journey_stage, recent_activity, dna_trends, etc.
+
+    # Delivery tracking
+    sent: bool = False
+    sent_at: Optional[datetime] = None
+    notification_id: Optional[str] = None
+    opened: bool = False
+    opened_at: Optional[datetime] = None
+    acted_upon: bool = False  # User took one of the quick actions
+    action_taken: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+# API Request/Response Models
+
+class JourneyStatusResponse(BaseModel):
+    """Current journey status for the user"""
+    success: bool = True
+    journey_state: LearningJourneyState
+    current_recommendation: Optional[RecommendedAction] = None
+    recent_checkpoints: List[JourneyCheckpoint] = []
+    daily_digest_available: bool = False
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class RecommendedActionResponse(BaseModel):
+    """Today's primary recommended action"""
+    success: bool = True
+    action: Optional[RecommendedAction] = None
+    alternative_actions: List[RecommendedAction] = []
+    message: str = "Here's what we recommend for you today"
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class DismissRecommendationRequest(BaseModel):
+    """Request to dismiss a recommendation"""
+    recommendation_id: str
+    reason: Optional[str] = None  # "not_interested", "already_done", "too_difficult", etc.
+
+    class Config:
+        populate_by_name = True
+
+
+class CompleteRecommendationRequest(BaseModel):
+    """Request to mark recommendation as completed"""
+    recommendation_id: str
+    completion_data: Optional[Dict[str, Any]] = None  # Session ID, challenge results, etc.
+
+    class Config:
+        populate_by_name = True
+
+
+class DailyDigestResponse(BaseModel):
+    """Today's daily digest from the coach"""
+    success: bool = True
+    digest: Optional[DailyDigestMessage] = None
+    has_unread_digest: bool = False
+    message: str = ""
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class JourneyTimelineEvent(BaseModel):
+    """An event in the user's learning journey timeline"""
+    id: str  # Unique identifier for the event
+    timestamp: datetime
+    event_type: str  # "session", "challenge", "assessment", "breakthrough", "milestone"
+    title: str
+    description: str
+    language: Optional[str] = None
+    level: Optional[str] = None
+    data: Dict[str, Any] = {}
+    icon: str  # Icon name for UI
+    color: str  # Color for UI visualization
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+
+class JourneyTimelineResponse(BaseModel):
+    """Complete learning journey timeline"""
+    success: bool = True
+    timeline: List[JourneyTimelineEvent] = []
+    summary: Dict[str, Any] = {}  # Total sessions, streaks, breakthroughs, etc.
+    current_week_summary: Dict[str, Any] = {}
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True

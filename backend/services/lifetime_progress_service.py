@@ -9,8 +9,85 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List
 from bson import ObjectId
 
-from database import users_collection
+from database import users_collection, challenge_sessions_collection, conversation_sessions_collection
 from services.stats_service import calculate_accuracy, get_cefr_level_rank
+
+
+# ============================================================================
+# XP BREAKDOWN CALCULATION
+# ============================================================================
+
+async def calculate_xp_breakdown(user_id: str) -> Dict[str, Any]:
+    """
+    Calculate XP breakdown by source from actual session data.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        Dictionary with XP breakdown by source
+    """
+    try:
+        # Calculate challenge XP
+        challenge_pipeline = [
+            {"$match": {"user_id": user_id}},
+            {"$group": {
+                "_id": None,
+                "total_sessions": {"$sum": 1},
+                "total_xp": {"$sum": "$total_xp"}
+            }}
+        ]
+        challenge_result = await challenge_sessions_collection.aggregate(challenge_pipeline).to_list(None)
+        challenge_xp = challenge_result[0]['total_xp'] if challenge_result else 0
+        challenge_count = challenge_result[0]['total_sessions'] if challenge_result else 0
+
+        # Calculate conversation XP
+        conv_pipeline = [
+            {"$match": {"user_id": user_id}},
+            {"$group": {
+                "_id": None,
+                "total_sessions": {"$sum": 1},
+                "total_xp": {"$sum": "$xp_earned"}
+            }}
+        ]
+        conv_result = await conversation_sessions_collection.aggregate(conv_pipeline).to_list(None)
+        conversation_xp = conv_result[0]['total_xp'] if conv_result else 0
+        conversation_count = conv_result[0]['total_sessions'] if conv_result else 0
+
+        # Get achievement XP from user stats
+        user = await users_collection.find_one({'_id': ObjectId(user_id)})
+        achievement_xp = 0
+        achievement_count = 0
+        if user:
+            achievements = user.get('achievements', [])
+            achievement_count = len(achievements)
+            # Estimate achievement XP (most achievements give 50-100 XP)
+            # This is an approximation since we don't store XP per achievement
+            achievement_xp = achievement_count * 75  # Average estimate
+
+        print(f"[XP_BREAKDOWN] User {user_id}: Challenges={challenge_xp}, Conversations={conversation_xp}, Achievements={achievement_xp}")
+
+        return {
+            'challenges': challenge_xp,
+            'conversations': conversation_xp,
+            'achievements': achievement_xp,
+            'challenge_count': challenge_count,
+            'conversation_count': conversation_count,
+            'achievement_count': achievement_count,
+        }
+
+    except Exception as e:
+        print(f"[XP_BREAKDOWN] ❌ Error calculating XP breakdown: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {
+            'challenges': 0,
+            'conversations': 0,
+            'achievements': 0,
+            'challenge_count': 0,
+            'conversation_count': 0,
+            'achievement_count': 0,
+        }
 
 
 # ============================================================================
@@ -49,8 +126,11 @@ async def get_lifetime_progress(
         stats = user.get('stats', {})
         lifetime = stats.get('lifetime', {})
 
-        # Calculate summary
-        summary = calculate_lifetime_summary(user, stats, lifetime)
+        # Calculate XP breakdown from actual sessions
+        xp_breakdown = await calculate_xp_breakdown(user_id)
+
+        # Calculate summary with XP breakdown
+        summary = calculate_lifetime_summary(user, stats, lifetime, xp_breakdown)
 
         # Calculate language progress
         language_progress = calculate_language_progress(
@@ -97,7 +177,7 @@ async def get_lifetime_progress(
         return get_empty_lifetime_progress()
 
 
-def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], lifetime: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], lifetime: Dict[str, Any], xp_breakdown: Dict[str, Any]) -> Dict[str, Any]:
     """Calculate lifetime summary metrics."""
     total_challenges = lifetime.get('total_challenges', 0)
     total_sessions = lifetime.get('total_sessions', 0)
@@ -117,7 +197,14 @@ def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], life
         'total_time_hours': round(total_time_minutes / 60, 1),
         'member_since': member_since,
         'longest_streak': longest_streak,
-        'current_streak': current_streak
+        'current_streak': current_streak,
+        'xp_by_source': {
+            'challenges': xp_breakdown.get('challenges', 0),
+            'conversations': xp_breakdown.get('conversations', 0),
+            'achievements': xp_breakdown.get('achievements', 0),
+        },
+        'challenge_count': xp_breakdown.get('challenge_count', 0),
+        'conversation_count': xp_breakdown.get('conversation_count', 0)
     }
 
 
@@ -406,7 +493,14 @@ def get_empty_lifetime_progress() -> Dict[str, Any]:
             'total_time_hours': 0.0,
             'member_since': datetime.utcnow().strftime('%Y-%m-%d'),
             'longest_streak': 0,
-            'current_streak': 0
+            'current_streak': 0,
+            'xp_by_source': {
+                'challenges': 0,
+                'conversations': 0,
+                'achievements': 0,
+            },
+            'challenge_count': 0,
+            'conversation_count': 0
         },
         'language_progress': {},
         'level_mastery': {},

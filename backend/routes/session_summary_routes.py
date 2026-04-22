@@ -45,6 +45,25 @@ except TypeError as e:
 # Background task functions — run AFTER response is sent to the client
 # ──────────────────────────────────────────────────────────────────────────────
 
+async def _update_journey_state_background(user_id: str):
+    """
+    Update user's journey state after session completion.
+
+    This runs in the background to avoid blocking the session summary response.
+    """
+    try:
+        from services.journey_state_detector import journey_state_detector
+
+        print(f"[JOURNEY_BG] Updating journey state for user {user_id}")
+        journey_state = await journey_state_detector.detect_journey_stage(
+            user_id,
+            force_recalculate=True  # Force update after session
+        )
+        print(f"[JOURNEY_BG] ✅ Journey state updated: {journey_state.stage}")
+    except Exception as e:
+        print(f"[JOURNEY_BG] ❌ Error updating journey state: {str(e)}")
+        # Non-critical, don't fail the session
+
 async def _generate_flashcards_background(
     plan_id: str, completed_sessions: int, language: str, level: str,
     topic, summary_text: str, user_id: str
@@ -825,6 +844,39 @@ async def store_session_summary(
             )
             print(f"[CACHE] ✅ Invalidated TaalCoach cache after session completion")
 
+            # 🎯 JOURNEY ORCHESTRATOR: Generate post-session challenge recommendations
+            recommended_challenges = []
+            try:
+                from services.session_challenge_matcher import session_challenge_matcher
+
+                # Build session analysis from enhanced_stats for challenge matching
+                session_analysis = {
+                    "enhanced_analysis": {
+                        "grammar_analysis": conversation_data.get("grammar_issues", "") if conversation_data else "",
+                        "new_vocabulary": conversation_data.get("new_vocabulary", []) if conversation_data else [],
+                        "confidence_score": enhanced_stats.get("session_stats", {}).get("confidence_score", 1.0),
+                        "highlights_for_improvement": conversation_data.get("improvements", []) if conversation_data else []
+                    }
+                }
+
+                recommended_challenges = await session_challenge_matcher.generate_post_session_recommendations(
+                    user_id=str(current_user.id),
+                    session_id=summary_id,
+                    session_analysis=session_analysis,
+                    language=plan.get("language", "english"),
+                    level=plan.get("proficiency_level", "B1"),
+                    max_recommendations=3
+                )
+
+                if recommended_challenges:
+                    print(f"[JOURNEY] ✅ Generated {len(recommended_challenges)} challenge recommendations")
+            except Exception as rec_error:
+                print(f"[JOURNEY] ⚠️ Error generating challenge recommendations: {str(rec_error)}")
+                recommended_challenges = []
+
+            # 🎯 JOURNEY ORCHESTRATOR: Update journey state (run in background)
+            background_tasks.add_task(_update_journey_state_background, user_id=str(current_user.id))
+
             # ⚡ Return immediately — flashcards, DNA, optimizer, and sentence analysis run in background
             print(f"[SESSION_SUMMARY] ✅ Returning response (background tasks scheduled)")
             return {
@@ -845,7 +897,8 @@ async def store_session_summary(
                 "comparison": enhanced_stats.get("comparison"),
                 "overall_progress": enhanced_stats.get("overall_progress"),
                 "dna_breakthroughs": [],   # populated by background task
-                "dna_insights": {}         # populated by background task
+                "dna_insights": {},        # populated by background task
+                "recommended_challenges": recommended_challenges  # 🎯 NEW: Post-session challenge recommendations
             }
         else:
             print(f"[SESSION_SUMMARY] Warning: No documents were modified for plan {plan_id}")
