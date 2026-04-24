@@ -260,18 +260,32 @@ async def get_user_notifications(
     skip: int = 0,
     limit: int = 20,
     unread_only: bool = False,
+    include_session_analysis: bool = True,  # Default True for backward compatibility (TaalCoach)
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Get notifications for the current user"""
+    """
+    Get notifications for the current user
+
+    Args:
+        skip: Number of notifications to skip (pagination)
+        limit: Maximum number of notifications to return
+        unread_only: If True, only return unread notifications
+        include_session_analysis: If False, exclude session_analysis notifications (for bell icon)
+                                  If True, include all notifications (for TaalCoach badge)
+        current_user: Authenticated user from JWT token
+
+    Returns:
+        NotificationListResponse with notifications, unread_count, and total_count
+    """
 
     print(f"[NOTIFICATION_API] 🔍 Fetching notifications for user: {current_user.id}")
-    print(f"[NOTIFICATION_API] Parameters: skip={skip}, limit={limit}, unread_only={unread_only}")
+    print(f"[NOTIFICATION_API] Parameters: skip={skip}, limit={limit}, unread_only={unread_only}, include_session_analysis={include_session_analysis}")
 
     # Build query - exclude deleted notifications
     query = {"user_id": current_user.id, "deleted_at": None}
     if unread_only:
         query["is_read"] = False
-    
+
     # Get user notifications with notification details
     pipeline = [
         {"$match": query},
@@ -282,6 +296,9 @@ async def get_user_notifications(
             "as": "notification"
         }},
         {"$unwind": "$notification"},
+        # Filter out session_analysis notifications if requested (for bell icon)
+        # This must come AFTER $unwind so we can access notification.notification_type
+        *([{"$match": {"notification.notification_type": {"$ne": "session_analysis"}}}] if not include_session_analysis else []),
         {"$sort": {"created_at": -1}},
         {"$skip": skip},
         {"$limit": limit}
@@ -292,10 +309,6 @@ async def get_user_notifications(
 
     async for doc in cursor:
         try:
-            # Debug: Log notification type
-            notif_doc = doc.get("notification", {})
-            print(f"[NOTIFICATION_API] Processing notification type: {notif_doc.get('notification_type')}")
-
             notification_data = UserNotificationResponse(
                 id=doc["_id"],
                 user_id=doc["user_id"],
@@ -313,18 +326,53 @@ async def get_user_notifications(
             continue
     
     # Get counts - exclude deleted notifications
-    total_count = await user_notifications_collection.count_documents({
-        "user_id": current_user.id,
-        "deleted_at": None
-    })
-    unread_count = await user_notifications_collection.count_documents({
-        "user_id": current_user.id,
-        "is_read": False,
-        "deleted_at": None
-    })
+    # If filtering out session_analysis, we need to use aggregation to count properly
+    if not include_session_analysis:
+        # Count total (excluding session_analysis)
+        total_pipeline = [
+            {"$match": {"user_id": current_user.id, "deleted_at": None}},
+            {"$lookup": {
+                "from": "notifications",
+                "localField": "notification_id",
+                "foreignField": "_id",
+                "as": "notification"
+            }},
+            {"$unwind": "$notification"},
+            {"$match": {"notification.notification_type": {"$ne": "session_analysis"}}},
+            {"$count": "total"}
+        ]
+        total_result = await user_notifications_collection.aggregate(total_pipeline).to_list(1)
+        total_count = total_result[0]["total"] if total_result else 0
+
+        # Count unread (excluding session_analysis)
+        unread_pipeline = [
+            {"$match": {"user_id": current_user.id, "is_read": False, "deleted_at": None}},
+            {"$lookup": {
+                "from": "notifications",
+                "localField": "notification_id",
+                "foreignField": "_id",
+                "as": "notification"
+            }},
+            {"$unwind": "$notification"},
+            {"$match": {"notification.notification_type": {"$ne": "session_analysis"}}},
+            {"$count": "total"}
+        ]
+        unread_result = await user_notifications_collection.aggregate(unread_pipeline).to_list(1)
+        unread_count = unread_result[0]["total"] if unread_result else 0
+    else:
+        # Simple count (all notifications, including session_analysis)
+        total_count = await user_notifications_collection.count_documents({
+            "user_id": current_user.id,
+            "deleted_at": None
+        })
+        unread_count = await user_notifications_collection.count_documents({
+            "user_id": current_user.id,
+            "is_read": False,
+            "deleted_at": None
+        })
 
     print(f"[NOTIFICATION_API] 📊 Results: {len(notifications)} notifications returned")
-    print(f"[NOTIFICATION_API] 📊 Total: {total_count}, Unread: {unread_count}")
+    print(f"[NOTIFICATION_API] 📊 Total: {total_count}, Unread: {unread_count} (include_session_analysis={include_session_analysis})")
     
     return NotificationListResponse(
         notifications=notifications,
@@ -334,17 +382,45 @@ async def get_user_notifications(
 
 @router.get("/unread-count")
 async def get_unread_count(
+    include_session_analysis: bool = True,  # Default True for backward compatibility
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Get count of unread notifications for the current user"""
+    """
+    Get count of unread notifications for the current user
 
-    # Exclude deleted notifications from unread count
-    count = await user_notifications_collection.count_documents({
-        "user_id": current_user.id,
-        "is_read": False,
-        "deleted_at": None
-    })
+    Args:
+        include_session_analysis: If False, exclude session_analysis notifications from count (for bell icon badge)
+        current_user: Authenticated user from JWT token
 
+    Returns:
+        Dictionary with unread_count
+    """
+
+    # If filtering out session_analysis, use aggregation
+    if not include_session_analysis:
+        pipeline = [
+            {"$match": {"user_id": current_user.id, "is_read": False, "deleted_at": None}},
+            {"$lookup": {
+                "from": "notifications",
+                "localField": "notification_id",
+                "foreignField": "_id",
+                "as": "notification"
+            }},
+            {"$unwind": "$notification"},
+            {"$match": {"notification.notification_type": {"$ne": "session_analysis"}}},
+            {"$count": "total"}
+        ]
+        result = await user_notifications_collection.aggregate(pipeline).to_list(1)
+        count = result[0]["total"] if result else 0
+    else:
+        # Simple count (all notifications, including session_analysis)
+        count = await user_notifications_collection.count_documents({
+            "user_id": current_user.id,
+            "is_read": False,
+            "deleted_at": None
+        })
+
+    print(f"[NOTIFICATION_API] Unread count: {count} (include_session_analysis={include_session_analysis})")
     return {"unread_count": count}
 
 @router.post("/mark-read")

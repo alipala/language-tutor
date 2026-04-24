@@ -9,7 +9,8 @@ INTEGRATION: This service should be used by learning_routes.py session-summary e
 from datetime import datetime
 from typing import Optional, Dict, Any
 from bson import ObjectId
-from database import database
+from database import database, daily_stats_collection
+from services.timezone_utils import get_current_local_date
 import logging
 
 # Set up logging
@@ -186,7 +187,56 @@ class LearningPlanSessionCompletionService:
                 {"_id": plan["_id"]},
                 {"$set": update_fields}
             )
-            
+
+            # 🔥 FIX: Also update user's practice_minutes_used for accurate statistics
+            user_result = await database["users"].update_one(
+                {"_id": ObjectId(user_id)},
+                {"$inc": {"practice_minutes_used": enforced_duration}}
+            )
+            if user_result.modified_count > 0:
+                logger.info(f"[SESSION_COMPLETION] ✅ Updated user's practice_minutes_used: +{enforced_duration} minutes")
+            else:
+                logger.warning(f"[SESSION_COMPLETION] ⚠️ Failed to update user's practice_minutes_used")
+
+            # 🔥 NEW: Update daily_stats for weekly practice chart
+            try:
+                local_date = get_current_local_date(user_timezone='UTC')  # TODO: Use user's actual timezone
+                time_seconds = enforced_duration * 60  # Convert minutes to seconds
+
+                # Upsert daily_stats to track conversation practice time
+                daily_result = await daily_stats_collection.update_one(
+                    {
+                        'user_id': user_id,
+                        'local_date': local_date
+                    },
+                    {
+                        '$inc': {
+                            'conversation_time_seconds': time_seconds,  # Track conversation time separately
+                            'total_time_seconds': time_seconds,  # Also add to total time
+                        },
+                        '$set': {
+                            'user_timezone': 'UTC',  # TODO: Use user's actual timezone
+                            'updated_at': datetime.utcnow(),
+                        },
+                        '$setOnInsert': {
+                            'created_at': datetime.utcnow(),
+                            'is_streak_day': True,
+                            'total_sessions': 0,
+                            'total_challenges': 0,
+                            'correct_challenges': 0,
+                            'incorrect_challenges': 0,
+                            'total_xp': 0,
+                        }
+                    },
+                    upsert=True
+                )
+                if daily_result.modified_count > 0 or daily_result.upserted_id:
+                    logger.info(f"[SESSION_COMPLETION] ✅ Updated daily_stats for {local_date}: +{enforced_duration} minutes")
+                else:
+                    logger.warning(f"[SESSION_COMPLETION] ⚠️ Failed to update daily_stats")
+            except Exception as e:
+                logger.error(f"[SESSION_COMPLETION] ❌ Error updating daily_stats: {str(e)}")
+
             if result.modified_count > 0:
                 logger.info(f"[SESSION_COMPLETION] ✅ Successfully updated learning plan")
 

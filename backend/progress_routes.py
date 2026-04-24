@@ -1256,19 +1256,12 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
 
         print(f"[PROGRESS] 📚 Learning plan totals: {learning_plan_total_sessions} sessions, {learning_plan_total_minutes} minutes")
 
-        # 🔥 FIXED: Use user document's practice_minutes_used which includes BOTH completed sessions AND early exits
-        # Early exits should count to prevent subscription abuse!
-        users_collection_db = database["users"]
-        user_doc = await users_collection_db.find_one({"_id": ObjectId(current_user.id)})
-
-        # Get total minutes from user document (includes early exits)
-        total_minutes = user_doc.get('practice_minutes_used', 0) if user_doc else 0
-
         # 🔥 UNIFIED TOTALS: Combine both types of sessions
         total_sessions = conversation_total_sessions + learning_plan_total_sessions
+        total_minutes = conversation_total_minutes + learning_plan_total_minutes
 
         print(f"[PROGRESS] 🎯 UNIFIED TOTALS: {total_sessions} sessions")
-        print(f"[PROGRESS] 🎯 TOTAL MINUTES (from user doc, includes early exits): {total_minutes} minutes")
+        print(f"[PROGRESS] 🎯 TOTAL MINUTES (calculated from all sessions): {total_minutes} minutes")
         
         # Calculate streak (still based on conversation sessions for now)
         current_streak, longest_streak = await calculate_streaks(current_user.id)
@@ -1771,25 +1764,41 @@ def determine_analysis_level(duration_minutes: float, message_count: int) -> str
         return "basic"
 
 async def calculate_streaks(user_id: str) -> tuple[int, int]:
-    """Calculate current and longest streak for a user"""
+    """Calculate current and longest streak for a user based on daily_stats"""
     try:
-        # Get all streak-eligible sessions, sorted by date
-        sessions_cursor = conversation_sessions_collection.find(
-            {"user_id": user_id, "is_streak_eligible": True}
-        ).sort("created_at", 1)
-        
-        sessions = await sessions_cursor.to_list(length=None)
-        
-        if not sessions:
+        from database import daily_stats_collection
+
+        # Get all daily_stats entries with practice activity (conversation OR challenges)
+        daily_stats_cursor = daily_stats_collection.find(
+            {"user_id": user_id}
+        ).sort("local_date", 1)
+
+        daily_stats = await daily_stats_cursor.to_list(length=None)
+
+        if not daily_stats:
             return 0, 0
-        
-        # Group sessions by date
-        session_dates = set()
-        for session in sessions:
-            date = session.get('created_at', datetime.min).date()
-            session_dates.add(date)
-        
-        sorted_dates = sorted(session_dates)
+
+        # Get dates where user had any practice activity
+        practice_dates = set()
+        for stat in daily_stats:
+            # Count as practice day if they did conversations OR challenges
+            conv_time = stat.get('conversation_time_seconds', 0)
+            challenges = stat.get('total_challenges', 0)
+
+            if conv_time > 0 or challenges > 0:
+                # Parse local_date string to date object
+                local_date_str = stat.get('local_date')
+                if local_date_str:
+                    try:
+                        date = datetime.strptime(local_date_str, '%Y-%m-%d').date()
+                        practice_dates.add(date)
+                    except:
+                        pass
+
+        if not practice_dates:
+            return 0, 0
+
+        sorted_dates = sorted(practice_dates)
         
         # Calculate current streak
         current_streak = 0

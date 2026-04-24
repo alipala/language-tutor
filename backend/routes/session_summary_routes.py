@@ -19,6 +19,7 @@ from auth import get_current_user
 from models import UserResponse
 from session_statistics import SessionStatistics
 from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
+from services.timezone_utils import get_current_local_date
 
 # Initialize router
 router = APIRouter()
@@ -744,6 +745,55 @@ async def store_session_summary(
 
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
+
+            # 🔥 NEW: Update user's practice_minutes_used for statistics
+            try:
+                from database import users_collection
+                user_update = await users_collection.update_one(
+                    {"_id": ObjectId(current_user.id)},
+                    {"$inc": {"practice_minutes_used": session_duration_minutes}}
+                )
+                if user_update.modified_count > 0:
+                    print(f"[SESSION_SUMMARY] ✅ Updated user practice_minutes_used: +{session_duration_minutes} min")
+            except Exception as user_err:
+                print(f"[SESSION_SUMMARY] ⚠️ Error updating user practice minutes: {user_err}")
+
+            # 🔥 NEW: Update daily_stats for weekly practice chart
+            try:
+                from database import daily_stats_collection
+                local_date = get_current_local_date(user_timezone='UTC')
+                time_seconds = session_duration_minutes * 60
+
+                daily_result = await daily_stats_collection.update_one(
+                    {
+                        'user_id': str(current_user.id),
+                        'local_date': local_date
+                    },
+                    {
+                        '$inc': {
+                            'conversation_time_seconds': time_seconds,
+                            'total_time_seconds': time_seconds,
+                        },
+                        '$set': {
+                            'user_timezone': 'UTC',
+                            'updated_at': datetime.now(timezone.utc),
+                        },
+                        '$setOnInsert': {
+                            'created_at': datetime.now(timezone.utc),
+                            'is_streak_day': True,
+                            'total_sessions': 0,
+                            'total_challenges': 0,
+                            'correct_challenges': 0,
+                            'incorrect_challenges': 0,
+                            'total_xp': 0,
+                        }
+                    },
+                    upsert=True
+                )
+                if daily_result.modified_count > 0 or daily_result.upserted_id:
+                    print(f"[SESSION_SUMMARY] ✅ Updated daily_stats for {local_date}: +{session_duration_minutes} min")
+            except Exception as stats_err:
+                print(f"[SESSION_SUMMARY] ⚠️ Error updating daily_stats: {stats_err}")
 
             # 🗑️ CACHE: Invalidate voice check cache (status has changed)
             try:

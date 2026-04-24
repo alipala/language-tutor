@@ -115,13 +115,13 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
 
     try:
         # Use GPT-5-mini for better reasoning, with timeout for performance
+        # Note: gpt-5-mini only supports temperature=1 (default), so we don't specify it
         response = await asyncio.wait_for(
             client.chat.completions.create(
                 model="gpt-5-mini",
                 messages=[
                     {"role": "developer", "content": intent_prompt}
                 ],
-                temperature=0.1,
                 max_completion_tokens=150
             ),
             timeout=3.0
@@ -372,13 +372,13 @@ async def generate_contextual_responses(
     
     try:
         # Generate responses with extended timeout for quality responses
+        # Note: gpt-5-mini only supports temperature=1 (default), so we don't specify it
         response = await asyncio.wait_for(
             client.chat.completions.create(
                 model="gpt-5-mini",  # Use GPT-5-mini for better contextual understanding
                 messages=[
                     {"role": "developer", "content": context_prompt}
                 ],
-                temperature=0.2,
                 max_completion_tokens=400  # Reduced for speed while maintaining quality
             ),
             timeout=8.0  # INCREASED: Give GPT-5-mini enough time for quality responses

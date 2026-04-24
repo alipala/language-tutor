@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class BulletproofSubscriptionServiceNoTransactions:
     """Fixed subscription service that ensures atomic speaking time deduction without transactions"""
-    
+
     @staticmethod
     async def track_speaking_time_atomic(request: SpeakingTimeTrackingRequest) -> bool:
         """
@@ -108,13 +108,32 @@ class BulletproofSubscriptionServiceNoTransactions:
             logger.info(f"[BULLETPROOF_TRACKING] Subscription: {subscription_status}")
             
             # Step 5: Calculate deduction based on correct business rules
-            if subscription_plan == "team_mastery":
-                # Team Mastery has unlimited minutes - don't deduct
+            if subscription_plan == "team_mastery" or subscription_plan == "language_mastery":
+                # Unlimited plans - don't deduct
                 new_practice_minutes_used = practice_minutes_used
                 deducted_amount = 0
-                logger.info(f"[BULLETPROOF_TRACKING] Team Mastery (unlimited) - no deduction needed")
+                logger.info(f"[BULLETPROOF_TRACKING] Unlimited plan ({subscription_plan}) - no deduction needed")
             else:
                 # ALL OTHER PLANS (including active fluency_builder) need minute deduction
+                # 🔥 FIX: Prevent minutes from going negative - cap at minutes_limit
+                if current_remaining <= 0:
+                    logger.warning(f"[BULLETPROOF_TRACKING] ⚠️ No minutes remaining: {current_remaining}")
+                    # Record failed attempt
+                    await tracking_collection.insert_one({
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "speaking_minutes": speaking_minutes,
+                        "session_completed": session_completed,
+                        "deducted_amount": 0,  # No deduction due to insufficient balance
+                        "remaining_before": current_remaining,
+                        "remaining_after": current_remaining,
+                        "successfully_deducted": False,
+                        "reason": "no_minutes_remaining",
+                        "timestamp": datetime.now(timezone.utc),
+                        "user_object_id": str(user_object_id)
+                    })
+                    return False
+
                 if current_remaining < speaking_minutes:
                     logger.warning(f"[BULLETPROOF_TRACKING] ⚠️ Not enough minutes remaining: {current_remaining} < {speaking_minutes}")
                     # Record failed attempt
@@ -132,9 +151,28 @@ class BulletproofSubscriptionServiceNoTransactions:
                         "user_object_id": str(user_object_id)
                     })
                     return False
-                
+
                 # Deduct minutes for all limited plans (try_learn, fluency_builder monthly/annual)
                 new_practice_minutes_used = practice_minutes_used + speaking_minutes
+
+                # 🔥 FIX: Enforce hard limit - never allow practice_minutes_used to exceed minutes_limit
+                if new_practice_minutes_used > minutes_limit and minutes_limit != -1:
+                    logger.error(f"[BULLETPROOF_TRACKING] ❌ HARD LIMIT VIOLATION PREVENTED: Would exceed limit ({new_practice_minutes_used} > {minutes_limit})")
+                    await tracking_collection.insert_one({
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "speaking_minutes": speaking_minutes,
+                        "session_completed": session_completed,
+                        "deducted_amount": 0,
+                        "remaining_before": current_remaining,
+                        "remaining_after": current_remaining,
+                        "successfully_deducted": False,
+                        "reason": "would_exceed_hard_limit",
+                        "timestamp": datetime.now(timezone.utc),
+                        "user_object_id": str(user_object_id)
+                    })
+                    return False
+
                 deducted_amount = speaking_minutes
                 new_remaining = max(0, current_remaining - speaking_minutes)
                 logger.info(f"[BULLETPROOF_TRACKING] Deducting {deducted_amount} minutes")
