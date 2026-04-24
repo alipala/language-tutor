@@ -1279,8 +1279,27 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
         month_start = now - timedelta(days=30)
         
         # Count conversation sessions in time periods
-        conversation_sessions_this_week = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= week_start])
-        conversation_sessions_this_month = len([s for s in conversation_sessions if s.get('created_at', datetime.min) >= month_start])
+        # 🔥 FIX: Convert created_at to datetime before comparison (can be string in DB)
+        conversation_sessions_this_week = []
+        conversation_sessions_this_month = []
+
+        for s in conversation_sessions:
+            created_at = s.get('created_at')
+            if created_at:
+                # Convert string to datetime if needed
+                if isinstance(created_at, str):
+                    try:
+                        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00')).replace(tzinfo=None)
+                    except:
+                        created_at = datetime.min
+
+                if created_at >= week_start:
+                    conversation_sessions_this_week.append(s)
+                if created_at >= month_start:
+                    conversation_sessions_this_month.append(s)
+
+        conversation_sessions_this_week = len(conversation_sessions_this_week)
+        conversation_sessions_this_month = len(conversation_sessions_this_month)
         
         # Count learning plan sessions in time periods (approximate based on updated_at)
         learning_plan_sessions_this_week = 0
@@ -1322,28 +1341,42 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
             earliest_dates = []
 
             # Get earliest conversation session
+            # 🔥 FIX: Convert all dates to datetime before using min()
             if conversation_sessions:
-                earliest_conv = min((s.get('created_at') for s in conversation_sessions if s.get('created_at')), default=None)
-                if earliest_conv:
-                    if isinstance(earliest_conv, str):
-                        try:
-                            earliest_conv = datetime.fromisoformat(earliest_conv.replace('Z', '+00:00')).replace(tzinfo=None)
-                        except:
-                            earliest_conv = None
-                    if earliest_conv:
-                        earliest_dates.append(earliest_conv)
+                conv_dates = []
+                for s in conversation_sessions:
+                    created_at = s.get('created_at')
+                    if created_at:
+                        if isinstance(created_at, str):
+                            try:
+                                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00')).replace(tzinfo=None)
+                            except:
+                                created_at = None
+                        if created_at and isinstance(created_at, datetime):
+                            conv_dates.append(created_at)
+
+                if conv_dates:
+                    earliest_conv = min(conv_dates)
+                    earliest_dates.append(earliest_conv)
 
             # Get earliest learning plan
+            # 🔥 FIX: Convert all dates to datetime before using min()
             if learning_plans:
-                earliest_plan = min((p.get('created_at') for p in learning_plans if p.get('created_at')), default=None)
-                if earliest_plan:
-                    if isinstance(earliest_plan, str):
-                        try:
-                            earliest_plan = datetime.fromisoformat(earliest_plan.replace('Z', '+00:00')).replace(tzinfo=None)
-                        except:
-                            earliest_plan = None
-                    if earliest_plan:
-                        earliest_dates.append(earliest_plan)
+                plan_dates = []
+                for p in learning_plans:
+                    created_at = p.get('created_at')
+                    if created_at:
+                        if isinstance(created_at, str):
+                            try:
+                                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00')).replace(tzinfo=None)
+                            except:
+                                created_at = None
+                        if created_at and isinstance(created_at, datetime):
+                            plan_dates.append(created_at)
+
+                if plan_dates:
+                    earliest_plan = min(plan_dates)
+                    earliest_dates.append(earliest_plan)
 
             # Use the earliest date found
             if earliest_dates:

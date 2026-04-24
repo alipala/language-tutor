@@ -14,8 +14,9 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional
+from typing import Optional, Any, Dict, List
 import logging
+import math
 
 from auth import get_current_user
 from models import (
@@ -31,6 +32,31 @@ from services.speaking_dna_service import speaking_dna_service
 from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_floats(obj: Any, default_value: float = 0.0) -> Any:
+    """
+    Recursively sanitize float values to ensure JSON compliance.
+    Replaces inf, -inf, and nan with a default value (0.0 by default).
+
+    Args:
+        obj: The object to sanitize (dict, list, float, or other)
+        default_value: The value to use for invalid floats (default: 0.0)
+
+    Returns:
+        The sanitized object with invalid floats replaced
+    """
+    if isinstance(obj, dict):
+        return {key: sanitize_floats(value, default_value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_floats(item, default_value) for item in obj]
+    elif isinstance(obj, float):
+        if math.isinf(obj) or math.isnan(obj):
+            logger.warning(f"[DNA API] 🔧 Found invalid float value: {obj}, replacing with {default_value}")
+            return default_value
+        return obj
+    else:
+        return obj
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/speaking-dna", tags=["Speaking DNA"])
@@ -167,6 +193,10 @@ async def get_dna_profile(
             language=language
         )
 
+        # 🔥 FIX: Sanitize float values to ensure JSON compliance
+        if profile:
+            profile = sanitize_floats(profile)
+
         return DNAProfileResponse(
             profile=profile,
             has_profile=profile is not None
@@ -227,6 +257,9 @@ async def get_dna_evolution(
             language=language,
             weeks=weeks
         )
+
+        # 🔥 FIX: Sanitize float values to ensure JSON compliance
+        evolution = sanitize_floats(evolution)
 
         return DNAEvolutionResponse(
             evolution=evolution,
@@ -294,6 +327,9 @@ async def get_acoustic_evolution(
             weeks=weeks
         )
 
+        # 🔥 FIX: Sanitize float values to ensure JSON compliance
+        evolution = sanitize_floats(evolution)
+
         return {
             "evolution": evolution,
             "weeks_tracked": len(evolution)
@@ -357,6 +393,9 @@ async def get_breakthroughs(
             limit=limit,
             uncelebrated_only=uncelebrated_only
         )
+
+        # 🔥 FIX: Sanitize float values to ensure JSON compliance
+        breakthroughs = sanitize_floats(breakthroughs)
 
         return DNABreakthroughsResponse(
             breakthroughs=breakthroughs,

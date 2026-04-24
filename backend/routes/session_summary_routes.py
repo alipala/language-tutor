@@ -655,18 +655,30 @@ async def store_session_summary(
                 print(f"[SESSION_SUMMARY] Updated week {new_week} sessions_completed to {sessions_in_week}")
 
         # CRITICAL FIX: Track subscription usage when session is completed
+        # 🔥 FIX: Also need to calculate session duration early for user minutes tracking
+        selected_duration = conversation_data.get("selected_duration", 5) if conversation_data else 5
+        session_duration_minutes = conversation_data.get("duration_minutes", selected_duration) if conversation_data else selected_duration
+        # Cap at selected_duration; anything over is a frontend timer glitch
+        session_duration_minutes = min(float(session_duration_minutes), float(selected_duration))
+
         try:
             users_collection = database.users
             for _attempt in range(3):
                 try:
+                    # 🔥 FIX: Update BOTH practice_sessions_used AND practice_minutes_used
                     user_result = await users_collection.update_one(
                         {"_id": ObjectId(current_user.id)},
-                        {"$inc": {"practice_sessions_used": 1}}
+                        {
+                            "$inc": {
+                                "practice_sessions_used": 1,
+                                "practice_minutes_used": session_duration_minutes  # 🔥 NEW: Track minutes too!
+                            }
+                        }
                     )
                     if user_result.modified_count > 0:
-                        print(f"[SESSION_SUMMARY] Incremented subscription usage for user {current_user.id}")
+                        print(f"[SESSION_SUMMARY] ✅ Incremented subscription usage for user {current_user.id}: +1 session, +{session_duration_minutes} minutes")
                     else:
-                        print(f"[SESSION_SUMMARY] Failed to increment subscription usage for user {current_user.id}")
+                        print(f"[SESSION_SUMMARY] ❌ Failed to increment subscription usage for user {current_user.id}")
                     break
                 except Exception as retry_err:
                     if _attempt < 2:
@@ -675,7 +687,7 @@ async def store_session_summary(
                     else:
                         raise
         except Exception as subscription_error:
-            print(f"[SESSION_SUMMARY] Error tracking subscription usage: {str(subscription_error)}")
+            print(f"[SESSION_SUMMARY] ❌ Error tracking subscription usage: {str(subscription_error)}")
             # Don't fail the session saving if subscription tracking fails
             pass
 
@@ -683,11 +695,7 @@ async def store_session_summary(
         # Initialize session_history if it doesn't exist
         session_history = plan.get("session_history", [])
 
-        # Store current session data for future comparisons
-        selected_duration = conversation_data.get("selected_duration", 5) if conversation_data else 5  # 🆕 Get selected duration
-        session_duration_minutes = conversation_data.get("duration_minutes", selected_duration) if conversation_data else selected_duration
-        # Cap at selected_duration; anything over is a frontend timer glitch
-        session_duration_minutes = min(float(session_duration_minutes), float(selected_duration))
+        # Note: selected_duration and session_duration_minutes already calculated above for user tracking
 
         current_session_data = {
             "session_number": completed_sessions,
