@@ -168,6 +168,53 @@ class NotificationService:
 notification_service = NotificationService()
 
 
+async def send_push_notification(
+    push_token: str,
+    title: str,
+    body: str,
+    data: Optional[Dict[str, Any]] = None,
+    user_id: str = None,
+    priority: str = 'high',
+    sound: str = 'default',
+    badge: Optional[int] = None
+) -> bool:
+    """
+    Send a push notification to a single user.
+
+    Simple wrapper around notification_service.send_expo_push_notification
+    for backwards compatibility with cron jobs and other scripts.
+
+    Args:
+        push_token: Expo push token
+        title: Notification title
+        body: Notification body/content
+        data: Additional data to send with notification
+        user_id: User ID (for logging purposes)
+        priority: 'default' or 'high'
+        sound: Sound to play ('default' or null for silent)
+        badge: Badge count to display (iOS)
+
+    Returns:
+        bool: True if notification was sent successfully
+    """
+    try:
+        result = notification_service.send_expo_push_notification(
+            push_tokens=[push_token],
+            title=title,
+            body=body,
+            data=data,
+            priority=priority,
+            sound=sound,
+            badge=badge
+        )
+
+        return result.get('success', False)
+
+    except Exception as e:
+        logger.error(f"Error sending push notification to user {user_id}: {str(e)}")
+        return False
+
+
 async def send_notification_to_users(
     user_ids: List[str],
     title: str,
