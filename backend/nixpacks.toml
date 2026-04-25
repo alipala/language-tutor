@@ -1,9 +1,10 @@
 [phases.setup]
 pythonVersion = "3.11"
-aptPkgs = ["python3-pip", "python3-dev", "build-essential"]
+aptPkgs = ["python3-dev", "build-essential"]
 
 [phases.install]
 cmds = [
+  "python3 -m ensurepip --upgrade || true",
   "python3 -m pip install --no-cache-dir --upgrade pip==24.0",
   "python3 -m pip install --no-cache-dir setuptools==69.5.1 wheel==0.43.0",
   "python3 -m pip install --no-cache-dir -r requirements.txt"
