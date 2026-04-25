@@ -242,52 +242,28 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 # Don't fail assessment if DNA analysis fails
                 pass
 
-        # CRITICAL FIX: Track assessment usage AND save assessment data for authenticated users
+        # RETRY FEATURE: Save assessment data for learning plan creation
+        # Assessment quota is ONLY consumed when user creates a learning plan, not during retries
         if current_user:
             try:
-                print(f"[ASSESSMENT_TRACKING] Tracking assessment usage for user {current_user.id}")
+                print(f"[ASSESSMENT_SAVE] Saving assessment data to user record for later plan creation")
 
-                from subscription_service import SubscriptionService
-                from models import UsageTrackingRequest
                 from database import users_collection
 
-                # Create usage tracking request
-                usage_request = UsageTrackingRequest(
-                    user_id=current_user.id,
-                    usage_type="assessment",
-                    duration_minutes=None
+                result = await users_collection.update_one(
+                    {"_id": ObjectId(current_user.id)},
+                    {"$set": {"last_assessment_data": assessment}}
                 )
 
-                # Track the usage
-                success = await SubscriptionService.track_usage(usage_request)
-                if success:
-                    print(f"[ASSESSMENT_TRACKING] Successfully tracked assessment usage for user {current_user.id}")
+                if result.modified_count > 0:
+                    print(f"[ASSESSMENT_SAVE] Assessment data saved to user record")
                 else:
-                    print(f"[ASSESSMENT_TRACKING] Usage tracking returned false for user {current_user.id}")
+                    print(f"[ASSESSMENT_SAVE] Failed to save assessment data to user record")
 
-                # CRITICAL FIX 2: Save assessment data to user record for learning plan creation
-                try:
-                    print(f"[ASSESSMENT_TRACKING] Saving assessment data to user record")
-
-                    result = await users_collection.update_one(
-                        {"_id": ObjectId(current_user.id)},
-                        {"$set": {"last_assessment_data": assessment}}
-                    )
-
-                    if result.modified_count > 0:
-                        print(f"[ASSESSMENT_TRACKING] Assessment data saved to user record")
-                    else:
-                        print(f"[ASSESSMENT_TRACKING] Failed to save assessment data to user record")
-
-                except Exception as save_error:
-                    print(f"[ASSESSMENT_TRACKING] Error saving assessment data: {str(save_error)}")
-
-            except Exception as tracking_error:
-                print(f"[ASSESSMENT_TRACKING] Error tracking assessment usage: {str(tracking_error)}")
-                # Don't fail the assessment if usage tracking fails
-                pass
+            except Exception as save_error:
+                print(f"[ASSESSMENT_SAVE] Error saving assessment data: {str(save_error)}")
         else:
-            print(f"[ASSESSMENT_TRACKING] No authenticated user - skipping usage tracking")
+            print(f"[ASSESSMENT_SAVE] No authenticated user - skipping data save")
 
         # Fetch DNA profile if available (for authenticated users)
         dna_profile = None

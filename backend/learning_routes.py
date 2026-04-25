@@ -264,12 +264,40 @@ async def create_learning_plan(
     
     # Check if assessment data is provided
     assessment_data = plan_request.assessment_data
-    
+
     # Log assessment data if available
     if assessment_data:
         print(f"Using assessment data for plan creation:\n{assessment_data}")
     else:
         print("No assessment data provided, using default plan template")
+
+    # RETRY FEATURE: Track assessment usage ONLY when user creates learning plan
+    # This ensures users can retry assessments without consuming their quota
+    if assessment_data:
+        try:
+            print(f"[ASSESSMENT_TRACKING] User created learning plan - tracking assessment usage for user {current_user.id}")
+
+            from subscription_service import SubscriptionService
+            from models import UsageTrackingRequest
+
+            # Create usage tracking request
+            usage_request = UsageTrackingRequest(
+                user_id=current_user.id,
+                usage_type="assessment",
+                duration_minutes=None
+            )
+
+            # Track the usage
+            success = await SubscriptionService.track_usage(usage_request)
+            if success:
+                print(f"[ASSESSMENT_TRACKING] Successfully tracked assessment usage for user {current_user.id}")
+            else:
+                print(f"[ASSESSMENT_TRACKING] Usage tracking returned false for user {current_user.id}")
+
+        except Exception as tracking_error:
+            print(f"[ASSESSMENT_TRACKING] Error tracking assessment usage: {str(tracking_error)}")
+            # Don't fail the plan creation if usage tracking fails
+            pass
     
     # Create plan content based on assessment data if available, otherwise use mock data
     if assessment_data:
