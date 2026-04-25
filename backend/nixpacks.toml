@@ -6,7 +6,7 @@ aptPkgs = ["python3-pip", "python3-dev", "build-essential"]
 cmds = [
   "python3 -m pip install --no-cache-dir --upgrade pip==24.0",
   "python3 -m pip install --no-cache-dir setuptools==69.5.1 wheel==0.43.0",
-  "python3 -m pip install --no-cache-dir -r requirements.cron.txt"
+  "python3 -m pip install --no-cache-dir -r requirements.txt"
 ]
 
 [start]
