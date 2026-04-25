@@ -44,13 +44,13 @@ LEVEL_REQUIREMENTS = {
         "word_count_range": (50, 80),
         "vocabulary_count": (6, 8),
         "sentence_length_max": 8,
-        "description": "Very basic vocabulary, very simple sentences, present tense only"
+        "description": "ABSOLUTE BEGINNER level - Use ONLY the most basic, common words. ONLY present tense. NO subordinate clauses. NO complex grammar. Subject-Verb-Object structure only. AI tutor MUST NOT introduce vocabulary beyond basic everyday words."
     },
     "A2": {
         "word_count_range": (80, 120),
         "vocabulary_count": (8, 10),
         "sentence_length_max": 12,
-        "description": "Basic vocabulary, simple sentences, present and past tense"
+        "description": "ELEMENTARY level - Use basic, familiar vocabulary only. Simple present and simple past tense. NO subjunctive, NO passive voice, NO complex conditionals. Simple compound sentences OK. AI tutor MUST stay within elementary vocabulary during conversation."
     },
     "B1": {
         "word_count_range": (120, 180),
@@ -135,12 +135,21 @@ def create_summarization_agent():
 
     return Agent(
         role="CEFR Content Adaptation Specialist",
-        goal="Adapt news articles to appropriate CEFR levels (A1, A2, B1, B2, C1, C2) for language learners",
+        goal="Adapt news articles to appropriate CEFR levels (A1, A2, B1, B2, C1, C2) for language learners with STRICT level adherence",
         backstory="""You are an expert language pedagogy specialist who adapts content
         to match CEFR proficiency levels. You understand how to simplify or enrich
         language while maintaining the core message and interest of the article.
 
-        You follow strict CEFR guidelines for word count, sentence complexity, and vocabulary.""",
+        You follow STRICT CEFR guidelines for word count, sentence complexity, and vocabulary.
+
+        CRITICAL for A1/A2 levels:
+        - A1: ABSOLUTE BEGINNER - Use only the 500 most common words, present tense only
+        - A2: ELEMENTARY - Use only basic familiar words, simple present/past tense only
+        - You provide detailed AI tutor instructions that enforce level boundaries
+        - AI tutor instructions MUST warn against vocabulary/grammar drift beyond the level
+        - For A1/A2, AI tutor MUST simplify and rephrase if learner shows confusion
+
+        Your AI instructions ensure the conversation stays strictly within the proficiency level.""",
         llm=GPT_MODEL,
         verbose=True,
         allow_delegation=False
@@ -281,15 +290,21 @@ def create_summarization_task(
         5. Is written COMPLETELY in {language_names[language]} - not English!
 
         Also provide:
-        - AI tutor instructions: Brief guidance (in English) for the AI conversation partner on how to
-          discuss this news with the learner (e.g., which grammar structures to practice,
-          conversation strategies, etc.)
+        - AI tutor instructions: Detailed guidance (in English) for the AI conversation partner that:
+          * Lists MAXIMUM vocabulary complexity allowed (based on {level})
+          * Specifies EXACT grammar structures to use/avoid
+          * Defines sentence complexity limits (max {level_req['sentence_length_max']} words/sentence)
+          * For A1/A2: Emphasizes staying STRICTLY within beginner level - NO advanced vocabulary or grammar
+          * For A1/A2: Tutor must simplify/rephrase if learner doesn't understand
+          * For A1/A2: Use present tense primarily, avoid complex past/future constructions
+          * Provides conversation strategies to keep discussion at {level} level
+          * Warns tutor NOT to drift beyond {level} vocabulary/grammar during conversation
 
         Return JSON with:
         {{
             "summary": "adapted summary text IN {language_names[language]}",
             "word_count": <actual count>,
-            "ai_instructions": "guidance for AI tutor (in English)"
+            "ai_instructions": "Strict level-appropriate guidance for AI tutor (in English). MUST include vocabulary limits, grammar constraints, sentence complexity rules, and explicit warnings to stay at {level} level."
         }}
         """,
         agent=agent,

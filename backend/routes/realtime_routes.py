@@ -556,6 +556,29 @@ CONVERSATION GUIDANCE:
                 "greeting": f"Hello! I am your {language} language tutor."
             })
 
+            # Build level-specific constraints
+            level_constraints = ""
+            if level == "A1":
+                level_constraints = """
+**A1 ABSOLUTE BEGINNER - STRICTEST CONSTRAINTS:**
+- Use ONLY the 500 most common words - NO exceptions
+- Use ONLY present tense - NO past, future, or conditional
+- Maximum 8 words per sentence - keep sentences ultra-simple
+- Subject-Verb-Object structure ONLY - NO subordinate clauses
+- If learner doesn't understand, simplify immediately - don't persist with difficult words
+- YOU MUST NOT introduce vocabulary beyond basic everyday words (family, food, numbers, colors, etc.)
+"""
+            elif level == "A2":
+                level_constraints = """
+**A2 ELEMENTARY - STRICT CONSTRAINTS:**
+- Use only basic, familiar vocabulary - NO advanced words
+- Simple present and simple past tense ONLY - NO complex tenses
+- Maximum 12 words per sentence - keep sentences simple
+- Simple compound sentences OK (and, but, or) - NO complex subordination
+- If learner struggles, rephrase with simpler words - stay within A2 vocabulary
+- YOU MUST NOT use subjunctive, passive voice, or complex conditionals
+"""
+
             # Build comprehensive news instructions
             instructions = f"""You are a {language} language tutor conducting a news discussion session with an {level} level student.
 
@@ -605,11 +628,12 @@ CONVERSATION FLOW:
    - Encourage students to analyze the implications
    - Discuss different perspectives on the topic
 
-LANGUAGE LEVEL ADAPTATION ({level}):
-- Use vocabulary and grammar appropriate for {level} level
-- Simplify complex concepts when needed
-- Provide scaffolding for difficult expressions
-- Celebrate progress and correct gently
+🚨 STRICT LANGUAGE LEVEL CONSTRAINTS ({level}):
+{level_constraints}
+- Vocabulary and grammar MUST stay at {level} level throughout the conversation
+- Do NOT drift into higher-level language as conversation progresses
+- Simplify immediately if learner shows confusion
+- Celebrate progress and correct gently within level constraints
 
 CORRECTION STYLE:
 - Use natural recasting (embed correct form in your response)
