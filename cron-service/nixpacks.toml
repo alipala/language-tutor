@@ -1,5 +1,5 @@
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["python3 -m pip install -r requirements.txt"]
 
 [start]
 cmd = "python phase2-crewai/weekly_cron.py"

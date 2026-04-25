@@ -1,5 +1,5 @@
 [phases.install]
-cmds = ["pip install -r requirements.cron.txt"]
+cmds = ["python3 -m pip install -r requirements.cron.txt"]
 
 [start]
 cmd = "python challenge_pool_replenisher.py"
