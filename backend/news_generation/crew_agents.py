@@ -271,22 +271,25 @@ def create_summarization_task(
         - Sentence length: Maximum {level_req['sentence_length_max']} words per sentence
         - {level_req['description']}
 
-        Create an adapted summary in {language_names[language]} that:
+        **CRITICAL: Write the ENTIRE summary text IN THE {language_names[language]} LANGUAGE (language code: {language})**
+
+        Create an adapted summary that:
         1. Maintains the key facts and interest of the story
-        2. Uses level-appropriate vocabulary and grammar
+        2. Uses level-appropriate vocabulary and grammar for {level}
         3. Is engaging and encourages conversation
         4. Follows CEFR {level} guidelines strictly
+        5. Is written COMPLETELY in {language_names[language]} - not English!
 
         Also provide:
-        - AI tutor instructions: Brief guidance for the AI conversation partner on how to
+        - AI tutor instructions: Brief guidance (in English) for the AI conversation partner on how to
           discuss this news with the learner (e.g., which grammar structures to practice,
           conversation strategies, etc.)
 
         Return JSON with:
         {{
-            "summary": "adapted summary text",
+            "summary": "adapted summary text IN {language_names[language]}",
             "word_count": <actual count>,
-            "ai_instructions": "guidance for AI tutor"
+            "ai_instructions": "guidance for AI tutor (in English)"
         }}
         """,
         agent=agent,
@@ -321,8 +324,10 @@ def create_vocabulary_task(
 
         Article Title: {article.get('title', '')}
         Adapted Summary: {summary}
-        Target Language: {language_names[language]}
+        Target Language: {language_names[language]} (language code: {language})
         Level: {level}
+
+        **CRITICAL: All vocabulary items and discussion questions MUST be in {language_names[language]} language!**
 
         Create {vocab_count[0]}-{vocab_count[1]} vocabulary items that:
         1. Are relevant to the article content
@@ -331,30 +336,31 @@ def create_vocabulary_task(
 
         For each vocabulary item, provide:
         - word: The word in {language_names[language]}
-        - translation: Translation to English (if not English) or definition
-        - example: A simple example sentence using the word
+        - translation: Translation to English (if language is not English) or definition in English
+        - example: A simple example sentence using the word IN {language_names[language]}
         - ipa: IPA pronunciation (optional, if helpful)
 
-        Also create 3-4 discussion questions that:
+        Also create 3-4 discussion questions IN {language_names[language]} that:
         - Encourage learners to express opinions
         - Practice past tense, present tense, or future tense as appropriate for {level}
         - Are open-ended and interesting
         - Help practice the vocabulary words
+        - Are written COMPLETELY in {language_names[language]} - not English!
 
         Return JSON with:
         {{
             "vocabulary": [
                 {{
-                    "word": "example",
-                    "translation": "ejemplo",
-                    "example": "This is an example sentence.",
+                    "word": "example word in {language_names[language]}",
+                    "translation": "English translation or definition",
+                    "example": "Example sentence in {language_names[language]}",
                     "ipa": "/ɪɡˈzæmpəl/"
                 }},
                 ...
             ],
             "discussion_questions": [
-                "What do you think about...",
-                "Have you ever...",
+                "Question in {language_names[language]}...",
+                "Another question in {language_names[language]}...",
                 ...
             ]
         }}
