@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
-# Supported languages and levels for MVP
-SUPPORTED_LANGUAGES = ["en", "es", "nl"]  # English, Spanish, Dutch
-SUPPORTED_LEVELS = ["A2", "B1", "B2"]  # MVP: 3 core levels
+# Supported languages and levels
+SUPPORTED_LANGUAGES = ["en", "es", "nl", "pt", "de", "fr"]  # English, Spanish, Dutch, Portuguese, German, French
+SUPPORTED_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]  # All 6 CEFR levels
 
 class NewsArticleMetadata(BaseModel):
     """Metadata for a news article (returned in list view)"""

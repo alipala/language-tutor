@@ -35,11 +35,17 @@ GPT_MODEL_MINI = "gpt-4o-mini"  # For cheaper vocabulary generation
 
 # MVP Configuration
 MVP_ARTICLE_COUNT = 5  # Target 5 articles per day
-MVP_LANGUAGES = ["en", "es", "nl"]  # English, Spanish, Dutch
-MVP_LEVELS = ["A2", "B1", "B2"]  # 3 core proficiency levels
+MVP_LANGUAGES = ["en", "es", "nl", "pt", "de", "fr"]  # English, Spanish, Dutch, Portuguese, German, French
+MVP_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]  # All 6 CEFR proficiency levels
 
 # CEFR Level Requirements
 LEVEL_REQUIREMENTS = {
+    "A1": {
+        "word_count_range": (50, 80),
+        "vocabulary_count": (6, 8),
+        "sentence_length_max": 8,
+        "description": "Very basic vocabulary, very simple sentences, present tense only"
+    },
     "A2": {
         "word_count_range": (80, 120),
         "vocabulary_count": (8, 10),
@@ -57,6 +63,18 @@ LEVEL_REQUIREMENTS = {
         "vocabulary_count": (12, 15),
         "sentence_length_max": 25,
         "description": "Advanced vocabulary, complex sentences with clauses, idioms"
+    },
+    "C1": {
+        "word_count_range": (250, 350),
+        "vocabulary_count": (15, 18),
+        "sentence_length_max": 30,
+        "description": "Sophisticated vocabulary, complex grammatical structures, nuanced expressions"
+    },
+    "C2": {
+        "word_count_range": (350, 500),
+        "vocabulary_count": (18, 22),
+        "sentence_length_max": 35,
+        "description": "Native-like vocabulary, highly complex sentences, subtle expressions, idiomatic language"
     }
 }
 
@@ -117,7 +135,7 @@ def create_summarization_agent():
 
     return Agent(
         role="CEFR Content Adaptation Specialist",
-        goal="Adapt news articles to appropriate CEFR levels (A2, B1, B2) for language learners",
+        goal="Adapt news articles to appropriate CEFR levels (A1, A2, B1, B2, C1, C2) for language learners",
         backstory="""You are an expert language pedagogy specialist who adapts content
         to match CEFR proficiency levels. You understand how to simplify or enrich
         language while maintaining the core message and interest of the article.
@@ -235,7 +253,10 @@ def create_summarization_task(
     language_names = {
         "en": "English",
         "es": "Spanish",
-        "nl": "Dutch"
+        "nl": "Dutch",
+        "pt": "Portuguese",
+        "de": "German",
+        "fr": "French"
     }
 
     return Task(
@@ -289,7 +310,10 @@ def create_vocabulary_task(
     language_names = {
         "en": "English",
         "es": "Spanish",
-        "nl": "Dutch"
+        "nl": "Dutch",
+        "pt": "Portuguese",
+        "de": "German",
+        "fr": "French"
     }
 
     return Task(

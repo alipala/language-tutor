@@ -17,8 +17,8 @@ router = APIRouter()
 
 class NewsGenerationRequest(BaseModel):
     """Request body for manual news generation"""
-    languages: Optional[List[str]] = ['en', 'es', 'nl']
-    levels: Optional[List[str]] = ['A2', 'B1', 'B2']
+    languages: Optional[List[str]] = ['en', 'es', 'nl', 'pt', 'de', 'fr']
+    levels: Optional[List[str]] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
     categories: Optional[List[str]] = ['technology', 'science', 'culture', 'sports', 'environment', 'health', 'business']
 
 

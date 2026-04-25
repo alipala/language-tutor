@@ -425,14 +425,20 @@ async def generate_variation_simple(
     language_names = {
         "en": "English",
         "es": "Spanish",
-        "nl": "Dutch"
+        "nl": "Dutch",
+        "pt": "Portuguese",
+        "de": "German",
+        "fr": "French"
     }
 
     # Level descriptions
     level_descriptions = {
+        "A1": "beginner level (A1) - very basic vocabulary, very short sentences, present tense only",
         "A2": "elementary level (A2) - simple vocabulary, short sentences, present/past tense",
         "B1": "intermediate level (B1) - everyday vocabulary, varied sentences, common idioms",
-        "B2": "upper-intermediate level (B2) - advanced vocabulary, complex sentences, nuanced language"
+        "B2": "upper-intermediate level (B2) - advanced vocabulary, complex sentences, nuanced language",
+        "C1": "advanced level (C1) - sophisticated vocabulary, complex grammatical structures, nuanced expressions",
+        "C2": "proficiency level (C2) - native-like vocabulary, highly complex sentences, subtle idiomatic language"
     }
 
     lang_name = language_names.get(language, "English")
