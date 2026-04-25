@@ -1,14 +1,15 @@
 [phases.setup]
 pythonVersion = "3.11"
-aptPkgs = ["python3-dev", "build-essential"]
+aptPkgs = ["python3-dev", "python3-venv", "build-essential"]
 
 [phases.install]
 cmds = [
-  "python3 -m ensurepip --upgrade || true",
-  "python3 -m pip install --no-cache-dir --upgrade pip==24.0",
-  "python3 -m pip install --no-cache-dir setuptools==69.5.1 wheel==0.43.0",
-  "python3 -m pip install --no-cache-dir -r requirements.txt"
+  "python3 -m venv /opt/venv",
+  "/opt/venv/bin/pip install --no-cache-dir --upgrade pip==24.0",
+  "/opt/venv/bin/pip install --no-cache-dir setuptools==69.5.1 wheel==0.43.0",
+  "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
+  "printf '\\nPATH=/opt/venv/bin:$PATH' >> /root/.profile"
 ]
 
 [start]
-cmd = "python challenge_pool_replenisher.py"
+cmd = "/opt/venv/bin/python challenge_pool_replenisher.py"
