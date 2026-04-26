@@ -733,7 +733,7 @@ async def store_session_summary(
             # 🔥 NEW: Update daily_stats for weekly practice chart
             try:
                 from database import daily_stats_collection
-                local_date = get_current_local_date(user_timezone='UTC')
+                local_date = get_current_local_date(timezone_str='UTC')
                 time_seconds = session_duration_minutes * 60
 
                 daily_result = await daily_stats_collection.update_one(
