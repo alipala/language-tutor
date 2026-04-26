@@ -655,42 +655,22 @@ async def store_session_summary(
                 weekly_schedule[week_index]["sessions_completed"] = sessions_in_week
                 print(f"[SESSION_SUMMARY] Updated week {new_week} sessions_completed to {sessions_in_week}")
 
-        # CRITICAL FIX: Track subscription usage when session is completed
-        # 🔥 FIX: Also need to calculate session duration early for user minutes tracking
+        # 🔥 REMOVED DIRECT MINUTE TRACKING - now handled by mobile app calling /api/stripe/track-speaking-time
+        # This prevents double-deduction bug where minutes were tracked here AND by BulletproofTracker
+        #
+        # Mobile app flow:
+        # 1. Calls /api/learning/session-summary (this endpoint) - saves session data to learning plan
+        # 2. Calls /api/stripe/track-speaking-time - tracks minutes via BulletproofTracker (atomic, with deduplication)
+        #
+        # 🔥 FIX: Calculate session duration for learning plan tracking (but don't deduct minutes here)
         selected_duration = conversation_data.get("selected_duration", 5) if conversation_data else 5
         session_duration_minutes = conversation_data.get("duration_minutes", selected_duration) if conversation_data else selected_duration
         # Cap at selected_duration; anything over is a frontend timer glitch
         session_duration_minutes = min(float(session_duration_minutes), float(selected_duration))
 
-        try:
-            users_collection = database.users
-            for _attempt in range(3):
-                try:
-                    # 🔥 FIX: Update BOTH practice_sessions_used AND practice_minutes_used
-                    user_result = await users_collection.update_one(
-                        {"_id": ObjectId(current_user.id)},
-                        {
-                            "$inc": {
-                                "practice_sessions_used": 1,
-                                "practice_minutes_used": session_duration_minutes  # 🔥 NEW: Track minutes too!
-                            }
-                        }
-                    )
-                    if user_result.modified_count > 0:
-                        print(f"[SESSION_SUMMARY] ✅ Incremented subscription usage for user {current_user.id}: +1 session, +{session_duration_minutes} minutes")
-                    else:
-                        print(f"[SESSION_SUMMARY] ❌ Failed to increment subscription usage for user {current_user.id}")
-                    break
-                except Exception as retry_err:
-                    if _attempt < 2:
-                        print(f"[SESSION_SUMMARY] Subscription tracking attempt {_attempt+1} failed, retrying: {retry_err}")
-                        await asyncio.sleep(0.5)
-                    else:
-                        raise
-        except Exception as subscription_error:
-            print(f"[SESSION_SUMMARY] ❌ Error tracking subscription usage: {str(subscription_error)}")
-            # Don't fail the session saving if subscription tracking fails
-            pass
+        # ⚠️ NOTE: Minutes are NOT tracked here anymore - they're tracked by /api/stripe/track-speaking-time
+        # This endpoint only saves the session data to the learning plan
+        print(f"[SESSION_SUMMARY] ⚡ Session duration: {session_duration_minutes} min (minutes will be tracked by /api/stripe/track-speaking-time)")
 
         # 🎯 NEW: Store session messages for future comparisons
         # Initialize session_history if it doesn't exist
@@ -746,17 +726,9 @@ async def store_session_summary(
         if update_result.modified_count > 0:
             print(f"[SESSION_SUMMARY] Successfully updated learning plan {plan_id}")
 
-            # 🔥 NEW: Update user's practice_minutes_used for statistics
-            try:
-                from database import users_collection
-                user_update = await users_collection.update_one(
-                    {"_id": ObjectId(current_user.id)},
-                    {"$inc": {"practice_minutes_used": session_duration_minutes}}
-                )
-                if user_update.modified_count > 0:
-                    print(f"[SESSION_SUMMARY] ✅ Updated user practice_minutes_used: +{session_duration_minutes} min")
-            except Exception as user_err:
-                print(f"[SESSION_SUMMARY] ⚠️ Error updating user practice minutes: {user_err}")
+            # ⚠️ REMOVED DUPLICATE: Minutes already incremented at lines 670-680
+            # This was causing double-deduction bug where 3-minute sessions deducted 6+ minutes
+            # 🔥 FIX: User practice_minutes_used is already updated at line 675 above (don't duplicate!)
 
             # 🔥 NEW: Update daily_stats for weekly practice chart
             try:
