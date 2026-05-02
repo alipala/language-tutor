@@ -247,12 +247,13 @@ async def google_login(login_data: GoogleLoginRequest):
             if not user:
                 # Create new user
                 name = google_data.get("name", "Google User")
+                created_at = datetime.utcnow()
                 user_data = {
                     "email": email,
                     "name": name,
                     "is_active": True,
                     "is_verified": True,  # Google users are automatically verified
-                    "created_at": datetime.utcnow(),
+                    "created_at": created_at,
                     "last_login": datetime.utcnow(),
                     "hashed_password": "GOOGLE_OAUTH",  # Special marker for Google users
                     # Initialize subscription fields for free tier
@@ -260,7 +261,10 @@ async def google_login(login_data: GoogleLoginRequest):
                     "subscription_period": "monthly",
                     "practice_minutes_used": 0,
                     "practice_sessions_used": 0,
-                    "assessments_used": 0
+                    "assessments_used": 0,
+                    # 🔥 FIX: Initialize billing period (30 days from join date)
+                    "current_period_start": created_at,
+                    "current_period_end": created_at + timedelta(days=30)
                 }
                 result = await users_collection.insert_one(user_data)
                 user_id = str(result.inserted_id)
@@ -374,6 +378,7 @@ async def apple_login(login_data: AppleLoginRequest):
                 # Create new user with Apple Sign-In
                 print(f"[APPLE AUTH] Creating new user with Apple Sign-In: {email}")
                 name = login_data.name or apple_data.get("name") or "Apple User"
+                created_at = datetime.utcnow()
 
                 user_data = {
                     "email": email,
@@ -381,7 +386,7 @@ async def apple_login(login_data: AppleLoginRequest):
                     "apple_user_id": apple_user_id,
                     "is_active": True,
                     "is_verified": True,  # Apple users are automatically verified
-                    "created_at": datetime.utcnow(),
+                    "created_at": created_at,
                     "last_login": datetime.utcnow(),
                     "hashed_password": "APPLE_OAUTH",  # Special marker for Apple users
                     # Initialize subscription fields for free tier
@@ -389,7 +394,10 @@ async def apple_login(login_data: AppleLoginRequest):
                     "subscription_period": "monthly",
                     "practice_minutes_used": 0,
                     "practice_sessions_used": 0,
-                    "assessments_used": 0
+                    "assessments_used": 0,
+                    # 🔥 FIX: Initialize billing period (30 days from join date)
+                    "current_period_start": created_at,
+                    "current_period_end": created_at + timedelta(days=30)
                 }
 
                 result = await users_collection.insert_one(user_data)

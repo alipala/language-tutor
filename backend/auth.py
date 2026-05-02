@@ -320,7 +320,8 @@ async def create_user(user: UserCreate) -> UserResponse:
     user_dict = user.dict()
     user_dict.pop("password")
     user_dict["hashed_password"] = hashed_password
-    user_dict["created_at"] = datetime.utcnow()
+    created_at = datetime.utcnow()
+    user_dict["created_at"] = created_at
 
     # New users require email verification
     user_dict["is_verified"] = False
@@ -331,6 +332,10 @@ async def create_user(user: UserCreate) -> UserResponse:
     user_dict["practice_minutes_used"] = 0
     user_dict["practice_sessions_used"] = 0
     user_dict["assessments_used"] = 0
+
+    # 🔥 FIX: Initialize billing period (30 days from join date)
+    user_dict["current_period_start"] = created_at
+    user_dict["current_period_end"] = created_at + timedelta(days=30)
 
     # Insert user into database
     result = await users_collection.insert_one(user_dict)

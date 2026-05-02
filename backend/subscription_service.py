@@ -872,23 +872,39 @@ Resubscribe to unlock:
             audit_data = await DurationTrackingSafeguards.create_audit_trail(
                 user_id, user.get('email', 'unknown'), old_data, new_data, "monthly_usage_reset"
             )
-            
+
+            # 🔥 FIX: Use 30-day cycles based on join date, NOT calendar month
             now = datetime.utcnow()
-            next_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            if now.month == 12:
-                next_month = next_month.replace(year=now.year + 1, month=1)
+            created_at = user.get('created_at')
+
+            if not created_at:
+                # Fallback: if no created_at, use current time
+                logger.warning(f"User {user_id} has no created_at, using current time for period")
+                created_at = now
+
+            # Calculate current 30-day cycle
+            if isinstance(created_at, str):
+                join_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
             else:
-                next_month = next_month.replace(month=now.month + 1)
-            
+                join_date = created_at
+
+            # Calculate how many 30-day cycles have passed since join
+            days_since_join = (now - join_date).days
+            cycles_passed = days_since_join // 30
+
+            # Set period to current 30-day cycle
+            period_start = join_date + timedelta(days=cycles_passed * 30)
+            period_end = period_start + timedelta(days=30)
+
             await database["users"].update_one(
                 get_user_query(user_id),
                 {
                     "$set": {
                         "practice_sessions_used": 0,
                         "assessments_used": 0,
-                        "practice_minutes_used": 0.0,  # NEW: Reset minute usage
-                        "current_period_start": now.replace(day=1, hour=0, minute=0, second=0, microsecond=0),
-                        "current_period_end": next_month,
+                        "practice_minutes_used": 0.0,
+                        "current_period_start": period_start,
+                        "current_period_end": period_end,
                         "last_monthly_reset": datetime.utcnow().isoformat()
                     },
                     "$push": {
