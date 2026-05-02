@@ -11,13 +11,13 @@ ENV PYTHON_VERSION=3.11
 WORKDIR /app
 
 # Install system dependencies
+# Note: Ubuntu 22.04 has Python 3.11 in universe repository (no PPA needed)
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     curl \
     wget \
     gnupg \
     ca-certificates \
-    && add-apt-repository ppa:deadsnakes/ppa \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
     && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
     && apt-get update && apt-get install -y \
