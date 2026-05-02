@@ -14,7 +14,8 @@ from models import (
     SaveConversationRequest, ConversationStats, ConversationHistoryResponse,
     Flashcard, FlashcardSet
 )
-from database import conversation_sessions_collection, users_collection
+from database import conversation_sessions_collection, users_collection, daily_stats_collection
+from services.timezone_utils import get_current_local_date
 from enhanced_analysis import generate_enhanced_analysis
 from session_statistics import SessionStatistics
 
@@ -936,6 +937,34 @@ async def save_conversation(
             
             print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
 
+            # Update daily_stats so practice sessions count toward Day Streak
+            try:
+                local_date = get_current_local_date(timezone_str='UTC')
+                time_seconds = integer_duration * 60
+                await daily_stats_collection.update_one(
+                    {'user_id': current_user.id, 'local_date': local_date},
+                    {
+                        '$inc': {
+                            'conversation_time_seconds': time_seconds,
+                            'total_time_seconds': time_seconds,
+                        },
+                        '$set': {'updated_at': datetime.now(timezone.utc)},
+                        '$setOnInsert': {
+                            'created_at': datetime.now(timezone.utc),
+                            'is_streak_day': True,
+                            'total_sessions': 0,
+                            'total_challenges': 0,
+                            'correct_challenges': 0,
+                            'incorrect_challenges': 0,
+                            'total_xp': 0,
+                        }
+                    },
+                    upsert=True
+                )
+                print(f"[PROGRESS] ✅ Updated daily_stats for streak: +{integer_duration} min (updated session)")
+            except Exception as stats_err:
+                print(f"[PROGRESS] ⚠️ Error updating daily_stats for streak (non-fatal): {stats_err}")
+
             # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER response is sent)
             background_tasks.add_task(
                 _generate_summary_and_analysis_background,
@@ -1082,6 +1111,34 @@ async def save_conversation(
             result = await conversation_sessions_collection.insert_one(session_dict)
 
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
+
+            # Update daily_stats so practice sessions count toward Day Streak
+            try:
+                local_date = get_current_local_date(timezone_str='UTC')
+                time_seconds = integer_duration * 60
+                await daily_stats_collection.update_one(
+                    {'user_id': current_user.id, 'local_date': local_date},
+                    {
+                        '$inc': {
+                            'conversation_time_seconds': time_seconds,
+                            'total_time_seconds': time_seconds,
+                        },
+                        '$set': {'updated_at': datetime.now(timezone.utc)},
+                        '$setOnInsert': {
+                            'created_at': datetime.now(timezone.utc),
+                            'is_streak_day': True,
+                            'total_sessions': 0,
+                            'total_challenges': 0,
+                            'correct_challenges': 0,
+                            'incorrect_challenges': 0,
+                            'total_xp': 0,
+                        }
+                    },
+                    upsert=True
+                )
+                print(f"[PROGRESS] ✅ Updated daily_stats for streak: +{integer_duration} min (new session)")
+            except Exception as stats_err:
+                print(f"[PROGRESS] ⚠️ Error updating daily_stats for streak (non-fatal): {stats_err}")
 
             # 🚀 Create sentence analysis job for background processing
             if analysis_job_id and request.sentences_for_analysis:
