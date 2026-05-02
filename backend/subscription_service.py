@@ -689,7 +689,7 @@ class SubscriptionService:
 
         Args:
             user_id: User ID to check
-            selected_duration_minutes: Duration user wants to practice (3 or 5 minutes)
+            selected_duration_minutes: Duration user wants to practice (1, 3, or 5 minutes)
                                       If None, checks for minimum 3 minutes
 
         Returns:

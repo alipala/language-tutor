@@ -318,7 +318,7 @@ class ConversationSession(BaseModel):
     topic: Optional[str] = None
     messages: List[ConversationMessage] = []
     duration_minutes: float = 0.0
-    selected_duration: Optional[int] = 5  # 🆕 NEW: User's selected session duration (3 or 5 minutes)
+    selected_duration: Optional[int] = 5  # User's selected session duration in minutes (1, 3, or 5)
     message_count: int = 0
     summary: Optional[str] = None
     enhanced_analysis: Optional[Dict[str, Any]] = None  # New enhanced analysis data
@@ -337,7 +337,7 @@ class SaveConversationRequest(BaseModel):
     topic: Optional[str] = None
     messages: List[Dict[str, Any]]
     duration_minutes: float
-    selected_duration: Optional[int] = 5  # 🆕 NEW: User's selected session duration (3 or 5 minutes), default 5 for backward compatibility
+    selected_duration: Optional[int] = 5  # User's selected session duration in minutes (1, 3, or 5); default 5 for backward compatibility
     learning_plan_id: Optional[str] = None
     conversation_type: Optional[str] = 'practice'
     sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch sentence analysis

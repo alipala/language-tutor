@@ -49,7 +49,7 @@ class TutorSessionRequest(BaseModel):
     conversation_history: Optional[str] = None
     news_context: Optional[str] = None  # News article context for news conversations
     learning_plan_data: Optional[Dict[str, Any]] = None  # Learning plan session context
-    selected_duration: Optional[int] = 5  # Session duration in minutes (3 or 5)
+    selected_duration: Optional[int] = 5  # Session duration in minutes (1, 3, or 5)
     disable_corrections: Optional[bool] = False  # Disable real-time grammar corrections (all levels)
 
 class RealtimeUsageData(BaseModel):
