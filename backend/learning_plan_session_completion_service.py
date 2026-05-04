@@ -211,17 +211,17 @@ class LearningPlanSessionCompletionService:
                     },
                     {
                         '$inc': {
-                            'conversation_time_seconds': time_seconds,  # Track conversation time separately
-                            'total_time_seconds': time_seconds,  # Also add to total time
+                            'conversation_time_seconds': time_seconds,
+                            'total_time_seconds': time_seconds,
+                            'total_sessions': 1,  # drives plan_session mission progress
                         },
                         '$set': {
-                            'user_timezone': 'UTC',  # TODO: Use user's actual timezone
+                            'user_timezone': 'UTC',
                             'updated_at': datetime.utcnow(),
                         },
                         '$setOnInsert': {
                             'created_at': datetime.utcnow(),
                             'is_streak_day': True,
-                            'total_sessions': 0,
                             'total_challenges': 0,
                             'correct_challenges': 0,
                             'incorrect_challenges': 0,

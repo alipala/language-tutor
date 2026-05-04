@@ -759,8 +759,15 @@ async def _get_completed_challenge_sessions_today(
 
 
 async def _get_reviewed_flashcard_count(user_id: str) -> int:
+    """Count flashcard sets reviewed TODAY — not all-time — so the mission
+    resets properly each day and can't be pre-completed by past activity."""
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     return await flashcard_sets_collection.count_documents(
-        {"user_id": user_id, "is_reviewed": True}
+        {
+            "user_id": user_id,
+            "is_reviewed": True,
+            "reviewed_at": {"$gte": today_start},
+        }
     )
 
 

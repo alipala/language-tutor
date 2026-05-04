@@ -803,6 +803,21 @@ async def get_challenges_by_type(
 
             print(f"[CHALLENGE_POOL] ✅ Found {len(challenges)} {challenge_type} challenges for language {user_language}, level {user_level}")
 
+            # ── Fallback: if pool is empty, serve from reference_challenges ──
+            # This handles users whose pool hasn't been filled yet for this
+            # language/level/type combination (e.g. new plan, new language).
+            if len(challenges) == 0:
+                print(f"[CHALLENGE_POOL] ⚠️  Pool empty for {challenge_type}/{user_language}/{user_level} — falling back to reference challenges")
+                from challenge_pool_helpers import get_reference_challenges
+                challenges = await get_reference_challenges(
+                    challenge_type=challenge_type,
+                    language=user_language,
+                    level=user_level,
+                    limit=limit,
+                    user_id=user_id
+                )
+                print(f"[CHALLENGE_POOL] ✅ Reference fallback: {len(challenges)} challenges")
+
             return ChallengesByTypeResponse(
                 challenges=challenges,
                 total=len(challenges),
