@@ -294,6 +294,15 @@ async def init_db():
         # TTL index: Delete old digest messages after 30 days
         await daily_digest_messages_collection.create_index("generated_at", expireAfterSeconds=30 * 24 * 60 * 60)
 
+        # Daily missions: unique per user+date, TTL after 3 days
+        daily_missions_collection = database.daily_missions
+        await daily_missions_collection.create_index(
+            [("user_id", 1), ("local_date", 1)], unique=True
+        )
+        await daily_missions_collection.create_index(
+            "expires_at", expireAfterSeconds=0
+        )
+
         print("Database indexes initialized successfully")
     except Exception as e:
         print(f"ERROR initializing database indexes: {str(e)}")

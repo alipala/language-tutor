@@ -426,6 +426,41 @@ async def get_flashcards_for_session(
             detail=f"Failed to fetch flashcards for session: {str(e)}"
         )
 
+@router.post("/set/{set_id}/mark-reviewed")
+async def mark_flashcard_set_reviewed(
+    set_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Mark a flashcard set as reviewed by the user.
+    Called when the user opens and views a flashcard set.
+    Drives Mission 3 (Gold) progress in Today's Missions.
+    """
+    try:
+        result = await flashcard_sets_collection.update_one(
+            {"id": set_id, "user_id": str(current_user.id)},
+            {"$set": {"is_reviewed": True, "reviewed_at": datetime.utcnow()}}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Flashcard set not found"
+            )
+
+        print(f"[FLASHCARD_API] ✅ Marked set {set_id} as reviewed for user {current_user.id}")
+        return {"success": True, "set_id": set_id, "is_reviewed": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[FLASHCARD_API] ❌ Error marking set reviewed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to mark set as reviewed: {str(e)}"
+        )
+
+
 @router.delete("/set/{set_id}")
 async def delete_flashcard_set(
     set_id: str,
