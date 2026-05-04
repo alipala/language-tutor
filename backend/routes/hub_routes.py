@@ -88,6 +88,10 @@ class HubResponse(BaseModel):
     # Today's missions with live progress
     missions: List[Dict[str, Any]]
 
+    # Path A — predicted forecast of tomorrow's missions (read-only).
+    # Optional: absent if prediction failed (preview falls back to static copy).
+    next_missions_preview: Optional[Dict[str, Any]] = None
+
     # Metadata
     timezone: str
     local_date: str
@@ -284,6 +288,11 @@ async def get_hub_today(
         _get_or_generate_missions(user_id, local_date, tz, language),
     )
 
+    # Path A — predicted preview of tomorrow's missions.
+    # Runs AFTER mission generation so the variety guard's "recent" window
+    # includes today's just-written silver type.
+    next_preview = await _safe_predict_next(user_id, language, local_date)
+
     return HubResponse(
         success=True,
         fetched_at=datetime.utcnow().isoformat(),
@@ -295,6 +304,23 @@ async def get_hub_today(
         dna_summary=dna_summary,
         flashcard_sets=flashcards,
         missions=missions,
+        next_missions_preview=next_preview,
         timezone=tz,
         local_date=local_date,
     )
+
+
+async def _safe_predict_next(
+    user_id: str, language: Optional[str], local_date: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Wrap _predict_missions_preview so a prediction failure never breaks
+    the hub response. The preview is a nice-to-have, not core data.
+    """
+    try:
+        from routes.missions_routes import _predict_missions_preview
+        preview = await _predict_missions_preview(user_id, language, local_date)
+        return preview.dict()
+    except Exception as e:
+        print(f"[HUB] preview prediction failed: {e}")
+        return None

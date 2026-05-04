@@ -76,6 +76,7 @@ from database import (
     flashcard_sets_collection,
     learning_plans_collection,
     conversation_sessions_collection,
+    users_collection,
     database,
 )
 from services.timezone_utils import get_current_local_date, get_day_start_end
@@ -115,6 +116,23 @@ class DailyMissionsResponse(BaseModel):
     generated_at: str
 
 
+class PredictedMission(BaseModel):
+    """Tomorrow's preview mission — same shape as DailyMission minus progress."""
+    id: str
+    tier: str
+    title: str
+    challenge_type: Optional[str] = None
+    target: int
+
+
+class MissionsPreview(BaseModel):
+    """Path A — read-only forecast of tomorrow's missions."""
+    missions: List[PredictedMission]
+    silver_reason: str
+    silver_source: str       # "P1" | "P2" | "P3" | "P4" | "default"
+    next_local_date: str     # ISO date the preview applies to (in user TZ)
+
+
 # ─────────────────────────────────────────────────────────────
 # Challenge type config
 # ─────────────────────────────────────────────────────────────
@@ -144,10 +162,41 @@ SENTENCE_ERROR_MAP: Dict[str, str] = {
 # ─────────────────────────────────────────────────────────────
 # Priority stack — pick Silver challenge type
 # ─────────────────────────────────────────────────────────────
+#
+# Returns a SilverPick describing the winner, the runner-up
+# (used by the variety guard / Path C), and a short, human-readable
+# reason string ("Picked because grammar is your top focus") used
+# both for telemetry and for Tomorrow's Preview (Path A).
+# ─────────────────────────────────────────────────────────────
+
+class SilverPick(BaseModel):
+    winner:    str                # e.g. "error_spotting"
+    runner_up: Optional[str] = None  # e.g. "smart_flashcard"
+    source:    str                # "P1" | "P2" | "P3" | "P4" | "default"
+    reason:    str                # human-readable, ≤ ~70 chars
+
+
+# Friendly labels used to build reason strings.
+CHALLENGE_REASON_LABEL: Dict[str, str] = {
+    "error_spotting":  "grammar",
+    "native_check":    "fluency",
+    "smart_flashcard": "vocabulary",
+    "story_builder":   "story-telling",
+    "micro_quiz":      "quick recall",
+    "brain_tickler":   "puzzle thinking",
+}
+
 
 async def _pick_challenge_type(user_id: str, language: Optional[str]) -> str:
+    """Backwards-compatible thin wrapper — returns just the winner type."""
+    pick = await _pick_silver_pick(user_id, language)
+    return pick.winner
+
+
+async def _pick_silver_pick(user_id: str, language: Optional[str]) -> SilverPick:
     """
-    4-source priority stack — returns the most targeted challenge type.
+    4-source priority stack — returns the most targeted challenge type
+    along with the runner-up and a short reason.
     Runs all DB reads in parallel.
     """
 
@@ -187,27 +236,41 @@ async def _pick_challenge_type(user_id: str, language: Optional[str]) -> str:
                 mapped = SENTENCE_ERROR_MAP[et]
                 error_counts[mapped] = error_counts.get(mapped, 0) + 1
         if error_counts:
-            winner = max(error_counts, key=lambda k: error_counts[k])
+            ranked = sorted(error_counts.items(), key=lambda x: x[1], reverse=True)
+            winner = ranked[0][0]
+            runner_up = ranked[1][0] if len(ranked) > 1 else None
             print(f"[MISSIONS] P1 sentence_errors → {winner} ({error_counts})")
-            return winner
+            return SilverPick(
+                winner=winner,
+                runner_up=runner_up,
+                source="P1",
+                reason=f"Picked because {CHALLENGE_REASON_LABEL[winner]} mistakes show up most in your recent sessions",
+            )
 
     # ── P2: enhanced_analysis recommendations ────────────────
+    # P2 is single-signal (one keyword wins). No meaningful runner-up.
     if last_session:
         ea = last_session.get("enhanced_analysis") or {}
         recs = ea.get("recommendations") or []
         rec_text = " ".join(str(r) for r in recs).lower()
+        p2_match: Optional[str] = None
         if "vocabulary" in rec_text or "words" in rec_text:
-            print(f"[MISSIONS] P2 enhanced_analysis → smart_flashcard")
-            return "smart_flashcard"
-        if "fluency" in rec_text or "flow" in rec_text:
-            print(f"[MISSIONS] P2 enhanced_analysis → native_check")
-            return "native_check"
-        if "grammar" in rec_text or "verb" in rec_text:
-            print(f"[MISSIONS] P2 enhanced_analysis → error_spotting")
-            return "error_spotting"
-        if "coherence" in rec_text or "story" in rec_text or "connect" in rec_text:
-            print(f"[MISSIONS] P2 enhanced_analysis → story_builder")
-            return "story_builder"
+            p2_match = "smart_flashcard"
+        elif "fluency" in rec_text or "flow" in rec_text:
+            p2_match = "native_check"
+        elif "grammar" in rec_text or "verb" in rec_text:
+            p2_match = "error_spotting"
+        elif "coherence" in rec_text or "story" in rec_text or "connect" in rec_text:
+            p2_match = "story_builder"
+
+        if p2_match:
+            print(f"[MISSIONS] P2 enhanced_analysis → {p2_match}")
+            return SilverPick(
+                winner=p2_match,
+                runner_up=None,
+                source="P2",
+                reason=f"Your last session flagged {CHALLENGE_REASON_LABEL[p2_match]} as the next thing to work on",
+            )
 
     # ── P3: assessment skill scores ───────────────────────────
     if active_plan:
@@ -224,23 +287,23 @@ async def _pick_challenge_type(user_id: str, language: Optional[str]) -> str:
                 return float(raw.get("score", 100))
             return 100.0
 
-        fluency   = _score(fluency_raw)
-        grammar   = _score(grammar_raw)
-        vocab     = _score(vocab_raw)
-        coherence = _score(coherence_raw)
-
-        # Map lowest score to challenge type
         scores = [
-            ("native_check",    fluency),
-            ("error_spotting",  grammar),
-            ("smart_flashcard", vocab),
-            ("story_builder",   coherence),
+            ("native_check",    _score(fluency_raw)),
+            ("error_spotting",  _score(grammar_raw)),
+            ("smart_flashcard", _score(vocab_raw)),
+            ("story_builder",   _score(coherence_raw)),
         ]
         scores.sort(key=lambda x: x[1])
         weakest_type, weakest_score = scores[0]
+        runner_up = scores[1][0] if len(scores) > 1 else None
         if weakest_score < 40:   # Only override DNA if assessment shows a real weakness
             print(f"[MISSIONS] P3 assessment scores → {weakest_type} ({weakest_score:.0f})")
-            return weakest_type
+            return SilverPick(
+                winner=weakest_type,
+                runner_up=runner_up,
+                source="P3",
+                reason=f"Your baseline assessment shows {CHALLENGE_REASON_LABEL[weakest_type]} is your top growth area",
+            )
 
     # ── P4: DNA strands (fallback) ────────────────────────────
     if dna_doc:
@@ -258,11 +321,22 @@ async def _pick_challenge_type(user_id: str, language: Optional[str]) -> str:
         ]
         dna_scores.sort(key=lambda x: x[1])
         winner = dna_scores[0][0]
+        runner_up = dna_scores[1][0] if len(dna_scores) > 1 else None
         print(f"[MISSIONS] P4 DNA strands → {winner} (score={dna_scores[0][1]:.2f})")
-        return winner
+        return SilverPick(
+            winner=winner,
+            runner_up=runner_up,
+            source="P4",
+            reason=f"Your speaking DNA shows {CHALLENGE_REASON_LABEL[winner]} is your top focus area right now",
+        )
 
     print(f"[MISSIONS] default → micro_quiz")
-    return "micro_quiz"
+    return SilverPick(
+        winner="micro_quiz",
+        runner_up=None,
+        source="default",
+        reason="A short warm-up while we learn what you're working on",
+    )
 
 
 def _sentence_collection():
@@ -271,8 +345,222 @@ def _sentence_collection():
 
 
 # ─────────────────────────────────────────────────────────────
+# Path B — Streak-scaling Bronze target
+# ─────────────────────────────────────────────────────────────
+#
+# A 30-day-streak user is doing a different job from a fresh user.
+# Bronze target scales: 1 → 2 → 3 sessions as the streak grows.
+# Silver stays at 1 (one full 10-Q session is already meaningful).
+# Gold scales independently with unreviewed-set count.
+# ─────────────────────────────────────────────────────────────
+
+# (min_streak, target). Sorted descending so the first hit wins.
+BRONZE_STREAK_LADDER: List[tuple] = [
+    (30, 3),
+    (7,  2),
+    (0,  1),
+]
+
+
+def _bronze_target_for_streak(current_streak: int) -> int:
+    """Pure function — picks Bronze target from streak ladder."""
+    for min_streak, target in BRONZE_STREAK_LADDER:
+        if current_streak >= min_streak:
+            return target
+    return 1
+
+
+async def _get_current_streak(user_id: str) -> int:
+    """Read users.stats.current_streak. Returns 0 if missing."""
+    try:
+        user = await users_collection.find_one(
+            {"_id": ObjectId(user_id)}, {"stats.current_streak": 1}
+        )
+        if not user:
+            return 0
+        return int((user.get("stats") or {}).get("current_streak", 0))
+    except Exception:
+        return 0
+
+
+# ─────────────────────────────────────────────────────────────
+# Path C — Anti-repeat variety guard
+# ─────────────────────────────────────────────────────────────
+#
+# If a user got the same Silver challenge_type two days in a row,
+# tomorrow we promote the runner-up — provided one exists.
+# Keeps weekly variety without overriding pedagogy: we still target
+# a real weakness, just the second-most-pressing one.
+# ─────────────────────────────────────────────────────────────
+
+REPEAT_THRESHOLD_DAYS = 2  # If both yesterday + day-before were the same → demote.
+
+
+async def _recent_silver_types(user_id: str, local_date: str) -> List[str]:
+    """
+    Return Silver challenge_types for the previous N days, newest first.
+    Skips days with no doc rather than returning a sparse list — callers
+    only care whether the most-recent run repeats.
+    """
+    try:
+        cursor = _missions_coll().find(
+            {"user_id": user_id, "local_date": {"$lt": local_date}},
+            {"missions": 1, "local_date": 1},
+            sort=[("local_date", -1)],
+            limit=REPEAT_THRESHOLD_DAYS,
+        )
+        out: List[str] = []
+        async for doc in cursor:
+            for m in doc.get("missions", []):
+                if m.get("id") == "challenge" and m.get("challenge_type"):
+                    out.append(m["challenge_type"])
+                    break
+        return out
+    except Exception as e:
+        print(f"[MISSIONS] _recent_silver_types failed: {e}")
+        return []
+
+
+def _apply_variety_guard(pick: SilverPick, recent: List[str]) -> SilverPick:
+    """
+    If `pick.winner` matches the last REPEAT_THRESHOLD_DAYS Silver types
+    AND a runner-up exists, promote the runner-up. Otherwise return pick
+    unchanged.
+    """
+    if not pick.runner_up:
+        return pick
+    if len(recent) < REPEAT_THRESHOLD_DAYS:
+        return pick
+    if any(t != pick.winner for t in recent[:REPEAT_THRESHOLD_DAYS]):
+        return pick
+
+    # All recent days were the same as the current winner — swap.
+    print(
+        f"[MISSIONS] Variety guard: {pick.winner} repeated {REPEAT_THRESHOLD_DAYS}d "
+        f"→ promoting runner-up {pick.runner_up}"
+    )
+    return SilverPick(
+        winner=pick.runner_up,
+        runner_up=pick.winner,  # keep the original winner as the new runner-up
+        source=pick.source,
+        reason=(
+            f"Switching it up — you've worked on "
+            f"{CHALLENGE_REASON_LABEL.get(pick.winner, pick.winner)} "
+            f"two days running. Time for "
+            f"{CHALLENGE_REASON_LABEL.get(pick.runner_up, pick.runner_up)}."
+        ),
+    )
+
+
+async def _resolve_silver(
+    user_id: str,
+    language: Optional[str],
+    local_date: str,
+) -> SilverPick:
+    """
+    Single entry point: 4-source priority stack + variety guard.
+    Pure orchestration — used by both generation and prediction (Path A).
+    """
+    pick = await _pick_silver_pick(user_id, language)
+    recent = await _recent_silver_types(user_id, local_date)
+    return _apply_variety_guard(pick, recent)
+
+
+# ─────────────────────────────────────────────────────────────
 # Mission generation (runs once per day, result persisted)
 # ─────────────────────────────────────────────────────────────
+
+async def _resolve_language(user_id: str, language: Optional[str]) -> Optional[str]:
+    """If language wasn't passed in, fall back to the active learning plan."""
+    if language:
+        return language
+    plan = await learning_plans_collection.find_one(
+        {"user_id": user_id, "status": {"$in": ["in_progress", "active", None]}},
+        sort=[("updated_at", -1)],
+    )
+    return plan.get("language") if plan else None
+
+
+async def _build_missions(
+    user_id: str,
+    language: Optional[str],
+    local_date: str,
+) -> tuple:
+    """
+    Pure builder — returns (missions, silver_pick, bronze_id).
+    Used by both generation (writes) and prediction (read-only).
+
+    Runs three independent reads in parallel:
+      - Silver pick (priority stack + variety guard)
+      - Streak (drives Bronze target)
+      - Unreviewed flashcards count (drives Gold target)
+      - Active-plan presence (decides Bronze id)
+    """
+    silver, current_streak, unreviewed, has_active_plan = await asyncio.gather(
+        _resolve_silver(user_id, language, local_date),
+        _get_current_streak(user_id),
+        flashcard_sets_collection.count_documents(
+            {"user_id": user_id, "is_reviewed": {"$ne": True}}
+        ),
+        learning_plans_collection.count_documents(
+            {"user_id": user_id, "status": {"$in": ["in_progress", "active", None]}}
+        ),
+    )
+
+    silver_cfg = CHALLENGE_CFG.get(silver.winner, CHALLENGE_CFG["micro_quiz"])
+
+    # ── Bronze: plan_session OR news_session, target scales with streak ──
+    bronze_target = _bronze_target_for_streak(current_streak)
+    if has_active_plan:
+        bronze_id    = "plan_session"
+        bronze_title = (
+            "Complete today's plan session"
+            if bronze_target == 1
+            else f"Complete {bronze_target} plan sessions today"
+        )
+    else:
+        bronze_id    = "news_session"
+        bronze_title = (
+            "Read & discuss today's news"
+            if bronze_target == 1
+            else f"Read & discuss {bronze_target} news articles today"
+        )
+
+    bronze = {
+        "id":             bronze_id,
+        "tier":           "bronze",
+        "title":          bronze_title,
+        "challenge_type": None,
+        "target":         bronze_target,
+    }
+
+    # ── Gold: review unreviewed flashcards (cap 3, min 1) ─────────
+    flash_target = min(3, max(1, unreviewed)) if unreviewed > 0 else 1
+    flash_title  = (
+        f"Review {flash_target} flashcard set{'s' if flash_target > 1 else ''}"
+        if unreviewed > 0
+        else "All flashcard sets reviewed!"
+    )
+
+    missions: List[Dict] = [
+        bronze,
+        {
+            "id":             "challenge",
+            "tier":           "silver",
+            "title":          silver_cfg["title"],
+            "challenge_type": silver.winner,
+            "target":         silver_cfg["target"],
+        },
+        {
+            "id":             "flashcards",
+            "tier":           "gold",
+            "title":          flash_title,
+            "challenge_type": None,
+            "target":         flash_target,
+        },
+    ]
+    return missions, silver, bronze_id
+
 
 async def _generate_missions_for_today(
     user_id: str,
@@ -285,71 +573,9 @@ async def _generate_missions_for_today(
     Writes result to daily_missions collection.
     Returns raw mission list (without live progress).
     """
-    # Resolve language from active plan if not on user profile
-    if not language:
-        plan = await learning_plans_collection.find_one(
-            {"user_id": user_id, "status": {"$in": ["in_progress", "active", None]}},
-            sort=[("updated_at", -1)],
-        )
-        if plan:
-            language = plan.get("language")
+    language = await _resolve_language(user_id, language)
+    missions, silver, bronze_id = await _build_missions(user_id, language, local_date)
 
-    # Pick Silver challenge type via priority stack
-    challenge_type = await _pick_challenge_type(user_id, language)
-    cfg = CHALLENGE_CFG.get(challenge_type, CHALLENGE_CFG["micro_quiz"])
-
-    # Gold: unreviewed flashcard sets (cap at 3, min 1)
-    unreviewed = await flashcard_sets_collection.count_documents(
-        {"user_id": user_id, "is_reviewed": {"$ne": True}}
-    )
-    flash_target = min(3, max(1, unreviewed)) if unreviewed > 0 else 1
-    flash_title  = (
-        f"Review {flash_target} flashcard set{'s' if flash_target > 1 else ''}"
-        if unreviewed > 0
-        else "All flashcard sets reviewed!"
-    )
-
-    # Bronze: plan session OR news (news for users with no active plan)
-    has_active_plan = await learning_plans_collection.count_documents(
-        {"user_id": user_id, "status": {"$in": ["in_progress", "active", None]}}
-    ) > 0
-
-    if has_active_plan:
-        bronze = {
-            "id":             "plan_session",
-            "tier":           "bronze",
-            "title":          "Complete today's plan session",
-            "challenge_type": None,
-            "target":         1,
-        }
-    else:
-        bronze = {
-            "id":             "news_session",
-            "tier":           "bronze",
-            "title":          "Read & discuss today's news",
-            "challenge_type": None,
-            "target":         1,
-        }
-
-    missions: List[Dict] = [
-        bronze,
-        {
-            "id":             "challenge",
-            "tier":           "silver",
-            "title":          cfg["title"],
-            "challenge_type": challenge_type,
-            "target":         cfg["target"],
-        },
-        {
-            "id":             "flashcards",
-            "tier":           "gold",
-            "title":          flash_title,
-            "challenge_type": None,
-            "target":         flash_target,
-        },
-    ]
-
-    bronze_label = "plan_session" if has_active_plan else "news_session"
     await _missions_coll().replace_one(
         {"user_id": user_id, "local_date": local_date},
         {
@@ -358,14 +584,68 @@ async def _generate_missions_for_today(
             "timezone":     timezone,
             "language":     language,
             "missions":     missions,
+            "silver_reason":silver.reason,
+            "silver_source":silver.source,
             "generated_at": datetime.utcnow(),
             "expires_at":   datetime.utcnow() + timedelta(days=3),
         },
         upsert=True,
     )
-    print(f"[MISSIONS] Generated for user {user_id} on {local_date}: "
-          f"bronze={bronze_label}  silver={challenge_type}  gold=flashcards({flash_target})")
+    print(
+        f"[MISSIONS] Generated for user {user_id} on {local_date}: "
+        f"bronze={bronze_id}(target={missions[0]['target']})  "
+        f"silver={silver.winner}(src={silver.source})  "
+        f"gold=flashcards({missions[2]['target']})"
+    )
     return missions
+
+
+# ─────────────────────────────────────────────────────────────
+# Path A — Predicted preview of tomorrow's missions (read-only)
+# ─────────────────────────────────────────────────────────────
+#
+# Runs the same builder as _generate_missions_for_today, but uses
+# tomorrow's local_date so the variety guard sees today's mission
+# in the "recent" window. Does NOT write to the missions collection.
+#
+# Caveat: prediction can disagree with what gets generated tomorrow if
+# the user's signals shift overnight (e.g. they finish a session at
+# 11:58 PM that flips P1's winner). This is acceptable — the preview
+# is best-effort and never marketed as final.
+# ─────────────────────────────────────────────────────────────
+
+def _next_local_date(local_date: str) -> str:
+    """Add one calendar day to a YYYY-MM-DD string."""
+    try:
+        d = datetime.strptime(local_date, "%Y-%m-%d") + timedelta(days=1)
+        return d.strftime("%Y-%m-%d")
+    except Exception:
+        # Defensive — should never happen with our local_date producer.
+        return local_date
+
+
+async def _predict_missions_preview(
+    user_id: str,
+    language: Optional[str],
+    today_local_date: str,
+) -> MissionsPreview:
+    """
+    Predict tomorrow's 3 missions without writing anything.
+    Reads only — safe to call from any GET path.
+    """
+    language = await _resolve_language(user_id, language)
+    next_date = _next_local_date(today_local_date)
+
+    # IMPORTANT: pass next_date so the variety guard's "recent" lookup
+    # treats today's missions (just generated) as part of history.
+    missions, silver, _ = await _build_missions(user_id, language, next_date)
+
+    return MissionsPreview(
+        missions=[PredictedMission(**m) for m in missions],
+        silver_reason=silver.reason,
+        silver_source=silver.source,
+        next_local_date=next_date,
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -555,3 +835,27 @@ async def reset_today_missions(
         {"user_id": user_id, "local_date": local_date}
     )
     return {"success": True, "deleted": result.deleted_count > 0}
+
+
+@router.get(
+    "/api/missions/preview",
+    response_model=MissionsPreview,
+    summary="Preview tomorrow's missions (read-only)",
+    tags=["Missions"],
+)
+async def get_missions_preview(
+    timezone: Optional[str] = Query(None, description="User timezone e.g. Europe/Amsterdam"),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Returns a read-only forecast of tomorrow's 3 missions, computed by
+    running the same builder against tomorrow's local_date. No writes.
+
+    Note: this can disagree with what gets generated tomorrow if the
+    user's signals shift overnight. The preview is best-effort.
+    """
+    user_id    = str(current_user.id)
+    tz         = timezone or getattr(current_user, "timezone", None) or "UTC"
+    local_date = get_current_local_date(tz)
+    language   = getattr(current_user, "preferred_language", None)
+    return await _predict_missions_preview(user_id, language, local_date)
