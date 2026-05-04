@@ -247,6 +247,12 @@ app.include_router(heart_router, prefix="/api/hearts")
 from routes.journey_routes import router as journey_router
 app.include_router(journey_router, prefix="/api")
 
+from routes.missions_routes import router as missions_router
+app.include_router(missions_router)
+
+from routes.hub_routes import router as hub_router
+app.include_router(hub_router)
+
 # Include modular routes (refactored from main.py)
 from routes import health_router, mock_router
 from routes.image_routes import router as image_router

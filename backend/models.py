@@ -643,6 +643,9 @@ class FlashcardSet(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_completed: bool = False
     completed_at: Optional[datetime] = None
+    # Tracks whether the user has opened and reviewed this set (for mission progress)
+    is_reviewed: bool = False
+    reviewed_at: Optional[datetime] = None
 
     class Config:
         populate_by_name = True

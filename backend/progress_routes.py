@@ -937,7 +937,7 @@ async def save_conversation(
             
             print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
 
-            # Update daily_stats so practice sessions count toward Day Streak
+            # Update daily_stats so practice sessions count toward Day Streak + plan_session mission
             try:
                 local_date = get_current_local_date(timezone_str='UTC')
                 time_seconds = integer_duration * 60
@@ -947,12 +947,12 @@ async def save_conversation(
                         '$inc': {
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
+                            'total_sessions': 1,  # drives plan_session mission progress
                         },
                         '$set': {'updated_at': datetime.now(timezone.utc)},
                         '$setOnInsert': {
                             'created_at': datetime.now(timezone.utc),
                             'is_streak_day': True,
-                            'total_sessions': 0,
                             'total_challenges': 0,
                             'correct_challenges': 0,
                             'incorrect_challenges': 0,
@@ -1112,7 +1112,7 @@ async def save_conversation(
 
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
 
-            # Update daily_stats so practice sessions count toward Day Streak
+            # Update daily_stats so practice sessions count toward Day Streak + plan_session mission
             try:
                 local_date = get_current_local_date(timezone_str='UTC')
                 time_seconds = integer_duration * 60
@@ -1122,12 +1122,12 @@ async def save_conversation(
                         '$inc': {
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
+                            'total_sessions': 1,  # drives plan_session mission progress
                         },
                         '$set': {'updated_at': datetime.now(timezone.utc)},
                         '$setOnInsert': {
                             'created_at': datetime.now(timezone.utc),
                             'is_streak_day': True,
-                            'total_sessions': 0,
                             'total_challenges': 0,
                             'correct_challenges': 0,
                             'incorrect_challenges': 0,
