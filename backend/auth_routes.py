@@ -1334,3 +1334,65 @@ async def get_voice_preference(current_user: UserResponse = Depends(get_current_
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get voice preference"
         )
+
+# ── Avatar upload ─────────────────────────────────────────────
+class AvatarUploadRequest(BaseModel):
+    image_base64: str  # base64-encoded image (jpeg or png), without data URI prefix
+    mime_type: str = "image/jpeg"  # "image/jpeg" or "image/png"
+
+class AvatarUploadResponse(BaseModel):
+    avatar_url: str  # data URI stored in DB and returned to client
+
+@router.post("/avatar", response_model=AvatarUploadResponse)
+async def upload_avatar(
+    body: AvatarUploadRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Resize and store a user avatar as a base64 data URI in MongoDB.
+    Max output size is 256×256 px. No external storage required.
+    """
+    import base64
+    import io
+    from PIL import Image
+
+    MAX_DIM = 256
+    MAX_BYTES = 200 * 1024  # 200 KB after encode
+
+    try:
+        raw = base64.b64decode(body.image_base64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image data")
+
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        img.thumbnail((MAX_DIM, MAX_DIM), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        encoded = base64.b64encode(buf.getvalue()).decode()
+
+        if len(encoded) > MAX_BYTES * 1.4:  # base64 is ~4/3 of raw
+            raise HTTPException(status_code=400, detail="Image too large after compression")
+
+        data_url = f"data:image/jpeg;base64,{encoded}"
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Image processing failed: {str(e)}")
+
+    from bson import ObjectId
+    user_oid = ObjectId(current_user.id)
+
+    # Store inside profile_hero_prefs so it travels with the other prefs
+    result = await users_collection.update_one(
+        {"_id": user_oid},
+        {"$set": {"profile_hero_prefs.avatarData": data_url}},
+        upsert=False,
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    print(f"[AVATAR] ✅ Uploaded avatar for {current_user.email} ({len(encoded)} chars)")
+    return AvatarUploadResponse(avatar_url=data_url)
