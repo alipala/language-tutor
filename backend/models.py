@@ -177,6 +177,9 @@ class UserInDB(UserBase):
     # 🆕 LEARNING JOURNEY ORCHESTRATOR: Journey state tracking
     journey_state: Optional["LearningJourneyState"] = None  # Current learning journey stage and metrics (forward reference)
 
+    # Profile hero card customisation (banner colour + featured stat)
+    profile_hero_prefs: Optional[Dict[str, Any]] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -201,10 +204,13 @@ class UserResponse(UserBase):
     # Legacy challenge stats - needed for backwards compatibility
     challengeStats: Optional[Dict[str, Any]] = None  # totalCompleted, currentStreak, etc.
 
+    # Profile hero card customisation
+    profile_hero_prefs: Optional[Dict[str, Any]] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
-        
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -218,6 +224,7 @@ class UserUpdate(BaseModel):
     subscription_plan: Optional[str] = None
     subscription_period: Optional[str] = None
     subscription_price_id: Optional[str] = None
+    profile_hero_prefs: Optional[Dict[str, Any]] = None
     
     class Config:
         populate_by_name = True
