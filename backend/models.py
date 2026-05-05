@@ -180,11 +180,16 @@ class UserInDB(UserBase):
     # Profile hero card customisation (banner colour + featured stat)
     profile_hero_prefs: Optional[Dict[str, Any]] = None
 
+    # Onboarding personalization answers
+    onboarding_goal: Optional[str] = None
+    onboarding_level: Optional[str] = None
+    onboarding_daily_minutes: Optional[int] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-        
+
 class UserResponse(UserBase):
     id: str = Field(..., alias="_id")
     stripe_customer_id: Optional[str] = None
@@ -207,6 +212,11 @@ class UserResponse(UserBase):
     # Profile hero card customisation
     profile_hero_prefs: Optional[Dict[str, Any]] = None
 
+    # Onboarding personalization answers
+    onboarding_goal: Optional[str] = None
+    onboarding_level: Optional[str] = None
+    onboarding_daily_minutes: Optional[int] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -225,7 +235,11 @@ class UserUpdate(BaseModel):
     subscription_period: Optional[str] = None
     subscription_price_id: Optional[str] = None
     profile_hero_prefs: Optional[Dict[str, Any]] = None
-    
+    # Onboarding personalization
+    onboarding_goal: Optional[str] = None        # e.g. "travel", "work", "brain", "family", "fun"
+    onboarding_level: Optional[str] = None       # e.g. "beginner", "basics", "intermediate", "advanced"
+    onboarding_daily_minutes: Optional[int] = None  # 5, 10, 20, 30
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
