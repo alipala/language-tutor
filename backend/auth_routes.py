@@ -742,10 +742,60 @@ async def logout(user: UserResponse = Depends(get_current_user)):
 
 @router.get("/me", response_model=UserResponse)
 async def get_user_me(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Get current user information
-    """
+    """Get current user information."""
     return current_user
+
+
+@router.get("/me/preferences")
+async def get_user_preferences(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Returns the lightweight preference snapshot used by the practice flow
+    (LevelSelection, TopicSelection, session setup).
+
+    Kept separate from /me so clients can fetch it cheaply without
+    loading the full user document (stats, plans, etc.).
+
+    Priority for suggested_level:
+      1. preferred_level (set explicitly by user)
+      2. onboarding_level mapped to CEFR (set during onboarding)
+      3. null — no suggestion
+    """
+    ONBOARDING_TO_CEFR = {
+        "beginner":     "A1",
+        "basics":       "A2",
+        "intermediate": "B1",
+        "advanced":     "B2",
+    }
+    GOAL_TO_TOPIC = {
+        "travel": "travel",
+        "work":   "work",
+        "brain":  "education",
+        "family": "family",
+        "fun":    "hobbies",
+    }
+
+    preferred_level  = getattr(current_user, "preferred_level",  None)
+    onboarding_level = getattr(current_user, "onboarding_level", None)
+    onboarding_goal  = getattr(current_user, "onboarding_goal",  None)
+
+    suggested_level = (
+        preferred_level
+        or ONBOARDING_TO_CEFR.get(onboarding_level or "")
+        or None
+    )
+    suggested_topic = GOAL_TO_TOPIC.get(onboarding_goal or "") or None
+
+    return {
+        "preferred_level":            preferred_level,
+        "preferred_language":         getattr(current_user, "preferred_language", None),
+        "preferred_session_duration": getattr(current_user, "preferred_session_duration", None),
+        "onboarding_goal":            onboarding_goal,
+        "onboarding_level":           onboarding_level,
+        "onboarding_daily_minutes":   getattr(current_user, "onboarding_daily_minutes", None),
+        # Derived hints — ready to use directly in the mobile app
+        "suggested_level":            suggested_level,
+        "suggested_topic":            suggested_topic,
+    }
 
 @router.post("/push-token", status_code=status.HTTP_200_OK)
 async def register_push_token(
@@ -845,21 +895,44 @@ async def register_push_token(
 @router.put("/update-profile", response_model=UserResponse)
 async def update_profile(profile_data: UserUpdate, current_user: UserResponse = Depends(get_current_user)):
     """
-    Update user profile information
+    Update user profile information.
+
+    When onboarding answers are synced here for the first time:
+    - onboarding_daily_minutes → auto-derives preferred_session_duration
+      (5 min → 3-min sessions, 10+ min → 5-min sessions)
+    - preferred_level from onboarding is only written if the user has
+      not already set it explicitly (first-time personalisation only)
     """
-    # Update user in database
+    # Use explicit None check so integer 0 is not filtered out
     update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
 
     print(f"[UPDATE_PROFILE] 👤 User {current_user.email} updating profile")
-    print(f"[UPDATE_PROFILE] 📝 Update data: {update_data}")
+    print(f"[UPDATE_PROFILE] 📝 Update data keys: {list(update_data.keys())}")
 
     if not update_data:
         print(f"[UPDATE_PROFILE] ⚠️ No data to update")
         return current_user
 
+    # ── Onboarding answer processing ──────────────────────────────────────────
+    # Derive preferred_session_duration from daily_minutes commitment answer.
+    # 5 min → 3-min sessions (habit-building), 10+ min → 5-min sessions.
+    # Only set if not already chosen by user to avoid overwriting their preference.
+    if "onboarding_daily_minutes" in update_data:
+        daily_min = update_data["onboarding_daily_minutes"]
+        derived_duration = 3 if daily_min <= 5 else 5
+        if not getattr(current_user, "preferred_session_duration", None):
+            update_data.setdefault("preferred_session_duration", derived_duration)
+        print(f"[UPDATE_PROFILE] 🎯 Derived session duration: {derived_duration} min from {daily_min} min/day commitment")
+
+    # preferred_level from onboarding should not overwrite an explicit user choice.
+    # If the user already has preferred_level set, discard the onboarding-derived value.
+    if "preferred_level" in update_data and getattr(current_user, "preferred_level", None):
+        print(f"[UPDATE_PROFILE] ℹ️ Keeping existing preferred_level: {current_user.preferred_level} (ignoring onboarding value)")
+        del update_data["preferred_level"]
+
     # Special logging for preferred_level changes
     if "preferred_level" in update_data:
-        print(f"[UPDATE_PROFILE] 📊 LEVEL CHANGE: {current_user.preferred_level} → {update_data['preferred_level']}")
+        print(f"[UPDATE_PROFILE] 📊 LEVEL SET (first time): {update_data['preferred_level']}")
 
     # Convert user ID to ObjectId for MongoDB query
     from bson import ObjectId
