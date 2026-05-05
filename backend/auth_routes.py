@@ -893,6 +893,10 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
         actual_level = updated_user.get("preferred_level")
         print(f"[UPDATE_PROFILE] ✅ Verified preferred_level in DB: {actual_level}")
 
+    # Invalidate user cache so /api/auth/me returns fresh data
+    from cache_helpers import invalidate_user_cache
+    await invalidate_user_cache(str(current_user.id))
+
     # Convert MongoDB _id to string
     updated_user["id"] = str(updated_user["_id"])
     del updated_user["_id"]
@@ -1393,6 +1397,10 @@ async def upload_avatar(
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Invalidate user cache so /api/auth/me immediately returns the new avatar
+    from cache_helpers import invalidate_user_cache
+    await invalidate_user_cache(str(current_user.id))
 
     print(f"[AVATAR] ✅ Uploaded avatar for {current_user.email} ({len(encoded)} chars)")
     return AvatarUploadResponse(avatar_url=data_url)
