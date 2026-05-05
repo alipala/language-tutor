@@ -491,3 +491,57 @@ async def get_all_stats(
             status_code=500,
             detail=f"Failed to get unified stats: {str(e)}"
         )
+
+
+# ============================================================================
+# CALENDAR ENDPOINT — practiced days for any given month
+# ============================================================================
+
+@router.get("/calendar")
+async def get_calendar_month(
+    year:  int = Query(..., ge=2020, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    current_user = Depends(get_current_user),
+):
+    """
+    Return practiced days for a given month from daily_stats.
+    Each item: { date, sessions, challenges, xp, time_minutes, is_streak_day }
+    """
+    import calendar as cal_mod
+
+    user_id = str(current_user.id)
+
+    # Build date range strings: '2026-04-01' … '2026-04-30'
+    last_day   = cal_mod.monthrange(year, month)[1]
+    date_start = f"{year}-{month:02d}-01"
+    date_end   = f"{year}-{month:02d}-{last_day:02d}"
+
+    docs = await daily_stats_collection.find(
+        {
+            "user_id":    user_id,
+            "local_date": {"$gte": date_start, "$lte": date_end},
+        },
+        {
+            "local_date":        1,
+            "total_sessions":    1,
+            "total_challenges":  1,
+            "total_xp":          1,
+            "total_time_seconds":1,
+            "is_streak_day":     1,
+        }
+    ).to_list(31)
+
+    days = [
+        {
+            "date":         d["local_date"],
+            "sessions":     d.get("total_sessions", 0),
+            "challenges":   d.get("total_challenges", 0),
+            "xp":           d.get("total_xp", 0),
+            "time_minutes": round(d.get("total_time_seconds", 0) / 60, 1),
+            "is_streak_day": d.get("is_streak_day", False),
+        }
+        for d in docs
+    ]
+
+    print(f"[STATS_API] 📅 Calendar {year}-{month:02d}: {len(days)} practiced days for user {user_id}")
+    return {"year": year, "month": month, "days": days}
