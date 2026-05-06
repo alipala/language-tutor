@@ -177,11 +177,19 @@ class UserInDB(UserBase):
     # 🆕 LEARNING JOURNEY ORCHESTRATOR: Journey state tracking
     journey_state: Optional["LearningJourneyState"] = None  # Current learning journey stage and metrics (forward reference)
 
+    # Profile hero card customisation (banner colour + featured stat)
+    profile_hero_prefs: Optional[Dict[str, Any]] = None
+
+    # Onboarding personalization answers
+    onboarding_goal: Optional[str] = None
+    onboarding_level: Optional[str] = None
+    onboarding_daily_minutes: Optional[int] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-        
+
 class UserResponse(UserBase):
     id: str = Field(..., alias="_id")
     stripe_customer_id: Optional[str] = None
@@ -189,22 +197,33 @@ class UserResponse(UserBase):
     subscription_plan: Optional[str] = None
     subscription_period: Optional[str] = None
     subscription_price_id: Optional[str] = None
-    timezone: Optional[str] = "UTC"  # User's timezone for stats calculations
+    timezone: Optional[str] = "UTC"
 
-    # Usage tracking - needed for Profile screen
-    assessments_used: int = 0  # Assessments used in current period
-    assessments_limit: Optional[int] = None  # Calculated based on subscription plan
+    # Learned preferences (set by user in Profile or derived from onboarding)
+    preferred_level: Optional[str] = None
+    preferred_language: Optional[str] = None
+    preferred_session_duration: Optional[int] = None  # 3 or 5 minutes
 
-    # Statistics (new gamification system) - needed for Profile screen
-    stats: Optional[Dict[str, Any]] = None  # Embedded stats with lifetime.total_challenges
+    # Usage tracking
+    assessments_used: int = 0
+    assessments_limit: Optional[int] = None
 
-    # Legacy challenge stats - needed for backwards compatibility
-    challengeStats: Optional[Dict[str, Any]] = None  # totalCompleted, currentStreak, etc.
+    # Statistics (gamification)
+    stats: Optional[Dict[str, Any]] = None
+    challengeStats: Optional[Dict[str, Any]] = None  # backwards compat
+
+    # Profile hero card customisation
+    profile_hero_prefs: Optional[Dict[str, Any]] = None
+
+    # Onboarding personalization answers (stored for future use)
+    onboarding_goal: Optional[str] = None
+    onboarding_level: Optional[str] = None
+    onboarding_daily_minutes: Optional[int] = None
 
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
-        
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -218,7 +237,13 @@ class UserUpdate(BaseModel):
     subscription_plan: Optional[str] = None
     subscription_period: Optional[str] = None
     subscription_price_id: Optional[str] = None
-    
+    profile_hero_prefs: Optional[Dict[str, Any]] = None
+    preferred_session_duration: Optional[int] = None  # 3 or 5 minutes
+    # Onboarding personalization answers
+    onboarding_goal: Optional[str] = None
+    onboarding_level: Optional[str] = None
+    onboarding_daily_minutes: Optional[int] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True

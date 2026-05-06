@@ -742,10 +742,60 @@ async def logout(user: UserResponse = Depends(get_current_user)):
 
 @router.get("/me", response_model=UserResponse)
 async def get_user_me(current_user: UserResponse = Depends(get_current_user)):
-    """
-    Get current user information
-    """
+    """Get current user information."""
     return current_user
+
+
+@router.get("/me/preferences")
+async def get_user_preferences(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Returns the lightweight preference snapshot used by the practice flow
+    (LevelSelection, TopicSelection, session setup).
+
+    Kept separate from /me so clients can fetch it cheaply without
+    loading the full user document (stats, plans, etc.).
+
+    Priority for suggested_level:
+      1. preferred_level (set explicitly by user)
+      2. onboarding_level mapped to CEFR (set during onboarding)
+      3. null — no suggestion
+    """
+    ONBOARDING_TO_CEFR = {
+        "beginner":     "A1",
+        "basics":       "A2",
+        "intermediate": "B1",
+        "advanced":     "B2",
+    }
+    GOAL_TO_TOPIC = {
+        "travel": "travel",
+        "work":   "work",
+        "brain":  "education",
+        "family": "family",
+        "fun":    "hobbies",
+    }
+
+    preferred_level  = getattr(current_user, "preferred_level",  None)
+    onboarding_level = getattr(current_user, "onboarding_level", None)
+    onboarding_goal  = getattr(current_user, "onboarding_goal",  None)
+
+    suggested_level = (
+        preferred_level
+        or ONBOARDING_TO_CEFR.get(onboarding_level or "")
+        or None
+    )
+    suggested_topic = GOAL_TO_TOPIC.get(onboarding_goal or "") or None
+
+    return {
+        "preferred_level":            preferred_level,
+        "preferred_language":         getattr(current_user, "preferred_language", None),
+        "preferred_session_duration": getattr(current_user, "preferred_session_duration", None),
+        "onboarding_goal":            onboarding_goal,
+        "onboarding_level":           onboarding_level,
+        "onboarding_daily_minutes":   getattr(current_user, "onboarding_daily_minutes", None),
+        # Derived hints — ready to use directly in the mobile app
+        "suggested_level":            suggested_level,
+        "suggested_topic":            suggested_topic,
+    }
 
 @router.post("/push-token", status_code=status.HTTP_200_OK)
 async def register_push_token(
@@ -845,21 +895,44 @@ async def register_push_token(
 @router.put("/update-profile", response_model=UserResponse)
 async def update_profile(profile_data: UserUpdate, current_user: UserResponse = Depends(get_current_user)):
     """
-    Update user profile information
+    Update user profile information.
+
+    When onboarding answers are synced here for the first time:
+    - onboarding_daily_minutes → auto-derives preferred_session_duration
+      (5 min → 3-min sessions, 10+ min → 5-min sessions)
+    - preferred_level from onboarding is only written if the user has
+      not already set it explicitly (first-time personalisation only)
     """
-    # Update user in database
+    # Use explicit None check so integer 0 is not filtered out
     update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
 
     print(f"[UPDATE_PROFILE] 👤 User {current_user.email} updating profile")
-    print(f"[UPDATE_PROFILE] 📝 Update data: {update_data}")
+    print(f"[UPDATE_PROFILE] 📝 Update data keys: {list(update_data.keys())}")
 
     if not update_data:
         print(f"[UPDATE_PROFILE] ⚠️ No data to update")
         return current_user
 
+    # ── Onboarding answer processing ──────────────────────────────────────────
+    # Derive preferred_session_duration from daily_minutes commitment answer.
+    # 5 min → 3-min sessions (habit-building), 10+ min → 5-min sessions.
+    # Only set if not already chosen by user to avoid overwriting their preference.
+    if "onboarding_daily_minutes" in update_data:
+        daily_min = update_data["onboarding_daily_minutes"]
+        derived_duration = 3 if daily_min <= 5 else 5
+        if not getattr(current_user, "preferred_session_duration", None):
+            update_data.setdefault("preferred_session_duration", derived_duration)
+        print(f"[UPDATE_PROFILE] 🎯 Derived session duration: {derived_duration} min from {daily_min} min/day commitment")
+
+    # preferred_level from onboarding should not overwrite an explicit user choice.
+    # If the user already has preferred_level set, discard the onboarding-derived value.
+    if "preferred_level" in update_data and getattr(current_user, "preferred_level", None):
+        print(f"[UPDATE_PROFILE] ℹ️ Keeping existing preferred_level: {current_user.preferred_level} (ignoring onboarding value)")
+        del update_data["preferred_level"]
+
     # Special logging for preferred_level changes
     if "preferred_level" in update_data:
-        print(f"[UPDATE_PROFILE] 📊 LEVEL CHANGE: {current_user.preferred_level} → {update_data['preferred_level']}")
+        print(f"[UPDATE_PROFILE] 📊 LEVEL SET (first time): {update_data['preferred_level']}")
 
     # Convert user ID to ObjectId for MongoDB query
     from bson import ObjectId
@@ -892,6 +965,10 @@ async def update_profile(profile_data: UserUpdate, current_user: UserResponse = 
     if "preferred_level" in update_data:
         actual_level = updated_user.get("preferred_level")
         print(f"[UPDATE_PROFILE] ✅ Verified preferred_level in DB: {actual_level}")
+
+    # Invalidate user cache so /api/auth/me returns fresh data
+    from cache_helpers import invalidate_user_cache
+    await invalidate_user_cache(str(current_user.id))
 
     # Convert MongoDB _id to string
     updated_user["id"] = str(updated_user["_id"])
@@ -1334,3 +1411,69 @@ async def get_voice_preference(current_user: UserResponse = Depends(get_current_
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get voice preference"
         )
+
+# ── Avatar upload ─────────────────────────────────────────────
+class AvatarUploadRequest(BaseModel):
+    image_base64: str  # base64-encoded image (jpeg or png), without data URI prefix
+    mime_type: str = "image/jpeg"  # "image/jpeg" or "image/png"
+
+class AvatarUploadResponse(BaseModel):
+    avatar_url: str  # data URI stored in DB and returned to client
+
+@router.post("/avatar", response_model=AvatarUploadResponse)
+async def upload_avatar(
+    body: AvatarUploadRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Resize and store a user avatar as a base64 data URI in MongoDB.
+    Max output size is 256×256 px. No external storage required.
+    """
+    import base64
+    import io
+    from PIL import Image
+
+    MAX_DIM = 256
+    MAX_BYTES = 200 * 1024  # 200 KB after encode
+
+    try:
+        raw = base64.b64decode(body.image_base64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image data")
+
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        img.thumbnail((MAX_DIM, MAX_DIM), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        encoded = base64.b64encode(buf.getvalue()).decode()
+
+        if len(encoded) > MAX_BYTES * 1.4:  # base64 is ~4/3 of raw
+            raise HTTPException(status_code=400, detail="Image too large after compression")
+
+        data_url = f"data:image/jpeg;base64,{encoded}"
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Image processing failed: {str(e)}")
+
+    from bson import ObjectId
+    user_oid = ObjectId(current_user.id)
+
+    # Store inside profile_hero_prefs so it travels with the other prefs
+    result = await users_collection.update_one(
+        {"_id": user_oid},
+        {"$set": {"profile_hero_prefs.avatarData": data_url}},
+        upsert=False,
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Invalidate user cache so /api/auth/me immediately returns the new avatar
+    from cache_helpers import invalidate_user_cache
+    await invalidate_user_cache(str(current_user.id))
+
+    print(f"[AVATAR] ✅ Uploaded avatar for {current_user.email} ({len(encoded)} chars)")
+    return AvatarUploadResponse(avatar_url=data_url)
