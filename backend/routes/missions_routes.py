@@ -103,6 +103,7 @@ class DailyMission(BaseModel):
     id: str                           # plan_session | challenge | flashcards
     tier: str                         # bronze | silver | gold
     title: str
+    subtitle: Optional[str] = None   # e.g. "Dutch A1 · English A2" for flashcard mission
     challenge_type: Optional[str] = None
     progress: MissionProgress
 
@@ -542,6 +543,30 @@ async def _build_missions(
         else "All flashcard sets reviewed!"
     )
 
+    # Build subtitle showing language + level of sets to review
+    flash_subtitle = None
+    if unreviewed > 0:
+        try:
+            unreviewed_sets = await flashcard_sets_collection.find(
+                {"user_id": user_id, "is_reviewed": {"$ne": True}},
+                {"language": 1, "level": 1, "topic": 1}
+            ).limit(3).to_list(3)
+
+            parts = []
+            seen = set()
+            for s in unreviewed_sets:
+                lang = (s.get("language") or "").capitalize()
+                lvl  = (s.get("level") or "").upper()
+                if lang and lvl:
+                    key = f"{lang} {lvl}"
+                    if key not in seen:
+                        seen.add(key)
+                        parts.append(key)
+            if parts:
+                flash_subtitle = " · ".join(parts)
+        except Exception:
+            pass  # subtitle is optional — never block mission generation
+
     missions: List[Dict] = [
         bronze,
         {
@@ -555,6 +580,7 @@ async def _build_missions(
             "id":             "flashcards",
             "tier":           "gold",
             "title":          flash_title,
+            "subtitle":       flash_subtitle,
             "challenge_type": None,
             "target":         flash_target,
         },
@@ -677,12 +703,33 @@ async def _hydrate_progress(
             _get_reviewed_flashcard_count(user_id),
         )
 
+    # Build flashcard subtitle live (works from cache too)
+    flash_subtitle: Optional[str] = None
+    try:
+        unreviewed_sets = await flashcard_sets_collection.find(
+            {"user_id": user_id, "is_reviewed": {"$ne": True}},
+            {"language": 1, "level": 1}
+        ).limit(3).to_list(3)
+        parts = []
+        seen: set = set()
+        for s in unreviewed_sets:
+            lang = (s.get("language") or "").capitalize()
+            lvl  = (s.get("level") or "").upper()
+            if lang and lvl:
+                key = f"{lang} {lvl}"
+                if key not in seen:
+                    seen.add(key)
+                    parts.append(key)
+        if parts:
+            flash_subtitle = " · ".join(parts)
+    except Exception:
+        pass  # subtitle is optional
+
     result: List[DailyMission] = []
     for m in missions:
         target = m["target"]
 
         if m["id"] == "plan_session":
-            # Count sessions that are NOT news type
             current = min(1, max(0, today_sessions - today_news_sessions))
 
         elif m["id"] == "news_session":
@@ -693,14 +740,18 @@ async def _hydrate_progress(
 
         else:  # flashcards
             if m["title"].startswith("All flashcard"):
-                current = target  # already all reviewed at generation time
+                current = target
             else:
                 current = min(target, reviewed_sets)
+
+        # Use live subtitle for flashcard mission; carry through stored subtitle for others
+        subtitle = flash_subtitle if m["id"] == "flashcards" and current < target else m.get("subtitle")
 
         result.append(DailyMission(
             id=m["id"],
             tier=m["tier"],
             title=m["title"],
+            subtitle=subtitle,
             challenge_type=m.get("challenge_type"),
             progress=MissionProgress(
                 current=current,
