@@ -89,9 +89,11 @@ class BulletproofSubscriptionServiceNoTransactions:
             practice_minutes_used = user_doc.get("practice_minutes_used", 0.0)
             
             # Calculate subscription limits based on plan
-            if subscription_plan == "team_mastery":
-                minutes_limit = -1  # Unlimited
-                current_remaining = float('inf')  # Infinite remaining
+            if subscription_plan in ("team_mastery", "language_mastery"):
+                # Unlimited plans — sentinel `-1` for both limit and remaining
+                # so the value is JSON/BSON-serializable in tracking records.
+                minutes_limit = -1
+                current_remaining = -1
             elif subscription_plan == "fluency_builder":
                 if subscription_period == "annual":
                     minutes_limit = 1800  # 1800 minutes annually
@@ -112,6 +114,9 @@ class BulletproofSubscriptionServiceNoTransactions:
                 # Unlimited plans - don't deduct
                 new_practice_minutes_used = practice_minutes_used
                 deducted_amount = 0
+                # Mirror current_remaining (sentinel -1 for unlimited) so the
+                # tracking record below has a consistent before/after.
+                new_remaining = current_remaining
                 logger.info(f"[BULLETPROOF_TRACKING] Unlimited plan ({subscription_plan}) - no deduction needed")
             else:
                 # ALL OTHER PLANS (including active fluency_builder) need minute deduction

@@ -56,7 +56,8 @@ async def copy_reference_to_pool(
             "micro_quiz",
             "smart_flashcard",
             "native_check",
-            "brain_tickler"
+            "brain_tickler",
+            "story_builder",
         ]
 
         pool_items = []
@@ -473,32 +474,28 @@ async def get_reference_challenges(
 
             print(f"[REFERENCE] 🚫 Excluding {len(exclude_ids)} completed challenges")
 
-        # Build aggregation pipeline with randomization
-        pipeline = [
-            {
-                "$match": {
-                    "challenge_type": challenge_type,
-                    "language": language,
-                    "cefr_level": level
-                }
-            }
-        ]
+        base_match = {
+            "challenge_type": challenge_type,
+            "language": language,
+            "cefr_level": level
+        }
 
-        # Add exclusion filter if we have completed challenges
-        if exclude_ids:
-            pipeline[0]["$match"]["challenge_data.id"] = {"$nin": exclude_ids}
-
-        # Add random sampling
+        # Attempt 1: exclude completed challenges so the user sees fresh content
+        pipeline = [{"$match": {**base_match, **({"challenge_data.id": {"$nin": exclude_ids}} if exclude_ids else {})}}]
         pipeline.append({"$sample": {"size": limit}})
-
-        # Execute aggregation
         reference_challenges = await reference_collection.aggregate(pipeline).to_list(limit)
+
+        # Attempt 2: if all challenges are exhausted, recycle — serve any challenges
+        # (user has done them all; repeating is better than blocking them)
+        if not reference_challenges and exclude_ids:
+            print(f"[REFERENCE] ♻️  All {challenge_type}/{language}/{level} challenges completed — recycling")
+            pipeline_recycle = [{"$match": base_match}, {"$sample": {"size": limit}}]
+            reference_challenges = await reference_collection.aggregate(pipeline_recycle).to_list(limit)
 
         # Extract challenge_data from each reference challenge
         challenges = []
         for ref_item in reference_challenges:
             challenge_data = ref_item.get("challenge_data", {})
-            # Convert MongoDB _id to string for JSON serialization
             if "_id" in challenge_data:
                 challenge_data["_id"] = str(challenge_data["_id"])
             challenges.append(challenge_data)

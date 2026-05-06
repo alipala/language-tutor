@@ -16,10 +16,11 @@ import httpx
 from openai import OpenAI
 
 from auth import get_current_user
-from models import UserResponse
+from models import UserResponse, get_session_xp
 from session_statistics import SessionStatistics
 from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 from services.timezone_utils import get_current_local_date
+from database import users_collection
 
 # Initialize router
 router = APIRouter()
@@ -730,11 +731,17 @@ async def store_session_summary(
             # This was causing double-deduction bug where 3-minute sessions deducted 6+ minutes
             # 🔥 FIX: User practice_minutes_used is already updated at line 675 above (don't duplicate!)
 
-            # 🔥 NEW: Update daily_stats for weekly practice chart
+            # 🔥 NEW: Update daily_stats for weekly practice chart + XP
             try:
                 from database import daily_stats_collection
                 local_date = get_current_local_date(timezone_str='UTC')
                 time_seconds = session_duration_minutes * 60
+                # XP: base for session duration + correction engagement bonus
+                # selected_duration is already validated/clamped above; get_session_xp handles unknowns.
+                session_xp = get_session_xp(int(selected_duration))
+                raw_bonus = (conversation_data or {}).get("correction_bonus_xp", 0)
+                bonus_xp = max(0, min(int(raw_bonus or 0), 15))  # server-side clamp [0, 15]
+                total_xp_delta = session_xp + bonus_xp
 
                 daily_result = await daily_stats_collection.update_one(
                     {
@@ -745,6 +752,8 @@ async def store_session_summary(
                         '$inc': {
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
+                            'total_sessions': 1,
+                            'total_xp': total_xp_delta,
                         },
                         '$set': {
                             'user_timezone': 'UTC',
@@ -753,17 +762,22 @@ async def store_session_summary(
                         '$setOnInsert': {
                             'created_at': datetime.now(timezone.utc),
                             'is_streak_day': True,
-                            'total_sessions': 0,
                             'total_challenges': 0,
                             'correct_challenges': 0,
                             'incorrect_challenges': 0,
-                            'total_xp': 0,
                         }
                     },
                     upsert=True
                 )
                 if daily_result.modified_count > 0 or daily_result.upserted_id:
-                    print(f"[SESSION_SUMMARY] ✅ Updated daily_stats for {local_date}: +{session_duration_minutes} min")
+                    print(f"[SESSION_SUMMARY] ✅ daily_stats updated (learning plan): +{session_duration_minutes} min, +{total_xp_delta} XP (base {session_xp} + bonus {bonus_xp})")
+
+                # Also increment the denormalized lifetime XP on the user document
+                await users_collection.update_one(
+                    {'_id': ObjectId(str(current_user.id))},
+                    {'$inc': {'stats.lifetime.total_xp': total_xp_delta}}
+                )
+                print(f"[SESSION_SUMMARY] ✅ lifetime XP updated: +{total_xp_delta} XP")
             except Exception as stats_err:
                 print(f"[SESSION_SUMMARY] ⚠️ Error updating daily_stats: {stats_err}")
 
