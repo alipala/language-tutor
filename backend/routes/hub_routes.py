@@ -102,17 +102,27 @@ class HubResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────
 
 async def _get_learning_plans(user_id: str) -> List[Dict]:
+    # Project the document's UUID `id` (set at creation by LearningPlanService) —
+    # NOT the Mongo `_id`. Downstream endpoints (`/api/learning/plan/{id}`,
+    # `/voice-check-status`, `/progress`) look up by `{"id": plan_id}`, so the
+    # IDs returned here must match that field.
     cursor = learning_plans_collection.find(
         {"user_id": user_id},
         {
-            "_id": 1, "language": 1, "proficiency_level": 1, "status": 1,
+            "_id": 1,  # kept only as a fallback for legacy plans missing `id`
+            "id": 1, "language": 1, "proficiency_level": 1, "status": 1,
             "completed_sessions": 1, "total_sessions": 1, "duration_months": 1,
             "goals": 1, "progress_percentage": 1, "updated_at": 1, "created_at": 1,
+            "voice_check_schedule": 1, "voice_checks_completed": 1,
         }
     ).sort("updated_at", -1)
     plans = []
     async for p in cursor:
-        p["id"] = str(p.pop("_id"))
+        # Legacy plans predating LearningPlanService may lack the UUID `id` —
+        # fall back to the stringified _id so the document is still addressable.
+        if not p.get("id"):
+            p["id"] = str(p["_id"])
+        p.pop("_id", None)
         plans.append(p)
     return plans
 
@@ -196,13 +206,21 @@ async def _get_dna_summary(user_id: str, language: Optional[str]) -> Optional[Di
 
 
 async def _get_flashcard_sets(user_id: str) -> List[Dict]:
+    # Mirror `_get_learning_plans`: project the document's UUID `id` so it
+    # matches `/api/flashcards/set/{id}/...` lookups, with a stringified `_id`
+    # fallback for any legacy document missing the UUID.
     cursor = flashcard_sets_collection.find(
         {"user_id": user_id},
-        {"_id": 1, "language": 1, "topic": 1, "is_reviewed": 1, "created_at": 1},
+        {
+            "_id": 1, "id": 1,
+            "language": 1, "topic": 1, "is_reviewed": 1, "created_at": 1,
+        },
     ).sort("created_at", -1).limit(20)
     sets = []
     async for s in cursor:
-        s["id"] = str(s.pop("_id"))
+        if not s.get("id"):
+            s["id"] = str(s["_id"])
+        s.pop("_id", None)
         sets.append(s)
     return sets
 

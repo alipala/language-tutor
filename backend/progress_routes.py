@@ -6,13 +6,14 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from openai import OpenAI
+from bson import ObjectId
 import httpx
 
 from auth import get_current_user
 from models import (
     UserResponse, ConversationSession, ConversationMessage,
     SaveConversationRequest, ConversationStats, ConversationHistoryResponse,
-    Flashcard, FlashcardSet
+    Flashcard, FlashcardSet, get_session_xp,
 )
 from database import conversation_sessions_collection, users_collection, daily_stats_collection
 from services.timezone_utils import get_current_local_date
@@ -914,15 +915,20 @@ async def save_conversation(
             selected_duration = getattr(request, 'selected_duration', None) or 5
             integer_duration = selected_duration if request.duration_minutes >= selected_duration else max(1, int(round(request.duration_minutes)))
 
+            # Pre-compute XP so we can stamp it on the session document
+            session_xp_pre = get_session_xp(selected_duration)
+            bonus_xp_pre = max(0, min(int(request.correction_bonus_xp or 0), 15))
+            xp_earned_total = session_xp_pre + bonus_xp_pre
+
             update_data = {
                 "messages": [msg.dict() for msg in conversation_messages],
-                "duration_minutes": integer_duration,  # Integer based on selected_duration (3 or 5)
-                "selected_duration": selected_duration,  # 🆕 Store selected duration
+                "duration_minutes": integer_duration,
+                "selected_duration": selected_duration,
                 "message_count": len(conversation_messages),
-                "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
+                "conversation_type": conversation_type,
                 "is_streak_eligible": is_streak_eligible,
+                "xp_earned": xp_earned_total,  # stored so lifetime_progress_service can aggregate it
                 "updated_at": datetime.utcnow()
-                # Note: summary and enhanced_analysis will be added by background task
             }
             
             print(f"[PROGRESS] Update duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
@@ -937,17 +943,19 @@ async def save_conversation(
             
             print(f"[PROGRESS] ✅ Conversation updated with ID: {existing_session['_id']}")
 
-            # Update daily_stats so practice sessions count toward Day Streak + plan_session mission
+            # Update daily_stats + lifetime XP (existing session path)
             try:
                 local_date = get_current_local_date(timezone_str='UTC')
                 time_seconds = integer_duration * 60
+                # xp_earned_total already computed above when building update_data
                 await daily_stats_collection.update_one(
                     {'user_id': current_user.id, 'local_date': local_date},
                     {
                         '$inc': {
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
-                            'total_sessions': 1,  # drives plan_session mission progress
+                            'total_sessions': 1,
+                            'total_xp': xp_earned_total,
                         },
                         '$set': {'updated_at': datetime.now(timezone.utc)},
                         '$setOnInsert': {
@@ -956,14 +964,18 @@ async def save_conversation(
                             'total_challenges': 0,
                             'correct_challenges': 0,
                             'incorrect_challenges': 0,
-                            'total_xp': 0,
                         }
                     },
                     upsert=True
                 )
-                print(f"[PROGRESS] ✅ Updated daily_stats for streak: +{integer_duration} min (updated session)")
+                # Also increment the denormalized lifetime XP on the user document
+                await users_collection.update_one(
+                    {'_id': ObjectId(current_user.id)},
+                    {'$inc': {'stats.lifetime.total_xp': xp_earned_total}}
+                )
+                print(f"[PROGRESS] ✅ XP applied (existing session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
             except Exception as stats_err:
-                print(f"[PROGRESS] ⚠️ Error updating daily_stats for streak (non-fatal): {stats_err}")
+                print(f"[PROGRESS] ⚠️ Error updating stats for XP (non-fatal): {stats_err}")
 
             # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER response is sent)
             background_tasks.add_task(
@@ -1087,20 +1099,25 @@ async def save_conversation(
             selected_duration = getattr(request, 'selected_duration', None) or 5
             integer_duration = selected_duration if request.duration_minutes >= selected_duration else max(1, int(round(request.duration_minutes)))
 
+            # Pre-compute XP so we can stamp it on the session document
+            session_xp_pre = get_session_xp(selected_duration)
+            bonus_xp_pre = max(0, min(int(request.correction_bonus_xp or 0), 15))
+            xp_earned_total = session_xp_pre + bonus_xp_pre
+
             session_dict = {
                 "user_id": current_user.id,
                 "language": request.language,
                 "level": request.level,
                 "topic": request.topic,
-                "conversation_type": conversation_type,  # Track conversation type (practice, news, etc.)
+                "conversation_type": conversation_type,
                 "messages": [msg.dict() for msg in conversation_messages],
-                "duration_minutes": integer_duration,  # Integer based on selected_duration (3 or 5)
-                "selected_duration": selected_duration,  # 🆕 Store selected duration
+                "duration_minutes": integer_duration,
+                "selected_duration": selected_duration,
                 "message_count": len(conversation_messages),
                 "is_streak_eligible": is_streak_eligible,
+                "xp_earned": xp_earned_total,  # stored so lifetime_progress_service can aggregate it
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
-                # Note: summary and enhanced_analysis will be added by background task
             }
 
             print(f"[PROGRESS] Duration enforced as INTEGER: {request.duration_minutes} → {integer_duration} minutes")
@@ -1112,17 +1129,19 @@ async def save_conversation(
 
             print(f"[PROGRESS] ✅ New conversation saved with ID: {result.inserted_id}")
 
-            # Update daily_stats so practice sessions count toward Day Streak + plan_session mission
+            # Update daily_stats + lifetime XP (new session path)
             try:
                 local_date = get_current_local_date(timezone_str='UTC')
                 time_seconds = integer_duration * 60
+                # xp_earned_total already computed above when building session_dict
                 await daily_stats_collection.update_one(
                     {'user_id': current_user.id, 'local_date': local_date},
                     {
                         '$inc': {
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
-                            'total_sessions': 1,  # drives plan_session mission progress
+                            'total_sessions': 1,
+                            'total_xp': xp_earned_total,
                         },
                         '$set': {'updated_at': datetime.now(timezone.utc)},
                         '$setOnInsert': {
@@ -1131,14 +1150,18 @@ async def save_conversation(
                             'total_challenges': 0,
                             'correct_challenges': 0,
                             'incorrect_challenges': 0,
-                            'total_xp': 0,
                         }
                     },
                     upsert=True
                 )
-                print(f"[PROGRESS] ✅ Updated daily_stats for streak: +{integer_duration} min (new session)")
+                # Also increment the denormalized lifetime XP on the user document
+                await users_collection.update_one(
+                    {'_id': ObjectId(current_user.id)},
+                    {'$inc': {'stats.lifetime.total_xp': xp_earned_total}}
+                )
+                print(f"[PROGRESS] ✅ XP applied (new session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
             except Exception as stats_err:
-                print(f"[PROGRESS] ⚠️ Error updating daily_stats for streak (non-fatal): {stats_err}")
+                print(f"[PROGRESS] ⚠️ Error updating stats for XP (non-fatal): {stats_err}")
 
             # 🚀 Create sentence analysis job for background processing
             if analysis_job_id and request.sentences_for_analysis:

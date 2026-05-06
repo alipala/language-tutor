@@ -356,16 +356,45 @@ class ConversationSession(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+# XP awarded for completing a conversation session by chosen duration.
+# Keep in sync with XP_PER_DURATION on the frontend (ConversationScreen.tsx).
+CONVERSATION_SESSION_XP: dict[int, int] = {
+    1: 15,   # Sprint  — ≈ 1-2 challenge answers
+    3: 50,   # Quick   — ≈ 5 correct challenges
+    5: 100,  # Standard — full challenge session equivalent
+}
+# Fallback for any unrecognised duration: award proportionally at the 5-min rate.
+_XP_PER_MIN_FALLBACK = 20  # 100 XP / 5 min
+
+
+def get_session_xp(selected_duration: int) -> int:
+    """Return base XP for a completed conversation session.
+
+    Uses the lookup table for the three canonical durations (1, 3, 5 min).
+    For any other value the result is clamped to a proportional amount so
+    legacy clients or future durations never award 0 or unbounded XP.
+    """
+    if selected_duration in CONVERSATION_SESSION_XP:
+        return CONVERSATION_SESSION_XP[selected_duration]
+    # Clamp: at least 1 XP per minute, at most the 5-min cap.
+    return min(max(selected_duration * _XP_PER_MIN_FALLBACK, 15), 100)
+
+
 class SaveConversationRequest(BaseModel):
     language: str
     level: str
     topic: Optional[str] = None
     messages: List[Dict[str, Any]]
     duration_minutes: float
-    selected_duration: Optional[int] = 5  # User's selected session duration in minutes (1, 3, or 5); default 5 for backward compatibility
+    selected_duration: Optional[int] = 5  # Chosen session length in minutes (1, 3, or 5); default 5 for backward compat
     learning_plan_id: Optional[str] = None
     conversation_type: Optional[str] = 'practice'
-    sentences_for_analysis: Optional[List[Dict[str, Any]]] = []  # 🔥 NEW: Batch sentence analysis
+    sentences_for_analysis: Optional[List[Dict[str, Any]]] = []
+    # Bonus XP earned during the session:
+    #   +10 correction engagement (≥50% of corrections dismissed via "Got it")
+    #   +5  fluency burst (2 consecutive clean turns with no correction)
+    # Max possible: 15. Validated server-side: clamped to [0, 15].
+    correction_bonus_xp: Optional[int] = 0
 
 class ConversationStats(BaseModel):
     total_sessions: int
