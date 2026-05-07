@@ -286,6 +286,33 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
         # Add DNA profile to assessment response
         assessment["dna_profile"] = dna_profile
 
+        # 🌍 LOCALE TRANSLATION: If the client sent a non-English UI locale,
+        # generate translated versions of all user-facing text fields.
+        # This is always additive — English fields are never removed.
+        # On failure the original English assessment is returned unchanged.
+        ui_locale = getattr(request, "ui_locale", None)
+        if ui_locale:
+            try:
+                from assessment_translation_service import translate_assessment
+                assessment = await translate_assessment(assessment, ui_locale)
+                assessment["ui_locale"] = ui_locale
+                print(f"[TRANSLATION] Assessment translated for locale: {ui_locale}")
+            except Exception as translation_error:
+                print(f"[TRANSLATION] ⚠️ Translation failed (non-fatal): {translation_error}")
+                # English fields are always present — safe to continue
+
+        # Save updated assessment (with translations) to user record
+        if current_user:
+            try:
+                from database import users_collection
+                from bson import ObjectId as BsonObjectId
+                await users_collection.update_one(
+                    {"_id": BsonObjectId(current_user.id)},
+                    {"$set": {"last_assessment_data": assessment}}
+                )
+            except Exception as save_error:
+                print(f"[ASSESSMENT_SAVE] Re-save after translation failed: {save_error}")
+
         # HIGH PRIORITY: Invalidate TaalCoach cache so it knows about the new assessment
         if current_user:
             try:
@@ -295,7 +322,6 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 print(f"[CACHE] Invalidated TaalCoach cache for user {current_user.id} after assessment")
             except Exception as cache_error:
                 print(f"[CACHE] Warning: Failed to invalidate cache: {str(cache_error)}")
-                # Don't fail assessment if cache invalidation fails
 
         print(f"Successfully analyzed speaking proficiency")
         return assessment
