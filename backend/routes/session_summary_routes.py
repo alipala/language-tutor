@@ -775,7 +775,10 @@ async def store_session_summary(
                 # Also increment the denormalized lifetime XP on the user document
                 await users_collection.update_one(
                     {'_id': ObjectId(str(current_user.id))},
-                    {'$inc': {'stats.lifetime.total_xp': total_xp_delta}}
+                    {'$inc': {
+                        'stats.lifetime.total_xp': total_xp_delta,
+                        'stats.lifetime.xp_by_source.conversations': total_xp_delta,
+                    }}
                 )
                 print(f"[SESSION_SUMMARY] ✅ lifetime XP updated: +{total_xp_delta} XP")
             except Exception as stats_err:

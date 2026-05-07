@@ -971,7 +971,10 @@ async def save_conversation(
                 # Also increment the denormalized lifetime XP on the user document
                 await users_collection.update_one(
                     {'_id': ObjectId(current_user.id)},
-                    {'$inc': {'stats.lifetime.total_xp': xp_earned_total}}
+                    {'$inc': {
+                        'stats.lifetime.total_xp': xp_earned_total,
+                        'stats.lifetime.xp_by_source.conversations': xp_earned_total,
+                    }}
                 )
                 print(f"[PROGRESS] ✅ XP applied (existing session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
             except Exception as stats_err:
@@ -1157,7 +1160,10 @@ async def save_conversation(
                 # Also increment the denormalized lifetime XP on the user document
                 await users_collection.update_one(
                     {'_id': ObjectId(current_user.id)},
-                    {'$inc': {'stats.lifetime.total_xp': xp_earned_total}}
+                    {'$inc': {
+                        'stats.lifetime.total_xp': xp_earned_total,
+                        'stats.lifetime.xp_by_source.conversations': xp_earned_total,
+                    }}
                 )
                 print(f"[PROGRESS] ✅ XP applied (new session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
             except Exception as stats_err:

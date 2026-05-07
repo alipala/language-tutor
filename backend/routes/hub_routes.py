@@ -163,21 +163,65 @@ async def _get_subscription(user_id: str) -> Dict:
 
 
 async def _get_progress_stats(user_id: str) -> Dict:
-    """Aggregate lifetime progress from user.stats embedded doc."""
+    """
+    Aggregate lifetime progress from the denormalized user.stats.lifetime doc.
+
+    Why denormalized and NOT live aggregation:
+    - challenge_sessions only captures recent sessions; the bulk of historical
+      XP was incremented directly into stats.lifetime via individual challenge
+      answer paths and is NOT in any session document.
+    - stats.lifetime.total_xp is the single authoritative counter — incremented
+      atomically on every XP-earning event by all paths.
+    - xp_by_source is also denormalized (incremented alongside total_xp) so
+      it stays in sync without any aggregation queries.
+
+    Breakdown derivation for users who pre-date xp_by_source tracking:
+    - Challenge XP = sum of by_language[lang].total_xp (challenge sessions are
+      the only events that write per-language XP).
+    - Conversation XP = total_xp - challenge_xp (remainder).
+    """
     user = await users_collection.find_one(
         {"_id": ObjectId(user_id)},
-        {"stats": 1, "journey_state": 1}
+        {"stats": 1}
     )
     if not user:
         return {}
-    stats = user.get("stats") or {}
+    stats    = user.get("stats") or {}
+    lifetime = stats.get("lifetime") or {}
+    total_xp = lifetime.get("total_xp") or stats.get("total_xp", 0)
+
+    # Prefer the explicitly tracked breakdown (written since the fix)
+    xp_by_source = lifetime.get("xp_by_source") or {}
+    challenge_xp    = xp_by_source.get("challenges", 0)
+    conversation_xp = xp_by_source.get("conversations", 0)
+    achievement_xp  = xp_by_source.get("achievements", 0)
+
+    # Fallback for pre-fix users: derive from by_language (challenge-only source)
+    if challenge_xp == 0 and conversation_xp == 0 and total_xp > 0:
+        challenge_xp = sum(
+            lang.get("total_xp", 0)
+            for lang in lifetime.get("by_language", {}).values()
+        )
+        # Anything not attributed to challenges must be conversation XP
+        conversation_xp = max(0, total_xp - challenge_xp)
+
+    challenge_count    = lifetime.get("total_challenges", 0)
+    conversation_count = lifetime.get("total_sessions", 0)
+
     return {
         "current_streak":          stats.get("current_streak", 0),
         "longest_streak":          stats.get("longest_streak", 0),
-        "total_sessions":          stats.get("total_sessions", 0),
-        "total_minutes":           stats.get("total_minutes", 0),
-        "total_xp":                stats.get("lifetime", {}).get("total_xp") or stats.get("total_xp", 0),
+        "total_sessions":          conversation_count or stats.get("total_sessions", 0),
+        "total_minutes":           lifetime.get("total_time_minutes") or stats.get("total_minutes", 0),
+        "total_xp":                total_xp,
         "average_minutes_per_day": stats.get("average_minutes_per_day", 0),
+        "xp_by_source": {
+            "challenges":    challenge_xp,
+            "conversations": conversation_xp,
+            "achievements":  achievement_xp,
+        },
+        "challenge_count":    challenge_count,
+        "conversation_count": conversation_count,
     }
 
 
