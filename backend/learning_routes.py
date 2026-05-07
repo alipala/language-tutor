@@ -113,42 +113,29 @@ PREDEFINED_GOALS = [
 
 @router.get("/goals", response_model=List[Dict[str, Any]])
 async def get_learning_goals(
-    enriched: bool = False
+    enriched: bool = False,
 ):
     """
-    Get a list of learning goals
-    
-    Args:
-        enriched: If True, return enriched goals with sub-goals. If False, return legacy format.
+    Get a list of learning goals.
+    Goal text/descriptions are translated client-side via locale keys.
     """
     try:
-        # If enriched goals requested and intelligent system available
         if enriched and INTELLIGENT_SYSTEM_AVAILABLE:
             logger.info("[LEARNING_ROUTES] 📊 Returning enriched goals")
-            enriched_goals = get_all_main_goals()
-            return enriched_goals
+            return get_all_main_goals()
         else:
-            # Return legacy format - DON'T insert to database, just return
             logger.info("[LEARNING_ROUTES] 📊 Returning legacy goals")
-            # 🔥 FIX: Don't insert to database to avoid ObjectId serialization issues
-            # Just return the predefined goals directly
             return PREDEFINED_GOALS
-    
     except Exception as e:
         logger.error(f"[LEARNING_ROUTES] ❌ Error fetching goals: {str(e)}")
-        # Fallback to legacy goals
         return PREDEFINED_GOALS
+
 
 @router.get("/goals/{goal_id}/sub-goals")
 async def get_sub_goals(goal_id: str):
     """
-    Get sub-goals for a specific main goal
-    
-    Args:
-        goal_id: Main goal identifier (e.g., "travel", "business")
-        
-    Returns:
-        List of sub-goals with descriptions
+    Get sub-goals for a specific main goal.
+    Sub-goal text/descriptions are translated client-side via locale keys.
     """
     try:
         if not INTELLIGENT_SYSTEM_AVAILABLE:
@@ -156,18 +143,14 @@ async def get_sub_goals(goal_id: str):
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="Enriched goals system not available"
             )
-        
         logger.info(f"[LEARNING_ROUTES] 📊 Fetching sub-goals for: {goal_id}")
         sub_goals = get_sub_goals_for_main_goal(goal_id)
-        
         if not sub_goals:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No sub-goals found for goal: {goal_id}"
             )
-        
         return sub_goals
-    
     except HTTPException:
         raise
     except Exception as e:

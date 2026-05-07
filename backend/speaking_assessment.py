@@ -42,6 +42,10 @@ class SpeakingAssessmentRequest(BaseModel):
     language: str
     duration: Optional[int] = 60
     prompt: Optional[str] = None
+    # Device UI locale — e.g. 'tr', 'tr-TR', 'fr', 'de'.
+    # When provided and supported, all user-facing text fields will also be
+    # stored/returned under a `_<locale>` suffixed key alongside English.
+    ui_locale: Optional[str] = None
 
 
 class SpeakingAssessmentResponse(BaseModel):
@@ -58,6 +62,9 @@ class SpeakingAssessmentResponse(BaseModel):
     areas_for_improvement: List[str]
     next_steps: List[str]
     dna_profile: Optional[Dict] = None
+    # Locale of the translated fields present in this response (if any).
+    # Client uses this to know which _<locale> keys to read.
+    ui_locale: Optional[str] = None
 
 
 async def evaluate_language_proficiency_improved(

@@ -535,37 +535,80 @@ async def _build_missions(
         "target":         bronze_target,
     }
 
-    # ── Gold: review unreviewed flashcards (cap 3, min 1) ─────────
-    flash_target = min(3, max(1, unreviewed)) if unreviewed > 0 else 1
-    flash_title  = (
-        f"Review {flash_target} flashcard set{'s' if flash_target > 1 else ''}"
-        if unreviewed > 0
-        else "All flashcard sets reviewed!"
+    # ── Gold mission ──────────────────────────────────────────────
+    # If the user has unreviewed flashcard sets → flashcard mission.
+    # If the user has a plan but all sets reviewed → "all done" flashcard.
+    # If the user has NO flashcard sets at all (no plan yet, or plan but
+    #   no sessions completed yet) → replace with a second challenge using
+    #   a different type than silver so it's always completable.
+    has_any_flashcards = await flashcard_sets_collection.count_documents(
+        {"user_id": user_id}
     )
 
-    # Build subtitle showing language + level of sets to review
+    gold_mission: Dict
     flash_subtitle = None
+
     if unreviewed > 0:
+        # Standard: review N unreviewed sets
+        flash_target = min(3, unreviewed)
+        flash_title  = f"Review {flash_target} flashcard set{'s' if flash_target > 1 else ''}"
         try:
             unreviewed_sets = await flashcard_sets_collection.find(
                 {"user_id": user_id, "is_reviewed": {"$ne": True}},
-                {"language": 1, "level": 1, "topic": 1}
+                {"language": 1, "level": 1}
             ).limit(3).to_list(3)
-
-            parts = []
-            seen = set()
+            parts, seen = [], set()
             for s in unreviewed_sets:
                 lang = (s.get("language") or "").capitalize()
                 lvl  = (s.get("level") or "").upper()
                 if lang and lvl:
                     key = f"{lang} {lvl}"
                     if key not in seen:
-                        seen.add(key)
-                        parts.append(key)
+                        seen.add(key); parts.append(key)
             if parts:
                 flash_subtitle = " · ".join(parts)
         except Exception:
-            pass  # subtitle is optional — never block mission generation
+            pass
+        gold_mission = {
+            "id":             "flashcards",
+            "tier":           "gold",
+            "title":          flash_title,
+            "subtitle":       flash_subtitle,
+            "challenge_type": None,
+            "target":         flash_target,
+        }
+
+    elif has_any_flashcards:
+        # Has sets but all reviewed today
+        gold_mission = {
+            "id":             "flashcards",
+            "tier":           "gold",
+            "title":          "All flashcard sets reviewed!",
+            "subtitle":       None,
+            "challenge_type": None,
+            "target":         1,
+        }
+
+    else:
+        # No flashcard sets at all — give a second completable challenge
+        # Pick a type different from silver to avoid duplication
+        GOLD_FALLBACK_ORDER = [
+            "error_spotting", "native_check", "story_builder",
+            "brain_tickler", "micro_quiz", "smart_flashcard",
+        ]
+        gold_type = next(
+            (t for t in GOLD_FALLBACK_ORDER if t != silver.winner),
+            "micro_quiz",
+        )
+        gold_cfg  = CHALLENGE_CFG.get(gold_type, CHALLENGE_CFG["micro_quiz"])
+        gold_mission = {
+            "id":             "challenge_gold",
+            "tier":           "gold",
+            "title":          gold_cfg["title"],
+            "subtitle":       "Bonus challenge",
+            "challenge_type": gold_type,
+            "target":         gold_cfg["target"],
+        }
 
     missions: List[Dict] = [
         bronze,
@@ -577,12 +620,7 @@ async def _build_missions(
             "target":         silver_cfg["target"],
         },
         {
-            "id":             "flashcards",
-            "tier":           "gold",
-            "title":          flash_title,
-            "subtitle":       flash_subtitle,
-            "challenge_type": None,
-            "target":         flash_target,
+            **gold_mission,
         },
     ]
     return missions, silver, bronze_id
@@ -738,11 +776,17 @@ async def _hydrate_progress(
         elif m["id"] == "challenge":
             current = min(target, completed_challenge_sessions)
 
+        elif m["id"] == "challenge_gold":
+            # Gold fallback challenge — count sessions of this specific type
+            gold_challenge_type = m.get("challenge_type", "")
+            gold_count = await _get_completed_challenge_sessions_today(
+                user_id, local_date, gold_challenge_type
+            ) if gold_challenge_type else 0
+            current = min(target, gold_count)
+
         else:  # flashcards
-            if m["title"].startswith("All flashcard"):
-                current = target
-            else:
-                current = min(target, reviewed_sets)
+            # Always use actual reviewed count — never shortcut via title
+            current = min(target, reviewed_sets)
 
         # Use live subtitle for flashcard mission; carry through stored subtitle for others
         subtitle = flash_subtitle if m["id"] == "flashcards" and current < target else m.get("subtitle")

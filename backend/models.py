@@ -1226,6 +1226,9 @@ class LifetimeSummary(BaseModel):
     member_since: str
     longest_streak: int
     current_streak: int
+    xp_by_source: Optional[Dict[str, Any]] = None
+    challenge_count: int = 0
+    conversation_count: int = 0
 
 
 class LifetimeProgressResponse(BaseModel):

@@ -126,8 +126,28 @@ async def get_lifetime_progress(
         stats = user.get('stats', {})
         lifetime = stats.get('lifetime', {})
 
-        # Calculate XP breakdown from actual sessions
-        xp_breakdown = await calculate_xp_breakdown(user_id)
+        # Derive XP breakdown from denormalized lifetime fields.
+        # by_language[lang].total_xp tracks challenge XP (the only per-language
+        # writer). Conversation XP = total_xp - challenge_xp.
+        total_xp = lifetime.get('total_xp', 0)
+        stored_src = lifetime.get('xp_by_source') or {}
+        if stored_src.get('challenges', 0) > 0 or stored_src.get('conversations', 0) > 0:
+            # Post-fix users: xp_by_source is tracked directly
+            challenge_xp    = stored_src.get('challenges', 0)
+            conversation_xp = stored_src.get('conversations', 0)
+        else:
+            # Pre-fix users: derive from by_language
+            challenge_xp    = sum(l.get('total_xp', 0) for l in lifetime.get('by_language', {}).values())
+            conversation_xp = max(0, total_xp - challenge_xp)
+
+        xp_breakdown = {
+            'challenges':        challenge_xp,
+            'conversations':     conversation_xp,
+            'achievements':      stored_src.get('achievements', 0),
+            'challenge_count':   lifetime.get('total_challenges', 0),
+            'conversation_count': lifetime.get('total_sessions', 0),
+            'achievement_count': 0,
+        }
 
         # Calculate summary with XP breakdown
         summary = calculate_lifetime_summary(user, stats, lifetime, xp_breakdown)

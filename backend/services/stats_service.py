@@ -216,6 +216,7 @@ async def update_lifetime_stats(session_data: Dict[str, Any]) -> None:
             'stats.lifetime.total_challenges': session_data['total_challenges'],
             'stats.lifetime.total_sessions': 1,
             'stats.lifetime.total_xp': session_data['total_xp'],
+            'stats.lifetime.xp_by_source.challenges': session_data['total_xp'],
             'stats.lifetime.total_time_minutes': session_data.get('duration_seconds', 0) / 60,
 
             f'stats.lifetime.by_language.{language}.total_challenges': session_data['total_challenges'],
