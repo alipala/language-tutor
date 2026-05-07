@@ -176,7 +176,7 @@ async def _get_progress_stats(user_id: str) -> Dict:
         "longest_streak":          stats.get("longest_streak", 0),
         "total_sessions":          stats.get("total_sessions", 0),
         "total_minutes":           stats.get("total_minutes", 0),
-        "total_xp":                stats.get("total_xp", 0),
+        "total_xp":                stats.get("lifetime", {}).get("total_xp") or stats.get("total_xp", 0),
         "average_minutes_per_day": stats.get("average_minutes_per_day", 0),
     }
 
