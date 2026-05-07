@@ -138,8 +138,8 @@ class SubscriptionService:
         "fluency_builder": SubscriptionPlan(
             plan_id="fluency_builder",
             name="Fluency Builder",
-            monthly_price=19.99,
-            annual_price=119.00,  # UPDATED: Was 199.99
+            monthly_price=9.99,
+            annual_price=59.99,
             monthly_sessions=30,
             annual_sessions=360,  # 30 sessions × 12 months
             monthly_assessments=2,
@@ -159,8 +159,8 @@ class SubscriptionService:
         "language_mastery": SubscriptionPlan(
             plan_id="language_mastery",
             name="Language Mastery",
-            monthly_price=39.99,
-            annual_price=239.00,  # UPDATED: Was 399.99
+            monthly_price=17.99,
+            annual_price=107.88,
             monthly_sessions=-1,  # Unlimited
             annual_sessions=-1,   # Unlimited
             monthly_assessments=-1,  # Unlimited
@@ -181,8 +181,8 @@ class SubscriptionService:
         "team_mastery": SubscriptionPlan(
             plan_id="team_mastery",
             name="Language Mastery",  # Display new name
-            monthly_price=39.99,
-            annual_price=239.00,  # UPDATED: Was 399.99
+            monthly_price=17.99,
+            annual_price=107.88,
             monthly_sessions=-1,  # Unlimited
             annual_sessions=-1,   # Unlimited
             monthly_assessments=-1,  # Unlimited

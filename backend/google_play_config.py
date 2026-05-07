@@ -26,28 +26,28 @@ GOOGLE_PLAY_PRODUCTS = {
     "fluency_builder_monthly": {
         "plan_id": "fluency_builder",
         "period": "monthly",
-        "price": 19.99,
+        "price": 9.99,
         "minutes": 150,
         "assessments": 2
     },
     "fluency_builder_annual": {
         "plan_id": "fluency_builder",
         "period": "annual",
-        "price": 119.00,
+        "price": 59.99,
         "minutes": 1800,
         "assessments": 24
     },
     "language_mastery_monthly": {
         "plan_id": "language_mastery",
         "period": "monthly",
-        "price": 39.99,
+        "price": 17.99,
         "minutes": -1,  # Unlimited
         "assessments": -1  # Unlimited
     },
     "language_mastery_annual": {
         "plan_id": "language_mastery",
         "period": "annual",
-        "price": 239.00,
+        "price": 107.88,
         "minutes": -1,  # Unlimited
         "assessments": -1  # Unlimited
     }
