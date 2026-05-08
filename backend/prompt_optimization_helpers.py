@@ -2771,6 +2771,81 @@ Use emojis to keep students engaged and reduce anxiety!
                     week_focus = current_week.get('focus', 'Building basic skills')
                     week_activities = current_week.get('activities', [])
 
+                    # ── Vocabulary & phrases from enriched schedule ───────────
+                    key_vocabulary = current_week.get('key_vocabulary', [])
+                    key_phrases = current_week.get('key_phrases', [])
+
+                    # ── Previous structured session summary context ───────────
+                    # Pull from session_history (newest first) for rich continuity
+                    session_history = learning_plan_data.get('session_history', [])
+                    _prev_structured_lines = []
+                    for _hist in reversed(session_history[-2:]):
+                        _ss = _hist.get('structured_summary') or {}
+                        if not _ss:
+                            continue
+                        _s_num = _hist.get('session_number', '?')
+                        _vocab_done = _ss.get('vocabulary_practiced', [])
+                        _carry = _ss.get('focus_next_session', '')
+                        _conf = _ss.get('student_confidence', '')
+                        _breakthrough = _ss.get('breakthrough_moment', '')
+                        _corrections = _ss.get('corrections_made', [])
+
+                        if _vocab_done:
+                            _prev_structured_lines.append(
+                                f"- Session {_s_num} vocabulary: {', '.join(_vocab_done[:5])}"
+                            )
+                        if _corrections:
+                            _corr_str = '; '.join(
+                                f"{c.get('wrong','?')}→{c.get('correct','?')}"
+                                for c in _corrections[:3]
+                            )
+                            _prev_structured_lines.append(
+                                f"- Session {_s_num} corrections to reinforce: {_corr_str}"
+                            )
+                        if _carry:
+                            _prev_structured_lines.append(
+                                f"- Continue from session {_s_num}: {_carry}"
+                            )
+                        if _conf:
+                            _prev_structured_lines.append(
+                                f"- Student confidence at end of session {_s_num}: {_conf}"
+                            )
+                        if _breakthrough:
+                            _prev_structured_lines.append(
+                                f"- Session {_s_num} breakthrough: {_breakthrough}"
+                            )
+
+                    prev_summary_block = ""
+                    if _prev_structured_lines:
+                        prev_summary_block = (
+                            "\n\n📋 PREVIOUS SESSION MEMORY (use this for continuity):\n"
+                            + "\n".join(_prev_structured_lines)
+                            + "\n→ Build on these in today's session!"
+                        )
+
+                    # ── Vocabulary injection (A1/A2 beginner-friendly) ────────
+                    vocab_block = ""
+                    if key_vocabulary or key_phrases:
+                        _v_lines = []
+                        if key_vocabulary:
+                            # For A1: show 4 words max; A2: up to 6
+                            _max_v = 4 if level == 'A1' else 6
+                            _v_lines.append(
+                                f"Words to use: {', '.join(key_vocabulary[:_max_v])}"
+                            )
+                        if key_phrases:
+                            _max_p = 2 if level == 'A1' else 3
+                            _v_lines.append(
+                                f"Phrases to use: {', '.join(key_phrases[:_max_p])}"
+                            )
+                        vocab_block = (
+                            "\n\n🔤 TARGET VOCABULARY FOR THIS SESSION:\n"
+                            + "\n".join(_v_lines)
+                            + "\n- Use these words/phrases naturally in questions"
+                            + "\n- Say them first so the student hears them"
+                            + "\n- Do NOT make it a vocabulary drill — keep it conversational"
+                        )
+
                     # Create level-specific question guidance for learning plans
                     if level == 'A1':
                         question_guidance = """- Ask ONLY simple yes/no or choice questions ("A or B?") - NO open-ended questions!
@@ -2830,7 +2905,7 @@ Remember: Encourage complete sentences, not one-word answers"""
 📚 LEARNING PLAN - Week {current_week_number} - START IMMEDIATELY!
 
 Focus this week: {week_focus}
-Activities: {', '.join(week_activities[:2]) if week_activities else 'Practice conversation'}
+Activities: {', '.join(week_activities[:2]) if week_activities else 'Practice conversation'}{prev_summary_block}{vocab_block}
 
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:

@@ -476,16 +476,88 @@ Plan Details:
                     week_focus = current_week.get('focus', 'Building foundational skills')
                     week_activities = current_week.get('activities', [])
 
+                    # ── Vocabulary & phrases from enriched schedule ───────────
+                    key_vocabulary = current_week.get('key_vocabulary', [])
+                    key_phrases = current_week.get('key_phrases', [])
+
+                    # ── Previous session structured summaries ─────────────────
+                    # Build context from both compressed strings AND structured objects
                     previous_sessions_context = ""
                     session_summaries = learning_plan_data.get('session_summaries', [])
-                    if session_summaries:
-                        previous_sessions_context = build_compressed_session_context(session_summaries, max_summaries=3)
+                    session_history = learning_plan_data.get('session_history', [])
 
+                    if session_summaries:
+                        previous_sessions_context = build_compressed_session_context(
+                            session_summaries, max_summaries=3
+                        )
+
+                    # Enrich with last structured summary if available
+                    _structured_context_lines = []
+                    for _hist in reversed(session_history[-3:]):
+                        _ss = _hist.get('structured_summary') or {}
+                        if not _ss:
+                            continue
+                        _vocab = _ss.get('vocabulary_practiced', [])
+                        _focus_next = _ss.get('focus_next_session', '')
+                        _confidence = _ss.get('student_confidence', '')
+                        _breakthrough = _ss.get('breakthrough_moment', '')
+                        _corrections = _ss.get('corrections_made', [])
+                        _s_num = _hist.get('session_number', '?')
+
+                        _lines = [f"  Session {_s_num} insights:"]
+                        if _vocab:
+                            _lines.append(f"    - Vocabulary practiced: {', '.join(_vocab[:6])}")
+                        if _corrections:
+                            _corr_str = '; '.join(
+                                f"{c.get('wrong','?')} → {c.get('correct','?')}"
+                                for c in _corrections[:3]
+                            )
+                            _lines.append(f"    - Corrections made: {_corr_str}")
+                        if _confidence:
+                            _lines.append(f"    - Student confidence: {_confidence}")
+                        if _breakthrough:
+                            _lines.append(f"    - Breakthrough: {_breakthrough}")
+                        if _focus_next:
+                            _lines.append(f"    - Carry forward: {_focus_next}")
+                        _structured_context_lines.extend(_lines)
+
+                    if _structured_context_lines:
+                        previous_sessions_context += (
+                            "\n\n📋 DETAILED PREVIOUS SESSION INSIGHTS:\n"
+                            + "\n".join(_structured_context_lines)
+                        )
+
+                    if previous_sessions_context:
                         previous_sessions_context += """
+
 LEARNING PROGRESSION:
-- Build upon insights from previous sessions
-- Reference progress made in earlier conversations
-- Continue developing skills identified in previous summaries"""
+- Build directly upon the vocabulary and corrections listed above
+- If a correction was made in a previous session, watch for the same error and recast gently
+- Reference previous breakthrough moments to boost confidence
+- Start the session by continuing the area flagged in "Carry forward" """
+
+                    # ── Vocabulary injection block ────────────────────────────
+                    vocab_injection = ""
+                    if key_vocabulary or key_phrases:
+                        vocab_lines = []
+                        if key_vocabulary:
+                            vocab_lines.append(
+                                f"Target vocabulary: {', '.join(key_vocabulary[:10])}"
+                            )
+                        if key_phrases:
+                            vocab_lines.append(
+                                f"Target phrases: {', '.join(key_phrases[:5])}"
+                            )
+                        vocab_injection = f"""
+
+🎯 MANDATORY VOCABULARY FOR THIS SESSION:
+{chr(10).join(vocab_lines)}
+
+VOCABULARY RULES:
+- Weave these words/phrases naturally into the conversation
+- When the student uses one correctly, acknowledge it briefly
+- If a target word fits the topic, use it yourself first so the student hears it in context
+- Do NOT turn this into a vocabulary drill — integrate organically"""
 
                     learning_plan_context = f"""
 🚨🚨🚨 CRITICAL FIRST MESSAGE INSTRUCTION - READ THIS FIRST 🚨🚨🚨
@@ -510,7 +582,7 @@ Your FIRST message MUST follow this EXACT structure:
 - Current Session: Week {current_week_number}, Session {current_session_in_week}
 - Focus Area: {week_focus}
 - Key Activities: {', '.join(week_activities[:3]) if week_activities else 'Practice conversation skills'}
-{previous_sessions_context}
+{previous_sessions_context}{vocab_injection}
 
 CONVERSATION GUIDANCE:
 - Center the conversation around this week's focus: "{week_focus}"
@@ -524,6 +596,10 @@ CONVERSATION GUIDANCE:
                     print(f"Current week {current_week_number} focus: {week_focus}")
                     print(f"Current week activities: {week_activities}")
                     print(f"Session {current_session_in_week} of week {current_week_number}")
+                    if key_vocabulary:
+                        print(f"Key vocabulary injected: {key_vocabulary[:5]}")
+                    if key_phrases:
+                        print(f"Key phrases injected: {key_phrases[:3]}")
 
     # Handle news conversations FIRST (highest priority)
     if request.news_context:
@@ -1514,7 +1590,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                     return {
                         "plan_content": learning_plan.get("plan_content", {}),
                         "completed_sessions": learning_plan.get("completed_sessions", 0),
-                        "total_sessions": learning_plan.get("total_sessions", 0)
+                        "total_sessions": learning_plan.get("total_sessions", 0),
+                        # session_history carries structured_summary objects for continuity
+                        "session_history": learning_plan.get("session_history", []),
+                        "session_summaries": learning_plan.get("session_summaries", []),
                     }
                 else:
                     print(f"[LEARNING_PLAN] ❌ No learning plan found for this language and user")

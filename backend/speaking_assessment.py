@@ -88,15 +88,57 @@ async def evaluate_language_proficiency_improved(
         Complete assessment with accurate pronunciation and reading detection
     """
     logger.info(f"🎯 Starting IMPROVED assessment for {language}")
-    logger.info(f"📝 Text: '{text[:100]}...' ({len(text.split())} words in {duration}s)")
+
+    word_count_pre = len(text.split()) if text else 0
+    wpm_pre = (word_count_pre / max(duration, 1)) * 60
+    logger.info(
+        f"📝 Text: '{text[:100]}...' "
+        f"({word_count_pre} words in {duration}s, ~{wpm_pre:.0f} WPM)"
+    )
+
+    # ── MINIMUM SAMPLE GATE ────────────────────────────────────────────────────
+    # Research minimum for reliable CEFR scoring: 60 word tokens (75 preferred).
+    # Below this threshold vocabulary diversity (TTR) and grammar complexity
+    # measures are statistically unreliable (PMC8552541; clinical LSA research).
+    #
+    # MOBILE CONTRACT: We NEVER return HTTP 4xx here — the mobile app maps any
+    # 400 response to "subscription limit reached" and shows the upgrade modal.
+    # Instead we return a fully valid SpeakingAssessmentResponse with a soft
+    # warning in areas_for_improvement and a conservative A1/A2 level.
+    _MIN_WORDS_FOR_RELIABLE_SCORING = 60
+    if word_count_pre < _MIN_WORDS_FOR_RELIABLE_SCORING and word_count_pre > 0:
+        logger.warning(
+            f"⚠️ SHORT SAMPLE: {word_count_pre} words < {_MIN_WORDS_FOR_RELIABLE_SCORING} "
+            f"minimum — returning soft warning in valid response"
+        )
+        # Proceed with assessment but inject a warning; bottleneck logic will
+        # naturally produce a conservative level from the thin evidence.
+        _sample_warning = (
+            f"Your recording was {word_count_pre} words — we recommend speaking "
+            f"for at least 60 words (roughly 45-60 seconds) for a reliable level "
+            f"assessment. Try again with more speech for a more accurate result."
+        )
+    else:
+        _sample_warning = None
 
     # STEP 1: Detect if user is reading from text
+    # Pass a rough CEFR estimate so the detector can suppress beginner-normal
+    # signals (slow WPM, no fillers) that are not reading indicators at A1/A2.
+    # We don't have a GPT score yet so estimate from WPM only as a hint.
+    _wpm_hint = wpm_pre
+    _level_hint = (
+        "A1" if _wpm_hint < 70
+        else "A2" if _wpm_hint < 95
+        else "B1" if _wpm_hint < 115
+        else "B2"
+    )
     logger.info("🔍 STEP 1: Reading detection...")
     reading_analysis = reading_detector.detect_reading_patterns(
         transcript=text,
         audio_duration=duration,
         language=language,
-        prompt=prompt
+        prompt=prompt,
+        estimated_cefr_level=_level_hint,
     )
 
     # STEP 2: Get real pronunciation assessment (if audio available)
@@ -145,19 +187,66 @@ async def evaluate_language_proficiency_improved(
         gpt_evaluation = _apply_reading_penalties(gpt_evaluation, reading_analysis)
 
     # STEP 6: Calculate final overall score
+    # Weight distribution — research-calibrated for spoken proficiency:
+    #   fluency    25%  (primary differentiator between CEFR bands)
+    #   grammar    25%  (structural competence)
+    #   vocabulary 20%  (range and precision)
+    #   pronunciation 20%  (intelligibility)
+    #   coherence  10%  (discourse organisation — hardest to measure from short samples)
     final_score = (
-        gpt_evaluation['pronunciation']['score'] * 0.25 +
-        gpt_evaluation['grammar']['score'] * 0.20 +
-        gpt_evaluation['vocabulary']['score'] * 0.20 +
-        gpt_evaluation['fluency']['score'] * 0.20 +
-        gpt_evaluation['coherence']['score'] * 0.15
+        gpt_evaluation['fluency']['score']       * 0.25 +
+        gpt_evaluation['grammar']['score']       * 0.25 +
+        gpt_evaluation['vocabulary']['score']    * 0.20 +
+        gpt_evaluation['pronunciation']['score'] * 0.20 +
+        gpt_evaluation['coherence']['score']     * 0.10
     )
     gpt_evaluation['overall_score'] = round(final_score, 1)
 
-    # Adjust CEFR level based on final score
-    gpt_evaluation['recommended_level'] = _score_to_cefr_level(final_score)
+    # STEP 7: Determine CEFR level using bottleneck rule (industry standard)
+    # Primary: lowest skill band governs the final level.
+    # Secondary: composite score used as a tie-breaker sanity check.
+    skill_scores = {
+        'pronunciation': gpt_evaluation['pronunciation']['score'],
+        'grammar':       gpt_evaluation['grammar']['score'],
+        'vocabulary':    gpt_evaluation['vocabulary']['score'],
+        'fluency':       gpt_evaluation['fluency']['score'],
+        'coherence':     gpt_evaluation['coherence']['score'],
+    }
+    bottleneck_level = _skill_scores_to_cefr_level(skill_scores)
+    composite_level  = _score_to_cefr_level(final_score)
 
-    logger.info(f"✅ Final assessment: {gpt_evaluation['recommended_level']} ({final_score:.1f}/100)")
+    # Accept the bottleneck level unless composite suggests it's 2+ bands too harsh
+    # (guards against extreme GPT scoring outliers on very short samples)
+    btn_idx  = _CEFR_ORDER.index(bottleneck_level)
+    comp_idx = _CEFR_ORDER.index(composite_level)
+    if comp_idx - btn_idx >= 2:
+        # Composite is much more generous — split the difference (move up 1 band)
+        final_level = _CEFR_ORDER[btn_idx + 1]
+        logger.info(
+            f"[CEFR_LEVEL] Composite ({composite_level}) vs bottleneck ({bottleneck_level}) "
+            f"gap ≥2 → using {final_level}"
+        )
+    else:
+        final_level = bottleneck_level
+
+    gpt_evaluation['recommended_level'] = final_level
+
+    logger.info(
+        f"✅ Final assessment: {final_level} "
+        f"(composite={final_score:.1f}/100, bottleneck={bottleneck_level}, "
+        f"composite_band={composite_level})"
+    )
+
+    # ── Short-sample warning injection ────────────────────────────────────────
+    # Prepend the reliability warning so the learner sees it prominently in the
+    # app's areas_for_improvement list.  This is purely additive — no field
+    # is removed or renamed, so the mobile contract is unaffected.
+    if _sample_warning:
+        existing = gpt_evaluation.get("areas_for_improvement", [])
+        if not isinstance(existing, list):
+            existing = [str(existing)] if existing else []
+        gpt_evaluation["areas_for_improvement"] = [_sample_warning] + existing
+        logger.info(f"[SHORT_SAMPLE] Warning injected into areas_for_improvement")
 
     return gpt_evaluation
 
@@ -174,56 +263,167 @@ async def _strict_gpt4_evaluation(
 
     This is MUCH harsher than the original prompt.
     """
-    # CEFR level STRICT descriptions
+    # ── CEFR benchmarks: 2020 Companion Volume + research-validated metrics ──
+    # Key update from CEFR 2020: native-speaker norms are REMOVED.
+    # The standard is COMMUNICATIVE EFFECTIVENESS / INTELLIGIBILITY — not
+    # proximity to a native speaker.  Vocabulary sizes from Milton & Alexiou
+    # (2009) research corpus; WPM from LINDSEI corpus (Huang & Gráf, 2025).
     cefr_strict_benchmarks = {
         "A1": {
-            "description": "Absolute beginner - can only use memorized phrases",
-            "grammar": "Constant errors even in present tense, no verb conjugation",
-            "vocabulary": "< 500 words, only survival basics",
-            "fluency": "Long pauses every few words, heavy dependence on first language",
+            "standard": "CEFR 2020 Companion Volume A1",
+            "communicative_standard": (
+                "Can communicate basic personal information when the listener "
+                "is cooperative and patient. Speech is understood despite a "
+                "strong L1 accent."
+            ),
+            "grammar": (
+                "Only isolated words and formulaic phrases. Present tense "
+                "only; frequent errors expected even in basic structures."
+            ),
+            "vocabulary": (
+                "Fewer than 1,500 word families. Survival basics: greetings, "
+                "numbers, colours, family, simple objects."
+            ),
+            "fluency": (
+                "Very slow (50-70 WPM), many pauses. Heavy L1 reliance. "
+                "This rate is NORMAL for A1 — do NOT penalise it."
+            ),
+            "coherence": (
+                "Isolated sentences; no linking devices beyond 'and'. "
+                "No extended discourse expected."
+            ),
             "minimum_words": 15,
-            "max_errors_per_10_words": 4
+            "max_errors_per_10_words": 4,
+            "wpm_range": "50-70",
         },
         "A2": {
-            "description": "Elementary - can handle simple exchanges",
-            "grammar": "Basic structures only, frequent errors in past tense",
-            "vocabulary": "500-1000 words, limited to concrete topics",
-            "fluency": "Frequent pauses, slow speech, simple sentences only",
+            "standard": "CEFR 2020 Companion Volume A2",
+            "communicative_standard": (
+                "Can handle simple routine exchanges on familiar topics. "
+                "Intelligible to patient interlocutors familiar with L2 speakers."
+            ),
+            "grammar": (
+                "Simple present and simple past; frequent tense and agreement errors. "
+                "Compound sentences (and/but/because) attempted."
+            ),
+            "vocabulary": (
+                "1,500-2,500 word families. Limited to concrete, familiar topics: "
+                "family, shopping, local geography, daily routines."
+            ),
+            "fluency": (
+                "Slow (70-90 WPM), frequent pauses. This rate is NORMAL for A2 — "
+                "do NOT penalise it as reading. No fillers expected."
+            ),
+            "coherence": (
+                "Short sequences of simple sentences. Basic connectors. "
+                "Limited extended discourse."
+            ),
             "minimum_words": 30,
-            "max_errors_per_10_words": 3
+            "max_errors_per_10_words": 3,
+            "wpm_range": "70-90",
         },
         "B1": {
-            "description": "Intermediate - can maintain conversation on familiar topics",
-            "grammar": "Some complex structures, but still noticeable errors",
-            "vocabulary": "1000-2000 words, some ability to paraphrase",
-            "fluency": "Noticeable pauses for planning, occasional reformulation",
+            "standard": "CEFR 2020 Companion Volume B1",
+            "communicative_standard": (
+                "Can maintain conversation on familiar topics and handle "
+                "most travel/daily-life situations. Clearly intelligible."
+            ),
+            "grammar": (
+                "Correct basic structures; noticeable errors in complex "
+                "tenses, conditionals, and subordinate clauses."
+            ),
+            "vocabulary": (
+                "2,750-3,250 word families. Can paraphrase when exact word "
+                "is missing. Limited range in abstract topics."
+            ),
+            "fluency": (
+                "Moderate pace (90-110 WPM). Pauses for planning; occasional "
+                "reformulation. Some fillers (um, uh) present."
+            ),
+            "coherence": (
+                "Connected discourse with simple connectors. Can narrate and "
+                "describe with some detail."
+            ),
             "minimum_words": 60,
-            "max_errors_per_10_words": 2
+            "max_errors_per_10_words": 2,
+            "wpm_range": "90-110",
         },
         "B2": {
-            "description": "Upper intermediate - fairly fluent with occasional errors",
-            "grammar": "Good control, rare systematic errors",
-            "vocabulary": "2000-4000 words, good range for most topics",
-            "fluency": "Generally smooth with minor hesitations",
+            "standard": "CEFR 2020 Companion Volume B2",
+            "communicative_standard": (
+                "Fluent and spontaneous enough for regular interaction with "
+                "L2 speakers without strain for either party."
+            ),
+            "grammar": (
+                "Good grammatical control. Occasional non-systematic errors. "
+                "Complex sentence structures attempted and mostly correct."
+            ),
+            "vocabulary": (
+                "3,250-3,750 word families. Good range across most topics. "
+                "Uses synonyms and paraphrase effectively."
+            ),
+            "fluency": (
+                "Generally smooth (~118 WPM average). Minor hesitations. "
+                "Natural self-correction patterns present."
+            ),
+            "coherence": (
+                "Clear, detailed discourse with appropriate connectors. "
+                "Can develop arguments and opinions."
+            ),
             "minimum_words": 80,
-            "max_errors_per_10_words": 1
+            "max_errors_per_10_words": 1,
+            "wpm_range": "110-130",
         },
         "C1": {
-            "description": "Advanced - near-native fluency",
-            "grammar": "Consistent control, errors are very rare and minor",
-            "vocabulary": "4000+ words, sophisticated expressions",
-            "fluency": "Smooth and effortless, native-like pace",
+            "standard": "CEFR 2020 Companion Volume C1",
+            "communicative_standard": (
+                "Expresses fluently and spontaneously without much obvious "
+                "searching for expressions. Full prosodic control."
+            ),
+            "grammar": (
+                "Consistent control including rare and complex structures. "
+                "Errors are very rare and minor."
+            ),
+            "vocabulary": (
+                "3,750-4,500 word families. Sophisticated, precise expressions. "
+                "Uses idiomatic language naturally."
+            ),
+            "fluency": (
+                "Smooth and flexible (~142 WPM average). High prosodic control: "
+                "stress, rhythm, and intonation used to convey meaning."
+            ),
+            "coherence": (
+                "Well-structured extended discourse. Cohesive devices used "
+                "with high control."
+            ),
             "minimum_words": 100,
-            "max_errors_per_10_words": 0.5
+            "max_errors_per_10_words": 0.5,
+            "wpm_range": "130-160",
         },
         "C2": {
-            "description": "Mastery - indistinguishable from educated native speaker",
-            "grammar": "Perfect control even in complex situations",
-            "vocabulary": "6000+ words, including idioms and cultural references",
-            "fluency": "Completely natural and effortless",
+            "standard": "CEFR 2020 Companion Volume C2",
+            "communicative_standard": (
+                "Full range of phonological features with high control. "
+                "Accent may be retained but never impedes communication."
+            ),
+            "grammar": (
+                "Virtually error-free even in complex and unusual structures."
+            ),
+            "vocabulary": (
+                "4,500-5,000+ word families. Full idiomatic, colloquial and "
+                "specialised range."
+            ),
+            "fluency": (
+                "Effortless, fully natural. Prosodic features used to convey "
+                "subtle nuances of meaning."
+            ),
+            "coherence": (
+                "Sophisticated, precisely tailored discourse structure."
+            ),
             "minimum_words": 120,
-            "max_errors_per_10_words": 0
-        }
+            "max_errors_per_10_words": 0,
+            "wpm_range": "140+",
+        },
     }
 
     # Language-specific focus
@@ -287,55 +487,84 @@ Check if response addresses this topic appropriately.
 Off-topic responses suggest reading from unrelated text.
 """
 
-    # SUPER STRICT system prompt
+    # ── GPT-4.1 system prompt — CEFR 2020 Companion Volume standard ─────────
+    # Critical change: native-speaker comparison is REMOVED per the 2020
+    # update which explicitly eliminated native-speaker norms from all
+    # CEFR descriptors.  The benchmark is COMMUNICATIVE EFFECTIVENESS.
     system_prompt = f"""
-You are an EXTREMELY STRICT CEFR language proficiency assessor for {language}.
+You are a certified CEFR language proficiency assessor for {language}, trained
+to the CEFR 2020 Companion Volume standard.
 
-🚨 CRITICAL GRADING RULES - READ CAREFULLY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FOUNDATIONAL STANDARD (CEFR 2020 UPDATE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The 2020 CEFR Companion Volume removed ALL native-speaker norms.
+▸ DO NOT compare the learner to a native speaker.
+▸ The benchmark is COMMUNICATIVE EFFECTIVENESS and INTELLIGIBILITY.
+▸ A strong L1 accent does NOT lower the score if communication succeeds.
+▸ A1/A2 speakers WILL speak slowly and without filler words — this is NORMAL,
+  not a deficiency.
 
-1. **BE HARSH**: Most learners are A1-B1, not B2-C1. Default to LOWER levels.
-2. **ANY basic grammar error = maximum B1** (e.g., wrong verb tense, agreement errors)
-3. **Limited vocabulary = maximum A2** (repetitive words, simple vocabulary only)
-4. **Hesitations/pauses = lower fluency score significantly**
-5. **Compare to NATIVE SPEAKERS**, not just "understandable"
-6. **When in doubt, score LOWER**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GRADING RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **ACCURACY** — Grade against the communicative standard for that level,
+   not against a perfect or native-speaker ideal.
+2. **VOCABULARY SIZE** — Use the research-validated word-family counts in the
+   benchmarks below (NOT the old 500/1000/2000 splits).
+3. **FLUENCY AT A1/A2** — Slow speech (50-90 WPM) is EXPECTED at A1/A2.
+   Score fluency based on whether communication flows at level, not on pace.
+4. **HESITATIONS** — At B1 and below, pauses for planning are NORMAL and
+   should not dominate the fluency score.
+5. **COHERENCE** — For short samples (< 60 words), coherence scoring is
+   unreliable; weight it lightly and acknowledge the sample limitation.
+6. **CONSERVATIVE** — When genuinely uncertain between two adjacent bands,
+   select the lower one.  Most learners are A1-B1.
 
-STRICT CEFR BENCHMARKS:
+CEFR LEVEL BENCHMARKS (2020 standard + corpus-validated metrics):
 {json.dumps(cefr_strict_benchmarks, indent=2)}
 
-Language-specific focus for {language}:
-- Grammar focus: {lang_focus['assessment_focus']}
-- Pronunciation challenges: {lang_focus['phonetic_challenges']}
+Language-specific assessment focus for {language}:
+- Grammar markers: {lang_focus['assessment_focus']}
+- Phonological challenges: {lang_focus['phonetic_challenges']}
 
 {reading_context}
 {prompt_context}
 
-ASSESSMENT PROCESS:
-1. Count words and errors meticulously
-2. Calculate error rate per 10 words
-3. Check against STRICT benchmarks above
-4. Identify specific grammatical/lexical mistakes
-5. Be CRITICAL - err on the side of LOWER scores
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ASSESSMENT PROCESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Count words; note WPM; compare to the wpm_range for candidate levels.
+2. Count grammar errors; calculate errors per 10 words.
+3. Estimate productive vocabulary range from word variety and topic range.
+4. Assess fluency as smoothness for the expected level — not against native pace.
+5. Assess coherence as discourse organisation for the expected level.
+6. Identify the highest CEFR level where ALL skill criteria are met.
 
-SCORING GUIDELINES (0-100):
-- 90-100: Near-perfect, rare for non-natives
-- 75-89: Good with minor issues
-- 60-74: Acceptable with noticeable errors
-- 45-59: Significant problems
-- 30-44: Major difficulties
-- 0-29: Minimal ability
+SCORING GUIDELINES (0-100 per skill):
+- 85-100 : Exceeds level expectations
+- 70-84  : Meets level expectations fully
+- 55-69  : Partially meets level expectations; noticeable gaps
+- 40-54  : Below level expectations; significant gaps
+- 25-39  : Well below level expectations
+- 0-24   : Minimal communicative ability in this dimension
 
-Based on {duration} seconds of speech, provide a STRICT assessment in JSON format:
-- recognized_text
-- recommended_level (be conservative - lower is more likely correct)
-- overall_score (be harsh)
-- confidence (0-100)
-- pronunciation, grammar, vocabulary, fluency, coherence (each with score, feedback, examples)
-- strengths (be honest - may be none)
-- areas_for_improvement (be specific and direct)
-- next_steps (concrete recommendations)
+Based on {duration} seconds of speech, return a JSON assessment with:
+- recognized_text (string)
+- recommended_level (string: A1/A2/B1/B2/C1/C2 — your text-level estimate)
+- overall_score (0-100 composite — be realistic, not harsh for its own sake)
+- confidence (0-100: how confident you are in the level assignment)
+- pronunciation (score 0-100, feedback string, examples list)
+- grammar      (score 0-100, feedback string, examples list)
+- vocabulary   (score 0-100, feedback string, examples list)
+- fluency      (score 0-100, feedback string, examples list)
+- coherence    (score 0-100, feedback string, examples list)
+- strengths              (list of strings — be specific, at least 1)
+- areas_for_improvement  (list of strings — concrete and actionable)
+- next_steps             (list of strings — practical recommendations)
 
-Remember: Better to under-assess than over-assess. Most learners are NOT B2-C1.
+Important: strengths, areas_for_improvement and next_steps must ALWAYS be
+non-empty lists, even for very low-scoring responses.
 """
 
     # Create OpenAI client
@@ -349,16 +578,24 @@ Remember: Better to under-assess than over-assess. Most learners are NOT B2-C1.
     word_count = len(text.split())
     logger.info(f"📊 Word count: {word_count}, Duration: {duration}s, WPM: {(word_count/duration)*60:.0f}")
 
-    # Call GPT-4o with strict prompt
+    # Call gpt-4.1 — superior instruction-following (87.4% IFEval vs 81% for gpt-4o)
+    # and 1M context window for full transcripts. response_format json_object is
+    # reliable on gpt-4.1 for chat completions (not the Assistants API).
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.1",
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Transcribed speech ({word_count} words in {duration}s): \"{text}\""}
+                {
+                    "role": "user",
+                    "content": (
+                        f"Transcribed speech ({word_count} words in {duration}s, "
+                        f"~{(word_count / duration * 60):.0f} WPM): \"{text}\""
+                    )
+                }
             ],
-            temperature=0.05  # Even lower for maximum consistency and strictness
+            temperature=0.05,  # Maximum consistency for assessment scoring
         )
 
         result = json.loads(response.choices[0].message.content)
@@ -447,13 +684,14 @@ def _apply_reading_penalties(evaluation: Dict, reading_analysis: Dict) -> Dict:
 
 def _score_to_cefr_level(score: float) -> str:
     """
-    Convert numerical score to CEFR level (STRICT thresholds)
+    Convert a composite score to a CEFR band.
 
-    Args:
-        score: Overall score (0-100)
+    Used ONLY as a secondary signal.  The primary determinant is
+    _skill_scores_to_cefr_level() which applies the bottleneck rule.
+    Kept here for callers that only have the composite score available.
 
-    Returns:
-        CEFR level string
+    Thresholds are calibrated to the research-validated score ranges:
+      A1 <42 | A2 42-57 | B1 58-71 | B2 72-84 | C1 85-94 | C2 95+
     """
     if score >= 95:
         return "C2"
@@ -467,6 +705,84 @@ def _score_to_cefr_level(score: float) -> str:
         return "A2"
     else:
         return "A1"
+
+
+def _skill_score_to_cefr_band(score: float) -> str:
+    """
+    Map a single skill score (0-100) to its CEFR band.
+    Same thresholds as _score_to_cefr_level() for consistency.
+    """
+    if score >= 95:
+        return "C2"
+    elif score >= 85:
+        return "C1"
+    elif score >= 72:
+        return "B2"
+    elif score >= 58:
+        return "B1"
+    elif score >= 42:
+        return "A2"
+    else:
+        return "A1"
+
+
+_CEFR_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"]
+
+
+def _skill_scores_to_cefr_level(skill_scores: dict) -> str:
+    """
+    Determine the final CEFR level using the BOTTLENECK RULE.
+
+    Industry standard (Cambridge, IELTS, Speechace):
+    - Compute the individual CEFR band for every skill dimension.
+    - The final level is the LOWEST band across all critical skills.
+    - A learner cannot be B1 overall if their fluency is A1.
+
+    Critical skills for spoken production: fluency, grammar, vocabulary, coherence.
+    Pronunciation is considered separately (intelligibility gate, not bottleneck).
+
+    Args:
+        skill_scores: dict with keys pronunciation, grammar, vocabulary,
+                      fluency, coherence — values are 0-100 scores.
+
+    Returns:
+        CEFR level string (e.g. "A2")
+    """
+    # Skills that act as bottlenecks for spoken proficiency
+    _BOTTLENECK_SKILLS = ["fluency", "grammar", "vocabulary", "coherence"]
+
+    # Map each bottleneck skill to its band
+    bands = []
+    for skill in _BOTTLENECK_SKILLS:
+        score = skill_scores.get(skill, 50)
+        bands.append(_skill_score_to_cefr_band(score))
+
+    if not bands:
+        return "A2"
+
+    # Return the lowest (most limiting) band
+    lowest_idx = min(_CEFR_ORDER.index(b) for b in bands)
+    bottleneck_level = _CEFR_ORDER[lowest_idx]
+
+    # Soft pronunciation gate: if pronunciation is more than 2 bands below
+    # the bottleneck level, apply one-band downgrade (intelligibility failure)
+    pron_score = skill_scores.get("pronunciation", 50)
+    pron_band = _skill_score_to_cefr_band(pron_score)
+    pron_idx = _CEFR_ORDER.index(pron_band)
+    bottleneck_idx = _CEFR_ORDER.index(bottleneck_level)
+    if bottleneck_idx - pron_idx >= 2:
+        bottleneck_idx = max(0, bottleneck_idx - 1)
+        bottleneck_level = _CEFR_ORDER[bottleneck_idx]
+        logger.info(
+            f"[CEFR_LEVEL] Pronunciation gate applied: "
+            f"pron={pron_band} caused 1-band downgrade → {bottleneck_level}"
+        )
+
+    logger.info(
+        f"[CEFR_LEVEL] Bottleneck rule: bands={dict(zip(_BOTTLENECK_SKILLS, bands))} "
+        f"→ final={bottleneck_level}"
+    )
+    return bottleneck_level
 
 
 # Keep the original function for backwards compatibility

@@ -98,8 +98,147 @@ async def check_can_assess(current_user: Optional[UserResponse] = Depends(get_op
         return {"can_access": can_access, "message": message if not can_access else ""}
     except Exception as e:
         print(f"[CAN_ASSESS] Error checking limits: {str(e)}")
-        # Fail open — don't block the user if the check itself fails
         return {"can_access": True, "message": ""}
+
+
+@router.get("/api/speaking/assessment-prompt")
+async def get_assessment_prompt(
+    language: str = "english",
+    level: Optional[str] = None,
+):
+    """
+    Return a level-appropriate speaking task prompt to show the user
+    BEFORE they start recording their assessment.
+
+    Research basis: Structured elicitation tasks produce more reliable CEFR
+    evidence than blank-slate monologues.  Prompts are calibrated per level:
+      A1/A2 — concrete personal topics (no abstract reasoning required)
+      B1    — narrative/experiential (past events, preferences with reasons)
+      B2+   — opinion/argument (abstract topics, hypothetical scenarios)
+
+    Query params:
+      language: target language (default: english)
+      level:    CEFR hint A1/A2/B1/B2/C1/C2 (optional — uses A1/A2 defaults if absent)
+
+    Returns:
+      prompt_text:     The task instruction shown to the learner (in English)
+      prompt_native:   Same instruction translated into the target language
+      tip:             Brief recording tip
+      min_words:       Recommended minimum word count for a reliable score
+      level_used:      The CEFR band that determined the prompt selection
+    """
+    # ── Level-appropriate prompt library ────────────────────────────────────
+    # Keyed by CEFR band. Each entry has:
+    #   task   — what to speak about (A1/A2: always concrete & personal)
+    #   tip    — brief encouragement shown below the recording button
+    _PROMPTS = {
+        "A1": {
+            "task": (
+                "Tell us about yourself. Say your name, where you are from, "
+                "your age, and one thing you like. Speak for about 45-60 seconds."
+            ),
+            "tip": "Speak slowly and clearly. Simple sentences are perfect!",
+            "min_words": 30,
+        },
+        "A2": {
+            "task": (
+                "Describe your daily routine. What do you usually do in the morning, "
+                "afternoon, and evening? Also tell us about one hobby you enjoy. "
+                "Speak for about 60 seconds."
+            ),
+            "tip": "Use short, clear sentences. It is fine to pause and think.",
+            "min_words": 45,
+        },
+        "B1": {
+            "task": (
+                "Tell us about a memorable experience — a trip, a celebration, "
+                "or something interesting that happened to you. Describe what "
+                "happened and how you felt. Speak for about 60 seconds."
+            ),
+            "tip": "Use past tense and connecting words like 'first', 'then', 'because'.",
+            "min_words": 60,
+        },
+        "B2": {
+            "task": (
+                "What do you think is the most important skill a person can learn "
+                "today, and why? Give your opinion and support it with examples. "
+                "Speak for about 60-90 seconds."
+            ),
+            "tip": "Express your opinion clearly and give reasons for your view.",
+            "min_words": 80,
+        },
+        "C1": {
+            "task": (
+                "Discuss the advantages and disadvantages of social media on "
+                "modern communication. Consider both personal and professional "
+                "aspects and give your overall conclusion. Speak for about 90 seconds."
+            ),
+            "tip": "Use complex structures, varied vocabulary, and a clear argument.",
+            "min_words": 100,
+        },
+        "C2": {
+            "task": (
+                "To what extent do you think artificial intelligence will change "
+                "the nature of human creativity? Develop a nuanced argument with "
+                "examples and a conclusion. Speak for about 90-120 seconds."
+            ),
+            "tip": "Demonstrate sophisticated vocabulary, nuance, and logical structure.",
+            "min_words": 120,
+        },
+    }
+
+    # Normalise level
+    _VALID_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
+    level_used = (level or "A1").upper().strip()
+    if level_used not in _VALID_LEVELS:
+        level_used = "A1"
+
+    prompt_cfg = _PROMPTS[level_used]
+
+    # Translate task prompt into the target language using gpt-4.1-mini
+    prompt_native = prompt_cfg["task"]  # fallback = English
+    try:
+        _LANG_NAMES = {
+            "english": "English", "dutch": "Dutch", "spanish": "Spanish",
+            "french": "French", "german": "German", "portuguese": "Portuguese",
+            "italian": "Italian", "turkish": "Turkish",
+        }
+        target_lang_name = _LANG_NAMES.get(language.lower(), language.capitalize())
+
+        if language.lower() != "english":
+            from sentence_assessment import create_openai_client
+            _client = create_openai_client()
+            tr_resp = _client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            f"Translate the following speaking task instruction into "
+                            f"{target_lang_name}. Keep the tone friendly and clear. "
+                            f"Return ONLY the translated text, nothing else."
+                        ),
+                    },
+                    {"role": "user", "content": prompt_cfg["task"]},
+                ],
+                temperature=0.1,
+                max_tokens=200,
+            )
+            if tr_resp.choices and tr_resp.choices[0].message.content:
+                prompt_native = tr_resp.choices[0].message.content.strip()
+
+    except Exception as tr_err:
+        print(f"[ASSESSMENT_PROMPT] Translation failed (non-fatal): {tr_err}")
+        # Fall back to English prompt — safe
+
+    return {
+        "prompt_text":   prompt_cfg["task"],
+        "prompt_native": prompt_native,
+        "tip":           prompt_cfg["tip"],
+        "min_words":     prompt_cfg["min_words"],
+        "level_used":    level_used,
+        "language":      language.lower(),
+    }
 
 
 @router.post("/api/speaking/assess", response_model=SpeakingAssessmentResponse)

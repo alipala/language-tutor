@@ -136,28 +136,73 @@ class IntelligentScheduleGenerator:
         
         weekly_schedule = []
         level_category = get_level_category(level)
-        
-        # Calculate week allocation
-        sub_goal_weeks = int(total_weeks * 0.6)
-        skill_weeks = int(total_weeks * 0.4)
-        
-        # Distribute sub-goal weeks evenly
-        weeks_per_sub_goal = sub_goal_weeks // len(sub_goals) if sub_goals else 0
-        
+
+        # ── Week allocation ──────────────────────────────────────────────────
+        # Rule: every selected sub-goal gets AT LEAST 1 week regardless of
+        # total_weeks.  Remaining weeks go to skill-focused reinforcement.
+        # This prevents the silent "0 sub-goal weeks" bug that occurs when
+        # len(sub_goals) > int(total_weeks * 0.6)  (e.g. 3 sub-goals, 4 weeks).
+        valid_sub_goals = [sg for sg in sub_goals if sg]  # strip empty strings
+        n_sub_goals = len(valid_sub_goals)
+
+        if n_sub_goals == 0:
+            # No sub-goals: all weeks are skill-focused
+            sub_goal_weeks = 0
+            weeks_per_sub_goal = 0
+            remainder_weeks = total_weeks
+        elif n_sub_goals >= total_weeks:
+            # More sub-goals than weeks: give 1 week each, drop extras
+            weeks_per_sub_goal = 1
+            sub_goal_weeks = total_weeks  # use every week for sub-goals
+            remainder_weeks = 0
+            valid_sub_goals = valid_sub_goals[:total_weeks]  # cap to available weeks
+            logger.info(
+                f"[SCHEDULE_GEN] More sub-goals ({n_sub_goals}) than weeks ({total_weeks}) "
+                f"— capping to first {total_weeks} sub-goals"
+            )
+        else:
+            # Standard case: distribute 60% to sub-goals, floor to at least 1/sub-goal
+            ideal_sub_goal_weeks = max(int(total_weeks * 0.6), n_sub_goals)
+            sub_goal_weeks = min(ideal_sub_goal_weeks, total_weeks)
+            weeks_per_sub_goal = sub_goal_weeks // n_sub_goals  # always >= 1
+            # Recalculate using actual weeks allocated
+            sub_goal_weeks = weeks_per_sub_goal * n_sub_goals
+            remainder_weeks = total_weeks - sub_goal_weeks
+
+        logger.info(
+            f"[SCHEDULE_GEN] Week allocation: {n_sub_goals} sub-goals × "
+            f"{weeks_per_sub_goal} week(s) = {sub_goal_weeks} sub-goal weeks, "
+            f"{remainder_weeks} skill weeks (total {total_weeks})"
+        )
+
         week_num = 1
-        
+
         # Generate weeks for each sub-goal
-        for sub_goal_id in sub_goals:
-            # Find which main goal this sub-goal belongs to
+        for sub_goal_id in valid_sub_goals:
+            # Phase 1: search within the user-selected main goals first (preferred match)
             main_goal = None
             for goal_id in goals:
                 if goal_id in ENRICHED_GOALS:
                     if sub_goal_id in ENRICHED_GOALS[goal_id].get('sub_goals', {}):
                         main_goal = goal_id
                         break
-            
+
+            # Phase 2: fallback — search ALL goals (handles cross-goal sub-goals,
+            # e.g. 'hobbies'/'family' live under 'daily', not 'culture')
             if not main_goal:
-                logger.warning(f"[SCHEDULE_GEN] Sub-goal {sub_goal_id} not found in goals {goals}")
+                for goal_id, goal_data in ENRICHED_GOALS.items():
+                    if sub_goal_id in goal_data.get('sub_goals', {}):
+                        main_goal = goal_id
+                        logger.info(
+                            f"[SCHEDULE_GEN] Sub-goal '{sub_goal_id}' resolved via cross-goal "
+                            f"fallback → '{goal_id}' (not in selected goals {goals})"
+                        )
+                        break
+
+            if not main_goal:
+                logger.warning(
+                    f"[SCHEDULE_GEN] Sub-goal '{sub_goal_id}' not found in any goal — skipping"
+                )
                 continue
             
             # Get sub-goal configuration
@@ -197,36 +242,51 @@ class IntelligentScheduleGenerator:
                 weekly_schedule.append(week_data)
                 week_num += 1
         
-        # Fill remaining weeks with skill-focused content
+        # Fill remaining weeks with varied skill-focused content
+        # Rotate through improvement areas AND skill priorities so no two
+        # consecutive weeks have the same focus description.
         areas_for_improvement = assessment_data.get('areas_for_improvement', [])
-        strengths = assessment_data.get('strengths', [])
-        
+
+        # Build an ordered skill rotation from focus_distribution
+        skill_rotation = []
+        weeks_per_skill = focus_distribution.get('weeks_per_skill', {})
+        for skill, wks in sorted(weeks_per_skill.items(), key=lambda x: x[1], reverse=True):
+            skill_rotation.extend([skill] * max(wks, 1))
+        if not skill_rotation:
+            skill_rotation = [focus_distribution.get('primary_focus', 'fluency')]
+
+        skill_rotation_idx = 0
+        area_rotation_idx = 0
+
         while week_num <= total_weeks:
-            # Determine focus based on skill distribution
-            primary_skill = focus_distribution.get('primary_focus', 'fluency')
-            
-            # Create focus description
+            # Rotate skill
+            current_skill = skill_rotation[skill_rotation_idx % len(skill_rotation)]
+            skill_rotation_idx += 1
+
+            # Rotate improvement area for variety
             if areas_for_improvement:
-                focus_area = areas_for_improvement[0]
-                focus = f"Skill Development: {focus_area} (Focus: {primary_skill.title()})"
+                focus_area = areas_for_improvement[area_rotation_idx % len(areas_for_improvement)]
+                area_rotation_idx += 1
+                # Shorten very long improvement strings to 80 chars for readability
+                focus_area_short = focus_area[:80].rstrip() + ("…" if len(focus_area) > 80 else "")
+                focus = f"Skill Reinforcement — {current_skill.title()}: {focus_area_short}"
             else:
-                focus = f"Skill Development: Improving {primary_skill.title()}"
-            
-            # Get activities for this skill
+                focus = f"Skill Reinforcement — {current_skill.title()}"
+
             activities = IntelligentScheduleGenerator._get_skill_activities(
-                primary_skill, level, language, learning_velocity
+                current_skill, level, language, learning_velocity
             )
-            
+
             week_data = {
                 "week": week_num,
                 "focus": focus,
-                "primary_skill": primary_skill,
+                "primary_skill": current_skill,
                 "activities": activities,
                 "sessions_completed": 0,
                 "total_sessions": 2,
-                "session_details": IntelligentScheduleGenerator._initialize_session_details(focus)
+                "session_details": IntelligentScheduleGenerator._initialize_session_details(focus),
             }
-            
+
             weekly_schedule.append(week_data)
             week_num += 1
         
