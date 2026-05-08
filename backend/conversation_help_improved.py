@@ -13,7 +13,6 @@ import httpx
 import asyncio
 import hashlib
 from dotenv import load_dotenv
-from gpt4o_cost_tracker import GPT4oCostTracker
 
 # Load environment variables
 load_dotenv()
@@ -114,11 +113,10 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
 </instructions>"""
 
     try:
-        # Use GPT-5-mini for better reasoning, with timeout for performance
-        # Note: gpt-5-mini only supports temperature=1 (default), so we don't specify it
+        # Use gpt-4.1-mini for better reasoning, with timeout for performance
         response = await asyncio.wait_for(
             client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "developer", "content": intent_prompt}
                 ],
@@ -127,23 +125,6 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
             timeout=3.0
         )
 
-        # Track GPT-5-mini cost for intent analysis
-        usage = response.usage
-        if usage:
-            try:
-                await GPT4oCostTracker.log_usage(
-                    user_id=None,  # Will be set by caller if available
-                    session_id="intent_analysis",
-                    usage_type="conversation_help_intent",
-                    input_tokens=usage.prompt_tokens,
-                    output_tokens=usage.completion_tokens,
-                    cached_tokens=getattr(getattr(usage, 'prompt_tokens_details', None), 'cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
-                    language=request.target_language,
-                    context={"intent_analysis": True}
-                )
-            except Exception as track_error:
-                print(f"[INTENT_ANALYSIS] ⚠️ Cost tracking failed: {track_error}")
-        
         content = response.choices[0].message.content.strip()
         
         # Clean and parse JSON
@@ -164,13 +145,9 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
         
         # Cache the result
         INTENT_CACHE[cache_key] = tutor_intent
-        print(f"[INTENT_ANALYSIS] ✅ Intent: {tutor_intent.intent} (confidence: {tutor_intent.confidence})")
-        
         return tutor_intent
-        
-    except (asyncio.TimeoutError, json.JSONDecodeError, Exception) as e:
-        print(f"[INTENT_ANALYSIS] ⚠️ Intent analysis failed: {e}, using fallback")
-        # Fallback intent analysis
+
+    except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
         fallback_intent = TutorIntent(
             intent="CONVERSATIONAL_PRACTICE",
             confidence=0.6,
@@ -372,37 +349,18 @@ async def generate_contextual_responses(
     
     try:
         # Generate responses with extended timeout for quality responses
-        # Note: gpt-5-mini only supports temperature=1 (default), so we don't specify it
         response = await asyncio.wait_for(
             client.chat.completions.create(
-                model="gpt-5-mini",  # Use GPT-5-mini for better contextual understanding
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "developer", "content": context_prompt}
                 ],
                 max_completion_tokens=400  # Reduced for speed while maintaining quality
             ),
-            timeout=8.0  # INCREASED: Give GPT-5-mini enough time for quality responses
+            timeout=8.0  # INCREASED: Give gpt-4.1-mini enough time for quality responses
         )
 
-        # Track GPT-5-mini cost for response generation
-        usage = response.usage
-        if usage:
-            try:
-                await GPT4oCostTracker.log_usage(
-                    user_id=None,  # Will be set by caller if available
-                    session_id="response_generation",
-                    usage_type="conversation_help_responses",
-                    input_tokens=usage.prompt_tokens,
-                    output_tokens=usage.completion_tokens,
-                    cached_tokens=getattr(getattr(usage, 'prompt_tokens_details', None), 'cached_tokens', 0) if hasattr(usage, 'prompt_tokens_details') else 0,
-                    language=request.target_language,
-                    context={"intent": intent.intent, "teaching_phase": intent.teaching_phase}
-                )
-            except Exception as track_error:
-                print(f"[RESPONSE_GEN] ⚠️ Cost tracking failed: {track_error}")
-        
         content = response.choices[0].message.content.strip()
-        print(f"[RESPONSE_GEN] 🔍 RAW GPT-5-mini RESPONSE: {content}")
 
         # Clean JSON content
         if content.startswith('```json'):
@@ -410,23 +368,15 @@ async def generate_contextual_responses(
         elif content.startswith('```'):
             content = content[3:-3]
 
-        print(f"[RESPONSE_GEN] 🔍 CLEANED CONTENT: {content}")
         response_data = json.loads(content)
-        print(f"[RESPONSE_GEN] 🔍 PARSED DATA: {json.dumps(response_data, indent=2)}")
-        
-        # Cache the result
         RESPONSE_CACHE[cache_key] = response_data
-        print(f"[RESPONSE_GEN] ✅ Generated {len(response_data.get('responses', []))} contextual responses")
-        
         return response_data
-        
-    except asyncio.TimeoutError as e:
-        print(f"[RESPONSE_GEN] ⏰ TIMEOUT after 8 seconds - GPT-5-mini needs more processing time")
-        print(f"[RESPONSE_GEN] ⏰ This is expected for complex contextual analysis")
+
+    except asyncio.TimeoutError:
+        print(f"[RESPONSE_GEN] ⏰ Timeout generating contextual responses")
         return None
     except json.JSONDecodeError as e:
         print(f"[RESPONSE_GEN] ❌ JSON parsing failed: {e}")
-        print(f"[RESPONSE_GEN] ❌ Raw content may be malformed")
         return None
     except Exception as e:
         print(f"[RESPONSE_GEN] ❌ Unexpected error: {type(e).__name__}: {e}")
@@ -438,40 +388,25 @@ async def generate_conversation_help_context_aware(request: EnhancedConversation
     """
     MAIN FUNCTION: Ultra-optimized context-aware conversation help (7 seconds max)
     """
-    start_time = datetime.utcnow()
-    print(f"[CONTEXT_HELP] 🚀 Starting context-aware help generation...")
-    
     try:
-        # Validate input
         if not request.ai_response or not request.ai_response.strip():
-            print(f"[CONTEXT_HELP] ❌ Empty AI response")
             return None
-        
-        # PHASE 1: Analyze tutor intent (2 seconds max)
-        print(f"[CONTEXT_HELP] 📊 Phase 1: Analyzing tutor intent...")
+
         intent_task = asyncio.create_task(analyze_tutor_intent_fast(request))
-        
-        # PHASE 2: Generate contextual responses (4 seconds max)
+
         try:
             intent = await asyncio.wait_for(intent_task, timeout=3.0)
-            print(f"[CONTEXT_HELP] 📝 Phase 2: Generating contextual responses...")
             response_data = await generate_contextual_responses(request, intent)
-            
+
             if response_data:
-                elapsed = (datetime.utcnow() - start_time).total_seconds()
-                print(f"[CONTEXT_HELP] ✅ Context-aware help generated in {elapsed:.2f}s")
-                
-                # Build suggested responses with logging
                 suggested_responses = []
-                for resp in response_data.get("responses", [])[:1]:  # Only take 1 response
-                    translation = resp.get("translation")
-                    print(f"[CONTEXT_HELP] 🔍 EXTRACTED translation: {translation}")
+                for resp in response_data.get("responses", [])[:1]:
                     suggested_responses.append({
                         "text": resp.get("text", ""),
                         "pronunciation": resp.get("pronunciation", ""),
                         "difficulty_level": request.proficiency_level,
                         "explanation": resp.get("explanation", ""),
-                        "translation": translation  # Translation in user's app language
+                        "translation": resp.get("translation")
                     })
 
                 return {
@@ -486,14 +421,11 @@ async def generate_conversation_help_context_aware(request: EnhancedConversation
                     },
                     "generated_at": datetime.utcnow()
                 }
-            else:
-                print(f"[CONTEXT_HELP] ⚠️ Response generation failed, using fallback")
-                return None
-                
-        except asyncio.TimeoutError:
-            print(f"[CONTEXT_HELP] ⏰ Context analysis timeout, using fast fallback")
             return None
-            
+
+        except asyncio.TimeoutError:
+            return None
+
     except Exception as e:
         print(f"[CONTEXT_HELP] ❌ Context-aware generation failed: {e}")
         return None
@@ -506,26 +438,17 @@ async def generate_conversation_help_hybrid(request: EnhancedConversationHelpReq
     HYBRID SYSTEM: Try context-aware first, fallback to fast system
     Ensures 7-second performance guarantee
     """
-    print(f"[HYBRID_HELP] 🔄 Starting hybrid help generation...")
-    
-    # Try context-aware approach first (6 seconds max)
     try:
         context_result = await asyncio.wait_for(
             generate_conversation_help_context_aware(request),
             timeout=6.0
         )
-        
         if context_result:
-            print(f"[HYBRID_HELP] ✅ Context-aware system succeeded")
             return context_result
-    
     except asyncio.TimeoutError:
-        print(f"[HYBRID_HELP] ⏰ Context-aware system timeout, falling back to fast system")
+        pass
     except Exception as e:
-        print(f"[HYBRID_HELP] ⚠️ Context-aware system failed: {e}, falling back to fast system")
-    
-    # Fallback to original fast system (1 second remaining)
-    print(f"[HYBRID_HELP] 🏃 Using fast fallback system...")
+        print(f"[HYBRID_HELP] ⚠️ Context-aware system failed: {e}")
     
     # Convert to original request format
     original_request = ConversationHelpRequest(
@@ -540,7 +463,6 @@ async def generate_conversation_help_hybrid(request: EnhancedConversationHelpReq
     fast_result = await generate_conversation_help_fast(original_request)
     
     if fast_result:
-        print(f"[HYBRID_HELP] ✅ Fast fallback system succeeded")
         return {
             "ai_response_summary": fast_result.ai_response_summary,
             "suggested_responses": [
@@ -561,5 +483,4 @@ async def generate_conversation_help_hybrid(request: EnhancedConversationHelpReq
             "generated_at": datetime.utcnow()
         }
     
-    print(f"[HYBRID_HELP] ❌ All systems failed")
     return None

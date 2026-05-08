@@ -244,7 +244,8 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
             learning_plan_data=learning_plan_data,
             conversation_history=request.conversation_history if hasattr(request, 'conversation_history') else None,
             news_context=request.news_context if hasattr(request, 'news_context') else None,
-            research_context=research_context
+            research_context=research_context,
+            selected_duration=getattr(request, 'selected_duration', 5) or 5,
         )
 
         print(f"[BEGINNER_MODE] Created beginner instructions: {len(beginner_instructions)} characters")
@@ -623,37 +624,53 @@ CONVERSATION GUIDANCE:
                 for item in vocabulary_items[:10]  # Limit to 10 key words
             ])
 
-            # Format discussion questions
-            questions_list = "\n".join([f"{i+1}. {q}" for i, q in enumerate(discussion_questions[:5])])
+            # Format discussion questions with level-appropriate framing
+            if level in ("A1", "A2"):
+                # Beginner: derive yes/no questions from the summary, not pre-generated ones
+                questions_list = "(Do NOT use these pre-generated questions for beginners — derive simple yes/no questions directly from the Summary above instead)"
+            else:
+                questions_list = "\n".join([f"{i+1}. {q}" for i, q in enumerate(discussion_questions[:5])])
 
-            # Get language config
-            config = language_configs.get(language, {
+            # Normalize language code: "en" → "english", "nl" → "dutch", etc.
+            _lang_code_map = {"en": "english", "nl": "dutch", "es": "spanish", "fr": "french", "de": "german", "pt": "portuguese", "it": "italian"}
+            lang_key = _lang_code_map.get(language.lower(), language.lower())
+            config = language_configs.get(lang_key, {
                 "rule": f"Respond only in {language}.",
                 "greeting": f"Hello! I am your {language} language tutor."
             })
 
-            # Build level-specific constraints
-            level_constraints = ""
-            if level == "A1":
-                level_constraints = """
-**A1 ABSOLUTE BEGINNER - STRICTEST CONSTRAINTS:**
-- Use ONLY the 500 most common words - NO exceptions
-- Use ONLY present tense - NO past, future, or conditional
-- Maximum 8 words per sentence - keep sentences ultra-simple
-- Subject-Verb-Object structure ONLY - NO subordinate clauses
-- If learner doesn't understand, simplify immediately - don't persist with difficult words
-- YOU MUST NOT introduce vocabulary beyond basic everyday words (family, food, numbers, colors, etc.)
-"""
-            elif level == "A2":
-                level_constraints = """
-**A2 ELEMENTARY - STRICT CONSTRAINTS:**
-- Use only basic, familiar vocabulary - NO advanced words
-- Simple present and simple past tense ONLY - NO complex tenses
-- Maximum 12 words per sentence - keep sentences simple
-- Simple compound sentences OK (and, but, or) - NO complex subordination
-- If learner struggles, rephrase with simpler words - stay within A2 vocabulary
-- YOU MUST NOT use subjunctive, passive voice, or complex conditionals
-"""
+            # Build level-specific constraints for all CEFR levels
+            level_constraints_map = {
+                "A1": """- Use ONLY the 500 most common words — no exceptions
+- Present tense only — no past, future, or conditional
+- Max 8 words per sentence, subject-verb-object structure only
+- Rephrase immediately if learner shows confusion""",
+                "A2": """- Basic familiar vocabulary only — no advanced words
+- Simple present and simple past tense only
+- Max 12 words per sentence, simple compound sentences OK (and, but, or)
+- No subjunctive, passive voice, or complex conditionals""",
+                "B1": """- Everyday vocabulary plus topic-specific words from the article
+- Present, past, future and basic conditional tenses
+- Compound and some complex sentences OK
+- Introduce 2-3 new vocabulary words from the article naturally
+- Check understanding when introducing new concepts""",
+                "B2": """- Wider range of vocabulary including abstract and topic-specific terms
+- Full range of tenses including perfect, passive, and conditionals
+- Complex sentences with subordinate clauses
+- Discuss nuance, implication, and different perspectives
+- Encourage learner to paraphrase and explain in their own words""",
+                "C1": """- Advanced vocabulary including idiomatic expressions and collocations
+- All tenses and complex grammatical structures
+- Push learner to express precise opinions with evidence and reasoning
+- Explore subtle distinctions in meaning
+- Encourage sophisticated argumentation and counterarguments""",
+                "C2": """- Full unrestricted vocabulary including academic and technical register
+- All grammatical structures at native-level complexity
+- Engage with nuance, irony, subtext, and critical analysis
+- Challenge assumptions and explore multiple interpretations
+- Expect near-native fluency and precision in expression""",
+            }
+            level_constraints = level_constraints_map.get(level, f"- Stay strictly within {level} proficiency level throughout")
 
             # Build comprehensive news instructions
             instructions = f"""You are a {language} language tutor conducting a news discussion session with an {level} level student.
@@ -763,25 +780,44 @@ Remember: You're having an engaging conversation about news, using it as a vehic
     if request.topic == "custom" and request.user_prompt:
         print(f"[CUSTOM_TOPIC] Creating universal custom topic instructions")
 
+        # Duration-aware pacing for custom topics
+        from tutor_config import get_session_pacing as _gsp
+        _dur = getattr(request, 'selected_duration', 5) or 5
+        _cp  = _gsp(_dur)
+        _custom_pacing = (
+            f"\n⏱️ SESSION PACING — {_dur} MINUTE(S):\n"
+            f"{_cp['pacing_note']}\n"
+            f"Max {_cp['response_sentences']} sentence(s) per response. "
+            f"Target ~{_cp['turns_target']} exchanges total.\n"
+        )
+
         research_content = ""
         if request.research_data:
             research_content = request.research_data
             print(f"Using provided research data: {len(research_content)} chars")
         else:
-            # Fallback research
+            # Fallback research — use gpt-4.1-mini with language+level context
             try:
                 response = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4.1-mini",
                     messages=[
-                        {"role": "system", "content": "Educational research assistant for language learners."},
-                        {"role": "user", "content": f"Educational info about: {request.user_prompt}"}
+                        {
+                            "role": "system",
+                            "content": (
+                                f"You are an educational content assistant for a {language} language tutor. "
+                                f"The student is at CEFR {level} level. "
+                                f"Provide 5-7 interesting, factual points about the topic below. "
+                                f"Keep vocabulary at {level} level. Respond in English (tutor will translate)."
+                            )
+                        },
+                        {"role": "user", "content": f"Topic: {request.user_prompt}"}
                     ],
                     temperature=0.3,
-                    max_tokens=800
+                    max_tokens=600
                 )
                 if response and response.choices:
                     research_content = response.choices[0].message.content
-                    print(f"Fallback research completed")
+                    print(f"Fallback research completed ({len(research_content)} chars)")
             except Exception as e:
                 print(f"Research failed: {str(e)}")
 
@@ -808,9 +844,11 @@ Remember: You're having an engaging conversation about news, using it as a vehic
 
 {safety_escalation}
 
+{_custom_pacing}
+
 CUSTOM TOPIC CONVERSATION: '{request.user_prompt}'
 
-You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
+You are a PROACTIVE {language} language coach for {level} level students who LEADS the conversation.
 
 PROACTIVE TUTOR BEHAVIOR - CRITICAL:
 - DO NOT ask questions like 'What would you like to practice?', 'Would you like to try something else?', 'Do you have any questions?', or 'How would you like to proceed?'
@@ -896,21 +934,26 @@ CRITICAL: Keep all conversation about '{request.user_prompt}' using the specific
         print(f"Custom topic instructions: {len(instructions)} characters")
         return instructions
 
-    # Handle regular topics
+    # Handle regular topics — B1-C2 path (A1/A2 handled above via build_beginner_instructions)
     elif request.topic and request.topic != "custom":
-        # Enhanced topic mapping with detailed descriptions
-        topic_details = {
-            "travel": {
-                "name": "Travel & Tourism",
-                "description": "Discuss travel destinations, experiences, planning trips, transportation, accommodations, cultural experiences, and travel tips. Practice vocabulary related to airports, hotels, restaurants, sightseeing, and navigation."
-            },
-            "food": {
-                "name": "Food & Cooking",
-                "description": "Talk about cuisines, recipes, restaurants, cooking techniques, ingredients, dietary preferences, and food culture. Practice vocabulary for ordering food, describing flavors, cooking methods, and dining experiences."
-            },
-            "work": {
-                "name": "Work & Career",
-                "description": "Discuss jobs, career goals, workplace situations, professional development, job interviews, office culture, and work-life balance. Practice business vocabulary, professional communication, and workplace scenarios."
+        # Resolve topic from the universal catalogue (covers all aliases)
+        from tutor_config import get_topic_config, get_session_pacing, get_topic_vocabulary, get_subtopic_arcs
+
+        _selected_duration = getattr(request, 'selected_duration', 5) or 5
+        _topic_cfg   = get_topic_config(request.topic)
+        _pacing      = get_session_pacing(_selected_duration)
+        _vocab_words = get_topic_vocabulary(request.topic, level) if _topic_cfg else []
+        _arcs        = get_subtopic_arcs(request.topic, _pacing["subtopics_to_cover"]) if _topic_cfg else []
+
+        if _topic_cfg:
+            topic_name        = _topic_cfg["display_name"]
+            topic_description = _topic_cfg["description"]
+        else:
+            # Unknown topic — build a graceful fallback so no TypeError occurs
+            topic_details_fallback = {
+                "travel": {"name": "Travel & Tourism", "description": "Discuss travel destinations, experiences, planning trips, transportation, accommodations, and cultural experiences."},
+                "food": {"name": "Food & Cooking", "description": "Talk about cuisines, recipes, restaurants, cooking techniques, and food culture."},
+                "work": {"name": "Work & Career", "description": "Discuss jobs, career goals, workplace situations, professional development, and work-life balance."
             },
             "education": {
                 "name": "Education & Learning",
@@ -978,26 +1021,54 @@ CRITICAL: Keep all conversation about '{request.user_prompt}' using the specific
             },
             "pets": {
                 "name": "Pets & Animals",
-                "description": "Talk about pets, animals, wildlife, animal care, pet ownership, and animal behavior. Practice vocabulary for different animals, pet care, animal characteristics, and human-animal relationships."
+                "description": "Talk about pets, animals, wildlife, and animal care."
             }
         }
+            _fb = topic_details_fallback.get(request.topic, {
+                "name": request.topic.replace("-", " ").title(),
+                "description": f"Discuss various aspects of {request.topic}."
+            })
+            topic_name        = _fb["name"]
+            topic_description = _fb["description"]
 
-        topic_info = topic_details.get(request.topic, {
-            "name": request.topic.title(),
-            "description": f"Discuss various aspects of {request.topic} and related topics."
-        })
+        # ── Build topic vocabulary block ─────────────────────────────────────
+        if _vocab_words:
+            _vocab_block = (
+                f"\n🎯 KEY VOCABULARY TO USE THIS SESSION:\n"
+                f"  {', '.join(_vocab_words)}\n"
+                f"Weave these words naturally into your questions and responses.\n"
+                f"Do NOT drill them — introduce them organically in context.\n"
+            )
+        else:
+            _vocab_block = ""
 
-        topic_name = topic_info["name"]
-        topic_description = topic_info["description"]
+        # ── Build subtopic progression block ─────────────────────────────────
+        if _arcs:
+            _arc_lines = ["\n📋 SUBTOPIC PROGRESSION (cover in order, pace to session length):"]
+            for i, arc in enumerate(_arcs, 1):
+                _arc_lines.append(f"\n  {i}. {arc['name']}")
+                for q in arc.get("questions", [])[:2]:
+                    _arc_lines.append(f"     → \"{q}\"")
+            _subtopic_block = "\n".join(_arc_lines) + "\n"
+        else:
+            _subtopic_block = ""
+
+        # ── Build duration pacing block ───────────────────────────────────────
+        _pacing_block = (
+            f"\n⏱️ SESSION PACING — {_selected_duration} MINUTE(S):\n"
+            f"{_pacing['pacing_note']}\n"
+            f"Max {_pacing['response_sentences']} sentence(s) per response. "
+            f"Target ~{_pacing['turns_target']} exchanges total.\n"
+        )
 
         # Add all optimization sections
         personality_section = build_personality_tone_section(language, level)
-        pronunciations = build_reference_pronunciations()
-        sample_phrases = build_sample_phrases(language)
-        conversation_flow = build_conversation_flow_section(language, level, topic_name)
-        safety_escalation = build_safety_escalation_section(language)
-        speed_instructions = build_speed_instructions()
-        correction_style = build_universal_correction_style(level) if not request.disable_corrections else ""
+        pronunciations      = build_reference_pronunciations()
+        sample_phrases      = build_sample_phrases(language)
+        conversation_flow   = build_conversation_flow_section(language, level, topic_name)
+        safety_escalation   = build_safety_escalation_section(language)
+        speed_instructions  = build_speed_instructions()
+        correction_style    = build_universal_correction_style(level) if not request.disable_corrections else ""
 
         instructions = f"""{personality_section}
 
@@ -1013,67 +1084,52 @@ CRITICAL: Keep all conversation about '{request.user_prompt}' using the specific
 
 {safety_escalation}
 
-You are a PROACTIVE {language} language tutor for {level} level students who MANAGES the conversation flow.
+{_pacing_block}
 
-PROACTIVE TUTOR BEHAVIOR - CRITICAL:
-- DO NOT ask questions like 'What would you like to practice?', 'Would you like to try something else?', 'Do you have any questions?', or 'How would you like to proceed?'
-- YOU guide the conversation naturally toward learning objectives
-- After addressing any issues, continue the conversation flow smoothly without explicit transitions
-- Maintain conversational flow while working toward learning goals
-- Be a conversation partner and guide, not a drill instructor
-
-CONTENT GUARDRAILS - STRICTLY ENFORCE:
-1. EDUCATIONAL FOCUS ONLY: Only discuss language learning and the specified topic
-2. REFUSE HARMFUL CONTENT: Immediately decline discussions about:
-   - Violence, weapons, illegal activities
-   - Sexual content, adult themes, inappropriate relationships
-   - Hate speech, discrimination, offensive language
-   - Personal information requests (addresses, phone numbers, etc.)
-   - Political extremism, conspiracy theories
-   - Self-harm, dangerous activities, substance abuse
-3. OFF-TOPIC REDIRECT: If user tries to discuss unrelated topics or avoid the topic, say:
-   "I understand, but let's focus on practicing {language} with our topic: {topic_name}. This helps improve your language skills and serves your learning objectives."
-4. LEARNING PLAN ADHERENCE: ALWAYS redirect conversations back to the learning objectives. NEVER allow general conversation that doesn't serve the learning plan.
-
-MANDATORY TOPIC FOCUS:
-- You MUST keep the conversation focused on {topic_name}
-- If the user tries to change topics or avoid the subject, redirect them back to {topic_name}
-- Do NOT allow "general {language} practice" - stick to the specific topic
-- The conversation must serve the learning objectives at all times
-
-🚨 CRITICAL ANTI-DRILL REMINDER:
-- You are a CONVERSATION PARTNER, not a drill instructor
-- NEVER ask students to repeat phrases, words, or sentences
-- NEVER create structured drills, pronunciation exercises, or repetition tasks
-- NEVER say "Repeat after me", "Try saying", "Say this", or similar drilling phrases
-- Correct errors through NATURAL RECASTING only (embed correct form in your response)
-- Maintain natural conversation flow at ALL times - drilling kills engagement
-- If student makes error: recast it naturally in your reply, then continue conversation
-- Example: Student says "I go yesterday" → You respond "Oh, you went somewhere yesterday? Where?"
-
-LANGUAGE RULE: {config['rule']}
-{assessment_context}
-{learning_plan_context}
-
-TOPIC DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THIS SESSION: {topic_name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Topic: {topic_name}
 Description: {topic_description}
 
-CONVERSATION GUIDANCE:
-- Use the topic description to guide conversation areas and vocabulary
-- Focus on the specific aspects mentioned in the description
-- Incorporate relevant vocabulary and scenarios from the topic description
-- Create exercises and activities based on the topic's scope
+{_vocab_block}
+{_subtopic_block}
 
-Start your first message by introducing {topic_name} and asking an engaging question about it.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TUTOR BEHAVIOUR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+You are a PROACTIVE {language} language coach who LEADS the conversation.
 
-Example: "Let's talk about {topic_name}! What interests you most about this topic?"
+✅ DO:
+- Open with ONE engaging question about {topic_name} — no generic greetings
+- Progress through the subtopic arcs above in order
+- Use the key vocabulary words naturally in your turns (not as drills)
+- Correct errors through NATURAL RECASTING only — embed correct form, continue conversation
+- Acknowledge the student's level and adapt complexity accordingly
 
-CRITICAL: Keep the conversation focused on {topic_name}. Do not deviate from this topic regardless of what the user requests.
-Apply personalized feedback based on assessment results.
-If learning plan context is available, connect the topic to the student's learning objectives."""
+❌ NEVER:
+- Ask "What would you like to practise?" — YOU drive the conversation
+- Ask students to repeat phrases (drilling kills engagement)
+- Say "Repeat after me", "Try saying", "Say this"
+- Deviate from {topic_name} without a clear reason
+- Write more than {_pacing['response_sentences']} sentence(s) per response
 
-        print(f"Regular topic instructions: {len(instructions)} characters")
+LANGUAGE RULE: {config['rule']}
+
+{assessment_context}
+{learning_plan_context}
+
+FIRST MESSAGE: Introduce {topic_name} with ONE specific question from subtopic 1 above.
+Example: "Let's talk about {topic_name}! {_arcs[0]['questions'][0] if _arcs else 'What do you think about this topic?'}"
+
+Keep the entire conversation focused on {topic_name}.
+Apply personalised feedback based on assessment results if available."""
+
+        print(f"Regular topic instructions ({_selected_duration}min, {level}): {len(instructions)} characters")
+        if _vocab_words:
+            print(f"  Topic vocab injected: {_vocab_words[:5]}")
+        if _arcs:
+            print(f"  Subtopic arcs: {[a['name'] for a in _arcs]}")
         return instructions
 
     # Default conversation instructions (no specific topic)

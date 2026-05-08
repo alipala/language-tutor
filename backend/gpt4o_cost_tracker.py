@@ -107,28 +107,6 @@ class GPT4oCostTracker:
             }
             
             result = await gpt4o_logs_collection.insert_one(log_doc)
-            
-            # Log to console
-            print("="*80)
-            print(f"💰 [GPT4O_COST] {usage_type.upper()} USAGE LOGGED")
-            print(f"Session ID: {session_id}")
-            print(f"User ID: {user_id or 'guest'}")
-            print(f"Language: {language or 'N/A'}")
-            print(f"Model: gpt-4o")
-            print("-"*80)
-            print(f"TOKEN USAGE:")
-            print(f"  Input Tokens: {input_tokens:,}")
-            print(f"  Cached Tokens: {cached_tokens:,}")
-            print(f"  Output Tokens: {output_tokens:,}")
-            print(f"  Total Tokens: {input_tokens + output_tokens:,}")
-            print("-"*80)
-            print(f"COST BREAKDOWN:")
-            print(f"  Input Cost: ${cost_data['input_cost']:.6f}")
-            print(f"  Cached Cost: ${cost_data['cached_cost']:.6f}")
-            print(f"  Output Cost: ${cost_data['output_cost']:.6f}")
-            print(f"  TOTAL COST: ${cost_data['total_cost']:.6f}")
-            print("="*80)
-            
             return str(result.inserted_id)
             
         except Exception as e:
