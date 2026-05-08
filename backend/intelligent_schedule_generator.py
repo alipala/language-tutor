@@ -245,7 +245,14 @@ class IntelligentScheduleGenerator:
         # Fill remaining weeks with varied skill-focused content
         # Rotate through improvement areas AND skill priorities so no two
         # consecutive weeks have the same focus description.
-        areas_for_improvement = assessment_data.get('areas_for_improvement', [])
+        raw_areas = assessment_data.get('areas_for_improvement', [])
+        # Strip the short-sample reliability warning — it is user-facing UI text
+        # injected by the assessment pipeline and must not appear in week titles.
+        _SHORT_SAMPLE_MARKER = "we recommend speaking for at least 60 words"
+        areas_for_improvement = [
+            a for a in raw_areas
+            if isinstance(a, str) and _SHORT_SAMPLE_MARKER not in a
+        ]
 
         # Build an ordered skill rotation from focus_distribution
         skill_rotation = []
@@ -322,10 +329,15 @@ class IntelligentScheduleGenerator:
         while len(skill_schedule) < total_weeks:
             skill_schedule.append(primary_focus)
         
-        # Get assessment insights
-        areas_for_improvement = assessment_data.get('areas_for_improvement', [])
+        # Get assessment insights — strip short-sample warning from area strings
+        _SHORT_SAMPLE_MARKER = "we recommend speaking for at least 60 words"
+        raw_areas = assessment_data.get('areas_for_improvement', [])
+        areas_for_improvement = [
+            a for a in raw_areas
+            if isinstance(a, str) and _SHORT_SAMPLE_MARKER not in a
+        ]
         strengths = assessment_data.get('strengths', [])
-        
+
         # Generate weeks
         for week_num in range(1, total_weeks + 1):
             # Determine which skill to focus on this week
@@ -521,8 +533,13 @@ class IntelligentScheduleGenerator:
         total_weeks = duration_months * 4
         weekly_schedule = []
         
-        areas_for_improvement = assessment_data.get('areas_for_improvement', ['general language skills'])
-        
+        _SHORT_SAMPLE_MARKER = "we recommend speaking for at least 60 words"
+        raw_areas = assessment_data.get('areas_for_improvement', ['general language skills'])
+        areas_for_improvement = [
+            a for a in raw_areas
+            if isinstance(a, str) and _SHORT_SAMPLE_MARKER not in a
+        ] or ['general language skills']
+
         for week_num in range(1, total_weeks + 1):
             focus_area = areas_for_improvement[0] if areas_for_improvement else "general language skills"
             

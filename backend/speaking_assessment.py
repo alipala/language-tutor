@@ -487,6 +487,16 @@ Check if response addresses this topic appropriately.
 Off-topic responses suggest reading from unrelated text.
 """
 
+    # word_count and wpm must be calculated BEFORE system_prompt f-string
+    # because the prompt embeds them directly.
+    if not text or text.strip() == "":
+        logger.warning("⚠️ Empty text provided")
+        text = "No text provided for assessment"
+
+    word_count = len(text.split())
+    wpm_calculated = (word_count / duration * 60) if duration > 0 else 0
+    logger.info(f"📊 Word count: {word_count}, Duration: {duration}s, WPM: {wpm_calculated:.0f}")
+
     # ── GPT-4.1 system prompt — CEFR 2020 Companion Volume standard ─────────
     # Critical change: native-speaker comparison is REMOVED per the 2020
     # update which explicitly eliminated native-speaker norms from all
@@ -537,46 +547,65 @@ ASSESSMENT PROCESS
 1. Count words; note WPM; compare to the wpm_range for candidate levels.
 2. Count grammar errors; calculate errors per 10 words.
 3. Estimate productive vocabulary range from word variety and topic range.
-4. Assess fluency as smoothness for the expected level — not against native pace.
-5. Assess coherence as discourse organisation for the expected level.
-6. Identify the highest CEFR level where ALL skill criteria are met.
+4. Assess fluency as discourse flow at the expected level.
+5. Assess coherence as discourse organisation.
+6. Identify the HIGHEST CEFR level where ALL skill criteria are met.
 
-SCORING GUIDELINES (0-100 per skill):
-- 85-100 : Exceeds level expectations
-- 70-84  : Meets level expectations fully
-- 55-69  : Partially meets level expectations; noticeable gaps
-- 40-54  : Below level expectations; significant gaps
-- 25-39  : Well below level expectations
-- 0-24   : Minimal communicative ability in this dimension
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 CRITICAL SCORING RULE — READ THIS CAREFULLY 🚨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALL scores (0-100) are ABSOLUTE across the FULL CEFR spectrum.
+They are NOT relative to the detected level.
+"Good for A1" does NOT mean 75/100. It means ~20-35/100 on the absolute scale.
 
-Based on {duration} seconds of speech, return a JSON assessment with:
-- recognized_text (string)
-- recommended_level (string: A1/A2/B1/B2/C1/C2 — your text-level estimate)
-- overall_score (0-100 composite — be realistic, not harsh for its own sake)
-- confidence (0-100: how confident you are in the level assignment)
-- pronunciation (score 0-100, feedback string, examples list)
-- grammar      (score 0-100, feedback string, examples list)
-- vocabulary   (score 0-100, feedback string, examples list)
-- fluency      (score 0-100, feedback string, examples list)
-- coherence    (score 0-100, feedback string, examples list)
-- strengths              (list of strings — be specific, at least 1)
-- areas_for_improvement  (list of strings — concrete and actionable)
-- next_steps             (list of strings — practical recommendations)
+ABSOLUTE SCORE ANCHORS — MUST FOLLOW EXACTLY:
 
-Important: strengths, areas_for_improvement and next_steps must ALWAYS be
-non-empty lists, even for very low-scoring responses.
+| CEFR level | Score range | What it means                              |
+|------------|-------------|---------------------------------------------|
+| A1         | 10 – 35    | Only isolated words/memorised phrases       |
+| A2         | 36 – 50    | Simple sentences on familiar topics         |
+| B1         | 51 – 65    | Maintains conversation, noticeable errors   |
+| B2         | 66 – 78    | Fluent with minor errors, abstract topics   |
+| C1         | 79 – 90    | Sophisticated, near-effortless production   |
+| C2         | 91 – 100   | Mastery, full prosodic and structural range |
+
+EXAMPLES of absolute scoring:
+▸ Speaker says 8 simple sentences, 41 WPM, no connectors, memorised intro:
+  → fluency=25, grammar=30, vocabulary=20, coherence=20  (A1 range)
+  → recommended_level="A1"
+▸ Speaker uses past tense, asks questions, some errors but communicates:
+  → fluency=48, grammar=44, vocabulary=42, coherence=40  (A2 range)
+  → recommended_level="A2"
+▸ DO NOT give a score of 75-80 and say "this is A1 level speech".
+  A score of 75 means B2. If the speech is A1, the score must be in 10-35.
+
+Based on {duration} seconds of speech ({word_count} words, ~{(word_count/duration*60) if duration > 0 else 0:.0f} WPM),
+return a JSON assessment with ALL of these fields:
+
+- recognized_text          (string — the transcribed speech)
+- recommended_level        (string: A1/A2/B1/B2/C1/C2)
+- overall_score            (number 0-100 — MUST match the score range for recommended_level)
+- confidence               (number 0-100 — your confidence in the level assignment)
+- pronunciation            (object: score 0-100, feedback string, examples array)
+- grammar                  (object: score 0-100, feedback string, examples array)
+- vocabulary               (object: score 0-100, feedback string, examples array)
+- fluency                  (object: score 0-100, feedback string, examples array)
+- coherence                (object: score 0-100, feedback string, examples array)
+- strengths                (array of strings — at least 1, be specific)
+- areas_for_improvement    (array of strings — concrete and actionable)
+- next_steps               (array of strings — practical recommendations)
+
+FINAL CHECK before responding:
+  → Does your recommended_level match the score ranges in the table above?
+  → If recommended_level=A1, ALL skill scores must be in the 10-35 range.
+  → If recommended_level=A2, scores must be in the 36-50 range.
+  → If any score is outside the range for your recommended level, CORRECT it.
 """
 
     # Create OpenAI client
     client = create_openai_client()
 
-    # Validate input
-    if not text or text.strip() == "":
-        logger.warning("⚠️ Empty text provided")
-        text = "No text provided for assessment"
-
-    word_count = len(text.split())
-    logger.info(f"📊 Word count: {word_count}, Duration: {duration}s, WPM: {(word_count/duration)*60:.0f}")
+    # word_count and wpm_calculated already set above before system_prompt was built.
 
     # Call gpt-4.1 — superior instruction-following (87.4% IFEval vs 81% for gpt-4o)
     # and 1M context window for full transcripts. response_format json_object is
@@ -686,22 +715,19 @@ def _score_to_cefr_level(score: float) -> str:
     """
     Convert a composite score to a CEFR band.
 
-    Used ONLY as a secondary signal.  The primary determinant is
-    _skill_scores_to_cefr_level() which applies the bottleneck rule.
-    Kept here for callers that only have the composite score available.
-
-    Thresholds are calibrated to the research-validated score ranges:
-      A1 <42 | A2 42-57 | B1 58-71 | B2 72-84 | C1 85-94 | C2 95+
+    Used ONLY as a secondary sanity-check signal alongside the bottleneck rule.
+    Thresholds match the absolute score anchors enforced in the GPT prompt:
+      A1 <36 | A2 36-50 | B1 51-65 | B2 66-78 | C1 79-90 | C2 91+
     """
-    if score >= 95:
+    if score >= 91:
         return "C2"
-    elif score >= 85:
+    elif score >= 79:
         return "C1"
-    elif score >= 72:
+    elif score >= 66:
         return "B2"
-    elif score >= 58:
+    elif score >= 51:
         return "B1"
-    elif score >= 42:
+    elif score >= 36:
         return "A2"
     else:
         return "A1"
@@ -709,18 +735,28 @@ def _score_to_cefr_level(score: float) -> str:
 
 def _skill_score_to_cefr_band(score: float) -> str:
     """
-    Map a single skill score (0-100) to its CEFR band.
-    Same thresholds as _score_to_cefr_level() for consistency.
+    Map a single ABSOLUTE skill score (0-100) to its CEFR band.
+
+    Calibrated to match the absolute score anchors enforced in the GPT prompt:
+      A1  : 10–35   (isolated words / memorised phrases)
+      A2  : 36–50   (simple sentences on familiar topics)
+      B1  : 51–65   (maintains conversation, noticeable errors)
+      B2  : 66–78   (fluent with minor errors)
+      C1  : 79–90   (sophisticated, near-effortless)
+      C2  : 91–100  (mastery)
+
+    Mid-point boundaries used to avoid cliff-edge sensitivity:
+      ≥91 → C2 | ≥79 → C1 | ≥66 → B2 | ≥51 → B1 | ≥36 → A2 | else A1
     """
-    if score >= 95:
+    if score >= 91:
         return "C2"
-    elif score >= 85:
+    elif score >= 79:
         return "C1"
-    elif score >= 72:
+    elif score >= 66:
         return "B2"
-    elif score >= 58:
+    elif score >= 51:
         return "B1"
-    elif score >= 42:
+    elif score >= 36:
         return "A2"
     else:
         return "A1"
