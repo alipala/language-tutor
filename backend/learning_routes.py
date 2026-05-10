@@ -585,76 +585,303 @@ async def create_learning_plan(
     goals_text = ", ".join(plan_request.goals)
     if plan_request.custom_goal:
         goals_text += f", and specifically: {plan_request.custom_goal}"
-    
-    # Log information about the request
-    goals_text = ", ".join(plan_request.goals)
-    custom_goal_text = f" and {plan_request.custom_goal}" if plan_request.custom_goal else ""
-    print(f"Creating learning plan for:\n"
-          f"- Target language: {plan_request.language}\n"
-          f"- Current proficiency level: {plan_request.proficiency_level}\n"
-          f"- Learning goals: {goals_text}")
-    
+
+    logger.info(
+        f"Creating learning plan for: language={plan_request.language}, "
+        f"level={plan_request.proficiency_level}, goals={goals_text}"
+    )
+
     try:
-        # Use OpenAI to generate personalized plan content (if client is available)
+        # ──────────────────────────────────────────────────────────────────────
+        # GPT-4.1: Generate deeply personalised plan content
+        # Uses function calling + strict mode (more reliable than json_schema on
+        # gpt-4.1 per documented community reports).
+        # Falls back to programmatic defaults on any failure so the plan is
+        # always created successfully.
+        # ──────────────────────────────────────────────────────────────────────
         if openai_client and assessment_data:
-            logger.info(f"[LEARNING_PLAN] 🤖 Calling GPT-4o to generate personalized plan content")
+            logger.info("[LEARNING_PLAN] 🤖 Calling gpt-4.1 to generate personalised plan content")
 
-            # Build prompt for OpenAI
-            gpt_prompt = f"""Create a personalized {plan_request.duration_months}-month learning plan for a {plan_request.proficiency_level} level {plan_request.language} learner.
+            # ── Build rich context sections ──────────────────────────────────
 
-Assessment Results:
-- Overall Score: {assessment_data.get('overall_score', 0)}/100
-- Pronunciation: {assessment_data.get('pronunciation', {}).get('score', 0)}/100
-- Grammar: {assessment_data.get('grammar', {}).get('score', 0)}/100
-- Vocabulary: {assessment_data.get('vocabulary', {}).get('score', 0)}/100
-- Fluency: {assessment_data.get('fluency', {}).get('score', 0)}/100
-- Coherence: {assessment_data.get('coherence', {}).get('score', 0)}/100
+            # 1. Skill scores with per-skill feedback (not just numbers)
+            skill_details_lines = []
+            for skill_key, label in [
+                ("pronunciation", "Pronunciation"),
+                ("grammar", "Grammar"),
+                ("vocabulary", "Vocabulary"),
+                ("fluency", "Fluency"),
+                ("coherence", "Coherence"),
+            ]:
+                skill_obj = assessment_data.get(skill_key, {})
+                score = skill_obj.get("score", 0) if isinstance(skill_obj, dict) else 0
+                feedback = skill_obj.get("feedback", "") if isinstance(skill_obj, dict) else ""
+                skill_details_lines.append(
+                    f"  - {label}: {score}/100"
+                    + (f" — {feedback}" if feedback else "")
+                )
+            skill_details_block = "\n".join(skill_details_lines)
 
-Strengths: {', '.join(strengths) if strengths else 'Not specified'}
-Areas for Improvement: {', '.join(areas_for_improvement) if areas_for_improvement else 'Not specified'}
-Learning Goals: {goals_text}
+            # 2. Sub-goals — full enriched config including level-specific activities,
+            #    vocabulary, phrases, and skill priorities (cross-goal safe lookup)
+            sub_goals = request_data.get("sub_goals", []) or []
+            sub_goal_details_lines = []
+            if sub_goals and INTELLIGENT_SYSTEM_AVAILABLE:
+                try:
+                    from enriched_goals_config import ENRICHED_GOALS as _EG, get_level_category as _get_lc
+                    _level_cat = _get_lc(recommended_level)  # e.g. "A1-A2"
 
-Provide a JSON response with:
-1. A motivational overview (2-3 sentences) highlighting their strengths and how this plan addresses their improvement areas
-2. 5 specific learning objectives tailored to their level and goals
-3. 5 recommended resources for {plan_request.language} learners at {plan_request.proficiency_level} level
+                    for sg_id in sub_goals:
+                        sg_cfg = None
+                        for _gid, _gdata in _EG.items():
+                            if sg_id in _gdata.get("sub_goals", {}):
+                                sg_cfg = _gdata["sub_goals"][sg_id]
+                                break
 
-Format as JSON:
-{{
-  "overview": "string",
-  "learning_objectives": ["objective1", "objective2", ...],
-  "resources": ["resource1", "resource2", ...]
-}}"""
+                        if not sg_cfg:
+                            sub_goal_details_lines.append(f"  [{sg_id}] (no config found)")
+                            continue
+
+                        # Level-appropriate activities (e.g. A1-A2 activities for an A1 learner)
+                        level_activities = (
+                            sg_cfg.get("level_focus", {}).get(_level_cat, [])
+                            or sg_cfg.get("level_focus", {}).get("A1-A2", [])  # fallback
+                        )
+                        key_vocab = sg_cfg.get("key_vocabulary", [])
+                        key_phrases = sg_cfg.get("key_phrases", [])
+                        # Top skill priority for this sub-goal
+                        skill_prios = sg_cfg.get("skill_priorities", {})
+                        top_skill = (
+                            max(skill_prios, key=skill_prios.get)
+                            if skill_prios else "fluency"
+                        )
+
+                        lines = [
+                            f"  [{sg_cfg.get('text', sg_id)}]",
+                            f"    Goal: {sg_cfg.get('description', '')}",
+                            f"    Level-specific activities ({_level_cat}):",
+                        ]
+                        for act in level_activities:
+                            lines.append(f"      • {act}")
+                        if key_vocab:
+                            lines.append(f"    Key vocabulary: {', '.join(key_vocab)}")
+                        if key_phrases:
+                            lines.append(f"    Key phrases: {', '.join(key_phrases)}")
+                        lines.append(f"    Primary skill focus: {top_skill}")
+                        sub_goal_details_lines.extend(lines)
+
+                except Exception as _eg_err:
+                    logger.warning(f"[LEARNING_PLAN] Sub-goal enrichment failed: {_eg_err}")
+                    sub_goal_details_lines = [f"  - {sg}" for sg in sub_goals]
+
+            sub_goals_block = (
+                "\n".join(sub_goal_details_lines)
+                if sub_goal_details_lines
+                else "  (not specified)"
+            )
+
+            # 3. DNA profile — learner archetype + growth areas
+            dna_block = ""
+            dna_profile = assessment_data.get("dna_profile", {})
+            if dna_profile:
+                overall_profile = dna_profile.get("overall_profile", {})
+                dna_strands = dna_profile.get("dna_strands", {})
+                archetype = overall_profile.get("speaker_archetype", "")
+                growth_areas = overall_profile.get("growth_areas", [])
+                coach_approach = overall_profile.get("coach_approach", "")
+
+                rhythm = dna_strands.get("rhythm", {})
+                confidence = dna_strands.get("confidence", {})
+                learning_type = dna_strands.get("learning", {})
+                emotional = dna_strands.get("emotional", {})
+
+                dna_block = f"""
+Speaking DNA Profile:
+  - Archetype: {archetype}
+  - Coach approach: {coach_approach}
+  - Speaking rhythm: {rhythm.get('type', 'unknown')} — {rhythm.get('description', '')}
+  - Confidence level: {confidence.get('level', 'unknown')} (score {confidence.get('score', 0):.0%}) — {confidence.get('description', '')}
+  - Learning style: {learning_type.get('type', 'unknown')} — {learning_type.get('description', '')}
+  - Emotional pattern: {emotional.get('pattern', 'unknown')} — {emotional.get('description', '')}
+  - Key growth areas: {', '.join(growth_areas) if growth_areas else 'general improvement'}"""
+
+            # 4. Session capacity context — tight 1-month plans need sharper priorities
+            total_sessions_available = len(weekly_schedule)
+            _capacity_advice = (
+                "With limited sessions, prioritise the learner's weakest skills sharply."
+                if total_sessions_available <= 10
+                else "There is enough time for a balanced, progressive approach."
+            )
+            session_capacity_note = (
+                f"This plan has {total_sessions_available} sessions total "
+                f"({plan_request.duration_months} month(s) × 2 sessions/week). "
+                f"{_capacity_advice}"
+            )
+
+            # 5. Weekly schedule summary (week focuses already generated)
+            week_summary_lines = []
+            for w in weekly_schedule[:8]:  # cap to avoid token bloat
+                week_num = w.get("week", "?")
+                focus = w.get("focus", "")
+                week_summary_lines.append(f"  Week {week_num}: {focus}")
+            week_summary_block = "\n".join(week_summary_lines)
+
+            # ── Build the prompt ─────────────────────────────────────────────
+            gpt_prompt = f"""You are an expert CEFR-certified language learning curriculum designer.
+Create a deeply personalised learning plan for a real student.
+
+=== STUDENT PROFILE ===
+Language: {plan_request.language.capitalize()}
+CEFR Level: {recommended_level}
+Plan duration: {plan_request.duration_months} month(s)
+Overall assessment score: {assessment_data.get('overall_score', 0)}/100
+
+=== SKILL ASSESSMENT (scores + assessor feedback) ===
+{skill_details_block}
+
+=== LEARNER'S GOALS ===
+Main goals: {goals_text}
+Specific focus topics:
+{sub_goals_block}
+
+=== STRENGTHS ===
+{chr(10).join(f'  - {s}' for s in strengths) if strengths else '  - Basic communication'}
+
+=== AREAS FOR IMPROVEMENT ===
+{chr(10).join(f'  - {a}' for a in areas_for_improvement) if areas_for_improvement else '  - Overall improvement'}
+
+=== NEXT STEPS (from assessment) ===
+{chr(10).join(f'  - {n}' for n in next_steps) if next_steps else '  - Continue practising'}
+{dna_block}
+
+=== SESSION CAPACITY ===
+{session_capacity_note}
+
+=== GENERATED WEEKLY SCHEDULE (already fixed — do NOT change) ===
+{week_summary_block}
+
+=== YOUR TASK ===
+Using ALL the information above, provide:
+
+1. overview (2-3 sentences, {recommended_level}-level vocabulary):
+   - Address the learner by their strengths directly
+   - Explain how this SPECIFIC plan targets their EXACT weak areas
+   - Mention their focus topics ({', '.join(sub_goals) if sub_goals else goals_text})
+   - Reference their DNA (e.g., "as a thoughtful pacer…") if available
+   - Write as if speaking to the learner (second person "you")
+
+2. learning_objectives (exactly 5, laser-focused):
+   - Each objective must map directly to a specific skill gap shown above
+   - Use CEFR {recommended_level} language complexity in the objective text itself
+   - Reference the focus topics and sub-goals where relevant
+   - Be concrete and measurable, not generic (avoid "improve overall skills")
+
+3. resources (exactly 5, {plan_request.language}-specific for {recommended_level} level):
+   - Real resource types (apps, books, podcasts, YouTube channels)
+   - Tailored to {plan_request.language} learners at {recommended_level}
+   - Match the learner's focus topics ({', '.join(sub_goals) if sub_goals else goals_text})
+"""
+
+            # ── Function schema for strict structured output ─────────────────
+            plan_content_function = {
+                "name": "set_plan_content",
+                "description": "Set the personalised overview, objectives and resources for the learning plan.",
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "overview": {
+                            "type": "string",
+                            "description": "2-3 sentence personalised plan overview addressing the learner directly."
+                        },
+                        "learning_objectives": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Exactly 5 specific, measurable learning objectives.",
+                            "minItems": 5,
+                            "maxItems": 5
+                        },
+                        "resources": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Exactly 5 language-specific resources.",
+                            "minItems": 5,
+                            "maxItems": 5
+                        }
+                    },
+                    "required": ["overview", "learning_objectives", "resources"],
+                    "additionalProperties": False
+                }
+            }
 
             try:
                 gpt_response = openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    response_format={"type": "json_object"},
+                    model="gpt-4.1",
+                    tools=[{"type": "function", "function": plan_content_function}],
+                    tool_choice={"type": "function", "function": {"name": "set_plan_content"}},
                     messages=[
-                        {"role": "system", "content": "You are an expert language learning curriculum designer. Create personalized, encouraging learning plans."},
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are an expert CEFR-certified language learning curriculum "
+                                "designer. Your task is to produce concise, deeply personalised "
+                                "plan content based on a real speaking assessment. Be specific, "
+                                "encouraging, and always reference the learner's actual data."
+                            )
+                        },
                         {"role": "user", "content": gpt_prompt}
                     ],
-                    temperature=0.7,
-                    max_tokens=800
+                    temperature=0.6,
+                    max_tokens=1200
                 )
 
-                gpt_content = json.loads(gpt_response.choices[0].message.content)
-                logger.info(f"[LEARNING_PLAN] ✅ GPT-4o generated personalized content")
+                # Extract function call arguments (strict mode guarantees valid JSON)
+                tool_call = gpt_response.choices[0].message.tool_calls[0]
+                gpt_content = json.loads(tool_call.function.arguments)
+                logger.info("[LEARNING_PLAN] ✅ gpt-4.1 generated personalised content via function call")
 
-                # Use GPT-generated content in the plan
-                plan_content_json["overview"] = gpt_content.get("overview", plan_content_json["overview"])
-                plan_content_json["learning_objectives"] = gpt_content.get("learning_objectives", plan_content_json["learning_objectives"])
-                plan_content_json["resources"] = gpt_content.get("resources", plan_content_json["resources"])
+                # Validate minimum field lengths before accepting
+                raw_objectives = gpt_content.get("learning_objectives", [])
+                raw_resources = gpt_content.get("resources", [])
+                if (
+                    gpt_content.get("overview")
+                    and len(raw_objectives) >= 3
+                    and len(raw_resources) >= 3
+                ):
+                    plan_content_json["overview"] = gpt_content["overview"]
+                    plan_content_json["learning_objectives"] = raw_objectives
+                    plan_content_json["resources"] = raw_resources
+                    logger.info(
+                        f"[LEARNING_PLAN] Applied gpt-4.1 content: "
+                        f"{len(raw_objectives)} objectives, {len(raw_resources)} resources"
+                    )
+                else:
+                    logger.warning(
+                        "[LEARNING_PLAN] ⚠️ gpt-4.1 returned incomplete fields — "
+                        "keeping programmatic defaults"
+                    )
 
+            except json.JSONDecodeError as json_err:
+                logger.warning(
+                    f"[LEARNING_PLAN] ⚠️ Could not parse gpt-4.1 function arguments: {json_err} "
+                    "— keeping programmatic defaults"
+                )
+            except (IndexError, AttributeError, KeyError) as struct_err:
+                logger.warning(
+                    f"[LEARNING_PLAN] ⚠️ Unexpected gpt-4.1 response structure: {struct_err} "
+                    "— keeping programmatic defaults"
+                )
             except Exception as gpt_error:
-                logger.warning(f"[LEARNING_PLAN] ⚠️ GPT-4o generation failed, using default content: {str(gpt_error)}")
-                # Continue with the programmatically generated content
+                logger.warning(
+                    f"[LEARNING_PLAN] ⚠️ gpt-4.1 call failed: {gpt_error} "
+                    "— keeping programmatic defaults"
+                )
         else:
             if not assessment_data:
-                logger.info(f"[LEARNING_PLAN] ℹ️ No assessment data - using template content")
+                logger.info("[LEARNING_PLAN] ℹ️ No assessment data — using template content")
             else:
-                logger.warning(f"[LEARNING_PLAN] ⚠️ OpenAI client not available - using template content")
-        
+                logger.warning("[LEARNING_PLAN] ⚠️ OpenAI client unavailable — using template content")
+
         # Import the new learning plan service
         from learning_plan_service import LearningPlanService
 

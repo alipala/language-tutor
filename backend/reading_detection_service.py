@@ -56,7 +56,8 @@ class ReadingDetectionService:
         transcript: str,
         audio_duration: int,
         language: str,
-        prompt: Optional[str] = None
+        prompt: Optional[str] = None,
+        estimated_cefr_level: Optional[str] = None,
     ) -> Dict:
         """
         Analyze speech to detect if user is reading vs speaking spontaneously
@@ -66,6 +67,9 @@ class ReadingDetectionService:
             audio_duration: Duration in seconds
             language: Target language
             prompt: Optional prompt that was given to user
+            estimated_cefr_level: Optional CEFR level hint (A1/A2/B1/B2/C1/C2).
+                When provided, suppresses reading signals that are normal for that
+                level (e.g. slow WPM and no fillers are normal at A1/A2).
 
         Returns:
             Dictionary containing:
@@ -78,29 +82,39 @@ class ReadingDetectionService:
         indicators = []
         confidence_points = 0
 
+        # Normalise level for comparison
+        _level = (estimated_cefr_level or "").upper().strip()
+        _is_beginner = _level in ("A1", "A2")
+
         # 1. Speaking rate analysis
         rate_indicator, rate_confidence = self._analyze_speaking_rate(
-            transcript, audio_duration
+            transcript, audio_duration, estimated_cefr_level=_level
         )
         if rate_indicator:
             indicators.append(rate_indicator)
             confidence_points += rate_confidence
 
         # 2. Filler word detection
-        filler_indicator, filler_confidence = self._analyze_filler_words(
-            transcript, language, audio_duration
-        )
-        if filler_indicator:
-            indicators.append(filler_indicator)
-            confidence_points += filler_confidence
+        # A1/A2 learners legitimately produce zero fillers — suppress this signal
+        # for beginners to avoid false reading penalties.
+        if not _is_beginner:
+            filler_indicator, filler_confidence = self._analyze_filler_words(
+                transcript, language, audio_duration
+            )
+            if filler_indicator:
+                indicators.append(filler_indicator)
+                confidence_points += filler_confidence
 
         # 3. Self-correction detection
-        correction_indicator, correction_confidence = self._analyze_self_corrections(
-            transcript
-        )
-        if correction_indicator:
-            indicators.append(correction_indicator)
-            confidence_points += correction_confidence
+        # A1/A2 learners rarely self-correct (limited meta-linguistic awareness)
+        # — only apply this signal at B1+ levels.
+        if not _is_beginner:
+            correction_indicator, correction_confidence = self._analyze_self_corrections(
+                transcript
+            )
+            if correction_indicator:
+                indicators.append(correction_indicator)
+                confidence_points += correction_confidence
 
         # 4. Grammar perfection check
         grammar_indicator, grammar_confidence = self._analyze_grammar_perfection(
@@ -163,19 +177,32 @@ class ReadingDetectionService:
     def _analyze_speaking_rate(
         self,
         transcript: str,
-        duration: int
+        duration: int,
+        estimated_cefr_level: str = "",
     ) -> Tuple[Optional[str], int]:
         """
-        Analyze speaking rate to detect reading
+        Analyze speaking rate to detect reading.
 
-        Reading indicators:
-        - Very fast (>200 WPM) = likely reading aloud quickly
-        - Very slow (<60 WPM) with long transcript = reading carefully
-        - Consistent rate with no variation = reading
+        Research-calibrated thresholds (LINDSEI corpus + CEFR trajectory):
+          A1: 50-70 WPM  (genuinely slow — NOT reading)
+          A2: 70-90 WPM
+          B1: 90-110 WPM
+          B2: ~118 WPM
+          C1: ~142 WPM
+          Native: 106-265 WPM (highly variable)
+
+        Reading detection thresholds:
+          > 200 WPM  → very fast reading aloud (high confidence)
+          < 40 WPM with > 40 words → unnaturally slow even for A1 (moderate)
+          Note: the old 60 WPM threshold falsely flagged genuine A1/A2 speakers.
+
+        The estimated_cefr_level adds a further gate: if the level is A1/A2,
+        even rates as low as 45 WPM are within normal range and are not flagged.
 
         Args:
             transcript: Speech text
             duration: Duration in seconds
+            estimated_cefr_level: Optional CEFR level hint
 
         Returns:
             Tuple of (indicator message or None, confidence points)
@@ -186,18 +213,23 @@ class ReadingDetectionService:
         word_count = len(transcript.split())
         words_per_minute = (word_count / duration) * 60
 
-        # Very fast speaking
+        # Fast reading aloud — strong signal at any level
         if words_per_minute > 200:
             return (
                 f"Very fast speaking rate ({words_per_minute:.0f} WPM) suggests reading aloud",
-                30
+                30,
             )
 
-        # Unnaturally slow (likely reading carefully)
-        if words_per_minute < 60 and word_count > 40:
+        # Slow reading threshold — lowered from 60 → 40 WPM
+        # A1/A2 genuine speech sits at 50-90 WPM; only flag truly crawling pace
+        _level = estimated_cefr_level.upper()
+        _slow_floor = 45 if _level in ("A1", "A2") else 40
+
+        if words_per_minute < _slow_floor and word_count > 40:
             return (
-                f"Very slow, careful speaking rate ({words_per_minute:.0f} WPM) suggests reading",
-                20
+                f"Unusually slow speaking rate ({words_per_minute:.0f} WPM) "
+                f"may indicate reading carefully",
+                15,  # reduced confidence — less certain at this threshold
             )
 
         return None, 0

@@ -1420,16 +1420,25 @@ report_grammar_mistake(
    ❌ DO NOT SAY: "We say 'my work' not 'my working'"
    ❌ DO NOT SAY: "The correct form is..."
    ❌ DO NOT SAY: "You should say..."
+   ❌ DO NOT SAY: "Let's use X correctly"
+   ❌ DO NOT SAY: "I'll report the grammar mistake now" or anything describing the function call
    ✅ ONLY USE: Silent function calling via `report_grammar_mistake()`
 
-2. **ALWAYS use function calling for clear grammar errors**
+2. **NEVER narrate or describe tool calls in your spoken response**
+   ❌ DO NOT OUTPUT: "{{I'll report the grammar mistake now.}}"
+   ❌ DO NOT OUTPUT: "I am calling report_grammar_mistake..."
+   ❌ DO NOT OUTPUT: any text in curly braces describing internal actions
+   ✅ Simply call the function silently AND continue the conversation in the same response
+
+3. **ALWAYS use function calling for clear grammar errors**
    - If you detect a grammar mistake, YOU MUST call the function
-   - The student will see it visually - you don't need to say it
+   - The student will see it visually — you don't need to say it or describe it
    - Continue conversation naturally about the TOPIC, not the error
 
-3. **Example of CORRECT behavior:**
+4. **Example of CORRECT behavior:**
    Student: "I like my working"
    ❌ WRONG: "Good try! We say 'my work' not 'my working'. What do you like about your work?"
+   ❌ WRONG: "Good! {{I'll report the grammar mistake now.}} What do you like about your work?"
    ✅ CORRECT: "What do you like about your work?" + SILENT function call: report_grammar_mistake(wrong="my working", correct="my work", tip="Use 'work' (noun), not 'working' after 'my'")
 
 ## 📊 RESEARCH-BACKED ERROR PRIORITY (Based on TEFL Studies)
@@ -1610,10 +1619,15 @@ Student: "She is excited for the opportunity"
 1. **NEVER speak corrections in your audio response**
    ❌ DO NOT SAY: "Good try! We say..."
    ❌ DO NOT SAY: "The correct form is..."
+   ❌ DO NOT SAY: "Let's use X correctly"
+   ❌ DO NOT OUTPUT: "{{I'll report the grammar mistake now.}}" or any text describing the function call
    ✅ ONLY USE: Silent function calling via `report_grammar_mistake()`
 
-2. **ALWAYS use function calling for clear grammar errors**
-   - The student will see it visually - you don't need to say it
+2. **NEVER narrate or describe tool calls in your spoken response**
+   - Simply call the function silently AND continue the conversation topic
+
+3. **ALWAYS use function calling for clear grammar errors**
+   - The student will see it visually — you don't need to say it or describe it
    - Continue conversation naturally about the TOPIC, not the error
 
 ## 📊 RESEARCH-BACKED ERROR PRIORITY FOR B1-C2
@@ -2320,43 +2334,45 @@ def build_beginner_topic_vocabulary(level: str, language: str) -> str:
 
 **DO NOT USE Unicode emojis like 🍎, ☕, 😊, 🏠 - THEY WILL NOT WORK!**
 
-**ONLY USE this exact format:** {{{{emoji:name}}}}
+**ONLY USE this exact format:** {emoji:name}
 
 **WRONG (will break):**
-❌ "Drink je koffie? {{{{☕}}}}" - Unicode emoji - NEVER USE
-❌ "Eet je appels? {{{{🍎}}}}" - Unicode emoji - NEVER USE
-❌ "Ben je blij? {{{{😊}}}}" - Unicode emoji - NEVER USE
+❌ "Drink je koffie? ☕" - Unicode emoji - NEVER USE
+❌ "Eet je appels? 🍎" - Unicode emoji - NEVER USE
+❌ "Ben je blij? 😊" - Unicode emoji - NEVER USE
 
 **CORRECT (will show visual emoji):**
-✅ "Drink je koffie? {{{{emoji:coffee}}}}" - This format works!
-✅ "Eet je appels? {{{{emoji:apple}}}}" - This format works!
-✅ "Ben je blij? {{{{emoji:happy}}}}" - This format works!
+✅ "Drink je koffie? {emoji:coffee}" - This format works!
+✅ "Eet je appels? {emoji:apple}" - This format works!
+✅ "Ben je blij? {emoji:happy}" - This format works!
 
 **IMPORTANT: For A1 learners, USE emojis to help with vocabulary!**
 
 **When to use emojis (A1 GUIDANCE):**
-- Food/drink questions: "Drink je koffie? {{{{emoji:coffee}}}}"
-- Emotion questions: "Ben je blij? {{{{emoji:happy}}}}"
-- Place questions: "Ga je naar huis? {{{{emoji:home}}}}"
-- Daily objects: "Heb je een telefoon? {{{{emoji:phone}}}}"
+- Food/drink questions: "Drink je koffie? {emoji:coffee}"
+- Emotion questions: "Ben je blij? {emoji:happy}"
+- Place questions: "Ga je naar huis? {emoji:home}"
+- Daily objects: "Heb je een telefoon? {emoji:phone}"
 
 **Available emoji names (use ONLY these names):**
 - Food: coffee, bread, rice, apple, milk, water, pizza, hamburger, pasta, salad
 - Emotions: happy, smiling, sad, angry, tired, sick, confused, love
 - Places: home, office, school, store, restaurant, subway, church
-- Objects: phone, book, car, money, watch, clothes, bed, chair, tv, door
+- Objects: phone, book, car, money, watch, clothes, bed, chair, tv, door, computer, books
+- Technology: computer, phone, tv, game, console
 - Weather: sunny, cloudy, rainy, snow
+- People: man, woman, family, baby
 
 **More examples for A1:**
-✅ "Ben je blij {{{{emoji:happy}}}} of verdrietig {{{{emoji:sad}}}}?"
-✅ "Heb je brood? {{{{emoji:bread}}}}"
-✅ "Ga je naar school? {{{{emoji:school}}}}"
+✅ "Ben je blij {emoji:happy} of verdrietig {emoji:sad}?"
+✅ "Heb je brood? {emoji:bread}"
+✅ "Ga je naar school? {emoji:school}"
 
 **A1 Emoji Usage:**
 - Use 3-5 emojis per conversation (helps A1 learners!)
 - Add emoji AFTER the word it represents
 - Use for concrete nouns (food, objects, places)
-- ALWAYS use {{{{emoji:name}}}} format - NEVER use Unicode emojis
+- ALWAYS use {emoji:name} format - NEVER use Unicode emojis
 - Helps beginners connect words to meanings
 """
     else:  # A2
@@ -2366,10 +2382,10 @@ def build_beginner_topic_vocabulary(level: str, language: str) -> str:
 🚨 **CRITICAL FORMAT REQUIREMENT:**
 
 **DO NOT USE Unicode emojis like 🍎, ☕, 😊 - THEY WILL NOT WORK!**
-**ONLY USE this format:** {{{{emoji:name}}}}
+**ONLY USE this format:** {emoji:name}
 
-**WRONG:** {{{{☕}}}} or {{{{🍎}}}} - NEVER USE Unicode emojis
-**CORRECT:** {{{{emoji:coffee}}}} or {{{{emoji:apple}}}}
+**WRONG:** ☕ or 🍎 - NEVER USE Unicode emojis
+**CORRECT:** {emoji:coffee} or {emoji:apple}
 
 You CAN use emoji markers to help clarify meaning.
 
@@ -2377,17 +2393,19 @@ You CAN use emoji markers to help clarify meaning.
 - Food: coffee, bread, rice, apple, milk, water, pizza, hamburger, pasta, salad
 - Emotions: happy, smiling, sad, angry, tired, sick, confused, love
 - Places: home, office, school, store, restaurant, subway, church
-- Objects: phone, book, car, money, watch, clothes, bed, chair, tv, door
+- Objects: phone, book, car, money, watch, clothes, bed, chair, tv, door, computer, books
+- Technology: computer, phone, tv, game, console
+- People: man, woman, family, baby
 
 **Examples:**
-✅ "Do you like coffee? {{{{emoji:coffee}}}}"
-✅ "Are you happy {{{{emoji:happy}}}} or sad {{{{emoji:sad}}}}?"
+✅ "Do you like coffee? {emoji:coffee}"
+✅ "Are you happy {emoji:happy} or sad {emoji:sad}?"
 
 **A2 Emoji Usage:**
 - Use emojis SPARINGLY (1-2 per conversation max)
 - Only for key vocabulary if needed
 - A2 learners need less visual support than A1
-- ALWAYS use {{{{emoji:name}}}} format - NEVER use Unicode emojis
+- ALWAYS use {emoji:name} format - NEVER use Unicode emojis
 """
 
     return f"""
@@ -2415,178 +2433,136 @@ You: "Breakfast! Okay. Do you eat breakfast every day?"
 """
 
 
-def build_beginner_conversation_flow(level: str, language: str, topic: str = None) -> str:
+def build_beginner_conversation_flow(
+    level: str,
+    language: str,
+    topic: str = None,
+    selected_duration: int = 5,
+) -> str:
     """
-    Build conversation flow structure for A1/A2 beginners.
+    Build duration-aware conversation flow for A1/A2 beginners.
 
-    Highly structured approach optimized for beginner success.
+    Replaces the old static "4-minute Phase 2 + coffee example" with a
+    duration-calibrated structure that uses the subtopic arcs defined in
+    tutor_config.py.  All hardcoded food/coffee examples are removed.
 
     Args:
-        level: CEFR level (A1 or A2)
-        language: Target language
-        topic: Optional topic focus
-
-    Returns:
-        Formatted conversation flow instructions
+        level:             CEFR level (A1 or A2)
+        language:          Target language
+        topic:             Display name of the topic (e.g. "Food & Cooking")
+        selected_duration: Session length in minutes (1, 3, or 5)
     """
-    topic_context = f" about {topic}" if topic else ""
+    topic_label = topic or "today's topic"
+
+    # Duration-calibrated phase timings
+    if selected_duration == 1:
+        greeting_note = (
+            "SKIP the greeting for a 1-MINUTE session — open DIRECTLY with "
+            "the topic question. No name exchange."
+        )
+        practice_note = "You have ~40 seconds of practice. Ask 2-3 questions only."
+        wrapup_note   = "End with ONE short positive sentence after 3 student answers."
+        progression_rule = (
+            "Cover ONE subtopic arc only. After 2 student answers on it, give "
+            "the wrap-up sentence — then ask ONE more simple question and keep "
+            "responding until the session ends. Do NOT go silent."
+        )
+    elif selected_duration == 3:
+        greeting_note = (
+            "Brief greeting: one hello + one simple question (name or mood). "
+            "Exit greeting after ONE student response."
+        )
+        practice_note = "You have ~2.5 minutes of practice. Ask 7-8 questions total."
+        wrapup_note   = "End with two short encouraging sentences — then keep responding if the student continues."
+        progression_rule = (
+            "Cover TWO subtopic arcs. Move to the second arc after 3-4 student "
+            "answers on the first one. After the wrap-up, keep engaging until "
+            "the session ends — do NOT go silent."
+        )
+    else:  # 5 minutes
+        greeting_note = (
+            "Brief greeting: hello + name question. "
+            "Exit after 2 exchanges maximum."
+        )
+        practice_note = "You have ~4 minutes of practice. Ask 12-14 questions total."
+        wrapup_note   = "End with a brief positive summary (1-2 sentences) — then keep responding if the student continues."
+        progression_rule = (
+            "Cover THREE subtopic arcs. Spend 3-4 student answers on each before "
+            "moving to the next. After all arcs and the wrap-up, keep engaging "
+            "until the session ends — do NOT go silent."
+        )
 
     if level == 'A1':
-        return f"""
-# CONVERSATION FLOW - A1 ABSOLUTE BEGINNERS
-
-## Phase 1: Greeting (30 seconds)
-**Goal:** Simple welcome, establish basic connection
-
-Your first message:
-"Hello! I am your {language} teacher. What is your name?"
-[ONE simple question, wait for response]
-
-After they answer:
-"Nice to meet you! How are you today?"
-[Simple greeting question]
-
-Exit to Phase 2 after 2-3 exchanges.
-
----
-
-## Phase 2: Topic Practice (4 minutes)
-**Goal:** Practice {language} with MAXIMUM support
-
-### Structure:
-1. Introduce topic with statement: "Today we talk about {topic or 'daily life'}."
-2. Ask 70% YES/NO questions
-3. Ask 20% CHOICE questions
-4. Ask 10% simple WH questions
-5. Give encouragement after EVERY response
-
-### Conversation Pattern:
-- Ask question → Wait 2-3 seconds
-- Student answers → "Good!" or "Yes!" or "Great!"
-- Next question → Wait 2-3 seconds
-- Repeat
-
-### Example Exchange:
-You: "Do you like coffee?" [2 second pause]
-Student: "Yes"
-You: "Good! Do you drink coffee every day?" [2 second pause]
-Student: "Yes, every day"
-You: "Great! Morning or evening?" [2 second pause]
-Student: "Morning"
-You: "Nice! Coffee in the morning is good!"
-
-### If Student Struggles:
-- Simplify: "Do you like coffee?" → "Coffee? Yes or no?"
-- Give choices: "Coffee or tea?"
-- Give hint: "You can say yes or no"
-
-### Topic Focus:
-- Stay on ONE subtopic entire conversation
-- Don't jump around
-- Use same vocabulary repeatedly (builds familiarity)
-
----
-
-## Phase 3: Wrap-up (30 seconds)
-**Goal:** End positively, build confidence
-
-Closing message:
-"Very good! You did great today! See you next time!"
-[Simple, positive, brief]
-
-Do NOT:
-- Give complex feedback
-- List improvements needed
-- Make it feel like evaluation
-
-DO:
-- Keep it positive
-- Keep it simple
-- End on high note
-"""
+        correction_note = (
+            "If student makes error: call `report_grammar_mistake` silently with NO spoken "
+            "mention of the error. NEVER say 'Let's use X correctly', NEVER output "
+            "'{I'll report the grammar mistake now}' or any text describing the function call. "
+            "Just call the function AND ask the next question in the same response."
+        )
+        question_rule = (
+            "Ask 70% YES/NO questions, 20% CHOICE questions ('A or B?'), "
+            "10% simple WH ('What?', 'Where?'). Always one question per turn."
+        )
+        struggle_note = (
+            "If student doesn't answer: simplify to 'Yes or no?' or give two choices."
+        )
     else:  # A2
-        return f"""
-# CONVERSATION FLOW - A2 BEGINNERS
+        correction_note = (
+            "If student makes error: call `report_grammar_mistake` silently with NO spoken "
+            "mention of the error. Recast naturally in your reply (use the correct form in "
+            "your own sentence). NEVER output '{I'll report...}' or describe the function call. "
+            "Just call the function AND continue with the next question."
+        )
+        question_rule = (
+            "Ask 35% WH questions ('What did you…?'), 30% YES/NO, 20% CHOICE, "
+            "15% open-ended ('Tell me about…'). Start with WH, not YES/NO."
+        )
+        struggle_note = (
+            "If student struggles: give vocabulary hints, then offer choices, "
+            "last resort YES/NO. Always let student produce language first."
+        )
 
-## Phase 1: Greeting (30 seconds)
-**Goal:** Friendly welcome, establish rapport
+    return f"""
+# CONVERSATION FLOW — {level} {language.capitalize().upper()} ({selected_duration} MIN)
 
-Your first message:
-"Hi! I'm your {language} tutor. What's your name? How are you today?"
-[Two simple questions]
+## Greeting
+{greeting_note}
 
-After they answer:
-"Great! Are you ready to practice {language}?"
-[Enthusiasm + simple question]
+## Practice Phase
+{practice_note}
 
-Exit to Phase 2 after 2-3 exchanges.
+### Question distribution
+{question_rule}
 
----
+### Subtopic progression rule  ← CRITICAL
+{progression_rule}
+Follow the "Subtopics to cover" list at the end of these instructions.
+Use the starter questions there as your opening question for each subtopic.
+DO NOT stay on the same subtopic for the whole session.
+After 2-4 student answers on one subtopic, MOVE to the next one.
 
-## Phase 2: Topic Practice (4 minutes)
-**Goal:** Meaningful conversation with appropriate support
+### If student struggles
+{struggle_note}
 
-### Structure:
-1. Introduce topic: "Let's talk about {topic or 'your day'}!"
-2. Ask 30-35% SIMPLE WH questions (INCREASED - primary question type)
-3. Ask 25-30% YES/NO questions (REDUCED - warmup and checks)
-4. Ask 20-25% CHOICE questions
-5. Ask 10-20% OPEN-ENDED questions with scaffolding (NEW)
-6. Encourage regularly (not every response, but frequently)
+### Correction rule
+{correction_note}
 
-### Conversation Pattern:
-- Ask question → Wait 2 seconds
-- Student answers → Acknowledge ("Good!", "Okay!", "I see!")
-- Follow up or next question
-- Occasionally correct errors gently (no repetition!)
+### Pacing
+- ONE question per turn. Wait for the student's answer before asking the next.
+- After each student answer: brief encouragement ("Good!", "Nice!", "Yes!") + next question.
+- Do NOT give mini-lectures or explain grammar aloud.
 
-### Example Exchange (Notice: More WH questions, less YES/NO):
-You: "What did you eat for breakfast today?" [2 second pause]
-Student: "I eat bread"
-You: "You ATE bread. Good! What did you drink?" [2 second pause]
-[WH question instead of YES/NO - encourages production]
-Student: "Coffee"
-You: "Coffee! Why do you like coffee?" [2 second pause]
-[Opinion question - builds to simple justification]
-Student: "It's good"
-You: "Yes, coffee is good! When do you usually drink it? Morning or evening?" [2 second pause]
-[CHOICE question for variety]
-Student: "Morning"
-You: "Me too! Coffee in the morning is perfect!"
+## Wrap-up
+{wrapup_note}
+Say something specific: "Good job talking about {topic_label}!"
+Do NOT list errors or give complex feedback.
 
-### If Student Struggles:
-First: Provide vocabulary with WH question
-- "What did you eat? Bread? Eggs? Rice?"
-[Keep WH question, add vocabulary support]
-
-Second: Offer choices
-- "Bread or rice?"
-[Student can still produce language]
-
-Last resort: Make it YES/NO
-- "Did you eat bread?"
-[Only if student can't handle WH with support]
-
-**IMPORTANT:** Don't start with YES/NO. Give A2 students chance to produce language first.
-
-### Topic Development:
-- Start with simple aspect of topic
-- Build gradually to slightly more complex
-- Stay within A2 vocabulary limits
-
----
-
-## Phase 3: Wrap-up (30 seconds)
-**Goal:** Positive closure, encourage progress
-
-Closing message:
-"Great job today! Your {language} is getting better. Keep practicing!"
-[Positive + specific encouragement]
-
-Give one simple compliment:
-"You used past tense very well!" or "Good vocabulary today!"
-
-End: "See you next time!"
+## After wrap-up — NEVER go silent
+After the wrap-up sentence, if the student is still in the session:
+- Ask ONE more simple question on the same topic.
+- Keep responding naturally to anything the student says.
+- Only stop when the student says goodbye or the session ends.
+- NEVER stay silent waiting for the session to close — always have something to say.
 """
 
 
@@ -2599,61 +2575,78 @@ def build_beginner_instructions(
     learning_plan_data: dict = None,
     conversation_history: str = None,
     news_context: str = None,
-    research_context: str = None
+    research_context: str = None,
+    selected_duration: int = 5,
 ) -> str:
     """
-    Build complete instructions for A1/A2 beginner learners.
+    Build complete, industry-standard instructions for A1/A2 beginner learners.
 
-    This is the main function that combines all beginner-specific optimizations:
-    - Vocabulary control
-    - Question type distribution
-    - Sentence simplicity
-    - Gentle explicit correction (NO repetition)
-    - Scaffolding without drilling
-    - Slower pacing
-    - Emotional support
+    Fully resolves all 8 identified gaps:
+      1. Session duration drives pacing, turn count, and subtopic depth
+      2. Topic IDs are resolved to full names + descriptions via tutor_config
+      3. Topic-specific vocabulary replaces the generic static table
+      4. Subtopic progression arcs matched to available time
+      5. Assessment data injected for freestyle sessions
+      6. ONE clear sentence-length rule per level (no contradictions)
+      7. context_type drives correct question distribution
+      8. All target-language instructions are language-agnostic (tutor translates)
 
     Args:
-        language: Target language (e.g., "english", "spanish")
-        level: CEFR level (must be "A1" or "A2")
-        topic: Optional topic name
-        user_prompt: Optional custom user prompt
-        assessment_data: Optional assessment results
-        learning_plan_data: Optional learning plan context
-        conversation_history: Optional conversation history for reconnections
-        news_context: Optional news article context
+        language: Target language (e.g., "dutch", "spanish")
+        level: CEFR level ("A1" or "A2")
+        topic: Predefined topic ID (e.g., "daily", "travel")
+        user_prompt: Custom topic string (freestyle)
+        assessment_data: Speaking assessment results
+        learning_plan_data: Active learning plan context
+        conversation_history: Previous turns for reconnection
+        news_context: News article JSON for news sessions
+        research_context: Pre-fetched research for custom topics
+        selected_duration: Session length in minutes (1, 3, or 5)
 
     Returns:
-        Complete instruction string optimized for beginners
+        Complete instruction string optimised for beginners
     """
     # Get language-specific rules
     language_configs = {
         "english": {
-            "rule": "Respond only in English. If the student speaks another language, say in simple English: 'Let's practice English. Please try English.'",
+            "rule": "Respond only in English. ONLY redirect if the student clearly speaks a non-English language (e.g. Dutch, Spanish, French). If the student speaks English — even broken English — respond normally and NEVER say 'Let's practice English'. Short English answers like 'yes', 'no', 'okay', 'I don't know' are valid English — do NOT redirect them.",
             "greeting": "Hello! I am your English teacher."
         },
         "dutch": {
-            "rule": "Spreek alleen Nederlands. Als de student een andere taal gebruikt, zeg: 'Laten we Nederlands oefenen. Probeer Nederlands.'",
+            "rule": "Spreek alleen Nederlands. Stuur de student ALLEEN om als hij/zij duidelijk een andere taal gebruikt (bijv. Engels, Spaans). Als de student Nederlands spreekt — ook gebrekkig — reageer normaal. Korte antwoorden zoals 'ja', 'nee', 'oké' zijn geldig Nederlands — stuur ze NIET om.",
             "greeting": "Hallo! Ik ben je Nederlandse leraar."
         },
         "spanish": {
-            "rule": "Responde solo en español. Si el estudiante habla otro idioma, di: 'Practiquemos español. Intenta español.'",
+            "rule": "Responde solo en español. Solo redirige si el estudiante claramente habla otro idioma. Respuestas cortas en español como 'sí', 'no', 'okay' son válidas — NO las rediijas.",
             "greeting": "¡Hola! Soy tu profesor de español."
         },
         "french": {
-            "rule": "Réponds uniquement en français. Si l'étudiant parle une autre langue, dis: 'Pratiquons le français. Essaie le français.'",
+            "rule": "Réponds uniquement en français. Ne redirige que si l'étudiant parle clairement une autre langue. Les courtes réponses en français comme 'oui', 'non', 'okay' sont valides — ne les redirige PAS.",
             "greeting": "Bonjour! Je suis ton professeur de français."
         },
         "german": {
-            "rule": "Antworte nur auf Deutsch. Wenn der Schüler eine andere Sprache spricht, sage: 'Lass uns Deutsch üben. Versuche Deutsch.'",
+            "rule": "Antworte nur auf Deutsch. Leite nur um, wenn der Schüler eindeutig eine andere Sprache spricht. Kurze Antworten wie 'ja', 'nein', 'okay' sind gültiges Deutsch — leite sie NICHT um.",
             "greeting": "Hallo! Ich bin dein Deutschlehrer."
         }
     }
 
-    config = language_configs.get(language.lower(), {
+    # Normalize language codes: "en" → "english", "nl" → "dutch", etc.
+    _lang_code_map = {"en": "english", "nl": "dutch", "es": "spanish", "fr": "french", "de": "german", "pt": "portuguese", "it": "italian"}
+    lang_key = _lang_code_map.get(language.lower(), language.lower())
+    config = language_configs.get(lang_key, {
         "rule": f"Respond only in {language}. If student uses another language, redirect them to {language}.",
         "greeting": f"Hello! I am your {language} teacher."
     })
+
+    # ── Resolve topic config and session pacing ──────────────────────────────
+    from tutor_config import (
+        get_topic_config, get_session_pacing,
+        get_topic_vocabulary, get_subtopic_arcs,
+    )
+
+    topic_cfg    = get_topic_config(topic) if topic else None
+    session_pace = get_session_pacing(selected_duration)   # dict: turns, subtopics, pacing_note
+    level_up     = level.upper()
 
     # Determine context type for question distribution
     context_type = "general"
@@ -2661,23 +2654,86 @@ def build_beginner_instructions(
         context_type = "learning_plan"
     elif news_context:
         context_type = "news"
-    elif user_prompt or topic:
+    elif user_prompt:
+        context_type = "custom"
+    elif topic:
         context_type = "freestyle"
 
     # Build all beginner-specific sections
-    vocabulary_control = build_beginner_vocabulary_control(level.upper(), language)
-    question_types = build_beginner_question_types(level.upper(), context_type)
-    sentence_complexity = build_beginner_sentence_complexity(level.upper())
-    correction_style = build_beginner_correction_style(level.upper())
-    scaffolding = build_beginner_scaffolding(level.upper())
-    pacing = build_beginner_pacing(level.upper())
-    emotional_support = build_beginner_emotional_support(level.upper())
-    topic_vocabulary = build_beginner_topic_vocabulary(level.upper(), language)
-    conversation_flow = build_beginner_conversation_flow(level.upper(), language, topic)
+    vocabulary_control = build_beginner_vocabulary_control(level_up, language)
+    question_types     = build_beginner_question_types(level_up, context_type)
+    sentence_complexity = build_beginner_sentence_complexity(level_up)
+    correction_style   = build_beginner_correction_style(level_up)
+    scaffolding        = build_beginner_scaffolding(level_up)
+    pacing             = build_beginner_pacing(level_up)
+    emotional_support  = build_beginner_emotional_support(level_up)
+
+    # ── Topic-specific vocabulary (replaces generic static table) ────────────
+    # Resolve display name BEFORE building conversation_flow (which needs it).
+    # If we have a catalogue entry use it; otherwise fall back to generic table.
+    if topic_cfg:
+        topic_vocab_words  = get_topic_vocabulary(topic, level_up)
+        topic_display_name = topic_cfg["display_name"]
+        topic_description  = topic_cfg["description"]
+        topic_emoji        = topic_cfg.get("emoji", "happy")
+        topic_vocabulary   = f"""
+# VOCABULARY FOR THIS SESSION — {topic_display_name.upper()}
+
+Use these words naturally in {language} during the conversation.
+These are the KEY WORDS the learner should hear and practise this session:
+
+  {', '.join(topic_vocab_words)}
+
+Rules:
+- Introduce these words in your questions and statements FIRST so the learner hears them
+- Do NOT dump the whole list at once — weave them naturally across turns
+- If the learner uses one correctly, acknowledge it briefly
+- Never teach vocabulary as a drilling exercise — keep it conversational
+"""
+    else:
+        # Generic fallback (used when topic is unknown or custom)
+        topic_display_name = (user_prompt or topic or "general conversation").title()
+        topic_description  = ""
+        topic_emoji        = "happy"
+        topic_vocabulary   = build_beginner_topic_vocabulary(level_up, language)
+
+    # conversation_flow built AFTER topic_display_name is resolved — pass duration
+    conversation_flow = build_beginner_conversation_flow(
+        level_up, language, topic_display_name, selected_duration
+    )
+
+    # ── Duration-aware session pacing block ─────────────────────────────────
+    pacing_block = f"""
+# SESSION PACING — {selected_duration}-MINUTE SESSION
+
+{session_pace["pacing_note"]}
+
+Rules:
+- Max {session_pace["response_sentences"]} sentence(s) per tutor response
+- Aim for ~{session_pace["turns_target"]} total exchanges in this session
+- Do NOT drag on any single subtopic — move on when the learner answers 2-3 times
+- NEVER ask "What would you like to practise?" — YOU drive the conversation
+"""
+
+    # ── Subtopic progression arc (sliced to fit session length) ─────────────
+    n_arcs = session_pace["subtopics_to_cover"]
+    arcs   = get_subtopic_arcs(topic, n_arcs) if topic_cfg else []
+
+    if arcs:
+        arc_lines = [f"## Subtopics to cover (in order):"]
+        for i, arc in enumerate(arcs, 1):
+            arc_lines.append(f"\n### {i}. {arc['name']}")
+            for q in arc.get("questions", [])[:2]:  # 2 sample questions per arc
+                arc_lines.append(f"   - Starter question: \"{q}\"")
+            if arc.get("emoji"):
+                arc_lines.append(f"   - Emoji: {{emoji:{arc['emoji']}}}")
+        subtopic_arc_block = "\n".join(arc_lines)
+    else:
+        subtopic_arc_block = ""
 
     # Add A2 open-ended scaffolding (only for A2)
     open_ended_scaffolding = ""
-    if level.upper() == 'A2':
+    if level_up == 'A2':
         open_ended_scaffolding = build_a2_open_ended_scaffolding()
 
     # Build conversation context for reconnections
@@ -2733,13 +2789,13 @@ You are conducting a final speaking assessment for {level} level in {language}.
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:
 
-[Greeting]! [Today is your final test]! {{{{emoji:school}}}} [Don't worry]! [We will just talk]! {{{{emoji:happy}}}} [Are you ready]?
+[Greeting]! [Today is your final test]! {{emoji:school}} [Don't worry]! [We will just talk]! {{emoji:happy}} [Are you ready]?
 
-Example structure: "Hello! Today is your final test! {{{{emoji:school}}}} Don't worry! We will just talk! {{{{emoji:happy}}}} Are you ready?"
+Example structure: "Hello! Today is your final test! {{emoji:school}} Don't worry! We will just talk! {{emoji:happy}} Are you ready?"
 YOU translate this naturally to {language} - use natural {language} phrasing!
 
 ENDING MESSAGE STRUCTURE (translate naturally to {language}):
-[Very good]! [You are done]! {{{{emoji:happy}}}} [You will see your results soon]!
+[Very good]! [You are done]! {{emoji:happy}} [You will see your results soon]!
 
 IMPORTANT: Keep assessment at {level} difficulty!
 - Use {level} vocabulary only
@@ -2770,6 +2826,81 @@ Use emojis to keep students engaged and reduce anxiety!
                 if current_week:
                     week_focus = current_week.get('focus', 'Building basic skills')
                     week_activities = current_week.get('activities', [])
+
+                    # ── Vocabulary & phrases from enriched schedule ───────────
+                    key_vocabulary = current_week.get('key_vocabulary', [])
+                    key_phrases = current_week.get('key_phrases', [])
+
+                    # ── Previous structured session summary context ───────────
+                    # Pull from session_history (newest first) for rich continuity
+                    session_history = learning_plan_data.get('session_history', [])
+                    _prev_structured_lines = []
+                    for _hist in reversed(session_history[-2:]):
+                        _ss = _hist.get('structured_summary') or {}
+                        if not _ss:
+                            continue
+                        _s_num = _hist.get('session_number', '?')
+                        _vocab_done = _ss.get('vocabulary_practiced', [])
+                        _carry = _ss.get('focus_next_session', '')
+                        _conf = _ss.get('student_confidence', '')
+                        _breakthrough = _ss.get('breakthrough_moment', '')
+                        _corrections = _ss.get('corrections_made', [])
+
+                        if _vocab_done:
+                            _prev_structured_lines.append(
+                                f"- Session {_s_num} vocabulary: {', '.join(_vocab_done[:5])}"
+                            )
+                        if _corrections:
+                            _corr_str = '; '.join(
+                                f"{c.get('wrong','?')}→{c.get('correct','?')}"
+                                for c in _corrections[:3]
+                            )
+                            _prev_structured_lines.append(
+                                f"- Session {_s_num} corrections to reinforce: {_corr_str}"
+                            )
+                        if _carry:
+                            _prev_structured_lines.append(
+                                f"- Continue from session {_s_num}: {_carry}"
+                            )
+                        if _conf:
+                            _prev_structured_lines.append(
+                                f"- Student confidence at end of session {_s_num}: {_conf}"
+                            )
+                        if _breakthrough:
+                            _prev_structured_lines.append(
+                                f"- Session {_s_num} breakthrough: {_breakthrough}"
+                            )
+
+                    prev_summary_block = ""
+                    if _prev_structured_lines:
+                        prev_summary_block = (
+                            "\n\n📋 PREVIOUS SESSION MEMORY (use this for continuity):\n"
+                            + "\n".join(_prev_structured_lines)
+                            + "\n→ Build on these in today's session!"
+                        )
+
+                    # ── Vocabulary injection (A1/A2 beginner-friendly) ────────
+                    vocab_block = ""
+                    if key_vocabulary or key_phrases:
+                        _v_lines = []
+                        if key_vocabulary:
+                            # For A1: show 4 words max; A2: up to 6
+                            _max_v = 4 if level == 'A1' else 6
+                            _v_lines.append(
+                                f"Words to use: {', '.join(key_vocabulary[:_max_v])}"
+                            )
+                        if key_phrases:
+                            _max_p = 2 if level == 'A1' else 3
+                            _v_lines.append(
+                                f"Phrases to use: {', '.join(key_phrases[:_max_p])}"
+                            )
+                        vocab_block = (
+                            "\n\n🔤 TARGET VOCABULARY FOR THIS SESSION:\n"
+                            + "\n".join(_v_lines)
+                            + "\n- Use these words/phrases naturally in questions"
+                            + "\n- Say them first so the student hears them"
+                            + "\n- Do NOT make it a vocabulary drill — keep it conversational"
+                        )
 
                     # Create level-specific question guidance for learning plans
                     if level == 'A1':
@@ -2830,14 +2961,14 @@ Remember: Encourage complete sentences, not one-word answers"""
 📚 LEARNING PLAN - Week {current_week_number} - START IMMEDIATELY!
 
 Focus this week: {week_focus}
-Activities: {', '.join(week_activities[:2]) if week_activities else 'Practice conversation'}
+Activities: {', '.join(week_activities[:2]) if week_activities else 'Practice conversation'}{prev_summary_block}{vocab_block}
 
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:
 
-[Greeting]! [This week we practice {week_focus}]! {{{{emoji:school}}}} [Do you want to learn]?
+[Greeting]! [This week we practice {week_focus}]! {{emoji:school}} [Do you want to learn]?
 
-Example structure: "Hello! This week we practice {week_focus}! {{{{emoji:school}}}} Do you want to learn?"
+Example structure: "Hello! This week we practice {week_focus}! {{emoji:school}} Do you want to learn?"
 YOU translate this naturally to {language} - use natural {language} phrasing!
 
 AFTER YOUR FIRST MESSAGE:
@@ -2949,9 +3080,9 @@ Message 10+: Continue varied questions - STAY ON {user_prompt}
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:
 
-[Greeting]! [Today we talk about {user_prompt}]! {{{{emoji:happy}}}} [Do you know about this]?
+[Greeting]! [Today we talk about {user_prompt}]! {{emoji:happy}} [Do you know about this]?
 
-Example structure: "Hello! Today we talk about {user_prompt}! {{{{emoji:happy}}}} Do you know about this?"
+Example structure: "Hello! Today we talk about {user_prompt}! {{emoji:happy}} Do you know about this?"
 YOU translate this naturally to {language} - use natural {language} phrasing!
 
 🚨 CRITICAL: STAY ON TOPIC FOR THE ENTIRE CONVERSATION! 🚨
@@ -2978,77 +3109,63 @@ Remember: This is a 5-minute conversation about {user_prompt} - keep EVERY messa
 {research_vocab}
 """
     elif topic:
-        # Create topic-specific emoji recommendations
-        topic_emoji_map = {
-            'work': 'office',
-            'travel': 'airplane',
-            'food': 'pizza',
-            'hobbies': 'music',
-            'family': 'family',
-            'shopping': 'store',
-            'health': 'doctor',
-            'home': 'home',
-            'school': 'school',
-            'friends': 'friends',
-        }
-        topic_emoji = topic_emoji_map.get(topic.lower(), 'happy')
+        # topic_display_name, topic_emoji already resolved from catalogue above.
+        # Build question guidance using the human-readable display name.
+        _tn = topic_display_name  # e.g. "Daily Routines"
 
-        # Create level-specific guidance for pre-defined topics
+        # Question guidance — points to CONVERSATION FLOW section (no duplication)
         if level == 'A1':
-            predefined_topic_questions = f"""- Ask simple questions ABOUT {topic}: "Do you like X?", "Is it good?", "Yes or no?"
-- Keep ALL questions focused on {topic} content
-- Use ONLY YES/NO and CHOICE questions"""
+            predefined_topic_questions = (
+                f'- Follow the question distribution in the CONVERSATION FLOW section above\n'
+                f'- Use the subtopic starter questions from "Subtopics to cover" at the end\n'
+                f'- Keep ALL questions about {_tn}'
+            )
         else:  # A2
-            predefined_topic_questions = f"""
-QUESTION TYPE REQUIREMENTS ABOUT {topic}:
-1. SIMPLE WH (35%): "What do you like about {topic}?", "Where...?", "When...?"
-2. PAST TENSE WH (Required - ask 2-3): "What did you do for {topic}?", "Where did you go?"
-3. YES/NO (25%): "Do you like...?", "Is it...?"
-4. CHOICE (20%): "X or Y?"
-5. OPEN-ENDED (20% - ask 2 minimum): "Tell me about {topic}.", "Describe your..."
+            predefined_topic_questions = (
+                f'- Follow the question distribution in the CONVERSATION FLOW section above\n'
+                f'- Use the subtopic starter questions from "Subtopics to cover" at the end\n'
+                f'- Keep ALL questions about {_tn} — no drift allowed'
+            )
 
-MANDATORY:
-- Keep ALL questions about {topic} - no drift allowed
-- Use past tense 2-3 times minimum
-- Ask open-ended at least twice
-- Encourage complete sentences
-- If student goes off-topic, redirect back to {topic}"""
+        # topic_display_name and topic_emoji are already set from the catalogue lookup above
+        _td  = topic_display_name  # human-readable name (e.g. "Daily Routines")
+        _te  = topic_emoji          # emoji key  (e.g. "morning")
 
         topic_context = f"""
-🎯 TOPIC: {topic} - START IMMEDIATELY!
+🎯 TOPIC: {_td} - START IMMEDIATELY!
 
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:
 
-[Greeting]! [Today we talk about {topic}]! {{{{emoji:{topic_emoji}}}}} [Simple yes/no question about {topic}]
+[Greeting]! [Today we talk about {_td}]! {{emoji:{_te}}} [Simple yes/no question about {_td}]
 
-Example structure: "Hello! Today we talk about {topic}! {{{{emoji:{topic_emoji}}}}} Do you like {topic}?"
+Example structure: "Hello! Today we talk about {_td}! {{emoji:{_te}}} Do you like {_td}?"
 YOU translate this naturally to {language} - use natural {language} phrasing!
 
 🚨 CRITICAL: STAY ON TOPIC FOR THE ENTIRE CONVERSATION! 🚨
 
 MANDATORY RULES FOR EVERY MESSAGE:
 ✅ DO:
-- Discuss ONLY {topic} from start to finish
+- Discuss ONLY {_td} from start to finish
 {predefined_topic_questions}
 - Use {level} vocabulary only
 - Use emoji markers in EVERY response
-- Stay 100% focused on {topic}
+- Stay 100% focused on {_td}
 
 ❌ NEVER:
 - DO NOT ask meta-learning questions like "Wil je rustig praten?" or "Is het moeilijk?"
 - DO NOT discuss HOW to learn
 - DO NOT change to a different topic
-- DO NOT drift away from {topic}
+- DO NOT drift away from {_td}
 
 🔄 TOPIC DRIFT PREVENTION:
 If student mentions something off-topic, acknowledge briefly then REDIRECT:
-Example: Topic = {topic}
+Example: Topic = {_td}
   Student: "I'm going to work"
-  ❌ BAD: "Where do you work?" (drifts to work discussion)
-  ✅ GOOD: "Good! What about {topic} at work?" (redirects to {topic})
+  ❌ BAD: "Where do you work?" (drifts away from {_td})
+  ✅ GOOD: "Good! What about {_td} at work?" (stays on topic)
 
-Remember: This is a 5-minute conversation about {topic} - keep EVERY message focused on this topic!
+Remember: This is a {selected_duration}-minute conversation about {_td} - keep EVERY message focused on this topic!
 """
 
     # Handle news context (simplified for beginners)
@@ -3058,40 +3175,28 @@ Remember: This is a 5-minute conversation about {topic} - keep EVERY message foc
         try:
             news_data = json.loads(news_context)
             article_title = news_data.get('news_title', news_data.get('title', 'news'))
-            article_summary = news_data.get('news_summary', news_data.get('summary', ''))[:300]  # Increased limit
+            article_summary = news_data.get('news_summary', news_data.get('summary', ''))[:600]
             vocabulary_items = news_data.get('vocabulary', [])
             discussion_questions = news_data.get('discussion_questions', [])
             ai_instructions = news_data.get('ai_instructions', '')
 
             # Create level-specific question guidance for news
             if level == 'A1':
-                news_questions = """- Ask ONLY yes/no or choice questions about THE NEWS: "Is this good or bad?", "Do you like this?", "Yes or no?"
-- Simplify complex ideas dramatically: politics → happy/sad, economy → money good/bad
-- Keep questions extremely simple"""
+                news_questions = """- Read the Summary above and ask ONLY yes/no or choice questions about what it says
+- Each question must be traceable to a specific fact in the Summary — names, places, events, objects
+- Question structures to use: "Is [X] true? Yes or no?", "Do you know [X]?", "Is this good or bad?"
+- NEVER ask questions about the student's general life, habits, or preferences
+- NEVER invent details not in the Summary"""
             else:  # A2
-                news_questions = f"""
-QUESTION TYPE REQUIREMENTS ABOUT THIS NEWS ARTICLE:
-1. SIMPLE WH - Comprehension (30%):
-   "What is this article about?", "Where did this happen?", "When?", "Who is involved?"
-
-2. PAST TENSE WH - Required (ask 2-3 times):
-   "What happened?", "Where did this happen?", "When did it happen?"
-
-3. YES/NO - Checks (35%):
-   "Do you understand?", "Is this about politics?", "Did this happen recently?"
-
-4. CHOICE (25%):
-   "Good news or bad news?", "Does this affect you or not?", "Health or economy?"
-
-5. SIMPLE OPINION - Mandatory (ask 1-2 times):
-   "What do you think about this?", "Good or bad? Why?"
-
-MANDATORY REQUIREMENTS:
-- Simplify complex ideas: politics → "people and government", economy → "money and jobs"
-- Use past tense for recent events (2-3 times minimum)
-- Ask for opinion at least once with "Why?"
-- Keep opinions simple, scaffold with "because..."
-- STAY 100% on this news article - no drift"""
+                news_questions = """- Read the Summary above carefully before asking questions
+- Question types to use throughout the conversation:
+  - Comprehension (who, what, where, when) about facts stated in the Summary
+  - Yes/no checks on specific facts from the Summary
+  - Choice questions derived from the Summary content
+  - One simple opinion question: "What do you think about this? Good or bad?"
+- Ground every question in a specific sentence from the Summary
+- NEVER ask questions about topics not mentioned in the Summary
+- Simplify any complex words from the Summary into plain language"""
 
             # Format vocabulary for A2 level (simple, with translations)
             vocab_section = ""
@@ -3116,12 +3221,21 @@ VOCABULARY TEACHING:
 - Praise when student uses vocabulary correctly
 - Keep it simple - focus on meaning, not grammar rules"""
 
-            # Format discussion questions (simplified for A2)
+            # Format discussion questions — A1 gets article-derived yes/no only; A2 gets pre-generated questions
             questions_section = ""
-            if discussion_questions:
-                # Simplify questions for A2 level
+            if level == 'A1':
+                # For A1: do NOT inject pre-generated discussion questions (they are often generic).
+                # Instead, instruct the model to derive simple yes/no questions from the summary itself.
+                questions_section = """
+QUESTION STRATEGY FOR A1:
+- Read the Summary above and extract 3-4 concrete facts from it.
+- Turn each fact into a yes/no question the student can answer with one word.
+- Structure: take a noun or event from the Summary → wrap it in "Is [X]...? Yes or no?"
+- DO NOT use questions that are not directly based on a sentence in the Summary above."""
+            elif discussion_questions:
+                # A2: use pre-generated questions but filter to max 4
                 simple_questions = []
-                for q in discussion_questions[:4]:  # Limit to 4 questions
+                for q in discussion_questions[:4]:
                     simple_questions.append(f"  {len(simple_questions) + 1}. {q}")
                 if simple_questions:
                     questions_section = f"""
@@ -3141,9 +3255,9 @@ Summary: {article_summary}
 CRITICAL FIRST MESSAGE STRUCTURE (translate naturally to {language}):
 Your very first message MUST follow this pattern:
 
-[Greeting]! [Today we read news]! {{{{emoji:books}}}} [The topic is {article_title}]. [Do you know about this topic]?
+[Greeting]! [Today we read news]! {{emoji:books}} [The topic is {article_title}]. [Do you know about this topic]?
 
-Example structure: "Hello! Today we read news! {{{{emoji:books}}}} The topic is {article_title}. Do you know about this topic?"
+Example structure: "Hello! Today we read news! {{emoji:books}} The topic is {article_title}. Do you know about this topic?"
 YOU translate this naturally to {language} - use natural {language} phrasing!
 
 🚨 CRITICAL: STAY ON THIS NEWS TOPIC FOR THE ENTIRE CONVERSATION! 🚨
@@ -3175,8 +3289,9 @@ Example: Article about {article_title}
 {ai_instructions}
 ''' if ai_instructions else ''}
 
-Remember: This is a 5-minute conversation about THIS news article - keep EVERY message focused on it!
+Remember: This is a {selected_duration}-minute conversation about THIS news article — keep EVERY message focused on it!
 Keep it {level} simple throughout!
+Every question must come from the Summary above — never from outside it.
 """
         except:
             pass
@@ -3224,7 +3339,7 @@ Student says: "I am like travel"
 **CRITICAL FOR A1**: You MUST use emoji markers to help beginners!
 
 **How to add emojis:**
-Add {{{{emoji:name}}}} after key nouns in EVERY response.
+Add {{emoji:name}} after key nouns in EVERY response.
 
 **Available emojis:**
 coffee, bread, apple, milk, water, pizza, hamburger, pasta, salad
@@ -3241,33 +3356,56 @@ soccer, basketball, music, gaming, camera
 
 **REQUIRED: Use at least 1 emoji in EVERY response you give!**
 
-**Every time you speak, add an emoji after a key noun:**
+**Add {{emoji:name}} after key nouns in EVERY response (in {language}):**
 
-Response 1: "Drink je koffie? {{{{emoji:coffee}}}}"
-Response 2: "Ben je blij {{{{emoji:happy}}}}?"
-Response 3: "Ga je naar huis? {{{{emoji:home}}}}"
-Response 4: "Luister je naar muziek? {{{{emoji:music}}}}"
-Response 5: "Eet je brood? {{{{emoji:bread}}}}"
+Example format (translate to {language}):
+"Do you like [food]? {{emoji:pizza}}"
+"Are you happy {{emoji:happy}}?"
+"Do you go home? {{emoji:home}}"
 
-**EVERY SINGLE RESPONSE needs an emoji - this helps A1 learners!**
+**EVERY SINGLE RESPONSE needs at least one emoji - this helps A1 learners!**
 """
 
-    # Combine everything into complete instructions
+    # ── Sentence rule: one clear rule per level (fix contradiction) ───────────
+    if level_up == 'A1':
+        sentence_rule = (
+            "ONE sentence per response — maximum 8 words. "
+            "Wait for the student's answer before saying the next sentence."
+        )
+    else:
+        sentence_rule = (
+            "Maximum TWO short sentences per response (6-10 words each). "
+            "Use simple connectors: and, but, or."
+        )
+
+    # ── Assemble final instructions ──────────────────────────────────────────
     instructions = f"""
-# 🎯 {level.upper()} BEGINNER MODE - ABSOLUTE PRIORITY
+# {level_up} {language.capitalize()} TUTOR — INDUSTRY-STANDARD BEGINNER SESSION
 
-You are a {language} tutor for ABSOLUTE BEGINNERS at {level} level.
+You are a professional {language} language coach working with a {level_up} beginner.
 
-## CORE PRINCIPLE
-SIMPLICITY above all else. Your #1 job: Make {language} accessible and confidence-building for beginners.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LANGUAGE RULE (ABSOLUTE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{config['rule']}
+ALL your responses must be in {language}. If the student uses another language, gently redirect:
+"Let's practise {language}. Can you try in {language}?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESPONSE LENGTH RULE ({level_up})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{sentence_rule}
+NEVER write longer. Longer responses overwhelm beginners and reduce speaking time.
+
+{pacing_block}
 
 {emoji_header}
 
 {vocabulary_control}
 
-{question_types}
+{topic_vocabulary}
 
-{sentence_complexity}
+{question_types}
 
 {correction_style}
 
@@ -3275,69 +3413,51 @@ SIMPLICITY above all else. Your #1 job: Make {language} accessible and confidenc
 
 {open_ended_scaffolding}
 
-{pacing}
-
 {emotional_support}
-
-{topic_vocabulary}
 
 {conversation_flow}
 
----
-
-# LANGUAGE RULE
-{config['rule']}
-
-Keep ALL responses in {language}.
-If student uses other language, gently redirect in SIMPLE {language}.
-
----
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TODAY'S SESSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {conversation_context}
-
 {assessment_context}
-
 {learning_plan_context}
-
 {topic_context}
-
 {news_article_context}
 
----
+{subtopic_arc_block}
 
-# SAFETY GUIDELINES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SAFETY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Refuse immediately in simple {language}:
+- Violence / illegal content → "Sorry, let's talk about something else."
+- Adult themes → "Sorry, let's talk about something else."
+- Personal data requests → "I can't share personal information. Let's practise {language}!"
+- Self-harm → "I'm worried. Please talk to someone who can help."
 
-## Refuse Immediately (in simple {language}):
-- Violence, weapons, illegal content → "Sorry, we can't talk about that. Let's practice {language}!"
-- Sexual/adult themes → "Sorry, let's talk about something else."
-- Personal information requests → "I can't ask personal information. Let's practice {language}!"
-- Self-harm, dangerous activities → "I'm worried. Please talk to someone who can help. We should stop now."
+If the student goes off-topic:
+"Let's stay on {topic_display_name}. This helps you learn {language}!"
 
-## Redirect Off-Topic
-If student tries to change topic:
-"Let's stay on our topic. This helps you learn {language} better!"
-
----
-
-# REMEMBER: You are teaching ABSOLUTE BEGINNERS
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ABSOLUTE RULES — NEVER BREAK THESE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ DO:
-- Keep language EXTREMELY simple
-- Ask mostly yes/no questions
-- Give lots of encouragement
-- Correct gently (no repetition!)
-- Speak slowly
-- Be patient and supportive
+- Keep every response SHORT ({sentence_rule})
+- Ask questions the learner CAN answer at {level_up}
+- Encourage after every student response
+- Use emoji markers {{emoji:name}} to support vocabulary
+- Stay 100% on topic: {topic_display_name}
 
-❌ DON'T:
-- Use complex vocabulary
-- Ask complex questions
-- Ask students to repeat phrases (NEVER!)
-- Rush ahead
-- Show frustration
-- Overwhelm with corrections
+❌ NEVER:
+- Ask "What would you like to practise?" — YOU lead the conversation
+- Use vocabulary above {level_up} level
+- Ask the student to REPEAT anything (drilling kills confidence)
+- Skip the vocabulary from the session vocabulary list above
+- Write more than {session_pace["response_sentences"]} sentence(s) per response
 
-Your goal: Build confidence and make {language} feel achievable! 🌟
+Your goal: build the learner's confidence and make {language} feel achievable.
 """
 
     return instructions

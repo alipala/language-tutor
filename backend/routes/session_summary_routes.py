@@ -5,10 +5,12 @@ Handles learning session summary generation and storage
 
 import os
 import json
+import logging
 import traceback
 import uuid
 import asyncio
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request, Depends, BackgroundTasks
 from pydantic import BaseModel
 from bson import ObjectId
@@ -21,6 +23,8 @@ from session_statistics import SessionStatistics
 from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 from services.timezone_utils import get_current_local_date
 from database import users_collection
+
+logger = logging.getLogger(__name__)
 
 # Initialize router
 router = APIRouter()
@@ -42,6 +46,327 @@ except TypeError as e:
     else:
         print(f"Error initializing OpenAI client: {str(e)}")
         raise
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Structured session summary — gpt-4.1-mini via function calling
+# ──────────────────────────────────────────────────────────────────────────────
+
+_STRUCTURED_SUMMARY_FUNCTION: Dict[str, Any] = {
+    "name": "store_session_summary",
+    "description": (
+        "Store a structured analysis of a language learning session "
+        "including vocabulary, corrections, and learner confidence."
+    ),
+    "strict": True,
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "vocabulary_practiced": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Up to 8 key words or phrases the learner used or encountered."
+            },
+            "corrections_made": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "wrong": {"type": "string"},
+                        "correct": {"type": "string"},
+                        "tip": {"type": "string"}
+                    },
+                    "required": ["wrong", "correct", "tip"],
+                    "additionalProperties": False
+                },
+                "description": "Up to 5 grammar/vocabulary corrections identified in the session."
+            },
+            "topics_covered": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Main topics or themes discussed (max 4)."
+            },
+            "student_confidence": {
+                "type": "string",
+                "enum": ["low", "building", "moderate", "high"],
+                "description": "Estimated confidence level based on participation and hesitation."
+            },
+            "breakthrough_moment": {
+                "type": "string",
+                "description": "One specific positive moment or achievement from the session (empty string if none)."
+            },
+            "focus_next_session": {
+                "type": "string",
+                "description": "One concrete area the tutor should reinforce in the next session."
+            },
+            "compressed_summary": {
+                "type": "string",
+                "description": (
+                    "Single sentence (max 20 words) describing what was practised and "
+                    "the main takeaway. Format: '[topic/skill] — [key outcome]'."
+                )
+            }
+        },
+        "required": [
+            "vocabulary_practiced",
+            "corrections_made",
+            "topics_covered",
+            "student_confidence",
+            "breakthrough_moment",
+            "focus_next_session",
+            "compressed_summary"
+        ],
+        "additionalProperties": False
+    }
+}
+
+
+def _build_structured_summary_prompt(
+    language: str,
+    level: str,
+    week_focus: str,
+    session_number: int,
+    messages: List[Dict[str, Any]],
+    basic_summary: Optional[str],
+    key_vocabulary: Optional[List[str]],
+    key_phrases: Optional[List[str]],
+) -> str:
+    """Build the prompt for gpt-4.1-mini structured session analysis."""
+    # Extract last 20 conversation turns to keep prompt focused
+    recent_messages = messages[-20:] if messages else []
+    conversation_lines = []
+    for msg in recent_messages:
+        role = "Student" if msg.get("role") == "user" else "Tutor"
+        content = str(msg.get("content", "")).strip()
+        if content:
+            conversation_lines.append(f"{role}: {content}")
+    conversation_block = "\n".join(conversation_lines) if conversation_lines else "(no transcript available)"
+
+    vocab_hint = ""
+    if key_vocabulary:
+        vocab_hint = f"\nPlan vocabulary for this week: {', '.join(key_vocabulary[:10])}"
+    if key_phrases:
+        vocab_hint += f"\nPlan phrases for this week: {', '.join(key_phrases[:5])}"
+
+    return f"""Analyse this {language} language learning session (Session {session_number}).
+
+STUDENT LEVEL: {level}
+WEEK FOCUS: {week_focus}{vocab_hint}
+
+BASIC SESSION INFO:
+{basic_summary or '(not available)'}
+
+CONVERSATION TRANSCRIPT:
+{conversation_block}
+
+Identify:
+- Vocabulary the student actually used or struggled with
+- Grammar/vocabulary errors made and their corrections
+- Topics actually discussed
+- Student's confidence based on response length, hesitation, and engagement
+- Any breakthrough moment (first successful use of a hard word, unexpected fluency, etc.)
+- What the tutor should prioritise in the NEXT session to build continuity
+- A one-sentence compressed summary for the tutor's memory in future sessions
+"""
+
+
+async def generate_structured_session_summary(
+    plan: Dict[str, Any],
+    conversation_data: Optional[Dict[str, Any]],
+    basic_summary: Optional[str],
+    session_number: int,
+    plan_id: str,
+) -> Dict[str, Any]:
+    """
+    Generate a rich structured session summary using gpt-4.1-mini.
+
+    Returns a dict with all structured fields.  Falls back to a minimal
+    default dict on any error so the caller never has to handle None.
+    """
+    language = plan.get("language", "english")
+    level = plan.get("proficiency_level", "B1")
+    sessions_per_week = 2
+    week_index = (session_number - 1) // sessions_per_week
+    weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
+    current_week = weekly_schedule[week_index] if week_index < len(weekly_schedule) else {}
+    week_focus = current_week.get("focus", "General language practice")
+    key_vocabulary: List[str] = current_week.get("key_vocabulary", [])
+    key_phrases: List[str] = current_week.get("key_phrases", [])
+
+    messages: List[Dict[str, Any]] = (
+        conversation_data.get("messages", []) if conversation_data else []
+    )
+
+    # Fallback used when API call fails or returns incomplete data
+    _fallback = {
+        "vocabulary_practiced": [],
+        "corrections_made": [],
+        "topics_covered": [week_focus],
+        "student_confidence": "building",
+        "breakthrough_moment": "",
+        "focus_next_session": week_focus,
+        "compressed_summary": (
+            basic_summary[:100] if basic_summary else f"{week_focus} — session {session_number} completed"
+        ),
+        "_generated_by": "fallback",
+    }
+
+    if not client:
+        logger.warning("[STRUCTURED_SUMMARY] OpenAI client not available — returning fallback")
+        return _fallback
+
+    try:
+        prompt = _build_structured_summary_prompt(
+            language=language,
+            level=level,
+            week_focus=week_focus,
+            session_number=session_number,
+            messages=messages,
+            basic_summary=basic_summary,
+            key_vocabulary=key_vocabulary,
+            key_phrases=key_phrases,
+        )
+
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            tools=[{"type": "function", "function": _STRUCTURED_SUMMARY_FUNCTION}],
+            tool_choice={"type": "function", "function": {"name": "store_session_summary"}},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert language learning session analyst. "
+                        "Analyse the conversation transcript and produce a concise, "
+                        "actionable structured summary that the AI tutor can use "
+                        "in the next session to maintain continuity."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=700,
+        )
+
+        tool_calls = (
+            response.choices[0].message.tool_calls
+            if response.choices and response.choices[0].message.tool_calls
+            else []
+        )
+        if not tool_calls:
+            logger.warning("[STRUCTURED_SUMMARY] No tool_calls in gpt-4.1-mini response — fallback")
+            return _fallback
+
+        structured = json.loads(tool_calls[0].function.arguments)
+
+        # Validate required fields exist
+        required_keys = {
+            "vocabulary_practiced", "corrections_made", "topics_covered",
+            "student_confidence", "breakthrough_moment",
+            "focus_next_session", "compressed_summary",
+        }
+        missing = required_keys - structured.keys()
+        if missing:
+            logger.warning(f"[STRUCTURED_SUMMARY] Missing fields {missing} — merging with fallback")
+            structured = {**_fallback, **structured}
+
+        structured["_generated_by"] = "gpt-4.1-mini"
+        structured["generated_at"] = datetime.now(timezone.utc).isoformat()
+        logger.info(
+            f"[STRUCTURED_SUMMARY] ✅ Generated for session {session_number}: "
+            f"vocab={len(structured['vocabulary_practiced'])}, "
+            f"corrections={len(structured['corrections_made'])}, "
+            f"confidence={structured['student_confidence']}"
+        )
+        return structured
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"[STRUCTURED_SUMMARY] JSON parse error: {e} — fallback")
+    except (IndexError, AttributeError, KeyError) as e:
+        logger.warning(f"[STRUCTURED_SUMMARY] Unexpected response shape: {e} — fallback")
+    except Exception as e:
+        logger.warning(f"[STRUCTURED_SUMMARY] gpt-4.1-mini call failed: {e} — fallback")
+
+    return _fallback
+
+
+async def _persist_structured_summary_background(
+    plan_id: str,
+    session_number: int,
+    structured_summary: Dict[str, Any],
+) -> None:
+    """
+    Persist the structured summary onto the correct week's session_details entry
+    inside the learning plan document.
+
+    Runs as a background task — any failure is logged but does NOT affect
+    the session response already sent to the client.
+    """
+    try:
+        from database import database
+        plans_collection = database.learning_plans
+
+        plan = await plans_collection.find_one({"id": plan_id}, {"plan_content": 1})
+        if not plan:
+            logger.warning(f"[STRUCTURED_SUMMARY_PERSIST] Plan {plan_id} not found")
+            return
+
+        weekly_schedule: List[Dict[str, Any]] = (
+            plan.get("plan_content", {}).get("weekly_schedule", [])
+        )
+
+        sessions_per_week = 2
+        week_index = (session_number - 1) // sessions_per_week
+        session_in_week = ((session_number - 1) % sessions_per_week)  # 0-based index
+
+        if week_index >= len(weekly_schedule):
+            logger.warning(
+                f"[STRUCTURED_SUMMARY_PERSIST] Week index {week_index} out of range "
+                f"(schedule has {len(weekly_schedule)} weeks)"
+            )
+            return
+
+        week = weekly_schedule[week_index]
+        session_details: List[Dict[str, Any]] = week.get("session_details", [])
+
+        if session_in_week < len(session_details):
+            session_details[session_in_week]["structured_summary"] = structured_summary
+            session_details[session_in_week]["structured_summary_at"] = (
+                datetime.now(timezone.utc).isoformat()
+            )
+        else:
+            # session_details entry missing — append one
+            session_details.append({
+                "session_number": session_in_week + 1,
+                "structured_summary": structured_summary,
+                "structured_summary_at": datetime.now(timezone.utc).isoformat(),
+            })
+            logger.info(
+                f"[STRUCTURED_SUMMARY_PERSIST] Appended missing session_details entry "
+                f"for week {week_index + 1}, session {session_in_week + 1}"
+            )
+
+        weekly_schedule[week_index]["session_details"] = session_details
+
+        result = await plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {"plan_content.weekly_schedule": weekly_schedule}},
+        )
+        if result.modified_count:
+            logger.info(
+                f"[STRUCTURED_SUMMARY_PERSIST] ✅ Persisted structured summary for "
+                f"plan {plan_id}, session {session_number}"
+            )
+        else:
+            logger.warning(
+                f"[STRUCTURED_SUMMARY_PERSIST] ⚠️ Update matched but modified 0 docs "
+                f"for plan {plan_id}"
+            )
+
+    except Exception as e:
+        logger.error(
+            f"[STRUCTURED_SUMMARY_PERSIST] ❌ Failed for plan {plan_id}, "
+            f"session {session_number}: {e}\n{traceback.format_exc()}"
+        )
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Background task functions — run AFTER response is sent to the client
@@ -631,12 +956,48 @@ async def store_session_summary(
 
         background_analyses = []  # Empty - will be populated by background job
 
+        # ── Structured session summary (gpt-4.1-mini, background) ────────────
+        # Generate a rich structured summary now (fast enough to await inline)
+        # then persist the full object to session_details in the background.
+        structured_summary: Dict[str, Any] = {}
+        try:
+            structured_summary = await generate_structured_session_summary(
+                plan=plan,
+                conversation_data=conversation_data,
+                basic_summary=basic_summary,
+                session_number=completed_sessions,
+                plan_id=plan_id,
+            )
+            logger.info(
+                f"[SESSION_SUMMARY] ✅ Structured summary generated: "
+                f"vocab={len(structured_summary.get('vocabulary_practiced', []))}, "
+                f"confidence={structured_summary.get('student_confidence', 'unknown')}"
+            )
+        except Exception as _ss_err:
+            logger.warning(f"[SESSION_SUMMARY] ⚠️ Structured summary failed (non-fatal): {_ss_err}")
+
+        # Persist the structured summary onto the week's session_details (background)
+        if structured_summary:
+            background_tasks.add_task(
+                _persist_structured_summary_background,
+                plan_id=plan_id,
+                session_number=completed_sessions,
+                structured_summary=structured_summary,
+            )
+
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
 
-        # PHASE 0 OPTIMIZATION: Store compressed summary for prompt usage
-        # Store full summary for history/display purposes
-        session_summaries.append(summary_data.get("compressed", summary_data.get("full", summary_data)))
+        # Store the compressed one-liner for prompt injection in future sessions.
+        # Prefer the structured summary's compressed field; fall back to basic_summary.
+        compressed_for_prompt = (
+            structured_summary.get("compressed_summary")
+            or summary_data.get("compressed")
+            or summary_data.get("full")
+            or basic_summary
+            or f"Session {completed_sessions} completed."
+        )
+        session_summaries.append(compressed_for_prompt)
 
         # Update completed sessions count and weekly schedule
         # Note: completed_sessions was calculated earlier (line ~505) for session_id generation
@@ -681,12 +1042,14 @@ async def store_session_summary(
 
         current_session_data = {
             "session_number": completed_sessions,
-            "session_id": summary_id,  # 🔧 FIX: Store session_id so mobile app can fetch analysis
-            "analysis_job_id": analysis_job_id if analysis_job_id else None,  # 🔧 FIX: Store job_id for polling
+            "session_id": summary_id,
+            "analysis_job_id": analysis_job_id if analysis_job_id else None,
             "messages": conversation_data.get("messages", []) if conversation_data else [],
             "duration_minutes": session_duration_minutes,
-            "selected_duration": selected_duration,  # 🆕 Store selected duration
-            "completed_at": datetime.now(timezone.utc).isoformat()
+            "selected_duration": selected_duration,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            # Rich structured summary — used by the tutor in the NEXT session
+            "structured_summary": structured_summary if structured_summary else None,
         }
         session_history.append(current_session_data)
 
