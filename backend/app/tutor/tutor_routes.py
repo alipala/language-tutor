@@ -1517,18 +1517,35 @@ async def send_recommendation(
         )
 
     # 4. Validate token format
-    if not (push_token.startswith("ExponentPushToken[") or push_token.startswith("ExpoPushToken[")):
+    if not isinstance(push_token, str) or not (
+        push_token.startswith("ExponentPushToken[") or push_token.startswith("ExpoPushToken[")
+    ):
         raise HTTPException(status_code=422, detail="Learner's push token is not a valid Expo token")
 
-    # 5. Send push notification via Expo
+    # 5. Rate limit: max 1 notification per learner per hour
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    recent = await database.tutor_notifications.find_one({
+        "tutor_id": tutor_id,
+        "learner_id": user_id,
+        "sent_at": {"$gte": one_hour_ago},
+    })
+    if recent:
+        sent_at = recent.get("sent_at", one_hour_ago)
+        wait_minutes = max(1, 60 - int((datetime.utcnow() - sent_at).total_seconds() / 60))
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: you can send another notification to this learner in {wait_minutes} minute(s)"
+        )
+
+    # 6. Send push notification via Expo
     from notification_service import notification_service
 
     learner_name = learner.get("name") or learner.get("username") or "Student"
     tutor_name = body.tutor_name.strip() or current_tutor.get("name") or "Your Tutor"
 
-    # iOS push body limit is 178 chars; keep title short
+    # iOS push body limit is 178 chars; truncate cleanly
     notification_title = f"Message from {tutor_name}"
-    notification_body = message[:178]  # Hard truncate at iOS limit
+    notification_body = (message[:178].strip() or message[:50]).strip()
 
     push_data = {
         "notification_type": "tutor_recommendation",
@@ -1572,9 +1589,10 @@ async def send_recommendation(
 
     # 8. Record in tutor_notifications collection (for rate limiting + history)
     now = datetime.utcnow()
-    notification_id = str(ObjectId())
+    notification_oid = ObjectId()
+    notification_id = str(notification_oid)
     await database.tutor_notifications.insert_one({
-        "_id": ObjectId(notification_id),
+        "_id": notification_oid,
         "tutor_id": tutor_id,
         "learner_id": user_id,
         "learner_name": learner_name,
