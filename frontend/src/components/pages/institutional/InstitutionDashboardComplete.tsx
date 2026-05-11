@@ -49,6 +49,7 @@ function TableSkeleton({ rows = 4 }: { rows?: number }) {
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { FlagIcon, FlagOrText } from '../../ui/FlagIcon';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 import {
@@ -194,12 +195,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
   // Available languages with flags
   const availableLanguages = [
-    { code: 'english', name: 'English', flag: '🇬🇧' },
-    { code: 'dutch', name: 'Dutch', flag: '🇳🇱' },
-    { code: 'spanish', name: 'Spanish', flag: '🇪🇸' },
-    { code: 'french', name: 'French', flag: '🇫🇷' },
-    { code: 'german', name: 'German', flag: '🇩🇪' },
-    { code: 'portuguese', name: 'Portuguese', flag: '🇵🇹' }
+    { code: 'english', name: 'English' },
+    { code: 'dutch', name: 'Dutch' },
+    { code: 'spanish', name: 'Spanish' },
+    { code: 'french', name: 'French' },
+    { code: 'german', name: 'German' },
+    { code: 'portuguese', name: 'Portuguese' }
   ];
 
   // Authentication check
@@ -1347,7 +1348,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           <p className="text-sm text-gray-500">{learner.email}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-700">{learner.language || 'Not set'}</td>
+                      <td className="px-6 py-4 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={learner.language ?? ''} size={16} />{learner.language ? learner.language.charAt(0).toUpperCase()+learner.language.slice(1) : 'Not set'}</div></td>
                       <td className="px-6 py-4 text-gray-700">{learner.level || 'Not set'}</td>
                       <td className="px-6 py-4">
                         {learner.progress ? (
@@ -1540,7 +1541,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           : 'border-gray-200 hover:border-[#4ECFBF]/50'
                       }`}
                     >
-                      <span className="text-2xl">{lang.flag}</span>
+                      <FlagIcon language={lang.code} size={24} />
                       <span className="font-medium text-gray-900">{lang.name}</span>
                       {tutorForm.languages.includes(lang.code) && (
                         <svg className="w-5 h-5 ml-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -1755,7 +1756,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       <div className="flex items-center space-x-3 mt-2">
                         {learner.language && (
                           <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                            <Globe className="w-3 h-3 mr-1" /> {learner.language}
+                            <FlagOrText language={learner.language} size={14} /> {learner.language ? learner.language.charAt(0).toUpperCase()+learner.language.slice(1) : ''}
                           </span>
                         )}
                         {learner.level && (

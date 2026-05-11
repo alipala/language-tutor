@@ -9,6 +9,7 @@ import {
   Flame, Star, Calendar, GraduationCap, ChevronRight,
   Award, Activity, MessageSquare, Brain, Layout
 } from 'lucide-react';
+import { FlagIcon, FlagOrText } from '@/src/components/ui/FlagIcon';
 
 const API_BASE_URL = '/api';
 
@@ -56,11 +57,7 @@ interface Analytics {
 // ─────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────
-const LANG_FLAGS: Record<string, string> = {
-  english: '🇬🇧', dutch: '🇳🇱', spanish: '🇪🇸',
-  french: '🇫🇷', german: '🇩🇪', portuguese: '🇧🇷',
-  italian: '🇮🇹', turkish: '🇹🇷',
-};
+// Flags rendered via FlagIcon component — no emoji map needed
 
 const LEVEL_COLORS: Record<string, string> = {
   A1: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -112,7 +109,7 @@ function LearnerDetailModal({
               {plan && (
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize">
-                    {LANG_FLAGS[plan.language?.toLowerCase()] || '🌍'} {plan.language}
+                    <FlagOrText language={plan.language} size={18} /> {plan.language}
                   </span>
                   <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
                     {plan.proficiency_level}
@@ -204,8 +201,8 @@ function LearnerDetailModal({
                           <div key={p.id}>
                             <div className="flex items-center justify-between mb-1.5">
                               <div className="flex items-center gap-2">
-                                <span>{LANG_FLAGS[p.language?.toLowerCase()] || '🌍'}</span>
-                                <span className="font-medium text-gray-800 capitalize text-sm">{p.language}</span>
+                                <FlagOrText language={p.language} size={18} />
+                                <span className="font-medium text-gray-800 text-sm">{p.language ? p.language.charAt(0).toUpperCase()+p.language.slice(1) : '—'}</span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                   {p.proficiency_level}
                                 </span>
@@ -263,8 +260,8 @@ function LearnerDetailModal({
                       <div className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-xl">{LANG_FLAGS[p.language?.toLowerCase()] || '🌍'}</span>
-                            <span className="font-bold text-gray-900 capitalize">{p.language}</span>
+                            <FlagOrText language={p.language} size={22} />
+                            <span className="font-bold text-gray-900">{p.language ? p.language.charAt(0).toUpperCase()+p.language.slice(1) : '—'}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                               {p.proficiency_level}
                             </span>
@@ -330,7 +327,7 @@ function LearnerDetailModal({
                         {details.practice_sessions.map((s: any) => (
                           <tr key={s.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-gray-700">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-                            <td className="px-4 py-3 capitalize text-gray-700">{LANG_FLAGS[s.language?.toLowerCase()] || ''} {s.language || '—'}</td>
+                            <td className="px-4 py-3 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={s.language} size={16} />{s.language ? s.language.charAt(0).toUpperCase()+s.language.slice(1) : '—'}</div></td>
                             <td className="px-4 py-3">
                               {s.level ? <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[s.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{s.level}</span> : '—'}
                             </td>
@@ -662,7 +659,7 @@ export default function TutorDashboardPage() {
                           <div key={lang}>
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                                {LANG_FLAGS[lang] || '🌍'} <span className="capitalize">{lang}</span>
+                                <FlagOrText language={lang} size={18} /> <span>{lang ? lang.charAt(0).toUpperCase()+lang.slice(1) : '—'}</span>
                               </span>
                               <span className="text-sm text-gray-500">{count} learner{count !== 1 ? 's' : ''} · {pct}%</span>
                             </div>
@@ -736,7 +733,7 @@ export default function TutorDashboardPage() {
                         }`}>{l.name.charAt(0)}</div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-gray-800 truncate">{l.name}</div>
-                          {plan && <div className="text-xs text-gray-400 capitalize">{LANG_FLAGS[plan.language?.toLowerCase()] || ''} {plan.language} · {plan.proficiency_level}</div>}
+                          {plan && <div className="text-xs text-gray-400 flex items-center gap-1"><FlagOrText language={plan.language} size={14} />{plan.language ? plan.language.charAt(0).toUpperCase()+plan.language.slice(1) : ''} · {plan.proficiency_level}</div>}
                         </div>
                         {plan && (
                           <div className="text-right">
@@ -854,7 +851,7 @@ export default function TutorDashboardPage() {
                           <td className="px-3 py-3">
                             {plan ? (
                               <div className="flex items-center gap-2">
-                                <span className="text-lg">{LANG_FLAGS[plan.language?.toLowerCase()] || '🌍'}</span>
+                                <FlagOrText language={plan.language} size={22} />
                                 <div>
                                   <div className="text-sm font-medium text-gray-800">{plan.language ? plan.language.charAt(0).toUpperCase() + plan.language.slice(1) : '—'}</div>
                                   <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
