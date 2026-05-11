@@ -30,7 +30,7 @@ proxy.on('error', (err, req, res) => {
 
 // Log proxy requests
 proxy.on('proxyReq', (proxyReq, req) => {
-  console.log(`[PROXY] ${req.method} ${req.url} -> http://localhost:8000${req.url}`);
+  console.log(`[PROXY] ${req.method} ${req.url} -> http://localhost:8000${proxyReq.path}`);
 });
 
 app.prepare().then(() => {
@@ -44,10 +44,15 @@ app.prepare().then(() => {
       if (
         pathname.startsWith('/api/') ||
         pathname.startsWith('/health/') ||
-        (pathname.startsWith('/auth/') && 
-         !pathname.startsWith('/auth/login') && 
+        (pathname.startsWith('/auth/') &&
+         !pathname.startsWith('/auth/login') &&
          !pathname.startsWith('/auth/signup'))
       ) {
+        // Strip /api prefix for tutor and institution routes
+        // (backend mounts them at /tutor/* and /institution/*, not /api/tutor/*)
+        if (pathname.startsWith('/api/tutor/') || pathname.startsWith('/api/institution/')) {
+          req.url = req.url.replace(/^\/api\//, '/');
+        }
         proxy.web(req, res);
         return;
       }
