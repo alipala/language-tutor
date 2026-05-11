@@ -3,6 +3,50 @@
 // Institution dashboard API calls go through /api/institution/* proxy
 const getApiBaseUrl = () => '/api';
 
+// ── Shared spinner components ──────────────────────────────────────────
+function PageSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/20" />
+          <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/60 animate-spin absolute inset-0" style={{ animationDuration: '0.75s' }} />
+        </div>
+        <p className="text-sm text-gray-400 font-medium animate-pulse">Loading dashboard...</p>
+      </div>
+    </div>
+  );
+}
+
+function ModalSpinner({ label = 'Loading details...' }: { label?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-14 gap-4">
+      <div className="relative">
+        <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/15" />
+        <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/50 animate-spin absolute inset-0" style={{ animationDuration: '0.7s' }} />
+        <div className="w-8 h-8 rounded-full border-[3px] border-transparent border-b-[#3a9e92]/60 animate-spin absolute inset-3" style={{ animationDuration: '1.1s', animationDirection: 'reverse' }} />
+      </div>
+      <p className="text-sm text-gray-400 font-medium">{label}</p>
+    </div>
+  );
+}
+
+function TableSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="p-4 space-y-2">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-3 items-center animate-pulse" style={{ animationDelay: `${i * 80}ms` }}>
+          <div className="w-9 h-9 bg-gray-100 rounded-xl flex-shrink-0" />
+          <div className="h-9 bg-gray-100 rounded-lg flex-1" />
+          <div className="h-9 bg-gray-100 rounded-lg w-24" />
+          <div className="h-9 bg-gray-100 rounded-lg w-20" style={{ opacity: 0.7 }} />
+          <div className="h-9 bg-gray-100 rounded-lg w-16" style={{ opacity: 0.5 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
@@ -260,6 +304,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   }, [learners, searchQuery, filterLanguage, filterLevel, filterTutor, filterProgress, filterStatus]);
 
   const loadAllData = async () => {
+    setIsLoadingData(true);
     try {
       const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
@@ -299,6 +344,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+    } finally {
+      setIsLoadingData(false);
     }
   };
 
@@ -905,7 +952,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -1257,8 +1304,9 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Learners Table */}
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-xl shadow overflow-hidden relative">
+              {isLoadingData && learners.length === 0 && <TableSkeleton rows={4} />}
+              <table className={`w-full ${isLoadingData && learners.length === 0 ? 'hidden' : ''}`}>
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -1751,12 +1799,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             {/* Content */}
             <div className="p-6 max-h-[70vh] overflow-y-auto">
               {loadingLearnerDetails ? (
-                <div className="flex items-center justify-center py-12">
-                  <svg className="animate-spin h-8 w-8 text-[#4ECFBF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </div>
+                <ModalSpinner label="Loading learner progress..." />
               ) : selectedLearnerDetails?.no_consent ? (
                 <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                   <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mb-6">

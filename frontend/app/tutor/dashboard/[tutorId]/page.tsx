@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { Spinner, ModalSpinner, TableLoadingSkeleton, CardLoadingSkeleton } from '@/src/components/ui/Spinner';
 
 const API_BASE_URL = '/api';
 
@@ -158,10 +159,8 @@ function LearnerDetailModal({
         {/* Tab Content */}
         <div className="p-6 max-h-[55vh] overflow-y-auto">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-10 h-10 border-3 border-[#4ECFBF] border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
-              <p className="text-gray-500 text-sm">Loading learner data...</p>
-            </div>
+            <div className="py-4">
+              <ModalSpinner label="Loading learner data..." /></div>
           ) : !details ? (
             <div className="text-center py-12 text-gray-400">Failed to load details</div>
           ) : (
@@ -622,7 +621,20 @@ export default function TutorDashboardPage() {
         </div>
 
         {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
-        {tab === 'overview' && (
+        {tab === 'overview' && loading && !analytics && (
+          <div className="space-y-6">
+            <CardLoadingSkeleton cards={4} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {[1,2].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-pulse">
+                  <div className="h-4 w-24 bg-gray-100 rounded-full mb-4" />
+                  <div className="space-y-3">{[1,2,3].map(j => <div key={j} className="h-6 bg-gray-100 rounded-lg" style={{opacity: 1-j*0.2}} />)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {tab === 'overview' && (!loading || analytics) && (
           <div className="space-y-6">
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -807,10 +819,7 @@ export default function TutorDashboardPage() {
             {/* Learner Table */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <div className="w-10 h-10 border-3 border-[#4ECFBF] border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
-                  <p className="text-gray-400 text-sm">Loading learners...</p>
-                </div>
+                <TableLoadingSkeleton rows={4} cols={8} />
               ) : learners.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="text-5xl mb-3">🎓</div>
