@@ -369,20 +369,38 @@ function LearnerDetailModal({
                 <div>
                   {details.challenge_sessions?.length > 0 ? (
                     <>
-                      {/* Summary row */}
+                      {/* Summary row — computed correctly */}
+                      {(() => {
+                        const sessions = details.challenge_sessions;
+                        const totalSessions = sessions.length;
+                        const totalCorrect = sessions.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0);
+                        const totalQuestions = sessions.reduce((s: number, c: any) => s + (c.total_challenges || 0), 0);
+                        const totalXP = sessions.reduce((s: number, c: any) => s + (c.total_xp || 0), 0);
+                        // Accuracy = total correct / total questions (not avg of per-session accuracy)
+                        const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+                        return (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        {[
-                          { label: 'Total Done', value: details.challenge_sessions.length, color: 'text-[#4ECFBF]' },
-                          { label: 'Correct', value: details.challenge_sessions.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0), color: 'text-emerald-600' },
-                          { label: 'Total XP', value: details.challenge_sessions.reduce((s: number, c: any) => s + (c.total_xp || 0), 0), color: 'text-yellow-600' },
-                          { label: 'Avg Accuracy', value: `${Math.round(details.challenge_sessions.reduce((s: number, c: any) => s + (c.accuracy || 0), 0) / details.challenge_sessions.length)}%`, color: 'text-blue-600' },
-                        ].map(stat => (
-                          <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                            <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
-                          </div>
-                        ))}
+                        <div className="bg-gray-50 rounded-xl p-3 text-center">
+                          <div className="text-xl font-bold text-[#4ECFBF]">{totalSessions}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Sessions Played</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3 text-center">
+                          <div className="text-xl font-bold text-emerald-600">{totalCorrect}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Correct Answers</div>
+                          <div className="text-xs text-gray-400">out of {totalQuestions} questions</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3 text-center">
+                          <div className="text-xl font-bold text-yellow-600">{totalXP}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Total XP</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3 text-center">
+                          <div className="text-xl font-bold text-blue-600">{accuracy}%</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Overall Accuracy</div>
+                          <div className="text-xs text-gray-400">{totalCorrect}/{totalQuestions}</div>
+                        </div>
                       </div>
+                        );
+                      })()}
                       <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
