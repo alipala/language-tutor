@@ -77,6 +77,125 @@ const LEVEL_BAR_COLORS: Record<string, string> = {
 };
 
 // ─────────────────────────────────────────────
+// Learner Hover Card (snapshot tooltip)
+// ─────────────────────────────────────────────
+function LearnerHoverCard({ learner, position }: { learner: Learner; position: { x: number; y: number } }) {
+  const plan = learner.learning_plans[0];
+  if (!plan) return null;
+
+  const statusColor = plan.progress_status === 'on_track' ? 'text-emerald-600 bg-emerald-50'
+    : plan.progress_status === 'at_risk' ? 'text-amber-600 bg-amber-50'
+    : 'text-gray-500 bg-gray-100';
+
+  const statusLabel = plan.progress_status === 'on_track' ? 'On Track'
+    : plan.progress_status === 'at_risk' ? 'At Risk' : 'Inactive';
+
+  // Circular progress ring
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.min(plan.progress_percentage, 100);
+  const offset = circumference - (progress / 100) * circumference;
+
+  // Smart vertical offset so card doesn't clip viewport bottom
+  const cardH = 220;
+  const top = position.y + cardH > window.innerHeight - 20
+    ? position.y - cardH - 10
+    : position.y + 10;
+
+  return (
+    <div
+      className="fixed z-50 pointer-events-none"
+      style={{ left: position.x + 16, top }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-64 overflow-hidden"
+        style={{ animation: 'hoverCardIn 0.15s ease-out' }}>
+        {/* Header strip */}
+        <div className="bg-gradient-to-r from-[#4ECFBF]/15 to-transparent px-4 pt-4 pb-3 flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+            plan.progress_status === 'on_track' ? 'bg-emerald-400' :
+            plan.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'
+          }`}>
+            {learner.name.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-gray-900 text-sm truncate">{learner.name}</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <FlagOrText language={plan.language} size={13} />
+              <span className="text-xs text-gray-500 capitalize">{plan.language}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-md border font-bold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                {plan.proficiency_level}
+              </span>
+            </div>
+          </div>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${statusColor}`}>
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Progress + stats */}
+        <div className="px-4 pb-4 flex items-center gap-4">
+          {/* Ring */}
+          <div className="relative flex-shrink-0">
+            <svg width="52" height="52" className="-rotate-90">
+              <circle cx="26" cy="26" r={radius} fill="none" stroke="#f0f0f0" strokeWidth="5" />
+              <circle
+                cx="26" cy="26" r={radius} fill="none"
+                stroke={plan.progress_status === 'on_track' ? '#4ECFBF' : plan.progress_status === 'at_risk' ? '#f59e0b' : '#d1d5db'}
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                style={{ transition: 'stroke-dashoffset 0.6s ease-out' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold text-gray-800">{Math.round(progress)}%</span>
+            </div>
+          </div>
+
+          {/* Stats grid */}
+          <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-2">
+            <div>
+              <div className="text-xs text-gray-400">Sessions</div>
+              <div className="text-sm font-bold text-gray-900">
+                {plan.completed_sessions}<span className="text-gray-400 font-normal text-xs">/{plan.total_sessions}</span>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Score</div>
+              <div className={`text-sm font-bold ${plan.assessment_score >= 80 ? 'text-emerald-600' : plan.assessment_score >= 60 ? 'text-amber-600' : plan.assessment_score > 0 ? 'text-rose-600' : 'text-gray-300'}`}>
+                {plan.assessment_score > 0 ? plan.assessment_score : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Last active</div>
+              <div className={`text-xs font-semibold ${
+                plan.days_since_activity <= 3 ? 'text-emerald-600' :
+                plan.days_since_activity <= 7 ? 'text-amber-600' :
+                plan.days_since_activity < 999 ? 'text-rose-500' : 'text-gray-400'
+              }`}>
+                {plan.days_since_activity < 999 ? `${plan.days_since_activity}d ago` : 'No activity'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Next focus</div>
+              <div className="text-xs text-gray-600 truncate max-w-[80px]" title={plan.next_focus_area}>
+                {plan.next_focus_area || '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom hint */}
+        <div className="border-t border-gray-100 px-4 py-2 bg-gray-50/50">
+          <p className="text-xs text-gray-400 text-center">Click <span className="font-semibold text-[#4ECFBF]">View</span> for full history</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Learner Detail Modal
 // ─────────────────────────────────────────────
 function LearnerDetailModal({
@@ -820,6 +939,9 @@ export default function TutorDashboardPage() {
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
   const [learnerDetails, setLearnerDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [hoveredLearner, setHoveredLearner] = useState<Learner | null>(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const hoverTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(async (token: string, opts?: { lang?: string; level?: string; status?: string; q?: string }) => {
     setLoading(true);
@@ -1146,7 +1268,22 @@ export default function TutorDashboardPage() {
                       const status = statusColors[plan?.progress_status as keyof typeof statusColors] || statusColors.inactive;
 
                       return (
-                        <tr key={learner.user_id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr
+                          key={learner.user_id}
+                          className="hover:bg-slate-50/80 transition-colors cursor-default"
+                          onMouseEnter={e => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+                            hoverTimer.current = setTimeout(() => {
+                              setHoveredLearner(learner);
+                              setHoverPos({ x: rect.right - 20, y: rect.top });
+                            }, 300);
+                          }}
+                          onMouseLeave={() => {
+                            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+                            setHoveredLearner(null);
+                          }}
+                        >
                           {/* Learner */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-3">
@@ -1254,6 +1391,9 @@ export default function TutorDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Hover card — zero API calls, uses already-loaded data */}
+      {hoveredLearner && <LearnerHoverCard learner={hoveredLearner} position={hoverPos} />}
 
       {/* Learner Detail Modal */}
       {selectedLearner && (
