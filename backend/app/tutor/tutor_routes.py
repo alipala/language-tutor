@@ -703,23 +703,39 @@ async def get_tutor_analytics(
 
         challenge_counts = {doc["_id"]: doc["count"] for doc in challenge_agg}
 
-        # Calculate statistics
-        total_sessions = sum(p.get("completed_sessions", 0) for p in learning_plans)
-        total_minutes = sum(p.get("practice_minutes_used", 0) for p in learning_plans)
-        total_progress = sum(p.get("progress_percentage", 0) for p in learning_plans)
-        average_progress = total_progress / len(learning_plans) if learning_plans else 0
+        # Use ONE plan per learner (highest progress) — avoid double-counting
+        # learners who have multiple plans
+        best_plan_per_learner: dict = {}
+        for plan in learning_plans:
+            uid = plan.get("user_id")
+            if uid not in best_plan_per_learner:
+                best_plan_per_learner[uid] = plan
+            else:
+                existing_pct = best_plan_per_learner[uid].get("progress_percentage", 0)
+                if plan.get("progress_percentage", 0) > existing_pct:
+                    best_plan_per_learner[uid] = plan
 
-        languages_taught = list(set(p.get("language") for p in learning_plans if p.get("language")))
+        primary_plans = list(best_plan_per_learner.values())
+
+        # Stats based on primary plans only (one per learner)
+        total_sessions = sum(p.get("completed_sessions", 0) for p in primary_plans)
+        total_minutes = sum(p.get("practice_minutes_used", 0) for p in primary_plans)
+        average_progress = (
+            sum(p.get("progress_percentage", 0) for p in primary_plans) / len(primary_plans)
+            if primary_plans else 0
+        )
+
+        languages_taught = list(set(p.get("language") for p in primary_plans if p.get("language")))
 
         level_distribution = {}
-        for plan in learning_plans:
+        for plan in primary_plans:
             level = plan.get("proficiency_level", "Unknown")
             level_distribution[level] = level_distribution.get(level, 0) + 1
 
         on_track_count = 0
         at_risk_count = 0
         inactive_count = 0
-        for plan in learning_plans:
+        for plan in primary_plans:
             sessions = plan.get("completed_sessions", 0)
             pct = plan.get("progress_percentage", 0)
             if sessions == 0:
