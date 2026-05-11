@@ -765,8 +765,8 @@ export default function TutorDashboardPage() {
           <div className="space-y-5">
             {/* Filters */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-                <div className="flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Search</label>
                   <input
                     value={search} onChange={e => setSearch(e.target.value)}
@@ -776,21 +776,21 @@ export default function TutorDashboardPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Language</label>
-                  <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                  <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
                     <option value="">All Languages</option>
                     {uniqueLanguages.map(l => <option key={l} value={l}>{l ? l.charAt(0).toUpperCase() + l.slice(1) : l}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Level</label>
-                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
                     <option value="">All Levels</option>
                     {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Status</label>
-                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
                     <option value="">All Status</option>
                     <option value="on_track">On Track</option>
                     <option value="at_risk">At Risk</option>
@@ -798,7 +798,7 @@ export default function TutorDashboardPage() {
                   </select>
                 </div>
                 {hasFilters && (
-                  <button onClick={() => { setSearch(''); setLangFilter(''); setLevelFilter(''); setStatusFilter(''); }} className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                  <button onClick={() => { setSearch(''); setLangFilter(''); setLevelFilter(''); setStatusFilter(''); }} className="sm:col-span-2 lg:col-span-4 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors w-fit">
                     ✕ Clear
                   </button>
                 )}
