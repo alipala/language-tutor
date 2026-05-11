@@ -306,9 +306,19 @@ function LearnerDetailModal({
                 const recentDays = dailyStats?.recent_daily || [];
                 const activeDays = recentDays.filter((d: any) => d.minutes > 0 || d.sessions > 0);
 
-                // Engagement health: how many of last 7 days had activity?
-                const last7 = recentDays.slice(0, 7);
-                const activeLast7 = last7.filter((d: any) => d.minutes > 0 || d.sessions > 0).length;
+                // Engagement: how many of the actual last 7 calendar days had activity?
+                // Build a set of active date strings, then check each of last 7 calendar days
+                const activeDateSet = new Set(
+                  recentDays
+                    .filter((d: any) => d.minutes > 0 || d.sessions > 0)
+                    .map((d: any) => d.date)
+                );
+                let activeLast7 = 0;
+                for (let i = 0; i < 7; i++) {
+                  const d = new Date(); d.setDate(d.getDate() - i);
+                  const key = d.toISOString().slice(0, 10);
+                  if (activeDateSet.has(key)) activeLast7++;
+                }
                 const engagementScore = Math.round((activeLast7 / 7) * 100);
                 const engagementLevel = engagementScore >= 57 ? 'high' : engagementScore >= 28 ? 'medium' : 'low';
                 const engagementConfig = {
@@ -319,14 +329,17 @@ function LearnerDetailModal({
 
                 // Completion rate: sessions with end_time / total sessions
                 const totalSessions = details.practice_sessions?.length ?? 0;
-                const completedSessions = details.practice_sessions?.filter((s: any) => s.duration_minutes > 1).length ?? 0;
+                // Voice sessions are short (1-3 min). Use >0.3 min (18s) to exclude
+                // failed connections while counting real sessions as completed.
+                const completedSessions = details.practice_sessions?.filter((s: any) => (s.duration_minutes ?? 0) > 0.3).length ?? 0;
                 const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
 
                 // Practice time pattern: group sessions by hour
+                // Sessions stored in UTC — labels are approximate but consistent
                 const hourBuckets: Record<string, number> = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
                 details.practice_sessions?.forEach((s: any) => {
                   if (!s.created_at) return;
-                  const h = new Date(s.created_at).getHours();
+                  const h = new Date(s.created_at).getUTCHours();
                   if (h >= 5 && h < 12) hourBuckets.Morning++;
                   else if (h >= 12 && h < 17) hourBuckets.Afternoon++;
                   else if (h >= 17 && h < 21) hourBuckets.Evening++;
@@ -518,7 +531,11 @@ function LearnerDetailModal({
                         </h4>
                         <div className="flex gap-1.5 flex-wrap">
                           {recentDays.slice(0, 14).reverse().map((day: any, i: number) => {
-                            const intensity = day.minutes === 0 ? 0 : day.minutes < 5 ? 1 : day.minutes < 15 ? 2 : day.minutes < 30 ? 3 : 4;
+                            // If minutes=0 but sessions>0 (voice session with no time tracked),
+                            // show faintest teal (1) so learner effort isn't invisible as gray
+                            const intensity = day.minutes === 0 && day.sessions === 0 ? 0
+                              : day.minutes === 0 ? 1
+                              : day.minutes < 5 ? 1 : day.minutes < 15 ? 2 : day.minutes < 30 ? 3 : 4;
                             const bgColors = ['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'];
                             return (
                               <div key={i} className="flex flex-col items-center gap-1 group relative">
