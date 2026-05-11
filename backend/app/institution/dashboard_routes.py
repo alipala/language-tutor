@@ -540,11 +540,11 @@ async def get_learners(institution_id: str) -> Dict[str, Any]:
                     "email": tutor_doc.get("email")
                 }
             
-            # Get learning plan progress
+            # Get learning plan progress — use best (highest progress) plan
             progress = None
             learning_plans = learner.get("learning_plan", [])
             if learning_plans:
-                learning_plan = learning_plans[0]  # Get first plan
+                learning_plan = max(learning_plans, key=lambda p: p.get("progress_percentage", 0))
                 percentage = learning_plan.get("progress_percentage", 0)
                 completed = learning_plan.get("completed_sessions", 0)
                 total = learning_plan.get("total_sessions", 16)
@@ -849,19 +849,40 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
         if total_minutes == 0 and realtime_minutes > 0:
             total_minutes = realtime_minutes
         
+        def _iso(v):
+            """Safely convert datetime or string to ISO string."""
+            if v is None:
+                return None
+            if isinstance(v, str):
+                return v
+            if hasattr(v, 'isoformat'):
+                return v.isoformat()
+            return str(v)
+
+        def _to_dt(v):
+            """Safely convert to naive datetime for arithmetic."""
+            if isinstance(v, datetime):
+                return v.replace(tzinfo=None)
+            if isinstance(v, str):
+                try:
+                    return datetime.fromisoformat(v.replace('Z', '+00:00')).replace(tzinfo=None)
+                except Exception:
+                    return None
+            return None
+
         # Format learning plans
         formatted_plans = []
         for plan in all_learning_plans:
-            formatted_plan = {
-                'id': plan.get('id'),
+            formatted_plans.append({
+                'id': str(plan.get('_id', plan.get('id', ''))),
                 'language': plan.get('language'),
                 'proficiency_level': plan.get('proficiency_level'),
-                'progress_percentage': plan.get('progress_percentage', 0),
+                'progress_percentage': round(plan.get('progress_percentage', 0), 1),
                 'completed_sessions': plan.get('completed_sessions', 0),
                 'total_sessions': plan.get('total_sessions', 16),
-                'practice_minutes_used': plan.get('practice_minutes_used', 0),
+                'practice_minutes_used': round(plan.get('practice_minutes_used', 0), 1),
                 'total_practice_minutes': plan.get('total_practice_minutes', 80),
-                'created_at': plan.get('created_at').isoformat() if plan.get('created_at') else None,
+                'created_at': _iso(plan.get('created_at')),
                 'assessment_data': plan.get('assessment_data', {}),
                 'plan_content': {
                     'title': plan.get('plan_content', {}).get('title'),
@@ -870,15 +891,14 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
                     'weekly_schedule': plan.get('plan_content', {}).get('weekly_schedule', [])
                 },
                 'session_summaries': plan.get('session_summaries', [])
-            }
-            formatted_plans.append(formatted_plan)
-        
+            })
+
         # Format conversations (realtime sessions)
         formatted_conversations = [
             {
                 'id': str(conv['_id']),
-                'created_at': conv.get('created_at').isoformat() if conv.get('created_at') else None,
-                'duration_minutes': round(conv.get('duration_seconds', conv.get('duration_minutes', 0) * 60 if conv.get('duration_minutes') else 0) / 60, 1),
+                'created_at': _iso(conv.get('created_at')),
+                'duration_minutes': round(conv.get('duration_seconds', 0) / 60, 1),
                 'message_count': conv.get('message_count', len(conv.get('messages', []))),
                 'language': conv.get('language'),
                 'level': conv.get('level'),
@@ -886,37 +906,38 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
             } for conv in all_conversations
         ]
 
-        # Format challenge sessions
+        # Format challenge sessions — real schema fields
         formatted_challenges = [
             {
                 'id': str(ch['_id']),
-                'created_at': ch.get('created_at').isoformat() if ch.get('created_at') else None,
+                'created_at': _iso(ch.get('created_at')),
                 'challenge_type': ch.get('challenge_type'),
                 'language': ch.get('language'),
                 'level': ch.get('level'),
-                'score': ch.get('score', 0),
-                'completed': ch.get('completed', False),
                 'correct_answers': ch.get('correct_answers', 0),
-                'total_questions': ch.get('total_questions', 0)
+                'wrong_answers': ch.get('wrong_answers', 0),
+                'total_challenges': ch.get('total_challenges', 0),
+                'accuracy': ch.get('accuracy', 0),
+                'total_xp': ch.get('total_xp', 0),
+                'max_combo': ch.get('max_combo', 0),
+                'completed': ch.get('end_time') is not None
             } for ch in all_challenges
         ]
 
-        # Build daily stats summary
-        stats_summary = {}
-        if daily_stats:
-            stats_summary = {
-                'current_streak': daily_stats[0].get('streak_days', 0) if daily_stats else 0,
-                'total_xp': sum(s.get('xp_earned', 0) for s in daily_stats),
-                'days_active': len([s for s in daily_stats if s.get('sessions_count', 0) > 0]),
-                'recent_daily': [
-                    {
-                        'date': s.get('date').isoformat() if hasattr(s.get('date'), 'isoformat') else str(s.get('date', '')),
-                        'minutes': round(s.get('practice_minutes', s.get('speaking_minutes', 0)), 1),
-                        'sessions': s.get('sessions_count', 0),
-                        'xp': s.get('xp_earned', 0)
-                    } for s in daily_stats[:14]
-                ]
-            }
+        # Daily stats summary
+        stats_summary = {
+            'current_streak': daily_stats[0].get('streak_days', 0) if daily_stats else 0,
+            'total_xp': sum(s.get('xp_earned', 0) for s in daily_stats),
+            'days_active': len([s for s in daily_stats if s.get('sessions_count', 0) > 0]),
+            'recent_daily': [
+                {
+                    'date': _iso(s.get('date')),
+                    'minutes': round(s.get('practice_minutes', s.get('speaking_minutes', 0)), 1),
+                    'sessions': s.get('sessions_count', 0),
+                    'xp': s.get('xp_earned', 0)
+                } for s in daily_stats[:14]
+            ]
+        }
 
         # Generate AI Insights
         ai_insights = generate_ai_insights(user, formatted_plans, formatted_conversations)
@@ -926,12 +947,12 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
                 'id': str(user['_id']),
                 'name': user.get('name'),
                 'email': user.get('email'),
-                'created_at': user.get('created_at').isoformat() if user.get('created_at') else None,
+                'created_at': _iso(user.get('created_at')),
                 'total_sessions': total_sessions,
                 'total_minutes': round(total_minutes, 1),
                 'realtime_sessions': len(formatted_conversations),
                 'challenge_sessions': len(formatted_challenges),
-                'languages_studied': list(set([plan['language'] for plan in formatted_plans if plan.get('language')])),
+                'languages_studied': list(set(p['language'] for p in formatted_plans if p.get('language'))),
                 'preferred_language': user.get('preferred_language'),
                 'preferred_level': user.get('preferred_level')
             },
@@ -941,7 +962,7 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
             'daily_stats': stats_summary,
             'subscription': {
                 'status': sub_status or 'none',
-                'minutes_remaining': user.get('practice_minutes_remaining', subscription.get('minutes_remaining', 0) if subscription else 0),
+                'minutes_remaining': user.get('practice_minutes_remaining', 0),
                 'plan_type': sub_plan,
                 'subscription_plan': user.get('subscription_plan'),
                 'subscription_status': user.get('subscription_status')
@@ -949,7 +970,7 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
             'tutor': tutor_info,
             'ai_insights': ai_insights,
             'consent_given': learner.get('consent_given', True),
-            'enrolled_at': learner.get('enrolled_at').isoformat() if learner.get('enrolled_at') else None
+            'enrolled_at': _iso(learner.get('enrolled_at'))
         }
         
     except HTTPException:
@@ -972,11 +993,17 @@ def generate_ai_insights(user, learning_plans, conversations):
         session_hours = []
         for conv in conversations:
             try:
-                if conv['created_at']:
+                raw = conv.get('created_at')
+                if raw:
                     from datetime import datetime
-                    dt = datetime.fromisoformat(conv['created_at'].replace('Z', '+00:00'))
+                    if isinstance(raw, str):
+                        dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+                    elif hasattr(raw, 'hour'):
+                        dt = raw
+                    else:
+                        continue
                     session_hours.append(dt.hour)
-            except:
+            except Exception:
                 pass
         
         peak_hour = max(set(session_hours), key=session_hours.count) if session_hours else 12
@@ -985,16 +1012,22 @@ def generate_ai_insights(user, learning_plans, conversations):
         learning_time = "unknown"
     
     # Calculate progress rate
-    user_created = user.get('created_at')
-    if user_created:
+    user_created_raw = user.get('created_at')
+    if user_created_raw:
         try:
             from datetime import datetime
-            days_active = (datetime.utcnow() - user_created).days
-            if days_active > 0:
-                sessions_per_week = (total_sessions / days_active) * 7
+            if isinstance(user_created_raw, str):
+                user_created = datetime.fromisoformat(user_created_raw.replace('Z', '+00:00')).replace(tzinfo=None)
+            elif hasattr(user_created_raw, 'replace'):
+                user_created = user_created_raw.replace(tzinfo=None)
             else:
-                sessions_per_week = total_sessions
-        except:
+                user_created = None
+            if user_created:
+                days_active = (datetime.utcnow() - user_created).days
+                sessions_per_week = (total_sessions / days_active) * 7 if days_active > 0 else total_sessions
+            else:
+                sessions_per_week = 1
+        except Exception:
             sessions_per_week = 1
     else:
         sessions_per_week = 1
