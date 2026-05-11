@@ -344,32 +344,60 @@ function LearnerDetailModal({
               {tab === 'challenges' && (
                 <div>
                   {details.challenge_sessions?.length > 0 ? (
-                    <table className="w-full text-sm">
-                      <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-                        <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
-                        <th className="px-4 py-3 text-left">Type</th>
-                        <th className="px-4 py-3 text-left">Language</th>
-                        <th className="px-4 py-3 text-center">Score</th>
-                        <th className="px-4 py-3 text-center rounded-r-lg">Result</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {details.challenge_sessions.map((c: any) => (
-                          <tr key={c.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-gray-700">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
-                            <td className="px-4 py-3 text-xs text-gray-600 capitalize">{c.challenge_type?.replace(/_/g, ' ') || '—'}</td>
-                            <td className="px-4 py-3 capitalize text-gray-700">{c.language || '—'}</td>
-                            <td className="px-4 py-3 text-center font-bold text-gray-800">
-                              {c.total_questions > 0 ? `${c.correct_answers}/${c.total_questions}` : c.score > 0 ? `${c.score}%` : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${c.completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                {c.completed ? '✓ Done' : 'In progress'}
-                              </span>
-                            </td>
-                          </tr>
+                    <>
+                      {/* Summary row */}
+                      <div className="grid grid-cols-4 gap-3 mb-4">
+                        {[
+                          { label: 'Total Done', value: details.challenge_sessions.length, color: 'text-[#4ECFBF]' },
+                          { label: 'Correct', value: details.challenge_sessions.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0), color: 'text-emerald-600' },
+                          { label: 'Total XP', value: details.challenge_sessions.reduce((s: number, c: any) => s + (c.total_xp || 0), 0), color: 'text-yellow-600' },
+                          { label: 'Avg Accuracy', value: `${Math.round(details.challenge_sessions.reduce((s: number, c: any) => s + (c.accuracy || 0), 0) / details.challenge_sessions.length)}%`, color: 'text-blue-600' },
+                        ].map(stat => (
+                          <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                          <th className="px-4 py-3 text-left">Type</th>
+                          <th className="px-4 py-3 text-left">Language</th>
+                          <th className="px-4 py-3 text-center">Correct / Total</th>
+                          <th className="px-4 py-3 text-center">Accuracy</th>
+                          <th className="px-4 py-3 text-center">XP</th>
+                          <th className="px-4 py-3 text-center rounded-r-lg">Combo</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {details.challenge_sessions.map((c: any) => (
+                            <tr key={c.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-gray-600 text-xs">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+                              <td className="px-4 py-3 text-xs text-gray-700 capitalize">{c.challenge_type?.replace(/_/g, ' ') || '—'}</td>
+                              <td className="px-4 py-3 capitalize text-gray-700 text-xs">{c.language || '—'}</td>
+                              <td className="px-4 py-3 text-center font-bold text-gray-800">
+                                {c.total_challenges > 0
+                                  ? <span>{c.correct_answers}<span className="text-gray-400 font-normal">/{c.total_challenges}</span></span>
+                                  : c.correct_answers > 0 ? c.correct_answers : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {c.accuracy > 0 ? (
+                                  <span className={`font-bold text-sm ${c.accuracy >= 80 ? 'text-emerald-600' : c.accuracy >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                    {Math.round(c.accuracy)}%
+                                  </span>
+                                ) : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-center text-xs font-semibold text-yellow-600">
+                                {c.total_xp > 0 ? `+${c.total_xp}` : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-center text-xs text-gray-500">
+                                {c.max_combo > 0 ? `🔥 ${c.max_combo}` : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
                   ) : (
                     <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">⚡</div>No challenges completed yet</div>
                   )}

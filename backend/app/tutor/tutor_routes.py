@@ -572,7 +572,7 @@ async def get_learner_details(
             } for conv in all_conversations
         ]
 
-        # Format challenges
+        # Format challenges — real schema uses correct_answers/wrong_answers/total_challenges/accuracy
         formatted_challenges = [
             {
                 "id": str(c["_id"]),
@@ -580,10 +580,14 @@ async def get_learner_details(
                 "challenge_type": c.get("challenge_type"),
                 "language": c.get("language"),
                 "level": c.get("level"),
-                "score": c.get("score", 0),
-                "completed": c.get("completed", False),
                 "correct_answers": c.get("correct_answers", 0),
-                "total_questions": c.get("total_questions", 0)
+                "wrong_answers": c.get("wrong_answers", 0),
+                "total_challenges": c.get("total_challenges", 0),
+                "accuracy": c.get("accuracy", 0),
+                "total_xp": c.get("total_xp", 0),
+                "max_combo": c.get("max_combo", 0),
+                "duration_seconds": c.get("duration_seconds", 0),
+                "completed": c.get("end_time") is not None and c.get("is_active", True) is False or c.get("end_time") is not None
             } for c in all_challenges
         ]
 
