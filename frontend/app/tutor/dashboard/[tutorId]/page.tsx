@@ -771,14 +771,14 @@ export default function TutorDashboardPage() {
                   <input
                     value={search} onChange={e => setSearch(e.target.value)}
                     placeholder="Name or email..."
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] bg-gray-50"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] bg-white"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Language</label>
                   <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
                     <option value="">All Languages</option>
-                    {uniqueLanguages.map(l => <option key={l} value={l} className="capitalize">{l}</option>)}
+                    {uniqueLanguages.map(l => <option key={l} value={l}>{l ? l.charAt(0).toUpperCase() + l.slice(1) : l}</option>)}
                   </select>
                 </div>
                 <div>
@@ -821,7 +821,7 @@ export default function TutorDashboardPage() {
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/80">
                       {['Learner', 'Language & Level', 'Progress', 'Sessions', 'Score', 'Last Active', 'Status', ''].map(h => (
-                        <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -836,9 +836,9 @@ export default function TutorDashboardPage() {
                       const status = statusColors[plan?.progress_status as keyof typeof statusColors] || statusColors.inactive;
 
                       return (
-                        <tr key={learner.user_id} className="hover:bg-slate-50/80 transition-colors group">
+                        <tr key={learner.user_id} className="hover:bg-slate-50/80 transition-colors">
                           {/* Learner */}
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             <div className="flex items-center gap-3">
                               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${status.dot === 'bg-emerald-400' ? 'bg-emerald-400' : status.dot === 'bg-amber-400' ? 'bg-amber-400' : 'bg-gray-300'}`}>
                                 {learner.name.charAt(0)}
@@ -851,12 +851,12 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Language & Level */}
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             {plan ? (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg">{LANG_FLAGS[plan.language?.toLowerCase()] || '🌍'}</span>
                                 <div>
-                                  <div className="text-sm font-medium text-gray-800 capitalize">{plan.language}</div>
+                                  <div className="text-sm font-medium text-gray-800">{plan.language ? plan.language.charAt(0).toUpperCase() + plan.language.slice(1) : '—'}</div>
                                   <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                     {plan.proficiency_level}
                                   </span>
@@ -866,7 +866,7 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Progress */}
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             {plan ? (
                               <div className="w-32">
                                 <div className="flex justify-between text-xs mb-1.5">
@@ -884,7 +884,7 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Sessions */}
-                          <td className="px-5 py-4 text-center">
+                          <td className="px-2 py-3 text-center">
                             {plan ? (
                               <div>
                                 <div className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</div>
@@ -894,7 +894,7 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Score */}
-                          <td className="px-5 py-4 text-center">
+                          <td className="px-2 py-3 text-center">
                             {plan?.assessment_score > 0 ? (
                               <div className={`text-xl font-bold ${plan.assessment_score >= 80 ? 'text-emerald-600' : plan.assessment_score >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
                                 {plan.assessment_score}
@@ -903,7 +903,7 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Last Active */}
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             {plan?.last_activity_date ? (
                               <div>
                                 <div className="text-xs font-medium text-gray-700">{new Date(plan.last_activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
@@ -915,7 +915,7 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Status */}
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             {plan ? (
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${status.badge}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
@@ -925,12 +925,12 @@ export default function TutorDashboardPage() {
                           </td>
 
                           {/* Action */}
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             <button
                               onClick={() => openLearnerDetails(learner)}
-                              className="px-4 py-1.5 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white text-xs font-semibold rounded-xl transition-all opacity-0 group-hover:opacity-100 shadow-sm hover:shadow"
+                              className="px-3 py-1.5 bg-[#4ECFBF] hover:bg-[#3a9e92] active:bg-[#2d8a80] text-white text-xs font-semibold rounded-xl transition-all shadow-sm hover:shadow"
                             >
-                              View →
+                              View
                             </button>
                           </td>
                         </tr>
