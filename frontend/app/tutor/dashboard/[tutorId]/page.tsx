@@ -576,36 +576,10 @@ export default function TutorDashboardPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
-      {/* Top Nav */}
-      <nav className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-30 shadow-sm h-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-xl flex items-center justify-center text-white font-bold text-sm">
-              {tutorName.charAt(0)}
-            </div>
-            <div>
-              <span className="font-semibold text-gray-900 text-sm">{tutorName}</span>
-              <span className="text-gray-400 text-xs block -mt-0.5">Tutor Dashboard</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-              {analytics?.total_assigned_learners ?? 0} learners
-            </span>
-            <button
-              onClick={() => { ['tutorToken','tutorId','tutorName','tutorEmail','institutionId'].forEach(k => localStorage.removeItem(k)); router.push('/tutor/login'); }}
-              className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Tab Bar — matches institution dashboard style */}
+    <div className="min-h-screen bg-slate-50 pt-20">
+      {/* Tab Bar — flush under global teal navbar, same style as institution dashboard */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
           <nav className="flex overflow-x-auto">
             {[
               { key: 'overview', label: 'Overview', icon: '📊' },
@@ -624,6 +598,18 @@ export default function TutorDashboardPage() {
               </button>
             ))}
           </nav>
+          <div className="flex items-center gap-3 flex-shrink-0 py-2">
+            <span className="text-xs font-medium text-gray-700 hidden sm:block">{tutorName}</span>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full font-medium hidden sm:block">
+              {analytics?.total_assigned_learners ?? 0} learners
+            </span>
+            <button
+              onClick={() => { ['tutorToken','tutorId','tutorName','tutorEmail','institutionId'].forEach(k => localStorage.removeItem(k)); router.push('/tutor/login'); }}
+              className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
 
