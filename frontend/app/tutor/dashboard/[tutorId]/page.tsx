@@ -8,7 +8,8 @@ import {
   Mic, Zap, Bot, CheckCircle, Clock, Target, Lightbulb,
   Flame, Star, Calendar, GraduationCap, ChevronRight,
   Award, Activity, MessageSquare, Brain, Layout, Dna,
-  TrendingDown, Minus, Shield, Heart, Repeat, Send, Smartphone
+  TrendingDown, Minus, Shield, Heart, Repeat, Send, Smartphone,
+  ListChecks, CalendarDays
 } from 'lucide-react';
 import { FlagIcon, FlagOrText } from '@/src/components/ui/FlagIcon';
 import { DateRangePicker, DateRange } from '@/src/components/ui/DateRangePicker';
@@ -369,6 +370,38 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* App Practice Plan */}
+      {report.app_practice_plan && (
+        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-teal-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <ListChecks className="w-3.5 h-3.5" strokeWidth={1.8} /> Weekly App Practice Plan
+          </h5>
+          {report.app_practice_plan.this_week?.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {report.app_practice_plan.this_week.map((item: any, i: number) => (
+                <div key={i} className="bg-white/70 rounded-xl px-3 py-2.5 border border-teal-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">{item.activity}</span>
+                    <span className="text-xs text-gray-500">{item.frequency}</span>
+                  </div>
+                  <p className="text-xs text-gray-700 font-medium">{item.focus}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.rationale}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {report.app_practice_plan.suggested_session_sequence && (
+            <div className="bg-white/70 rounded-xl px-3 py-2.5 border border-teal-100">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <CalendarDays className="w-3 h-3 text-teal-600" strokeWidth={1.8} />
+                <span className="text-xs font-bold text-teal-700">Day-by-Day Sequence</span>
+              </div>
+              <p className="text-xs text-gray-700 leading-relaxed">{report.app_practice_plan.suggested_session_sequence}</p>
+            </div>
+          )}
         </div>
       )}
 
