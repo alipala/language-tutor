@@ -299,100 +299,290 @@ function LearnerDetailModal({
           ) : (
             <>
               {/* ── OVERVIEW ── */}
-              {tab === 'overview' && (
-                <div className="space-y-5">
-                  {/* Streak / XP / Days */}
-                  {details.daily_stats && (
-                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                      <div className="bg-white border border-orange-100 rounded-2xl p-4 text-center">
-                        <div className="flex justify-center mb-2">
-                          <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
-                            <Flame className="w-5 h-5 text-orange-500" strokeWidth={1.5} />
-                          </div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">{details.daily_stats.current_streak ?? 0}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Day Streak</div>
+              {tab === 'overview' && (() => {
+                const plan = details.all_learning_plans?.[0];
+                const dna = details.speaking_dna;
+                const dailyStats = details.daily_stats;
+                const recentDays = dailyStats?.recent_daily || [];
+                const activeDays = recentDays.filter((d: any) => d.minutes > 0 || d.sessions > 0);
+
+                // Engagement health: how many of last 7 days had activity?
+                const last7 = recentDays.slice(0, 7);
+                const activeLast7 = last7.filter((d: any) => d.minutes > 0 || d.sessions > 0).length;
+                const engagementScore = Math.round((activeLast7 / 7) * 100);
+                const engagementLevel = engagementScore >= 57 ? 'high' : engagementScore >= 28 ? 'medium' : 'low';
+                const engagementConfig = {
+                  high:   { label: 'Highly Engaged', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', bar: 'bg-emerald-400', dot: 'bg-emerald-400' },
+                  medium: { label: 'Moderately Engaged', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', bar: 'bg-amber-400', dot: 'bg-amber-400' },
+                  low:    { label: 'Needs Attention', color: 'text-rose-700', bg: 'bg-rose-50', border: 'border-rose-200', bar: 'bg-rose-400', dot: 'bg-rose-400' },
+                }[engagementLevel];
+
+                // Completion rate: sessions with end_time / total sessions
+                const totalSessions = details.practice_sessions?.length ?? 0;
+                const completedSessions = details.practice_sessions?.filter((s: any) => s.duration_minutes > 1).length ?? 0;
+                const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+                // Practice time pattern: group sessions by hour
+                const hourBuckets: Record<string, number> = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
+                details.practice_sessions?.forEach((s: any) => {
+                  if (!s.created_at) return;
+                  const h = new Date(s.created_at).getHours();
+                  if (h >= 5 && h < 12) hourBuckets.Morning++;
+                  else if (h >= 12 && h < 17) hourBuckets.Afternoon++;
+                  else if (h >= 17 && h < 21) hourBuckets.Evening++;
+                  else hourBuckets.Night++;
+                });
+                const peakTime = Object.entries(hourBuckets).sort((a, b) => b[1] - a[1])[0];
+
+                // Week-over-week quality trend from DNA history
+                const weeklyTrend = dna?.weekly_trend || [];
+                const lastWeek = weeklyTrend[weeklyTrend.length - 1];
+                const prevWeek = weeklyTrend[weeklyTrend.length - 2];
+                const confidenceDelta = lastWeek && prevWeek ? lastWeek.confidence - prevWeek.confidence : null;
+
+                // Weak areas from DNA + sentence analysis
+                const weakAreas: string[] = [
+                  ...(dna?.growth_areas?.map((g: string) => g.replace(/_/g, ' ')) || []),
+                  ...(dna?.strands?.accuracy?.common_errors?.slice(0, 2) || []),
+                  ...(dna?.strands?.accuracy?.improving_areas?.slice(0, 2) || []),
+                ].filter(Boolean).slice(0, 4);
+
+                // Anxiety triggers
+                const anxietyTriggers: string[] = dna?.strands?.emotional?.anxiety_triggers || [];
+
+                // Tutor action: derive the #1 thing to do
+                const action = (() => {
+                  if (engagementLevel === 'low') return { text: 'Send an encouraging message — student hasn\'t practiced in a while', urgency: 'high' };
+                  if (completionRate < 60) return { text: 'Sessions often abandoned — discuss session length and difficulty in next check-in', urgency: 'medium' };
+                  if (confidenceDelta !== null && confidenceDelta < -5) return { text: 'Confidence dropped this week — focus on positive reinforcement and familiar topics', urgency: 'medium' };
+                  if (weakAreas.length > 0) return { text: `Work on: ${weakAreas[0]}`, urgency: 'normal' };
+                  return { text: 'Student is on track — maintain current pace and introduce slightly harder challenges', urgency: 'normal' };
+                })();
+
+                return (
+                  <div className="space-y-4">
+                    {/* ① TUTOR ACTION — the most important thing, top of the page */}
+                    <div className={`rounded-2xl border p-4 flex items-start gap-3 ${
+                      action.urgency === 'high' ? 'bg-rose-50 border-rose-200' :
+                      action.urgency === 'medium' ? 'bg-amber-50 border-amber-200' :
+                      'bg-[#4ECFBF]/8 border-[#4ECFBF]/30'
+                    }`}>
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        action.urgency === 'high' ? 'bg-rose-100' :
+                        action.urgency === 'medium' ? 'bg-amber-100' : 'bg-[#4ECFBF]/20'
+                      }`}>
+                        <Lightbulb className={`w-4 h-4 ${
+                          action.urgency === 'high' ? 'text-rose-600' :
+                          action.urgency === 'medium' ? 'text-amber-600' : 'text-[#4ECFBF]'
+                        }`} strokeWidth={1.8} />
                       </div>
-                      <div className="bg-white border border-yellow-100 rounded-2xl p-4 text-center">
-                        <div className="flex justify-center mb-2">
-                          <div className="w-9 h-9 bg-yellow-100 rounded-xl flex items-center justify-center">
-                            <Star className="w-5 h-5 text-yellow-500" strokeWidth={1.5} />
-                          </div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">{details.daily_stats.total_xp ?? 0}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Total XP</div>
-                      </div>
-                      <div className="bg-white border border-blue-100 rounded-2xl p-4 text-center">
-                        <div className="flex justify-center mb-2">
-                          <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-blue-500" strokeWidth={1.5} />
-                          </div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">{details.daily_stats.days_active ?? 0}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Active Days</div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Suggested Action</p>
+                        <p className={`text-sm font-medium ${
+                          action.urgency === 'high' ? 'text-rose-800' :
+                          action.urgency === 'medium' ? 'text-amber-800' : 'text-gray-800'
+                        }`}>{action.text}</p>
                       </div>
                     </div>
-                  )}
 
-                  {/* Learning Plans Progress */}
-                  {details.all_learning_plans?.length > 0 && (
-                    <div className="bg-gray-50 rounded-2xl p-5">
-                      <h4 className="font-semibold text-gray-900 mb-4">Language Progress</h4>
-                      <div className="space-y-4">
-                        {details.all_learning_plans.map((p: any) => (
-                          <div key={p.id}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <FlagOrText language={p.language} size={18} />
-                                <span className="font-medium text-gray-800 text-sm">{p.language ? p.language.charAt(0).toUpperCase()+p.language.slice(1) : '—'}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                  {p.proficiency_level}
-                                </span>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-sm font-bold text-gray-900">{p.progress_percentage?.toFixed(0)}%</span>
-                                <span className="text-xs text-gray-400 ml-1">({p.completed_sessions}/{p.total_sessions})</span>
-                              </div>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                              <div
-                                className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2.5 rounded-full transition-all"
-                                style={{ width: `${Math.min(100, p.progress_percentage || 0)}%` }}
-                              />
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-400 mt-1">
-                              <span>{p.practice_minutes_used} min practiced</span>
-                              <span>{p.total_practice_minutes} min total</span>
-                            </div>
-                          </div>
-                        ))}
+                    {/* ② ENGAGEMENT HEALTH + KEY STATS — top row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {/* Engagement */}
+                      <div className={`rounded-2xl border p-3.5 ${engagementConfig.bg} ${engagementConfig.border}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`w-2 h-2 rounded-full ${engagementConfig.dot} animate-pulse`} />
+                          <span className={`text-xs font-bold uppercase tracking-wide ${engagementConfig.color}`}>Engagement</span>
+                        </div>
+                        <div className={`text-2xl font-bold ${engagementConfig.color}`}>{engagementScore}%</div>
+                        <div className={`text-xs mt-0.5 ${engagementConfig.color} opacity-80`}>{engagementConfig.label}</div>
+                        <div className="w-full bg-white/50 rounded-full h-1.5 mt-2">
+                          <div className={`h-1.5 rounded-full ${engagementConfig.bar}`} style={{ width: `${engagementScore}%` }} />
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">{activeLast7}/7 days active</div>
                       </div>
-                    </div>
-                  )}
 
-                  {/* Recent Daily Activity */}
-                  {details.daily_stats?.recent_daily?.length > 0 && (
-                    <div className="bg-gray-50 rounded-2xl p-5">
-                      <h4 className="font-semibold text-gray-900 mb-4">Recent Activity (14 days)</h4>
-                      <div className="space-y-2">
-                        {details.daily_stats.recent_daily.filter((d: any) => d.minutes > 0 || d.sessions > 0).slice(0, 7).map((day: any) => (
-                          <div key={day.date} className="flex items-center gap-3">
-                            <span className="text-xs text-gray-400 w-16">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                            <div className="flex-1 bg-gray-200 rounded-full h-2">
-                              <div className="bg-[#4ECFBF] h-2 rounded-full" style={{ width: `${Math.min(100, (day.minutes / 30) * 100)}%` }} />
-                            </div>
-                            <span className="text-xs text-[#4ECFBF] font-semibold w-12 text-right">{day.minutes}m</span>
-                            {day.xp > 0 && <span className="text-xs text-yellow-500 w-14">+{day.xp} XP</span>}
+                      {/* Completion Rate */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <CheckCircle className="w-3.5 h-3.5 text-purple-600" strokeWidth={1.8} />
                           </div>
-                        ))}
-                        {details.daily_stats.recent_daily.filter((d: any) => d.minutes > 0 || d.sessions > 0).length === 0 && (
-                          <p className="text-sm text-gray-400">No activity in the last 14 days</p>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Completion</span>
+                        </div>
+                        <div className={`text-2xl font-bold ${completionRate >= 75 ? 'text-emerald-600' : completionRate >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                          {completionRate}%
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">sessions finished</div>
+                        <div className="text-xs text-gray-400 mt-1">{completedSessions}/{totalSessions} sessions</div>
+                      </div>
+
+                      {/* Peak Practice Time */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Clock className="w-3.5 h-3.5 text-blue-600" strokeWidth={1.8} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Peak Time</span>
+                        </div>
+                        <div className="text-lg font-bold text-gray-900">{peakTime?.[0] || '—'}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">most active period</div>
+                        <div className="flex gap-1 mt-2">
+                          {Object.entries(hourBuckets).map(([label, count]) => {
+                            const maxCount = Math.max(...Object.values(hourBuckets), 1);
+                            return (
+                              <div key={label} className="flex-1 flex flex-col items-center gap-0.5">
+                                <div className="w-full bg-gray-100 rounded-sm overflow-hidden" style={{ height: 16 }}>
+                                  <div className="bg-blue-400 rounded-sm w-full" style={{ height: `${(count / maxCount) * 100}%`, marginTop: `${(1 - count / maxCount) * 100}%` }} />
+                                </div>
+                                <span className="text-[9px] text-gray-400">{label[0]}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Confidence Trend */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center">
+                            <TrendingUp className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Confidence</span>
+                        </div>
+                        {lastWeek ? (
+                          <>
+                            <div className="text-2xl font-bold text-gray-900">{lastWeek.confidence}%</div>
+                            <div className={`text-xs font-semibold mt-0.5 flex items-center gap-1 ${
+                              confidenceDelta === null ? 'text-gray-400' :
+                              confidenceDelta > 0 ? 'text-emerald-600' :
+                              confidenceDelta < 0 ? 'text-rose-600' : 'text-gray-400'
+                            }`}>
+                              {confidenceDelta !== null && (
+                                <>{confidenceDelta > 0 ? '↑' : confidenceDelta < 0 ? '↓' : '→'} {Math.abs(confidenceDelta)}% vs last week</>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-400 mt-1">No trend data yet</div>
+                        )}
+                        {dna?.strands?.confidence?.level && (
+                          <div className="text-xs text-gray-400 mt-1 capitalize">{dna.strands.confidence.level}</div>
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* ③ WHAT'S BLOCKING PROGRESS */}
+                    {(weakAreas.length > 0 || anxietyTriggers.length > 0) && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                          <Target className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.8} />
+                          What's Blocking Progress
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {weakAreas.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-2">Language gaps to address:</p>
+                              <div className="space-y-1.5">
+                                {weakAreas.map((area, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full flex-shrink-0" />
+                                    <span className="capitalize">{area}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {anxietyTriggers.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-2">Emotional triggers to avoid:</p>
+                              <div className="space-y-1.5">
+                                {anxietyTriggers.map((t: string, i: number) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 rounded-lg px-2.5 py-1.5">
+                                    <span className="w-1.5 h-1.5 bg-rose-400 rounded-full flex-shrink-0" />
+                                    <span className="capitalize">{t.replace(/_/g, ' ')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ④ PRACTICE HEATMAP (7 days activity grid) */}
+                    {recentDays.length > 0 && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          Activity Heatmap — Last 14 Days
+                        </h4>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {recentDays.slice(0, 14).reverse().map((day: any, i: number) => {
+                            const intensity = day.minutes === 0 ? 0 : day.minutes < 5 ? 1 : day.minutes < 15 ? 2 : day.minutes < 30 ? 3 : 4;
+                            const bgColors = ['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'];
+                            return (
+                              <div key={i} className="flex flex-col items-center gap-1 group relative">
+                                <div className={`w-8 h-8 rounded-lg ${bgColors[intensity]} transition-all group-hover:scale-110`} />
+                                <span className="text-[9px] text-gray-400">
+                                  {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)}
+                                </span>
+                                {/* Micro tooltip */}
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                  {day.minutes}m · {day.sessions} sess
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] text-gray-400">Less</span>
+                          {['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'].map((bg, i) => (
+                            <div key={i} className={`w-3 h-3 rounded-sm ${bg}`} />
+                          ))}
+                          <span className="text-[10px] text-gray-400">More</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ⑤ LANGUAGE PROGRESS — compact, tutor context */}
+                    {details.all_learning_plans?.length > 0 && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          Learning Plans
+                        </h4>
+                        <div className="space-y-3">
+                          {details.all_learning_plans.map((p: any) => (
+                            <div key={p.id} className="flex items-center gap-3">
+                              <FlagOrText language={p.language} size={18} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-semibold text-gray-800 capitalize">
+                                      {p.language ? p.language.charAt(0).toUpperCase()+p.language.slice(1) : '—'}
+                                    </span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-md border font-bold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                      {p.proficiency_level}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-bold text-gray-700">{p.progress_percentage?.toFixed(0)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                  <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full" style={{ width: `${Math.min(100, p.progress_percentage || 0)}%` }} />
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                                  <span>{p.completed_sessions}/{p.total_sessions} sessions</span>
+                                  <span>{p.practice_minutes_used}m used</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* ── PLANS ── */}
               {tab === 'plans' && (
