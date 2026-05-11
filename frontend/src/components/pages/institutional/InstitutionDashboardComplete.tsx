@@ -1,6 +1,7 @@
 'use client';
 
-import { getApiBaseUrl } from '../../../lib/api-config';
+// Institution dashboard API calls go through /api/institution/* proxy
+const getApiBaseUrl = () => '/api';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
