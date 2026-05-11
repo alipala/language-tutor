@@ -576,9 +576,9 @@ export default function TutorDashboardPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pt-16">
       {/* Top Nav */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+      <nav className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-30 shadow-sm h-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-xl flex items-center justify-center text-white font-bold text-sm">
