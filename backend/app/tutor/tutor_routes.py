@@ -3,6 +3,7 @@ Tutor Dashboard Routes
 Provides all tutor-specific endpoints for dashboard functionality
 Includes: Authentication, Learner Management, Analytics, Reports
 """
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
@@ -680,50 +681,47 @@ async def get_tutor_analytics(
         
         # Get user IDs
         user_ids = [l["user_id"] for l in learners]
-        
-        # Get learning plans for all learners
-        learning_plans = await database.learning_plans.find({
-            "user_id": {"$in": user_ids}
-        }).to_list(length=None)
-        
+
+        # Run all queries in parallel — no more N+1
+        learning_plans_task = database.learning_plans.find(
+            {"user_id": {"$in": user_ids}}
+        ).to_list(length=None)
+
+        recent_sessions_task = database.conversation_sessions.find(
+            {"user_id": {"$in": user_ids}}
+        ).sort("created_at", -1).limit(10).to_list(length=10)
+
+        # Single aggregation for challenge counts instead of N+1 loop
+        challenge_agg_task = database.challenge_sessions.aggregate([
+            {"$match": {"user_id": {"$in": user_ids}}},
+            {"$group": {"_id": "$user_id", "count": {"$sum": 1}}}
+        ]).to_list(length=None)
+
+        learning_plans, recent_conversations, challenge_agg = await asyncio.gather(
+            learning_plans_task, recent_sessions_task, challenge_agg_task
+        )
+
+        challenge_counts = {doc["_id"]: doc["count"] for doc in challenge_agg}
+
         # Calculate statistics
-        total_sessions = sum([plan.get("completed_sessions", 0) for plan in learning_plans])
-        total_minutes = sum([plan.get("practice_minutes_used", 0) for plan in learning_plans])
-        total_progress = sum([plan.get("progress_percentage", 0) for plan in learning_plans])
+        total_sessions = sum(p.get("completed_sessions", 0) for p in learning_plans)
+        total_minutes = sum(p.get("practice_minutes_used", 0) for p in learning_plans)
+        total_progress = sum(p.get("progress_percentage", 0) for p in learning_plans)
         average_progress = total_progress / len(learning_plans) if learning_plans else 0
-        
-        # Get unique languages
-        languages_taught = list(set([plan.get("language") for plan in learning_plans if plan.get("language")]))
-        
-        # Level distribution
+
+        languages_taught = list(set(p.get("language") for p in learning_plans if p.get("language")))
+
         level_distribution = {}
         for plan in learning_plans:
             level = plan.get("proficiency_level", "Unknown")
             level_distribution[level] = level_distribution.get(level, 0) + 1
-        
-        # Count learners by status (simplified - would need full calculation)
-        active_count = len(learners)  # All are active since we filtered
-        at_risk_count = 0
-        inactive_count = 0
-        
-        # Get recent sessions for activity (correct collection)
-        recent_conversations = await database.conversation_sessions.find({
-            "user_id": {"$in": user_ids}
-        }).sort("created_at", -1).limit(10).to_list(length=10)
 
-        # Also get challenge session counts per learner
-        challenge_counts = {}
-        for uid in user_ids:
-            count = await database.challenge_sessions.count_documents({"user_id": uid})
-            challenge_counts[uid] = count
-
-        # Status breakdown — compute properly from plans
-        at_risk_count = 0
-        inactive_count = 0
         on_track_count = 0
+        at_risk_count = 0
+        inactive_count = 0
         for plan in learning_plans:
-            pct = plan.get("progress_percentage", 0)
             sessions = plan.get("completed_sessions", 0)
+            pct = plan.get("progress_percentage", 0)
             if sessions == 0:
                 inactive_count += 1
             elif pct < 20:
@@ -734,7 +732,7 @@ async def get_tutor_analytics(
         recent_activity = [
             {
                 "learner_id": conv.get("user_id"),
-                "created_at": conv.get("created_at").isoformat() if conv.get("created_at") else None,
+                "created_at": conv.get("created_at").isoformat() if hasattr(conv.get("created_at"), "isoformat") else str(conv.get("created_at", "")),
                 "language": conv.get("language"),
                 "duration_minutes": round(conv.get("duration_seconds", 0) / 60, 1)
             } for conv in recent_conversations
