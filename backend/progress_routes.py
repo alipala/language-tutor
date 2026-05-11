@@ -799,6 +799,26 @@ async def _calculate_overall_progress(user_id: str) -> Dict[str, Any]:
             "sessions_this_month": 0
         }
 
+async def _deduct_practice_minutes(user_id: str, session_id: str, duration_minutes: float, selected_duration: float):
+    """Deduct speaking minutes from user quota via BulletproofTracker (idempotent, server-side)."""
+    try:
+        from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
+        from models import SpeakingTimeTrackingRequest
+        tracking_request = SpeakingTimeTrackingRequest(
+            user_id=user_id,
+            session_id=session_id,
+            speaking_minutes=duration_minutes,
+            session_completed=(duration_minutes >= selected_duration)
+        )
+        success = await BulletproofTracker.track_speaking_time_atomic(tracking_request)
+        if success:
+            print(f"[PROGRESS] ✅ Minutes deducted: {duration_minutes} min for user {user_id}")
+        else:
+            print(f"[PROGRESS] ⚠️ Minute deduction returned False for user {user_id} (insufficient balance or already deducted)")
+    except Exception as e:
+        print(f"[PROGRESS] ⚠️ Minute deduction error (non-fatal): {e}")
+
+
 @router.post("/save-conversation")
 async def save_conversation(
     request: SaveConversationRequest,
@@ -1052,6 +1072,14 @@ async def save_conversation(
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
 
+            # Deduct minutes from user subscription quota (server-side, idempotent)
+            await _deduct_practice_minutes(
+                user_id=str(current_user.id),
+                session_id=str(existing_session["_id"]),
+                duration_minutes=request.duration_minutes,
+                selected_duration=selected_duration
+            )
+
             # 🎯 Check Redis cache for enhanced statistics
             from redis_client import get_cached
             cache_key = f"session_stats:{existing_session['_id']}"
@@ -1253,6 +1281,14 @@ async def save_conversation(
 
             # Update learning plan progress if this is a learning plan session
             await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
+
+            # Deduct minutes from user subscription quota (server-side, idempotent)
+            await _deduct_practice_minutes(
+                user_id=str(current_user.id),
+                session_id=str(result.inserted_id),
+                duration_minutes=request.duration_minutes,
+                selected_duration=selected_duration
+            )
 
             # 🎯 Check Redis cache for enhanced statistics
             from redis_client import get_cached

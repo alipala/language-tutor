@@ -25,9 +25,16 @@ class BulletproofSubscriptionServiceNoTransactions:
         session_id = request.session_id
         speaking_minutes = int(round(request.speaking_minutes))  # Always use integers
         session_completed = request.session_completed
-        
+
         logger.info(f"[BULLETPROOF_TRACKING] Starting atomic tracking for user {user_id}")
         logger.info(f"[BULLETPROOF_TRACKING] Session: {session_id}, Minutes: {speaking_minutes}, Completed: {session_completed}")
+
+        # Guard: if the session rounded to 0 minutes, treat as 1 minute minimum so
+        # the $set update actually changes the document and isn't a silent no-op.
+        # This prevents the modified_count == 0 false-positive race-condition path.
+        if speaking_minutes == 0:
+            logger.info(f"[BULLETPROOF_TRACKING] speaking_minutes rounded to 0 — enforcing 1-minute minimum")
+            speaking_minutes = 1
         
         try:
             # Step 1: Check if already processed (with success validation)
@@ -204,23 +211,27 @@ class BulletproofSubscriptionServiceNoTransactions:
             tracking_id = tracking_result.inserted_id
             logger.info(f"[BULLETPROOF_TRACKING] Created tracking record: {tracking_id}")
             
-            # Step 7: Update user's practice minutes with conditional update to prevent race conditions
-            if subscription_plan == "team_mastery":
+            # Step 7: Update user's practice minutes atomically
+            # Use $inc so the update is always a real document change (avoids the
+            # modified_count == 0 false-positive when new_value == old_value).
+            # The conditional check on practice_minutes_used is kept to guard
+            # against concurrent double-deductions.
+            if subscription_plan in ("team_mastery", "language_mastery"):
                 # For unlimited plans, just create tracking record without updating user
                 user_update_result = type('MockResult', (), {'modified_count': 1})()  # Mock success
             else:
                 user_update_result = await users_collection.update_one(
                     {
                         "_id": user_object_id,
-                        "practice_minutes_used": practice_minutes_used  # 🔥 Only update if usage hasn't changed
+                        "practice_minutes_used": practice_minutes_used  # Only update if usage hasn't changed
                     },
                     {
-                        "$set": {
-                            "practice_minutes_used": new_practice_minutes_used
+                        "$inc": {
+                            "practice_minutes_used": deducted_amount
                         }
                     }
                 )
-            
+
             if user_update_result.modified_count == 0:
                 logger.warning(f"[BULLETPROOF_TRACKING] ⚠️ User update failed - balance may have changed concurrently")
                 # Mark tracking record as failed

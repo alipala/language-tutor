@@ -1017,22 +1017,36 @@ async def store_session_summary(
                 weekly_schedule[week_index]["sessions_completed"] = sessions_in_week
                 print(f"[SESSION_SUMMARY] Updated week {new_week} sessions_completed to {sessions_in_week}")
 
-        # 🔥 REMOVED DIRECT MINUTE TRACKING - now handled by mobile app calling /api/stripe/track-speaking-time
-        # This prevents double-deduction bug where minutes were tracked here AND by BulletproofTracker
-        #
-        # Mobile app flow:
-        # 1. Calls /api/learning/session-summary (this endpoint) - saves session data to learning plan
-        # 2. Calls /api/stripe/track-speaking-time - tracks minutes via BulletproofTracker (atomic, with deduplication)
-        #
-        # 🔥 FIX: Calculate session duration for learning plan tracking (but don't deduct minutes here)
         selected_duration = conversation_data.get("selected_duration", 5) if conversation_data else 5
         session_duration_minutes = conversation_data.get("duration_minutes", selected_duration) if conversation_data else selected_duration
         # Cap at selected_duration; anything over is a frontend timer glitch
         session_duration_minutes = min(float(session_duration_minutes), float(selected_duration))
 
-        # ⚠️ NOTE: Minutes are NOT tracked here anymore - they're tracked by /api/stripe/track-speaking-time
-        # This endpoint only saves the session data to the learning plan
-        print(f"[SESSION_SUMMARY] ⚡ Session duration: {session_duration_minutes} min (minutes will be tracked by /api/stripe/track-speaking-time)")
+        print(f"[SESSION_SUMMARY] ⚡ Session duration: {session_duration_minutes} min")
+
+        # Deduct minutes from the user's subscription quota via BulletproofTracker.
+        # This runs server-side so minute deduction is guaranteed — it doesn't depend
+        # on the mobile fire-and-forget /api/stripe/track-speaking-time call succeeding.
+        # BulletproofTracker is idempotent (deduplicates on session_id), so if the
+        # mobile also calls track-speaking-time with the same session_id, the second
+        # call is a no-op.
+        try:
+            from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
+            from models import SpeakingTimeTrackingRequest
+
+            tracking_request = SpeakingTimeTrackingRequest(
+                user_id=str(current_user.id),
+                session_id=summary_id,  # summary_id is unique per session
+                speaking_minutes=session_duration_minutes,
+                session_completed=(session_duration_minutes >= selected_duration)
+            )
+            tracking_success = await BulletproofTracker.track_speaking_time_atomic(tracking_request)
+            if tracking_success:
+                print(f"[SESSION_SUMMARY] ✅ Minutes deducted: {session_duration_minutes} min for user {current_user.id}")
+            else:
+                print(f"[SESSION_SUMMARY] ⚠️ Minute deduction failed (insufficient balance or already deducted) for user {current_user.id}")
+        except Exception as tracking_err:
+            print(f"[SESSION_SUMMARY] ⚠️ Minute tracking error (non-fatal): {tracking_err}")
 
         # 🎯 NEW: Store session messages for future comparisons
         # Initialize session_history if it doesn't exist
@@ -1092,7 +1106,7 @@ async def store_session_summary(
 
             # ⚠️ REMOVED DUPLICATE: Minutes already incremented at lines 670-680
             # This was causing double-deduction bug where 3-minute sessions deducted 6+ minutes
-            # 🔥 FIX: User practice_minutes_used is already updated at line 675 above (don't duplicate!)
+            # User practice_minutes_used is deducted by BulletproofTracker above (idempotent).
 
             # 🔥 NEW: Update daily_stats for weekly practice chart + XP
             try:
