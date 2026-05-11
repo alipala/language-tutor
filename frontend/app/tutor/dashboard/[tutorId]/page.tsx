@@ -603,26 +603,31 @@ export default function TutorDashboardPage() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Tab Bar */}
-        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit mb-7 shadow-sm">
-          {[
-            { key: 'overview', label: 'Overview', icon: '📊' },
-            { key: 'learners', label: `Learners${analytics ? ` (${analytics.total_assigned_learners})` : ''}`, icon: '🎓' },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key as any)}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-                tab === t.key
-                  ? 'bg-[#4ECFBF] text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
+      {/* Tab Bar — matches institution dashboard style */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <nav className="flex overflow-x-auto">
+            {[
+              { key: 'overview', label: 'Overview', icon: '📊' },
+              { key: 'learners', label: `Learners${analytics ? ` (${analytics.total_assigned_learners})` : ''}`, icon: '🎓' },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key as any)}
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  tab === t.key
+                    ? 'border-[#4ECFBF] text-[#4ECFBF]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                }`}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </nav>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
         {tab === 'overview' && loading && !analytics && (
