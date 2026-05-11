@@ -11,6 +11,7 @@ import {
   TrendingDown, Minus, Shield, Heart, Repeat
 } from 'lucide-react';
 import { FlagIcon, FlagOrText } from '@/src/components/ui/FlagIcon';
+import { DateRangePicker, DateRange } from '@/src/components/ui/DateRangePicker';
 
 const API_BASE_URL = '/api';
 
@@ -82,6 +83,8 @@ function LearnerDetailModal({
   learner, details, loading, onClose,
 }: { learner: Learner; details: any; loading: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'>('overview');
+  const [sessionDateRange, setSessionDateRange] = useState<DateRange>({ start: null, end: null, label: 'All time' });
+  const [challengeDateRange, setChallengeDateRange] = useState<DateRange>({ start: null, end: null, label: 'All time' });
   const plan = learner.learning_plans[0];
 
   const tabs: { key: 'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'; label: string; icon: React.ReactNode }[] = [
@@ -332,117 +335,165 @@ function LearnerDetailModal({
 
               {/* ── SESSIONS ── */}
               {tab === 'sessions' && (
-                <div>
-                  {details.practice_sessions?.length > 0 ? (
-                    <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-                        <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
-                        <th className="px-4 py-3 text-left">Language</th>
-                        <th className="px-4 py-3 text-left">Level</th>
-                        <th className="px-4 py-3 text-center">Duration</th>
-                        <th className="px-4 py-3 text-center rounded-r-lg">Type</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {details.practice_sessions.map((s: any) => (
-                          <tr key={s.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-gray-700">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-                            <td className="px-4 py-3 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={s.language} size={16} />{s.language ? s.language.charAt(0).toUpperCase()+s.language.slice(1) : '—'}</div></td>
-                            <td className="px-4 py-3">
-                              {s.level ? <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[s.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{s.level}</span> : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-center font-medium text-gray-800">{s.duration_minutes}m</td>
-                            <td className="px-4 py-3 text-center text-xs text-gray-500 capitalize">{s.session_type?.replace('_', ' ') || 'practice'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-400"><Mic className="w-12 h-12 text-gray-300 mx-auto mb-2" />No practice sessions yet</div>
-                  )}
+                <div className="space-y-3">
+                  {/* Date filter header */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400 font-medium">
+                      {(() => {
+                        const filtered = (details.practice_sessions || []).filter((s: any) => {
+                          if (!sessionDateRange.start || !s.created_at) return true;
+                          const d = new Date(s.created_at);
+                          return d >= sessionDateRange.start! && d <= sessionDateRange.end!;
+                        });
+                        return `${filtered.length} of ${details.practice_sessions?.length ?? 0} sessions`;
+                      })()}
+                    </span>
+                    <DateRangePicker value={sessionDateRange} onChange={setSessionDateRange} align="right" />
+                  </div>
+
+                  {/* Table */}
+                  {(() => {
+                    const filtered = (details.practice_sessions || []).filter((s: any) => {
+                      if (!sessionDateRange.start || !s.created_at) return true;
+                      const d = new Date(s.created_at);
+                      return d >= sessionDateRange.start! && d <= sessionDateRange.end!;
+                    });
+                    if (filtered.length === 0) return (
+                      <div className="text-center py-12 text-gray-400">
+                        <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-2" strokeWidth={1.5} />
+                        <p className="font-medium text-sm">No sessions in this period</p>
+                        <button onClick={() => setSessionDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-[#4ECFBF] mt-1 underline">Clear filter</button>
+                      </div>
+                    );
+                    return (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                            <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                            <th className="px-4 py-3 text-left">Language</th>
+                            <th className="px-4 py-3 text-left">Level</th>
+                            <th className="px-4 py-3 text-center">Duration</th>
+                            <th className="px-4 py-3 text-center rounded-r-lg">Type</th>
+                          </tr></thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {filtered.map((s: any) => (
+                              <tr key={s.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-700 text-xs">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                                <td className="px-4 py-3 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={s.language} size={16} /><span className="text-xs">{s.language ? s.language.charAt(0).toUpperCase()+s.language.slice(1) : '—'}</span></div></td>
+                                <td className="px-4 py-3">
+                                  {s.level ? <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[s.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{s.level}</span> : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-center text-xs font-medium text-gray-800">{s.duration_minutes}m</td>
+                                <td className="px-4 py-3 text-center text-xs text-gray-500 capitalize">{s.session_type?.replace('_', ' ') || 'practice'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
               {/* ── CHALLENGES ── */}
               {tab === 'challenges' && (
-                <div>
-                  {details.challenge_sessions?.length > 0 ? (
-                    <>
-                      {/* Summary row — computed correctly */}
-                      {(() => {
-                        const sessions = details.challenge_sessions;
-                        const totalSessions = sessions.length;
-                        const totalCorrect = sessions.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0);
-                        const totalQuestions = sessions.reduce((s: number, c: any) => s + (c.total_challenges || 0), 0);
-                        const totalXP = sessions.reduce((s: number, c: any) => s + (c.total_xp || 0), 0);
-                        // Accuracy = total correct / total questions (not avg of per-session accuracy)
-                        const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-                        return (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        <div className="bg-gray-50 rounded-xl p-3 text-center">
-                          <div className="text-xl font-bold text-[#4ECFBF]">{totalSessions}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">Sessions Played</div>
+                <div className="space-y-3">
+                  {details.challenge_sessions?.length > 0 ? (() => {
+                    const filtered = (details.challenge_sessions || []).filter((c: any) => {
+                      if (!challengeDateRange.start || !c.created_at) return true;
+                      const d = new Date(c.created_at);
+                      return d >= challengeDateRange.start! && d <= challengeDateRange.end!;
+                    });
+
+                    const totalSessions = filtered.length;
+                    const totalCorrect = filtered.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0);
+                    const totalQuestions = filtered.reduce((s: number, c: any) => s + (c.total_challenges || 0), 0);
+                    const totalXP = filtered.reduce((s: number, c: any) => s + (c.total_xp || 0), 0);
+                    const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+                    return (
+                      <>
+                        {/* Date filter header */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400 font-medium">
+                            {filtered.length} of {details.challenge_sessions.length} sessions
+                          </span>
+                          <DateRangePicker value={challengeDateRange} onChange={setChallengeDateRange} align="right" />
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-3 text-center">
-                          <div className="text-xl font-bold text-emerald-600">{totalCorrect}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">Correct Answers</div>
-                          <div className="text-xs text-gray-400">out of {totalQuestions} questions</div>
+
+                        {/* Summary stats — computed on filtered set */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-[#4ECFBF]">{totalSessions}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Sessions Played</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-emerald-600">{totalCorrect}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Correct Answers</div>
+                            <div className="text-xs text-gray-400">out of {totalQuestions}</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-yellow-600">{totalXP}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Total XP</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-blue-600">{accuracy}%</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Overall Accuracy</div>
+                            <div className="text-xs text-gray-400">{totalCorrect}/{totalQuestions}</div>
+                          </div>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-3 text-center">
-                          <div className="text-xl font-bold text-yellow-600">{totalXP}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">Total XP</div>
-                        </div>
-                        <div className="bg-gray-50 rounded-xl p-3 text-center">
-                          <div className="text-xl font-bold text-blue-600">{accuracy}%</div>
-                          <div className="text-xs text-gray-500 mt-0.5">Overall Accuracy</div>
-                          <div className="text-xs text-gray-400">{totalCorrect}/{totalQuestions}</div>
-                        </div>
-                      </div>
-                        );
-                      })()}
-                      <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-                          <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
-                          <th className="px-4 py-3 text-left">Type</th>
-                          <th className="px-4 py-3 text-left">Language</th>
-                          <th className="px-4 py-3 text-center">Correct / Total</th>
-                          <th className="px-4 py-3 text-center">Accuracy</th>
-                          <th className="px-4 py-3 text-center">XP</th>
-                          <th className="px-4 py-3 text-center rounded-r-lg">Combo</th>
-                        </tr></thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {details.challenge_sessions.map((c: any) => (
-                            <tr key={c.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-gray-600 text-xs">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
-                              <td className="px-4 py-3 text-xs text-gray-700 capitalize">{c.challenge_type?.replace(/_/g, ' ') || '—'}</td>
-                              <td className="px-4 py-3 capitalize text-gray-700 text-xs">{c.language || '—'}</td>
-                              <td className="px-4 py-3 text-center font-bold text-gray-800">
-                                {c.total_challenges > 0
-                                  ? <span>{c.correct_answers}<span className="text-gray-400 font-normal">/{c.total_challenges}</span></span>
-                                  : c.correct_answers > 0 ? c.correct_answers : '—'}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {c.accuracy > 0 ? (
-                                  <span className={`font-bold text-sm ${c.accuracy >= 80 ? 'text-emerald-600' : c.accuracy >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
-                                    {Math.round(c.accuracy)}%
-                                  </span>
-                                ) : '—'}
-                              </td>
-                              <td className="px-4 py-3 text-center text-xs font-semibold text-yellow-600">
-                                {c.total_xp > 0 ? `+${c.total_xp}` : '—'}
-                              </td>
-                              <td className="px-4 py-3 text-center text-xs text-gray-500">
-                                {c.max_combo > 0 ? <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-orange-400" strokeWidth={1.5} />{c.max_combo}</span> : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      </div>
-                    </>
-                  ) : (
+
+                        {filtered.length === 0 ? (
+                          <div className="text-center py-10 text-gray-400">
+                            <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-2" strokeWidth={1.5} />
+                            <p className="font-medium text-sm">No challenges in this period</p>
+                            <button onClick={() => setChallengeDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-[#4ECFBF] mt-1 underline">Clear filter</button>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                                <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                                <th className="px-4 py-3 text-left">Type</th>
+                                <th className="px-4 py-3 text-left">Language</th>
+                                <th className="px-4 py-3 text-center">Correct / Total</th>
+                                <th className="px-4 py-3 text-center">Accuracy</th>
+                                <th className="px-4 py-3 text-center">XP</th>
+                                <th className="px-4 py-3 text-center rounded-r-lg">Combo</th>
+                              </tr></thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {filtered.map((c: any) => (
+                                  <tr key={c.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-gray-600 text-xs">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700 capitalize">{c.challenge_type?.replace(/_/g, ' ') || '—'}</td>
+                                    <td className="px-4 py-3 capitalize text-gray-700 text-xs">{c.language || '—'}</td>
+                                    <td className="px-4 py-3 text-center font-bold text-gray-800 text-xs">
+                                      {c.total_challenges > 0
+                                        ? <span>{c.correct_answers}<span className="text-gray-400 font-normal">/{c.total_challenges}</span></span>
+                                        : c.correct_answers > 0 ? c.correct_answers : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {c.accuracy > 0 ? (
+                                        <span className={`font-bold text-xs ${c.accuracy >= 80 ? 'text-emerald-600' : c.accuracy >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                          {Math.round(c.accuracy)}%
+                                        </span>
+                                      ) : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-xs font-semibold text-yellow-600">
+                                      {c.total_xp > 0 ? `+${c.total_xp}` : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-xs text-gray-500">
+                                      {c.max_combo > 0 ? <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-orange-400" strokeWidth={1.5} />{c.max_combo}</span> : '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
                     <div className="text-center py-12 text-gray-400"><Zap className="w-12 h-12 text-gray-300 mx-auto mb-2" />No challenges completed yet</div>
                   )}
                 </div>
