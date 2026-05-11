@@ -502,37 +502,53 @@ async def get_learner_details(
         # Get ALL learning plans
         all_learning_plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
         
-        # Get ALL conversation sessions from BOTH collections
-        conversations = await database.conversations.find({
+        # Get conversation sessions (correct collection only)
+        all_conversations = await database.conversation_sessions.find({
             "user_id": user_id
-        }).sort("created_at", -1).to_list(length=None)
-        
-        conversation_sessions = await database.conversation_sessions.find({
+        }).sort("created_at", -1).to_list(length=100)
+
+        # Get challenge sessions
+        all_challenges = await database.challenge_sessions.find({
             "user_id": user_id
-        }).sort("created_at", -1).to_list(length=None)
-        
-        all_conversations = conversations + conversation_sessions
-        
-        # Get subscription info
+        }).sort("created_at", -1).to_list(length=100)
+
+        # Get daily stats
+        daily_stats_docs = await database.daily_stats.find({
+            "user_id": user_id
+        }).sort("date", -1).to_list(length=30)
+
+        # Get subscription info — fall back to user fields
         subscription = await database.subscriptions.find_one({"user_id": user_id})
-        
+
+        def _safe_iso(v):
+            if v is None:
+                return None
+            if isinstance(v, str):
+                return v
+            if hasattr(v, "isoformat"):
+                return v.isoformat()
+            return str(v)
+
         # Calculate overall metrics
-        total_sessions = sum([plan.get("completed_sessions", 0) for plan in all_learning_plans])
-        total_minutes = sum([plan.get("practice_minutes_used", 0) for plan in all_learning_plans])
-        
+        total_sessions = sum(p.get("completed_sessions", 0) for p in all_learning_plans)
+        total_minutes = sum(p.get("practice_minutes_used", 0) for p in all_learning_plans)
+        realtime_minutes = sum(round(s.get("duration_seconds", 0) / 60, 1) for s in all_conversations)
+        if total_minutes == 0 and realtime_minutes > 0:
+            total_minutes = realtime_minutes
+
         # Format learning plans
         formatted_plans = []
         for plan in all_learning_plans:
-            formatted_plan = {
-                "id": plan.get("id"),
+            formatted_plans.append({
+                "id": str(plan.get("_id", plan.get("id", ""))),
                 "language": plan.get("language"),
                 "proficiency_level": plan.get("proficiency_level"),
-                "progress_percentage": plan.get("progress_percentage", 0),
+                "progress_percentage": round(plan.get("progress_percentage", 0), 1),
                 "completed_sessions": plan.get("completed_sessions", 0),
                 "total_sessions": plan.get("total_sessions", 16),
-                "practice_minutes_used": plan.get("practice_minutes_used", 0),
+                "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1),
                 "total_practice_minutes": plan.get("total_practice_minutes", 80),
-                "created_at": plan.get("created_at").isoformat() if plan.get("created_at") else None,
+                "created_at": _safe_iso(plan.get("created_at")),
                 "assessment_data": plan.get("assessment_data", {}),
                 "plan_content": {
                     "title": plan.get("plan_content", {}).get("title"),
@@ -541,44 +557,80 @@ async def get_learner_details(
                     "weekly_schedule": plan.get("plan_content", {}).get("weekly_schedule", [])
                 },
                 "session_summaries": plan.get("session_summaries", [])
-            }
-            formatted_plans.append(formatted_plan)
-        
+            })
+
         # Format conversations
         formatted_conversations = [
             {
                 "id": str(conv["_id"]),
-                "created_at": conv.get("created_at").isoformat() if conv.get("created_at") else None,
-                "duration_minutes": conv.get("duration_minutes", 0),
-                "message_count": len(conv.get("messages", [])),
+                "created_at": _safe_iso(conv.get("created_at")),
+                "duration_minutes": round(conv.get("duration_seconds", conv.get("duration_minutes", 0) * 60 if conv.get("duration_minutes") else 0) / 60, 1),
+                "message_count": conv.get("message_count", len(conv.get("messages", []))),
                 "language": conv.get("language"),
-                "level": conv.get("level")
+                "level": conv.get("level"),
+                "session_type": conv.get("session_type", "practice")
             } for conv in all_conversations
         ]
-        
-        # Generate AI Insights (reuse from institution dashboard)
+
+        # Format challenges
+        formatted_challenges = [
+            {
+                "id": str(c["_id"]),
+                "created_at": _safe_iso(c.get("created_at")),
+                "challenge_type": c.get("challenge_type"),
+                "language": c.get("language"),
+                "level": c.get("level"),
+                "score": c.get("score", 0),
+                "completed": c.get("completed", False),
+                "correct_answers": c.get("correct_answers", 0),
+                "total_questions": c.get("total_questions", 0)
+            } for c in all_challenges
+        ]
+
+        # Daily stats summary
+        daily_stats = {
+            "current_streak": daily_stats_docs[0].get("streak_days", 0) if daily_stats_docs else 0,
+            "total_xp": sum(s.get("xp_earned", 0) for s in daily_stats_docs),
+            "days_active": len([s for s in daily_stats_docs if s.get("sessions_count", 0) > 0]),
+            "recent_daily": [
+                {
+                    "date": _safe_iso(s.get("date")),
+                    "minutes": round(s.get("practice_minutes", s.get("speaking_minutes", 0)), 1),
+                    "sessions": s.get("sessions_count", 0),
+                    "xp": s.get("xp_earned", 0)
+                } for s in daily_stats_docs[:14]
+            ]
+        }
+
+        # Generate AI Insights
         ai_insights = generate_tutor_ai_insights(user, formatted_plans, formatted_conversations)
-        
+
         return {
             "profile": {
                 "id": str(user["_id"]),
                 "name": user.get("name"),
                 "email": user.get("email"),
-                "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
+                "created_at": _safe_iso(user.get("created_at")),
                 "total_sessions": total_sessions,
-                "total_minutes": total_minutes,
-                "languages_studied": list(set([plan["language"] for plan in formatted_plans]))
+                "total_minutes": round(total_minutes, 1),
+                "realtime_sessions": len(formatted_conversations),
+                "challenge_sessions": len(formatted_challenges),
+                "languages_studied": list(set(p["language"] for p in formatted_plans if p.get("language"))),
+                "preferred_language": user.get("preferred_language"),
+                "preferred_level": user.get("preferred_level")
             },
             "all_learning_plans": formatted_plans,
             "practice_sessions": formatted_conversations,
+            "challenge_sessions": formatted_challenges,
+            "daily_stats": daily_stats,
             "subscription": {
-                "status": subscription.get("status") if subscription else "none",
-                "minutes_remaining": subscription.get("minutes_remaining", 0) if subscription else 0,
-                "plan_type": subscription.get("plan_type") if subscription else None
-            } if subscription else None,
+                "status": subscription.get("status") if subscription else user.get("subscription_status", "none"),
+                "minutes_remaining": user.get("practice_minutes_remaining", 0),
+                "plan_type": subscription.get("plan_type") if subscription else user.get("subscription_plan")
+            },
             "ai_insights": ai_insights,
-            "consent_given": learner.get("consent_given", False),
-            "enrolled_at": learner.get("enrolled_at").isoformat() if learner.get("enrolled_at") else None
+            "consent_given": learner.get("consent_given", True),
+            "enrolled_at": _safe_iso(learner.get("enrolled_at"))
         }
         
     except HTTPException:
