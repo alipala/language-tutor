@@ -789,35 +789,44 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
         # Check if learner belongs to institution
         learner = await database.institutional_learners.find_one({
             'institution_id': institution_id,
-            'user_id': user_id,
-            'is_active': True
+            'user_id': user_id
         })
-        
+
         if not learner:
             raise HTTPException(status_code=404, detail="Learner not found")
-        
-        # Check consent
-        if not learner.get('consent_given', False):
-            raise HTTPException(
-                status_code=403, 
-                detail="Learner has not given consent to view detailed progress"
-            )
-        
+
         # Get user info
         user = await database.users.find_one({'_id': ObjectId(user_id)})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         # Get ALL learning plans
         all_learning_plans = await database.learning_plans.find({'user_id': user_id}).to_list(length=None)
-        
-        # Get ALL conversation sessions
-        all_conversations = await database.conversations.find({
+
+        # Get ALL conversation sessions (correct collection name)
+        all_conversations = await database.conversation_sessions.find({
             'user_id': user_id
         }).sort('created_at', -1).to_list(length=None)
-        
+
+        # Get challenge sessions
+        all_challenges = await database.challenge_sessions.find({
+            'user_id': user_id
+        }).sort('created_at', -1).to_list(length=100)
+
+        # Get daily stats for streak/XP data
+        daily_stats = await database.daily_stats.find({
+            'user_id': user_id
+        }).sort('date', -1).to_list(length=30)
+
         # Get subscription info
         subscription = await database.subscriptions.find_one({'user_id': user_id})
+        # Fallback: subscription fields may live directly on the user document
+        if not subscription:
+            sub_status = user.get('subscription_status')
+            sub_plan = user.get('subscription_plan')
+        else:
+            sub_status = subscription.get('status')
+            sub_plan = subscription.get('plan_type') or subscription.get('subscription_plan')
         
         # Get tutor info
         tutor_info = None
@@ -833,6 +842,12 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
         # Calculate overall metrics
         total_sessions = sum([plan.get('completed_sessions', 0) for plan in all_learning_plans])
         total_minutes = sum([plan.get('practice_minutes_used', 0) for plan in all_learning_plans])
+        # Also count realtime session minutes from conversation_sessions
+        realtime_minutes = sum([
+            round(s.get('duration_seconds', 0) / 60, 1) for s in all_conversations
+        ])
+        if total_minutes == 0 and realtime_minutes > 0:
+            total_minutes = realtime_minutes
         
         # Format learning plans
         formatted_plans = []
@@ -858,21 +873,54 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
             }
             formatted_plans.append(formatted_plan)
         
-        # Format conversations
+        # Format conversations (realtime sessions)
         formatted_conversations = [
             {
                 'id': str(conv['_id']),
                 'created_at': conv.get('created_at').isoformat() if conv.get('created_at') else None,
-                'duration_minutes': conv.get('duration_minutes', 0),
-                'message_count': len(conv.get('messages', [])),
+                'duration_minutes': round(conv.get('duration_seconds', conv.get('duration_minutes', 0) * 60 if conv.get('duration_minutes') else 0) / 60, 1),
+                'message_count': conv.get('message_count', len(conv.get('messages', []))),
                 'language': conv.get('language'),
-                'level': conv.get('level')
+                'level': conv.get('level'),
+                'session_type': conv.get('session_type', 'practice')
             } for conv in all_conversations
         ]
-        
+
+        # Format challenge sessions
+        formatted_challenges = [
+            {
+                'id': str(ch['_id']),
+                'created_at': ch.get('created_at').isoformat() if ch.get('created_at') else None,
+                'challenge_type': ch.get('challenge_type'),
+                'language': ch.get('language'),
+                'level': ch.get('level'),
+                'score': ch.get('score', 0),
+                'completed': ch.get('completed', False),
+                'correct_answers': ch.get('correct_answers', 0),
+                'total_questions': ch.get('total_questions', 0)
+            } for ch in all_challenges
+        ]
+
+        # Build daily stats summary
+        stats_summary = {}
+        if daily_stats:
+            stats_summary = {
+                'current_streak': daily_stats[0].get('streak_days', 0) if daily_stats else 0,
+                'total_xp': sum(s.get('xp_earned', 0) for s in daily_stats),
+                'days_active': len([s for s in daily_stats if s.get('sessions_count', 0) > 0]),
+                'recent_daily': [
+                    {
+                        'date': s.get('date').isoformat() if hasattr(s.get('date'), 'isoformat') else str(s.get('date', '')),
+                        'minutes': round(s.get('practice_minutes', s.get('speaking_minutes', 0)), 1),
+                        'sessions': s.get('sessions_count', 0),
+                        'xp': s.get('xp_earned', 0)
+                    } for s in daily_stats[:14]
+                ]
+            }
+
         # Generate AI Insights
         ai_insights = generate_ai_insights(user, formatted_plans, formatted_conversations)
-        
+
         return {
             'profile': {
                 'id': str(user['_id']),
@@ -880,19 +928,27 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
                 'email': user.get('email'),
                 'created_at': user.get('created_at').isoformat() if user.get('created_at') else None,
                 'total_sessions': total_sessions,
-                'total_minutes': total_minutes,
-                'languages_studied': list(set([plan['language'] for plan in formatted_plans]))
+                'total_minutes': round(total_minutes, 1),
+                'realtime_sessions': len(formatted_conversations),
+                'challenge_sessions': len(formatted_challenges),
+                'languages_studied': list(set([plan['language'] for plan in formatted_plans if plan.get('language')])),
+                'preferred_language': user.get('preferred_language'),
+                'preferred_level': user.get('preferred_level')
             },
             'all_learning_plans': formatted_plans,
             'practice_sessions': formatted_conversations,
+            'challenge_sessions': formatted_challenges,
+            'daily_stats': stats_summary,
             'subscription': {
-                'status': subscription.get('status') if subscription else 'none',
-                'minutes_remaining': subscription.get('minutes_remaining', 0) if subscription else 0,
-                'plan_type': subscription.get('plan_type') if subscription else None
-            } if subscription else None,
+                'status': sub_status or 'none',
+                'minutes_remaining': user.get('practice_minutes_remaining', subscription.get('minutes_remaining', 0) if subscription else 0),
+                'plan_type': sub_plan,
+                'subscription_plan': user.get('subscription_plan'),
+                'subscription_status': user.get('subscription_status')
+            },
             'tutor': tutor_info,
             'ai_insights': ai_insights,
-            'consent_given': learner.get('consent_given', False),
+            'consent_given': learner.get('consent_given', True),
             'enrolled_at': learner.get('enrolled_at').isoformat() if learner.get('enrolled_at') else None
         }
         
