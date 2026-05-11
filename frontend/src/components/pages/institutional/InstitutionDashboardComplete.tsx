@@ -895,7 +895,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     };
 
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+      <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50 gap-3">
         <div className="text-sm text-gray-700">
           Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
           <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
@@ -964,7 +964,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {/* Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-4 border-b-2 ${activeTab === 'overview' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
@@ -988,11 +988,11 @@ export const InstitutionDashboardComplete: React.FC = () => {
       </div>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === 'overview' && (
           <div className="space-y-8">
             {/* Analytics Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Language Distribution */}
               <div className="bg-white p-6 rounded-xl shadow">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Language Distribution</h3>
@@ -1019,18 +1019,18 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div className="bg-white p-6 rounded-xl shadow">
                 <p className="text-gray-600">Total Learners</p>
-                <p className="text-3xl font-bold text-[#4ECFBF]">{learners.length}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{learners.length}</p>
               </div>
               <div className="bg-white p-6 rounded-xl shadow">
                 <p className="text-gray-600">Total Tutors</p>
-                <p className="text-3xl font-bold text-[#4ECFBF]">{tutors.length}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{tutors.length}</p>
               </div>
               <div className="bg-white p-6 rounded-xl shadow">
                 <p className="text-gray-600">Languages</p>
-                <p className="text-3xl font-bold text-[#4ECFBF]">{languageDistribution.length}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{languageDistribution.length}</p>
               </div>
             </div>
           </div>
@@ -1038,7 +1038,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
         {activeTab === 'tutors' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-2xl font-bold">Tutor Management</h2>
               <button
                 onClick={() => setShowAddTutorModal(true)}
@@ -1114,6 +1114,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -1191,7 +1192,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-              
+              </div>
+
               {/* Pagination for Tutors */}
               {totalTutorPages > 1 && (
                 <Pagination 
@@ -1207,7 +1209,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
         {activeTab === 'learners' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-2xl font-bold text-gray-900">Learner Management</h2>
               <div className="flex gap-3">
                 <button
@@ -1241,13 +1243,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow flex gap-4 flex-wrap">
+            <div className="bg-white p-4 rounded-xl shadow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               <input
                 type="text"
                 placeholder="Search learners..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 min-w-[200px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
+                className="px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 col-span-1 sm:col-span-2 lg:col-span-1"
               />
               <select
                 value={filterStatus}
@@ -1306,6 +1308,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             {/* Learners Table */}
             <div className="bg-white rounded-xl shadow overflow-hidden relative">
               {isLoadingData && learners.length === 0 && <TableSkeleton rows={4} />}
+              <div className="overflow-x-auto">
               <table className={`w-full ${isLoadingData && learners.length === 0 ? 'hidden' : ''}`}>
                 <thead className="bg-gray-50">
                   <tr>
@@ -1452,7 +1455,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-              
+              </div>
+
               {/* Pagination for Learners */}
               {totalLearnerPages > 1 && (
                 <Pagination 
@@ -1469,8 +1473,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
       {/* Add Tutor Modal */}
       {showAddTutorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Add New Tutor</h3>
             <div className="space-y-4">
               <input
@@ -1498,7 +1502,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               {/* Language Selection with Flags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   {availableLanguages.map((lang) => (
                     <button
                       key={lang.code}
@@ -1558,8 +1562,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
       {/* Import CSV Modal */}
       {showImportCSVModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Import Learners from CSV</h3>
             <p className="text-sm text-gray-600 mb-4">
               CSV format: name, email, language, level, tutor_email
@@ -1680,7 +1684,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {/* Tutor Learners Modal */}
       {showTutorLearnersModal && selectedTutor && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 transform transition-all animate-slideUp">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 sm:mx-auto my-8 transform transition-all animate-slideUp">
             {/* Header */}
             <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
               <div className="flex justify-between items-center">
@@ -1707,7 +1711,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
             
             {/* Content */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
+            <div className="p-6 max-h-[70vh] sm:max-h-[60vh] overflow-y-auto">
               <div className="space-y-3">
                 {selectedTutor.learners.map((learner, index) => (
                   <div 
@@ -1775,7 +1779,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {/* Learner Details Modal */}
       {showLearnerDetailsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-2 sm:mx-4 my-8">
             {/* Header */}
             <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
               <div className="flex justify-between items-center">
@@ -1797,7 +1801,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
             
             {/* Content */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
               {loadingLearnerDetails ? (
                 <ModalSpinner label="Loading learner progress..." />
               ) : selectedLearnerDetails?.no_consent ? (
@@ -1818,7 +1822,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* Profile Section */}
                   <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">👤 Learner Profile</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Name</p>
                         <p className="font-medium text-gray-900">{selectedLearnerDetails.profile?.name || 'N/A'}</p>
@@ -1895,7 +1899,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           {selectedLearnerDetails.ai_insights.overall_summary}
                         </p>
                         
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                           <div>
                             <p className="text-sm text-gray-600">Learning Style</p>
                             <p className="font-medium text-gray-900 capitalize">

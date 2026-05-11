@@ -90,7 +90,7 @@ function LearnerDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 pt-8">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl mb-8">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl my-4 sm:my-8 mx-2 sm:mx-4">
         {/* Modal Header */}
         <div className="relative bg-gradient-to-br from-[#4ECFBF] via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-7">
           <button onClick={onClose} className="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl p-2 transition-all">
@@ -125,7 +125,7 @@ function LearnerDetailModal({
 
           {/* Quick Stats Strip */}
           {details?.profile && (
-            <div className="grid grid-cols-4 gap-3 mt-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
               {[
                 { label: 'Plan Sessions', value: details.profile.total_sessions },
                 { label: 'Voice Sessions', value: details.profile.realtime_sessions ?? details.practice_sessions?.length ?? 0 },
@@ -142,7 +142,7 @@ function LearnerDetailModal({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 border-b border-gray-100 px-6 bg-gray-50/50">
+        <div className="flex gap-0 border-b border-gray-100 px-4 sm:px-6 bg-gray-50/50 overflow-x-auto">
           {tabs.map(t => (
             <button
               key={t.key}
@@ -157,7 +157,7 @@ function LearnerDetailModal({
         </div>
 
         {/* Tab Content */}
-        <div className="p-6 max-h-[55vh] overflow-y-auto">
+        <div className="p-6 max-h-[60vh] md:max-h-[55vh] overflow-y-auto">
           {loading ? (
             <div className="py-4">
               <ModalSpinner label="Loading learner data..." /></div>
@@ -170,7 +170,7 @@ function LearnerDetailModal({
                 <div className="space-y-5">
                   {/* Streak / XP / Days */}
                   {details.daily_stats && (
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 text-center">
                         <div className="text-3xl mb-1">🔥</div>
                         <div className="text-2xl font-bold text-orange-600">{details.daily_stats.current_streak ?? 0}</div>
@@ -275,7 +275,7 @@ function LearnerDetailModal({
                         </div>
                       </div>
                       {p.assessment_data?.strengths?.length > 0 && (
-                        <div className="p-4 grid grid-cols-2 gap-4 bg-white">
+                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white">
                           <div>
                             <p className="text-xs font-semibold text-green-700 mb-2">✅ Strengths</p>
                             {p.assessment_data.strengths.slice(0, 3).map((s: string, i: number) => (
@@ -311,6 +311,7 @@ function LearnerDetailModal({
               {tab === 'sessions' && (
                 <div>
                   {details.practice_sessions?.length > 0 ? (
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
                         <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
@@ -333,6 +334,7 @@ function LearnerDetailModal({
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   ) : (
                     <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">🎙️</div>No practice sessions yet</div>
                   )}
@@ -345,7 +347,7 @@ function LearnerDetailModal({
                   {details.challenge_sessions?.length > 0 ? (
                     <>
                       {/* Summary row */}
-                      <div className="grid grid-cols-4 gap-3 mb-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         {[
                           { label: 'Total Done', value: details.challenge_sessions.length, color: 'text-[#4ECFBF]' },
                           { label: 'Correct', value: details.challenge_sessions.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0), color: 'text-emerald-600' },
@@ -358,6 +360,7 @@ function LearnerDetailModal({
                           </div>
                         ))}
                       </div>
+                      <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
                           <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
@@ -396,6 +399,7 @@ function LearnerDetailModal({
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </>
                   ) : (
                     <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">⚡</div>No challenges completed yet</div>
@@ -412,7 +416,7 @@ function LearnerDetailModal({
                         <h4 className="font-semibold text-indigo-900 mb-2">🤖 AI Summary</h4>
                         <p className="text-gray-700 text-sm leading-relaxed">{details.ai_insights.overall_summary}</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-white border border-gray-100 rounded-2xl p-4">
                           <h5 className="font-semibold text-gray-800 mb-3 text-sm">Learning Style</h5>
                           <div className="space-y-2 text-sm">
@@ -575,7 +579,7 @@ export default function TutorDashboardPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Top Nav */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-xl flex items-center justify-center text-white font-bold text-sm">
               {tutorName.charAt(0)}
@@ -599,7 +603,7 @@ export default function TutorDashboardPage() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Tab Bar */}
         <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit mb-7 shadow-sm">
           {[
@@ -637,7 +641,7 @@ export default function TutorDashboardPage() {
         {tab === 'overview' && (!loading || analytics) && (
           <div className="space-y-6">
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {[
                 { label: 'Total Learners', value: analytics?.total_assigned_learners ?? 0, color: 'text-gray-900', icon: '👥', bg: 'bg-white' },
                 { label: 'On Track', value: analytics?.active_learners ?? 0, color: 'text-emerald-600', icon: '✅', bg: 'bg-emerald-50' },
@@ -655,7 +659,7 @@ export default function TutorDashboardPage() {
             </div>
 
             {/* Charts Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               {/* Language Distribution */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -716,7 +720,7 @@ export default function TutorDashboardPage() {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">📈 Class Stats</h3>
                 <div className="space-y-3">
@@ -776,8 +780,8 @@ export default function TutorDashboardPage() {
           <div className="space-y-5">
             {/* Filters */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <div className="flex-1 min-w-48">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                <div className="flex-1">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Search</label>
                   <input
                     value={search} onChange={e => setSearch(e.target.value)}
@@ -827,6 +831,7 @@ export default function TutorDashboardPage() {
                   {hasFilters && <p className="text-gray-400 text-sm mt-1">Try clearing your filters</p>}
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -854,8 +859,8 @@ export default function TutorDashboardPage() {
                                 {learner.name.charAt(0)}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-semibold text-gray-900 text-sm truncate max-w-[160px]">{learner.name}</div>
-                                <div className="text-xs text-gray-400 truncate max-w-[160px]">{learner.email}</div>
+                                <div className="font-semibold text-gray-900 text-sm truncate max-w-[120px] md:max-w-[160px]">{learner.name}</div>
+                                <div className="text-xs text-gray-400 truncate max-w-[120px] md:max-w-[160px]">{learner.email}</div>
                               </div>
                             </div>
                           </td>
@@ -948,6 +953,7 @@ export default function TutorDashboardPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
