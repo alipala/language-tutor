@@ -211,6 +211,17 @@ async def get_assigned_learners(
         
         learners = await database.institutional_learners.aggregate(pipeline).to_list(length=None)
         
+        def _to_dt(v):
+            """Safely convert datetime or ISO string to naive datetime."""
+            if isinstance(v, datetime):
+                return v.replace(tzinfo=None)
+            if isinstance(v, str):
+                try:
+                    return datetime.fromisoformat(v.replace("Z", "+00:00")).replace(tzinfo=None)
+                except Exception:
+                    return None
+            return None
+
         # Process and format learners
         formatted_learners = []
         now = datetime.utcnow()
@@ -223,16 +234,21 @@ async def get_assigned_learners(
             # Get most recent learning plan (may be None for new learners)
             main_plan = learning_plans[0] if learning_plans else None
             
-            # Calculate last activity from conversations
+            # Calculate last activity from conversation_sessions
             last_activity_date = None
+
             if conversations:
-                sorted_convs = sorted(conversations, key=lambda x: x.get("created_at", datetime.min), reverse=True)
-                last_activity_date = sorted_convs[0].get("created_at")
-            
+                dated = [((_to_dt(c.get("created_at")) or datetime.min), c) for c in conversations]
+                dated.sort(key=lambda x: x[0], reverse=True)
+                last_activity_date = dated[0][0] if dated[0][0] != datetime.min else None
+
             # Calculate days since last activity
-            days_since_activity = 999  # Default to large number
+            days_since_activity = 999
             if last_activity_date:
-                days_since_activity = (now - last_activity_date).days
+                try:
+                    days_since_activity = (now - last_activity_date).days
+                except Exception:
+                    days_since_activity = 999
             
             if main_plan:
                 # Learner HAS a learning plan
@@ -258,7 +274,7 @@ async def get_assigned_learners(
                     "proficiency_level": main_plan.get("proficiency_level"),
                     "progress_percentage": round(main_plan.get("progress_percentage", 0), 1),
                     "progress_status": progress_status,
-                    "last_activity_date": last_activity_date.isoformat() if last_activity_date else None,
+                    "last_activity_date": last_activity_date.isoformat() if last_activity_date and hasattr(last_activity_date, 'isoformat') else None,
                     "days_since_activity": days_since_activity,
                     "completed_sessions": main_plan.get("completed_sessions", 0),
                     "total_sessions": main_plan.get("total_sessions", 16),
@@ -387,7 +403,16 @@ def calculate_progress_status(learning_plan: dict, days_since_activity: int, lea
         return "inactive"
     
     # Calculate expected progress
-    created_at = learning_plan.get("created_at", datetime.utcnow())
+    created_at_raw = learning_plan.get("created_at", None)
+    if isinstance(created_at_raw, str):
+        try:
+            created_at = datetime.fromisoformat(created_at_raw.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            created_at = datetime.utcnow()
+    elif isinstance(created_at_raw, datetime):
+        created_at = created_at_raw.replace(tzinfo=None)
+    else:
+        created_at = datetime.utcnow()
     weeks_elapsed = max((datetime.utcnow() - created_at).days / 7, 0.1)
     total_weeks = 8  # Assuming 8-week plans
     expected_progress = (weeks_elapsed / total_weeks) * 100
@@ -814,7 +839,16 @@ def generate_tutor_ai_insights(user, learning_plans, conversations):
         learning_time = "unknown"
     
     # Calculate progress rate
-    user_created = user.get("created_at")
+    user_created_raw = user.get("created_at")
+    if isinstance(user_created_raw, str):
+        try:
+            user_created = datetime.fromisoformat(user_created_raw.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            user_created = None
+    elif isinstance(user_created_raw, datetime):
+        user_created = user_created_raw.replace(tzinfo=None)
+    else:
+        user_created = None
     if user_created:
         try:
             days_active = (datetime.utcnow() - user_created).days
