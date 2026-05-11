@@ -109,19 +109,25 @@ function LearnerDetailModal({
               <h2 className="text-2xl font-bold text-white">{learner.name}</h2>
               <p className="text-white/75 text-sm">{learner.email}</p>
               {plan && (
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize">
-                    <FlagOrText language={plan.language} size={18} /> {plan.language}
-                  </span>
-                  <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {/* Flag + language — no container, clean inline */}
+                  <div className="flex items-center gap-1.5">
+                    <FlagOrText language={plan.language} size={16} />
+                    <span className="text-white/90 text-sm font-medium capitalize">{plan.language}</span>
+                  </div>
+                  <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-md">
                     {plan.proficiency_level}
                   </span>
-                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                    plan.progress_status === 'on_track' ? 'bg-green-400/30 text-white' :
-                    plan.progress_status === 'at_risk' ? 'bg-yellow-400/30 text-white' :
+                  <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                    plan.progress_status === 'on_track' ? 'bg-emerald-400/30 text-white' :
+                    plan.progress_status === 'at_risk' ? 'bg-amber-400/30 text-white' :
                     'bg-gray-400/30 text-white'
                   }`}>
-                    {plan.progress_status === 'on_track' ? '✅ On Track' : plan.progress_status === 'at_risk' ? '⚠️ At Risk' : '⏸ Inactive'}
+                    {plan.progress_status === 'on_track'
+                      ? <><CheckCircle className="w-3 h-3" /> On Track</>
+                      : plan.progress_status === 'at_risk'
+                      ? <><AlertTriangle className="w-3 h-3" /> At Risk</>
+                      : <><Minus className="w-3 h-3" /> Inactive</>}
                   </span>
                 </div>
               )}
@@ -176,20 +182,32 @@ function LearnerDetailModal({
                   {/* Streak / XP / Days */}
                   {details.daily_stats && (
                     <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 text-center">
-                        <div className="flex justify-center mb-1"><Flame className="w-6 h-6 text-orange-500" /></div>
-                        <div className="text-2xl font-bold text-orange-600">{details.daily_stats.current_streak ?? 0}</div>
-                        <div className="text-xs text-gray-500">Day Streak</div>
+                      <div className="bg-white border border-orange-100 rounded-2xl p-4 text-center">
+                        <div className="flex justify-center mb-2">
+                          <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+                            <Flame className="w-5 h-5 text-orange-500" strokeWidth={1.5} />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900">{details.daily_stats.current_streak ?? 0}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Day Streak</div>
                       </div>
-                      <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-100 rounded-2xl p-4 text-center">
-                        <div className="flex justify-center mb-1"><Star className="w-6 h-6 text-yellow-500" /></div>
-                        <div className="text-2xl font-bold text-yellow-600">{details.daily_stats.total_xp ?? 0}</div>
-                        <div className="text-xs text-gray-500">Total XP</div>
+                      <div className="bg-white border border-yellow-100 rounded-2xl p-4 text-center">
+                        <div className="flex justify-center mb-2">
+                          <div className="w-9 h-9 bg-yellow-100 rounded-xl flex items-center justify-center">
+                            <Star className="w-5 h-5 text-yellow-500" strokeWidth={1.5} />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900">{details.daily_stats.total_xp ?? 0}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Total XP</div>
                       </div>
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 text-center">
-                        <div className="flex justify-center mb-1"><Calendar className="w-6 h-6 text-blue-500" /></div>
-                        <div className="text-2xl font-bold text-blue-600">{details.daily_stats.days_active ?? 0}</div>
-                        <div className="text-xs text-gray-500">Active Days</div>
+                      <div className="bg-white border border-blue-100 rounded-2xl p-4 text-center">
+                        <div className="flex justify-center mb-2">
+                          <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-blue-500" strokeWidth={1.5} />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900">{details.daily_stats.days_active ?? 0}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Active Days</div>
                       </div>
                     </div>
                   )}
@@ -398,7 +416,7 @@ function LearnerDetailModal({
                                 {c.total_xp > 0 ? `+${c.total_xp}` : '—'}
                               </td>
                               <td className="px-4 py-3 text-center text-xs text-gray-500">
-                                {c.max_combo > 0 ? <><Flame className="w-3 h-3 text-orange-500 inline" /> {c.max_combo}</> : '—'}
+                                {c.max_combo > 0 ? <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-orange-400" strokeWidth={1.5} />{c.max_combo}</span> : '—'}
                               </td>
                             </tr>
                           ))}
