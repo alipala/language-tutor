@@ -3,6 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Spinner, ModalSpinner, TableLoadingSkeleton, CardLoadingSkeleton } from '@/src/components/ui/Spinner';
+import {
+  BarChart2, Users, AlertTriangle, TrendingUp, Globe, BookOpen,
+  Mic, Zap, Bot, CheckCircle, Clock, Target, Lightbulb,
+  Flame, Star, Calendar, GraduationCap, ChevronRight,
+  Award, Activity, MessageSquare, Brain, Layout
+} from 'lucide-react';
 
 const API_BASE_URL = '/api';
 
@@ -80,13 +86,13 @@ function LearnerDetailModal({
   const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'insights'>('overview');
   const plan = learner.learning_plans[0];
 
-  const tabs = [
-    { key: 'overview', label: 'Overview', icon: '📊' },
-    { key: 'plans', label: `Plans (${details?.all_learning_plans?.length ?? 0})`, icon: '📚' },
-    { key: 'sessions', label: `Sessions (${details?.practice_sessions?.length ?? 0})`, icon: '🎙️' },
-    { key: 'challenges', label: `Challenges (${details?.challenge_sessions?.length ?? 0})`, icon: '⚡' },
-    { key: 'insights', label: 'AI Insights', icon: '🤖' },
-  ] as const;
+  const tabs: { key: 'overview' | 'plans' | 'sessions' | 'challenges' | 'insights'; label: string; icon: React.ReactNode }[] = [
+    { key: 'overview', label: 'Overview', icon: <BarChart2 className="w-3.5 h-3.5" /> },
+    { key: 'plans', label: `Plans (${details?.all_learning_plans?.length ?? 0})`, icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { key: 'sessions', label: `Sessions (${details?.practice_sessions?.length ?? 0})`, icon: <Mic className="w-3.5 h-3.5" /> },
+    { key: 'challenges', label: `Challenges (${details?.challenge_sessions?.length ?? 0})`, icon: <Zap className="w-3.5 h-3.5" /> },
+    { key: 'insights', label: 'AI Insights', icon: <Bot className="w-3.5 h-3.5" /> },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 pt-8">
@@ -147,7 +153,7 @@ function LearnerDetailModal({
             <button
               key={t.key}
               onClick={() => setTab(t.key as any)}
-              className={`py-3.5 px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+              className={`py-3.5 px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 tab === t.key ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -172,17 +178,17 @@ function LearnerDetailModal({
                   {details.daily_stats && (
                     <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 text-center">
-                        <div className="text-3xl mb-1">🔥</div>
+                        <div className="flex justify-center mb-1"><Flame className="w-6 h-6 text-orange-500" /></div>
                         <div className="text-2xl font-bold text-orange-600">{details.daily_stats.current_streak ?? 0}</div>
                         <div className="text-xs text-gray-500">Day Streak</div>
                       </div>
                       <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-100 rounded-2xl p-4 text-center">
-                        <div className="text-3xl mb-1">⭐</div>
+                        <div className="flex justify-center mb-1"><Star className="w-6 h-6 text-yellow-500" /></div>
                         <div className="text-2xl font-bold text-yellow-600">{details.daily_stats.total_xp ?? 0}</div>
                         <div className="text-xs text-gray-500">Total XP</div>
                       </div>
                       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 text-center">
-                        <div className="text-3xl mb-1">📅</div>
+                        <div className="flex justify-center mb-1"><Calendar className="w-6 h-6 text-blue-500" /></div>
                         <div className="text-2xl font-bold text-blue-600">{details.daily_stats.days_active ?? 0}</div>
                         <div className="text-xs text-gray-500">Active Days</div>
                       </div>
@@ -277,13 +283,13 @@ function LearnerDetailModal({
                       {p.assessment_data?.strengths?.length > 0 && (
                         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white">
                           <div>
-                            <p className="text-xs font-semibold text-green-700 mb-2">✅ Strengths</p>
+                            <p className="text-xs font-semibold text-green-700 mb-2 flex items-center"><CheckCircle className="w-3.5 h-3.5 text-green-600 inline mr-1" /> Strengths</p>
                             {p.assessment_data.strengths.slice(0, 3).map((s: string, i: number) => (
                               <div key={i} className="text-xs text-gray-600 bg-green-50 rounded-lg px-3 py-1.5 mb-1">{s}</div>
                             ))}
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-amber-700 mb-2">🎯 Areas to Improve</p>
+                            <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center"><Target className="w-3.5 h-3.5 text-amber-600 inline mr-1" /> Areas to Improve</p>
                             {p.assessment_data.areas_for_improvement?.slice(0, 3).map((a: string, i: number) => (
                               <div key={i} className="text-xs text-gray-600 bg-amber-50 rounded-lg px-3 py-1.5 mb-1">{a}</div>
                             ))}
@@ -302,7 +308,7 @@ function LearnerDetailModal({
                       )}
                     </div>
                   )) : (
-                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">📚</div>No learning plans yet</div>
+                    <div className="text-center py-12 text-gray-400"><BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-2" />No learning plans yet</div>
                   )}
                 </div>
               )}
@@ -336,7 +342,7 @@ function LearnerDetailModal({
                     </table>
                     </div>
                   ) : (
-                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">🎙️</div>No practice sessions yet</div>
+                    <div className="text-center py-12 text-gray-400"><Mic className="w-12 h-12 text-gray-300 mx-auto mb-2" />No practice sessions yet</div>
                   )}
                 </div>
               )}
@@ -393,7 +399,7 @@ function LearnerDetailModal({
                                 {c.total_xp > 0 ? `+${c.total_xp}` : '—'}
                               </td>
                               <td className="px-4 py-3 text-center text-xs text-gray-500">
-                                {c.max_combo > 0 ? `🔥 ${c.max_combo}` : '—'}
+                                {c.max_combo > 0 ? <><Flame className="w-3 h-3 text-orange-500 inline" /> {c.max_combo}</> : '—'}
                               </td>
                             </tr>
                           ))}
@@ -402,7 +408,7 @@ function LearnerDetailModal({
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">⚡</div>No challenges completed yet</div>
+                    <div className="text-center py-12 text-gray-400"><Zap className="w-12 h-12 text-gray-300 mx-auto mb-2" />No challenges completed yet</div>
                   )}
                 </div>
               )}
@@ -413,7 +419,7 @@ function LearnerDetailModal({
                   {details.ai_insights ? (
                     <>
                       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
-                        <h4 className="font-semibold text-indigo-900 mb-2">🤖 AI Summary</h4>
+                        <h4 className="font-semibold text-indigo-900 mb-2 flex items-center gap-1.5"><Bot className="w-4 h-4" /> AI Summary</h4>
                         <p className="text-gray-700 text-sm leading-relaxed">{details.ai_insights.overall_summary}</p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -434,7 +440,7 @@ function LearnerDetailModal({
                       </div>
                       {details.ai_insights.recommendations?.length > 0 && (
                         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
-                          <h5 className="font-semibold text-amber-900 mb-3">💡 Recommendations for You</h5>
+                          <h5 className="font-semibold text-amber-900 mb-3 flex items-center gap-1.5"><Lightbulb className="w-4 h-4 text-amber-500 inline mr-1.5" /> Recommendations for You</h5>
                           <ul className="space-y-2">
                             {details.ai_insights.recommendations.map((r: string, i: number) => (
                               <li key={i} className="text-sm text-gray-700 flex gap-2"><span className="text-amber-500 font-bold">{i + 1}.</span>{r}</li>
@@ -444,7 +450,7 @@ function LearnerDetailModal({
                       )}
                     </>
                   ) : (
-                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">🤖</div>No AI insights available yet</div>
+                    <div className="text-center py-12 text-gray-400"><Bot className="w-12 h-12 text-gray-300 mx-auto mb-2" />No AI insights available yet</div>
                   )}
                 </div>
               )}
@@ -576,25 +582,25 @@ export default function TutorDashboardPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-20">
+    <div className="min-h-screen bg-slate-50 pt-20 font-nunito">
       {/* Tab Bar — flush under global teal navbar, same style as institution dashboard */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <nav className="flex overflow-x-auto">
             {[
-              { key: 'overview', label: 'Overview', icon: '📊' },
-              { key: 'learners', label: `Learners${analytics ? ` (${analytics.total_assigned_learners})` : ''}`, icon: '🎓' },
+              { key: 'overview', label: 'Overview', icon: <BarChart2 className="w-4 h-4 inline-block mr-1.5" /> },
+              { key: 'learners', label: `Learners${analytics ? ` (${analytics.total_assigned_learners})` : ''}`, icon: <GraduationCap className="w-4 h-4 inline-block mr-1.5" /> },
             ].map(t => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key as any)}
-                className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center ${
                   tab === t.key
                     ? 'border-[#4ECFBF] text-[#4ECFBF]'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
                 }`}
               >
-                {t.icon} {t.label}
+                {t.icon}{t.label}
               </button>
             ))}
           </nav>
@@ -622,15 +628,15 @@ export default function TutorDashboardPage() {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {[
-                { label: 'Total Learners', value: analytics?.total_assigned_learners ?? 0, color: 'text-gray-900', icon: '👥', bg: 'bg-white' },
-                { label: 'On Track', value: analytics?.active_learners ?? 0, color: 'text-emerald-600', icon: '✅', bg: 'bg-emerald-50' },
-                { label: 'Need Attention', value: (analytics?.at_risk_learners ?? 0) + (analytics?.inactive_learners ?? 0), color: 'text-amber-600', icon: '⚠️', bg: 'bg-amber-50' },
-                { label: 'Avg Progress', value: `${analytics?.average_progress?.toFixed(1) ?? 0}%`, color: 'text-[#4ECFBF]', icon: '📈', bg: 'bg-teal-50' },
+                { label: 'Total Learners', value: analytics?.total_assigned_learners ?? 0, color: 'text-gray-900', icon: <Users className="w-5 h-5 text-blue-400" />, bg: 'bg-white' },
+                { label: 'On Track', value: analytics?.active_learners ?? 0, color: 'text-emerald-600', icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, bg: 'bg-emerald-50' },
+                { label: 'Need Attention', value: (analytics?.at_risk_learners ?? 0) + (analytics?.inactive_learners ?? 0), color: 'text-amber-600', icon: <AlertTriangle className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
+                { label: 'Avg Progress', value: `${analytics?.average_progress?.toFixed(1) ?? 0}%`, color: 'text-[#4ECFBF]', icon: <TrendingUp className="w-5 h-5 text-[#4ECFBF]" />, bg: 'bg-teal-50' },
               ].map(card => (
                 <div key={card.label} className={`${card.bg} rounded-2xl border border-gray-100 p-5 shadow-sm`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{card.label}</span>
-                    <span className="text-xl">{card.icon}</span>
+                    <span>{card.icon}</span>
                   </div>
                   <div className={`text-3xl font-bold ${card.color}`}>{card.value}</div>
                 </div>
@@ -642,7 +648,7 @@ export default function TutorDashboardPage() {
               {/* Language Distribution */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  🌍 <span>Languages</span>
+                  <Globe className="w-4 h-4 text-[#4ECFBF]" /> <span>Languages</span>
                   <span className="text-xs text-gray-400 font-normal ml-auto">{Object.keys(langDistribution).length} language{Object.keys(langDistribution).length !== 1 ? 's' : ''}</span>
                 </h3>
                 {Object.keys(langDistribution).length > 0 ? (
@@ -675,7 +681,7 @@ export default function TutorDashboardPage() {
               {/* Proficiency Level Distribution */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  📊 <span>Proficiency Levels</span>
+                  <BarChart2 className="w-4 h-4 text-[#4ECFBF]" /> <span>Proficiency Levels</span>
                   <span className="text-xs text-gray-400 font-normal ml-auto">{analytics?.total_assigned_learners ?? 0} total</span>
                 </h3>
                 {analytics?.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
@@ -701,7 +707,7 @@ export default function TutorDashboardPage() {
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">📈 Class Stats</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Activity className="w-4 h-4 text-[#4ECFBF]" /> Class Stats</h3>
                 <div className="space-y-3">
                   {[
                     { label: 'Total Sessions Completed', value: analytics?.total_sessions_completed ?? 0 },
@@ -718,7 +724,7 @@ export default function TutorDashboardPage() {
 
               {/* Quick Learner Summary */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">🎓 Learner Snapshot</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-[#4ECFBF]" /> Learner Snapshot</h3>
                 <div className="space-y-2">
                   {learners.slice(0, 5).map(l => {
                     const plan = l.learning_plans[0];
@@ -805,7 +811,7 @@ export default function TutorDashboardPage() {
                 <TableLoadingSkeleton rows={4} cols={8} />
               ) : learners.length === 0 ? (
                 <div className="text-center py-16">
-                  <div className="text-5xl mb-3">🎓</div>
+                  <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                   <p className="text-gray-500 font-medium">No learners found</p>
                   {hasFilters && <p className="text-gray-400 text-sm mt-1">Try clearing your filters</p>}
                 </div>
