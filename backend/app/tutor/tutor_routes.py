@@ -191,10 +191,10 @@ async def get_assigned_learners(
                     "as": "learning_plans"
                 }
             },
-            # Lookup conversations for last activity
+            # Lookup conversation sessions for last activity
             {
                 "$lookup": {
-                    "from": "conversations",
+                    "from": "conversation_sessions",
                     "localField": "user_id",
                     "foreignField": "user_id",
                     "as": "conversations"
@@ -625,30 +625,51 @@ async def get_tutor_analytics(
         at_risk_count = 0
         inactive_count = 0
         
-        # Get recent conversations for activity
-        recent_conversations = await database.conversations.find({
+        # Get recent sessions for activity (correct collection)
+        recent_conversations = await database.conversation_sessions.find({
             "user_id": {"$in": user_ids}
         }).sort("created_at", -1).limit(10).to_list(length=10)
-        
+
+        # Also get challenge session counts per learner
+        challenge_counts = {}
+        for uid in user_ids:
+            count = await database.challenge_sessions.count_documents({"user_id": uid})
+            challenge_counts[uid] = count
+
+        # Status breakdown — compute properly from plans
+        at_risk_count = 0
+        inactive_count = 0
+        on_track_count = 0
+        for plan in learning_plans:
+            pct = plan.get("progress_percentage", 0)
+            sessions = plan.get("completed_sessions", 0)
+            if sessions == 0:
+                inactive_count += 1
+            elif pct < 20:
+                at_risk_count += 1
+            else:
+                on_track_count += 1
+
         recent_activity = [
             {
                 "learner_id": conv.get("user_id"),
                 "created_at": conv.get("created_at").isoformat() if conv.get("created_at") else None,
                 "language": conv.get("language"),
-                "duration_minutes": conv.get("duration_minutes", 0)
+                "duration_minutes": round(conv.get("duration_seconds", 0) / 60, 1)
             } for conv in recent_conversations
         ]
         
         return {
             "total_assigned_learners": len(learners),
-            "active_learners": active_count,
+            "active_learners": on_track_count,
             "at_risk_learners": at_risk_count,
             "inactive_learners": inactive_count,
             "average_progress": round(average_progress, 1),
             "total_sessions_completed": total_sessions,
-            "total_minutes_practiced": total_minutes,
+            "total_minutes_practiced": round(total_minutes, 1),
             "languages_taught": languages_taught,
             "level_distribution": level_distribution,
+            "challenge_counts": challenge_counts,
             "recent_activity": recent_activity
         }
         

@@ -1,452 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-// Use relative URLs with /api prefix to go through Next.js proxy
 const API_BASE_URL = '/api';
 
-// Comprehensive Learner Modal Component
-interface ComprehensiveLearnerModalProps {
-  learner: Learner;
-  learnerDetails: any;
-  loadingDetails: boolean;
-  onClose: () => void;
-}
-
-const ComprehensiveLearnerModal: React.FC<ComprehensiveLearnerModalProps> = ({
-  learner,
-  learnerDetails,
-  loadingDetails,
-  onClose
-}) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'sessions' | 'insights'>('overview');
-  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8">
-        {/* Header with Gradient */}
-        <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
-          <div className="flex justify-between items-start">
-            <div className="text-white">
-              <h2 className="text-3xl font-bold mb-2">{learner.name}</h2>
-              {learnerDetails?.profile && (
-                <div className="flex items-center gap-6 text-white/90 text-sm">
-                  <span>📧 {learnerDetails.profile.email}</span>
-                  <span>📚 {learnerDetails.profile.total_sessions} sessions</span>
-                  <span>⏱️ {learnerDetails.profile.total_minutes} minutes</span>
-                  <span>🌍 {learnerDetails.profile.languages_studied?.join(', ') || 'No languages'}</span>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b bg-white">
-          <nav className="flex px-6">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'overview'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📊 Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('plans')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'plans'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📚 Learning Plans ({learnerDetails?.all_learning_plans?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveTab('sessions')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'sessions'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              💬 Practice Sessions ({learnerDetails?.practice_sessions?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveTab('insights')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'insights'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              🤖 AI Insights
-            </button>
-          </nav>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto bg-gray-50">
-          {loadingDetails ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
-                <p className="mt-4 text-gray-600">Loading detailed progress...</p>
-              </div>
-            </div>
-          ) : !learnerDetails ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">Failed to load learner details</p>
-            </div>
-          ) : (
-            <>
-              {/* Overview Tab */}
-              {activeTab === 'overview' && learnerDetails.profile && (
-                <div className="space-y-6">
-                  {/* Quick Stats Cards */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Total Sessions</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.profile.total_sessions}</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Total Minutes</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.profile.total_minutes}</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Learning Plans</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.all_learning_plans?.length || 0}</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Practice Sessions</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.practice_sessions?.length || 0}</div>
-                    </div>
-                  </div>
-
-                  {/* Languages Overview */}
-                  {learnerDetails.all_learning_plans && learnerDetails.all_learning_plans.length > 0 && (
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">🌍 Languages Progress</h3>
-                      <div className="space-y-4">
-                        {learnerDetails.all_learning_plans.map((plan: any) => (
-                          <div key={plan.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="text-lg font-bold text-gray-900">
-                                  {plan.language?.charAt(0).toUpperCase() + plan.language?.slice(1)}
-                                </span>
-                                <span className="px-2 py-1 bg-white rounded-full text-sm font-medium text-[#4ECFBF]">
-                                  {plan.proficiency_level}
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div
-                                  className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full transition-all"
-                                  style={{ width: `${plan.progress_percentage || 0}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <div className="ml-6 text-right">
-                              <div className="text-2xl font-bold text-[#4ECFBF]">{plan.progress_percentage?.toFixed(0) || 0}%</div>
-                              <div className="text-sm text-gray-600">{plan.completed_sessions}/{plan.total_sessions} sessions</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Learning Plans Tab */}
-              {activeTab === 'plans' && (
-                <div className="space-y-4">
-                  {learnerDetails.all_learning_plans && learnerDetails.all_learning_plans.length > 0 ? (
-                    learnerDetails.all_learning_plans.map((plan: any) => (
-                      <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Plan Header */}
-                        <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-3">
-                                <h4 className="text-xl font-bold text-gray-900">
-                                  {plan.language?.charAt(0).toUpperCase() + plan.language?.slice(1)} {plan.proficiency_level}
-                                </h4>
-                                {plan.assessment_data?.overall_score && (
-                                  <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-[#4ECFBF]">
-                                    Score: {plan.assessment_data.overall_score}/100
-                                  </span>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-3 gap-4 mb-3">
-                                <div>
-                                  <div className="text-sm text-gray-600">Progress</div>
-                                  <div className="text-lg font-bold text-gray-900">{plan.progress_percentage?.toFixed(1) || 0}%</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Sessions</div>
-                                  <div className="text-lg font-bold text-gray-900">{plan.completed_sessions || 0}/{plan.total_sessions || 16}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Practice Time</div>
-                                  <div className="text-lg font-bold text-gray-900">{plan.practice_minutes_used || 0}/{plan.total_practice_minutes || 80} min</div>
-                                </div>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div
-                                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full"
-                                  style={{ width: `${plan.progress_percentage || 0}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)}
-                              className="ml-4 px-4 py-2 bg-white text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors font-medium border border-[#4ECFBF]"
-                            >
-                              {expandedPlan === plan.id ? 'Hide' : 'Show'} Details
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Expanded Details */}
-                        {expandedPlan === plan.id && (
-                          <div className="p-6 bg-white border-t space-y-6">
-                            {/* Assessment Scores */}
-                            {plan.assessment_data?.skill_scores && (
-                              <div>
-                                <h5 className="font-bold text-gray-900 mb-3">📊 Skill Assessment</h5>
-                                <div className="grid grid-cols-4 gap-4">
-                                  {Object.entries(plan.assessment_data.skill_scores).map(([skill, score]: [string, any]) => (
-                                    <div key={skill} className="bg-gray-50 p-4 rounded-lg text-center">
-                                      <div className="text-sm text-gray-600 capitalize mb-1">{skill}</div>
-                                      <div className="text-2xl font-bold text-[#4ECFBF]">{score}/100</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Strengths & Improvements */}
-                            <div className="grid grid-cols-2 gap-6">
-                              {plan.assessment_data?.strengths && plan.assessment_data.strengths.length > 0 && (
-                                <div>
-                                  <h5 className="font-bold text-green-900 mb-3">✅ Strengths</h5>
-                                  <ul className="space-y-2">
-                                    {plan.assessment_data.strengths.map((strength: string, idx: number) => (
-                                      <li key={idx} className="text-sm text-gray-700 bg-green-50 p-3 rounded-lg">
-                                        • {strength}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              {plan.assessment_data?.areas_for_improvement && plan.assessment_data.areas_for_improvement.length > 0 && (
-                                <div>
-                                  <h5 className="font-bold text-orange-900 mb-3">🎯 Areas for Improvement</h5>
-                                  <ul className="space-y-2">
-                                    {plan.assessment_data.areas_for_improvement.map((area: string, idx: number) => (
-                                      <li key={idx} className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg">
-                                        • {area}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Learning Objectives */}
-                            {plan.plan_content?.learning_objectives && plan.plan_content.learning_objectives.length > 0 && (
-                              <div>
-                                <h5 className="font-bold text-gray-900 mb-3">🎓 Learning Objectives</h5>
-                                <ul className="space-y-2">
-                                  {plan.plan_content.learning_objectives.map((obj: string, idx: number) => (
-                                    <li key={idx} className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
-                                      {idx + 1}. {obj}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Session Summaries */}
-                            {plan.session_summaries && plan.session_summaries.length > 0 && (
-                              <div>
-                                <h5 className="font-bold text-gray-900 mb-3">📝 Session Summaries</h5>
-                                <div className="space-y-2">
-                                  {plan.session_summaries.map((summary: string, idx: number) => (
-                                    <div key={idx} className="bg-purple-50 p-4 rounded-lg">
-                                      <div className="font-medium text-purple-900 mb-1">Session {idx + 1}</div>
-                                      <div className="text-sm text-gray-700">{summary}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="bg-white p-12 rounded-xl text-center">
-                      <div className="text-4xl mb-4">📚</div>
-                      <p className="text-gray-600">No learning plans found for this learner.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Practice Sessions Tab */}
-              {activeTab === 'sessions' && (
-                <div className="space-y-4">
-                  {learnerDetails.practice_sessions && learnerDetails.practice_sessions.length > 0 ? (
-                    learnerDetails.practice_sessions.map((session: any, idx: number) => (
-                      <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Session Header */}
-                        <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="text-lg font-bold text-gray-900">
-                                  Session #{idx + 1}
-                                </span>
-                                <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-purple-700">
-                                  {session.language} {session.level}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <div className="text-gray-600">Date</div>
-                                  <div className="font-medium text-gray-900">
-                                    {session.created_at ? new Date(session.created_at).toLocaleDateString() : 'N/A'}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-600">Duration</div>
-                                  <div className="font-medium text-gray-900">{session.duration_minutes || 0} min</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-600">Messages</div>
-                                  <div className="font-medium text-gray-900">{session.message_count || 0}</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-600">Overall Score</div>
-                                  <div className="font-medium text-gray-900">N/A</div>
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
-                              className="ml-4 px-4 py-2 bg-white text-purple-700 rounded-lg hover:bg-purple-700 hover:text-white transition-colors font-medium border border-purple-700"
-                            >
-                              {expandedSession === session.id ? 'Hide' : 'Show'} Details
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Expanded Session Details */}
-                        {expandedSession === session.id && (
-                          <div className="p-6 bg-white border-t space-y-4">
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <div className="text-sm text-gray-600">Full conversation details would be displayed here with message previews and analysis.</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="bg-white p-12 rounded-xl text-center">
-                      <div className="text-4xl mb-4">💬</div>
-                      <p className="text-gray-600">No practice sessions found for this learner.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* AI Insights Tab */}
-              {activeTab === 'insights' && learnerDetails.ai_insights && (
-                <div className="space-y-6">
-                  {/* Overall Summary */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-3">🤖 AI Analysis Summary</h3>
-                    <p className="text-gray-700 leading-relaxed">{learnerDetails.ai_insights.overall_summary}</p>
-                  </div>
-
-                  {/* Learning Metrics */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h4 className="font-bold text-gray-900 mb-4">📚 Learning Style</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Preferred Time</span>
-                          <span className="font-medium text-gray-900 capitalize">
-                            {learnerDetails.ai_insights.learning_style?.preferred_time}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Sessions/Week</span>
-                          <span className="font-medium text-gray-900">
-                            {learnerDetails.ai_insights.learning_style?.sessions_per_week}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h4 className="font-bold text-gray-900 mb-4">📈 Progress Rate</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Rate</span>
-                          <span className="font-medium text-gray-900 capitalize">
-                            {learnerDetails.ai_insights.progress_rate?.rate}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Description</span>
-                          <span className="font-medium text-gray-900 capitalize">
-                            {learnerDetails.ai_insights.progress_rate?.description}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recommendations */}
-                  {learnerDetails.ai_insights.recommendations && learnerDetails.ai_insights.recommendations.length > 0 && (
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h4 className="font-bold text-gray-900 mb-4">💡 Tutor Recommendations</h4>
-                      <ul className="space-y-3">
-                        {learnerDetails.ai_insights.recommendations.map((rec: string, idx: number) => (
-                          <li key={idx} className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
-                            <span className="text-yellow-600 font-bold">{idx + 1}.</span>
-                            <span className="text-gray-700">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 interface LearningPlan {
   id: string;
   language: string;
@@ -482,8 +43,419 @@ interface Analytics {
   total_minutes_practiced: number;
   languages_taught: string[];
   level_distribution: Record<string, number>;
+  recent_activity: Array<{ learner_id: string; created_at: string; language: string; duration_minutes: number }>;
 }
 
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
+const LANG_FLAGS: Record<string, string> = {
+  english: '🇬🇧', dutch: '🇳🇱', spanish: '🇪🇸',
+  french: '🇫🇷', german: '🇩🇪', portuguese: '🇧🇷',
+  italian: '🇮🇹', turkish: '🇹🇷',
+};
+
+const LEVEL_COLORS: Record<string, string> = {
+  A1: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  A2: 'bg-teal-100 text-teal-700 border-teal-200',
+  B1: 'bg-blue-100 text-blue-700 border-blue-200',
+  B2: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  C1: 'bg-purple-100 text-purple-700 border-purple-200',
+  C2: 'bg-rose-100 text-rose-700 border-rose-200',
+};
+
+const LEVEL_BAR_COLORS: Record<string, string> = {
+  A1: 'bg-emerald-400', A2: 'bg-teal-400',
+  B1: 'bg-blue-400', B2: 'bg-indigo-500',
+  C1: 'bg-purple-500', C2: 'bg-rose-500',
+};
+
+// ─────────────────────────────────────────────
+// Learner Detail Modal
+// ─────────────────────────────────────────────
+function LearnerDetailModal({
+  learner, details, loading, onClose,
+}: { learner: Learner; details: any; loading: boolean; onClose: () => void }) {
+  const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'insights'>('overview');
+  const plan = learner.learning_plans[0];
+
+  const tabs = [
+    { key: 'overview', label: 'Overview', icon: '📊' },
+    { key: 'plans', label: `Plans (${details?.all_learning_plans?.length ?? 0})`, icon: '📚' },
+    { key: 'sessions', label: `Sessions (${details?.practice_sessions?.length ?? 0})`, icon: '🎙️' },
+    { key: 'challenges', label: `Challenges (${details?.challenge_sessions?.length ?? 0})`, icon: '⚡' },
+    { key: 'insights', label: 'AI Insights', icon: '🤖' },
+  ] as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 pt-8">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl mb-8">
+        {/* Modal Header */}
+        <div className="relative bg-gradient-to-br from-[#4ECFBF] via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-7">
+          <button onClick={onClose} className="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl p-2 transition-all">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
+              {learner.name.charAt(0)}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">{learner.name}</h2>
+              <p className="text-white/75 text-sm">{learner.email}</p>
+              {plan && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize">
+                    {LANG_FLAGS[plan.language?.toLowerCase()] || '🌍'} {plan.language}
+                  </span>
+                  <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                    {plan.proficiency_level}
+                  </span>
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                    plan.progress_status === 'on_track' ? 'bg-green-400/30 text-white' :
+                    plan.progress_status === 'at_risk' ? 'bg-yellow-400/30 text-white' :
+                    'bg-gray-400/30 text-white'
+                  }`}>
+                    {plan.progress_status === 'on_track' ? '✅ On Track' : plan.progress_status === 'at_risk' ? '⚠️ At Risk' : '⏸ Inactive'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Stats Strip */}
+          {details?.profile && (
+            <div className="grid grid-cols-4 gap-3 mt-5">
+              {[
+                { label: 'Plan Sessions', value: details.profile.total_sessions },
+                { label: 'Voice Sessions', value: details.profile.realtime_sessions ?? details.practice_sessions?.length ?? 0 },
+                { label: 'Challenges', value: details.profile.challenge_sessions ?? details.challenge_sessions?.length ?? 0 },
+                { label: 'Min Practiced', value: Math.round(details.profile.total_minutes) },
+              ].map(s => (
+                <div key={s.label} className="bg-white/15 rounded-xl p-3 text-center">
+                  <div className="text-2xl font-bold text-white">{s.value}</div>
+                  <div className="text-white/70 text-xs mt-0.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-gray-100 px-6 bg-gray-50/50">
+          {tabs.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className={`py-3.5 px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                tab === t.key ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6 max-h-[55vh] overflow-y-auto">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-10 h-10 border-3 border-[#4ECFBF] border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
+              <p className="text-gray-500 text-sm">Loading learner data...</p>
+            </div>
+          ) : !details ? (
+            <div className="text-center py-12 text-gray-400">Failed to load details</div>
+          ) : (
+            <>
+              {/* ── OVERVIEW ── */}
+              {tab === 'overview' && (
+                <div className="space-y-5">
+                  {/* Streak / XP / Days */}
+                  {details.daily_stats && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 text-center">
+                        <div className="text-3xl mb-1">🔥</div>
+                        <div className="text-2xl font-bold text-orange-600">{details.daily_stats.current_streak ?? 0}</div>
+                        <div className="text-xs text-gray-500">Day Streak</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-100 rounded-2xl p-4 text-center">
+                        <div className="text-3xl mb-1">⭐</div>
+                        <div className="text-2xl font-bold text-yellow-600">{details.daily_stats.total_xp ?? 0}</div>
+                        <div className="text-xs text-gray-500">Total XP</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 text-center">
+                        <div className="text-3xl mb-1">📅</div>
+                        <div className="text-2xl font-bold text-blue-600">{details.daily_stats.days_active ?? 0}</div>
+                        <div className="text-xs text-gray-500">Active Days</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Learning Plans Progress */}
+                  {details.all_learning_plans?.length > 0 && (
+                    <div className="bg-gray-50 rounded-2xl p-5">
+                      <h4 className="font-semibold text-gray-900 mb-4">Language Progress</h4>
+                      <div className="space-y-4">
+                        {details.all_learning_plans.map((p: any) => (
+                          <div key={p.id}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span>{LANG_FLAGS[p.language?.toLowerCase()] || '🌍'}</span>
+                                <span className="font-medium text-gray-800 capitalize text-sm">{p.language}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                  {p.proficiency_level}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-sm font-bold text-gray-900">{p.progress_percentage?.toFixed(0)}%</span>
+                                <span className="text-xs text-gray-400 ml-1">({p.completed_sessions}/{p.total_sessions})</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                              <div
+                                className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2.5 rounded-full transition-all"
+                                style={{ width: `${Math.min(100, p.progress_percentage || 0)}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                              <span>{p.practice_minutes_used} min practiced</span>
+                              <span>{p.total_practice_minutes} min total</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recent Daily Activity */}
+                  {details.daily_stats?.recent_daily?.length > 0 && (
+                    <div className="bg-gray-50 rounded-2xl p-5">
+                      <h4 className="font-semibold text-gray-900 mb-4">Recent Activity (14 days)</h4>
+                      <div className="space-y-2">
+                        {details.daily_stats.recent_daily.filter((d: any) => d.minutes > 0 || d.sessions > 0).slice(0, 7).map((day: any) => (
+                          <div key={day.date} className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400 w-16">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div className="bg-[#4ECFBF] h-2 rounded-full" style={{ width: `${Math.min(100, (day.minutes / 30) * 100)}%` }} />
+                            </div>
+                            <span className="text-xs text-[#4ECFBF] font-semibold w-12 text-right">{day.minutes}m</span>
+                            {day.xp > 0 && <span className="text-xs text-yellow-500 w-14">+{day.xp} XP</span>}
+                          </div>
+                        ))}
+                        {details.daily_stats.recent_daily.filter((d: any) => d.minutes > 0 || d.sessions > 0).length === 0 && (
+                          <p className="text-sm text-gray-400">No activity in the last 14 days</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── PLANS ── */}
+              {tab === 'plans' && (
+                <div className="space-y-4">
+                  {details.all_learning_plans?.length > 0 ? details.all_learning_plans.map((p: any) => (
+                    <div key={p.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                      <div className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANG_FLAGS[p.language?.toLowerCase()] || '🌍'}</span>
+                            <span className="font-bold text-gray-900 capitalize">{p.language}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              {p.proficiency_level}
+                            </span>
+                          </div>
+                          <span className="text-2xl font-bold text-[#4ECFBF]">{p.progress_percentage?.toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full bg-white/70 rounded-full h-3">
+                          <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full" style={{ width: `${p.progress_percentage || 0}%` }} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
+                          <div><span className="text-gray-500">Sessions:</span> <span className="font-semibold">{p.completed_sessions}/{p.total_sessions}</span></div>
+                          <div><span className="text-gray-500">Minutes:</span> <span className="font-semibold">{p.practice_minutes_used}/{p.total_practice_minutes}</span></div>
+                          <div><span className="text-gray-500">Score:</span> <span className="font-semibold">{p.assessment_data?.overall_score ?? '—'}</span></div>
+                        </div>
+                      </div>
+                      {p.assessment_data?.strengths?.length > 0 && (
+                        <div className="p-4 grid grid-cols-2 gap-4 bg-white">
+                          <div>
+                            <p className="text-xs font-semibold text-green-700 mb-2">✅ Strengths</p>
+                            {p.assessment_data.strengths.slice(0, 3).map((s: string, i: number) => (
+                              <div key={i} className="text-xs text-gray-600 bg-green-50 rounded-lg px-3 py-1.5 mb-1">{s}</div>
+                            ))}
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-amber-700 mb-2">🎯 Areas to Improve</p>
+                            {p.assessment_data.areas_for_improvement?.slice(0, 3).map((a: string, i: number) => (
+                              <div key={i} className="text-xs text-gray-600 bg-amber-50 rounded-lg px-3 py-1.5 mb-1">{a}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {p.session_summaries?.length > 0 && (
+                        <div className="p-4 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-600 mb-2">Recent Session Summaries</p>
+                          {p.session_summaries.slice(-2).map((s: any, i: number) => (
+                            <div key={i} className="text-xs text-gray-600 bg-purple-50 rounded-lg p-3 mb-1">
+                              {typeof s === 'string' ? s : s?.summary || JSON.stringify(s).slice(0, 150)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )) : (
+                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">📚</div>No learning plans yet</div>
+                  )}
+                </div>
+              )}
+
+              {/* ── SESSIONS ── */}
+              {tab === 'sessions' && (
+                <div>
+                  {details.practice_sessions?.length > 0 ? (
+                    <table className="w-full text-sm">
+                      <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                        <th className="px-4 py-3 text-left">Language</th>
+                        <th className="px-4 py-3 text-left">Level</th>
+                        <th className="px-4 py-3 text-center">Duration</th>
+                        <th className="px-4 py-3 text-center rounded-r-lg">Type</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {details.practice_sessions.map((s: any) => (
+                          <tr key={s.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-700">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                            <td className="px-4 py-3 capitalize text-gray-700">{LANG_FLAGS[s.language?.toLowerCase()] || ''} {s.language || '—'}</td>
+                            <td className="px-4 py-3">
+                              {s.level ? <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[s.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{s.level}</span> : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium text-gray-800">{s.duration_minutes}m</td>
+                            <td className="px-4 py-3 text-center text-xs text-gray-500 capitalize">{s.session_type?.replace('_', ' ') || 'practice'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">🎙️</div>No practice sessions yet</div>
+                  )}
+                </div>
+              )}
+
+              {/* ── CHALLENGES ── */}
+              {tab === 'challenges' && (
+                <div>
+                  {details.challenge_sessions?.length > 0 ? (
+                    <table className="w-full text-sm">
+                      <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                        <th className="px-4 py-3 text-left">Type</th>
+                        <th className="px-4 py-3 text-left">Language</th>
+                        <th className="px-4 py-3 text-center">Score</th>
+                        <th className="px-4 py-3 text-center rounded-r-lg">Result</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {details.challenge_sessions.map((c: any) => (
+                          <tr key={c.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-700">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+                            <td className="px-4 py-3 text-xs text-gray-600 capitalize">{c.challenge_type?.replace(/_/g, ' ') || '—'}</td>
+                            <td className="px-4 py-3 capitalize text-gray-700">{c.language || '—'}</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-800">
+                              {c.total_questions > 0 ? `${c.correct_answers}/${c.total_questions}` : c.score > 0 ? `${c.score}%` : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${c.completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {c.completed ? '✓ Done' : 'In progress'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">⚡</div>No challenges completed yet</div>
+                  )}
+                </div>
+              )}
+
+              {/* ── AI INSIGHTS ── */}
+              {tab === 'insights' && (
+                <div className="space-y-4">
+                  {details.ai_insights ? (
+                    <>
+                      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
+                        <h4 className="font-semibold text-indigo-900 mb-2">🤖 AI Summary</h4>
+                        <p className="text-gray-700 text-sm leading-relaxed">{details.ai_insights.overall_summary}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                          <h5 className="font-semibold text-gray-800 mb-3 text-sm">Learning Style</h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between"><span className="text-gray-500">Preferred time</span><span className="font-medium capitalize">{details.ai_insights.learning_style?.preferred_time || '—'}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">Sessions/week</span><span className="font-medium">{details.ai_insights.learning_style?.sessions_per_week || '—'}</span></div>
+                          </div>
+                        </div>
+                        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                          <h5 className="font-semibold text-gray-800 mb-3 text-sm">Progress Rate</h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between"><span className="text-gray-500">Rate</span><span className="font-medium capitalize">{details.ai_insights.progress_rate?.rate || '—'}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">Status</span><span className="font-medium capitalize">{details.ai_insights.progress_rate?.description || '—'}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                      {details.ai_insights.recommendations?.length > 0 && (
+                        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+                          <h5 className="font-semibold text-amber-900 mb-3">💡 Recommendations for You</h5>
+                          <ul className="space-y-2">
+                            {details.ai_insights.recommendations.map((r: string, i: number) => (
+                              <li key={i} className="text-sm text-gray-700 flex gap-2"><span className="text-amber-500 font-bold">{i + 1}.</span>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-gray-400"><div className="text-4xl mb-2">🤖</div>No AI insights available yet</div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Mini bar chart for level distribution
+// ─────────────────────────────────────────────
+function LevelChart({ distribution, total }: { distribution: Record<string, number>; total: number }) {
+  const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  const max = Math.max(...Object.values(distribution), 1);
+  return (
+    <div className="flex items-end gap-2 h-20">
+      {LEVELS.map(lvl => {
+        const count = distribution[lvl] || 0;
+        const pct = (count / max) * 100;
+        return (
+          <div key={lvl} className="flex-1 flex flex-col items-center gap-1">
+            <span className="text-xs font-bold text-gray-600">{count > 0 ? count : ''}</span>
+            <div className="w-full relative flex items-end" style={{ height: 48 }}>
+              <div
+                className={`w-full rounded-t-md transition-all ${LEVEL_BAR_COLORS[lvl] || 'bg-gray-300'}`}
+                style={{ height: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
+              />
+            </div>
+            <span className="text-xs font-semibold text-gray-500">{lvl}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Main Dashboard
+// ─────────────────────────────────────────────
 export default function TutorDashboardPage() {
   const router = useRouter();
   const params = useParams();
@@ -493,404 +465,252 @@ export default function TutorDashboardPage() {
   const [learners, setLearners] = useState<Learner[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
-  // Filters
-  const [languageFilter, setLanguageFilter] = useState('');
+  const [tab, setTab] = useState<'overview' | 'learners'>('overview');
+  const [search, setSearch] = useState('');
+  const [langFilter, setLangFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [learnerDetails, setLearnerDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'overview' | 'learners'>('overview');
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const itemsPerPage = 10;
 
-  useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem('tutorToken');
-    const storedTutorId = localStorage.getItem('tutorId');
-    const storedTutorName = localStorage.getItem('tutorName');
-
-    if (!token || storedTutorId !== tutorId) {
-      router.push('/tutor/login');
-      return;
-    }
-
-    setTutorName(storedTutorName || 'Tutor');
-    
-    // Load dashboard data
-    loadDashboardData(token);
-    loadAnalytics(token);
-  }, [tutorId, router]);
-
-  // Auto-apply filters whenever they change (instant filtering)
-  useEffect(() => {
-    const token = localStorage.getItem('tutorToken');
-    if (token) {
-      loadDashboardData(token);
-    }
-  }, [languageFilter, levelFilter, statusFilter, searchQuery, tutorName]);
-
-  const loadDashboardData = async (token: string, page: number = 1) => {
+  const fetchData = useCallback(async (token: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
+      const qs = new URLSearchParams();
+      if (langFilter) qs.set('language', langFilter);
+      if (levelFilter) qs.set('level', levelFilter);
+      if (statusFilter) qs.set('status', statusFilter);
+      if (search) qs.set('search', search);
+      qs.set('per_page', '50');
 
-      const queryParams = new URLSearchParams();
-      if (languageFilter) queryParams.append('language', languageFilter);
-      if (levelFilter) queryParams.append('level', levelFilter);
-      if (statusFilter) queryParams.append('status', statusFilter);
-      if (searchQuery) queryParams.append('search', searchQuery);
-      queryParams.append('page', page.toString());
-      queryParams.append('per_page', itemsPerPage.toString());
+      const [learnersRes, analyticsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/learners?${qs}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/analytics`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
 
-      const url = `${API_BASE_URL}/tutor/dashboard/${tutorId}/learners${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/tutor/login');
-          return;
-        }
-        throw new Error('Failed to load learners');
-      }
-
-      const data = await response.json();
-      setLearners(data.learners || []);
-      
-      // Update pagination state if backend provides it
-      if (data.pagination) {
-        setTotalPages(data.pagination.total_pages || 1);
-        setTotalItems(data.pagination.total_items || 0);
-        setCurrentPage(data.pagination.current_page || 1);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard');
+      if (learnersRes.status === 401) { router.push('/tutor/login'); return; }
+      if (learnersRes.ok) { const d = await learnersRes.json(); setLearners(d.learners || []); }
+      if (analyticsRes.ok) { const d = await analyticsRes.json(); setAnalytics(d); }
     } finally {
       setLoading(false);
     }
-  };
+  }, [tutorId, langFilter, levelFilter, statusFilter, search, router]);
 
-  const loadAnalytics = async (token: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+  useEffect(() => {
+    const token = localStorage.getItem('tutorToken');
+    const storedId = localStorage.getItem('tutorId');
+    if (!token || storedId !== tutorId) { router.push('/tutor/login'); return; }
+    setTutorName(localStorage.getItem('tutorName') || 'Tutor');
+    fetchData(token);
+  }, [tutorId, fetchData, router]);
 
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
-      }
-    } catch (err) {
-      console.error('Failed to load analytics:', err);
-    }
-  };
-
-  const handleViewDetails = async (learner: Learner) => {
-    if (!learner.consent_given) {
-      alert('This learner has not provided consent to view detailed progress.');
-      return;
-    }
-
+  const openLearnerDetails = async (learner: Learner) => {
     setSelectedLearner(learner);
-    setShowDetailModal(true);
     setLoadingDetails(true);
-
+    setLearnerDetails(null);
+    const token = localStorage.getItem('tutorToken');
     try {
-      const token = localStorage.getItem('tutorToken');
-      const response = await fetch(
+      const res = await fetch(
         `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/details`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      if (response.ok) {
-        const data = await response.json();
-        setLearnerDetails(data);
-      } else {
-        throw new Error('Failed to load learner details');
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to load learner details');
-      setShowDetailModal(false);
+      if (res.ok) setLearnerDetails(await res.json());
     } finally {
       setLoadingDetails(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('tutorToken');
-    localStorage.removeItem('tutorId');
-    localStorage.removeItem('tutorName');
-    localStorage.removeItem('tutorEmail');
-    localStorage.removeItem('institutionId');
-    router.push('/tutor/login');
-  };
+  const hasFilters = search || langFilter || levelFilter || statusFilter;
+  const uniqueLanguages = Array.from(new Set(learners.flatMap(l => l.learning_plans.map(p => p.language)).filter(Boolean)));
 
-  const clearFilters = () => {
-    setLanguageFilter('');
-    setLevelFilter('');
-    setStatusFilter('');
-    setSearchQuery('');
-    const token = localStorage.getItem('tutorToken');
-    if (token) {
-      setTimeout(() => loadDashboardData(token), 100);
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'on_track':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'at_risk':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'on_track':
-        return 'On Track';
-      case 'at_risk':
-        return 'At Risk';
-      case 'inactive':
-        return 'Inactive';
-      default:
-        return status;
-    }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    const token = localStorage.getItem('tutorToken');
-    if (token) {
-      setCurrentPage(newPage);
-      loadDashboardData(token, newPage);
-    }
-  };
-
-  // Pagination Component
-  const Pagination = () => {
-    if (totalPages <= 1) return null;
-
-    const getPageNumbers = () => {
-      const pages = [];
-      const showEllipsis = totalPages > 7;
-      
-      if (!showEllipsis) {
-        for (let i = 1; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        if (currentPage <= 3) {
-          pages.push(1, 2, 3, 4, '...', totalPages);
-        } else if (currentPage >= totalPages - 2) {
-          pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } else {
-          pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-        }
-      }
-      
-      return pages;
-    };
-
-    return (
-      <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
-        <div className="text-sm text-gray-700">
-          Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-          <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
-          <span className="font-medium">{totalItems}</span> results
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`px-3 py-2 rounded-lg font-medium transition-all ${
-              currentPage === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
-            }`}
-          >
-            Previous
-          </button>
-          
-          <div className="flex space-x-1">
-            {getPageNumbers().map((page, index) => (
-              page === '...' ? (
-                <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">...</span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page as number)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    currentPage === page
-                      ? 'bg-[#4ECFBF] text-white shadow-md'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            ))}
-          </div>
-          
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={`px-3 py-2 rounded-lg font-medium transition-all ${
-              currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    );
-  };
+  // Compute language distribution from actual learners (not stale analytics)
+  const langDistribution = learners.reduce((acc, l) => {
+    const lang = l.learning_plans[0]?.language?.toLowerCase();
+    if (lang) acc[lang] = (acc[lang] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="border-b border-gray-300 bg-white rounded-t-xl shadow-sm">
-            <nav className="flex px-6">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-4 px-8 font-semibold border-b-3 transition-all ${
-                  activeTab === 'overview'
-                    ? 'border-[#4ECFBF] text-[#4ECFBF] bg-[#4ECFBF]/5'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                📊 Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('learners')}
-                className={`py-4 px-8 font-semibold border-b-3 transition-all ${
-                  activeTab === 'learners'
-                    ? 'border-[#4ECFBF] text-[#4ECFBF] bg-[#4ECFBF]/5'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                🎓 Learners {totalItems > 0 && `(${totalItems})`}
-              </button>
-            </nav>
+    <div className="min-h-screen bg-slate-50">
+      {/* Top Nav */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-xl flex items-center justify-center text-white font-bold text-sm">
+              {tutorName.charAt(0)}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-900 text-sm">{tutorName}</span>
+              <span className="text-gray-400 text-xs block -mt-0.5">Tutor Dashboard</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+              {analytics?.total_assigned_learners ?? 0} learners
+            </span>
+            <button
+              onClick={() => { ['tutorToken','tutorId','tutorName','tutorEmail','institutionId'].forEach(k => localStorage.removeItem(k)); router.push('/tutor/login'); }}
+              className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Sign out
+            </button>
           </div>
         </div>
+      </nav>
 
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && analytics && (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Tab Bar */}
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit mb-7 shadow-sm">
+          {[
+            { key: 'overview', label: 'Overview', icon: '📊' },
+            { key: 'learners', label: `Learners${analytics ? ` (${analytics.total_assigned_learners})` : ''}`, icon: '🎓' },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === t.key
+                  ? 'bg-[#4ECFBF] text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
+        {tab === 'overview' && (
           <div className="space-y-6">
-            {/* Hero Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">Total Learners</div>
-                <div className="text-3xl font-bold text-gray-900 mt-2">{analytics.total_assigned_learners}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">On Track</div>
-                <div className="text-3xl font-bold text-green-600 mt-2">{analytics.active_learners}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">At Risk</div>
-                <div className="text-3xl font-bold text-yellow-600 mt-2">{analytics.at_risk_learners}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">Avg Progress</div>
-                <div className="text-3xl font-bold text-blue-600 mt-2">{analytics.average_progress.toFixed(1)}%</div>
-              </div>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Total Learners', value: analytics?.total_assigned_learners ?? 0, color: 'text-gray-900', icon: '👥', bg: 'bg-white' },
+                { label: 'On Track', value: analytics?.active_learners ?? 0, color: 'text-emerald-600', icon: '✅', bg: 'bg-emerald-50' },
+                { label: 'Need Attention', value: (analytics?.at_risk_learners ?? 0) + (analytics?.inactive_learners ?? 0), color: 'text-amber-600', icon: '⚠️', bg: 'bg-amber-50' },
+                { label: 'Avg Progress', value: `${analytics?.average_progress?.toFixed(1) ?? 0}%`, color: 'text-[#4ECFBF]', icon: '📈', bg: 'bg-teal-50' },
+              ].map(card => (
+                <div key={card.label} className={`${card.bg} rounded-2xl border border-gray-100 p-5 shadow-sm`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{card.label}</span>
+                    <span className="text-xl">{card.icon}</span>
+                  </div>
+                  <div className={`text-3xl font-bold ${card.color}`}>{card.value}</div>
+                </div>
+              ))}
             </div>
 
-            {/* Distribution Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Language Distribution */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">🌍 Language Distribution</h3>
-                <div className="space-y-3">
-                  {analytics.languages_taught && analytics.languages_taught.length > 0 ? (
-                    analytics.languages_taught.map((language) => {
-                      const count = learners.filter(l => 
-                        l.learning_plans[0]?.language.toLowerCase() === language.toLowerCase()
-                      ).length;
-                      const percentage = (count / analytics.total_assigned_learners) * 100;
-                      
-                      return (
-                        <div key={language}>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-700 capitalize">{language}</span>
-                            <span className="text-sm text-gray-500">{count} learners ({percentage.toFixed(0)}%)</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full transition-all"
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-gray-500 text-sm">No language data available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Proficiency Level Distribution */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Proficiency Level Distribution</h3>
-                <div className="space-y-3">
-                  {analytics.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
-                    Object.entries(analytics.level_distribution)
-                      .sort(([a], [b]) => {
-                        const order = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-                        return order.indexOf(a) - order.indexOf(b);
-                      })
-                      .map(([level, count]) => {
-                        const percentage = ((count as number) / analytics.total_assigned_learners) * 100;
-                        
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  🌍 <span>Languages</span>
+                  <span className="text-xs text-gray-400 font-normal ml-auto">{Object.keys(langDistribution).length} language{Object.keys(langDistribution).length !== 1 ? 's' : ''}</span>
+                </h3>
+                {Object.keys(langDistribution).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(langDistribution)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([lang, count]) => {
+                        const total = Object.values(langDistribution).reduce((a, b) => a + b, 0);
+                        const pct = Math.round((count / total) * 100);
                         return (
-                          <div key={level}>
-                            <div className="flex justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-700">{level}</span>
-                              <span className="text-sm text-gray-500">{count} learners ({percentage.toFixed(0)}%)</span>
+                          <div key={lang}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                                {LANG_FLAGS[lang] || '🌍'} <span className="capitalize">{lang}</span>
+                              </span>
+                              <span className="text-sm text-gray-500">{count} learner{count !== 1 ? 's' : ''} · {pct}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all"
-                                style={{ width: `${percentage}%` }}
-                              ></div>
+                            <div className="w-full bg-gray-100 rounded-full h-2">
+                              <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         );
-                      })
-                  ) : (
-                    <p className="text-gray-500 text-sm">No level data available</p>
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-400 text-center py-8">No learners with language plans yet</div>
+                )}
+              </div>
+
+              {/* Proficiency Level Distribution */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  📊 <span>Proficiency Levels</span>
+                  <span className="text-xs text-gray-400 font-normal ml-auto">{analytics?.total_assigned_learners ?? 0} total</span>
+                </h3>
+                {analytics?.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
+                  <>
+                    <LevelChart distribution={analytics.level_distribution} total={analytics.total_assigned_learners} />
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {Object.entries(analytics.level_distribution).sort(([a], [b]) => {
+                        const order = ['A1','A2','B1','B2','C1','C2'];
+                        return order.indexOf(a) - order.indexOf(b);
+                      }).map(([lvl, count]) => (
+                        <span key={lvl} className={`text-xs px-2.5 py-1 rounded-full border font-semibold ${LEVEL_COLORS[lvl] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                          {lvl}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-400 text-center py-8">No level data available</div>
+                )}
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 gap-5">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">📈 Class Stats</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Total Sessions Completed', value: analytics?.total_sessions_completed ?? 0 },
+                    { label: 'Total Minutes Practiced', value: `${Math.round(analytics?.total_minutes_practiced ?? 0)} min` },
+                    { label: 'Languages Taught', value: analytics?.languages_taught?.join(', ') || '—' },
+                  ].map(row => (
+                    <div key={row.label} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                      <span className="text-sm text-gray-500">{row.label}</span>
+                      <span className="text-sm font-semibold text-gray-900 capitalize">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Learner Summary */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">🎓 Learner Snapshot</h3>
+                <div className="space-y-2">
+                  {learners.slice(0, 5).map(l => {
+                    const plan = l.learning_plans[0];
+                    return (
+                      <div key={l.user_id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { setTab('learners'); }}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
+                          plan?.progress_status === 'on_track' ? 'bg-emerald-400' :
+                          plan?.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'
+                        }`}>{l.name.charAt(0)}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-800 truncate">{l.name}</div>
+                          {plan && <div className="text-xs text-gray-400 capitalize">{LANG_FLAGS[plan.language?.toLowerCase()] || ''} {plan.language} · {plan.proficiency_level}</div>}
+                        </div>
+                        {plan && (
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-[#4ECFBF]">{plan.progress_percentage.toFixed(0)}%</div>
+                            <div className="w-14 bg-gray-100 rounded-full h-1.5 mt-1">
+                              <div className="bg-[#4ECFBF] h-1.5 rounded-full" style={{ width: `${plan.progress_percentage}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {learners.length > 5 && (
+                    <button onClick={() => setTab('learners')} className="text-xs text-[#4ECFBF] hover:underline w-full text-center pt-1">
+                      View all {learners.length} learners →
+                    </button>
                   )}
                 </div>
               </div>
@@ -898,278 +718,199 @@ export default function TutorDashboardPage() {
           </div>
         )}
 
-        {/* LEARNERS TAB */}
-        {activeTab === 'learners' && (
-          <>
+        {/* ═══════════════ LEARNERS TAB ═══════════════ */}
+        {tab === 'learners' && (
+          <div className="space-y-5">
+            {/* Filters */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-48">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Search</label>
+                  <input
+                    value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Name or email..."
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Language</label>
+                  <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                    <option value="">All Languages</option>
+                    {uniqueLanguages.map(l => <option key={l} value={l} className="capitalize">{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Level</label>
+                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                    <option value="">All Levels</option>
+                    {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Status</label>
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                    <option value="">All Status</option>
+                    <option value="on_track">On Track</option>
+                    <option value="at_risk">At Risk</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                {hasFilters && (
+                  <button onClick={() => { setSearch(''); setLangFilter(''); setLevelFilter(''); setStatusFilter(''); }} className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
+            </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Name or email..."
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-              <select
-                value={languageFilter}
-                onChange={(e) => setLanguageFilter(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Languages</option>
-                <option value="English">English</option>
-                <option value="Dutch">Dutch</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-              <select
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Levels</option>
-                <option value="A1">A1</option>
-                <option value="A2">A2</option>
-                <option value="B1">B1</option>
-                <option value="B2">B2</option>
-                <option value="C1">C1</option>
-                <option value="C2">C2</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Status</option>
-                <option value="on_track">On Track</option>
-                <option value="at_risk">At Risk</option>
-                <option value="inactive">Inactive</option>
-              </select>
+            {/* Learner Table */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-10 h-10 border-3 border-[#4ECFBF] border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
+                  <p className="text-gray-400 text-sm">Loading learners...</p>
+                </div>
+              ) : learners.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="text-5xl mb-3">🎓</div>
+                  <p className="text-gray-500 font-medium">No learners found</p>
+                  {hasFilters && <p className="text-gray-400 text-sm mt-1">Try clearing your filters</p>}
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/80">
+                      {['Learner', 'Language & Level', 'Progress', 'Sessions', 'Score', 'Last Active', 'Status', ''].map(h => (
+                        <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {learners.map(learner => {
+                      const plan = learner.learning_plans[0];
+                      const statusColors = {
+                        on_track: { dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: 'On Track' },
+                        at_risk: { dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-700 border-amber-100', label: 'At Risk' },
+                        inactive: { dot: 'bg-gray-300', badge: 'bg-gray-50 text-gray-500 border-gray-100', label: 'Inactive' },
+                      };
+                      const status = statusColors[plan?.progress_status as keyof typeof statusColors] || statusColors.inactive;
+
+                      return (
+                        <tr key={learner.user_id} className="hover:bg-slate-50/80 transition-colors group">
+                          {/* Learner */}
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${status.dot === 'bg-emerald-400' ? 'bg-emerald-400' : status.dot === 'bg-amber-400' ? 'bg-amber-400' : 'bg-gray-300'}`}>
+                                {learner.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-gray-900 text-sm truncate max-w-[160px]">{learner.name}</div>
+                                <div className="text-xs text-gray-400 truncate max-w-[160px]">{learner.email}</div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Language & Level */}
+                          <td className="px-5 py-4">
+                            {plan ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{LANG_FLAGS[plan.language?.toLowerCase()] || '🌍'}</span>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-800 capitalize">{plan.language}</div>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    {plan.proficiency_level}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : <span className="text-xs text-gray-300">No plan</span>}
+                          </td>
+
+                          {/* Progress */}
+                          <td className="px-5 py-4">
+                            {plan ? (
+                              <div className="w-32">
+                                <div className="flex justify-between text-xs mb-1.5">
+                                  <span className="text-gray-400">{plan.completed_sessions}/{plan.total_sessions}</span>
+                                  <span className="font-bold text-gray-800">{plan.progress_percentage.toFixed(0)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${plan.progress_status === 'on_track' ? 'bg-emerald-400' : plan.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'}`}
+                                    style={{ width: `${plan.progress_percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+
+                          {/* Sessions */}
+                          <td className="px-5 py-4 text-center">
+                            {plan ? (
+                              <div>
+                                <div className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</div>
+                                <div className="text-xs text-gray-400">of {plan.total_sessions}</div>
+                              </div>
+                            ) : '—'}
+                          </td>
+
+                          {/* Score */}
+                          <td className="px-5 py-4 text-center">
+                            {plan?.assessment_score > 0 ? (
+                              <div className={`text-xl font-bold ${plan.assessment_score >= 80 ? 'text-emerald-600' : plan.assessment_score >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                {plan.assessment_score}
+                              </div>
+                            ) : <span className="text-gray-300 text-sm">—</span>}
+                          </td>
+
+                          {/* Last Active */}
+                          <td className="px-5 py-4">
+                            {plan?.last_activity_date ? (
+                              <div>
+                                <div className="text-xs font-medium text-gray-700">{new Date(plan.last_activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                <div className={`text-xs ${plan.days_since_activity <= 3 ? 'text-emerald-500' : plan.days_since_activity <= 7 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                  {plan.days_since_activity < 999 ? `${plan.days_since_activity}d ago` : 'Never'}
+                                </div>
+                              </div>
+                            ) : <span className="text-xs text-gray-300">No activity</span>}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-5 py-4">
+                            {plan ? (
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${status.badge}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                                {status.label}
+                              </span>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+
+                          {/* Action */}
+                          <td className="px-5 py-4">
+                            <button
+                              onClick={() => openLearnerDetails(learner)}
+                              className="px-4 py-1.5 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white text-xs font-semibold rounded-xl transition-all opacity-0 group-hover:opacity-100 shadow-sm hover:shadow"
+                            >
+                              View →
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
-          {(searchQuery || languageFilter || levelFilter || statusFilter) && (
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                ✕ Clear All Filters
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ENRICHED LEARNERS TABLE */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-
-          {loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
-              <p className="mt-4 text-gray-600">Loading learners...</p>
-            </div>
-          ) : error ? (
-            <div className="p-12 text-center">
-              <p className="text-red-600">{error}</p>
-            </div>
-          ) : learners.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="text-4xl mb-4">🎓</div>
-              <p className="text-gray-600">No learners found matching your filters.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-300">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Learner
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Language
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Progress
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Sessions
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Score
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {learners.map((learner, index) => {
-                    const plan = learner.learning_plans[0];
-                    if (!plan) return null;
-
-                    // Calculate status indicators
-                    const isOnTrack = plan.progress_status === 'on_track';
-                    const isAtRisk = plan.progress_status === 'at_risk';
-                    const isInactive = plan.progress_status === 'inactive';
-                    const hasConsent = learner.consent_given;
-
-                    return (
-                      <tr 
-                        key={learner.id}
-                        className={`hover:bg-gradient-to-r hover:from-[#4ECFBF]/5 hover:to-transparent transition-all ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                        }`}
-                      >
-                        {/* COMPACT LEARNER - Single Row Design */}
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                              isOnTrack ? 'bg-green-500' : isAtRisk ? 'bg-yellow-500' : 'bg-gray-400'
-                            }`}>
-                              {learner.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-gray-900 text-sm truncate">{learner.name}</span>
-                                {!hasConsent && <span className="text-xs" title="No consent">🔒</span>}
-                              </div>
-                              <p className="text-xs text-gray-500 truncate">{learner.email}</p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* LANGUAGE & LEVEL - Compact */}
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">
-                              {plan.language.toLowerCase() === 'english' ? '🇬🇧' :
-                               plan.language.toLowerCase() === 'dutch' ? '🇳🇱' :
-                               plan.language.toLowerCase() === 'spanish' ? '🇪🇸' :
-                               plan.language.toLowerCase() === 'french' ? '🇫🇷' :
-                               plan.language.toLowerCase() === 'german' ? '🇩🇪' : '🌍'}
-                            </span>
-                            <div>
-                              <div className="font-medium text-gray-900 text-sm capitalize leading-tight">{plan.language}</div>
-                              <div className="text-xs text-[#4ECFBF] font-semibold">Level {plan.proficiency_level}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* PROGRESS - Inline Compact */}
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 min-w-[80px]">
-                              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                <div
-                                  className={`h-1.5 rounded-full ${
-                                    isOnTrack ? 'bg-green-500' : isAtRisk ? 'bg-yellow-500' : 'bg-gray-400'
-                                  }`}
-                                  style={{ width: `${plan.progress_percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <span className="text-sm font-bold text-gray-900 min-w-[38px] text-right">
-                              {plan.progress_percentage.toFixed(0)}%
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* SESSIONS - Large Numbers */}
-                        <td className="px-4 py-2.5 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</span>
-                            <span className="text-gray-400 font-medium">/</span>
-                            <span className="text-lg font-semibold text-gray-600">{plan.total_sessions}</span>
-                          </div>
-                        </td>
-
-                        {/* SCORE - Single Large Number */}
-                        <td className="px-4 py-2.5 text-center">
-                          {plan.assessment_score > 0 ? (
-                            <div className={`text-2xl font-bold ${
-                              plan.assessment_score >= 80 ? 'text-green-600' :
-                              plan.assessment_score >= 60 ? 'text-yellow-600' :
-                              'text-red-600'
-                            }`}>
-                              {plan.assessment_score}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-
-                        {/* STATUS - Compact Icon + Days */}
-                        <td className="px-4 py-2.5 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="text-lg">
-                              {isOnTrack ? '✅' : isAtRisk ? '⚠️' : '⏸️'}
-                            </span>
-                            {plan.days_since_activity < 999 && (
-                              <span className={`text-xs font-medium ${
-                                plan.days_since_activity <= 3 ? 'text-green-600' :
-                                plan.days_since_activity <= 7 ? 'text-yellow-600' :
-                                'text-red-600'
-                              }`}>
-                                {plan.days_since_activity}d
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* ACTION - Compact Button */}
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => handleViewDetails(learner)}
-                            disabled={!hasConsent}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                              hasConsent
-                                ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92]'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            {hasConsent ? 'View' : 'Locked'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          
-          {/* Pagination */}
-          {!loading && !error && learners.length > 0 && <Pagination />}
-        </div>
-        </>
         )}
       </div>
 
-      {/* COMPREHENSIVE LEARNER PROGRESS MODAL */}
-      {showDetailModal && selectedLearner && (
-        <ComprehensiveLearnerModal
+      {/* Learner Detail Modal */}
+      {selectedLearner && (
+        <LearnerDetailModal
           learner={selectedLearner}
-          learnerDetails={learnerDetails}
-          loadingDetails={loadingDetails}
-          onClose={() => {
-            setShowDetailModal(false);
-            setLearnerDetails(null);
-          }}
+          details={learnerDetails}
+          loading={loadingDetails}
+          onClose={() => { setSelectedLearner(null); setLearnerDetails(null); }}
         />
       )}
     </div>
