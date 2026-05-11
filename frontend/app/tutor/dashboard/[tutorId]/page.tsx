@@ -77,6 +77,286 @@ const LEVEL_BAR_COLORS: Record<string, string> = {
 };
 
 // ─────────────────────────────────────────────
+// AI Insights Tab — GPT-powered report
+// ─────────────────────────────────────────────
+function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorId: string; details: any }) {
+  const [report, setReport] = React.useState<any>(null);
+  const [generating, setGenerating] = React.useState(false);
+  const [generatedAt, setGeneratedAt] = React.useState<string | null>(null);
+  const [fromCache, setFromCache] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const generateReport = async (force = false) => {
+    setGenerating(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('tutorToken');
+      const res = await fetch(
+        `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/ai-report${force ? '?force=true' : ''}`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || 'Failed to generate report');
+      }
+      const data = await res.json();
+      setReport(data.report);
+      setGeneratedAt(data.generated_at);
+      setFromCache(data.from_cache);
+    } catch (e: any) {
+      setError(e.message || 'Report generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const ratingConfig: Record<string, { color: string; bg: string; dot: string }> = {
+    strong:       { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
+    developing:   { color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200',     dot: 'bg-amber-400'   },
+    needs_work:   { color: 'text-rose-700',     bg: 'bg-rose-50 border-rose-200',       dot: 'bg-rose-400'    },
+  };
+
+  const priorityConfig: Record<string, { color: string; bg: string }> = {
+    high:   { color: 'text-rose-700',    bg: 'bg-rose-50 border-rose-200'    },
+    medium: { color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200'  },
+    low:    { color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-200'    },
+  };
+
+  const flagConfig: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
+    warning:  { color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200',   icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.8} /> },
+    positive: { color: 'text-emerald-800', bg: 'bg-emerald-50 border-emerald-200', icon: <CheckCircle className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.8} /> },
+    info:     { color: 'text-blue-800',  bg: 'bg-blue-50 border-blue-200',     icon: <Bot className="w-3.5 h-3.5 text-blue-500" strokeWidth={1.8} /> },
+  };
+
+  // Empty state — generate button
+  if (!report && !generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-5">
+        <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
+          <Bot className="w-8 h-8 text-indigo-500" strokeWidth={1.5} />
+        </div>
+        <div className="text-center">
+          <h4 className="font-bold text-gray-900 mb-1">AI Tutor Report</h4>
+          <p className="text-sm text-gray-500 max-w-xs">
+            Generate a comprehensive GPT-powered report covering CEFR alignment,
+            skill diagnosis, engagement analysis, and your next session plan.
+          </p>
+        </div>
+        {error && <p className="text-xs text-rose-600 bg-rose-50 rounded-xl px-3 py-2">{error}</p>}
+        <button
+          onClick={() => generateReport()}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-2xl hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-lg"
+        >
+          <Bot className="w-4 h-4" strokeWidth={2} />
+          Generate AI Report
+        </button>
+        <p className="text-xs text-gray-400">Powered by GPT-4.1-mini · Results cached 24h</p>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-14 gap-4">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-indigo-100" />
+          <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-indigo-500 border-r-purple-400 animate-spin absolute inset-0" style={{ animationDuration: '0.8s' }} />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-800">Analyzing {learner.name}'s data...</p>
+          <p className="text-xs text-gray-400 mt-1">GPT-4.1-mini is reviewing sessions, DNA, challenges & assessments</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header with metadata + regenerate */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
+            <Bot className="w-3.5 h-3.5 text-white" strokeWidth={2} />
+          </div>
+          <span className="text-xs font-semibold text-gray-700">AI Report</span>
+          {fromCache && <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">cached</span>}
+          {generatedAt && (
+            <span className="text-xs text-gray-400">
+              {new Date(generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => generateReport(true)}
+          className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
+        >
+          <Repeat className="w-3 h-3" strokeWidth={2} /> Regenerate
+        </button>
+      </div>
+
+      {/* Executive Summary */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
+        <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+          <Bot className="w-3.5 h-3.5" strokeWidth={2} /> Executive Summary
+        </h4>
+        <p className="text-sm text-gray-800 leading-relaxed font-medium">{report.executive_summary}</p>
+      </div>
+
+      {/* Flags (warnings + positives) */}
+      {report.flags?.length > 0 && (
+        <div className="space-y-2">
+          {report.flags.map((flag: any, i: number) => {
+            const cfg = flagConfig[flag.type] || flagConfig.info;
+            return (
+              <div key={i} className={`flex items-start gap-2.5 border rounded-xl px-3.5 py-2.5 ${cfg.bg}`}>
+                <span className="flex-shrink-0 mt-0.5">{cfg.icon}</span>
+                <p className={`text-xs font-medium ${cfg.color}`}>{flag.message}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* CEFR Alignment + Learner Archetype */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {report.cefr_alignment && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4">
+            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">CEFR Alignment</h5>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl font-black text-[#4ECFBF]">{report.cefr_alignment.current_estimated_level}</span>
+              <div className="flex-1">
+                <p className="text-xs text-gray-600 leading-snug">{report.cefr_alignment.trajectory}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">{report.cefr_alignment.evidence}</p>
+          </div>
+        )}
+        {report.learner_archetype && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4">
+            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Learner Archetype</h5>
+            <p className="text-sm font-bold text-gray-900 mb-1">{report.learner_archetype.type}</p>
+            <p className="text-xs text-gray-500 leading-snug mb-2">{report.learner_archetype.description}</p>
+            <div className="bg-[#4ECFBF]/10 rounded-lg px-2.5 py-1.5">
+              <p className="text-xs text-[#2a9e92] font-medium">{report.learner_archetype.coaching_strategy}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Skill Diagnosis */}
+      {report.skill_diagnosis?.skill_breakdown?.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} /> Skill Diagnosis
+          </h5>
+          <div className="space-y-2">
+            {report.skill_diagnosis.skill_breakdown.map((skill: any, i: number) => {
+              const cfg = ratingConfig[skill.rating] || ratingConfig.developing;
+              return (
+                <div key={i} className={`flex items-start gap-2.5 border rounded-xl px-3 py-2 ${cfg.bg}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${cfg.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold ${cfg.color}`}>{skill.skill}</span>
+                      <span className={`text-xs capitalize ${cfg.color} opacity-70`}>{skill.rating.replace('_', ' ')}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-0.5">{skill.note}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Next Session Plan */}
+      {report.next_session_plan && (
+        <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-teal-50 border border-[#4ECFBF]/30 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-[#2a9e92] uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5" strokeWidth={1.8} /> Next Session Plan
+          </h5>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Focus</span>
+              <p className="text-sm font-semibold text-gray-900">{report.next_session_plan.priority_focus}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Activity</span>
+              <p className="text-xs text-gray-700 capitalize">{report.next_session_plan.suggested_activity_type}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Topic</span>
+              <p className="text-xs text-gray-700">{report.next_session_plan.topic_suggestion}</p>
+            </div>
+            {report.next_session_plan.things_to_avoid?.length > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Avoid</span>
+                <div className="flex flex-wrap gap-1">
+                  {report.next_session_plan.things_to_avoid.map((t: string, i: number) => (
+                    <span key={i} className="text-xs bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full border border-rose-100">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {report.recommendations?.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.8} /> Recommendations
+          </h5>
+          <div className="space-y-2.5">
+            {report.recommendations.map((rec: any, i: number) => {
+              const cfg = priorityConfig[rec.priority] || priorityConfig.low;
+              return (
+                <div key={i} className={`border rounded-xl p-3 ${cfg.bg}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs font-bold uppercase ${cfg.color}`}>{rec.priority}</span>
+                    <span className="text-xs text-gray-400 capitalize">{rec.timeframe?.replace('_', ' ')}</span>
+                  </div>
+                  <p className={`text-xs font-semibold ${cfg.color} mb-0.5`}>{rec.action}</p>
+                  <p className="text-xs text-gray-500">{rec.rationale}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Engagement Analysis */}
+      {report.engagement_analysis && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Engagement Analysis</h5>
+          <p className="text-xs text-gray-700 mb-3">{report.engagement_analysis.pattern}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {report.engagement_analysis.risk_factors?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-rose-600 mb-1.5">Risk factors</p>
+                {report.engagement_analysis.risk_factors.map((r: string, i: number) => (
+                  <div key={i} className="text-xs text-rose-700 bg-rose-50 rounded-lg px-2.5 py-1.5 mb-1">{r}</div>
+                ))}
+              </div>
+            )}
+            {report.engagement_analysis.positive_signals?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-emerald-600 mb-1.5">Positive signals</p>
+                {report.engagement_analysis.positive_signals.map((s: string, i: number) => (
+                  <div key={i} className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1">{s}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Learner Hover Card (snapshot tooltip)
 // ─────────────────────────────────────────────
 function LearnerHoverCard({ learner, position }: { learner: Learner; position: { x: number; y: number } }) {
@@ -199,8 +479,8 @@ function LearnerHoverCard({ learner, position }: { learner: Learner; position: {
 // Learner Detail Modal
 // ─────────────────────────────────────────────
 function LearnerDetailModal({
-  learner, details, loading, onClose,
-}: { learner: Learner; details: any; loading: boolean; onClose: () => void }) {
+  learner, details, loading, onClose, tutorId,
+}: { learner: Learner; details: any; loading: boolean; onClose: () => void; tutorId: string }) {
   const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'>('overview');
   const [sessionDateRange, setSessionDateRange] = useState<DateRange>({ start: null, end: null, label: 'All time' });
   const [challengeDateRange, setChallengeDateRange] = useState<DateRange>({ start: null, end: null, label: 'All time' });
@@ -1051,44 +1331,11 @@ function LearnerDetailModal({
 
               {/* ── AI INSIGHTS ── */}
               {tab === 'insights' && (
-                <div className="space-y-4">
-                  {details.ai_insights ? (
-                    <>
-                      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
-                        <h4 className="font-semibold text-indigo-900 mb-2 flex items-center gap-1.5"><Bot className="w-4 h-4" /> AI Summary</h4>
-                        <p className="text-gray-700 text-sm leading-relaxed">{details.ai_insights.overall_summary}</p>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-white border border-gray-100 rounded-2xl p-4">
-                          <h5 className="font-semibold text-gray-800 mb-3 text-sm">Learning Style</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500">Preferred time</span><span className="font-medium capitalize">{details.ai_insights.learning_style?.preferred_time || '—'}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Sessions/week</span><span className="font-medium">{details.ai_insights.learning_style?.sessions_per_week || '—'}</span></div>
-                          </div>
-                        </div>
-                        <div className="bg-white border border-gray-100 rounded-2xl p-4">
-                          <h5 className="font-semibold text-gray-800 mb-3 text-sm">Progress Rate</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500">Rate</span><span className="font-medium capitalize">{details.ai_insights.progress_rate?.rate || '—'}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Status</span><span className="font-medium capitalize">{details.ai_insights.progress_rate?.description || '—'}</span></div>
-                          </div>
-                        </div>
-                      </div>
-                      {details.ai_insights.recommendations?.length > 0 && (
-                        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
-                          <h5 className="font-semibold text-amber-900 mb-3 flex items-center gap-1.5"><Lightbulb className="w-4 h-4 text-amber-500 inline mr-1.5" /> Recommendations for You</h5>
-                          <ul className="space-y-2">
-                            {details.ai_insights.recommendations.map((r: string, i: number) => (
-                              <li key={i} className="text-sm text-gray-700 flex gap-2"><span className="text-amber-500 font-bold">{i + 1}.</span>{r}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-12 text-gray-400"><Bot className="w-12 h-12 text-gray-300 mx-auto mb-2" />No AI insights available yet</div>
-                  )}
-                </div>
+                <AiInsightsTab
+                  learner={learner}
+                  tutorId={tutorId}
+                  details={details}
+                />
               )}
             </>
           )}
@@ -1608,6 +1855,7 @@ export default function TutorDashboardPage() {
           learner={selectedLearner}
           details={learnerDetails}
           loading={loadingDetails}
+          tutorId={tutorId}
           onClose={() => { setSelectedLearner(null); setLearnerDetails(null); }}
         />
       )}

@@ -4,10 +4,24 @@ Provides all tutor-specific endpoints for dashboard functionality
 Includes: Authentication, Learner Management, Analytics, Reports
 """
 import asyncio
+import json
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from bson import ObjectId
+
+try:
+    from openai import OpenAI
+    import httpx
+    _api_key = os.getenv("OPENAI_API_KEY")
+    try:
+        _openai_client = OpenAI(api_key=_api_key)
+    except TypeError:
+        _openai_client = OpenAI(api_key=_api_key, http_client=httpx.Client())
+except Exception as _e:
+    _openai_client = None
+    print(f"[TUTOR_ROUTES] OpenAI client unavailable: {_e}")
 
 from database import database
 from app.tutor.tutor_auth import (
@@ -1121,4 +1135,335 @@ def generate_tutor_ai_insights(user, learning_plans, conversations):
             "total_minutes": total_minutes
         },
         "recommendations": recommendations[:5]
+    }
+
+
+# ============================================================================
+# GPT-POWERED AI REPORT — on-demand, cached 24h
+# ============================================================================
+
+@router.post("/dashboard/{tutor_id}/learner/{user_id}/ai-report")
+async def generate_ai_report(
+    tutor_id: str,
+    user_id: str,
+    current_tutor: dict = Depends(get_current_tutor)
+) -> Dict[str, Any]:
+    """
+    Generate a comprehensive GPT-4.1-mini AI report for a learner.
+    Cached for 24 hours. Call POST to regenerate.
+
+    Returns structured JSON with 7 sections tutor can act on immediately.
+    """
+    await verify_tutor_access(tutor_id, current_tutor)
+
+    # 1. Check cache (tutor_ai_reports collection, TTL 24h)
+    cache_key = f"{tutor_id}:{user_id}"
+    cached = await database.tutor_ai_reports.find_one({"cache_key": cache_key})
+    if cached:
+        age_hours = (datetime.utcnow() - cached["generated_at"]).total_seconds() / 3600
+        if age_hours < 24:
+            return {
+                "report": cached["report"],
+                "generated_at": cached["generated_at"].isoformat(),
+                "from_cache": True,
+                "cache_age_hours": round(age_hours, 1)
+            }
+
+    if not _openai_client:
+        raise HTTPException(status_code=503, detail="AI service unavailable")
+
+    # 2. Fetch all learner data in parallel
+    user = await database.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    learner = await database.institutional_learners.find_one({
+        "user_id": user_id, "tutor_id": tutor_id
+    })
+
+    plans, sessions, challenges, daily_stats, dna_profile, dna_history, assessments, sentence_jobs = \
+        await asyncio.gather(
+            database.learning_plans.find({"user_id": user_id}).to_list(None),
+            database.conversation_sessions.find({"user_id": user_id}).sort("created_at", -1).to_list(50),
+            database.challenge_sessions.find({"user_id": user_id}).sort("created_at", -1).to_list(50),
+            database.daily_stats.find({"user_id": user_id}).sort("local_date", -1).to_list(30),
+            database.speaking_dna_profiles.find_one({"user_id": user_id}),
+            database.speaking_dna_history.find({"user_id": user_id}).sort("week_number", -1).to_list(8),
+            database.assessments.find({"user_id": user_id}).sort("created_at", -1).to_list(5),
+            database.sentence_analysis_jobs.find(
+                {"user_id": user_id, "status": "completed"}
+            ).sort("created_at", -1).to_list(3)
+        )
+
+    # 3. Build rich context object for GPT
+    # --- Learning plan summary ---
+    plan_summaries = []
+    for p in plans:
+        plan_summaries.append({
+            "language": p.get("language"),
+            "level": p.get("proficiency_level"),
+            "progress_pct": round(p.get("progress_percentage", 0), 1),
+            "completed_sessions": p.get("completed_sessions", 0),
+            "total_sessions": p.get("total_sessions", 16),
+            "minutes_used": round(p.get("practice_minutes_used", 0), 1),
+            "assessment_score": p.get("assessment_data", {}).get("overall_score"),
+            "strengths": p.get("assessment_data", {}).get("strengths", []),
+            "weak_areas": p.get("assessment_data", {}).get("areas_for_improvement", []),
+        })
+
+    # --- Session stats ---
+    total_session_minutes = sum(
+        round(s.get("duration_seconds", 0) / 60, 1) for s in sessions
+    )
+    completed_sessions = sum(1 for s in sessions if s.get("duration_seconds", 0) > 18)
+
+    # --- Challenge stats ---
+    total_correct = sum(c.get("correct_answers", 0) for c in challenges)
+    total_questions = sum(c.get("total_challenges", 0) for c in challenges)
+    challenge_accuracy = round((total_correct / total_questions * 100) if total_questions else 0, 1)
+    total_xp = sum(c.get("total_xp", 0) for c in challenges)
+
+    # --- Activity pattern ---
+    from collections import Counter
+    hour_buckets = Counter()
+    for s in sessions:
+        if s.get("created_at"):
+            try:
+                h = datetime.fromisoformat(str(s["created_at"]).replace("Z", "+00:00")).hour
+                if 5 <= h < 12: hour_buckets["Morning"] += 1
+                elif 12 <= h < 17: hour_buckets["Afternoon"] += 1
+                elif 17 <= h < 21: hour_buckets["Evening"] += 1
+                else: hour_buckets["Night"] += 1
+            except Exception:
+                pass
+    peak_time = hour_buckets.most_common(1)[0][0] if hour_buckets else "unknown"
+
+    # --- Engagement ---
+    active_dates = {
+        s["local_date"] for s in daily_stats
+        if s.get("total_sessions", 0) > 0 or s.get("conversation_time_seconds", 0) > 0
+    }
+    today = datetime.utcnow()
+    active_last7 = sum(
+        1 for i in range(7)
+        if (today - timedelta(days=i)).strftime("%Y-%m-%d") in active_dates
+    )
+
+    # --- DNA strands ---
+    dna_summary = {}
+    if dna_profile:
+        strands = dna_profile.get("dna_strands", {})
+        overall = dna_profile.get("overall_profile", {})
+        dna_summary = {
+            "archetype": overall.get("speaker_archetype"),
+            "coach_approach": overall.get("coach_approach"),
+            "strengths": overall.get("strengths", []),
+            "growth_areas": overall.get("growth_areas", []),
+            "strands": {
+                name: {
+                    "score": round(strand.get("score", strand.get("consistency_score",
+                              strand.get("grammar_accuracy", 0.5))) * 100
+                              if strand.get("score", strand.get("consistency_score",
+                              strand.get("grammar_accuracy"))) and
+                              strand.get("score", strand.get("consistency_score",
+                              strand.get("grammar_accuracy"))) <= 1.0 else
+                              strand.get("score", 50)),
+                    "description": strand.get("description", ""),
+                    "trend": strand.get("trend", ""),
+                    "type": strand.get("type", strand.get("level", strand.get("pattern", ""))),
+                }
+                for name, strand in strands.items()
+            },
+            "anxiety_triggers": strands.get("emotional", {}).get("anxiety_triggers", []),
+            "wpm": strands.get("rhythm", {}).get("words_per_minute_avg"),
+            "filler_rate": strands.get("confidence", {}).get("filler_rate_per_minute"),
+        }
+
+    # --- Weekly confidence trend ---
+    weekly_trend = []
+    for week in reversed(dna_history):
+        snap = week.get("strand_snapshots", {})
+        conf = snap.get("confidence", {})
+        stats_w = week.get("week_stats", {})
+        weekly_trend.append({
+            "week": week.get("week_number"),
+            "confidence": round(conf.get("score", 0) * 100),
+            "sessions": stats_w.get("sessions_completed", 0),
+            "minutes": round(stats_w.get("total_minutes", 0), 1),
+        })
+
+    # --- Sentence quality sample ---
+    sentence_samples = []
+    for job in sentence_jobs:
+        for a in job.get("analyses", [])[:3]:
+            sentence_samples.append({
+                "text": a.get("recognized_text", "")[:100],
+                "grammar": round(a.get("grammatical_score", 0)),
+                "vocabulary": round(a.get("vocabulary_score", 0)),
+                "complexity": round(a.get("complexity_score", 0)),
+                "overall": round(a.get("overall_score", 0)),
+                "issues": a.get("grammar_issues", [])[:2],
+                "suggestions": a.get("improvement_suggestions", [])[:1],
+            })
+
+    # --- Assessment history ---
+    assessment_summary = [
+        {
+            "language": a.get("language"),
+            "level": a.get("level"),
+            "score": a.get("score"),
+            "feedback": a.get("feedback"),
+        }
+        for a in assessments
+    ]
+
+    # 4. Build GPT prompt
+    learner_name = user.get("name", "the learner")
+    enrollment_date = (learner.get("enrolled_at") or "unknown") if learner else "unknown"
+
+    context_json = json.dumps({
+        "learner": {
+            "name": learner_name,
+            "enrolled_at": str(enrollment_date)[:10] if enrollment_date != "unknown" else "unknown",
+            "preferred_language": user.get("preferred_language"),
+            "preferred_level": user.get("preferred_level"),
+        },
+        "learning_plans": plan_summaries,
+        "voice_practice": {
+            "total_sessions": len(sessions),
+            "completed_sessions": completed_sessions,
+            "total_minutes": round(total_session_minutes, 1),
+            "completion_rate_pct": round(completed_sessions / len(sessions) * 100) if sessions else 0,
+            "peak_practice_time": peak_time,
+        },
+        "challenges": {
+            "total_sessions": len(challenges),
+            "total_correct_answers": total_correct,
+            "total_questions": total_questions,
+            "accuracy_pct": challenge_accuracy,
+            "total_xp_earned": total_xp,
+        },
+        "engagement": {
+            "active_days_last_7": active_last7,
+            "engagement_score_pct": round(active_last7 / 7 * 100),
+            "total_active_days_in_30d": len(active_dates),
+        },
+        "speaking_dna": dna_summary,
+        "weekly_confidence_trend": weekly_trend,
+        "recent_sentence_samples": sentence_samples[:6],
+        "formal_assessments": assessment_summary,
+    }, default=str, ensure_ascii=False)
+
+    system_prompt = """You are an expert language learning analyst generating a professional tutor report
+for a B2B language school platform. Your role is like a senior pedagogical advisor who has reviewed
+all the learner's data and is briefing their assigned tutor.
+
+Write for a professional language tutor — not the learner. Use pedagogical language appropriate for
+a trained language educator. Be specific, evidence-based, and actionable. Never fabricate data points
+not present in the input.
+
+You must respond with ONLY valid JSON matching this exact structure:
+{
+  "executive_summary": "2-3 sentence overview of where this learner stands right now. Lead with the most important finding.",
+  "cefr_alignment": {
+    "current_estimated_level": "A1/A2/B1/B2/C1/C2",
+    "evidence": "What specific data points support this CEFR level estimate",
+    "trajectory": "short description of whether they are progressing, plateauing, or regressing toward next level"
+  },
+  "skill_diagnosis": {
+    "strongest_skill": "grammar/vocabulary/fluency/pronunciation/confidence/consistency",
+    "strongest_evidence": "specific data supporting this",
+    "weakest_skill": "grammar/vocabulary/fluency/pronunciation/confidence/consistency",
+    "weakest_evidence": "specific data supporting this",
+    "skill_breakdown": [
+      {"skill": "Grammar", "rating": "strong/developing/needs_work", "note": "1-sentence evidence-based note"},
+      {"skill": "Vocabulary", "rating": "strong/developing/needs_work", "note": "..."},
+      {"skill": "Fluency", "rating": "strong/developing/needs_work", "note": "..."},
+      {"skill": "Confidence", "rating": "strong/developing/needs_work", "note": "..."},
+      {"skill": "Consistency", "rating": "strong/developing/needs_work", "note": "..."}
+    ]
+  },
+  "engagement_analysis": {
+    "assessment": "high/moderate/low/at_risk",
+    "pattern": "1-2 sentences describing when and how this learner engages",
+    "risk_factors": ["list of specific engagement risks, or empty array"],
+    "positive_signals": ["list of positive behavioral signals, or empty array"]
+  },
+  "next_session_plan": {
+    "priority_focus": "The single most important pedagogical focus for the next session",
+    "suggested_activity_type": "e.g. role-play, gap-fill, vocabulary expansion, pronunciation drilling",
+    "topic_suggestion": "A specific topic or scenario that matches the learner's level and interests",
+    "things_to_avoid": ["specific situations or activity types that may trigger anxiety or poor performance"]
+  },
+  "recommendations": [
+    {
+      "priority": "high/medium/low",
+      "action": "Specific action for the tutor (not generic advice)",
+      "rationale": "Why this matters based on the data",
+      "timeframe": "this_session/this_week/this_month"
+    }
+  ],
+  "learner_archetype": {
+    "type": "e.g. The Cautious Builder / The Confident Rusher / The Inconsistent Sprinter",
+    "description": "2-sentence description of how this learner characteristically approaches language learning",
+    "coaching_strategy": "The pedagogical approach that works best for this archetype"
+  },
+  "flags": [
+    {
+      "type": "warning/positive/info",
+      "message": "Specific observation the tutor should know about"
+    }
+  ]
+}
+
+Recommendations array: 3-5 items max. Be concrete — not "practice more" but "schedule 3 sessions this week focused on Dutch subordinate clauses based on the 0% correct_answers on that structure."
+Flags: include both warnings (things to watch) and positives (things to reinforce). 2-4 flags max."""
+
+    user_prompt = f"""Generate a tutor report for {learner_name}.
+
+LEARNER DATA:
+{context_json}
+
+Remember:
+- Ground every claim in the data above
+- CEFR level estimate should reflect actual performance data, not just the enrolled level
+- If data is sparse, say so honestly rather than fabricating insights
+- The tutor will use this report before their next session with this learner"""
+
+    # 5. Call GPT-4.1-mini
+    try:
+        response = _openai_client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.3,  # Low temp for consistent, factual reports
+            max_tokens=2000,
+            response_format={"type": "json_object"}
+        )
+        report_text = response.choices[0].message.content
+        report = json.loads(report_text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI report generation failed: {str(e)}")
+
+    # 6. Cache the result
+    now = datetime.utcnow()
+    await database.tutor_ai_reports.replace_one(
+        {"cache_key": cache_key},
+        {
+            "cache_key": cache_key,
+            "tutor_id": tutor_id,
+            "user_id": user_id,
+            "report": report,
+            "generated_at": now,
+        },
+        upsert=True
+    )
+
+    return {
+        "report": report,
+        "generated_at": now.isoformat(),
+        "from_cache": False,
+        "cache_age_hours": 0
     }
