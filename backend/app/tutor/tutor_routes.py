@@ -608,17 +608,22 @@ async def get_learner_details(
             } for c in all_challenges
         ]
 
-        # Daily stats summary
+        # Daily stats summary — using actual DB field names:
+        # local_date(str), total_xp, streak_count, total_sessions,
+        # conversation_time_seconds, total_time_seconds, accuracy_percent
         daily_stats = {
-            "current_streak": daily_stats_docs[0].get("streak_days", 0) if daily_stats_docs else 0,
-            "total_xp": sum(s.get("xp_earned", 0) for s in daily_stats_docs),
-            "days_active": len([s for s in daily_stats_docs if s.get("sessions_count", 0) > 0]),
+            "current_streak": daily_stats_docs[0].get("streak_count", 0) if daily_stats_docs else 0,
+            "total_xp": sum(s.get("total_xp", 0) for s in daily_stats_docs),
+            "days_active": len([s for s in daily_stats_docs if s.get("total_sessions", 0) > 0 or s.get("conversation_time_seconds", 0) > 0]),
             "recent_daily": [
                 {
-                    "date": _safe_iso(s.get("date")),
-                    "minutes": round(s.get("practice_minutes", s.get("speaking_minutes", 0)), 1),
-                    "sessions": s.get("sessions_count", 0),
-                    "xp": s.get("xp_earned", 0)
+                    "date": s.get("local_date"),  # already a string "YYYY-MM-DD"
+                    "minutes": round((s.get("conversation_time_seconds") or s.get("total_time_seconds", 0)) / 60, 1),
+                    "sessions": s.get("total_sessions", 0),
+                    "xp": s.get("total_xp", 0),
+                    "accuracy": round(s.get("accuracy_percent", 0), 1),
+                    "challenges": s.get("total_challenges", 0),
+                    "correct": s.get("correct_challenges", 0),
                 } for s in daily_stats_docs[:14]
             ]
         }
