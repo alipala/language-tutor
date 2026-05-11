@@ -502,14 +502,18 @@ export default function TutorDashboardPage() {
   const [learnerDetails, setLearnerDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const fetchData = useCallback(async (token: string) => {
+  const fetchData = useCallback(async (token: string, opts?: { lang?: string; level?: string; status?: string; q?: string }) => {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
-      if (langFilter) qs.set('language', langFilter);
-      if (levelFilter) qs.set('level', levelFilter);
-      if (statusFilter) qs.set('status', statusFilter);
-      if (search) qs.set('search', search);
+      const l = opts?.lang ?? langFilter;
+      const lv = opts?.level ?? levelFilter;
+      const s = opts?.status ?? statusFilter;
+      const q = opts?.q ?? search;
+      if (l) qs.set('language', l);
+      if (lv) qs.set('level', lv);
+      if (s) qs.set('status', s);
+      if (q) qs.set('search', q);
       qs.set('per_page', '50');
 
       const [learnersRes, analyticsRes] = await Promise.all([
@@ -523,15 +527,24 @@ export default function TutorDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [tutorId, langFilter, levelFilter, statusFilter, search, router]);
+  }, [tutorId, router]); // no filter deps — filters passed as args to avoid stale closure re-fetches
 
+  // Initial load — runs once per tutorId
   useEffect(() => {
     const token = localStorage.getItem('tutorToken');
     const storedId = localStorage.getItem('tutorId');
     if (!token || storedId !== tutorId) { router.push('/tutor/login'); return; }
     setTutorName(localStorage.getItem('tutorName') || 'Tutor');
     fetchData(token);
-  }, [tutorId, fetchData, router]);
+  }, [tutorId, router]); // fetchData intentionally omitted — stable after mount
+
+  // Re-fetch when filters change, debounced
+  useEffect(() => {
+    const token = localStorage.getItem('tutorToken');
+    if (!token) return;
+    const t = setTimeout(() => fetchData(token, { lang: langFilter, level: levelFilter, status: statusFilter, q: search }), 300);
+    return () => clearTimeout(t);
+  }, [langFilter, levelFilter, statusFilter, search]); // eslint-disable-line
 
   const openLearnerDetails = async (learner: Learner) => {
     setSelectedLearner(learner);
