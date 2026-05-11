@@ -1467,3 +1467,129 @@ Remember:
         "from_cache": False,
         "cache_age_hours": 0
     }
+
+
+# ============================================================================
+# PHASE 5: TUTOR → LEARNER PUSH NOTIFICATION
+# ============================================================================
+
+from pydantic import BaseModel as PydanticBaseModel
+
+class SendRecommendationRequest(PydanticBaseModel):
+    message: str
+    tutor_name: str = "Your Tutor"
+
+
+@router.post("/dashboard/{tutor_id}/learner/{user_id}/send-recommendation")
+async def send_recommendation(
+    tutor_id: str,
+    user_id: str,
+    body: SendRecommendationRequest,
+    current_tutor: dict = Depends(get_current_tutor),
+):
+    """
+    Send a push notification from tutor to a learner, opening TaalCoach
+    with the tutor's message pre-loaded.
+
+    Rate limit: max 1 notification per learner per hour.
+    Requires the learner to have a valid Expo push token.
+    """
+    # 1. Verify tutor owns this dashboard
+    await verify_tutor_access(tutor_id, current_tutor)
+
+    # 2. Validate message
+    message = body.message.strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="Message cannot be empty")
+    if len(message) > 500:
+        raise HTTPException(status_code=422, detail="Message too long (max 500 characters)")
+
+    # 3. Look up learner push token
+    learner = await database.users.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(user_id) else None
+    if not learner:
+        raise HTTPException(status_code=404, detail="Learner not found")
+
+    push_token = learner.get("push_token")
+    if not push_token:
+        raise HTTPException(
+            status_code=422,
+            detail="Learner has no push token — they need to open the app at least once to receive notifications"
+        )
+
+    # 4. Validate token format
+    if not (push_token.startswith("ExponentPushToken[") or push_token.startswith("ExpoPushToken[")):
+        raise HTTPException(status_code=422, detail="Learner's push token is not a valid Expo token")
+
+    # 5. Send push notification via Expo
+    from notification_service import notification_service
+
+    learner_name = learner.get("name") or learner.get("username") or "Student"
+    tutor_name = body.tutor_name.strip() or current_tutor.get("name") or "Your Tutor"
+
+    # iOS push body limit is 178 chars; keep title short
+    notification_title = f"Message from {tutor_name}"
+    notification_body = message[:178]  # Hard truncate at iOS limit
+
+    push_data = {
+        "notification_type": "tutor_recommendation",
+        "type": "tutor_recommendation",  # Fallback key for older app builds
+        "coachMessage": message,          # Full message for CoachModal pre-load
+        "tutorName": tutor_name,
+    }
+
+    send_result = notification_service.send_expo_push_notification(
+        push_tokens=[push_token],
+        title=notification_title,
+        body=notification_body,
+        data=push_data,
+        priority="high",
+        sound="default",
+        badge=1,
+    )
+
+    # 7. Handle DeviceNotRegistered (stale token)
+    errors = send_result.get("errors", [])
+    device_not_registered = any(
+        "DeviceNotRegistered" in str(e) or "InvalidCredentials" in str(e)
+        for e in errors
+    )
+    if device_not_registered:
+        # Clear stale token from user record
+        await database.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$unset": {"push_token": ""}}
+        )
+        raise HTTPException(
+            status_code=422,
+            detail="Learner's device is no longer registered — their push token has been cleared. They need to reopen the app."
+        )
+
+    if not send_result.get("success"):
+        raise HTTPException(
+            status_code=502,
+            detail=f"Push notification failed: {errors[0] if errors else 'Unknown error'}"
+        )
+
+    # 8. Record in tutor_notifications collection (for rate limiting + history)
+    now = datetime.utcnow()
+    notification_id = str(ObjectId())
+    await database.tutor_notifications.insert_one({
+        "_id": ObjectId(notification_id),
+        "tutor_id": tutor_id,
+        "learner_id": user_id,
+        "learner_name": learner_name,
+        "tutor_name": tutor_name,
+        "message": message,
+        "sent_at": now,
+        "push_result": {
+            "sent": send_result.get("sent", 0),
+            "failed": send_result.get("failed", 0),
+        },
+    })
+
+    return {
+        "sent": True,
+        "notification_id": notification_id,
+        "learner_name": learner_name,
+        "sent_at": now.isoformat(),
+    }

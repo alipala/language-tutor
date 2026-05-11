@@ -8,7 +8,7 @@ import {
   Mic, Zap, Bot, CheckCircle, Clock, Target, Lightbulb,
   Flame, Star, Calendar, GraduationCap, ChevronRight,
   Award, Activity, MessageSquare, Brain, Layout, Dna,
-  TrendingDown, Minus, Shield, Heart, Repeat
+  TrendingDown, Minus, Shield, Heart, Repeat, Send, Smartphone
 } from 'lucide-react';
 import { FlagIcon, FlagOrText } from '@/src/components/ui/FlagIcon';
 import { DateRangePicker, DateRange } from '@/src/components/ui/DateRangePicker';
@@ -86,6 +86,16 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
   const [fromCache, setFromCache] = React.useState(false);
   const [error, setError] = React.useState('');
 
+  // Send to Learner state
+  const [sendMessage, setSendMessage] = React.useState('');
+  const [sending, setSending] = React.useState(false);
+  const [sendSuccess, setSendSuccess] = React.useState(false);
+  const [sendError, setSendError] = React.useState('');
+  const [cachedTutorName] = React.useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('tutorName') || 'Your Tutor') : 'Your Tutor'
+  );
+  const MAX_CHARS = 178; // iOS push body hard limit
+
   const generateReport = async (force = false) => {
     setGenerating(true);
     setError('');
@@ -103,10 +113,45 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
       setReport(data.report);
       setGeneratedAt(data.generated_at);
       setFromCache(data.from_cache);
+      // Pre-fill send message from report
+      if (data.report?.next_session_plan?.priority_focus) {
+        const focus = data.report.next_session_plan.priority_focus;
+        const recs = (data.report.recommendations || []).slice(0, 2).map((r: any) => r.action).join('; ');
+        const draft = recs ? `${focus}. ${recs}` : focus;
+        setSendMessage(draft.slice(0, MAX_CHARS));
+      }
     } catch (e: any) {
       setError(e.message || 'Report generation failed');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const sendRecommendation = async () => {
+    if (!sendMessage.trim()) return;
+    setSending(true);
+    setSendError('');
+    setSendSuccess(false);
+    try {
+      const token = localStorage.getItem('tutorToken');
+      const res = await fetch(
+        `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/send-recommendation`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: sendMessage.trim(), tutor_name: cachedTutorName }),
+        }
+      );
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || 'Failed to send notification');
+      }
+      setSendSuccess(true);
+      setTimeout(() => setSendSuccess(false), 5000);
+    } catch (e: any) {
+      setSendError(e.message || 'Failed to send notification');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -352,6 +397,95 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
           </div>
         </div>
       )}
+
+      {/* ── Send to Learner ── */}
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Send className="w-3.5 h-3.5 text-white" strokeWidth={2} />
+          </div>
+          <div>
+            <h5 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Send to Learner</h5>
+            <p className="text-xs text-indigo-400">Delivered as a push notification — opens TaalCoach in their app</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Left: message editor */}
+          <div className="flex-1 space-y-3">
+            <div className="relative">
+              <textarea
+                value={sendMessage}
+                onChange={e => { setSendMessage(e.target.value.slice(0, MAX_CHARS)); setSendError(''); setSendSuccess(false); }}
+                placeholder="Type a coaching message for this learner… (pre-filled from AI report)"
+                rows={4}
+                className="w-full text-sm text-gray-800 bg-white border border-indigo-200 rounded-xl px-3.5 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400"
+              />
+              <span className={`absolute bottom-2 right-3 text-xs font-mono ${sendMessage.length > MAX_CHARS * 0.9 ? 'text-amber-600' : 'text-gray-400'}`}>
+                {sendMessage.length}/{MAX_CHARS}
+              </span>
+            </div>
+
+            {sendError && (
+              <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 flex-shrink-0 mt-0.5" strokeWidth={1.8} />
+                <p className="text-xs text-rose-700 font-medium">{sendError}</p>
+              </div>
+            )}
+
+            {sendSuccess && (
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" strokeWidth={2} />
+                <p className="text-xs text-emerald-700 font-semibold">Notification sent to {learner.name}'s phone!</p>
+              </div>
+            )}
+
+            <button
+              onClick={sendRecommendation}
+              disabled={sending || !sendMessage.trim() || sendSuccess}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                sendSuccess
+                  ? 'bg-emerald-500 text-white cursor-default'
+                  : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed'
+              }`}
+            >
+              {sending ? (
+                <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Sending…</>
+              ) : sendSuccess ? (
+                <><CheckCircle className="w-3.5 h-3.5" strokeWidth={2} /> Sent!</>
+              ) : (
+                <><Send className="w-3.5 h-3.5" strokeWidth={2} /> Send to {learner.name}</>
+              )}
+            </button>
+          </div>
+
+          {/* Right: phone preview */}
+          <div className="sm:w-48 flex-shrink-0">
+            <div className="bg-gray-900 rounded-2xl p-3 shadow-xl">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Smartphone className="w-3 h-3 text-gray-400" strokeWidth={1.5} />
+                <span className="text-xs text-gray-500">Preview</span>
+              </div>
+              <div className="bg-white rounded-xl p-2.5 shadow-sm">
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-[#4ECFBF] to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-black">T</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-900 leading-tight">
+                      {cachedTutorName}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-snug line-clamp-3">
+                      {sendMessage || 'Your message will appear here…'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 text-center mt-2">Opens TaalCoach</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
