@@ -502,7 +502,23 @@ async def get_learner_details(
         
         # Get ALL learning plans
         all_learning_plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
-        
+
+        # Get Speaking DNA profile + history + sentence analyses in parallel
+        dna_profile_task = database.speaking_dna_profiles.find_one({"user_id": user_id})
+        dna_history_task = database.speaking_dna_history.find(
+            {"user_id": user_id}
+        ).sort("week_number", -1).to_list(length=8)
+        sentence_analysis_task = database.sentence_analysis_jobs.find(
+            {"user_id": user_id, "status": "completed"}
+        ).sort("created_at", -1).to_list(length=5)
+        assessments_task = database.assessments.find(
+            {"user_id": user_id}
+        ).sort("created_at", -1).to_list(length=10)
+
+        dna_profile, dna_history, sentence_analyses, user_assessments = await asyncio.gather(
+            dna_profile_task, dna_history_task, sentence_analysis_task, assessments_task
+        )
+
         # Get conversation sessions (correct collection only)
         all_conversations = await database.conversation_sessions.find({
             "user_id": user_id
@@ -610,6 +626,113 @@ async def get_learner_details(
         # Generate AI Insights
         ai_insights = generate_tutor_ai_insights(user, formatted_plans, formatted_conversations)
 
+        # Format Speaking DNA for frontend
+        speaking_dna = None
+        if dna_profile:
+            strands = dna_profile.get("dna_strands", {})
+            overall = dna_profile.get("overall_profile", {})
+
+            # Build weekly confidence trend from history
+            weekly_trend = []
+            for week in reversed(dna_history):
+                snap = week.get("strand_snapshots", {})
+                conf = snap.get("confidence", {})
+                stats = week.get("week_stats", {})
+                weekly_trend.append({
+                    "week": week.get("week_number"),
+                    "week_start": _safe_iso(week.get("week_start")),
+                    "confidence": round(conf.get("score", 0) * 100),
+                    "sessions": stats.get("sessions_completed", 0),
+                    "minutes": round(stats.get("total_minutes", 0), 1),
+                    "breakthroughs": stats.get("breakthroughs_count", 0),
+                    "wpm": snap.get("rhythm", {}).get("words_per_minute_avg", 0),
+                    "accuracy": round(snap.get("accuracy", {}).get("grammar_accuracy", 0) * 100),
+                })
+
+            # Sentence analysis quality summary
+            sentence_scores = []
+            for job in sentence_analyses:
+                for analysis in job.get("analyses", []):
+                    sentence_scores.append({
+                        "grammatical": round(analysis.get("grammatical_score", 0)),
+                        "vocabulary": round(analysis.get("vocabulary_score", 0)),
+                        "complexity": round(analysis.get("complexity_score", 0)),
+                        "overall": round(analysis.get("overall_score", 0)),
+                        "text": analysis.get("recognized_text", "")[:80]
+                    })
+
+            speaking_dna = {
+                "strands": {
+                    "rhythm": {
+                        "label": "Rhythm",
+                        "score": round(min(strands.get("rhythm", {}).get("consistency_score", 0.5) * 100, 100)),
+                        "type": strands.get("rhythm", {}).get("type", ""),
+                        "wpm": strands.get("rhythm", {}).get("words_per_minute_avg", 0),
+                        "pause_ms": round(strands.get("rhythm", {}).get("pause_duration_avg_ms", 0)),
+                        "description": strands.get("rhythm", {}).get("description", ""),
+                    },
+                    "confidence": {
+                        "label": "Confidence",
+                        "score": round(strands.get("confidence", {}).get("score", 0) * 100),
+                        "level": strands.get("confidence", {}).get("level", ""),
+                        "trend": strands.get("confidence", {}).get("trend", "stable"),
+                        "filler_rate": strands.get("confidence", {}).get("filler_rate_per_minute", 0),
+                        "description": strands.get("confidence", {}).get("description", ""),
+                    },
+                    "vocabulary": {
+                        "label": "Vocabulary",
+                        "score": round(min(strands.get("vocabulary", {}).get("new_word_attempt_rate", 0.5) * 100, 100)),
+                        "style": strands.get("vocabulary", {}).get("style", ""),
+                        "unique_words": strands.get("vocabulary", {}).get("unique_words_per_session", 0),
+                        "complexity_level": strands.get("vocabulary", {}).get("complexity_level", ""),
+                        "description": strands.get("vocabulary", {}).get("description", ""),
+                    },
+                    "accuracy": {
+                        "label": "Accuracy",
+                        "score": round(strands.get("accuracy", {}).get("grammar_accuracy", 0.8) * 100),
+                        "pattern": strands.get("accuracy", {}).get("pattern", ""),
+                        "common_errors": strands.get("accuracy", {}).get("common_errors", []),
+                        "improving_areas": strands.get("accuracy", {}).get("improving_areas", []),
+                        "description": strands.get("accuracy", {}).get("description", ""),
+                    },
+                    "learning": {
+                        "label": "Learning Style",
+                        "score": round(min(strands.get("learning", {}).get("retry_rate", 0.5) * 100, 100)),
+                        "type": strands.get("learning", {}).get("type", ""),
+                        "retry_rate": strands.get("learning", {}).get("retry_rate", 0),
+                        "challenge_acceptance": strands.get("learning", {}).get("challenge_acceptance", 0),
+                        "description": strands.get("learning", {}).get("description", ""),
+                    },
+                    "emotional": {
+                        "label": "Emotional Arc",
+                        "score": round(strands.get("emotional", {}).get("session_end_confidence", 0.6) * 100),
+                        "pattern": strands.get("emotional", {}).get("pattern", ""),
+                        "start_confidence": round(strands.get("emotional", {}).get("session_start_confidence", 0.5) * 100),
+                        "end_confidence": round(strands.get("emotional", {}).get("session_end_confidence", 0.6) * 100),
+                        "anxiety_triggers": strands.get("emotional", {}).get("anxiety_triggers", []),
+                        "description": strands.get("emotional", {}).get("description", ""),
+                    },
+                },
+                "archetype": overall.get("speaker_archetype", ""),
+                "summary": overall.get("summary", ""),
+                "coach_approach": overall.get("coach_approach", ""),
+                "strengths": overall.get("strengths", []),
+                "growth_areas": overall.get("growth_areas", []),
+                "sessions_analyzed": dna_profile.get("sessions_analyzed", 0),
+                "total_speaking_minutes": round(dna_profile.get("total_speaking_minutes", 0), 1),
+                "weekly_trend": weekly_trend,
+                "sentence_scores": sentence_scores[:10],
+                "assessments": [
+                    {
+                        "language": a.get("language"),
+                        "level": a.get("level"),
+                        "score": a.get("score"),
+                        "feedback": a.get("feedback"),
+                        "date": _safe_iso(a.get("created_at"))
+                    } for a in user_assessments
+                ],
+            }
+
         return {
             "profile": {
                 "id": str(user["_id"]),
@@ -628,6 +751,7 @@ async def get_learner_details(
             "practice_sessions": formatted_conversations,
             "challenge_sessions": formatted_challenges,
             "daily_stats": daily_stats,
+            "speaking_dna": speaking_dna,
             "subscription": {
                 "status": subscription.get("status") if subscription else user.get("subscription_status", "none"),
                 "minutes_remaining": user.get("practice_minutes_remaining", 0),

@@ -7,7 +7,8 @@ import {
   BarChart2, Users, AlertTriangle, TrendingUp, Globe, BookOpen,
   Mic, Zap, Bot, CheckCircle, Clock, Target, Lightbulb,
   Flame, Star, Calendar, GraduationCap, ChevronRight,
-  Award, Activity, MessageSquare, Brain, Layout
+  Award, Activity, MessageSquare, Brain, Layout, Dna,
+  TrendingDown, Minus, Shield, Heart, Repeat
 } from 'lucide-react';
 import { FlagIcon, FlagOrText } from '@/src/components/ui/FlagIcon';
 
@@ -80,14 +81,15 @@ const LEVEL_BAR_COLORS: Record<string, string> = {
 function LearnerDetailModal({
   learner, details, loading, onClose,
 }: { learner: Learner; details: any; loading: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'insights'>('overview');
+  const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'>('overview');
   const plan = learner.learning_plans[0];
 
-  const tabs: { key: 'overview' | 'plans' | 'sessions' | 'challenges' | 'insights'; label: string; icon: React.ReactNode }[] = [
+  const tabs: { key: 'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'; label: string; icon: React.ReactNode }[] = [
     { key: 'overview', label: 'Overview', icon: <BarChart2 className="w-3.5 h-3.5" /> },
     { key: 'plans', label: `Plans (${details?.all_learning_plans?.length ?? 0})`, icon: <BookOpen className="w-3.5 h-3.5" /> },
     { key: 'sessions', label: `Sessions (${details?.practice_sessions?.length ?? 0})`, icon: <Mic className="w-3.5 h-3.5" /> },
     { key: 'challenges', label: `Challenges (${details?.challenge_sessions?.length ?? 0})`, icon: <Zap className="w-3.5 h-3.5" /> },
+    { key: 'dna', label: 'Speaking DNA', icon: <Dna className="w-3.5 h-3.5" /> },
     { key: 'insights', label: 'AI Insights', icon: <Bot className="w-3.5 h-3.5" /> },
   ];
 
@@ -407,6 +409,230 @@ function LearnerDetailModal({
                   ) : (
                     <div className="text-center py-12 text-gray-400"><Zap className="w-12 h-12 text-gray-300 mx-auto mb-2" />No challenges completed yet</div>
                   )}
+                </div>
+              )}
+
+              {/* ── SPEAKING DNA ── */}
+              {tab === 'dna' && (
+                <div className="space-y-5">
+                  {!details?.speaking_dna ? (
+                    <div className="text-center py-14">
+                      <Dna className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                      <p className="text-gray-400 font-medium">No Speaking DNA data yet</p>
+                      <p className="text-gray-300 text-sm mt-1">Data is generated after voice practice sessions</p>
+                    </div>
+                  ) : (() => {
+                    const dna = details.speaking_dna;
+                    const strands = dna.strands;
+
+                    // Strand config: color, icon, description for tutors
+                    const strandConfig: Record<string, { color: string; bg: string; bar: string; tutorHint: string }> = {
+                      rhythm:     { color: 'text-blue-600',   bg: 'bg-blue-50',   bar: 'bg-blue-400',   tutorHint: 'Speaking pace & flow consistency' },
+                      confidence: { color: 'text-[#4ECFBF]', bg: 'bg-teal-50',   bar: 'bg-[#4ECFBF]',  tutorHint: 'Self-assurance during speech' },
+                      vocabulary: { color: 'text-purple-600', bg: 'bg-purple-50', bar: 'bg-purple-400', tutorHint: 'Word variety & complexity usage' },
+                      accuracy:   { color: 'text-emerald-600',bg: 'bg-emerald-50',bar: 'bg-emerald-400',tutorHint: 'Grammar & sentence correctness' },
+                      learning:   { color: 'text-amber-600',  bg: 'bg-amber-50',  bar: 'bg-amber-400',  tutorHint: 'How they tackle new challenges' },
+                      emotional:  { color: 'text-rose-500',   bg: 'bg-rose-50',   bar: 'bg-rose-400',   tutorHint: 'Energy arc across a session' },
+                    };
+
+                    const trendIcon = (trend: string) =>
+                      trend === 'improving' ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> :
+                      trend === 'declining' ? <TrendingDown className="w-3.5 h-3.5 text-rose-500" /> :
+                      <Minus className="w-3.5 h-3.5 text-gray-400" />;
+
+                    return (
+                      <>
+                        {/* Archetype Banner */}
+                        <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-purple-50 border border-[#4ECFBF]/20 rounded-2xl p-4 flex items-start gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#4ECFBF] to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Dna className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-gray-900 text-sm">{dna.archetype || 'Learner Profile'}</span>
+                              <span className="text-xs bg-[#4ECFBF]/20 text-[#4ECFBF] px-2 py-0.5 rounded-full font-semibold capitalize">
+                                {dna.coach_approach?.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{dna.summary}</p>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                              <span><strong className="text-gray-600">{dna.sessions_analyzed}</strong> sessions analyzed</span>
+                              <span><strong className="text-gray-600">{dna.total_speaking_minutes}</strong> min of speech</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 6 Strand Bars with CSS animation */}
+                        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                          <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <Dna className="w-4 h-4 text-[#4ECFBF]" /> Speaking DNA Strands
+                          </h4>
+                          <div className="space-y-3">
+                            {Object.entries(strands).map(([key, strand]: [string, any]) => {
+                              const cfg = strandConfig[key] || { color: 'text-gray-600', bg: 'bg-gray-50', bar: 'bg-gray-400', tutorHint: '' };
+                              return (
+                                <div key={key} className="group">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-xs font-semibold ${cfg.color}`}>{strand.label}</span>
+                                      {key === 'confidence' && strand.trend && (
+                                        <span className="flex items-center gap-0.5">{trendIcon(strand.trend)}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-400 hidden group-hover:block transition-all">{cfg.tutorHint}</span>
+                                      <span className={`text-sm font-bold ${cfg.color}`}>{strand.score}%</span>
+                                    </div>
+                                  </div>
+                                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                    <div
+                                      className={`h-2.5 rounded-full ${cfg.bar} transition-all duration-1000 ease-out`}
+                                      style={{
+                                        width: `${strand.score}%`,
+                                        animation: 'dnaBarGrow 1.2s ease-out forwards',
+                                      }}
+                                    />
+                                  </div>
+                                  <p className="text-xs text-gray-400 mt-0.5">{strand.description}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Strengths & Growth Side by Side */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                            <h5 className="text-xs font-bold text-emerald-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                              <Shield className="w-3.5 h-3.5" /> Strengths
+                            </h5>
+                            <div className="space-y-1.5">
+                              {dna.strengths?.map((s: string) => (
+                                <div key={s} className="flex items-center gap-2 text-xs text-emerald-700">
+                                  <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="capitalize">{s.replace(/_/g, ' ')}</span>
+                                </div>
+                              ))}
+                              {(!dna.strengths || dna.strengths.length === 0) && <p className="text-xs text-emerald-600">Building up...</p>}
+                            </div>
+                          </div>
+                          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                            <h5 className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                              <Target className="w-3.5 h-3.5" /> Focus Areas
+                            </h5>
+                            <div className="space-y-1.5">
+                              {dna.growth_areas?.map((g: string) => (
+                                <div key={g} className="flex items-center gap-2 text-xs text-amber-700">
+                                  <Target className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="capitalize">{g.replace(/_/g, ' ')}</span>
+                                </div>
+                              ))}
+                              {(!dna.growth_areas || dna.growth_areas.length === 0) && <p className="text-xs text-amber-600">All looking good!</p>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Anxiety Triggers (if any) */}
+                        {strands.emotional?.anxiety_triggers?.length > 0 && (
+                          <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4">
+                            <h5 className="text-xs font-bold text-rose-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                              <Heart className="w-3.5 h-3.5" /> Sensitivity Notes for Tutor
+                            </h5>
+                            <p className="text-xs text-rose-600 mb-2">Be mindful of these triggers during sessions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {strands.emotional.anxiety_triggers.map((t: string) => (
+                                <span key={t} className="text-xs bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full capitalize">
+                                  {t.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Weekly Confidence Trend */}
+                        {dna.weekly_trend?.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                            <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-[#4ECFBF]" /> Weekly Progress Trend
+                            </h4>
+                            <div className="space-y-2">
+                              {dna.weekly_trend.slice(-6).map((week: any, i: number) => (
+                                <div key={week.week} className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-400 w-16 flex-shrink-0">
+                                    Week {week.week}
+                                  </span>
+                                  <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="bg-gradient-to-r from-[#4ECFBF] to-purple-400 h-2 rounded-full transition-all duration-700"
+                                      style={{
+                                        width: `${week.confidence}%`,
+                                        animationDelay: `${i * 150}ms`
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-semibold text-[#4ECFBF] w-9 text-right">{week.confidence}%</span>
+                                  <span className="text-xs text-gray-400 w-20 text-right hidden sm:block">{week.sessions} sess · {week.minutes}m</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Assessment History */}
+                        {dna.assessments?.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                            <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                              <Award className="w-4 h-4 text-[#4ECFBF]" /> Assessment History
+                            </h4>
+                            <div className="space-y-2">
+                              {dna.assessments.map((a: any, i: number) => (
+                                <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <FlagOrText language={a.language?.toLowerCase()} size={16} />
+                                    <span className="text-xs font-semibold text-gray-700 capitalize">{a.language}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[a.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{a.level}</span>
+                                  </div>
+                                  <div className={`text-lg font-bold flex-shrink-0 ${a.score >= 80 ? 'text-emerald-600' : a.score >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                    {a.score}
+                                  </div>
+                                  <div className="text-xs text-gray-400 flex-shrink-0 hidden sm:block min-w-0 max-w-[140px] truncate">{a.feedback}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Sentence Quality Scores */}
+                        {dna.sentence_scores?.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                            <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                              <Mic className="w-4 h-4 text-[#4ECFBF]" /> Recent Sentence Quality
+                            </h4>
+                            <div className="space-y-2">
+                              {dna.sentence_scores.slice(0, 5).map((s: any, i: number) => (
+                                <div key={i} className="border border-gray-100 rounded-xl p-3">
+                                  <p className="text-xs text-gray-600 italic mb-2">"{s.text}"</p>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {[
+                                      { label: 'Grammar', val: s.grammatical, color: 'text-emerald-600' },
+                                      { label: 'Vocab', val: s.vocabulary, color: 'text-purple-600' },
+                                      { label: 'Complexity', val: s.complexity, color: 'text-blue-600' },
+                                      { label: 'Overall', val: s.overall, color: 'text-[#4ECFBF] font-bold' },
+                                    ].map(m => (
+                                      <div key={m.label} className="text-center">
+                                        <div className={`text-sm font-bold ${m.color}`}>{m.val}</div>
+                                        <div className="text-xs text-gray-400">{m.label}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
