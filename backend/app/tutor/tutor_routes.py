@@ -1568,22 +1568,7 @@ async def send_recommendation(
     ):
         raise HTTPException(status_code=422, detail="Learner's push token is not a valid Expo token")
 
-    # 5. Rate limit: max 1 notification per learner per hour
-    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-    recent = await database.tutor_notifications.find_one({
-        "tutor_id": tutor_id,
-        "learner_id": user_id,
-        "sent_at": {"$gte": one_hour_ago},
-    })
-    if recent:
-        sent_at = recent.get("sent_at", one_hour_ago)
-        wait_minutes = max(1, 60 - int((datetime.utcnow() - sent_at).total_seconds() / 60))
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit: you can send another notification to this learner in {wait_minutes} minute(s)"
-        )
-
-    # 6. Send push notification via Expo
+    # 5. Send push notification via Expo
     from notification_service import notification_service
 
     learner_name = learner.get("name") or learner.get("username") or "Student"
