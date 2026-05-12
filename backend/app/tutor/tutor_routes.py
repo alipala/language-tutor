@@ -1555,85 +1555,88 @@ async def send_recommendation(
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
 
-    push_token = learner.get("push_token")
-    if not push_token:
-        raise HTTPException(
-            status_code=422,
-            detail="Learner has no push token — they need to open the app at least once to receive notifications"
-        )
-
-    # 4. Validate token format
-    if not isinstance(push_token, str) or not (
-        push_token.startswith("ExponentPushToken[") or push_token.startswith("ExpoPushToken[")
-    ):
-        raise HTTPException(status_code=422, detail="Learner's push token is not a valid Expo token")
-
-    # 5. Send push notification via Expo
-    from notification_service import notification_service
+    push_token = learner.get("push_token")  # Optional — push is best-effort
 
     learner_name = learner.get("name") or learner.get("username") or "Student"
     tutor_name = body.tutor_name.strip() or current_tutor.get("name") or "Your Tutor"
-
-    # iOS push body limit is 178 chars; truncate cleanly
-    notification_title = f"Message from {tutor_name}"
-    notification_body = (message[:178].strip() or message[:50]).strip()
-
-    push_data = {
-        "notification_type": "tutor_recommendation",
-        "type": "tutor_recommendation",  # Fallback key for older app builds
-        "coachMessage": message,          # Full message for CoachModal pre-load
-        "tutorName": tutor_name,
-    }
-
-    send_result = notification_service.send_expo_push_notification(
-        push_tokens=[push_token],
-        title=notification_title,
-        body=notification_body,
-        data=push_data,
-        priority="high",
-        sound="default",
-        badge=1,
-    )
-
-    # 7. Handle DeviceNotRegistered (stale token)
-    errors = send_result.get("errors", [])
-    device_not_registered = any(
-        "DeviceNotRegistered" in str(e) or "InvalidCredentials" in str(e)
-        for e in errors
-    )
-    if device_not_registered:
-        # Clear stale token from user record
-        await database.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$unset": {"push_token": ""}}
-        )
-        raise HTTPException(
-            status_code=422,
-            detail="Learner's device is no longer registered — their push token has been cleared. They need to reopen the app."
-        )
-
-    if not send_result.get("success"):
-        raise HTTPException(
-            status_code=502,
-            detail=f"Push notification failed: {errors[0] if errors else 'Unknown error'}"
-        )
-
-    # 8. Record in tutor_notifications collection (for rate limiting + history)
     now = datetime.utcnow()
+
+    # 4. Save to notifications + user_notifications collections
+    # This is the PRIMARY delivery mechanism — same pattern as admin notifications.
+    # The learner sees it in their bell icon and notification list regardless of push.
     notification_oid = ObjectId()
     notification_id = str(notification_oid)
+
+    notification_doc = {
+        "_id": notification_id,
+        "title": f"Message from {tutor_name}",
+        "content": message,
+        "notification_type": "Information",  # Uses existing mobile rendering
+        "created_by": f"tutor:{tutor_id}",
+        "created_at": now,
+        "sent_at": now,
+        "is_sent": True,
+        "tutor_id": tutor_id,
+        "tutor_name": tutor_name,
+    }
+    await database.notifications.insert_one(notification_doc)
+
+    user_notification_doc = {
+        "_id": str(ObjectId()),
+        "user_id": user_id,
+        "notification_id": notification_id,
+        "is_read": False,
+        "read_at": None,
+        "deleted_at": None,
+        "created_at": now,
+    }
+    await database.user_notifications.insert_one(user_notification_doc)
+
+    # 5. Send push as best-effort hint (navigate to bell icon on tap)
+    # Not a blocking failure — notification already saved to DB above.
+    push_sent = False
+    if push_token and isinstance(push_token, str) and (
+        push_token.startswith("ExponentPushToken[") or push_token.startswith("ExpoPushToken[")
+    ):
+        try:
+            from notification_service import notification_service
+            push_data = {
+                "type": "notification",
+                "notification_type": "Information",
+                "notification_id": notification_id,
+                "screen": "Main",
+                "params": {"screen": "Profile", "params": {"tab": "notifications"}},
+            }
+            send_result = notification_service.send_expo_push_notification(
+                push_tokens=[push_token],
+                title=f"Message from {tutor_name}",
+                body=(message[:178].strip() or message[:50]),
+                data=push_data,
+                priority="high",
+                sound="default",
+                badge=1,
+            )
+            push_sent = send_result.get("success", False)
+            # Clear stale token silently
+            if any("DeviceNotRegistered" in str(e) for e in send_result.get("errors", [])):
+                await database.users.update_one(
+                    {"_id": ObjectId(user_id)},
+                    {"$unset": {"push_token": ""}}
+                )
+        except Exception:
+            pass  # Push failure never blocks — notification is already in DB
+
+    # 6. Record in tutor_notifications for history
     await database.tutor_notifications.insert_one({
-        "_id": notification_oid,
+        "_id": ObjectId(),
         "tutor_id": tutor_id,
         "learner_id": user_id,
         "learner_name": learner_name,
         "tutor_name": tutor_name,
         "message": message,
+        "notification_id": notification_id,
         "sent_at": now,
-        "push_result": {
-            "sent": send_result.get("sent", 0),
-            "failed": send_result.get("failed", 0),
-        },
+        "push_sent": push_sent,
     })
 
     return {
@@ -1641,4 +1644,5 @@ async def send_recommendation(
         "notification_id": notification_id,
         "learner_name": learner_name,
         "sent_at": now.isoformat(),
+        "push_sent": push_sent,
     }
