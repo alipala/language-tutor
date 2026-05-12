@@ -114,6 +114,7 @@ async def _get_learning_plans(user_id: str) -> List[Dict]:
             "completed_sessions": 1, "total_sessions": 1, "duration_months": 1,
             "goals": 1, "progress_percentage": 1, "updated_at": 1, "created_at": 1,
             "voice_check_schedule": 1, "voice_checks_completed": 1,
+            "plan_content": 1, "assessment_data": 1, "sessions_per_week": 1,
         }
     ).sort("updated_at", -1)
     plans = []
