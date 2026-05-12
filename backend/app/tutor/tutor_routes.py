@@ -1604,8 +1604,6 @@ async def send_recommendation(
                 "type": "notification",
                 "notification_type": "Information",
                 "notification_id": notification_id,
-                "screen": "Main",
-                "params": {"screen": "Profile", "params": {"tab": "notifications"}},
             }
             send_result = notification_service.send_expo_push_notification(
                 push_tokens=[push_token],
