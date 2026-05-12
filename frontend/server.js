@@ -41,9 +41,18 @@ app.prepare().then(() => {
 
       // Proxy API routes to backend with extended timeout
       // BUT: /auth/login, /auth/signup are Next.js pages, not API routes
+      // Institution/tutor POST endpoints must be proxied — GET serves the Next.js page
+      const isInstitutionApiCall =
+        (pathname === '/institution/signup' || pathname === '/institution/login') &&
+        req.method === 'POST';
+      const isTutorApiCall =
+        pathname === '/tutor/login' && req.method === 'POST';
+
       if (
         pathname.startsWith('/api/') ||
         pathname.startsWith('/health/') ||
+        isInstitutionApiCall ||
+        isTutorApiCall ||
         (pathname.startsWith('/auth/') &&
          !pathname.startsWith('/auth/login') &&
          !pathname.startsWith('/auth/signup'))

@@ -1,7 +1,7 @@
 """
 Institution management business logic
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import bcrypt
@@ -46,16 +46,25 @@ class InstitutionService:
         # Validate activation code
         activation_codes = self.db.activation_codes
         code_doc = await activation_codes.find_one({"activation_code": activation_code})
-        
+
         if not code_doc:
             raise ValueError("Invalid activation code")
-        
-        if code_doc["status"] == "used":
+
+        if code_doc["status"] in ("used", "active_trial", "active_paid"):
             raise ValueError("This activation code has already been used")
-        
+
+        # BUG #1 FIX: enforce expiry by time, not just by manual status
+        code_expires_at = code_doc.get("code_expires_at")
+        if code_expires_at and code_expires_at < datetime.utcnow():
+            await activation_codes.update_one(
+                {"activation_code": activation_code},
+                {"$set": {"status": "expired", "updated_at": datetime.utcnow()}}
+            )
+            raise ValueError("This activation code has expired")
+
         if code_doc["status"] == "expired":
             raise ValueError("This activation code has expired")
-        
+
         # Check if admin email already exists
         existing = await self.institutions.find_one({"admin_email": admin_email})
         if existing:
@@ -63,46 +72,52 @@ class InstitutionService:
 
         # Generate unique institution code
         institution_code = generate_institution_code(name)
-
-        # Ensure code is unique
         while await self.institutions.find_one({"institution_code": institution_code}):
             institution_code = generate_institution_code(name)
 
-        # Set plan limits
-        plan_limits = {
-            "starter": {"max_tutors": 2, "max_learners": 50},
-            "professional": {"max_tutors": 10, "max_learners": 200},
-            "enterprise": {"max_tutors": 50, "max_learners": 1000}
-        }
-        limits = plan_limits.get(subscription_plan, plan_limits["starter"])
+        # BUG #2 FIX: use limits and plan from the activation code, not the request
+        max_tutors = code_doc.get("max_tutors", 10)
+        max_learners = code_doc.get("max_learners", 200)
+        is_trial = code_doc.get("is_trial", True)
+        trial_duration_days = code_doc.get("trial_duration_days", 30)
+        resolved_plan = code_doc.get("target_plan", subscription_plan)
+        resolved_type = code_doc.get("institution_type", institution_type)
+
+        now = datetime.utcnow()
 
         # Create institution document
         institution = {
             "name": name,
-            "institution_type": institution_type,
+            "institution_type": resolved_type,
             "admin_email": admin_email,
             "admin_password": self.hash_password(admin_password),
             "admin_name": admin_name,
             "institution_code": institution_code,
-            "subscription_plan": subscription_plan,
-            "max_tutors": limits["max_tutors"],
-            "max_learners": limits["max_learners"],
+            "subscription_plan": resolved_plan,
+            "max_tutors": max_tutors,
+            "max_learners": max_learners,
+            "is_trial": is_trial,
+            "trial_ends_at": now + timedelta(days=trial_duration_days) if is_trial else None,
+            "activation_code": activation_code,
             "is_active": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": now,
+            "updated_at": now
         }
 
         result = await self.institutions.insert_one(institution)
-        
-        # Mark activation code as used
+
+        # BUG #4+5 FIX: correct status value + set activated_at
+        new_status = "active_trial" if is_trial else "active_paid"
         await activation_codes.update_one(
             {"activation_code": activation_code},
             {
                 "$set": {
-                    "status": "used",
-                    "used_at": datetime.utcnow(),
+                    "status": new_status,
+                    "activated_at": now,
+                    "used_at": now,
                     "used_by_institution_id": str(result.inserted_id),
-                    "used_by_email": admin_email
+                    "used_by_email": admin_email,
+                    "updated_at": now
                 }
             }
         )
@@ -111,7 +126,7 @@ class InstitutionService:
             "institution_id": str(result.inserted_id),
             "institution_code": institution_code,
             "admin_email": admin_email,
-            "subscription_plan": subscription_plan
+            "subscription_plan": resolved_plan
         }
 
     async def authenticate_admin(
