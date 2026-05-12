@@ -78,8 +78,7 @@ class NotificationService:
                 sound=sound,
                 priority=priority,
                 badge=badge,
-                # Note: category_id is not a valid Expo parameter
-                # Use channelId for Android channels if needed
+                channel_id='default',  # Android 8+: routes to MAX importance channel
             )
             messages.append(message)
 
