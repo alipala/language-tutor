@@ -59,7 +59,7 @@ import {
   UserPlus, UserMinus, RefreshCw, Eye, X, MoreHorizontal,
   Award, Activity, Target, Lightbulb, Flame, Star,
   Settings, Building2, User, Lock, Bell, Shield,
-  Camera, MapPin, Phone, Link, Calendar, Save, KeyRound
+  MapPin, Phone, Globe, Calendar, Save, KeyRound
 } from 'lucide-react';
 
 // Register ChartJS components
@@ -451,8 +451,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
               <div>
                 <label className={labelCls}>Logo URL</label>
                 <div className="relative">
-                  <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input className={`${inputCls} pl-9`} placeholder="https://..." value={profile.logo_url}
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">IMG</span>
+                  <input className={`${inputCls} pl-11`} placeholder="https://logo.png" value={profile.logo_url}
                     onChange={e => setProfile(p => ({ ...p, logo_url: e.target.value }))} />
                 </div>
               </div>
@@ -468,27 +468,24 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
               <div>
                 <label className={labelCls}>Website</label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input className={`${inputCls} pl-9`} placeholder="https://..." value={profile.website}
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">URL</span>
+                  <input className={`${inputCls} pl-11`} placeholder="https://your-school.com" value={profile.website}
                     onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
                 </div>
               </div>
               <div>
                 <label className={labelCls}>Phone</label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input className={`${inputCls} pl-9`} placeholder="+31 20 000 0000" value={profile.phone}
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">TEL</span>
+                  <input className={`${inputCls} pl-11`} placeholder="+31 20 000 0000" value={profile.phone}
                     onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
                 </div>
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls}>Address</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                  <textarea rows={2} className={`${inputCls} pl-9 resize-none`} placeholder="Street, City, Country"
-                    value={profile.address}
-                    onChange={e => setProfile(p => ({ ...p, address: e.target.value }))} />
-                </div>
+                <textarea rows={2} className={`${inputCls} resize-none`} placeholder="Street, City, Country"
+                  value={profile.address}
+                  onChange={e => setProfile(p => ({ ...p, address: e.target.value }))} />
               </div>
             </div>
           </div>
@@ -572,8 +569,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
                       </div>
                   }
                   <div className="relative flex-1">
-                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input className={`${inputCls} pl-9`} placeholder="https://..." value={admin.admin_photo_url}
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">IMG</span>
+                    <input className={`${inputCls} pl-11`} placeholder="https://photo.png" value={admin.admin_photo_url}
                       onChange={e => setAdmin(a => ({ ...a, admin_photo_url: e.target.value }))} />
                   </div>
                 </div>
