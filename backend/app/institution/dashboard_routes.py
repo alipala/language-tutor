@@ -6,12 +6,132 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from bson import ObjectId
-from io import StringIO
+from io import StringIO, BytesIO
 import csv
 
 from app.config.feature_flags import feature_flags
 from database import database
 from auth import create_access_token
+
+# ---------------------------------------------------------------------------
+# SHARED IMPORT HELPER
+# ---------------------------------------------------------------------------
+# Column-name aliases: maps every common variant → our canonical field name.
+# Matching is case-insensitive and strips whitespace.
+_LEARNER_ALIASES: Dict[str, str] = {
+    # name
+    "name": "name", "full name": "name", "fullname": "name",
+    "student name": "name", "learner name": "name",
+    "first name": "first_name", "firstname": "first_name", "given name": "first_name",
+    "last name": "last_name", "lastname": "last_name", "surname": "last_name",
+    "family name": "last_name",
+    # email
+    "email": "email", "e-mail": "email", "email address": "email",
+    "student email": "email", "learner email": "email",
+    # language
+    "language": "language", "target language": "language", "learning language": "language",
+    # level
+    "level": "level", "cefr level": "level", "proficiency level": "level",
+    "proficiency": "level",
+    # tutor
+    "tutor_email": "tutor_email", "tutor email": "tutor_email",
+    "assigned tutor": "tutor_email", "teacher email": "tutor_email",
+}
+
+_TUTOR_ALIASES: Dict[str, str] = {
+    # name
+    "name": "name", "full name": "name", "fullname": "name",
+    "tutor name": "name", "teacher name": "name",
+    "first name": "first_name", "firstname": "first_name", "given name": "first_name",
+    "last name": "last_name", "lastname": "last_name", "surname": "last_name",
+    "family name": "last_name",
+    # email
+    "email": "email", "e-mail": "email", "email address": "email",
+    "tutor email": "email", "teacher email": "email",
+    # optional
+    "bio": "bio", "biography": "bio", "description": "bio", "about": "bio",
+    "qualifications": "qualifications", "qualification": "qualifications",
+    "credentials": "qualifications", "degree": "qualifications",
+    "specializations": "specializations", "specialization": "specializations",
+    "subjects": "specializations", "languages": "specializations",
+    "expertise": "specializations",
+}
+
+
+def _normalise_row(raw: Dict[str, str], aliases: Dict[str, str]) -> Dict[str, str]:
+    """Map raw CSV/XLSX column headers to canonical field names."""
+    result: Dict[str, str] = {}
+    for key, value in raw.items():
+        canonical = aliases.get((key or "").strip().lower())
+        if canonical:
+            result[canonical] = (value or "").strip()
+    # Merge first_name + last_name → name if name absent
+    if "name" not in result and ("first_name" in result or "last_name" in result):
+        parts = [result.pop("first_name", ""), result.pop("last_name", "")]
+        result["name"] = " ".join(p for p in parts if p)
+    return result
+
+
+async def _parse_import_file(
+    file: UploadFile,
+    aliases: Dict[str, str]
+) -> List[Dict[str, str]]:
+    """
+    Read a CSV or XLSX upload and return a list of normalised row dicts.
+    Raises HTTPException(400) on bad format or encoding issues.
+    """
+    contents: bytes = await file.read()
+    filename = (file.filename or "").lower()
+
+    rows: List[Dict[str, str]] = []
+
+    # ── XLSX ────────────────────────────────────────────────────────────────
+    if filename.endswith(".xlsx") or filename.endswith(".xls") or \
+            file.content_type in (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+            ):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(BytesIO(contents), read_only=True, data_only=True)
+            ws = wb.active
+            all_rows = list(ws.iter_rows(values_only=True))
+            if not all_rows:
+                raise HTTPException(status_code=400, detail="Excel file is empty")
+            # Row 0 = headers
+            headers = [str(h).strip() if h is not None else "" for h in all_rows[0]]
+            for row_values in all_rows[1:]:
+                raw = {headers[i]: str(v).strip() if v is not None else ""
+                       for i, v in enumerate(row_values) if i < len(headers)}
+                if any(v for v in raw.values()):   # skip blank rows
+                    rows.append(_normalise_row(raw, aliases))
+            wb.close()
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Could not read Excel file: {exc}")
+
+    # ── CSV ─────────────────────────────────────────────────────────────────
+    else:
+        for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+            try:
+                text = contents.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise HTTPException(status_code=400, detail="Could not decode file — please save as UTF-8 CSV")
+
+        # Detect delimiter (comma or semicolon — common in European locales)
+        sample = text[:2048]
+        delimiter = ";" if sample.count(";") > sample.count(",") else ","
+
+        reader = csv.DictReader(StringIO(text), delimiter=delimiter)
+        for row in reader:
+            if any(v.strip() for v in row.values()):
+                rows.append(_normalise_row(dict(row), aliases))
+
+    return rows
 
 router = APIRouter(prefix="/institution/dashboard", tags=["institution-dashboard"])
 
@@ -337,83 +457,77 @@ async def bulk_import_tutors(
     file: UploadFile = File(...)
 ) -> Dict[str, Any]:
     """
-    Bulk import tutors from CSV file.
-    Expected CSV columns: name, email, bio, qualifications, specializations
-    Tutors are created with a temporary password — they must reset it on first login.
+    Bulk import tutors from CSV or Excel (.xlsx) file.
+    Required columns : name (or first_name + last_name), email
+    Optional columns : bio, qualifications, specializations (comma-separated)
+    Column headers are matched case-insensitively with common aliases.
+    Tutors receive a random temporary password; must_reset_password is set True.
     """
-    from app.tutor.tutor_auth import get_password_hash
     import secrets, string
+    from app.tutor.tutor_auth import get_password_hash
 
-    def _generate_temp_password(length: int = 16) -> str:
-        alphabet = string.ascii_letters + string.digits
-        return ''.join(secrets.choice(alphabet) for _ in range(length))
+    def _temp_password() -> str:
+        chars = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(chars) for _ in range(16))
 
     try:
-        contents = await file.read()
-        csv_data = StringIO(contents.decode('utf-8'))
-        reader = csv.DictReader(csv_data)
+        rows = await _parse_import_file(file, _TUTOR_ALIASES)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
-        success_count = 0
-        failed_count = 0
-        errors: List[str] = []
+    success_count = 0
+    skipped_count = 0
+    failed_count  = 0
+    errors: List[str] = []
 
-        for row_num, row in enumerate(reader, start=2):  # start=2: row 1 is header
-            try:
-                name  = (row.get('name') or '').strip()
-                email = (row.get('email') or '').strip().lower()
+    for row_num, row in enumerate(rows, start=2):
+        try:
+            name  = row.get("name", "").strip()
+            email = row.get("email", "").strip().lower()
 
-                if not name or not email:
-                    errors.append(f"Row {row_num}: missing name or email")
-                    failed_count += 1
-                    continue
-
-                # Reject duplicate within this institution
-                existing = await database.tutors.find_one({
-                    "email": email,
-                    "institution_id": institution_id
-                })
-                if existing:
-                    errors.append(f"Row {row_num}: {email} already exists in this institution")
-                    failed_count += 1
-                    continue
-
-                # Parse optional specializations (comma-separated within the cell)
-                raw_specs = (row.get('specializations') or '').strip()
-                specializations = [s.strip() for s in raw_specs.split(',') if s.strip()] if raw_specs else []
-
-                temp_password = _generate_temp_password()
-
-                tutor_doc = {
-                    "name": name,
-                    "email": email,
-                    "bio": (row.get('bio') or '').strip() or None,
-                    "qualifications": (row.get('qualifications') or '').strip() or None,
-                    "specializations": specializations,
-                    "institution_id": institution_id,
-                    "hashed_password": get_password_hash(temp_password),
-                    "must_reset_password": True,
-                    "assigned_learners": [],
-                    "is_active": True,
-                    "enrollment_method": "bulk_import",
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
-                }
-                await database.tutors.insert_one(tutor_doc)
-                success_count += 1
-
-            except Exception as e:
-                errors.append(f"Row {row_num}: {str(e)}")
+            if not name or not email:
+                errors.append(f"Row {row_num}: 'name' and 'email' are required")
                 failed_count += 1
+                continue
 
-        return {
-            "message": "Bulk import completed",
-            "success_count": success_count,
-            "failed_count": failed_count,
-            "errors": errors[:10]
-        }
+            # Skip duplicates within the same institution
+            if await database.tutors.find_one({"email": email, "institution_id": institution_id}):
+                skipped_count += 1
+                continue
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to import tutors: {str(e)}")
+            raw_specs = row.get("specializations", "")
+            specializations = [s.strip() for s in raw_specs.split(",") if s.strip()]
+
+            await database.tutors.insert_one({
+                "name": name,
+                "email": email,
+                "bio": row.get("bio") or None,
+                "qualifications": row.get("qualifications") or None,
+                "specializations": specializations,
+                "institution_id": institution_id,
+                "hashed_password": get_password_hash(_temp_password()),
+                "must_reset_password": True,
+                "assigned_learners": [],
+                "is_active": True,
+                "enrollment_method": "bulk_import",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            })
+            success_count += 1
+
+        except Exception as exc:
+            errors.append(f"Row {row_num}: unexpected error — {exc}")
+            failed_count += 1
+
+    return {
+        "message": "Import completed",
+        "success_count": success_count,
+        "skipped_count": skipped_count,
+        "failed_count": failed_count,
+        "errors": errors[:20],
+    }
 
 
 @router.get("/{institution_id}/tutors/export",
@@ -829,90 +943,92 @@ async def bulk_import_learners(
     file: UploadFile = File(...)
 ) -> Dict[str, Any]:
     """
-    Bulk import learners from CSV file
-    Expected CSV format: name, email, language, level, tutor_email
+    Bulk import learners from CSV or Excel (.xlsx) file.
+    Required columns : name (or first_name + last_name), email
+    Optional columns : language, level, tutor_email
+    Column headers are matched case-insensitively with common aliases.
     """
     try:
-        # Read CSV file
-        contents = await file.read()
-        csv_data = StringIO(contents.decode('utf-8'))
-        reader = csv.DictReader(csv_data)
-        
-        success_count = 0
-        failed_count = 0
-        errors = []
-        
-        for row in reader:
-            try:
-                # Validate required fields
-                if not row.get('name') or not row.get('email'):
-                    errors.append(f"Row missing name or email: {row}")
-                    failed_count += 1
-                    continue
-                
-                # Find or create user
-                user = await database.users.find_one({"email": row['email']})
-                if not user:
-                    # Create new user (simplified - in production, send invitation email)
-                    user_data = {
-                        "name": row['name'],
-                        "email": row['email'],
-                        "preferred_language": row.get('language'),
-                        "preferred_level": row.get('level'),
-                        "is_active": True,
-                        "created_at": datetime.utcnow()
-                    }
-                    user_result = await database.users.insert_one(user_data)
-                    user_id = str(user_result.inserted_id)
-                else:
-                    user_id = str(user["_id"])
-                
-                # Find tutor by email if provided
-                tutor_id = None
-                if row.get('tutor_email'):
-                    tutor = await database.tutors.find_one({
-                        "email": row['tutor_email'],
-                        "institution_id": institution_id
-                    })
-                    if tutor:
-                        tutor_id = str(tutor["_id"])
-                
-                # Check if already enrolled
-                existing = await database.institutional_learners.find_one({
-                    "user_id": user_id,
-                    "institution_id": institution_id
-                })
-                
-                if not existing:
-                    # Create enrollment
-                    enrollment = {
-                        "user_id": user_id,
-                        "institution_id": institution_id,
-                        "tutor_id": tutor_id,
-                        "enrollment_method": "bulk_import",
-                        "consent_given": False,
-                        "enrolled_at": datetime.utcnow(),
-                        "is_active": True
-                    }
-                    await database.institutional_learners.insert_one(enrollment)
-                    success_count += 1
-                else:
-                    errors.append(f"User {row['email']} already enrolled")
-                    failed_count += 1
-                    
-            except Exception as e:
-                errors.append(f"Error processing row {row}: {str(e)}")
+        rows = await _parse_import_file(file, _LEARNER_ALIASES)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    success_count = 0
+    failed_count  = 0
+    skipped_count = 0   # already enrolled
+    errors: List[str] = []
+
+    for row_num, row in enumerate(rows, start=2):
+        try:
+            name  = row.get("name", "").strip()
+            email = row.get("email", "").strip().lower()
+
+            if not name or not email:
+                errors.append(f"Row {row_num}: 'name' and 'email' are required")
                 failed_count += 1
-        
-        return {
-            "message": "Bulk import completed",
-            "success_count": success_count,
-            "failed_count": failed_count,
-            "errors": errors[:10]  # Return first 10 errors
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to import learners: {str(e)}")
+                continue
+
+            # Find or create the user account
+            user = await database.users.find_one({"email": email})
+            if not user:
+                user_result = await database.users.insert_one({
+                    "name": name,
+                    "email": email,
+                    "preferred_language": row.get("language") or None,
+                    "preferred_level": row.get("level") or None,
+                    "is_active": True,
+                    "created_at": datetime.utcnow(),
+                })
+                user_id = str(user_result.inserted_id)
+            else:
+                user_id = str(user["_id"])
+
+            # Resolve optional tutor assignment
+            tutor_id: Optional[str] = None
+            tutor_email = row.get("tutor_email", "").lower()
+            if tutor_email:
+                tutor = await database.tutors.find_one(
+                    {"email": tutor_email, "institution_id": institution_id}
+                )
+                if tutor:
+                    tutor_id = str(tutor["_id"])
+                else:
+                    errors.append(
+                        f"Row {row_num}: tutor '{tutor_email}' not found in this institution — learner enrolled without tutor"
+                    )
+
+            # Skip if already enrolled
+            already = await database.institutional_learners.find_one(
+                {"user_id": user_id, "institution_id": institution_id}
+            )
+            if already:
+                skipped_count += 1
+                continue
+
+            await database.institutional_learners.insert_one({
+                "user_id": user_id,
+                "institution_id": institution_id,
+                "tutor_id": tutor_id,
+                "enrollment_method": "bulk_import",
+                "consent_given": False,
+                "enrolled_at": datetime.utcnow(),
+                "is_active": True,
+            })
+            success_count += 1
+
+        except Exception as exc:
+            errors.append(f"Row {row_num}: unexpected error — {exc}")
+            failed_count += 1
+
+    return {
+        "message": "Import completed",
+        "success_count": success_count,
+        "skipped_count": skipped_count,
+        "failed_count": failed_count,
+        "errors": errors[:20],
+    }
 
 
 @router.get("/{institution_id}/learners/{user_id}/comprehensive-details",

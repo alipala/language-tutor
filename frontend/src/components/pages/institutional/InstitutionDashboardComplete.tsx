@@ -47,7 +47,7 @@ function TableSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { FlagIcon, FlagOrText } from '../../ui/FlagIcon';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
@@ -108,6 +108,165 @@ interface Learner {
     emoji: string;
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ImportModal — drag-drop or click-to-browse, CSV + XLSX, column guide
+// ─────────────────────────────────────────────────────────────────────────────
+interface ColHint { col: string; hint: string; }
+interface ImportModalProps {
+  title: string;
+  requiredCols: string[];
+  optionalCols: string[];
+  colHints?: ColHint[];
+  warning?: string;
+  onClose: () => void;
+  onImport: (file: File) => void;
+}
+
+const ImportModal: React.FC<ImportModalProps> = ({
+  title, requiredCols, optionalCols, colHints = [], warning, onClose, onImport
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [pickedFile, setPickedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const hintMap = Object.fromEntries(colHints.map(h => [h.col, h.hint]));
+
+  const handleFile = useCallback((f: File) => {
+    const ok = /\.(csv|xlsx|xls)$/i.test(f.name);
+    if (!ok) { alert('Please upload a .csv or .xlsx file'); return; }
+    setPickedFile(f);
+  }, []);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  };
+
+  const handleSubmit = async () => {
+    if (!pickedFile) return;
+    setIsUploading(true);
+    try { await onImport(pickedFile); }
+    finally { setIsUploading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#4ECFBF]/10 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-[#4ECFBF]" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Warning banner */}
+          {warning && (
+            <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
+              <p className="text-xs text-amber-700 leading-relaxed">{warning}</p>
+            </div>
+          )}
+
+          {/* Column guide */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Column Guide</p>
+            <div className="space-y-1.5">
+              {requiredCols.map(col => (
+                <div key={col} className="flex items-start gap-2">
+                  <span className="inline-block mt-0.5 w-1.5 h-1.5 rounded-full bg-[#4ECFBF] flex-shrink-0" />
+                  <span className="text-xs font-semibold text-gray-700 w-28 flex-shrink-0">{col}</span>
+                  <span className="text-xs text-[#4ECFBF] font-medium">required</span>
+                  {hintMap[col] && <span className="text-xs text-gray-400 ml-1">— {hintMap[col]}</span>}
+                </div>
+              ))}
+              {optionalCols.map(col => (
+                <div key={col} className="flex items-start gap-2">
+                  <span className="inline-block mt-0.5 w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                  <span className="text-xs font-medium text-gray-500 w-28 flex-shrink-0">{col}</span>
+                  <span className="text-xs text-gray-400">optional</span>
+                  {hintMap[col] && <span className="text-xs text-gray-400 ml-1">— {hintMap[col]}</span>}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 pt-1">Headers are matched case-insensitively. Common variations (e.g. "First Name", "E-mail") are auto-mapped.</p>
+          </div>
+
+          {/* Drop zone */}
+          <div
+            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+              dragging ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' :
+              pickedFile ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' :
+              'border-gray-200 hover:border-[#4ECFBF]/50 hover:bg-gray-50'
+            }`}
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
+            />
+            {pickedFile ? (
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-10 h-10 rounded-full bg-[#4ECFBF]/15 flex items-center justify-center mb-1">
+                  <CheckCircle className="w-5 h-5 text-[#4ECFBF]" />
+                </div>
+                <p className="text-sm font-semibold text-gray-800">{pickedFile.name}</p>
+                <p className="text-xs text-gray-400">{(pickedFile.size / 1024).toFixed(1)} KB · click to change</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-1">
+                  <Upload className="w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">Drop file here or click to browse</p>
+                <p className="text-xs text-gray-400">CSV or Excel (.xlsx) · UTF-8 encoding recommended</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium text-sm transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!pickedFile || isUploading}
+            className="flex-1 py-2.5 bg-[#4ECFBF] text-white rounded-xl hover:bg-[#3a9e92] font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isUploading
+              ? <><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Importing...</>
+              : <><Upload className="w-4 h-4" />Import {pickedFile ? `"${pickedFile.name}"` : ''}</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const InstitutionDashboardComplete: React.FC = () => {
   const router = useRouter();
@@ -1273,33 +1432,28 @@ export const InstitutionDashboardComplete: React.FC = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-2xl font-bold text-gray-900">Learner Management</h2>
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={() => setShowImportCSVModal(true)}
-                  className="px-6 py-3 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center"
+                  className="px-5 py-2.5 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center text-sm font-medium"
                 >
-                  <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+                  <Upload className="w-4 h-4 mr-1.5" /> Import
                 </button>
                 <button
                   onClick={handleExportLearners}
                   disabled={isExporting}
-                  className={`px-6 py-3 border-2 border-[#4ECFBF] rounded-lg transition-all ${
-                    isExporting
-                      ? 'bg-[#4ECFBF] text-white cursor-wait'
-                      : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'
-                  }`}
+                  className={`px-5 py-2.5 border-2 border-[#4ECFBF] rounded-lg transition-all flex items-center text-sm font-medium ${isExporting ? 'bg-[#4ECFBF] text-white cursor-wait' : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'}`}
                 >
-                  {isExporting ? (
-                    <span className="flex items-center space-x-2">
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Exporting...</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center"><Download className="w-4 h-4 mr-1.5" /> Export CSV</span>
-                  )}
+                  {isExporting
+                    ? <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Exporting...</>
+                    : <><Download className="w-4 h-4 mr-1.5" />Export</>
+                  }
+                </button>
+                <button
+                  onClick={() => setShowAddLearnerModal(true)}
+                  className="px-5 py-2.5 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                >
+                  <UserPlus className="w-4 h-4 mr-1.5" /> Add Learner
                 </button>
               </div>
             </div>
@@ -1624,58 +1778,36 @@ export const InstitutionDashboardComplete: React.FC = () => {
         </div>
       )}
 
-      {/* Import CSV Modal */}
+      {/* ── Import Modal — Learners ─────────────────────────────────────── */}
       {showImportCSVModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
-            <h3 className="text-xl font-bold mb-4 text-gray-900">Import Learners from CSV</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              CSV format: name, email, language, level, tutor_email
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  handleImportCSV(e.target.files[0]);
-                }
-              }}
-              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-900"
-            />
-            <button
-              onClick={() => setShowImportCSVModal(false)}
-              className="w-full px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ImportModal
+          title="Import Learners"
+          requiredCols={['name', 'email']}
+          optionalCols={['language', 'level', 'tutor_email']}
+          colHints={[
+            { col: 'name', hint: 'or split into first_name + last_name' },
+            { col: 'tutor_email', hint: 'must match an existing tutor in this institution' },
+            { col: 'level', hint: 'A1 · A2 · B1 · B2 · C1 · C2' },
+          ]}
+          onClose={() => setShowImportCSVModal(false)}
+          onImport={handleImportCSV}
+        />
       )}
 
-      {/* Import Tutor CSV Modal */}
+      {/* ── Import Modal — Tutors ───────────────────────────────────────── */}
       {showImportTutorCSVModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
-            <h3 className="text-xl font-bold mb-2 text-gray-900">Import Tutors from CSV</h3>
-            <p className="text-sm text-gray-600 mb-1">Required columns: <code className="bg-gray-100 px-1 rounded">name</code>, <code className="bg-gray-100 px-1 rounded">email</code></p>
-            <p className="text-sm text-gray-500 mb-4">Optional: <code className="bg-gray-100 px-1 rounded">bio</code>, <code className="bg-gray-100 px-1 rounded">qualifications</code>, <code className="bg-gray-100 px-1 rounded">specializations</code> (comma-separated)</p>
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-              ⚠️ Imported tutors will receive a temporary password. They must reset it on first login.
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => { if (e.target.files?.[0]) handleImportTutorCSV(e.target.files[0]); }}
-              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-900"
-            />
-            <button
-              onClick={() => setShowImportTutorCSVModal(false)}
-              className="w-full px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ImportModal
+          title="Import Tutors"
+          requiredCols={['name', 'email']}
+          optionalCols={['bio', 'qualifications', 'specializations']}
+          colHints={[
+            { col: 'name', hint: 'or split into first_name + last_name' },
+            { col: 'specializations', hint: 'comma-separated, e.g. Dutch,English' },
+          ]}
+          warning="Imported tutors receive a temporary password and must reset it on first login."
+          onClose={() => setShowImportTutorCSVModal(false)}
+          onImport={handleImportTutorCSV}
+        />
       )}
 
       {/* Modern Notification Modal */}
