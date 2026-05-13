@@ -493,7 +493,7 @@ async def get_taalcoach_context_cached(user_id: str) -> Optional[Dict[str, Any]]
 
         for session in conversations:
             # Extract topic (filter out generic placeholders)
-            topic = session.get('topic', 'conversation')
+            topic = session.get('topic') or 'conversation'
             if topic.startswith('Practice Session'):
                 # Try custom_topic or enhanced_analysis topic
                 if session.get('custom_topic'):

@@ -5,9 +5,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Proxy to backend
-    const backendUrl = process.env.NODE_ENV === 'production' 
-      ? 'http://localhost:8000'
-      : 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
     
     const response = await fetch(`${backendUrl}/institution/login`, {
       method: 'POST',
@@ -20,10 +18,10 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     
     return NextResponse.json(data, { status: response.status });
-  } catch (error) {
-    console.error('Error proxying institution login:', error);
+  } catch (error: any) {
+    console.error('Error proxying institution login:', error?.message || error);
     return NextResponse.json(
-      { detail: 'Internal server error' },
+      { detail: error?.message || 'Internal server error' },
       { status: 500 }
     );
   }

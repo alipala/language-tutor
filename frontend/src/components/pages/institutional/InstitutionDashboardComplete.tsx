@@ -1,11 +1,66 @@
 'use client';
 
-import { getApiBaseUrl } from '../../../lib/api-config';
+// Institution dashboard API calls go through /api/institution/* proxy
+const getApiBaseUrl = () => '/api';
 
-import React, { useState, useEffect } from 'react';
+// ── Shared spinner components ──────────────────────────────────────────
+function PageSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/20" />
+          <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/60 animate-spin absolute inset-0" style={{ animationDuration: '0.75s' }} />
+        </div>
+        <p className="text-sm text-gray-400 font-medium animate-pulse">Loading dashboard...</p>
+      </div>
+    </div>
+  );
+}
+
+function ModalSpinner({ label = 'Loading details...' }: { label?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-14 gap-4">
+      <div className="relative">
+        <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/15" />
+        <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/50 animate-spin absolute inset-0" style={{ animationDuration: '0.7s' }} />
+        <div className="w-8 h-8 rounded-full border-[3px] border-transparent border-b-[#3a9e92]/60 animate-spin absolute inset-3" style={{ animationDuration: '1.1s', animationDirection: 'reverse' }} />
+      </div>
+      <p className="text-sm text-gray-400 font-medium">{label}</p>
+    </div>
+  );
+}
+
+function TableSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="p-4 space-y-2">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-3 items-center animate-pulse" style={{ animationDelay: `${i * 80}ms` }}>
+          <div className="w-9 h-9 bg-gray-100 rounded-xl flex-shrink-0" />
+          <div className="h-9 bg-gray-100 rounded-lg flex-1" />
+          <div className="h-9 bg-gray-100 rounded-lg w-24" />
+          <div className="h-9 bg-gray-100 rounded-lg w-20" style={{ opacity: 0.7 }} />
+          <div className="h-9 bg-gray-100 rounded-lg w-16" style={{ opacity: 0.5 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { FlagIcon, FlagOrText } from '../../ui/FlagIcon';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
+import {
+  BarChart2, Users, UserCheck, GraduationCap, Globe, TrendingUp,
+  BookOpen, Mic, Zap, Bot, CheckCircle, AlertTriangle, Clock,
+  Upload, Download, Search, Filter, ChevronDown, ChevronUp,
+  UserPlus, UserMinus, RefreshCw, Eye, X, MoreHorizontal,
+  Award, Activity, Target, Lightbulb, Flame, Star,
+  Settings, Building2, User, Lock, Bell, Shield,
+  MapPin, Phone, Calendar, Save, KeyRound
+} from 'lucide-react';
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -56,6 +111,647 @@ interface Learner {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ImportModal — drag-drop or click-to-browse, CSV + XLSX, column guide
+// ─────────────────────────────────────────────────────────────────────────────
+interface ColHint { col: string; hint: string; }
+interface ImportModalProps {
+  title: string;
+  requiredCols: string[];
+  optionalCols: string[];
+  colHints?: ColHint[];
+  warning?: string;
+  onClose: () => void;
+  onImport: (file: File) => void;
+}
+
+const ImportModal: React.FC<ImportModalProps> = ({
+  title, requiredCols, optionalCols, colHints = [], warning, onClose, onImport
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [pickedFile, setPickedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const hintMap = Object.fromEntries(colHints.map(h => [h.col, h.hint]));
+
+  const handleFile = useCallback((f: File) => {
+    const ok = /\.(csv|xlsx|xls)$/i.test(f.name);
+    if (!ok) { alert('Please upload a .csv or .xlsx file'); return; }
+    setPickedFile(f);
+  }, []);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  };
+
+  const handleSubmit = async () => {
+    if (!pickedFile) return;
+    setIsUploading(true);
+    try { await onImport(pickedFile); }
+    finally { setIsUploading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#4ECFBF]/10 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-[#4ECFBF]" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Warning banner */}
+          {warning && (
+            <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
+              <p className="text-xs text-amber-700 leading-relaxed">{warning}</p>
+            </div>
+          )}
+
+          {/* Column guide */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Column Guide</p>
+            <div className="space-y-1.5">
+              {requiredCols.map(col => (
+                <div key={col} className="flex items-start gap-2">
+                  <span className="inline-block mt-0.5 w-1.5 h-1.5 rounded-full bg-[#4ECFBF] flex-shrink-0" />
+                  <span className="text-xs font-semibold text-gray-700 w-28 flex-shrink-0">{col}</span>
+                  <span className="text-xs text-[#4ECFBF] font-medium">required</span>
+                  {hintMap[col] && <span className="text-xs text-gray-400 ml-1">— {hintMap[col]}</span>}
+                </div>
+              ))}
+              {optionalCols.map(col => (
+                <div key={col} className="flex items-start gap-2">
+                  <span className="inline-block mt-0.5 w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                  <span className="text-xs font-medium text-gray-500 w-28 flex-shrink-0">{col}</span>
+                  <span className="text-xs text-gray-400">optional</span>
+                  {hintMap[col] && <span className="text-xs text-gray-400 ml-1">— {hintMap[col]}</span>}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 pt-1">Headers are matched case-insensitively. Common variations (e.g. "First Name", "E-mail") are auto-mapped.</p>
+          </div>
+
+          {/* Drop zone */}
+          <div
+            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+              dragging ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' :
+              pickedFile ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' :
+              'border-gray-200 hover:border-[#4ECFBF]/50 hover:bg-gray-50'
+            }`}
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
+            />
+            {pickedFile ? (
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-10 h-10 rounded-full bg-[#4ECFBF]/15 flex items-center justify-center mb-1">
+                  <CheckCircle className="w-5 h-5 text-[#4ECFBF]" />
+                </div>
+                <p className="text-sm font-semibold text-gray-800">{pickedFile.name}</p>
+                <p className="text-xs text-gray-400">{(pickedFile.size / 1024).toFixed(1)} KB · click to change</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-1">
+                  <Upload className="w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">Drop file here or click to browse</p>
+                <p className="text-xs text-gray-400">CSV or Excel (.xlsx) · UTF-8 encoding recommended</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium text-sm transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!pickedFile || isUploading}
+            className="flex-1 py-2.5 bg-[#4ECFBF] text-white rounded-xl hover:bg-[#3a9e92] font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isUploading
+              ? <><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Importing...</>
+              : <><Upload className="w-4 h-4" />Import {pickedFile ? `"${pickedFile.name}"` : ''}</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ImageUpload — drag-drop or click-to-browse, base64 preview, no server needed
+// ─────────────────────────────────────────────────────────────────────────────
+interface ImageUploadProps {
+  value: string;
+  onChange: (dataUrlOrUrl: string) => void;
+  placeholder?: string;
+  token?: string;
+  round?: boolean;
+}
+
+const ImageUpload: React.FC<ImageUploadProps> = ({
+  value, onChange, placeholder = 'Drop image here or click to upload', round = false,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const processFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => { if (e.target?.result) onChange(e.target.result as string); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  };
+
+  const previewCls = round
+    ? 'w-20 h-20 rounded-full object-cover border-2 border-[#4ECFBF]/40'
+    : 'h-16 max-w-[160px] object-contain rounded-lg';
+
+  return (
+    <div
+      className={`relative border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
+        dragging ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' : 'border-gray-200 hover:border-[#4ECFBF]/50 hover:bg-gray-50'
+      }`}
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={handleDrop}
+      onClick={() => inputRef.current?.click()}
+    >
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { if (e.target.files?.[0]) processFile(e.target.files[0]); }} />
+
+      {value ? (
+        <div className="flex items-center gap-4 p-3">
+          <img src={value} alt="preview" className={previewCls} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-700">Image selected</p>
+            <p className="text-xs text-gray-400 mt-0.5">Click or drop to replace</p>
+          </div>
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(''); }}
+            className="flex-shrink-0 w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
+          >
+            <X className="w-3.5 h-3.5 text-red-500" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-1.5 py-6 px-4 text-center">
+          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+            <Upload className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-600">{placeholder}</p>
+          <p className="text-xs text-gray-400">PNG, JPG, SVG up to 5 MB</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SettingsTab — Institution Profile + Admin Account
+// ─────────────────────────────────────────────────────────────────────────────
+const TIMEZONES = [
+  'UTC','Europe/Amsterdam','Europe/London','Europe/Berlin','Europe/Paris',
+  'Europe/Madrid','Europe/Rome','Europe/Istanbul','America/New_York',
+  'America/Chicago','America/Denver','America/Los_Angeles','America/Sao_Paulo',
+  'Asia/Dubai','Asia/Singapore','Asia/Tokyo','Asia/Shanghai','Australia/Sydney',
+];
+const ADMIN_LANGUAGES = [
+  { value: 'en', label: 'English' },
+  { value: 'tr', label: 'Türkçe' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'es', label: 'Español' },
+  { value: 'fr', label: 'Français' },
+  { value: 'pt', label: 'Português' },
+];
+const INSTITUTION_TYPES = [
+  { value: 'school',          label: 'School' },
+  { value: 'university',      label: 'University' },
+  { value: 'language_center', label: 'Language Center' },
+  { value: 'corporate',       label: 'Corporate' },
+];
+
+interface SettingsTabProps {
+  institutionId: string;
+  token: string;
+  onNotify: (type: 'success'|'error', title: string, message: string) => void;
+}
+
+export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, onNotify }) => {
+  const api = '/api';
+  const [section, setSection] = useState<'profile'|'admin'>('profile');
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+
+  // ── Profile state ──────────────────────────────────────────────────────────
+  const [profile, setProfile] = useState({
+    name: '', institution_type: 'school', website: '', phone: '',
+    address: '', logo_url: '', admin_language: 'en',
+    timezone: 'UTC', semester_start: '', semester_end: '',
+  });
+
+  // ── Admin state ────────────────────────────────────────────────────────────
+  const [admin, setAdmin] = useState({
+    admin_name: '', admin_email: '', admin_photo_url: '',
+    notify_daily_digest: false, notify_weekly_report: true,
+    notify_learner_alerts: true, two_factor_enabled: false,
+  });
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwSaving, setPwSaving]   = useState(false);
+  const [activityLog, setActivityLog] = useState<any[]>([]);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [pRes, aRes, lRes] = await Promise.all([
+          fetch(`${api}/institution/dashboard/${institutionId}/settings/profile`, { headers }),
+          fetch(`${api}/institution/dashboard/${institutionId}/settings/admin`,   { headers }),
+          fetch(`${api}/institution/dashboard/${institutionId}/settings/admin/activity-log`, { headers }),
+        ]);
+        if (pRes.ok) setProfile(await pRes.json());
+        if (aRes.ok) setAdmin(await aRes.json());
+        if (lRes.ok) { const d = await lRes.json(); setActivityLog(d.entries || []); }
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [institutionId, token]);
+
+  // ── Save profile ───────────────────────────────────────────────────────────
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${api}/institution/dashboard/${institutionId}/settings/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) onNotify('success', 'Profile saved', 'Institution profile updated successfully.');
+      else { const e = await res.json(); onNotify('error', 'Save failed', e.detail || 'Could not save profile.'); }
+    } finally { setSaving(false); }
+  };
+
+  // ── Save admin ─────────────────────────────────────────────────────────────
+  const saveAdmin = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${api}/institution/dashboard/${institutionId}/settings/admin`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_name: admin.admin_name,
+          admin_photo_url: admin.admin_photo_url,
+          notify_daily_digest: admin.notify_daily_digest,
+          notify_weekly_report: admin.notify_weekly_report,
+          notify_learner_alerts: admin.notify_learner_alerts,
+          two_factor_enabled: admin.two_factor_enabled,
+        }),
+      });
+      if (res.ok) onNotify('success', 'Settings saved', 'Admin account updated successfully.');
+      else { const e = await res.json(); onNotify('error', 'Save failed', e.detail || 'Could not save settings.'); }
+    } finally { setSaving(false); }
+  };
+
+  // ── Change password ────────────────────────────────────────────────────────
+  const changePassword = async () => {
+    if (pwForm.next !== pwForm.confirm) { onNotify('error', 'Mismatch', 'New passwords do not match.'); return; }
+    if (pwForm.next.length < 8) { onNotify('error', 'Too short', 'Password must be at least 8 characters.'); return; }
+    setPwSaving(true);
+    try {
+      const res = await fetch(`${api}/institution/dashboard/${institutionId}/settings/admin/change-password`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: pwForm.current, new_password: pwForm.next }),
+      });
+      if (res.ok) { onNotify('success', 'Password changed', 'Your password has been updated.'); setPwForm({ current: '', next: '', confirm: '' }); }
+      else { const e = await res.json(); onNotify('error', 'Failed', e.detail || 'Could not change password.'); }
+    } finally { setPwSaving(false); }
+  };
+
+  const btnCls = "flex items-center gap-2 px-5 py-2.5 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-40";
+  const inputCls = "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent";
+  const labelCls = "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5";
+  const cardCls  = "bg-white rounded-2xl shadow-sm border border-gray-100 p-6";
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-24">
+      <div className="w-10 h-10 border-4 border-[#4ECFBF]/30 border-t-[#4ECFBF] rounded-full animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 w-full">
+      {/* Sub-tab navigation */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        {([
+          { key: 'profile', label: 'Institution Profile', icon: Building2 },
+          { key: 'admin',   label: 'Admin Account',       icon: User },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setSection(key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              section === key
+                ? 'bg-white text-[#4ECFBF] shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── INSTITUTION PROFILE ─────────────────────────────────────────────── */}
+      {section === 'profile' && (
+        <div className="space-y-6">
+          {/* Basic info */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[#4ECFBF]" /> Basic Information
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Institution Name *</label>
+                <input className={inputCls} value={profile.name}
+                  onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Institution Type</label>
+                <select className={inputCls} value={profile.institution_type}
+                  onChange={e => setProfile(p => ({ ...p, institution_type: e.target.value }))}>
+                  {INSTITUTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Logo</label>
+                <ImageUpload
+                  value={profile.logo_url}
+                  onChange={url => setProfile(p => ({ ...p, logo_url: url }))}
+                  placeholder="Drop logo here or click to upload"
+                  token={token}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-[#4ECFBF]" /> Contact Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Website</label>
+                <input className={inputCls} placeholder="https://your-school.com" value={profile.website}
+                  onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Phone</label>
+                <input className={inputCls} placeholder="+31 20 000 0000" value={profile.phone}
+                  onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Address</label>
+                <textarea rows={2} className={`${inputCls} resize-none`} placeholder="Street, City, Country"
+                  value={profile.address}
+                  onChange={e => setProfile(p => ({ ...p, address: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          {/* Localisation */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-[#4ECFBF]" /> Localisation
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Dashboard Language</label>
+                <select className={inputCls} value={profile.admin_language}
+                  onChange={e => setProfile(p => ({ ...p, admin_language: e.target.value }))}>
+                  {ADMIN_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Time Zone</label>
+                <select className={inputCls} value={profile.timezone}
+                  onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))}>
+                  {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Academic calendar */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#4ECFBF]" /> Academic Calendar
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Semester Start</label>
+                <input type="date" className={inputCls} value={profile.semester_start}
+                  onChange={e => setProfile(p => ({ ...p, semester_start: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Semester End</label>
+                <input type="date" className={inputCls} value={profile.semester_end}
+                  onChange={e => setProfile(p => ({ ...p, semester_end: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={saveProfile} disabled={saving} className={btnCls}>
+              {saving ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Saving...</> : <><Save className="w-4 h-4" />Save Profile</>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADMIN ACCOUNT ───────────────────────────────────────────────────── */}
+      {section === 'admin' && (
+        <div className="space-y-6">
+          {/* Identity */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <User className="w-5 h-5 text-[#4ECFBF]" /> Admin Identity
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Display Name</label>
+                <input className={inputCls} value={admin.admin_name}
+                  onChange={e => setAdmin(a => ({ ...a, admin_name: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Email (read-only)</label>
+                <input className={`${inputCls} bg-gray-50 text-gray-400 cursor-not-allowed`}
+                  value={admin.admin_email} readOnly />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Profile Photo</label>
+                <ImageUpload
+                  value={admin.admin_photo_url}
+                  onChange={url => setAdmin(a => ({ ...a, admin_photo_url: url }))}
+                  placeholder="Drop photo here or click to upload"
+                  token={token}
+                  round
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[#4ECFBF]" /> Email Notifications
+            </h3>
+            <div className="space-y-4">
+              {([
+                { key: 'notify_daily_digest',   label: 'Daily digest',         desc: 'Summary of activity from the past 24 hours' },
+                { key: 'notify_weekly_report',  label: 'Weekly report',        desc: 'Full progress report every Monday morning' },
+                { key: 'notify_learner_alerts', label: 'Learner alerts',       desc: 'Alert when a learner is inactive for 7+ days' },
+              ] as const).map(({ key, label, desc }) => (
+                <label key={key} className="flex items-center justify-between cursor-pointer group">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 group-hover:text-gray-900">{label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                  </div>
+                  <div
+                    onClick={() => setAdmin(a => ({ ...a, [key]: !a[key] }))}
+                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin[key] ? 'bg-[#4ECFBF]' : 'bg-gray-200'}`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admin[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Security */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#4ECFBF]" /> Security
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">Two-factor authentication adds a second verification step at login.</p>
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Two-Factor Authentication</p>
+                <p className="text-xs text-gray-400 mt-0.5">{admin.two_factor_enabled ? 'Enabled — extra security active' : 'Disabled — login uses password only'}</p>
+              </div>
+              <div
+                onClick={() => setAdmin(a => ({ ...a, two_factor_enabled: !a.two_factor_enabled }))}
+                className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin.two_factor_enabled ? 'bg-[#4ECFBF]' : 'bg-gray-200'}`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admin.two_factor_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </label>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={saveAdmin} disabled={saving} className={btnCls}>
+              {saving ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Saving...</> : <><Save className="w-4 h-4" />Save Settings</>}
+            </button>
+          </div>
+
+          {/* Change password */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-[#4ECFBF]" /> Change Password
+            </h3>
+            <div className="space-y-4 max-w-sm">
+              {([
+                { key: 'current', label: 'Current password',     placeholder: '••••••••' },
+                { key: 'next',    label: 'New password',          placeholder: 'Min 8 characters' },
+                { key: 'confirm', label: 'Confirm new password',  placeholder: '••••••••' },
+              ] as const).map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className={labelCls}>{label}</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input type="password" className={`${inputCls} pl-9`} placeholder={placeholder}
+                      value={pwForm[key]}
+                      onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} />
+                  </div>
+                </div>
+              ))}
+              <button onClick={changePassword} disabled={pwSaving || !pwForm.current || !pwForm.next} className={btnCls}>
+                {pwSaving ? 'Updating...' : 'Update Password'}
+              </button>
+            </div>
+          </div>
+
+          {/* Activity log */}
+          {activityLog.length > 0 && (
+            <div className={cardCls}>
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-[#4ECFBF]" /> Recent Activity
+              </h3>
+              <div className="space-y-2">
+                {activityLog.map((entry, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-[#4ECFBF]" />
+                      <span className="text-sm text-gray-700 capitalize">{(entry.action || '').replace(/_/g, ' ')}</span>
+                      {entry.detail && <span className="text-xs text-gray-400">— {entry.detail}</span>}
+                    </div>
+                    <span className="text-xs text-gray-400 whitespace-nowrap ml-4">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const InstitutionDashboardComplete: React.FC = () => {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -91,6 +787,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filterTutorSpecialization, setFilterTutorSpecialization] = useState('all');
   const [filterTutorLearnerCount, setFilterTutorLearnerCount] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingTutors, setIsExportingTutors] = useState(false);
+  const [showImportTutorCSVModal, setShowImportTutorCSVModal] = useState(false);
   const [selectedLearnerDetails, setSelectedLearnerDetails] = useState<any>(null);
   const [showLearnerDetailsModal, setShowLearnerDetailsModal] = useState(false);
   const [loadingLearnerDetails, setLoadingLearnerDetails] = useState(false);
@@ -142,12 +840,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
   // Available languages with flags
   const availableLanguages = [
-    { code: 'english', name: 'English', flag: '🇬🇧' },
-    { code: 'dutch', name: 'Dutch', flag: '🇳🇱' },
-    { code: 'spanish', name: 'Spanish', flag: '🇪🇸' },
-    { code: 'french', name: 'French', flag: '🇫🇷' },
-    { code: 'german', name: 'German', flag: '🇩🇪' },
-    { code: 'portuguese', name: 'Portuguese', flag: '🇵🇹' }
+    { code: 'english', name: 'English' },
+    { code: 'dutch', name: 'Dutch' },
+    { code: 'spanish', name: 'Spanish' },
+    { code: 'french', name: 'French' },
+    { code: 'german', name: 'German' },
+    { code: 'portuguese', name: 'Portuguese' }
   ];
 
   // Authentication check
@@ -259,6 +957,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   }, [learners, searchQuery, filterLanguage, filterLevel, filterTutor, filterProgress, filterStatus]);
 
   const loadAllData = async () => {
+    setIsLoadingData(true);
     try {
       const token = localStorage.getItem('institution_token');
       const backendUrl = getApiBaseUrl();
@@ -298,6 +997,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+    } finally {
+      setIsLoadingData(false);
     }
   };
 
@@ -355,7 +1056,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     setConfirmation({
       show: true,
-      title: '✅ Reactivate Tutor?',
+      title: 'Reactivate Tutor?',
       message: `Reactivate ${tutor?.name || 'this tutor'}? They will regain access and can be assigned to learners again.`,
       confirmText: 'Yes, Reactivate',
       cancelText: 'Cancel',
@@ -403,7 +1104,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     setConfirmation({
       show: true,
-      title: hasLearners ? '⏸️ Deactivate Tutor with Assigned Learners?' : '⏸️ Temporarily Deactivate Tutor?',
+      title: hasLearners ? 'Deactivate Tutor with Assigned Learners?' : 'Temporarily Deactivate Tutor?',
       message: hasLearners 
         ? `${tutor.name} has ${tutor.learner_count} learner${tutor.learner_count > 1 ? 's' : ''} assigned. Deactivating this tutor will unassign all their learners (they'll become "Unassigned"). The tutor account will be preserved and can be reactivated later. Are you sure you want to proceed?`
         : `Deactivate ${tutor?.name || 'this tutor'}? This will temporarily suspend their access while preserving their account. You can reactivate them later.`,
@@ -458,13 +1159,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
     let message = '';
     
     if (isUnassigning) {
-      title = '🔄 Unassign Learner from Tutor?';
+      title = 'Unassign Learner from Tutor?';
       message = `Remove ${learnerName} from ${currentTutorName}? They will become "Unassigned" and can be assigned to a different tutor later.`;
     } else if (isReassigning) {
-      title = '🔄 Reassign Learner to Different Tutor?';
+      title = 'Reassign Learner to Different Tutor?';
       message = `Move ${learnerName} from ${currentTutorName} to ${newTutorName}?`;
     } else {
-      title = '✅ Assign Learner to Tutor?';
+      title = 'Assign Learner to Tutor?';
       message = `Assign ${learnerName} to ${newTutorName}?`;
     }
     
@@ -526,7 +1227,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     setConfirmation({
       show: true,
-      title: '⏸️ Temporarily Deactivate Learner?',
+      title: 'Temporarily Deactivate Learner?',
       message: hasProgress
         ? `${learner.name} has completed ${learner.progress?.completed_sessions} session${learner.progress && learner.progress.completed_sessions > 1 ? 's' : ''} (${learner.progress?.percentage}% progress). Deactivating will temporarily suspend their access while preserving all progress data. You can reactivate them at any time to resume from where they left off.`
         : `Deactivate ${learner?.name || 'this learner'}? This will temporarily suspend their platform access while preserving their account. You can reactivate them later.`,
@@ -575,7 +1276,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     
     setConfirmation({
       show: true,
-      title: '✅ Reactivate Learner?',
+      title: 'Reactivate Learner?',
       message: `Reactivate ${learner?.name || 'this learner'}? They will regain full platform access and can resume their learning from where they left off.`,
       confirmText: 'Yes, Reactivate',
       cancelText: 'Cancel',
@@ -679,57 +1380,81 @@ export const InstitutionDashboardComplete: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        
-        // Convert to CSV
-        const csv = [
-          ['Name', 'Email', 'Language', 'Level', 'Tutor Email', 'Enrolled At', 'Consent Given'].join(','),
-          ...data.data.map((row: any) => [
-            row.name,
-            row.email,
-            row.language,
-            row.level,
-            row.tutor_email,
-            row.enrolled_at,
-            row.consent_given
-          ].join(','))
-        ].join('\n');
-
-        // Small delay for better UX
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Download
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `learners_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
-        
-        setNotification({
-          show: true,
-          type: 'success',
-          title: 'Export Successful!',
-          message: `Exported ${data.data.length} learners to CSV file.`
-        });
+        window.URL.revokeObjectURL(url);
+        setNotification({ show: true, type: 'success', title: 'Export Successful!', message: 'Learners exported to CSV.' });
       } else {
-        setNotification({
-          show: true,
-          type: 'error',
-          title: 'Export Failed',
-          message: 'Failed to export learners. Please try again.'
-        });
+        setNotification({ show: true, type: 'error', title: 'Export Failed', message: 'Failed to export learners. Please try again.' });
       }
     } catch (error) {
       console.error('Error exporting learners:', error);
-      setNotification({
-        show: true,
-        type: 'error',
-        title: 'Export Error',
-        message: 'An error occurred while exporting learners.'
-      });
+      setNotification({ show: true, type: 'error', title: 'Export Error', message: 'An error occurred while exporting learners.' });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportTutors = async () => {
+    setIsExportingTutors(true);
+    try {
+      const token = localStorage.getItem('institution_token');
+      const backendUrl = getApiBaseUrl();
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/export`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tutors_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        setNotification({ show: true, type: 'success', title: 'Export Successful!', message: 'Tutors exported to CSV.' });
+      } else {
+        setNotification({ show: true, type: 'error', title: 'Export Failed', message: 'Failed to export tutors. Please try again.' });
+      }
+    } catch (error) {
+      console.error('Error exporting tutors:', error);
+      setNotification({ show: true, type: 'error', title: 'Export Error', message: 'An error occurred while exporting tutors.' });
+    } finally {
+      setIsExportingTutors(false);
+    }
+  };
+
+  const handleImportTutorCSV = async (file: File) => {
+    try {
+      const token = localStorage.getItem('institution_token');
+      const backendUrl = getApiBaseUrl();
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/bulk-import`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setNotification({
+          show: true,
+          type: 'success',
+          title: 'Import Completed!',
+          message: `Successfully imported ${result.success_count} tutors. ${result.failed_count > 0 ? `${result.failed_count} failed.` : ''}`
+        });
+        setShowImportTutorCSVModal(false);
+        loadAllData();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        setNotification({ show: true, type: 'error', title: 'Import Failed', message: err.detail || 'Failed to import CSV file. Please check the format.' });
+      }
+    } catch (error) {
+      console.error('Error importing tutor CSV:', error);
+      setNotification({ show: true, type: 'error', title: 'Import Error', message: 'An error occurred while importing the CSV file.' });
     }
   };
 
@@ -847,7 +1572,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
     };
 
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+      <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50 gap-3">
         <div className="text-sm text-gray-700">
           Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
           <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
@@ -904,7 +1629,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -912,39 +1637,39 @@ export const InstitutionDashboardComplete: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
+    <div className="min-h-screen bg-gray-50 pt-20 font-nunito">
       {/* Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-4 border-b-2 ${activeTab === 'overview' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center ${activeTab === 'overview' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
             >
-              📊 Overview
+              <BarChart2 className="w-4 h-4 mr-1.5 inline-block" /> Overview
             </button>
             <button
               onClick={() => setActiveTab('tutors')}
-              className={`py-4 border-b-2 ${activeTab === 'tutors' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center ${activeTab === 'tutors' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
             >
-              👥 Tutors ({tutors.length})
+              <Users className="w-4 h-4 mr-1.5 inline-block" /> Tutors ({tutors.length})
             </button>
             <button
               onClick={() => setActiveTab('learners')}
-              className={`py-4 border-b-2 ${activeTab === 'learners' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
             >
-              🎓 Learners ({learners.length})
+              <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({learners.length})
             </button>
           </nav>
         </div>
       </div>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === 'overview' && (
           <div className="space-y-8">
             {/* Analytics Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Language Distribution */}
               <div className="bg-white p-6 rounded-xl shadow">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Language Distribution</h3>
@@ -971,18 +1696,27 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div className="bg-white p-6 rounded-xl shadow">
-                <p className="text-gray-600">Total Learners</p>
-                <p className="text-3xl font-bold text-[#4ECFBF]">{learners.length}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <GraduationCap className="w-5 h-5 text-[#4ECFBF]" />
+                  <p className="text-gray-600">Total Learners</p>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{learners.length}</p>
               </div>
               <div className="bg-white p-6 rounded-xl shadow">
-                <p className="text-gray-600">Total Tutors</p>
-                <p className="text-3xl font-bold text-[#4ECFBF]">{tutors.length}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <Users className="w-5 h-5 text-blue-500" />
+                  <p className="text-gray-600">Total Tutors</p>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{tutors.length}</p>
               </div>
               <div className="bg-white p-6 rounded-xl shadow">
-                <p className="text-gray-600">Languages</p>
-                <p className="text-3xl font-bold text-[#4ECFBF]">{languageDistribution.length}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <Globe className="w-5 h-5 text-purple-500" />
+                  <p className="text-gray-600">Languages</p>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{languageDistribution.length}</p>
               </div>
             </div>
           </div>
@@ -990,21 +1724,40 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
         {activeTab === 'tutors' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-2xl font-bold">Tutor Management</h2>
-              <button
-                onClick={() => setShowAddTutorModal(true)}
-                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92]"
-              >
-                + Add Tutor
-              </button>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => setShowImportTutorCSVModal(true)}
+                  className="px-5 py-2.5 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center text-sm font-medium"
+                >
+                  <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+                </button>
+                <button
+                  onClick={handleExportTutors}
+                  disabled={isExportingTutors}
+                  className={`px-5 py-2.5 border-2 border-[#4ECFBF] rounded-lg transition-all flex items-center text-sm font-medium ${isExportingTutors ? 'bg-[#4ECFBF] text-white cursor-wait' : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'}`}
+                >
+                  {isExportingTutors ? (
+                    <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Exporting...</>
+                  ) : (
+                    <><Download className="w-4 h-4 mr-1.5" /> Export CSV</>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowAddTutorModal(true)}
+                  className="px-5 py-2.5 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                >
+                  <UserPlus className="w-4 h-4 mr-1.5" /> Add Tutor
+                </button>
+              </div>
             </div>
 
             {/* Tutors Filters */}
             <div className="bg-white p-4 rounded-xl shadow flex gap-4 flex-wrap">
               <input
                 type="text"
-                placeholder="🔍 Search tutors by name or email..."
+                placeholder="Search tutors by name or email..."
                 value={tutorSearchQuery}
                 onChange={(e) => setTutorSearchQuery(e.target.value)}
                 className="flex-1 min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
@@ -1034,10 +1787,10 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
               >
                 <option value="all">All Workloads</option>
-                <option value="none">📭 No Learners (0)</option>
-                <option value="low">📦 Light Load (1-5)</option>
-                <option value="medium">📚 Medium Load (6-15)</option>
-                <option value="high">🔥 Heavy Load (15+)</option>
+                <option value="none">— No Learners (0)</option>
+                <option value="low">Light Load (1-5)</option>
+                <option value="medium">Medium Load (6-15)</option>
+                <option value="high">Heavy Load (15+)</option>
               </select>
               {(tutorSearchQuery || filterTutorSpecialization !== 'all' || filterTutorLearnerCount !== 'all') && (
                 <button
@@ -1046,9 +1799,9 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     setFilterTutorSpecialization('all');
                     setFilterTutorLearnerCount('all');
                   }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center"
                 >
-                  ✕ Clear Filters
+                  <X className="w-4 h-4 mr-1.5" /> Clear Filters
                 </button>
               )}
             </div>
@@ -1059,13 +1812,14 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 Showing <span className="font-semibold text-gray-900">{filteredTutors.length}</span> of <span className="font-semibold text-gray-900">{tutors.length}</span> tutors
               </span>
               {(tutorSearchQuery || filterTutorSpecialization !== 'all' || filterTutorLearnerCount !== 'all') && (
-                <span className="text-[#4ECFBF] font-medium">
-                  🔍 Filters Active
+                <span className="text-[#4ECFBF] font-medium flex items-center">
+                  <Search className="w-4 h-4 mr-1 inline-block" /> Filters Active
                 </span>
               )}
             </div>
 
             <div className="bg-white rounded-xl shadow overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -1108,7 +1862,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       <td className="px-6 py-4">
                         {tutor.learner_count === 0 ? (
                           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100">
-                            <span className="text-sm text-gray-500">📭 No learners</span>
+                            <span className="text-sm text-gray-500"><span className="text-gray-400">—</span> No learners</span>
                           </div>
                         ) : (
                           <button
@@ -1126,16 +1880,16 @@ export const InstitutionDashboardComplete: React.FC = () => {
                         {tutor.is_active ? (
                           <button
                             onClick={() => handleDeactivateTutor(tutor.id)}
-                            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
+                            className="inline-flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
                           >
-                            Deactivate
+                            <UserMinus className="w-4 h-4 mr-1.5" /> Deactivate
                           </button>
                         ) : (
                           <button
                             onClick={() => handleReactivateTutor(tutor.id)}
-                            className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
+                            className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
                           >
-                            Reactivate
+                            <RefreshCw className="w-4 h-4 mr-1.5" /> Reactivate
                           </button>
                         )}
                       </td>
@@ -1143,7 +1897,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-              
+              </div>
+
               {/* Pagination for Tutors */}
               {totalTutorPages > 1 && (
                 <Pagination 
@@ -1159,47 +1914,42 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
         {activeTab === 'learners' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-2xl font-bold text-gray-900">Learner Management</h2>
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={() => setShowImportCSVModal(true)}
-                  className="px-6 py-3 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors"
+                  className="px-5 py-2.5 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center text-sm font-medium"
                 >
-                  📤 Import CSV
+                  <Upload className="w-4 h-4 mr-1.5" /> Import
                 </button>
                 <button
                   onClick={handleExportLearners}
                   disabled={isExporting}
-                  className={`px-6 py-3 border-2 border-[#4ECFBF] rounded-lg transition-all ${
-                    isExporting
-                      ? 'bg-[#4ECFBF] text-white cursor-wait'
-                      : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'
-                  }`}
+                  className={`px-5 py-2.5 border-2 border-[#4ECFBF] rounded-lg transition-all flex items-center text-sm font-medium ${isExporting ? 'bg-[#4ECFBF] text-white cursor-wait' : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'}`}
                 >
-                  {isExporting ? (
-                    <span className="flex items-center space-x-2">
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Exporting...</span>
-                    </span>
-                  ) : (
-                    <span>📥 Export CSV</span>
-                  )}
+                  {isExporting
+                    ? <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Exporting...</>
+                    : <><Download className="w-4 h-4 mr-1.5" />Export</>
+                  }
+                </button>
+                <button
+                  onClick={() => setShowAddLearnerModal(true)}
+                  className="px-5 py-2.5 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                >
+                  <UserPlus className="w-4 h-4 mr-1.5" /> Add Learner
                 </button>
               </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow flex gap-4 flex-wrap">
+            <div className="bg-white p-4 rounded-xl shadow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               <input
                 type="text"
                 placeholder="Search learners..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 min-w-[200px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
+                className="px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 col-span-1 sm:col-span-2 lg:col-span-1"
               />
               <select
                 value={filterStatus}
@@ -1236,11 +1986,11 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 className="px-4 py-2 border rounded-lg text-gray-900"
               >
                 <option value="all">All Progress</option>
-                <option value="Just Started">🟢 Just Started</option>
-                <option value="Early Progress">🔵 Early Progress</option>
-                <option value="Intermediate">🟡 Intermediate</option>
-                <option value="Advanced">🟠 Advanced</option>
-                <option value="Nearly Complete">🔴 Nearly Complete</option>
+                <option value="Just Started">Just Started</option>
+                <option value="Early Progress">Early Progress</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+                <option value="Nearly Complete">Nearly Complete</option>
                 <option value="none">No Progress Data</option>
               </select>
               <select
@@ -1256,8 +2006,10 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Learners Table */}
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-xl shadow overflow-hidden relative">
+              {isLoadingData && learners.length === 0 && <TableSkeleton rows={4} />}
+              <div className="overflow-x-auto">
+              <table className={`w-full ${isLoadingData && learners.length === 0 ? 'hidden' : ''}`}>
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -1279,7 +2031,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           <p className="text-sm text-gray-500">{learner.email}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-700">{learner.language || 'Not set'}</td>
+                      <td className="px-6 py-4 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={learner.language ?? ''} size={16} />{learner.language ? learner.language.charAt(0).toUpperCase()+learner.language.slice(1) : 'Not set'}</div></td>
                       <td className="px-6 py-4 text-gray-700">{learner.level || 'Not set'}</td>
                       <td className="px-6 py-4">
                         {learner.progress ? (
@@ -1309,8 +2061,14 @@ export const InstitutionDashboardComplete: React.FC = () => {
                               <span className="text-xs text-gray-600">
                                 {learner.progress.completed_sessions}/{learner.progress.total_sessions} sessions
                               </span>
-                              <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 flex items-center space-x-1">
-                                <span>{learner.progress.emoji}</span>
+                              <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 flex items-center">
+                                <span className={`inline-block w-2.5 h-2.5 rounded-full mr-1.5 ${
+                                  learner.progress.category === 'Just Started' ? 'bg-emerald-500' :
+                                  learner.progress.category === 'Early Progress' ? 'bg-blue-500' :
+                                  learner.progress.category === 'Intermediate' ? 'bg-yellow-400' :
+                                  learner.progress.category === 'Advanced' ? 'bg-orange-500' :
+                                  'bg-rose-500'
+                                }`} />
                                 <span>{learner.progress.category}</span>
                               </span>
                             </div>
@@ -1360,9 +2118,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                               }`}
                               title={learner.is_active ? "Full access - consent given" : "Learner is inactive"}
                             >
-                              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                              </svg>
+                              <Eye className="w-4 h-4 mr-1.5" />
                               View Details
                             </button>
                           ) : (
@@ -1376,25 +2132,23 @@ export const InstitutionDashboardComplete: React.FC = () => {
                               }`}
                               title={learner.is_active ? "Limited access - consent required" : "Learner is inactive"}
                             >
-                              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
+                              <Eye className="w-4 h-4 mr-1.5" />
                               View Details
                             </button>
                           )}
                           {learner.is_active ? (
                             <button
                               onClick={() => handleDeactivateLearner(learner.id)}
-                              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
+                              className="inline-flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
                             >
-                              Deactivate
+                              <UserMinus className="w-4 h-4 mr-1.5" /> Deactivate
                             </button>
                           ) : (
                             <button
                               onClick={() => handleReactivateLearner(learner.id)}
-                              className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
+                              className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
                             >
-                              Reactivate
+                              <RefreshCw className="w-4 h-4 mr-1.5" /> Reactivate
                             </button>
                           )}
                         </div>
@@ -1403,7 +2157,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-              
+              </div>
+
               {/* Pagination for Learners */}
               {totalLearnerPages > 1 && (
                 <Pagination 
@@ -1420,8 +2175,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
       {/* Add Tutor Modal */}
       {showAddTutorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Add New Tutor</h3>
             <div className="space-y-4">
               <input
@@ -1449,7 +2204,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               {/* Language Selection with Flags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   {availableLanguages.map((lang) => (
                     <button
                       key={lang.code}
@@ -1469,7 +2224,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           : 'border-gray-200 hover:border-[#4ECFBF]/50'
                       }`}
                     >
-                      <span className="text-2xl">{lang.flag}</span>
+                      <FlagIcon language={lang.code} size={24} />
                       <span className="font-medium text-gray-900">{lang.name}</span>
                       {tutorForm.languages.includes(lang.code) && (
                         <svg className="w-5 h-5 ml-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -1507,32 +2262,36 @@ export const InstitutionDashboardComplete: React.FC = () => {
         </div>
       )}
 
-      {/* Import CSV Modal */}
+      {/* ── Import Modal — Learners ─────────────────────────────────────── */}
       {showImportCSVModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-gray-900">Import Learners from CSV</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              CSV format: name, email, language, level, tutor_email
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  handleImportCSV(e.target.files[0]);
-                }
-              }}
-              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-900"
-            />
-            <button
-              onClick={() => setShowImportCSVModal(false)}
-              className="w-full px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ImportModal
+          title="Import Learners"
+          requiredCols={['name', 'email']}
+          optionalCols={['language', 'level', 'tutor_email']}
+          colHints={[
+            { col: 'name', hint: 'or split into first_name + last_name' },
+            { col: 'tutor_email', hint: 'must match an existing tutor in this institution' },
+            { col: 'level', hint: 'A1 · A2 · B1 · B2 · C1 · C2' },
+          ]}
+          onClose={() => setShowImportCSVModal(false)}
+          onImport={handleImportCSV}
+        />
+      )}
+
+      {/* ── Import Modal — Tutors ───────────────────────────────────────── */}
+      {showImportTutorCSVModal && (
+        <ImportModal
+          title="Import Tutors"
+          requiredCols={['name', 'email']}
+          optionalCols={['bio', 'qualifications', 'specializations']}
+          colHints={[
+            { col: 'name', hint: 'or split into first_name + last_name' },
+            { col: 'specializations', hint: 'comma-separated, e.g. Dutch,English' },
+          ]}
+          warning="Imported tutors receive a temporary password and must reset it on first login."
+          onClose={() => setShowImportTutorCSVModal(false)}
+          onImport={handleImportTutorCSV}
+        />
       )}
 
       {/* Modern Notification Modal */}
@@ -1631,13 +2390,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {/* Tutor Learners Modal */}
       {showTutorLearnersModal && selectedTutor && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 transform transition-all animate-slideUp">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 sm:mx-auto my-8 transform transition-all animate-slideUp">
             {/* Header */}
             <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">
-                    👥 {selectedTutor.name}'s Learners
+                  <h2 className="text-2xl font-bold text-white flex items-center">
+                    <Users className="w-6 h-6 mr-2 inline-block" /> {selectedTutor.name}'s Learners
                   </h2>
                   <p className="text-white/80 text-sm mt-1">
                     {selectedTutor.learner_count} {selectedTutor.learner_count === 1 ? 'learner' : 'learners'} assigned
@@ -1658,7 +2417,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
             
             {/* Content */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
+            <div className="p-6 max-h-[70vh] sm:max-h-[60vh] overflow-y-auto">
               <div className="space-y-3">
                 {selectedTutor.learners.map((learner, index) => (
                   <div 
@@ -1684,12 +2443,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       <div className="flex items-center space-x-3 mt-2">
                         {learner.language && (
                           <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                            🌍 {learner.language}
+                            <FlagOrText language={learner.language} size={14} /> {learner.language ? learner.language.charAt(0).toUpperCase()+learner.language.slice(1) : ''}
                           </span>
                         )}
                         {learner.level && (
                           <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                            📊 {learner.level}
+                            <BarChart2 className="w-3 h-3 mr-1" /> {learner.level}
                           </span>
                         )}
                       </div>
@@ -1726,12 +2485,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {/* Learner Details Modal */}
       {showLearnerDetailsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-2 sm:mx-4 my-8">
             {/* Header */}
             <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">
-                  📊 Learner Progress Deep Dive
+                <h2 className="text-2xl font-bold text-white flex items-center">
+                  <BarChart2 className="w-6 h-6 mr-2 inline-block" /> Learner Progress Deep Dive
                 </h2>
                 <button
                   onClick={() => {
@@ -1748,14 +2507,9 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
             
             {/* Content */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
               {loadingLearnerDetails ? (
-                <div className="flex items-center justify-center py-12">
-                  <svg className="animate-spin h-8 w-8 text-[#4ECFBF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </div>
+                <ModalSpinner label="Loading learner progress..." />
               ) : selectedLearnerDetails?.no_consent ? (
                 <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                   <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mb-6">
@@ -1773,8 +2527,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 <div className="space-y-6">
                   {/* Profile Section */}
                   <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">👤 Learner Profile</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><UserCheck className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Learner Profile</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Name</p>
                         <p className="font-medium text-gray-900">{selectedLearnerDetails.profile?.name || 'N/A'}</p>
@@ -1803,7 +2557,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* All Learning Plans */}
                   {selectedLearnerDetails.all_learning_plans && selectedLearnerDetails.all_learning_plans.length > 0 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-gray-900">📚 Learning Plans</h3>
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center"><BookOpen className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Learning Plans</h3>
                       {selectedLearnerDetails.all_learning_plans.map((plan: any, index: number) => (
                         <div key={plan.id || index} className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
                           <h4 className="text-md font-bold text-gray-900 mb-3">
@@ -1845,13 +2599,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* AI Insights */}
                   {selectedLearnerDetails.ai_insights && (
                     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">🤖 AI-Generated Insights</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Bot className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> AI-Generated Insights</h3>
                       <div className="space-y-4">
                         <p className="text-gray-700 leading-relaxed">
                           {selectedLearnerDetails.ai_insights.overall_summary}
                         </p>
                         
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                           <div>
                             <p className="text-sm text-gray-600">Learning Style</p>
                             <p className="font-medium text-gray-900 capitalize">
@@ -1898,7 +2652,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* Recent Sessions */}
                   {selectedLearnerDetails.practice_sessions && selectedLearnerDetails.practice_sessions.length > 0 && (
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">📝 Recent Sessions</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><BookOpen className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Recent Sessions</h3>
                       <div className="space-y-3">
                         {selectedLearnerDetails.practice_sessions.slice(0, 5).map((session: any, idx: number) => (
                           <div key={session.id} className="flex justify-between items-center p-3 bg-white rounded-lg">
@@ -1920,7 +2674,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* Subscription Info */}
                   {selectedLearnerDetails.subscription && (
                     <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">💳 Subscription</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Award className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Subscription</h3>
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-gray-700">Status:</span>

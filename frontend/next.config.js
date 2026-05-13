@@ -26,7 +26,7 @@ const nextConfig = {
   env: {
     BACKEND_URL: process.env.NODE_ENV === 'production'
       ? process.env.BACKEND_URL || ''
-      : 'http://localhost:8000',
+      : process.env.BACKEND_URL || 'http://127.0.0.1:8000',
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '41687548204-0go9lqlnve4llpv3vdl48jujddlt2kp5.apps.googleusercontent.com',
   },
   // Disable image optimization since it requires a server component
@@ -42,7 +42,7 @@ const nextConfig = {
   // Proxy API requests to backend
   async rewrites() {
     // Use environment variable or default to localhost for development
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000'
     // For Railway production, use empty string for API routes to avoid redirects
     const apiBackendUrl = process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT
       ? (process.env.BACKEND_URL || '')

@@ -16,6 +16,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        nunito: ['var(--font-nunito)', 'Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       animation: {
         "fade-in": "fadeIn 0.5s ease-out forwards",
         "pulse": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",

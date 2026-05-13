@@ -1,452 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { Spinner, ModalSpinner, TableLoadingSkeleton, CardLoadingSkeleton } from '@/src/components/ui/Spinner';
+import {
+  BarChart2, Users, AlertTriangle, TrendingUp, Globe, BookOpen,
+  Mic, Zap, Bot, CheckCircle, Clock, Target, Lightbulb,
+  Flame, Star, Calendar, GraduationCap, ChevronRight,
+  Award, Activity, MessageSquare, Brain, Layout, Dna,
+  TrendingDown, Minus, Shield, Heart, Repeat, Send, Smartphone,
+  ListChecks, CalendarDays
+} from 'lucide-react';
+import { FlagIcon, FlagOrText } from '@/src/components/ui/FlagIcon';
+import { DateRangePicker, DateRange } from '@/src/components/ui/DateRangePicker';
 
-// Use relative URLs with /api prefix to go through Next.js proxy
 const API_BASE_URL = '/api';
 
-// Comprehensive Learner Modal Component
-interface ComprehensiveLearnerModalProps {
-  learner: Learner;
-  learnerDetails: any;
-  loadingDetails: boolean;
-  onClose: () => void;
-}
-
-const ComprehensiveLearnerModal: React.FC<ComprehensiveLearnerModalProps> = ({
-  learner,
-  learnerDetails,
-  loadingDetails,
-  onClose
-}) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'sessions' | 'insights'>('overview');
-  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8">
-        {/* Header with Gradient */}
-        <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
-          <div className="flex justify-between items-start">
-            <div className="text-white">
-              <h2 className="text-3xl font-bold mb-2">{learner.name}</h2>
-              {learnerDetails?.profile && (
-                <div className="flex items-center gap-6 text-white/90 text-sm">
-                  <span>📧 {learnerDetails.profile.email}</span>
-                  <span>📚 {learnerDetails.profile.total_sessions} sessions</span>
-                  <span>⏱️ {learnerDetails.profile.total_minutes} minutes</span>
-                  <span>🌍 {learnerDetails.profile.languages_studied?.join(', ') || 'No languages'}</span>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b bg-white">
-          <nav className="flex px-6">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'overview'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📊 Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('plans')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'plans'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📚 Learning Plans ({learnerDetails?.all_learning_plans?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveTab('sessions')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'sessions'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              💬 Practice Sessions ({learnerDetails?.practice_sessions?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveTab('insights')}
-              className={`py-4 px-6 font-medium border-b-2 transition-colors ${
-                activeTab === 'insights'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              🤖 AI Insights
-            </button>
-          </nav>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto bg-gray-50">
-          {loadingDetails ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
-                <p className="mt-4 text-gray-600">Loading detailed progress...</p>
-              </div>
-            </div>
-          ) : !learnerDetails ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">Failed to load learner details</p>
-            </div>
-          ) : (
-            <>
-              {/* Overview Tab */}
-              {activeTab === 'overview' && learnerDetails.profile && (
-                <div className="space-y-6">
-                  {/* Quick Stats Cards */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Total Sessions</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.profile.total_sessions}</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Total Minutes</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.profile.total_minutes}</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Learning Plans</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.all_learning_plans?.length || 0}</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                      <div className="text-sm text-gray-600">Practice Sessions</div>
-                      <div className="text-2xl font-bold text-[#4ECFBF]">{learnerDetails.practice_sessions?.length || 0}</div>
-                    </div>
-                  </div>
-
-                  {/* Languages Overview */}
-                  {learnerDetails.all_learning_plans && learnerDetails.all_learning_plans.length > 0 && (
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">🌍 Languages Progress</h3>
-                      <div className="space-y-4">
-                        {learnerDetails.all_learning_plans.map((plan: any) => (
-                          <div key={plan.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="text-lg font-bold text-gray-900">
-                                  {plan.language?.charAt(0).toUpperCase() + plan.language?.slice(1)}
-                                </span>
-                                <span className="px-2 py-1 bg-white rounded-full text-sm font-medium text-[#4ECFBF]">
-                                  {plan.proficiency_level}
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div
-                                  className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full transition-all"
-                                  style={{ width: `${plan.progress_percentage || 0}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <div className="ml-6 text-right">
-                              <div className="text-2xl font-bold text-[#4ECFBF]">{plan.progress_percentage?.toFixed(0) || 0}%</div>
-                              <div className="text-sm text-gray-600">{plan.completed_sessions}/{plan.total_sessions} sessions</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Learning Plans Tab */}
-              {activeTab === 'plans' && (
-                <div className="space-y-4">
-                  {learnerDetails.all_learning_plans && learnerDetails.all_learning_plans.length > 0 ? (
-                    learnerDetails.all_learning_plans.map((plan: any) => (
-                      <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Plan Header */}
-                        <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-3">
-                                <h4 className="text-xl font-bold text-gray-900">
-                                  {plan.language?.charAt(0).toUpperCase() + plan.language?.slice(1)} {plan.proficiency_level}
-                                </h4>
-                                {plan.assessment_data?.overall_score && (
-                                  <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-[#4ECFBF]">
-                                    Score: {plan.assessment_data.overall_score}/100
-                                  </span>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-3 gap-4 mb-3">
-                                <div>
-                                  <div className="text-sm text-gray-600">Progress</div>
-                                  <div className="text-lg font-bold text-gray-900">{plan.progress_percentage?.toFixed(1) || 0}%</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Sessions</div>
-                                  <div className="text-lg font-bold text-gray-900">{plan.completed_sessions || 0}/{plan.total_sessions || 16}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Practice Time</div>
-                                  <div className="text-lg font-bold text-gray-900">{plan.practice_minutes_used || 0}/{plan.total_practice_minutes || 80} min</div>
-                                </div>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div
-                                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full"
-                                  style={{ width: `${plan.progress_percentage || 0}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)}
-                              className="ml-4 px-4 py-2 bg-white text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors font-medium border border-[#4ECFBF]"
-                            >
-                              {expandedPlan === plan.id ? 'Hide' : 'Show'} Details
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Expanded Details */}
-                        {expandedPlan === plan.id && (
-                          <div className="p-6 bg-white border-t space-y-6">
-                            {/* Assessment Scores */}
-                            {plan.assessment_data?.skill_scores && (
-                              <div>
-                                <h5 className="font-bold text-gray-900 mb-3">📊 Skill Assessment</h5>
-                                <div className="grid grid-cols-4 gap-4">
-                                  {Object.entries(plan.assessment_data.skill_scores).map(([skill, score]: [string, any]) => (
-                                    <div key={skill} className="bg-gray-50 p-4 rounded-lg text-center">
-                                      <div className="text-sm text-gray-600 capitalize mb-1">{skill}</div>
-                                      <div className="text-2xl font-bold text-[#4ECFBF]">{score}/100</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Strengths & Improvements */}
-                            <div className="grid grid-cols-2 gap-6">
-                              {plan.assessment_data?.strengths && plan.assessment_data.strengths.length > 0 && (
-                                <div>
-                                  <h5 className="font-bold text-green-900 mb-3">✅ Strengths</h5>
-                                  <ul className="space-y-2">
-                                    {plan.assessment_data.strengths.map((strength: string, idx: number) => (
-                                      <li key={idx} className="text-sm text-gray-700 bg-green-50 p-3 rounded-lg">
-                                        • {strength}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              {plan.assessment_data?.areas_for_improvement && plan.assessment_data.areas_for_improvement.length > 0 && (
-                                <div>
-                                  <h5 className="font-bold text-orange-900 mb-3">🎯 Areas for Improvement</h5>
-                                  <ul className="space-y-2">
-                                    {plan.assessment_data.areas_for_improvement.map((area: string, idx: number) => (
-                                      <li key={idx} className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg">
-                                        • {area}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Learning Objectives */}
-                            {plan.plan_content?.learning_objectives && plan.plan_content.learning_objectives.length > 0 && (
-                              <div>
-                                <h5 className="font-bold text-gray-900 mb-3">🎓 Learning Objectives</h5>
-                                <ul className="space-y-2">
-                                  {plan.plan_content.learning_objectives.map((obj: string, idx: number) => (
-                                    <li key={idx} className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
-                                      {idx + 1}. {obj}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Session Summaries */}
-                            {plan.session_summaries && plan.session_summaries.length > 0 && (
-                              <div>
-                                <h5 className="font-bold text-gray-900 mb-3">📝 Session Summaries</h5>
-                                <div className="space-y-2">
-                                  {plan.session_summaries.map((summary: string, idx: number) => (
-                                    <div key={idx} className="bg-purple-50 p-4 rounded-lg">
-                                      <div className="font-medium text-purple-900 mb-1">Session {idx + 1}</div>
-                                      <div className="text-sm text-gray-700">{summary}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="bg-white p-12 rounded-xl text-center">
-                      <div className="text-4xl mb-4">📚</div>
-                      <p className="text-gray-600">No learning plans found for this learner.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Practice Sessions Tab */}
-              {activeTab === 'sessions' && (
-                <div className="space-y-4">
-                  {learnerDetails.practice_sessions && learnerDetails.practice_sessions.length > 0 ? (
-                    learnerDetails.practice_sessions.map((session: any, idx: number) => (
-                      <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Session Header */}
-                        <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="text-lg font-bold text-gray-900">
-                                  Session #{idx + 1}
-                                </span>
-                                <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-purple-700">
-                                  {session.language} {session.level}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <div className="text-gray-600">Date</div>
-                                  <div className="font-medium text-gray-900">
-                                    {session.created_at ? new Date(session.created_at).toLocaleDateString() : 'N/A'}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-600">Duration</div>
-                                  <div className="font-medium text-gray-900">{session.duration_minutes || 0} min</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-600">Messages</div>
-                                  <div className="font-medium text-gray-900">{session.message_count || 0}</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-600">Overall Score</div>
-                                  <div className="font-medium text-gray-900">N/A</div>
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
-                              className="ml-4 px-4 py-2 bg-white text-purple-700 rounded-lg hover:bg-purple-700 hover:text-white transition-colors font-medium border border-purple-700"
-                            >
-                              {expandedSession === session.id ? 'Hide' : 'Show'} Details
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Expanded Session Details */}
-                        {expandedSession === session.id && (
-                          <div className="p-6 bg-white border-t space-y-4">
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <div className="text-sm text-gray-600">Full conversation details would be displayed here with message previews and analysis.</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="bg-white p-12 rounded-xl text-center">
-                      <div className="text-4xl mb-4">💬</div>
-                      <p className="text-gray-600">No practice sessions found for this learner.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* AI Insights Tab */}
-              {activeTab === 'insights' && learnerDetails.ai_insights && (
-                <div className="space-y-6">
-                  {/* Overall Summary */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-3">🤖 AI Analysis Summary</h3>
-                    <p className="text-gray-700 leading-relaxed">{learnerDetails.ai_insights.overall_summary}</p>
-                  </div>
-
-                  {/* Learning Metrics */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h4 className="font-bold text-gray-900 mb-4">📚 Learning Style</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Preferred Time</span>
-                          <span className="font-medium text-gray-900 capitalize">
-                            {learnerDetails.ai_insights.learning_style?.preferred_time}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Sessions/Week</span>
-                          <span className="font-medium text-gray-900">
-                            {learnerDetails.ai_insights.learning_style?.sessions_per_week}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h4 className="font-bold text-gray-900 mb-4">📈 Progress Rate</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Rate</span>
-                          <span className="font-medium text-gray-900 capitalize">
-                            {learnerDetails.ai_insights.progress_rate?.rate}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Description</span>
-                          <span className="font-medium text-gray-900 capitalize">
-                            {learnerDetails.ai_insights.progress_rate?.description}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recommendations */}
-                  {learnerDetails.ai_insights.recommendations && learnerDetails.ai_insights.recommendations.length > 0 && (
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h4 className="font-bold text-gray-900 mb-4">💡 Tutor Recommendations</h4>
-                      <ul className="space-y-3">
-                        {learnerDetails.ai_insights.recommendations.map((rec: string, idx: number) => (
-                          <li key={idx} className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
-                            <span className="text-yellow-600 font-bold">{idx + 1}.</span>
-                            <span className="text-gray-700">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 interface LearningPlan {
   id: string;
   language: string;
@@ -482,8 +54,1495 @@ interface Analytics {
   total_minutes_practiced: number;
   languages_taught: string[];
   level_distribution: Record<string, number>;
+  recent_activity: Array<{ learner_id: string; created_at: string; language: string; duration_minutes: number }>;
 }
 
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
+// Flags rendered via FlagIcon component — no emoji map needed
+
+const LEVEL_COLORS: Record<string, string> = {
+  A1: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  A2: 'bg-teal-100 text-teal-700 border-teal-200',
+  B1: 'bg-blue-100 text-blue-700 border-blue-200',
+  B2: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  C1: 'bg-purple-100 text-purple-700 border-purple-200',
+  C2: 'bg-rose-100 text-rose-700 border-rose-200',
+};
+
+const LEVEL_BAR_COLORS: Record<string, string> = {
+  A1: 'bg-emerald-400', A2: 'bg-teal-400',
+  B1: 'bg-blue-400', B2: 'bg-indigo-500',
+  C1: 'bg-purple-500', C2: 'bg-rose-500',
+};
+
+// ─────────────────────────────────────────────
+// AI Insights Tab — GPT-powered report
+// ─────────────────────────────────────────────
+function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorId: string; details: any }) {
+  const [report, setReport] = React.useState<any>(null);
+  const [generating, setGenerating] = React.useState(false);
+  const [generatedAt, setGeneratedAt] = React.useState<string | null>(null);
+  const [fromCache, setFromCache] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  // Send to Learner state
+  const [sendMessage, setSendMessage] = React.useState('');
+  const [sending, setSending] = React.useState(false);
+  const [sendSuccess, setSendSuccess] = React.useState(false);
+  const [sendError, setSendError] = React.useState('');
+  const [cachedTutorName] = React.useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('tutorName') || 'Your Tutor') : 'Your Tutor'
+  );
+  const MAX_CHARS = 178; // iOS push body hard limit
+
+  const generateReport = async (force = false) => {
+    setGenerating(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('tutorToken');
+      const res = await fetch(
+        `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/ai-report${force ? '?force=true' : ''}`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || 'Failed to generate report');
+      }
+      const data = await res.json();
+      setReport(data.report);
+      setGeneratedAt(data.generated_at);
+      setFromCache(data.from_cache);
+      // Pre-fill send message from report
+      if (data.report?.next_session_plan?.priority_focus) {
+        const focus = data.report.next_session_plan.priority_focus;
+        const recs = (data.report.recommendations || []).slice(0, 2).map((r: any) => r.action).join('; ');
+        const draft = recs ? `${focus}. ${recs}` : focus;
+        setSendMessage(draft.slice(0, MAX_CHARS));
+      }
+    } catch (e: any) {
+      setError(e.message || 'Report generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const sendRecommendation = async () => {
+    if (!sendMessage.trim()) return;
+    setSending(true);
+    setSendError('');
+    setSendSuccess(false);
+    try {
+      const token = localStorage.getItem('tutorToken');
+      const res = await fetch(
+        `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/send-recommendation`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: sendMessage.trim(), tutor_name: cachedTutorName }),
+        }
+      );
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || 'Failed to send notification');
+      }
+      setSendSuccess(true);
+      setTimeout(() => setSendSuccess(false), 5000);
+    } catch (e: any) {
+      setSendError(e.message || 'Failed to send notification');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const ratingConfig: Record<string, { color: string; bg: string; dot: string }> = {
+    strong:       { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
+    developing:   { color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200',     dot: 'bg-amber-400'   },
+    needs_work:   { color: 'text-rose-700',     bg: 'bg-rose-50 border-rose-200',       dot: 'bg-rose-400'    },
+  };
+
+  const priorityConfig: Record<string, { color: string; bg: string }> = {
+    high:   { color: 'text-rose-700',    bg: 'bg-rose-50 border-rose-200'    },
+    medium: { color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200'  },
+    low:    { color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-200'    },
+  };
+
+  const flagConfig: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
+    warning:  { color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200',   icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.8} /> },
+    positive: { color: 'text-emerald-800', bg: 'bg-emerald-50 border-emerald-200', icon: <CheckCircle className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.8} /> },
+    info:     { color: 'text-blue-800',  bg: 'bg-blue-50 border-blue-200',     icon: <Bot className="w-3.5 h-3.5 text-blue-500" strokeWidth={1.8} /> },
+  };
+
+  // Empty state — generate button
+  if (!report && !generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-5">
+        <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
+          <Bot className="w-8 h-8 text-indigo-500" strokeWidth={1.5} />
+        </div>
+        <div className="text-center">
+          <h4 className="font-bold text-gray-900 mb-1">AI Tutor Report</h4>
+          <p className="text-sm text-gray-500 max-w-xs">
+            Generate a comprehensive GPT-powered report covering CEFR alignment,
+            skill diagnosis, engagement analysis, and your next session plan.
+          </p>
+        </div>
+        {error && <p className="text-xs text-rose-600 bg-rose-50 rounded-xl px-3 py-2">{error}</p>}
+        <button
+          onClick={() => generateReport()}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-2xl hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-lg"
+        >
+          <Bot className="w-4 h-4" strokeWidth={2} />
+          Generate AI Report
+        </button>
+        <p className="text-xs text-gray-400">Powered by GPT-4.1-mini · Results cached 24h</p>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-14 gap-4">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-indigo-100" />
+          <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-indigo-500 border-r-purple-400 animate-spin absolute inset-0" style={{ animationDuration: '0.8s' }} />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-800">Analyzing {learner.name}'s data...</p>
+          <p className="text-xs text-gray-400 mt-1">GPT-4.1-mini is reviewing sessions, DNA, challenges & assessments</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header with metadata + regenerate */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
+            <Bot className="w-3.5 h-3.5 text-white" strokeWidth={2} />
+          </div>
+          <span className="text-xs font-semibold text-gray-700">AI Report</span>
+          {fromCache && <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">cached</span>}
+          {generatedAt && (
+            <span className="text-xs text-gray-400">
+              {new Date(generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => generateReport(true)}
+          className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
+        >
+          <Repeat className="w-3 h-3" strokeWidth={2} /> Regenerate
+        </button>
+      </div>
+
+      {/* Executive Summary */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
+        <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+          <Bot className="w-3.5 h-3.5" strokeWidth={2} /> Executive Summary
+        </h4>
+        <p className="text-sm text-gray-800 leading-relaxed font-medium">{report.executive_summary}</p>
+      </div>
+
+      {/* Flags (warnings + positives) */}
+      {report.flags?.length > 0 && (
+        <div className="space-y-2">
+          {report.flags.map((flag: any, i: number) => {
+            const cfg = flagConfig[flag.type] || flagConfig.info;
+            return (
+              <div key={i} className={`flex items-start gap-2.5 border rounded-xl px-3.5 py-2.5 ${cfg.bg}`}>
+                <span className="flex-shrink-0 mt-0.5">{cfg.icon}</span>
+                <p className={`text-xs font-medium ${cfg.color}`}>{flag.message}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* CEFR Alignment + Learner Archetype */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {report.cefr_alignment && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4">
+            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">CEFR Alignment</h5>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl font-black text-[#4ECFBF]">{report.cefr_alignment.current_estimated_level}</span>
+              <div className="flex-1">
+                <p className="text-xs text-gray-600 leading-snug">{report.cefr_alignment.trajectory}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">{report.cefr_alignment.evidence}</p>
+          </div>
+        )}
+        {report.learner_archetype && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4">
+            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Learner Archetype</h5>
+            <p className="text-sm font-bold text-gray-900 mb-1">{report.learner_archetype.type}</p>
+            <p className="text-xs text-gray-500 leading-snug mb-2">{report.learner_archetype.description}</p>
+            <div className="bg-[#4ECFBF]/10 rounded-lg px-2.5 py-1.5">
+              <p className="text-xs text-[#2a9e92] font-medium">{report.learner_archetype.coaching_strategy}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Skill Diagnosis */}
+      {report.skill_diagnosis?.skill_breakdown?.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} /> Skill Diagnosis
+          </h5>
+          <div className="space-y-2">
+            {report.skill_diagnosis.skill_breakdown.map((skill: any, i: number) => {
+              const cfg = ratingConfig[skill.rating] || ratingConfig.developing;
+              return (
+                <div key={i} className={`flex items-start gap-2.5 border rounded-xl px-3 py-2 ${cfg.bg}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${cfg.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold ${cfg.color}`}>{skill.skill}</span>
+                      <span className={`text-xs capitalize ${cfg.color} opacity-70`}>{skill.rating.replace('_', ' ')}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-0.5">{skill.note}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Next Session Plan */}
+      {report.next_session_plan && (
+        <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-teal-50 border border-[#4ECFBF]/30 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-[#2a9e92] uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5" strokeWidth={1.8} /> Next Session Plan
+          </h5>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Focus</span>
+              <p className="text-sm font-semibold text-gray-900">{report.next_session_plan.priority_focus}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Activity</span>
+              <p className="text-xs text-gray-700 capitalize">{report.next_session_plan.suggested_activity_type}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Topic</span>
+              <p className="text-xs text-gray-700">{report.next_session_plan.topic_suggestion}</p>
+            </div>
+            {report.next_session_plan.things_to_avoid?.length > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 mt-0.5">Avoid</span>
+                <div className="flex flex-wrap gap-1">
+                  {report.next_session_plan.things_to_avoid.map((t: string, i: number) => (
+                    <span key={i} className="text-xs bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full border border-rose-100">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {report.recommendations?.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.8} /> Recommendations
+          </h5>
+          <div className="space-y-2.5">
+            {report.recommendations.map((rec: any, i: number) => {
+              const cfg = priorityConfig[rec.priority] || priorityConfig.low;
+              return (
+                <div key={i} className={`border rounded-xl p-3 ${cfg.bg}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs font-bold uppercase ${cfg.color}`}>{rec.priority}</span>
+                    <span className="text-xs text-gray-400 capitalize">{rec.timeframe?.replace('_', ' ')}</span>
+                  </div>
+                  <p className={`text-xs font-semibold ${cfg.color} mb-0.5`}>{rec.action}</p>
+                  <p className="text-xs text-gray-500">{rec.rationale}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* App Practice Plan */}
+      {report.app_practice_plan && (
+        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-teal-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <ListChecks className="w-3.5 h-3.5" strokeWidth={1.8} /> Weekly App Practice Plan
+          </h5>
+          {report.app_practice_plan.this_week?.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {report.app_practice_plan.this_week.map((item: any, i: number) => (
+                <div key={i} className="bg-white/70 rounded-xl px-3 py-2.5 border border-teal-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">{item.activity}</span>
+                    <span className="text-xs text-gray-500">{item.frequency}</span>
+                  </div>
+                  <p className="text-xs text-gray-700 font-medium">{item.focus}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.rationale}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {report.app_practice_plan.suggested_session_sequence && (
+            <div className="bg-white/70 rounded-xl px-3 py-2.5 border border-teal-100">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <CalendarDays className="w-3 h-3 text-teal-600" strokeWidth={1.8} />
+                <span className="text-xs font-bold text-teal-700">Day-by-Day Sequence</span>
+              </div>
+              <p className="text-xs text-gray-700 leading-relaxed">{report.app_practice_plan.suggested_session_sequence}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Engagement Analysis */}
+      {report.engagement_analysis && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Engagement Analysis</h5>
+          <p className="text-xs text-gray-700 mb-3">{report.engagement_analysis.pattern}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {report.engagement_analysis.risk_factors?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-rose-600 mb-1.5">Risk factors</p>
+                {report.engagement_analysis.risk_factors.map((r: string, i: number) => (
+                  <div key={i} className="text-xs text-rose-700 bg-rose-50 rounded-lg px-2.5 py-1.5 mb-1">{r}</div>
+                ))}
+              </div>
+            )}
+            {report.engagement_analysis.positive_signals?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-emerald-600 mb-1.5">Positive signals</p>
+                {report.engagement_analysis.positive_signals.map((s: string, i: number) => (
+                  <div key={i} className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1">{s}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Send to Learner ── */}
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Send className="w-3.5 h-3.5 text-white" strokeWidth={2} />
+          </div>
+          <div>
+            <h5 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Send to Learner</h5>
+            <p className="text-xs text-indigo-400">Delivered as a push notification — opens TaalCoach in their app</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Left: message editor */}
+          <div className="flex-1 space-y-3">
+            <div className="relative">
+              <textarea
+                value={sendMessage}
+                onChange={e => { setSendMessage(e.target.value.slice(0, MAX_CHARS)); setSendError(''); setSendSuccess(false); }}
+                placeholder="Type a coaching message for this learner… (pre-filled from AI report)"
+                rows={4}
+                className="w-full text-sm text-gray-800 bg-white border border-indigo-200 rounded-xl px-3.5 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400"
+              />
+              <span className={`absolute bottom-2 right-3 text-xs font-mono ${sendMessage.length > MAX_CHARS * 0.9 ? 'text-amber-600' : 'text-gray-400'}`}>
+                {sendMessage.length}/{MAX_CHARS}
+              </span>
+            </div>
+
+            {sendError && (
+              <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 flex-shrink-0 mt-0.5" strokeWidth={1.8} />
+                <p className="text-xs text-rose-700 font-medium">{sendError}</p>
+              </div>
+            )}
+
+            {sendSuccess && (
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" strokeWidth={2} />
+                <p className="text-xs text-emerald-700 font-semibold">Notification sent to {learner.name}'s phone!</p>
+              </div>
+            )}
+
+            <button
+              onClick={sendRecommendation}
+              disabled={sending || !sendMessage.trim() || sendSuccess}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                sendSuccess
+                  ? 'bg-emerald-500 text-white cursor-default'
+                  : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed'
+              }`}
+            >
+              {sending ? (
+                <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Sending…</>
+              ) : sendSuccess ? (
+                <><CheckCircle className="w-3.5 h-3.5" strokeWidth={2} /> Sent!</>
+              ) : (
+                <><Send className="w-3.5 h-3.5" strokeWidth={2} /> Send to {learner.name}</>
+              )}
+            </button>
+          </div>
+
+          {/* Right: phone preview */}
+          <div className="sm:w-48 flex-shrink-0">
+            <div className="bg-gray-900 rounded-2xl p-3 shadow-xl">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Smartphone className="w-3 h-3 text-gray-400" strokeWidth={1.5} />
+                <span className="text-xs text-gray-500">Preview</span>
+              </div>
+              <div className="bg-white rounded-xl p-2.5 shadow-sm">
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-[#4ECFBF] to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-black">T</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-900 leading-tight">
+                      {cachedTutorName}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-snug line-clamp-3">
+                      {sendMessage || 'Your message will appear here…'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 text-center mt-2">Opens TaalCoach</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Learner Hover Card (snapshot tooltip)
+// ─────────────────────────────────────────────
+function LearnerHoverCard({ learner, position }: { learner: Learner; position: { x: number; y: number } }) {
+  const plan = learner.learning_plans[0];
+  if (!plan) return null;
+
+  const statusColor = plan.progress_status === 'on_track' ? 'text-emerald-600 bg-emerald-50'
+    : plan.progress_status === 'at_risk' ? 'text-amber-600 bg-amber-50'
+    : 'text-gray-500 bg-gray-100';
+
+  const statusLabel = plan.progress_status === 'on_track' ? 'On Track'
+    : plan.progress_status === 'at_risk' ? 'At Risk' : 'Inactive';
+
+  // Circular progress ring
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.min(plan.progress_percentage, 100);
+  const offset = circumference - (progress / 100) * circumference;
+
+  // Smart vertical offset so card doesn't clip viewport bottom
+  const cardH = 220;
+  const top = position.y + cardH > window.innerHeight - 20
+    ? position.y - cardH - 10
+    : position.y + 10;
+
+  return (
+    <div
+      className="fixed z-50 pointer-events-none"
+      style={{ left: position.x + 16, top }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-64 overflow-hidden"
+        style={{ animation: 'hoverCardIn 0.15s ease-out' }}>
+        {/* Header strip */}
+        <div className="bg-gradient-to-r from-[#4ECFBF]/15 to-transparent px-4 pt-4 pb-3 flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+            plan.progress_status === 'on_track' ? 'bg-emerald-400' :
+            plan.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'
+          }`}>
+            {learner.name.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-gray-900 text-sm truncate">{learner.name}</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <FlagOrText language={plan.language} size={13} />
+              <span className="text-xs text-gray-500 capitalize">{plan.language}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-md border font-bold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                {plan.proficiency_level}
+              </span>
+            </div>
+          </div>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${statusColor}`}>
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Progress + stats */}
+        <div className="px-4 pb-4 flex items-center gap-4">
+          {/* Ring */}
+          <div className="relative flex-shrink-0">
+            <svg width="52" height="52" className="-rotate-90">
+              <circle cx="26" cy="26" r={radius} fill="none" stroke="#f0f0f0" strokeWidth="5" />
+              <circle
+                cx="26" cy="26" r={radius} fill="none"
+                stroke={plan.progress_status === 'on_track' ? '#4ECFBF' : plan.progress_status === 'at_risk' ? '#f59e0b' : '#d1d5db'}
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                style={{ transition: 'stroke-dashoffset 0.6s ease-out' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold text-gray-800">{Math.round(progress)}%</span>
+            </div>
+          </div>
+
+          {/* Stats grid */}
+          <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-2">
+            <div>
+              <div className="text-xs text-gray-400">Sessions</div>
+              <div className="text-sm font-bold text-gray-900">
+                {plan.completed_sessions}<span className="text-gray-400 font-normal text-xs">/{plan.total_sessions}</span>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Score</div>
+              <div className={`text-sm font-bold ${plan.assessment_score >= 80 ? 'text-emerald-600' : plan.assessment_score >= 60 ? 'text-amber-600' : plan.assessment_score > 0 ? 'text-rose-600' : 'text-gray-300'}`}>
+                {plan.assessment_score > 0 ? plan.assessment_score : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Last active</div>
+              <div className={`text-xs font-semibold ${
+                plan.days_since_activity <= 3 ? 'text-emerald-600' :
+                plan.days_since_activity <= 7 ? 'text-amber-600' :
+                plan.days_since_activity < 999 ? 'text-rose-500' : 'text-gray-400'
+              }`}>
+                {plan.days_since_activity < 999 ? `${plan.days_since_activity}d ago` : 'No activity'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Next focus</div>
+              <div className="text-xs text-gray-600 truncate max-w-[80px]" title={plan.next_focus_area}>
+                {plan.next_focus_area || '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom hint */}
+        <div className="border-t border-gray-100 px-4 py-2 bg-gray-50/50">
+          <p className="text-xs text-gray-400 text-center">Click <span className="font-semibold text-[#4ECFBF]">View</span> for full history</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Learner Detail Modal
+// ─────────────────────────────────────────────
+function LearnerDetailModal({
+  learner, details, loading, onClose, tutorId,
+}: { learner: Learner; details: any; loading: boolean; onClose: () => void; tutorId: string }) {
+  const [tab, setTab] = useState<'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'>('overview');
+  const [sessionDateRange, setSessionDateRange] = useState<DateRange>({ start: null, end: null, label: 'All time' });
+  const [challengeDateRange, setChallengeDateRange] = useState<DateRange>({ start: null, end: null, label: 'All time' });
+  const plan = learner.learning_plans[0];
+
+  const tabs: { key: 'overview' | 'plans' | 'sessions' | 'challenges' | 'dna' | 'insights'; label: string; icon: React.ReactNode }[] = [
+    { key: 'overview', label: 'Overview', icon: <BarChart2 className="w-3.5 h-3.5" /> },
+    { key: 'plans', label: `Plans (${details?.all_learning_plans?.length ?? 0})`, icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { key: 'sessions', label: `Sessions (${details?.practice_sessions?.length ?? 0})`, icon: <Mic className="w-3.5 h-3.5" /> },
+    { key: 'challenges', label: `Challenges (${details?.challenge_sessions?.length ?? 0})`, icon: <Zap className="w-3.5 h-3.5" /> },
+    { key: 'dna', label: 'Speaking DNA', icon: <Dna className="w-3.5 h-3.5" /> },
+    { key: 'insights', label: 'AI Insights', icon: <Bot className="w-3.5 h-3.5" /> },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 pt-8">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl my-4 sm:my-8 mx-2 sm:mx-4">
+        {/* Modal Header */}
+        <div className="relative bg-gradient-to-br from-[#4ECFBF] via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-7">
+          <button onClick={onClose} className="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl p-2 transition-all">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
+              {learner.name.charAt(0)}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">{learner.name}</h2>
+              <p className="text-white/75 text-sm">{learner.email}</p>
+              {plan && (
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {/* Flag + language — no container, clean inline */}
+                  <div className="flex items-center gap-1.5">
+                    <FlagOrText language={plan.language} size={16} />
+                    <span className="text-white/90 text-sm font-medium capitalize">{plan.language}</span>
+                  </div>
+                  <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-md">
+                    {plan.proficiency_level}
+                  </span>
+                  <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                    plan.progress_status === 'on_track' ? 'bg-emerald-400/30 text-white' :
+                    plan.progress_status === 'at_risk' ? 'bg-amber-400/30 text-white' :
+                    'bg-gray-400/30 text-white'
+                  }`}>
+                    {plan.progress_status === 'on_track'
+                      ? <><CheckCircle className="w-3 h-3" /> On Track</>
+                      : plan.progress_status === 'at_risk'
+                      ? <><AlertTriangle className="w-3 h-3" /> At Risk</>
+                      : <><Minus className="w-3 h-3" /> Inactive</>}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Stats Strip */}
+          {details?.profile && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+              {[
+                { label: 'Plan Sessions', value: details.profile.total_sessions },
+                { label: 'Voice Sessions', value: details.profile.realtime_sessions ?? details.practice_sessions?.length ?? 0 },
+                { label: 'Challenges', value: details.profile.challenge_sessions ?? details.challenge_sessions?.length ?? 0 },
+                { label: 'Min Practiced', value: Math.round(details.profile.total_minutes) },
+              ].map(s => (
+                <div key={s.label} className="bg-white/15 rounded-xl p-3 text-center">
+                  <div className="text-2xl font-bold text-white">{s.value}</div>
+                  <div className="text-white/70 text-xs mt-0.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-gray-100 px-4 sm:px-6 bg-gray-50/50 overflow-x-auto">
+          {tabs.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className={`py-3.5 px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                tab === t.key ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6 max-h-[60vh] md:max-h-[55vh] overflow-y-auto">
+          {loading ? (
+            <div className="py-4">
+              <ModalSpinner label="Loading learner data..." /></div>
+          ) : !details ? (
+            <div className="text-center py-12 text-gray-400">Failed to load details</div>
+          ) : (
+            <>
+              {/* ── OVERVIEW ── */}
+              {tab === 'overview' && (() => {
+                const plan = details.all_learning_plans?.[0];
+                const dna = details.speaking_dna;
+                const dailyStats = details.daily_stats;
+                const recentDays = dailyStats?.recent_daily || [];
+                const activeDays = recentDays.filter((d: any) => d.minutes > 0 || d.sessions > 0);
+
+                // Engagement: how many of the actual last 7 calendar days had activity?
+                // Build a set of active date strings, then check each of last 7 calendar days
+                const activeDateSet = new Set(
+                  recentDays
+                    .filter((d: any) => d.minutes > 0 || d.sessions > 0)
+                    .map((d: any) => d.date)
+                );
+                let activeLast7 = 0;
+                for (let i = 0; i < 7; i++) {
+                  const d = new Date(); d.setDate(d.getDate() - i);
+                  const key = d.toISOString().slice(0, 10);
+                  if (activeDateSet.has(key)) activeLast7++;
+                }
+                const engagementScore = Math.round((activeLast7 / 7) * 100);
+                const engagementLevel = engagementScore >= 57 ? 'high' : engagementScore >= 28 ? 'medium' : 'low';
+                const engagementConfig = {
+                  high:   { label: 'Highly Engaged', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', bar: 'bg-emerald-400', dot: 'bg-emerald-400' },
+                  medium: { label: 'Moderately Engaged', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', bar: 'bg-amber-400', dot: 'bg-amber-400' },
+                  low:    { label: 'Needs Attention', color: 'text-rose-700', bg: 'bg-rose-50', border: 'border-rose-200', bar: 'bg-rose-400', dot: 'bg-rose-400' },
+                }[engagementLevel];
+
+                // Completion rate: sessions with end_time / total sessions
+                const totalSessions = details.practice_sessions?.length ?? 0;
+                // Voice sessions are short (1-3 min). Use >0.3 min (18s) to exclude
+                // failed connections while counting real sessions as completed.
+                const completedSessions = details.practice_sessions?.filter((s: any) => (s.duration_minutes ?? 0) > 0.3).length ?? 0;
+                const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+                // Practice time pattern: group sessions by hour
+                // Sessions stored in UTC — labels are approximate but consistent
+                const hourBuckets: Record<string, number> = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
+                details.practice_sessions?.forEach((s: any) => {
+                  if (!s.created_at) return;
+                  const h = new Date(s.created_at).getUTCHours();
+                  if (h >= 5 && h < 12) hourBuckets.Morning++;
+                  else if (h >= 12 && h < 17) hourBuckets.Afternoon++;
+                  else if (h >= 17 && h < 21) hourBuckets.Evening++;
+                  else hourBuckets.Night++;
+                });
+                const peakTime = Object.entries(hourBuckets).sort((a, b) => b[1] - a[1])[0];
+
+                // Week-over-week quality trend from DNA history
+                const weeklyTrend = dna?.weekly_trend || [];
+                const lastWeek = weeklyTrend[weeklyTrend.length - 1];
+                const prevWeek = weeklyTrend[weeklyTrend.length - 2];
+                const confidenceDelta = lastWeek && prevWeek ? lastWeek.confidence - prevWeek.confidence : null;
+
+                // Weak areas from DNA + sentence analysis
+                const weakAreas: string[] = [
+                  ...(dna?.growth_areas?.map((g: string) => g.replace(/_/g, ' ')) || []),
+                  ...(dna?.strands?.accuracy?.common_errors?.slice(0, 2) || []),
+                  ...(dna?.strands?.accuracy?.improving_areas?.slice(0, 2) || []),
+                ].filter(Boolean).slice(0, 4);
+
+                // Anxiety triggers
+                const anxietyTriggers: string[] = dna?.strands?.emotional?.anxiety_triggers || [];
+
+                // Tutor action: derive the #1 thing to do
+                const action = (() => {
+                  if (engagementLevel === 'low') return { text: 'Send an encouraging message — student hasn\'t practiced in a while', urgency: 'high' };
+                  if (completionRate < 60) return { text: 'Sessions often abandoned — discuss session length and difficulty in next check-in', urgency: 'medium' };
+                  if (confidenceDelta !== null && confidenceDelta < -5) return { text: 'Confidence dropped this week — focus on positive reinforcement and familiar topics', urgency: 'medium' };
+                  if (weakAreas.length > 0) return { text: `Work on: ${weakAreas[0]}`, urgency: 'normal' };
+                  return { text: 'Student is on track — maintain current pace and introduce slightly harder challenges', urgency: 'normal' };
+                })();
+
+                return (
+                  <div className="space-y-4">
+                    {/* ① TUTOR ACTION — the most important thing, top of the page */}
+                    <div className={`rounded-2xl border p-4 flex items-start gap-3 ${
+                      action.urgency === 'high' ? 'bg-rose-50 border-rose-200' :
+                      action.urgency === 'medium' ? 'bg-amber-50 border-amber-200' :
+                      'bg-[#4ECFBF]/8 border-[#4ECFBF]/30'
+                    }`}>
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        action.urgency === 'high' ? 'bg-rose-100' :
+                        action.urgency === 'medium' ? 'bg-amber-100' : 'bg-[#4ECFBF]/20'
+                      }`}>
+                        <Lightbulb className={`w-4 h-4 ${
+                          action.urgency === 'high' ? 'text-rose-600' :
+                          action.urgency === 'medium' ? 'text-amber-600' : 'text-[#4ECFBF]'
+                        }`} strokeWidth={1.8} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Suggested Action</p>
+                        <p className={`text-sm font-medium ${
+                          action.urgency === 'high' ? 'text-rose-800' :
+                          action.urgency === 'medium' ? 'text-amber-800' : 'text-gray-800'
+                        }`}>{action.text}</p>
+                      </div>
+                    </div>
+
+                    {/* ② ENGAGEMENT HEALTH + KEY STATS — top row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {/* Engagement */}
+                      <div className={`rounded-2xl border p-3.5 ${engagementConfig.bg} ${engagementConfig.border}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`w-2 h-2 rounded-full ${engagementConfig.dot} animate-pulse`} />
+                          <span className={`text-xs font-bold uppercase tracking-wide ${engagementConfig.color}`}>Engagement</span>
+                        </div>
+                        <div className={`text-2xl font-bold ${engagementConfig.color}`}>{engagementScore}%</div>
+                        <div className={`text-xs mt-0.5 ${engagementConfig.color} opacity-80`}>{engagementConfig.label}</div>
+                        <div className="w-full bg-white/50 rounded-full h-1.5 mt-2">
+                          <div className={`h-1.5 rounded-full ${engagementConfig.bar}`} style={{ width: `${engagementScore}%` }} />
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">{activeLast7}/7 days active</div>
+                      </div>
+
+                      {/* Completion Rate */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <CheckCircle className="w-3.5 h-3.5 text-purple-600" strokeWidth={1.8} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Completion</span>
+                        </div>
+                        <div className={`text-2xl font-bold ${completionRate >= 75 ? 'text-emerald-600' : completionRate >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                          {completionRate}%
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">sessions finished</div>
+                        <div className="text-xs text-gray-400 mt-1">{completedSessions}/{totalSessions} sessions</div>
+                      </div>
+
+                      {/* Peak Practice Time */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Clock className="w-3.5 h-3.5 text-blue-600" strokeWidth={1.8} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Peak Time</span>
+                        </div>
+                        <div className="text-lg font-bold text-gray-900">{peakTime?.[0] || '—'}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">most active period</div>
+                        <div className="flex gap-1 mt-2">
+                          {Object.entries(hourBuckets).map(([label, count]) => {
+                            const maxCount = Math.max(...Object.values(hourBuckets), 1);
+                            return (
+                              <div key={label} className="flex-1 flex flex-col items-center gap-0.5">
+                                <div className="w-full bg-gray-100 rounded-sm overflow-hidden" style={{ height: 16 }}>
+                                  <div className="bg-blue-400 rounded-sm w-full" style={{ height: `${(count / maxCount) * 100}%`, marginTop: `${(1 - count / maxCount) * 100}%` }} />
+                                </div>
+                                <span className="text-[9px] text-gray-400">{label[0]}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Confidence Trend */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center">
+                            <TrendingUp className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Confidence</span>
+                        </div>
+                        {lastWeek ? (
+                          <>
+                            <div className="text-2xl font-bold text-gray-900">{lastWeek.confidence}%</div>
+                            <div className={`text-xs font-semibold mt-0.5 flex items-center gap-1 ${
+                              confidenceDelta === null ? 'text-gray-400' :
+                              confidenceDelta > 0 ? 'text-emerald-600' :
+                              confidenceDelta < 0 ? 'text-rose-600' : 'text-gray-400'
+                            }`}>
+                              {confidenceDelta !== null && (
+                                <>{confidenceDelta > 0 ? '↑' : confidenceDelta < 0 ? '↓' : '→'} {Math.abs(confidenceDelta)}% vs last week</>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-400 mt-1">No trend data yet</div>
+                        )}
+                        {dna?.strands?.confidence?.level && (
+                          <div className="text-xs text-gray-400 mt-1 capitalize">{dna.strands.confidence.level}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ③ WHAT'S BLOCKING PROGRESS */}
+                    {(weakAreas.length > 0 || anxietyTriggers.length > 0) && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                          <Target className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.8} />
+                          What's Blocking Progress
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {weakAreas.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-2">Language gaps to address:</p>
+                              <div className="space-y-1.5">
+                                {weakAreas.map((area, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full flex-shrink-0" />
+                                    <span className="capitalize">{area}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {anxietyTriggers.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-2">Emotional triggers to avoid:</p>
+                              <div className="space-y-1.5">
+                                {anxietyTriggers.map((t: string, i: number) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 rounded-lg px-2.5 py-1.5">
+                                    <span className="w-1.5 h-1.5 bg-rose-400 rounded-full flex-shrink-0" />
+                                    <span className="capitalize">{t.replace(/_/g, ' ')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ④ PRACTICE HEATMAP (7 days activity grid) */}
+                    {recentDays.length > 0 && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          Activity Heatmap — Last 14 Days
+                        </h4>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {recentDays.slice(0, 14).reverse().map((day: any, i: number) => {
+                            // If minutes=0 but sessions>0 (voice session with no time tracked),
+                            // show faintest teal (1) so learner effort isn't invisible as gray
+                            const intensity = day.minutes === 0 && day.sessions === 0 ? 0
+                              : day.minutes === 0 ? 1
+                              : day.minutes < 5 ? 1 : day.minutes < 15 ? 2 : day.minutes < 30 ? 3 : 4;
+                            const bgColors = ['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'];
+                            return (
+                              <div key={i} className="flex flex-col items-center gap-1 group relative">
+                                <div className={`w-8 h-8 rounded-lg ${bgColors[intensity]} transition-all group-hover:scale-110`} />
+                                <span className="text-[9px] text-gray-400">
+                                  {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)}
+                                </span>
+                                {/* Micro tooltip */}
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                  {day.minutes}m · {day.sessions} sess
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] text-gray-400">Less</span>
+                          {['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'].map((bg, i) => (
+                            <div key={i} className={`w-3 h-3 rounded-sm ${bg}`} />
+                          ))}
+                          <span className="text-[10px] text-gray-400">More</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ⑤ LANGUAGE PROGRESS — compact, tutor context */}
+                    {details.all_learning_plans?.length > 0 && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          Learning Plans
+                        </h4>
+                        <div className="space-y-3">
+                          {details.all_learning_plans.map((p: any) => (
+                            <div key={p.id} className="flex items-center gap-3">
+                              <FlagOrText language={p.language} size={18} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-semibold text-gray-800 capitalize">
+                                      {p.language ? p.language.charAt(0).toUpperCase()+p.language.slice(1) : '—'}
+                                    </span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-md border font-bold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                      {p.proficiency_level}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-bold text-gray-700">{p.progress_percentage?.toFixed(0)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                  <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full" style={{ width: `${Math.min(100, p.progress_percentage || 0)}%` }} />
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                                  <span>{p.completed_sessions}/{p.total_sessions} sessions</span>
+                                  <span>{p.practice_minutes_used}m used</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── PLANS ── */}
+              {tab === 'plans' && (
+                <div className="space-y-4">
+                  {details.all_learning_plans?.length > 0 ? details.all_learning_plans.map((p: any) => (
+                    <div key={p.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                      <div className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <FlagOrText language={p.language} size={22} />
+                            <span className="font-bold text-gray-900">{p.language ? p.language.charAt(0).toUpperCase()+p.language.slice(1) : '—'}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[p.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              {p.proficiency_level}
+                            </span>
+                          </div>
+                          <span className="text-2xl font-bold text-[#4ECFBF]">{p.progress_percentage?.toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full bg-white/70 rounded-full h-3">
+                          <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full" style={{ width: `${p.progress_percentage || 0}%` }} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
+                          <div><span className="text-gray-500">Sessions:</span> <span className="font-semibold">{p.completed_sessions}/{p.total_sessions}</span></div>
+                          <div><span className="text-gray-500">Minutes:</span> <span className="font-semibold">{p.practice_minutes_used}/{p.total_practice_minutes}</span></div>
+                          <div><span className="text-gray-500">Score:</span> <span className="font-semibold">{p.assessment_data?.overall_score ?? '—'}</span></div>
+                        </div>
+                      </div>
+                      {p.assessment_data?.strengths?.length > 0 && (
+                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white">
+                          <div>
+                            <p className="text-xs font-semibold text-green-700 mb-2 flex items-center"><CheckCircle className="w-3.5 h-3.5 text-green-600 inline mr-1" /> Strengths</p>
+                            {p.assessment_data.strengths.slice(0, 3).map((s: string, i: number) => (
+                              <div key={i} className="text-xs text-gray-600 bg-green-50 rounded-lg px-3 py-1.5 mb-1">{s}</div>
+                            ))}
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center"><Target className="w-3.5 h-3.5 text-amber-600 inline mr-1" /> Areas to Improve</p>
+                            {p.assessment_data.areas_for_improvement?.slice(0, 3).map((a: string, i: number) => (
+                              <div key={i} className="text-xs text-gray-600 bg-amber-50 rounded-lg px-3 py-1.5 mb-1">{a}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {p.session_summaries?.length > 0 && (
+                        <div className="p-4 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-600 mb-2">Recent Session Summaries</p>
+                          {p.session_summaries.slice(-2).map((s: any, i: number) => (
+                            <div key={i} className="text-xs text-gray-600 bg-purple-50 rounded-lg p-3 mb-1">
+                              {typeof s === 'string' ? s : s?.summary || JSON.stringify(s).slice(0, 150)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )) : (
+                    <div className="text-center py-12 text-gray-400"><BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-2" />No learning plans yet</div>
+                  )}
+                </div>
+              )}
+
+              {/* ── SESSIONS ── */}
+              {tab === 'sessions' && (
+                <div className="space-y-3">
+                  {/* Date filter header */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400 font-medium">
+                      {(() => {
+                        const filtered = (details.practice_sessions || []).filter((s: any) => {
+                          if (!sessionDateRange.start || !s.created_at) return true;
+                          const d = new Date(s.created_at);
+                          return d >= sessionDateRange.start! && d <= sessionDateRange.end!;
+                        });
+                        return `${filtered.length} of ${details.practice_sessions?.length ?? 0} sessions`;
+                      })()}
+                    </span>
+                    <DateRangePicker value={sessionDateRange} onChange={setSessionDateRange} align="right" />
+                  </div>
+
+                  {/* Table */}
+                  {(() => {
+                    const filtered = (details.practice_sessions || []).filter((s: any) => {
+                      if (!sessionDateRange.start || !s.created_at) return true;
+                      const d = new Date(s.created_at);
+                      return d >= sessionDateRange.start! && d <= sessionDateRange.end!;
+                    });
+                    if (filtered.length === 0) return (
+                      <div className="text-center py-12 text-gray-400">
+                        <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-2" strokeWidth={1.5} />
+                        <p className="font-medium text-sm">No sessions in this period</p>
+                        <button onClick={() => setSessionDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-[#4ECFBF] mt-1 underline">Clear filter</button>
+                      </div>
+                    );
+                    return (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                            <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                            <th className="px-4 py-3 text-left">Language</th>
+                            <th className="px-4 py-3 text-left">Level</th>
+                            <th className="px-4 py-3 text-center">Duration</th>
+                            <th className="px-4 py-3 text-center rounded-r-lg">Type</th>
+                          </tr></thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {filtered.map((s: any) => (
+                              <tr key={s.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-700 text-xs">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                                <td className="px-4 py-3 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={s.language} size={16} /><span className="text-xs">{s.language ? s.language.charAt(0).toUpperCase()+s.language.slice(1) : '—'}</span></div></td>
+                                <td className="px-4 py-3">
+                                  {s.level ? <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[s.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{s.level}</span> : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-center text-xs font-medium text-gray-800">{s.duration_minutes}m</td>
+                                <td className="px-4 py-3 text-center text-xs text-gray-500 capitalize">{s.session_type?.replace('_', ' ') || 'practice'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ── CHALLENGES ── */}
+              {tab === 'challenges' && (
+                <div className="space-y-3">
+                  {details.challenge_sessions?.length > 0 ? (() => {
+                    const filtered = (details.challenge_sessions || []).filter((c: any) => {
+                      if (!challengeDateRange.start || !c.created_at) return true;
+                      const d = new Date(c.created_at);
+                      return d >= challengeDateRange.start! && d <= challengeDateRange.end!;
+                    });
+
+                    const totalSessions = filtered.length;
+                    const totalCorrect = filtered.reduce((s: number, c: any) => s + (c.correct_answers || 0), 0);
+                    const totalQuestions = filtered.reduce((s: number, c: any) => s + (c.total_challenges || 0), 0);
+                    const totalXP = filtered.reduce((s: number, c: any) => s + (c.total_xp || 0), 0);
+                    const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+                    return (
+                      <>
+                        {/* Date filter header */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400 font-medium">
+                            {filtered.length} of {details.challenge_sessions.length} sessions
+                          </span>
+                          <DateRangePicker value={challengeDateRange} onChange={setChallengeDateRange} align="right" />
+                        </div>
+
+                        {/* Summary stats — computed on filtered set */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-[#4ECFBF]">{totalSessions}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Sessions Played</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-emerald-600">{totalCorrect}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Correct Answers</div>
+                            <div className="text-xs text-gray-400">out of {totalQuestions}</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-yellow-600">{totalXP}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Total XP</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-blue-600">{accuracy}%</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Overall Accuracy</div>
+                            <div className="text-xs text-gray-400">{totalCorrect}/{totalQuestions}</div>
+                          </div>
+                        </div>
+
+                        {filtered.length === 0 ? (
+                          <div className="text-center py-10 text-gray-400">
+                            <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-2" strokeWidth={1.5} />
+                            <p className="font-medium text-sm">No challenges in this period</p>
+                            <button onClick={() => setChallengeDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-[#4ECFBF] mt-1 underline">Clear filter</button>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead><tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                                <th className="px-4 py-3 text-left rounded-l-lg">Date</th>
+                                <th className="px-4 py-3 text-left">Type</th>
+                                <th className="px-4 py-3 text-left">Language</th>
+                                <th className="px-4 py-3 text-center">Correct / Total</th>
+                                <th className="px-4 py-3 text-center">Accuracy</th>
+                                <th className="px-4 py-3 text-center">XP</th>
+                                <th className="px-4 py-3 text-center rounded-r-lg">Combo</th>
+                              </tr></thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {filtered.map((c: any) => (
+                                  <tr key={c.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-gray-600 text-xs">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700 capitalize">{c.challenge_type?.replace(/_/g, ' ') || '—'}</td>
+                                    <td className="px-4 py-3 capitalize text-gray-700 text-xs">{c.language || '—'}</td>
+                                    <td className="px-4 py-3 text-center font-bold text-gray-800 text-xs">
+                                      {c.total_challenges > 0
+                                        ? <span>{c.correct_answers}<span className="text-gray-400 font-normal">/{c.total_challenges}</span></span>
+                                        : c.correct_answers > 0 ? c.correct_answers : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {c.accuracy > 0 ? (
+                                        <span className={`font-bold text-xs ${c.accuracy >= 80 ? 'text-emerald-600' : c.accuracy >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                          {Math.round(c.accuracy)}%
+                                        </span>
+                                      ) : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-xs font-semibold text-yellow-600">
+                                      {c.total_xp > 0 ? `+${c.total_xp}` : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-xs text-gray-500">
+                                      {c.max_combo > 0 ? <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-orange-400" strokeWidth={1.5} />{c.max_combo}</span> : '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
+                    <div className="text-center py-12 text-gray-400"><Zap className="w-12 h-12 text-gray-300 mx-auto mb-2" />No challenges completed yet</div>
+                  )}
+                </div>
+              )}
+
+              {/* ── SPEAKING DNA ── */}
+              {tab === 'dna' && (
+                <div className="space-y-5">
+                  {!details?.speaking_dna ? (
+                    <div className="text-center py-14">
+                      <Dna className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                      <p className="text-gray-400 font-medium">No Speaking DNA data yet</p>
+                      <p className="text-gray-300 text-sm mt-1">Data is generated after voice practice sessions</p>
+                    </div>
+                  ) : (() => {
+                    const dna = details.speaking_dna;
+                    const strands = dna.strands;
+
+                    // Strand config: color, icon, description for tutors
+                    const strandConfig: Record<string, { color: string; bg: string; bar: string; tutorHint: string }> = {
+                      rhythm:     { color: 'text-blue-600',   bg: 'bg-blue-50',   bar: 'bg-blue-400',   tutorHint: 'Speaking pace & flow consistency' },
+                      confidence: { color: 'text-[#4ECFBF]', bg: 'bg-teal-50',   bar: 'bg-[#4ECFBF]',  tutorHint: 'Self-assurance during speech' },
+                      vocabulary: { color: 'text-purple-600', bg: 'bg-purple-50', bar: 'bg-purple-400', tutorHint: 'Word variety & complexity usage' },
+                      accuracy:   { color: 'text-emerald-600',bg: 'bg-emerald-50',bar: 'bg-emerald-400',tutorHint: 'Grammar & sentence correctness' },
+                      learning:   { color: 'text-amber-600',  bg: 'bg-amber-50',  bar: 'bg-amber-400',  tutorHint: 'How they tackle new challenges' },
+                      emotional:  { color: 'text-rose-500',   bg: 'bg-rose-50',   bar: 'bg-rose-400',   tutorHint: 'Energy arc across a session' },
+                    };
+
+                    const trendIcon = (trend: string) =>
+                      trend === 'improving' ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> :
+                      trend === 'declining' ? <TrendingDown className="w-3.5 h-3.5 text-rose-500" /> :
+                      <Minus className="w-3.5 h-3.5 text-gray-400" />;
+
+                    return (
+                      <>
+                        {/* Archetype Banner */}
+                        <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-purple-50 border border-[#4ECFBF]/20 rounded-2xl p-4 flex items-start gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#4ECFBF] to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Dna className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-gray-900 text-sm">{dna.archetype || 'Learner Profile'}</span>
+                              <span className="text-xs bg-[#4ECFBF]/20 text-[#4ECFBF] px-2 py-0.5 rounded-full font-semibold capitalize">
+                                {dna.coach_approach?.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{dna.summary}</p>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                              <span><strong className="text-gray-600">{dna.sessions_analyzed}</strong> sessions analyzed</span>
+                              <span><strong className="text-gray-600">{dna.total_speaking_minutes}</strong> min of speech</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 6 Strand Bars with CSS animation */}
+                        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                          <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <Dna className="w-4 h-4 text-[#4ECFBF]" /> Speaking DNA Strands
+                          </h4>
+                          <div className="space-y-3">
+                            {Object.entries(strands).map(([key, strand]: [string, any]) => {
+                              const cfg = strandConfig[key] || { color: 'text-gray-600', bg: 'bg-gray-50', bar: 'bg-gray-400', tutorHint: '' };
+                              return (
+                                <div key={key} className="group">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-xs font-semibold ${cfg.color}`}>{strand.label}</span>
+                                      {key === 'confidence' && strand.trend && (
+                                        <span className="flex items-center gap-0.5">{trendIcon(strand.trend)}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-400 hidden group-hover:block transition-all">{cfg.tutorHint}</span>
+                                      <span className={`text-sm font-bold ${cfg.color}`}>{strand.score}%</span>
+                                    </div>
+                                  </div>
+                                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                    <div
+                                      className={`h-2.5 rounded-full ${cfg.bar} transition-all duration-1000 ease-out`}
+                                      style={{
+                                        width: `${strand.score}%`,
+                                        animation: 'dnaBarGrow 1.2s ease-out forwards',
+                                      }}
+                                    />
+                                  </div>
+                                  <p className="text-xs text-gray-400 mt-0.5">{strand.description}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Strengths & Growth Side by Side */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                            <h5 className="text-xs font-bold text-emerald-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                              <Shield className="w-3.5 h-3.5" /> Strengths
+                            </h5>
+                            <div className="space-y-1.5">
+                              {dna.strengths?.map((s: string) => (
+                                <div key={s} className="flex items-center gap-2 text-xs text-emerald-700">
+                                  <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="capitalize">{s.replace(/_/g, ' ')}</span>
+                                </div>
+                              ))}
+                              {(!dna.strengths || dna.strengths.length === 0) && <p className="text-xs text-emerald-600">Building up...</p>}
+                            </div>
+                          </div>
+                          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                            <h5 className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                              <Target className="w-3.5 h-3.5" /> Focus Areas
+                            </h5>
+                            <div className="space-y-1.5">
+                              {dna.growth_areas?.map((g: string) => (
+                                <div key={g} className="flex items-center gap-2 text-xs text-amber-700">
+                                  <Target className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="capitalize">{g.replace(/_/g, ' ')}</span>
+                                </div>
+                              ))}
+                              {(!dna.growth_areas || dna.growth_areas.length === 0) && <p className="text-xs text-amber-600">All looking good!</p>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Anxiety Triggers (if any) */}
+                        {strands.emotional?.anxiety_triggers?.length > 0 && (
+                          <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4">
+                            <h5 className="text-xs font-bold text-rose-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                              <Heart className="w-3.5 h-3.5" /> Sensitivity Notes for Tutor
+                            </h5>
+                            <p className="text-xs text-rose-600 mb-2">Be mindful of these triggers during sessions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {strands.emotional.anxiety_triggers.map((t: string) => (
+                                <span key={t} className="text-xs bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full capitalize">
+                                  {t.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Weekly Confidence Trend */}
+                        {dna.weekly_trend?.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                            <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-[#4ECFBF]" /> Weekly Progress Trend
+                            </h4>
+                            <div className="space-y-2">
+                              {dna.weekly_trend.slice(-6).map((week: any, i: number) => (
+                                <div key={week.week} className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-400 w-16 flex-shrink-0">
+                                    Week {week.week}
+                                  </span>
+                                  <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="bg-gradient-to-r from-[#4ECFBF] to-purple-400 h-2 rounded-full transition-all duration-700"
+                                      style={{
+                                        width: `${week.confidence}%`,
+                                        animationDelay: `${i * 150}ms`
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-semibold text-[#4ECFBF] w-9 text-right">{week.confidence}%</span>
+                                  <span className="text-xs text-gray-400 w-20 text-right hidden sm:block">{week.sessions} sess · {week.minutes}m</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Assessment History */}
+                        {dna.assessments?.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                            <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                              <Award className="w-4 h-4 text-[#4ECFBF]" /> Assessment History
+                            </h4>
+                            <div className="space-y-2">
+                              {dna.assessments.map((a: any, i: number) => (
+                                <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <FlagOrText language={a.language?.toLowerCase()} size={16} />
+                                    <span className="text-xs font-semibold text-gray-700 capitalize">{a.language}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[a.level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{a.level}</span>
+                                  </div>
+                                  <div className={`text-lg font-bold flex-shrink-0 ${a.score >= 80 ? 'text-emerald-600' : a.score >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                    {a.score}
+                                  </div>
+                                  <div className="text-xs text-gray-400 flex-shrink-0 hidden sm:block min-w-0 max-w-[140px] truncate">{a.feedback}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Sentence Quality Scores */}
+                        {dna.sentence_scores?.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                            <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                              <Mic className="w-4 h-4 text-[#4ECFBF]" /> Recent Sentence Quality
+                            </h4>
+                            <div className="space-y-2">
+                              {dna.sentence_scores.slice(0, 5).map((s: any, i: number) => (
+                                <div key={i} className="border border-gray-100 rounded-xl p-3">
+                                  <p className="text-xs text-gray-600 italic mb-2">"{s.text}"</p>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {[
+                                      { label: 'Grammar', val: s.grammatical, color: 'text-emerald-600' },
+                                      { label: 'Vocab', val: s.vocabulary, color: 'text-purple-600' },
+                                      { label: 'Complexity', val: s.complexity, color: 'text-blue-600' },
+                                      { label: 'Overall', val: s.overall, color: 'text-[#4ECFBF] font-bold' },
+                                    ].map(m => (
+                                      <div key={m.label} className="text-center">
+                                        <div className={`text-sm font-bold ${m.color}`}>{m.val}</div>
+                                        <div className="text-xs text-gray-400">{m.label}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ── AI INSIGHTS ── */}
+              {tab === 'insights' && (
+                <AiInsightsTab
+                  learner={learner}
+                  tutorId={tutorId}
+                  details={details}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Mini bar chart for level distribution
+// ─────────────────────────────────────────────
+function LevelChart({ distribution, total }: { distribution: Record<string, number>; total: number }) {
+  const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  const max = Math.max(...Object.values(distribution), 1);
+  return (
+    <div className="flex items-end gap-2 h-20">
+      {LEVELS.map(lvl => {
+        const count = distribution[lvl] || 0;
+        const pct = (count / max) * 100;
+        return (
+          <div key={lvl} className="flex-1 flex flex-col items-center gap-1">
+            <span className="text-xs font-bold text-gray-600">{count > 0 ? count : ''}</span>
+            <div className="w-full relative flex items-end" style={{ height: 48 }}>
+              <div
+                className={`w-full rounded-t-md transition-all ${LEVEL_BAR_COLORS[lvl] || 'bg-gray-300'}`}
+                style={{ height: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
+              />
+            </div>
+            <span className="text-xs font-semibold text-gray-500">{lvl}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Main Dashboard
+// ─────────────────────────────────────────────
 export default function TutorDashboardPage() {
   const router = useRouter();
   const params = useParams();
@@ -493,404 +1552,260 @@ export default function TutorDashboardPage() {
   const [learners, setLearners] = useState<Learner[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
-  // Filters
-  const [languageFilter, setLanguageFilter] = useState('');
+  const [tab, setTab] = useState<'overview' | 'learners'>('overview');
+  const [search, setSearch] = useState('');
+  const [langFilter, setLangFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [learnerDetails, setLearnerDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'overview' | 'learners'>('overview');
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const itemsPerPage = 10;
+  const [hoveredLearner, setHoveredLearner] = useState<Learner | null>(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const hoverTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem('tutorToken');
-    const storedTutorId = localStorage.getItem('tutorId');
-    const storedTutorName = localStorage.getItem('tutorName');
-
-    if (!token || storedTutorId !== tutorId) {
-      router.push('/tutor/login');
-      return;
-    }
-
-    setTutorName(storedTutorName || 'Tutor');
-    
-    // Load dashboard data
-    loadDashboardData(token);
-    loadAnalytics(token);
-  }, [tutorId, router]);
-
-  // Auto-apply filters whenever they change (instant filtering)
-  useEffect(() => {
-    const token = localStorage.getItem('tutorToken');
-    if (token) {
-      loadDashboardData(token);
-    }
-  }, [languageFilter, levelFilter, statusFilter, searchQuery, tutorName]);
-
-  const loadDashboardData = async (token: string, page: number = 1) => {
+  const fetchData = useCallback(async (token: string, opts?: { lang?: string; level?: string; status?: string; q?: string }) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
+      const qs = new URLSearchParams();
+      const l = opts?.lang ?? langFilter;
+      const lv = opts?.level ?? levelFilter;
+      const s = opts?.status ?? statusFilter;
+      const q = opts?.q ?? search;
+      if (l) qs.set('language', l);
+      if (lv) qs.set('level', lv);
+      if (s) qs.set('status', s);
+      if (q) qs.set('search', q);
+      qs.set('per_page', '50');
 
-      const queryParams = new URLSearchParams();
-      if (languageFilter) queryParams.append('language', languageFilter);
-      if (levelFilter) queryParams.append('level', levelFilter);
-      if (statusFilter) queryParams.append('status', statusFilter);
-      if (searchQuery) queryParams.append('search', searchQuery);
-      queryParams.append('page', page.toString());
-      queryParams.append('per_page', itemsPerPage.toString());
+      const [learnersRes, analyticsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/learners?${qs}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/analytics`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
 
-      const url = `${API_BASE_URL}/tutor/dashboard/${tutorId}/learners${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/tutor/login');
-          return;
-        }
-        throw new Error('Failed to load learners');
-      }
-
-      const data = await response.json();
-      setLearners(data.learners || []);
-      
-      // Update pagination state if backend provides it
-      if (data.pagination) {
-        setTotalPages(data.pagination.total_pages || 1);
-        setTotalItems(data.pagination.total_items || 0);
-        setCurrentPage(data.pagination.current_page || 1);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard');
+      if (learnersRes.status === 401) { router.push('/tutor/login'); return; }
+      if (learnersRes.ok) { const d = await learnersRes.json(); setLearners(d.learners || []); }
+      if (analyticsRes.ok) { const d = await analyticsRes.json(); setAnalytics(d); }
     } finally {
       setLoading(false);
     }
-  };
+  }, [tutorId, router]); // no filter deps — filters passed as args to avoid stale closure re-fetches
 
-  const loadAnalytics = async (token: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/tutor/dashboard/${tutorId}/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+  // Initial load — runs once per tutorId
+  useEffect(() => {
+    const token = localStorage.getItem('tutorToken');
+    const storedId = localStorage.getItem('tutorId');
+    if (!token || storedId !== tutorId) { router.push('/tutor/login'); return; }
+    setTutorName(localStorage.getItem('tutorName') || 'Tutor');
+    fetchData(token);
+  }, [tutorId, router]); // fetchData intentionally omitted — stable after mount
 
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
-      }
-    } catch (err) {
-      console.error('Failed to load analytics:', err);
-    }
-  };
+  // Re-fetch when filters change, debounced
+  useEffect(() => {
+    const token = localStorage.getItem('tutorToken');
+    if (!token) return;
+    const t = setTimeout(() => fetchData(token, { lang: langFilter, level: levelFilter, status: statusFilter, q: search }), 300);
+    return () => clearTimeout(t);
+  }, [langFilter, levelFilter, statusFilter, search]); // eslint-disable-line
 
-  const handleViewDetails = async (learner: Learner) => {
-    if (!learner.consent_given) {
-      alert('This learner has not provided consent to view detailed progress.');
-      return;
-    }
-
+  const openLearnerDetails = async (learner: Learner) => {
     setSelectedLearner(learner);
-    setShowDetailModal(true);
     setLoadingDetails(true);
-
+    setLearnerDetails(null);
+    const token = localStorage.getItem('tutorToken');
     try {
-      const token = localStorage.getItem('tutorToken');
-      const response = await fetch(
+      const res = await fetch(
         `${API_BASE_URL}/tutor/dashboard/${tutorId}/learner/${learner.user_id}/details`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      if (response.ok) {
-        const data = await response.json();
-        setLearnerDetails(data);
-      } else {
-        throw new Error('Failed to load learner details');
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to load learner details');
-      setShowDetailModal(false);
+      if (res.ok) setLearnerDetails(await res.json());
     } finally {
       setLoadingDetails(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('tutorToken');
-    localStorage.removeItem('tutorId');
-    localStorage.removeItem('tutorName');
-    localStorage.removeItem('tutorEmail');
-    localStorage.removeItem('institutionId');
-    router.push('/tutor/login');
-  };
+  const hasFilters = search || langFilter || levelFilter || statusFilter;
+  const uniqueLanguages = Array.from(new Set(learners.flatMap(l => l.learning_plans.map(p => p.language)).filter(Boolean)));
 
-  const clearFilters = () => {
-    setLanguageFilter('');
-    setLevelFilter('');
-    setStatusFilter('');
-    setSearchQuery('');
-    const token = localStorage.getItem('tutorToken');
-    if (token) {
-      setTimeout(() => loadDashboardData(token), 100);
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'on_track':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'at_risk':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'on_track':
-        return 'On Track';
-      case 'at_risk':
-        return 'At Risk';
-      case 'inactive':
-        return 'Inactive';
-      default:
-        return status;
-    }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    const token = localStorage.getItem('tutorToken');
-    if (token) {
-      setCurrentPage(newPage);
-      loadDashboardData(token, newPage);
-    }
-  };
-
-  // Pagination Component
-  const Pagination = () => {
-    if (totalPages <= 1) return null;
-
-    const getPageNumbers = () => {
-      const pages = [];
-      const showEllipsis = totalPages > 7;
-      
-      if (!showEllipsis) {
-        for (let i = 1; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        if (currentPage <= 3) {
-          pages.push(1, 2, 3, 4, '...', totalPages);
-        } else if (currentPage >= totalPages - 2) {
-          pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } else {
-          pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-        }
-      }
-      
-      return pages;
-    };
-
-    return (
-      <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
-        <div className="text-sm text-gray-700">
-          Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-          <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
-          <span className="font-medium">{totalItems}</span> results
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`px-3 py-2 rounded-lg font-medium transition-all ${
-              currentPage === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
-            }`}
-          >
-            Previous
-          </button>
-          
-          <div className="flex space-x-1">
-            {getPageNumbers().map((page, index) => (
-              page === '...' ? (
-                <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">...</span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page as number)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    currentPage === page
-                      ? 'bg-[#4ECFBF] text-white shadow-md'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            ))}
-          </div>
-          
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={`px-3 py-2 rounded-lg font-medium transition-all ${
-              currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    );
-  };
+  // Compute language distribution from actual learners (not stale analytics)
+  const langDistribution = learners.reduce((acc, l) => {
+    const lang = l.learning_plans[0]?.language?.toLowerCase();
+    if (lang) acc[lang] = (acc[lang] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="border-b border-gray-300 bg-white rounded-t-xl shadow-sm">
-            <nav className="flex px-6">
+    <div className="min-h-screen bg-slate-50 pt-20 font-nunito">
+      {/* Tab Bar — flush under global teal navbar, same style as institution dashboard */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <nav className="flex overflow-x-auto">
+            {[
+              { key: 'overview', label: 'Overview', icon: <BarChart2 className="w-4 h-4 inline-block mr-1.5" /> },
+              { key: 'learners', label: `Learners${analytics ? ` (${analytics.total_assigned_learners})` : ''}`, icon: <GraduationCap className="w-4 h-4 inline-block mr-1.5" /> },
+            ].map(t => (
               <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-4 px-8 font-semibold border-b-3 transition-all ${
-                  activeTab === 'overview'
-                    ? 'border-[#4ECFBF] text-[#4ECFBF] bg-[#4ECFBF]/5'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                key={t.key}
+                onClick={() => setTab(t.key as any)}
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center ${
+                  tab === t.key
+                    ? 'border-[#4ECFBF] text-[#4ECFBF]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
                 }`}
               >
-                📊 Overview
+                {t.icon}{t.label}
               </button>
-              <button
-                onClick={() => setActiveTab('learners')}
-                className={`py-4 px-8 font-semibold border-b-3 transition-all ${
-                  activeTab === 'learners'
-                    ? 'border-[#4ECFBF] text-[#4ECFBF] bg-[#4ECFBF]/5'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                🎓 Learners {totalItems > 0 && `(${totalItems})`}
-              </button>
-            </nav>
-          </div>
+            ))}
+          </nav>
         </div>
+      </div>
 
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && analytics && (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+        {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
+        {tab === 'overview' && loading && !analytics && (
           <div className="space-y-6">
-            {/* Hero Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">Total Learners</div>
-                <div className="text-3xl font-bold text-gray-900 mt-2">{analytics.total_assigned_learners}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">On Track</div>
-                <div className="text-3xl font-bold text-green-600 mt-2">{analytics.active_learners}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">At Risk</div>
-                <div className="text-3xl font-bold text-yellow-600 mt-2">{analytics.at_risk_learners}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm font-medium text-gray-600">Avg Progress</div>
-                <div className="text-3xl font-bold text-blue-600 mt-2">{analytics.average_progress.toFixed(1)}%</div>
-              </div>
+            <CardLoadingSkeleton cards={4} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {[1,2].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-pulse">
+                  <div className="h-4 w-24 bg-gray-100 rounded-full mb-4" />
+                  <div className="space-y-3">{[1,2,3].map(j => <div key={j} className="h-6 bg-gray-100 rounded-lg" style={{opacity: 1-j*0.2}} />)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {tab === 'overview' && (!loading || analytics) && (
+          <div className="space-y-6">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              {[
+                { label: 'Total Learners', value: analytics?.total_assigned_learners ?? 0, color: 'text-gray-900', icon: <Users className="w-5 h-5 text-blue-400" />, bg: 'bg-white' },
+                { label: 'On Track', value: analytics?.active_learners ?? 0, color: 'text-emerald-600', icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, bg: 'bg-emerald-50' },
+                { label: 'Need Attention', value: (analytics?.at_risk_learners ?? 0) + (analytics?.inactive_learners ?? 0), color: 'text-amber-600', icon: <AlertTriangle className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
+                { label: 'Avg Progress', value: `${analytics?.average_progress?.toFixed(1) ?? 0}%`, color: 'text-[#4ECFBF]', icon: <TrendingUp className="w-5 h-5 text-[#4ECFBF]" />, bg: 'bg-teal-50' },
+              ].map(card => (
+                <div key={card.label} className={`${card.bg} rounded-2xl border border-gray-100 p-5 shadow-sm`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{card.label}</span>
+                    <span>{card.icon}</span>
+                  </div>
+                  <div className={`text-3xl font-bold ${card.color}`}>{card.value}</div>
+                </div>
+              ))}
             </div>
 
-            {/* Distribution Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               {/* Language Distribution */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">🌍 Language Distribution</h3>
-                <div className="space-y-3">
-                  {analytics.languages_taught && analytics.languages_taught.length > 0 ? (
-                    analytics.languages_taught.map((language) => {
-                      const count = learners.filter(l => 
-                        l.learning_plans[0]?.language.toLowerCase() === language.toLowerCase()
-                      ).length;
-                      const percentage = (count / analytics.total_assigned_learners) * 100;
-                      
-                      return (
-                        <div key={language}>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-700 capitalize">{language}</span>
-                            <span className="text-sm text-gray-500">{count} learners ({percentage.toFixed(0)}%)</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full transition-all"
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-gray-500 text-sm">No language data available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Proficiency Level Distribution */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Proficiency Level Distribution</h3>
-                <div className="space-y-3">
-                  {analytics.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
-                    Object.entries(analytics.level_distribution)
-                      .sort(([a], [b]) => {
-                        const order = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-                        return order.indexOf(a) - order.indexOf(b);
-                      })
-                      .map(([level, count]) => {
-                        const percentage = ((count as number) / analytics.total_assigned_learners) * 100;
-                        
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-[#4ECFBF]" /> <span>Languages</span>
+                  <span className="text-xs text-gray-400 font-normal ml-auto">{Object.keys(langDistribution).length} language{Object.keys(langDistribution).length !== 1 ? 's' : ''}</span>
+                </h3>
+                {Object.keys(langDistribution).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(langDistribution)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([lang, count]) => {
+                        const total = Object.values(langDistribution).reduce((a, b) => a + b, 0);
+                        const pct = Math.round((count / total) * 100);
                         return (
-                          <div key={level}>
-                            <div className="flex justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-700">{level}</span>
-                              <span className="text-sm text-gray-500">{count} learners ({percentage.toFixed(0)}%)</span>
+                          <div key={lang}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                                <FlagOrText language={lang} size={18} /> <span>{lang ? lang.charAt(0).toUpperCase()+lang.slice(1) : '—'}</span>
+                              </span>
+                              <span className="text-sm text-gray-500">{count} learner{count !== 1 ? 's' : ''} · {pct}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all"
-                                style={{ width: `${percentage}%` }}
-                              ></div>
+                            <div className="w-full bg-gray-100 rounded-full h-2">
+                              <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         );
-                      })
-                  ) : (
-                    <p className="text-gray-500 text-sm">No level data available</p>
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-400 text-center py-8">No learners with language plans yet</div>
+                )}
+              </div>
+
+              {/* Proficiency Level Distribution */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-[#4ECFBF]" /> <span>Proficiency Levels</span>
+                  <span className="text-xs text-gray-400 font-normal ml-auto">{analytics?.total_assigned_learners ?? 0} total</span>
+                </h3>
+                {analytics?.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
+                  <>
+                    <LevelChart distribution={analytics.level_distribution} total={analytics.total_assigned_learners} />
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {Object.entries(analytics.level_distribution).sort(([a], [b]) => {
+                        const order = ['A1','A2','B1','B2','C1','C2'];
+                        return order.indexOf(a) - order.indexOf(b);
+                      }).map(([lvl, count]) => (
+                        <span key={lvl} className={`text-xs px-2.5 py-1 rounded-full border font-semibold ${LEVEL_COLORS[lvl] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                          {lvl}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-400 text-center py-8">No level data available</div>
+                )}
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Activity className="w-4 h-4 text-[#4ECFBF]" /> Class Stats</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Total Sessions Completed', value: analytics?.total_sessions_completed ?? 0 },
+                    { label: 'Total Minutes Practiced', value: `${Math.round(analytics?.total_minutes_practiced ?? 0)} min` },
+                    { label: 'Languages Taught', value: analytics?.languages_taught?.join(', ') || '—' },
+                  ].map(row => (
+                    <div key={row.label} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                      <span className="text-sm text-gray-500">{row.label}</span>
+                      <span className="text-sm font-semibold text-gray-900 capitalize">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Learner Summary */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-[#4ECFBF]" /> Learner Snapshot</h3>
+                <div className="space-y-2">
+                  {learners.slice(0, 5).map(l => {
+                    const plan = l.learning_plans[0];
+                    return (
+                      <div key={l.user_id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { setTab('learners'); }}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
+                          plan?.progress_status === 'on_track' ? 'bg-emerald-400' :
+                          plan?.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'
+                        }`}>{l.name.charAt(0)}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-800 truncate">{l.name}</div>
+                          {plan && <div className="text-xs text-gray-400 flex items-center gap-1"><FlagOrText language={plan.language} size={14} />{plan.language ? plan.language.charAt(0).toUpperCase()+plan.language.slice(1) : ''} · {plan.proficiency_level}</div>}
+                        </div>
+                        {plan && (
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-[#4ECFBF]">{plan.progress_percentage.toFixed(0)}%</div>
+                            <div className="w-14 bg-gray-100 rounded-full h-1.5 mt-1">
+                              <div className="bg-[#4ECFBF] h-1.5 rounded-full" style={{ width: `${plan.progress_percentage}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {learners.length > 5 && (
+                    <button onClick={() => setTab('learners')} className="text-xs text-[#4ECFBF] hover:underline w-full text-center pt-1">
+                      View all {learners.length} learners →
+                    </button>
                   )}
                 </div>
               </div>
@@ -898,278 +1813,217 @@ export default function TutorDashboardPage() {
           </div>
         )}
 
-        {/* LEARNERS TAB */}
-        {activeTab === 'learners' && (
-          <>
+        {/* ═══════════════ LEARNERS TAB ═══════════════ */}
+        {tab === 'learners' && (
+          <div className="space-y-5">
+            {/* Filters */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Search</label>
+                  <input
+                    value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Name or email..."
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Language</label>
+                  <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                    <option value="">All Languages</option>
+                    {uniqueLanguages.map(l => <option key={l} value={l}>{l ? l.charAt(0).toUpperCase() + l.slice(1) : l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Level</label>
+                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                    <option value="">All Levels</option>
+                    {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Status</label>
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                    <option value="">All Status</option>
+                    <option value="on_track">On Track</option>
+                    <option value="at_risk">At Risk</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                {hasFilters && (
+                  <button onClick={() => { setSearch(''); setLangFilter(''); setLevelFilter(''); setStatusFilter(''); }} className="sm:col-span-2 lg:col-span-4 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors w-fit">
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
+            </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Name or email..."
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-              <select
-                value={languageFilter}
-                onChange={(e) => setLanguageFilter(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Languages</option>
-                <option value="English">English</option>
-                <option value="Dutch">Dutch</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-              <select
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Levels</option>
-                <option value="A1">A1</option>
-                <option value="A2">A2</option>
-                <option value="B1">B1</option>
-                <option value="B2">B2</option>
-                <option value="C1">C1</option>
-                <option value="C2">C2</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Status</option>
-                <option value="on_track">On Track</option>
-                <option value="at_risk">At Risk</option>
-                <option value="inactive">Inactive</option>
-              </select>
+            {/* Learner Table */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {loading ? (
+                <TableLoadingSkeleton rows={4} cols={8} />
+              ) : learners.length === 0 ? (
+                <div className="text-center py-16">
+                  <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 font-medium">No learners found</p>
+                  {hasFilters && <p className="text-gray-400 text-sm mt-1">Try clearing your filters</p>}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/80">
+                      {['Learner', 'Language & Level', 'Progress', 'Sessions', 'Score', 'Last Active', 'Status', ''].map(h => (
+                        <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {learners.map(learner => {
+                      const plan = learner.learning_plans[0];
+                      const statusColors = {
+                        on_track: { dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: 'On Track' },
+                        at_risk: { dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-700 border-amber-100', label: 'At Risk' },
+                        inactive: { dot: 'bg-gray-300', badge: 'bg-gray-50 text-gray-500 border-gray-100', label: 'Inactive' },
+                      };
+                      const status = statusColors[plan?.progress_status as keyof typeof statusColors] || statusColors.inactive;
+
+                      return (
+                        <tr
+                          key={learner.user_id}
+                          className="hover:bg-slate-50/80 transition-colors cursor-default"
+                          onMouseEnter={e => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+                            hoverTimer.current = setTimeout(() => {
+                              setHoveredLearner(learner);
+                              setHoverPos({ x: rect.right - 20, y: rect.top });
+                            }, 300);
+                          }}
+                          onMouseLeave={() => {
+                            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+                            setHoveredLearner(null);
+                          }}
+                        >
+                          {/* Learner */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${status.dot === 'bg-emerald-400' ? 'bg-emerald-400' : status.dot === 'bg-amber-400' ? 'bg-amber-400' : 'bg-gray-300'}`}>
+                                {learner.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-gray-900 text-sm truncate max-w-[120px] md:max-w-[160px]">{learner.name}</div>
+                                <div className="text-xs text-gray-400 truncate max-w-[120px] md:max-w-[160px]">{learner.email}</div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Language & Level */}
+                          <td className="px-3 py-3">
+                            {plan ? (
+                              <div className="flex items-center gap-2">
+                                <FlagOrText language={plan.language} size={22} />
+                                <div>
+                                  <div className="text-sm font-medium text-gray-800">{plan.language ? plan.language.charAt(0).toUpperCase() + plan.language.slice(1) : '—'}</div>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    {plan.proficiency_level}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : <span className="text-xs text-gray-300">No plan</span>}
+                          </td>
+
+                          {/* Progress */}
+                          <td className="px-3 py-3">
+                            {plan ? (
+                              <div className="w-32">
+                                <div className="flex justify-between text-xs mb-1.5">
+                                  <span className="text-gray-400">{plan.completed_sessions}/{plan.total_sessions}</span>
+                                  <span className="font-bold text-gray-800">{plan.progress_percentage.toFixed(0)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${plan.progress_status === 'on_track' ? 'bg-emerald-400' : plan.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'}`}
+                                    style={{ width: `${plan.progress_percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+
+                          {/* Sessions */}
+                          <td className="px-2 py-3 text-center">
+                            {plan ? (
+                              <div>
+                                <div className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</div>
+                                <div className="text-xs text-gray-400">of {plan.total_sessions}</div>
+                              </div>
+                            ) : '—'}
+                          </td>
+
+                          {/* Score */}
+                          <td className="px-2 py-3 text-center">
+                            {plan?.assessment_score > 0 ? (
+                              <div className={`text-xl font-bold ${plan.assessment_score >= 80 ? 'text-emerald-600' : plan.assessment_score >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                {plan.assessment_score}
+                              </div>
+                            ) : <span className="text-gray-300 text-sm">—</span>}
+                          </td>
+
+                          {/* Last Active */}
+                          <td className="px-3 py-3">
+                            {plan?.last_activity_date ? (
+                              <div>
+                                <div className="text-xs font-medium text-gray-700">{new Date(plan.last_activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                <div className={`text-xs ${plan.days_since_activity <= 3 ? 'text-emerald-500' : plan.days_since_activity <= 7 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                  {plan.days_since_activity < 999 ? `${plan.days_since_activity}d ago` : 'Never'}
+                                </div>
+                              </div>
+                            ) : <span className="text-xs text-gray-300">No activity</span>}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-3 py-3">
+                            {plan ? (
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${status.badge}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                                {status.label}
+                              </span>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+
+                          {/* Action */}
+                          <td className="px-3 py-3">
+                            <button
+                              onClick={() => openLearnerDetails(learner)}
+                              className="px-3 py-1.5 bg-[#4ECFBF] hover:bg-[#3a9e92] active:bg-[#2d8a80] text-white text-xs font-semibold rounded-xl transition-all shadow-sm hover:shadow"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                </div>
+              )}
             </div>
           </div>
-          {(searchQuery || languageFilter || levelFilter || statusFilter) && (
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                ✕ Clear All Filters
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ENRICHED LEARNERS TABLE */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-
-          {loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
-              <p className="mt-4 text-gray-600">Loading learners...</p>
-            </div>
-          ) : error ? (
-            <div className="p-12 text-center">
-              <p className="text-red-600">{error}</p>
-            </div>
-          ) : learners.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="text-4xl mb-4">🎓</div>
-              <p className="text-gray-600">No learners found matching your filters.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-300">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Learner
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Language
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Progress
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Sessions
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Score
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {learners.map((learner, index) => {
-                    const plan = learner.learning_plans[0];
-                    if (!plan) return null;
-
-                    // Calculate status indicators
-                    const isOnTrack = plan.progress_status === 'on_track';
-                    const isAtRisk = plan.progress_status === 'at_risk';
-                    const isInactive = plan.progress_status === 'inactive';
-                    const hasConsent = learner.consent_given;
-
-                    return (
-                      <tr 
-                        key={learner.id}
-                        className={`hover:bg-gradient-to-r hover:from-[#4ECFBF]/5 hover:to-transparent transition-all ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                        }`}
-                      >
-                        {/* COMPACT LEARNER - Single Row Design */}
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                              isOnTrack ? 'bg-green-500' : isAtRisk ? 'bg-yellow-500' : 'bg-gray-400'
-                            }`}>
-                              {learner.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-gray-900 text-sm truncate">{learner.name}</span>
-                                {!hasConsent && <span className="text-xs" title="No consent">🔒</span>}
-                              </div>
-                              <p className="text-xs text-gray-500 truncate">{learner.email}</p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* LANGUAGE & LEVEL - Compact */}
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">
-                              {plan.language.toLowerCase() === 'english' ? '🇬🇧' :
-                               plan.language.toLowerCase() === 'dutch' ? '🇳🇱' :
-                               plan.language.toLowerCase() === 'spanish' ? '🇪🇸' :
-                               plan.language.toLowerCase() === 'french' ? '🇫🇷' :
-                               plan.language.toLowerCase() === 'german' ? '🇩🇪' : '🌍'}
-                            </span>
-                            <div>
-                              <div className="font-medium text-gray-900 text-sm capitalize leading-tight">{plan.language}</div>
-                              <div className="text-xs text-[#4ECFBF] font-semibold">Level {plan.proficiency_level}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* PROGRESS - Inline Compact */}
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 min-w-[80px]">
-                              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                <div
-                                  className={`h-1.5 rounded-full ${
-                                    isOnTrack ? 'bg-green-500' : isAtRisk ? 'bg-yellow-500' : 'bg-gray-400'
-                                  }`}
-                                  style={{ width: `${plan.progress_percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <span className="text-sm font-bold text-gray-900 min-w-[38px] text-right">
-                              {plan.progress_percentage.toFixed(0)}%
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* SESSIONS - Large Numbers */}
-                        <td className="px-4 py-2.5 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</span>
-                            <span className="text-gray-400 font-medium">/</span>
-                            <span className="text-lg font-semibold text-gray-600">{plan.total_sessions}</span>
-                          </div>
-                        </td>
-
-                        {/* SCORE - Single Large Number */}
-                        <td className="px-4 py-2.5 text-center">
-                          {plan.assessment_score > 0 ? (
-                            <div className={`text-2xl font-bold ${
-                              plan.assessment_score >= 80 ? 'text-green-600' :
-                              plan.assessment_score >= 60 ? 'text-yellow-600' :
-                              'text-red-600'
-                            }`}>
-                              {plan.assessment_score}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-
-                        {/* STATUS - Compact Icon + Days */}
-                        <td className="px-4 py-2.5 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="text-lg">
-                              {isOnTrack ? '✅' : isAtRisk ? '⚠️' : '⏸️'}
-                            </span>
-                            {plan.days_since_activity < 999 && (
-                              <span className={`text-xs font-medium ${
-                                plan.days_since_activity <= 3 ? 'text-green-600' :
-                                plan.days_since_activity <= 7 ? 'text-yellow-600' :
-                                'text-red-600'
-                              }`}>
-                                {plan.days_since_activity}d
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* ACTION - Compact Button */}
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => handleViewDetails(learner)}
-                            disabled={!hasConsent}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                              hasConsent
-                                ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92]'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            {hasConsent ? 'View' : 'Locked'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          
-          {/* Pagination */}
-          {!loading && !error && learners.length > 0 && <Pagination />}
-        </div>
-        </>
         )}
       </div>
 
-      {/* COMPREHENSIVE LEARNER PROGRESS MODAL */}
-      {showDetailModal && selectedLearner && (
-        <ComprehensiveLearnerModal
+      {/* Hover card — zero API calls, uses already-loaded data */}
+      {hoveredLearner && <LearnerHoverCard learner={hoveredLearner} position={hoverPos} />}
+
+      {/* Learner Detail Modal */}
+      {selectedLearner && (
+        <LearnerDetailModal
           learner={selectedLearner}
-          learnerDetails={learnerDetails}
-          loadingDetails={loadingDetails}
-          onClose={() => {
-            setShowDetailModal(false);
-            setLearnerDetails(null);
-          }}
+          details={learnerDetails}
+          loading={loadingDetails}
+          tutorId={tutorId}
+          onClose={() => { setSelectedLearner(null); setLearnerDetails(null); }}
         />
       )}
     </div>

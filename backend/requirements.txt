@@ -79,3 +79,4 @@ praat-parselmouth==0.4.3
 # Redis caching for performance optimization
 redis==5.0.1
 async-timeout>=4.0.2
+openpyxl>=3.1.2

@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status
+import uuid
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel, EmailStr
 from database import database, users_collection, conversation_sessions_collection, learning_plans_collection
 from auth import get_password_hash, verify_password, SECRET_KEY, ALGORITHM
 from models import UserResponse
+from redis_client import blocklist_token, is_token_blocklisted
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 security = HTTPBearer()
@@ -62,7 +64,7 @@ def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = N
     else:
         expire = datetime.utcnow() + timedelta(hours=8)  # 8 hour sessions for admin
     
-    to_encode.update({"exp": expire, "type": "admin"})
+    to_encode.update({"exp": expire, "type": "admin", "jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -74,31 +76,34 @@ async def get_current_admin(token: str = Depends(security)):
         detail="Could not validate admin credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        # Extract token from Bearer format
         if hasattr(token, 'credentials'):
             token_str = token.credentials
         else:
             token_str = str(token)
-            
+
         payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
         admin_id = payload.get("sub")
         token_type = payload.get("type")
-        
+        jti = payload.get("jti")
+
         if admin_id is None or token_type != "admin":
             raise credentials_exception
-            
-        # Find admin user (in production, query from admin users table)
+
+        # Check blocklist (token invalidated by logout)
+        if jti and await is_token_blocklisted(jti):
+            raise credentials_exception
+
         admin_user = None
         for email, user_data in ADMIN_USERS.items():
             if user_data["id"] == admin_id:
                 admin_user = AdminUser(**user_data)
                 break
-                
+
         if admin_user is None:
             raise credentials_exception
-            
+
         return admin_user
     except jwt.JWTError:
         raise credentials_exception
@@ -151,6 +156,27 @@ async def admin_login(login_data: AdminLoginRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
+
+
+@router.post("/logout")
+async def admin_logout(
+    token: str = Depends(security),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Invalidate the admin JWT by adding its JTI to the Redis blocklist."""
+    from jose import jwt as jose_jwt
+    try:
+        token_str = token.credentials if hasattr(token, 'credentials') else str(token)
+        payload = jose_jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            remaining_ttl = max(1, int(exp - datetime.utcnow().timestamp()))
+            await blocklist_token(jti, remaining_ttl)
+    except Exception as e:
+        print(f"[ADMIN_LOGOUT] Warning: could not blocklist token: {e}")
+    return {"message": "Logged out successfully"}
+
 
 @router.get("/dashboard", response_model=DashboardMetrics)
 async def get_dashboard_metrics(current_admin: AdminUser = Depends(get_current_admin)):
@@ -1063,6 +1089,354 @@ async def fix_subscription_dates(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fix subscription dates: {str(e)}"
         )
+
+# ============================================================================
+# INSTITUTION MANAGEMENT ENDPOINTS (Admin-level, no institution scoping)
+# ============================================================================
+
+@router.get("/institutions")
+async def list_institutions(current_admin: AdminUser = Depends(get_current_admin)):
+    """List all institutions with stats"""
+    institutions = await database.institutions.find({}).to_list(length=None)
+    if not institutions:
+        return {"total": 0, "institutions": []}
+
+    inst_ids = [str(inst["_id"]) for inst in institutions]
+    admin_emails = [inst.get("admin_email") for inst in institutions if inst.get("admin_email")]
+
+    # Bulk fetch learner counts
+    learner_pipeline = [
+        {"$match": {"institution_id": {"$in": inst_ids}, "is_active": True}},
+        {"$group": {"_id": "$institution_id", "count": {"$sum": 1}}}
+    ]
+    learner_counts = {r["_id"]: r["count"] async for r in database.institutional_learners.aggregate(learner_pipeline)}
+
+    # Bulk fetch tutor counts
+    tutor_pipeline = [
+        {"$match": {"institution_id": {"$in": inst_ids}, "is_active": True}},
+        {"$group": {"_id": "$institution_id", "count": {"$sum": 1}}}
+    ]
+    tutor_counts = {r["_id"]: r["count"] async for r in database.tutors.aggregate(tutor_pipeline)}
+
+    # Bulk fetch activation codes by email
+    act_codes_list = await database.activation_codes.find({
+        "$or": [
+            {"institution_email": {"$in": admin_emails}},
+            {"used_by_email": {"$in": admin_emails}}
+        ]
+    }).to_list(length=None)
+    act_codes_by_email = {}
+    for ac in act_codes_list:
+        email = ac.get("institution_email") or ac.get("used_by_email")
+        if email and email not in act_codes_by_email:
+            act_codes_by_email[email] = ac
+
+    result = []
+    for inst in institutions:
+        inst_id = str(inst["_id"])
+        email = inst.get("admin_email")
+        act_code = act_codes_by_email.get(email)
+        result.append({
+            "id": inst_id,
+            "name": inst.get("name"),
+            "institution_type": inst.get("institution_type"),
+            "admin_email": email,
+            "admin_name": inst.get("admin_name"),
+            "institution_code": inst.get("institution_code"),
+            "subscription_plan": inst.get("subscription_plan"),
+            "max_tutors": inst.get("max_tutors"),
+            "max_learners": inst.get("max_learners"),
+            "is_active": inst.get("is_active", True),
+            "created_at": inst.get("created_at").isoformat() if inst.get("created_at") else None,
+            "learner_count": learner_counts.get(inst_id, 0),
+            "tutor_count": tutor_counts.get(inst_id, 0),
+            "activation_code": act_code.get("activation_code") if act_code else None,
+            "activation_code_status": act_code.get("status") if act_code else None
+        })
+    return {"total": len(result), "institutions": result}
+
+
+@router.get("/institutions/{institution_id}")
+async def get_institution_detail(
+    institution_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get institution details with full stats"""
+    from bson import ObjectId
+    try:
+        inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid institution ID")
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    inst_id = str(inst["_id"])
+    learner_count = await database.institutional_learners.count_documents({
+        "institution_id": inst_id, "is_active": True
+    })
+    tutor_count = await database.tutors.count_documents({
+        "institution_id": inst_id, "is_active": True
+    })
+    act_code = await database.activation_codes.find_one({
+        "$or": [
+            {"institution_email": inst.get("admin_email")},
+            {"used_by_email": inst.get("admin_email")}
+        ]
+    })
+    tutors = await database.tutors.find({"institution_id": inst_id}).to_list(length=None)
+
+    return {
+        "id": inst_id,
+        "name": inst.get("name"),
+        "institution_type": inst.get("institution_type"),
+        "admin_email": inst.get("admin_email"),
+        "admin_name": inst.get("admin_name"),
+        "institution_code": inst.get("institution_code"),
+        "subscription_plan": inst.get("subscription_plan"),
+        "max_tutors": inst.get("max_tutors"),
+        "max_learners": inst.get("max_learners"),
+        "is_active": inst.get("is_active", True),
+        "created_at": inst.get("created_at").isoformat() if inst.get("created_at") else None,
+        "learner_count": learner_count,
+        "tutor_count": tutor_count,
+        "activation_code": act_code.get("activation_code") if act_code else None,
+        "activation_code_status": act_code.get("status") if act_code else None,
+        "tutors": [
+            {
+                "id": str(t["_id"]),
+                "name": t.get("name"),
+                "email": t.get("email"),
+                "is_active": t.get("is_active", True)
+            } for t in tutors
+        ]
+    }
+
+
+@router.get("/institutions/{institution_id}/learners")
+async def get_institution_learners_admin(
+    institution_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get all learners for an institution (admin view, no consent gate)"""
+    from bson import ObjectId
+    enrollments = await database.institutional_learners.find({
+        "institution_id": institution_id
+    }).to_list(length=None)
+
+    learner_list = []
+    for enrollment in enrollments:
+        user_id = enrollment.get("user_id", "")
+        user = None
+        try:
+            if ObjectId.is_valid(user_id):
+                user = await database.users.find_one({"_id": ObjectId(user_id)})
+        except Exception:
+            pass
+
+        # Get learning plan summary
+        plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
+        plan_summary = None
+        if plans:
+            plan = plans[0]
+            plan_summary = {
+                "language": plan.get("language"),
+                "level": plan.get("proficiency_level") or plan.get("level"),
+                "progress_percentage": round(plan.get("progress_percentage", 0), 1),
+                "completed_sessions": plan.get("completed_sessions", 0),
+                "total_sessions": plan.get("total_sessions", 16),
+                "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1)
+            }
+
+        # Get tutor info
+        tutor = None
+        tutor_id = enrollment.get("tutor_id")
+        if tutor_id:
+            try:
+                t = await database.tutors.find_one({"_id": ObjectId(tutor_id)})
+                if t:
+                    tutor = {"id": str(t["_id"]), "name": t.get("name"), "email": t.get("email")}
+            except Exception:
+                pass
+
+        learner_list.append({
+            "enrollment_id": str(enrollment["_id"]),
+            "user_id": user_id,
+            "name": user.get("name") if user else enrollment.get("email", "Unknown"),
+            "email": user.get("email") if user else enrollment.get("email", ""),
+            "preferred_language": user.get("preferred_language") if user else None,
+            "preferred_level": user.get("preferred_level") if user else None,
+            "subscription_status": user.get("subscription_status") if user else None,
+            "subscription_plan": user.get("subscription_plan") if user else None,
+            "consent_given": enrollment.get("consent_given", False),
+            "is_active": enrollment.get("is_active", True),
+            "enrollment_method": enrollment.get("enrollment_method"),
+            "enrolled_at": enrollment.get("enrolled_at").isoformat() if enrollment.get("enrolled_at") else None,
+            "tutor": tutor,
+            "plan_summary": plan_summary
+        })
+
+    return {"total_learners": len(learner_list), "learners": learner_list}
+
+
+@router.get("/institutions/{institution_id}/learners/{user_id}/details")
+async def get_institution_learner_details_admin(
+    institution_id: str,
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Full learner history for admin — no consent gate, no institution scoping restriction"""
+    from bson import ObjectId
+
+    # Verify enrollment exists
+    enrollment = await database.institutional_learners.find_one({
+        "institution_id": institution_id,
+        "user_id": user_id
+    })
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Learner not found in this institution")
+
+    try:
+        user = await database.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # All learning plans
+    all_plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
+
+    # Realtime conversation sessions
+    all_sessions = await database.conversation_sessions.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).to_list(length=100)
+
+    # Challenge sessions
+    all_challenges = await database.challenge_sessions.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).to_list(length=100)
+
+    # Daily stats (last 30 days)
+    daily_stats = await database.daily_stats.find(
+        {"user_id": user_id}
+    ).sort("date", -1).to_list(length=30)
+
+    # Tutor info
+    tutor_info = None
+    if enrollment.get("tutor_id"):
+        try:
+            t = await database.tutors.find_one({"_id": ObjectId(enrollment["tutor_id"])})
+            if t:
+                tutor_info = {"id": str(t["_id"]), "name": t.get("name"), "email": t.get("email")}
+        except Exception:
+            pass
+
+    # Calculate totals
+    total_plan_sessions = sum(p.get("completed_sessions", 0) for p in all_plans)
+    total_plan_minutes = sum(p.get("practice_minutes_used", 0) for p in all_plans)
+    realtime_minutes = sum(
+        round(s.get("duration_seconds", 0) / 60, 1) for s in all_sessions
+    )
+    total_minutes = total_plan_minutes if total_plan_minutes > 0 else realtime_minutes
+
+    # Format plans
+    formatted_plans = []
+    for plan in all_plans:
+        formatted_plans.append({
+            "id": str(plan.get("_id", "")),
+            "language": plan.get("language"),
+            "proficiency_level": plan.get("proficiency_level") or plan.get("level"),
+            "progress_percentage": round(plan.get("progress_percentage", 0), 1),
+            "completed_sessions": plan.get("completed_sessions", 0),
+            "total_sessions": plan.get("total_sessions", 16),
+            "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1),
+            "total_practice_minutes": plan.get("total_practice_minutes", 80),
+            "created_at": plan.get("created_at").isoformat() if plan.get("created_at") else None,
+            "assessment_data": plan.get("assessment_data", {}),
+            "plan_content": {
+                "title": plan.get("plan_content", {}).get("title"),
+                "assessment_summary": plan.get("plan_content", {}).get("assessment_summary", {}),
+                "learning_objectives": plan.get("plan_content", {}).get("learning_objectives", []),
+                "weekly_schedule": plan.get("plan_content", {}).get("weekly_schedule", [])
+            },
+            "session_summaries": plan.get("session_summaries", [])
+        })
+
+    # Format sessions
+    formatted_sessions = [
+        {
+            "id": str(s["_id"]),
+            "created_at": s.get("created_at").isoformat() if s.get("created_at") else None,
+            "duration_minutes": round(s.get("duration_seconds", 0) / 60, 1),
+            "language": s.get("language"),
+            "level": s.get("level"),
+            "session_type": s.get("session_type", "practice"),
+            "message_count": s.get("message_count", 0)
+        } for s in all_sessions
+    ]
+
+    # Format challenges
+    formatted_challenges = [
+        {
+            "id": str(c["_id"]),
+            "created_at": c.get("created_at").isoformat() if c.get("created_at") else None,
+            "challenge_type": c.get("challenge_type"),
+            "language": c.get("language"),
+            "level": c.get("level"),
+            "score": c.get("score", 0),
+            "completed": c.get("completed", False),
+            "correct_answers": c.get("correct_answers", 0),
+            "total_questions": c.get("total_questions", 0)
+        } for c in all_challenges
+    ]
+
+    # Daily stats summary
+    stats_summary = {
+        "current_streak": daily_stats[0].get("streak_days", 0) if daily_stats else 0,
+        "total_xp": sum(s.get("xp_earned", 0) for s in daily_stats),
+        "days_active": len([s for s in daily_stats if s.get("sessions_count", 0) > 0]),
+        "recent_daily": [
+            {
+                "date": s.get("date").isoformat() if hasattr(s.get("date"), "isoformat") else str(s.get("date", "")),
+                "minutes": round(s.get("practice_minutes", s.get("speaking_minutes", 0)), 1),
+                "sessions": s.get("sessions_count", 0),
+                "xp": s.get("xp_earned", 0)
+            } for s in daily_stats[:14]
+        ]
+    }
+
+    return {
+        "profile": {
+            "id": str(user["_id"]),
+            "name": user.get("name"),
+            "email": user.get("email"),
+            "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
+            "preferred_language": user.get("preferred_language"),
+            "preferred_level": user.get("preferred_level"),
+            "total_sessions": total_plan_sessions,
+            "total_minutes": round(total_minutes, 1),
+            "realtime_sessions": len(formatted_sessions),
+            "challenge_sessions": len(formatted_challenges),
+            "languages_studied": list(set(p["language"] for p in formatted_plans if p.get("language")))
+        },
+        "subscription": {
+            "status": user.get("subscription_status", "none"),
+            "plan": user.get("subscription_plan"),
+            "minutes_remaining": user.get("practice_minutes_remaining", 0),
+            "minutes_used": user.get("practice_minutes_used", 0)
+        },
+        "enrollment": {
+            "enrolled_at": enrollment.get("enrolled_at").isoformat() if enrollment.get("enrolled_at") else None,
+            "enrollment_method": enrollment.get("enrollment_method"),
+            "consent_given": enrollment.get("consent_given", False),
+            "is_active": enrollment.get("is_active", True)
+        },
+        "tutor": tutor_info,
+        "learning_plans": formatted_plans,
+        "practice_sessions": formatted_sessions,
+        "challenge_sessions": formatted_challenges,
+        "daily_stats": stats_summary
+    }
+
 
 @router.get("/health")
 async def admin_health_check():

@@ -61,30 +61,50 @@ class LearnerService:
         if existing_enrollment:
             raise ValueError("Learner already enrolled in this institution")
 
-        # Generate invitation code
-        invitation_code = secrets.token_urlsafe(32)
+        # Check if user already exists by email
+        existing_user = await self.users.find_one({"email": email})
 
-        # Create invitation
-        invitation = {
+        now = datetime.utcnow()
+        if existing_user:
+            user_id = str(existing_user["_id"])
+            # Check if already enrolled
+            already_enrolled = await self.institutional_learners.find_one({
+                "user_id": user_id,
+                "institution_id": institution_id
+            })
+            if already_enrolled:
+                raise ValueError("Learner already enrolled in this institution")
+        else:
+            # Create a placeholder user — they will set password on first login
+            user = {
+                "email": email,
+                "name": name,
+                "hashed_password": "",
+                "account_type": "institutional_learner",
+                "is_active": True,
+                "is_verified": False,
+                "created_at": now
+            }
+            user_result = await self.users.insert_one(user)
+            user_id = str(user_result.inserted_id)
+
+        # Enroll with auto-consent — admin adding a learner implies institutional consent
+        enrollment = {
+            "user_id": user_id,
             "email": email,
-            "name": name,
-            "invitation_type": "learner",
             "institution_id": institution_id,
-            "invited_by": enrolled_by,
-            "assigned_tutor_id": tutor_id,
-            "code": invitation_code,
-            "is_accepted": False,
-            "created_at": datetime.utcnow()
+            "tutor_id": tutor_id,
+            "enrollment_method": "admin_invite",
+            "consent_given": True,
+            "consent_date": now,
+            "enrolled_at": now,
+            "is_active": True
         }
-
-        result = await self.invitations.insert_one(invitation)
-
-        # TODO: Send email with invitation link
+        await self.institutional_learners.insert_one(enrollment)
 
         return {
-            "invitation_id": str(result.inserted_id),
-            "invitation_code": invitation.get("code"),
-            "message": "Learner invitation sent"
+            "user_id": user_id,
+            "message": "Learner enrolled successfully"
         }
 
     async def self_signup_with_code(
@@ -162,14 +182,15 @@ class LearnerService:
 
         tutor_id = str(tutor["_id"])
 
-        # Create enrollment record (without consent yet)
+        # Create enrollment record — consent is implicit when learner uses institution code
         enrollment = {
             "user_id": user_id,
-            "email": email,  # Store email for easy lookup
+            "email": email,
             "institution_id": institution_id,
             "tutor_id": tutor_id,
             "enrollment_method": "self_signup",
-            "consent_given": False,  # Will be granted in consent flow
+            "consent_given": True,
+            "consent_date": datetime.utcnow(),
             "enrolled_at": datetime.utcnow(),
             "is_active": True
         }
@@ -180,8 +201,8 @@ class LearnerService:
             "user_id": user_id,
             "institution_id": institution_id,
             "tutor_id": tutor_id,
-            "requires_consent": True,
-            "message": "Account created. Consent required."
+            "requires_consent": False,
+            "message": "Account created and enrolled successfully."
         }
 
     async def get_tutor_learners(

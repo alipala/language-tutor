@@ -321,7 +321,7 @@ class RobustConnectivityMonitor {
       const response = await fetch('/api/health/ping', {
         method: 'HEAD',
         cache: 'no-cache',
-        signal: AbortSignal.timeout(2000) // 2-second timeout
+        signal: AbortSignal.timeout(8000) // 8-second timeout — backend may be busy
       });
       
       return response.ok;

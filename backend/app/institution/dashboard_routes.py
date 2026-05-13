@@ -2,18 +2,141 @@
 Enhanced Institution Dashboard APIs
 Provides analytics, tutor management, and learner management
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from bson import ObjectId
-from io import StringIO
+from io import StringIO, BytesIO
 import csv
 
 from app.config.feature_flags import feature_flags
 from database import database
-from auth import create_access_token
+from auth import create_access_token, SECRET_KEY, ALGORITHM
+from redis_client import blocklist_token, is_token_blocklisted
+
+# ---------------------------------------------------------------------------
+# SHARED IMPORT HELPER
+# ---------------------------------------------------------------------------
+# Column-name aliases: maps every common variant → our canonical field name.
+# Matching is case-insensitive and strips whitespace.
+_LEARNER_ALIASES: Dict[str, str] = {
+    # name
+    "name": "name", "full name": "name", "fullname": "name",
+    "student name": "name", "learner name": "name",
+    "first name": "first_name", "firstname": "first_name", "given name": "first_name",
+    "last name": "last_name", "lastname": "last_name", "surname": "last_name",
+    "family name": "last_name",
+    # email
+    "email": "email", "e-mail": "email", "email address": "email",
+    "student email": "email", "learner email": "email",
+    # language
+    "language": "language", "target language": "language", "learning language": "language",
+    # level
+    "level": "level", "cefr level": "level", "proficiency level": "level",
+    "proficiency": "level",
+    # tutor
+    "tutor_email": "tutor_email", "tutor email": "tutor_email",
+    "assigned tutor": "tutor_email", "teacher email": "tutor_email",
+}
+
+_TUTOR_ALIASES: Dict[str, str] = {
+    # name
+    "name": "name", "full name": "name", "fullname": "name",
+    "tutor name": "name", "teacher name": "name",
+    "first name": "first_name", "firstname": "first_name", "given name": "first_name",
+    "last name": "last_name", "lastname": "last_name", "surname": "last_name",
+    "family name": "last_name",
+    # email
+    "email": "email", "e-mail": "email", "email address": "email",
+    "tutor email": "email", "teacher email": "email",
+    # optional
+    "bio": "bio", "biography": "bio", "description": "bio", "about": "bio",
+    "qualifications": "qualifications", "qualification": "qualifications",
+    "credentials": "qualifications", "degree": "qualifications",
+    "specializations": "specializations", "specialization": "specializations",
+    "subjects": "specializations", "languages": "specializations",
+    "expertise": "specializations",
+}
+
+
+def _normalise_row(raw: Dict[str, str], aliases: Dict[str, str]) -> Dict[str, str]:
+    """Map raw CSV/XLSX column headers to canonical field names."""
+    result: Dict[str, str] = {}
+    for key, value in raw.items():
+        canonical = aliases.get((key or "").strip().lower())
+        if canonical:
+            result[canonical] = (value or "").strip()
+    # Merge first_name + last_name → name if name absent
+    if "name" not in result and ("first_name" in result or "last_name" in result):
+        parts = [result.pop("first_name", ""), result.pop("last_name", "")]
+        result["name"] = " ".join(p for p in parts if p)
+    return result
+
+
+async def _parse_import_file(
+    file: UploadFile,
+    aliases: Dict[str, str]
+) -> List[Dict[str, str]]:
+    """
+    Read a CSV or XLSX upload and return a list of normalised row dicts.
+    Raises HTTPException(400) on bad format or encoding issues.
+    """
+    contents: bytes = await file.read()
+    filename = (file.filename or "").lower()
+
+    rows: List[Dict[str, str]] = []
+
+    # ── XLSX ────────────────────────────────────────────────────────────────
+    if filename.endswith(".xlsx") or filename.endswith(".xls") or \
+            file.content_type in (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+            ):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(BytesIO(contents), read_only=True, data_only=True)
+            ws = wb.active
+            all_rows = list(ws.iter_rows(values_only=True))
+            if not all_rows:
+                raise HTTPException(status_code=400, detail="Excel file is empty")
+            # Row 0 = headers
+            headers = [str(h).strip() if h is not None else "" for h in all_rows[0]]
+            for row_values in all_rows[1:]:
+                raw = {headers[i]: str(v).strip() if v is not None else ""
+                       for i, v in enumerate(row_values) if i < len(headers)}
+                if any(v for v in raw.values()):   # skip blank rows
+                    rows.append(_normalise_row(raw, aliases))
+            wb.close()
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Could not read Excel file: {exc}")
+
+    # ── CSV ─────────────────────────────────────────────────────────────────
+    else:
+        for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+            try:
+                text = contents.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise HTTPException(status_code=400, detail="Could not decode file — please save as UTF-8 CSV")
+
+        # Detect delimiter (comma or semicolon — common in European locales)
+        sample = text[:2048]
+        delimiter = ";" if sample.count(";") > sample.count(",") else ","
+
+        reader = csv.DictReader(StringIO(text), delimiter=delimiter)
+        for row in reader:
+            if any(v.strip() for v in row.values()):
+                rows.append(_normalise_row(dict(row), aliases))
+
+    return rows
 
 router = APIRouter(prefix="/institution/dashboard", tags=["institution-dashboard"])
+_bearer = HTTPBearer(auto_error=False)
 
 def check_feature_enabled():
     """Check if institutional features are enabled"""
@@ -22,6 +145,25 @@ def check_feature_enabled():
             status_code=403,
             detail="Institutional features are not enabled"
         )
+
+
+@router.post("/logout", dependencies=[Depends(check_feature_enabled)])
+async def institution_logout(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
+    """Invalidate institution JWT by adding its JTI to the Redis blocklist."""
+    from jose import jwt as jose_jwt, JWTError
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jose_jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            remaining_ttl = max(1, int(exp - datetime.utcnow().timestamp()))
+            await blocklist_token(jti, remaining_ttl)
+    except JWTError as e:
+        print(f"[INSTITUTION_LOGOUT] Warning: could not decode token: {e}")
+    return {"message": "Logged out successfully"}
+
 
 # ============================================================================
 # ANALYTICS APIs
@@ -330,6 +472,137 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
         raise HTTPException(status_code=500, detail=f"Failed to add tutor: {str(e)}")
 
 
+@router.post("/{institution_id}/tutors/bulk-import",
+             dependencies=[Depends(check_feature_enabled)])
+async def bulk_import_tutors(
+    institution_id: str,
+    file: UploadFile = File(...)
+) -> Dict[str, Any]:
+    """
+    Bulk import tutors from CSV or Excel (.xlsx) file.
+    Required columns : name (or first_name + last_name), email
+    Optional columns : bio, qualifications, specializations (comma-separated)
+    Column headers are matched case-insensitively with common aliases.
+    Tutors receive a random temporary password; must_reset_password is set True.
+    """
+    import secrets, string
+    from app.tutor.tutor_auth import get_password_hash
+
+    def _temp_password() -> str:
+        chars = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(chars) for _ in range(16))
+
+    try:
+        rows = await _parse_import_file(file, _TUTOR_ALIASES)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    success_count = 0
+    skipped_count = 0
+    failed_count  = 0
+    errors: List[str] = []
+
+    for row_num, row in enumerate(rows, start=2):
+        try:
+            name  = row.get("name", "").strip()
+            email = row.get("email", "").strip().lower()
+
+            if not name or not email:
+                errors.append(f"Row {row_num}: 'name' and 'email' are required")
+                failed_count += 1
+                continue
+
+            # Skip duplicates within the same institution
+            if await database.tutors.find_one({"email": email, "institution_id": institution_id}):
+                skipped_count += 1
+                continue
+
+            raw_specs = row.get("specializations", "")
+            specializations = [s.strip() for s in raw_specs.split(",") if s.strip()]
+
+            await database.tutors.insert_one({
+                "name": name,
+                "email": email,
+                "bio": row.get("bio") or None,
+                "qualifications": row.get("qualifications") or None,
+                "specializations": specializations,
+                "institution_id": institution_id,
+                "hashed_password": get_password_hash(_temp_password()),
+                "must_reset_password": True,
+                "assigned_learners": [],
+                "is_active": True,
+                "enrollment_method": "bulk_import",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            })
+            success_count += 1
+
+        except Exception as exc:
+            errors.append(f"Row {row_num}: unexpected error — {exc}")
+            failed_count += 1
+
+    return {
+        "message": "Import completed",
+        "success_count": success_count,
+        "skipped_count": skipped_count,
+        "failed_count": failed_count,
+        "errors": errors[:20],
+    }
+
+
+@router.get("/{institution_id}/tutors/export",
+            dependencies=[Depends(check_feature_enabled)])
+async def export_tutors(institution_id: str):
+    """
+    Export all active tutors for an institution as a downloadable CSV file.
+    Columns: name, email, bio, qualifications, specializations, learner_count,
+             is_active, created_at
+    """
+    from fastapi.responses import StreamingResponse
+
+    try:
+        tutors = await database.tutors.find(
+            {"institution_id": institution_id}
+        ).to_list(length=None)
+
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "name", "email", "bio", "qualifications", "specializations",
+            "learner_count", "is_active", "created_at"
+        ])
+
+        for tutor in tutors:
+            learner_count = await database.institutional_learners.count_documents({
+                "tutor_id": str(tutor["_id"]),
+                "institution_id": institution_id,
+                "is_active": True
+            })
+            writer.writerow([
+                tutor.get("name", ""),
+                tutor.get("email", ""),
+                tutor.get("bio") or "",
+                tutor.get("qualifications") or "",
+                ",".join(tutor.get("specializations") or []),
+                learner_count,
+                tutor.get("is_active", True),
+                str(tutor.get("created_at", ""))
+            ])
+
+        output.seek(0)
+        filename = f"tutors_{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export tutors: {str(e)}")
+
+
 @router.delete("/{institution_id}/tutors/{tutor_id}",
                dependencies=[Depends(check_feature_enabled)])
 async def remove_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
@@ -540,11 +813,11 @@ async def get_learners(institution_id: str) -> Dict[str, Any]:
                     "email": tutor_doc.get("email")
                 }
             
-            # Get learning plan progress
+            # Get learning plan progress — use best (highest progress) plan
             progress = None
             learning_plans = learner.get("learning_plan", [])
             if learning_plans:
-                learning_plan = learning_plans[0]  # Get first plan
+                learning_plan = max(learning_plans, key=lambda p: p.get("progress_percentage", 0))
                 percentage = learning_plan.get("progress_percentage", 0)
                 completed = learning_plan.get("completed_sessions", 0)
                 total = learning_plan.get("total_sessions", 16)
@@ -692,90 +965,92 @@ async def bulk_import_learners(
     file: UploadFile = File(...)
 ) -> Dict[str, Any]:
     """
-    Bulk import learners from CSV file
-    Expected CSV format: name, email, language, level, tutor_email
+    Bulk import learners from CSV or Excel (.xlsx) file.
+    Required columns : name (or first_name + last_name), email
+    Optional columns : language, level, tutor_email
+    Column headers are matched case-insensitively with common aliases.
     """
     try:
-        # Read CSV file
-        contents = await file.read()
-        csv_data = StringIO(contents.decode('utf-8'))
-        reader = csv.DictReader(csv_data)
-        
-        success_count = 0
-        failed_count = 0
-        errors = []
-        
-        for row in reader:
-            try:
-                # Validate required fields
-                if not row.get('name') or not row.get('email'):
-                    errors.append(f"Row missing name or email: {row}")
-                    failed_count += 1
-                    continue
-                
-                # Find or create user
-                user = await database.users.find_one({"email": row['email']})
-                if not user:
-                    # Create new user (simplified - in production, send invitation email)
-                    user_data = {
-                        "name": row['name'],
-                        "email": row['email'],
-                        "preferred_language": row.get('language'),
-                        "preferred_level": row.get('level'),
-                        "is_active": True,
-                        "created_at": datetime.utcnow()
-                    }
-                    user_result = await database.users.insert_one(user_data)
-                    user_id = str(user_result.inserted_id)
-                else:
-                    user_id = str(user["_id"])
-                
-                # Find tutor by email if provided
-                tutor_id = None
-                if row.get('tutor_email'):
-                    tutor = await database.tutors.find_one({
-                        "email": row['tutor_email'],
-                        "institution_id": institution_id
-                    })
-                    if tutor:
-                        tutor_id = str(tutor["_id"])
-                
-                # Check if already enrolled
-                existing = await database.institutional_learners.find_one({
-                    "user_id": user_id,
-                    "institution_id": institution_id
-                })
-                
-                if not existing:
-                    # Create enrollment
-                    enrollment = {
-                        "user_id": user_id,
-                        "institution_id": institution_id,
-                        "tutor_id": tutor_id,
-                        "enrollment_method": "bulk_import",
-                        "consent_given": False,
-                        "enrolled_at": datetime.utcnow(),
-                        "is_active": True
-                    }
-                    await database.institutional_learners.insert_one(enrollment)
-                    success_count += 1
-                else:
-                    errors.append(f"User {row['email']} already enrolled")
-                    failed_count += 1
-                    
-            except Exception as e:
-                errors.append(f"Error processing row {row}: {str(e)}")
+        rows = await _parse_import_file(file, _LEARNER_ALIASES)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    success_count = 0
+    failed_count  = 0
+    skipped_count = 0   # already enrolled
+    errors: List[str] = []
+
+    for row_num, row in enumerate(rows, start=2):
+        try:
+            name  = row.get("name", "").strip()
+            email = row.get("email", "").strip().lower()
+
+            if not name or not email:
+                errors.append(f"Row {row_num}: 'name' and 'email' are required")
                 failed_count += 1
-        
-        return {
-            "message": "Bulk import completed",
-            "success_count": success_count,
-            "failed_count": failed_count,
-            "errors": errors[:10]  # Return first 10 errors
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to import learners: {str(e)}")
+                continue
+
+            # Find or create the user account
+            user = await database.users.find_one({"email": email})
+            if not user:
+                user_result = await database.users.insert_one({
+                    "name": name,
+                    "email": email,
+                    "preferred_language": row.get("language") or None,
+                    "preferred_level": row.get("level") or None,
+                    "is_active": True,
+                    "created_at": datetime.utcnow(),
+                })
+                user_id = str(user_result.inserted_id)
+            else:
+                user_id = str(user["_id"])
+
+            # Resolve optional tutor assignment
+            tutor_id: Optional[str] = None
+            tutor_email = row.get("tutor_email", "").lower()
+            if tutor_email:
+                tutor = await database.tutors.find_one(
+                    {"email": tutor_email, "institution_id": institution_id}
+                )
+                if tutor:
+                    tutor_id = str(tutor["_id"])
+                else:
+                    errors.append(
+                        f"Row {row_num}: tutor '{tutor_email}' not found in this institution — learner enrolled without tutor"
+                    )
+
+            # Skip if already enrolled
+            already = await database.institutional_learners.find_one(
+                {"user_id": user_id, "institution_id": institution_id}
+            )
+            if already:
+                skipped_count += 1
+                continue
+
+            await database.institutional_learners.insert_one({
+                "user_id": user_id,
+                "institution_id": institution_id,
+                "tutor_id": tutor_id,
+                "enrollment_method": "bulk_import",
+                "consent_given": False,
+                "enrolled_at": datetime.utcnow(),
+                "is_active": True,
+            })
+            success_count += 1
+
+        except Exception as exc:
+            errors.append(f"Row {row_num}: unexpected error — {exc}")
+            failed_count += 1
+
+    return {
+        "message": "Import completed",
+        "success_count": success_count,
+        "skipped_count": skipped_count,
+        "failed_count": failed_count,
+        "errors": errors[:20],
+    }
 
 
 @router.get("/{institution_id}/learners/{user_id}/comprehensive-details",
@@ -789,35 +1064,44 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
         # Check if learner belongs to institution
         learner = await database.institutional_learners.find_one({
             'institution_id': institution_id,
-            'user_id': user_id,
-            'is_active': True
+            'user_id': user_id
         })
-        
+
         if not learner:
             raise HTTPException(status_code=404, detail="Learner not found")
-        
-        # Check consent
-        if not learner.get('consent_given', False):
-            raise HTTPException(
-                status_code=403, 
-                detail="Learner has not given consent to view detailed progress"
-            )
-        
+
         # Get user info
         user = await database.users.find_one({'_id': ObjectId(user_id)})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         # Get ALL learning plans
         all_learning_plans = await database.learning_plans.find({'user_id': user_id}).to_list(length=None)
-        
-        # Get ALL conversation sessions
-        all_conversations = await database.conversations.find({
+
+        # Get ALL conversation sessions (correct collection name)
+        all_conversations = await database.conversation_sessions.find({
             'user_id': user_id
         }).sort('created_at', -1).to_list(length=None)
-        
+
+        # Get challenge sessions
+        all_challenges = await database.challenge_sessions.find({
+            'user_id': user_id
+        }).sort('created_at', -1).to_list(length=100)
+
+        # Get daily stats for streak/XP data
+        daily_stats = await database.daily_stats.find({
+            'user_id': user_id
+        }).sort('date', -1).to_list(length=30)
+
         # Get subscription info
         subscription = await database.subscriptions.find_one({'user_id': user_id})
+        # Fallback: subscription fields may live directly on the user document
+        if not subscription:
+            sub_status = user.get('subscription_status')
+            sub_plan = user.get('subscription_plan')
+        else:
+            sub_status = subscription.get('status')
+            sub_plan = subscription.get('plan_type') or subscription.get('subscription_plan')
         
         # Get tutor info
         tutor_info = None
@@ -833,20 +1117,47 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
         # Calculate overall metrics
         total_sessions = sum([plan.get('completed_sessions', 0) for plan in all_learning_plans])
         total_minutes = sum([plan.get('practice_minutes_used', 0) for plan in all_learning_plans])
+        # Also count realtime session minutes from conversation_sessions
+        realtime_minutes = sum([
+            round(s.get('duration_seconds', 0) / 60, 1) for s in all_conversations
+        ])
+        if total_minutes == 0 and realtime_minutes > 0:
+            total_minutes = realtime_minutes
         
+        def _iso(v):
+            """Safely convert datetime or string to ISO string."""
+            if v is None:
+                return None
+            if isinstance(v, str):
+                return v
+            if hasattr(v, 'isoformat'):
+                return v.isoformat()
+            return str(v)
+
+        def _to_dt(v):
+            """Safely convert to naive datetime for arithmetic."""
+            if isinstance(v, datetime):
+                return v.replace(tzinfo=None)
+            if isinstance(v, str):
+                try:
+                    return datetime.fromisoformat(v.replace('Z', '+00:00')).replace(tzinfo=None)
+                except Exception:
+                    return None
+            return None
+
         # Format learning plans
         formatted_plans = []
         for plan in all_learning_plans:
-            formatted_plan = {
-                'id': plan.get('id'),
+            formatted_plans.append({
+                'id': str(plan.get('_id', plan.get('id', ''))),
                 'language': plan.get('language'),
                 'proficiency_level': plan.get('proficiency_level'),
-                'progress_percentage': plan.get('progress_percentage', 0),
+                'progress_percentage': round(plan.get('progress_percentage', 0), 1),
                 'completed_sessions': plan.get('completed_sessions', 0),
                 'total_sessions': plan.get('total_sessions', 16),
-                'practice_minutes_used': plan.get('practice_minutes_used', 0),
+                'practice_minutes_used': round(plan.get('practice_minutes_used', 0), 1),
                 'total_practice_minutes': plan.get('total_practice_minutes', 80),
-                'created_at': plan.get('created_at').isoformat() if plan.get('created_at') else None,
+                'created_at': _iso(plan.get('created_at')),
                 'assessment_data': plan.get('assessment_data', {}),
                 'plan_content': {
                     'title': plan.get('plan_content', {}).get('title'),
@@ -855,45 +1166,86 @@ async def get_comprehensive_learner_details(institution_id: str, user_id: str) -
                     'weekly_schedule': plan.get('plan_content', {}).get('weekly_schedule', [])
                 },
                 'session_summaries': plan.get('session_summaries', [])
-            }
-            formatted_plans.append(formatted_plan)
-        
-        # Format conversations
+            })
+
+        # Format conversations (realtime sessions)
         formatted_conversations = [
             {
                 'id': str(conv['_id']),
-                'created_at': conv.get('created_at').isoformat() if conv.get('created_at') else None,
-                'duration_minutes': conv.get('duration_minutes', 0),
-                'message_count': len(conv.get('messages', [])),
+                'created_at': _iso(conv.get('created_at')),
+                'duration_minutes': round(conv.get('duration_seconds', 0) / 60, 1),
+                'message_count': conv.get('message_count', len(conv.get('messages', []))),
                 'language': conv.get('language'),
-                'level': conv.get('level')
+                'level': conv.get('level'),
+                'session_type': conv.get('session_type', 'practice')
             } for conv in all_conversations
         ]
-        
+
+        # Format challenge sessions — real schema fields
+        formatted_challenges = [
+            {
+                'id': str(ch['_id']),
+                'created_at': _iso(ch.get('created_at')),
+                'challenge_type': ch.get('challenge_type'),
+                'language': ch.get('language'),
+                'level': ch.get('level'),
+                'correct_answers': ch.get('correct_answers', 0),
+                'wrong_answers': ch.get('wrong_answers', 0),
+                'total_challenges': ch.get('total_challenges', 0),
+                'accuracy': ch.get('accuracy', 0),
+                'total_xp': ch.get('total_xp', 0),
+                'max_combo': ch.get('max_combo', 0),
+                'completed': ch.get('end_time') is not None
+            } for ch in all_challenges
+        ]
+
+        # Daily stats summary
+        stats_summary = {
+            'current_streak': daily_stats[0].get('streak_days', 0) if daily_stats else 0,
+            'total_xp': sum(s.get('xp_earned', 0) for s in daily_stats),
+            'days_active': len([s for s in daily_stats if s.get('sessions_count', 0) > 0]),
+            'recent_daily': [
+                {
+                    'date': _iso(s.get('date')),
+                    'minutes': round(s.get('practice_minutes', s.get('speaking_minutes', 0)), 1),
+                    'sessions': s.get('sessions_count', 0),
+                    'xp': s.get('xp_earned', 0)
+                } for s in daily_stats[:14]
+            ]
+        }
+
         # Generate AI Insights
         ai_insights = generate_ai_insights(user, formatted_plans, formatted_conversations)
-        
+
         return {
             'profile': {
                 'id': str(user['_id']),
                 'name': user.get('name'),
                 'email': user.get('email'),
-                'created_at': user.get('created_at').isoformat() if user.get('created_at') else None,
+                'created_at': _iso(user.get('created_at')),
                 'total_sessions': total_sessions,
-                'total_minutes': total_minutes,
-                'languages_studied': list(set([plan['language'] for plan in formatted_plans]))
+                'total_minutes': round(total_minutes, 1),
+                'realtime_sessions': len(formatted_conversations),
+                'challenge_sessions': len(formatted_challenges),
+                'languages_studied': list(set(p['language'] for p in formatted_plans if p.get('language'))),
+                'preferred_language': user.get('preferred_language'),
+                'preferred_level': user.get('preferred_level')
             },
             'all_learning_plans': formatted_plans,
             'practice_sessions': formatted_conversations,
+            'challenge_sessions': formatted_challenges,
+            'daily_stats': stats_summary,
             'subscription': {
-                'status': subscription.get('status') if subscription else 'none',
-                'minutes_remaining': subscription.get('minutes_remaining', 0) if subscription else 0,
-                'plan_type': subscription.get('plan_type') if subscription else None
-            } if subscription else None,
+                'status': sub_status or 'none',
+                'minutes_remaining': user.get('practice_minutes_remaining', 0),
+                'plan_type': sub_plan,
+                'subscription_plan': user.get('subscription_plan'),
+                'subscription_status': user.get('subscription_status')
+            },
             'tutor': tutor_info,
             'ai_insights': ai_insights,
-            'consent_given': learner.get('consent_given', False),
-            'enrolled_at': learner.get('enrolled_at').isoformat() if learner.get('enrolled_at') else None
+            'consent_given': learner.get('consent_given', True),
+            'enrolled_at': _iso(learner.get('enrolled_at'))
         }
         
     except HTTPException:
@@ -916,11 +1268,17 @@ def generate_ai_insights(user, learning_plans, conversations):
         session_hours = []
         for conv in conversations:
             try:
-                if conv['created_at']:
+                raw = conv.get('created_at')
+                if raw:
                     from datetime import datetime
-                    dt = datetime.fromisoformat(conv['created_at'].replace('Z', '+00:00'))
+                    if isinstance(raw, str):
+                        dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+                    elif hasattr(raw, 'hour'):
+                        dt = raw
+                    else:
+                        continue
                     session_hours.append(dt.hour)
-            except:
+            except Exception:
                 pass
         
         peak_hour = max(set(session_hours), key=session_hours.count) if session_hours else 12
@@ -929,16 +1287,22 @@ def generate_ai_insights(user, learning_plans, conversations):
         learning_time = "unknown"
     
     # Calculate progress rate
-    user_created = user.get('created_at')
-    if user_created:
+    user_created_raw = user.get('created_at')
+    if user_created_raw:
         try:
             from datetime import datetime
-            days_active = (datetime.utcnow() - user_created).days
-            if days_active > 0:
-                sessions_per_week = (total_sessions / days_active) * 7
+            if isinstance(user_created_raw, str):
+                user_created = datetime.fromisoformat(user_created_raw.replace('Z', '+00:00')).replace(tzinfo=None)
+            elif hasattr(user_created_raw, 'replace'):
+                user_created = user_created_raw.replace(tzinfo=None)
             else:
-                sessions_per_week = total_sessions
-        except:
+                user_created = None
+            if user_created:
+                days_active = (datetime.utcnow() - user_created).days
+                sessions_per_week = (total_sessions / days_active) * 7 if days_active > 0 else total_sessions
+            else:
+                sessions_per_week = 1
+        except Exception:
             sessions_per_week = 1
     else:
         sessions_per_week = 1
@@ -1054,46 +1418,256 @@ def generate_ai_insights(user, learning_plans, conversations):
 
 @router.get("/{institution_id}/learners/export",
             dependencies=[Depends(check_feature_enabled)])
-async def export_learners(institution_id: str) -> Dict[str, Any]:
+async def export_learners(institution_id: str):
     """
-    Export learner data as CSV format data
+    Export learner data as a downloadable CSV file.
+    Columns: name, email, language, level, tutor_email, enrolled_at, consent_given
     """
+    from fastapi.responses import StreamingResponse
+
     try:
         learners = await database.institutional_learners.find({
             "institution_id": institution_id,
             "is_active": True
         }).to_list(length=None)
-        
-        export_data = []
+
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["name", "email", "language", "level", "tutor_email", "enrolled_at", "consent_given"])
+
         for learner in learners:
             user_id = learner.get("user_id")
-            if user_id:
-                try:
-                    user = await database.users.find_one({"_id": ObjectId(user_id)})
-                    if user:
-                        # Get tutor info
-                        tutor_email = ""
-                        if learner.get("tutor_id"):
-                            tutor = await database.tutors.find_one({"_id": ObjectId(learner["tutor_id"])})
-                            if tutor:
-                                tutor_email = tutor.get("email", "")
-                        
-                        export_data.append({
-                            "name": user.get("name"),
-                            "email": user.get("email"),
-                            "language": user.get("preferred_language") or "",
-                            "level": user.get("preferred_level") or "",
-                            "tutor_email": tutor_email,
-                            "enrolled_at": str(learner.get("enrolled_at", "")),
-                            "consent_given": learner.get("consent_given", False)
-                        })
-                except:
-                    pass
-        
-        return {
-            "total_records": len(export_data),
-            "data": export_data
-        }
-        
+            if not user_id:
+                continue
+            try:
+                user = await database.users.find_one({"_id": ObjectId(user_id)})
+                if not user:
+                    continue
+                tutor_email = ""
+                if learner.get("tutor_id"):
+                    tutor = await database.tutors.find_one({"_id": ObjectId(learner["tutor_id"])})
+                    if tutor:
+                        tutor_email = tutor.get("email", "")
+                writer.writerow([
+                    user.get("name", ""),
+                    user.get("email", ""),
+                    user.get("preferred_language") or "",
+                    user.get("preferred_level") or "",
+                    tutor_email,
+                    str(learner.get("enrolled_at", "")),
+                    learner.get("consent_given", False)
+                ])
+            except Exception:
+                pass
+
+        output.seek(0)
+        filename = f"learners_{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to export learners: {str(e)}")
+
+
+# =============================================================================
+# SETTINGS ENDPOINTS
+# =============================================================================
+
+# ── Institution Profile ───────────────────────────────────────────────────────
+
+@router.get("/{institution_id}/settings/profile",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_profile_settings(institution_id: str) -> Dict[str, Any]:
+    """Return editable institution profile fields."""
+    from bson import ObjectId as OID
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {
+            "name":             inst.get("name", ""),
+            "institution_type": inst.get("institution_type", "school"),
+            "website":          inst.get("website") or "",
+            "phone":            inst.get("phone") or "",
+            "address":          inst.get("address") or "",
+            "logo_url":         inst.get("logo_url") or "",
+            "admin_language":   inst.get("admin_language") or "en",
+            "timezone":         inst.get("timezone") or "UTC",
+            "semester_start":   inst.get("semester_start") or "",
+            "semester_end":     inst.get("semester_end") or "",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{institution_id}/settings/profile",
+            dependencies=[Depends(check_feature_enabled)])
+async def update_profile_settings(
+    institution_id: str,
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Update editable institution profile fields."""
+    from bson import ObjectId as OID
+
+    ALLOWED = {
+        "name", "institution_type", "website", "phone",
+        "address", "logo_url", "admin_language", "timezone",
+        "semester_start", "semester_end",
+    }
+    INSTITUTION_TYPES = {"school", "university", "language_center", "corporate"}
+
+    update: Dict[str, Any] = {}
+    for field in ALLOWED:
+        if field in body:
+            update[field] = body[field]
+
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    if "institution_type" in update and update["institution_type"] not in INSTITUTION_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"institution_type must be one of {sorted(INSTITUTION_TYPES)}"
+        )
+
+    update["updated_at"] = datetime.utcnow()
+
+    try:
+        result = await database.institutions.update_one(
+            {"_id": OID(institution_id)},
+            {"$set": update}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {"message": "Profile updated successfully", "updated_fields": list(update.keys())}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Admin Account ─────────────────────────────────────────────────────────────
+
+@router.get("/{institution_id}/settings/admin",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_admin_settings(institution_id: str) -> Dict[str, Any]:
+    """Return admin account settings (never returns password)."""
+    from bson import ObjectId as OID
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {
+            "admin_name":    inst.get("admin_name", ""),
+            "admin_email":   inst.get("admin_email", ""),
+            "admin_photo_url": inst.get("admin_photo_url") or "",
+            "notify_daily_digest":  inst.get("notify_daily_digest", False),
+            "notify_weekly_report": inst.get("notify_weekly_report", True),
+            "notify_learner_alerts": inst.get("notify_learner_alerts", True),
+            "two_factor_enabled":   inst.get("two_factor_enabled", False),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{institution_id}/settings/admin",
+            dependencies=[Depends(check_feature_enabled)])
+async def update_admin_settings(
+    institution_id: str,
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Update admin name, photo URL, and notification preferences."""
+    from bson import ObjectId as OID
+
+    ALLOWED = {
+        "admin_name", "admin_photo_url",
+        "notify_daily_digest", "notify_weekly_report",
+        "notify_learner_alerts", "two_factor_enabled",
+    }
+    update: Dict[str, Any] = {k: body[k] for k in ALLOWED if k in body}
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    update["updated_at"] = datetime.utcnow()
+
+    try:
+        result = await database.institutions.update_one(
+            {"_id": OID(institution_id)},
+            {"$set": update}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {"message": "Admin settings updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{institution_id}/settings/admin/change-password",
+             dependencies=[Depends(check_feature_enabled)])
+async def change_admin_password(
+    institution_id: str,
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Change the admin password after verifying the current one."""
+    from bson import ObjectId as OID
+    import bcrypt
+
+    current  = body.get("current_password", "")
+    new_pass = body.get("new_password", "")
+
+    if not current or not new_pass:
+        raise HTTPException(status_code=400, detail="current_password and new_password are required")
+    if len(new_pass) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+
+        stored_hash = inst.get("admin_password", "")
+        if not bcrypt.checkpw(current.encode(), stored_hash.encode()):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+        new_hash = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+        await database.institutions.update_one(
+            {"_id": OID(institution_id)},
+            {"$set": {"admin_password": new_hash, "updated_at": datetime.utcnow()}}
+        )
+        # Record in activity log
+        await database.institution_activity_log.insert_one({
+            "institution_id": institution_id,
+            "action": "password_changed",
+            "detail": "Admin password changed",
+            "timestamp": datetime.utcnow(),
+            "ip": None,
+        })
+        return {"message": "Password changed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{institution_id}/settings/admin/activity-log",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_activity_log(institution_id: str) -> Dict[str, Any]:
+    """Return the last 20 admin activity log entries for this institution."""
+    try:
+        entries = await database.institution_activity_log.find(
+            {"institution_id": institution_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(20).to_list(length=20)
+
+        return {"entries": entries}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Nunito } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import '../styles/carousel-animations.css'
@@ -12,10 +12,17 @@ import { ConnectivityErrorBoundary, ConnectivityIndicator } from '@/components/c
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext'
 import { LearningPlansProvider } from '@/contexts/LearningPlansContext'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
+})
+
+const nunito = Nunito({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-nunito',
+  weight: ['400', '500', '600', '700', '800', '900'],
 })
 
 export const metadata: Metadata = {
@@ -167,7 +174,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} font-sans antialiased overflow-x-hidden`}>
+      <body className={`${inter.variable} ${nunito.variable} font-nunito antialiased overflow-x-hidden`}>
         <ConnectivityErrorBoundary>
           <NavigationProvider>
             <AuthProviderWrapper>
