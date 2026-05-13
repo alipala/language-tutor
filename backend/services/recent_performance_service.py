@@ -12,7 +12,8 @@ from bson import ObjectId
 from database import (
     challenge_sessions_collection,
     daily_stats_collection,
-    recent_performance_collection
+    recent_performance_collection,
+    database
 )
 from services.timezone_utils import get_dates_in_range
 from services.stats_service import calculate_accuracy
@@ -66,6 +67,10 @@ async def calculate_recent_performance(
 
         daily_stats_list = await cursor.to_list(length=None)
 
+        # Merge speaking_time_tracking records so sessions that bypassed daily_stats
+        # (partial exits, older sessions) are still counted in the daily bars.
+        daily_stats_list = await _merge_tracking_minutes(user_id, start_date, end_date, daily_stats_list)
+
         if not daily_stats_list:
             print(f"[RECENT_PERF] No data found for user {user_id} in date range")
             return get_empty_recent_performance(days, start_date, end_date)
@@ -114,6 +119,80 @@ async def calculate_recent_performance(
         import traceback
         print(traceback.format_exc())
         return get_empty_recent_performance(days, None, None)
+
+
+async def _merge_tracking_minutes(
+    user_id: str,
+    start_date: str,
+    end_date: str,
+    daily_stats_list: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """
+    Merge minutes from speaking_time_tracking into daily_stats entries.
+    This ensures sessions that bypassed daily_stats (partial exits, pre-fix sessions)
+    are reflected in the daily breakdown charts.
+    """
+    try:
+        tracking_collection = database["speaking_time_tracking"]
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
+
+        cursor = tracking_collection.find({
+            'user_id': user_id,
+            'successfully_deducted': True,
+            'timestamp': {'$gte': start_dt, '$lt': end_dt}
+        })
+        tracking_records = await cursor.to_list(length=None)
+
+        if not tracking_records:
+            return daily_stats_list
+
+        # Sum minutes per day from tracking records
+        tracking_by_date: Dict[str, int] = {}
+        for rec in tracking_records:
+            ts = rec.get('timestamp')
+            if ts:
+                date_str = ts.strftime('%Y-%m-%d') if hasattr(ts, 'strftime') else str(ts)[:10]
+                tracking_by_date[date_str] = tracking_by_date.get(date_str, 0) + rec.get('speaking_minutes', 0)
+
+        if not tracking_by_date:
+            return daily_stats_list
+
+        # Merge into existing daily_stats entries (by reference) or create synthetic ones
+        existing_dates = {ds['local_date'] for ds in daily_stats_list}
+        updated_list = list(daily_stats_list)
+
+        for date_str, tracked_minutes in tracking_by_date.items():
+            tracked_seconds = tracked_minutes * 60
+            if date_str in existing_dates:
+                # Add only the gap: tracked time that isn't already in daily_stats
+                for ds in updated_list:
+                    if ds['local_date'] == date_str:
+                        existing_seconds = ds.get('total_time_seconds', 0)
+                        if tracked_seconds > existing_seconds:
+                            ds['total_time_seconds'] = tracked_seconds
+                        break
+            else:
+                # No daily_stats entry — create a synthetic one from tracking data
+                updated_list.append({
+                    'user_id': user_id,
+                    'local_date': date_str,
+                    'total_time_seconds': tracked_seconds,
+                    'conversation_time_seconds': tracked_seconds,
+                    'total_sessions': 0,
+                    'total_challenges': 0,
+                    'correct_challenges': 0,
+                    'incorrect_challenges': 0,
+                    'total_xp': 0,
+                })
+
+        updated_list.sort(key=lambda x: x['local_date'])
+        print(f"[RECENT_PERF] ✅ Merged tracking minutes for {len(tracking_by_date)} days")
+        return updated_list
+
+    except Exception as e:
+        print(f"[RECENT_PERF] ⚠️ Failed to merge tracking minutes: {e}")
+        return daily_stats_list
 
 
 def calculate_summary_metrics(daily_stats_list: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -412,21 +491,32 @@ async def get_recent_performance(
         })
 
         if cached:
-            print(f"[RECENT_PERF] ⚡ Cache hit for user {user_id}")
-            return cached
+            # Don't serve a cached result that has zero total time — it may be stale from
+            # before speaking_time_tracking was merged into daily_stats.
+            cached_breakdown = cached.get('daily_breakdown', [])
+            cached_total_time = sum(d.get('time_minutes', 0) for d in cached_breakdown)
+            if cached_total_time > 0:
+                print(f"[RECENT_PERF] ⚡ Cache hit for user {user_id}")
+                return cached
+            else:
+                print(f"[RECENT_PERF] ♻️ Cache hit but all-zero time — recalculating")
 
         # Cache miss - calculate
         print(f"[RECENT_PERF] 🔄 Cache miss for user {user_id}, calculating...")
         result = await calculate_recent_performance(user_id, days, timezone_str)
 
-        # Store in cache
-        await recent_performance_collection.update_one(
-            {'user_id': user_id},
-            {'$set': result},
-            upsert=True
-        )
-
-        print(f"[RECENT_PERF] 💾 Cached result for user {user_id}")
+        # Only cache if there's actual data (avoid caching empty results)
+        result_breakdown = result.get('daily_breakdown', [])
+        result_total_time = sum(d.get('time_minutes', 0) for d in result_breakdown)
+        if result_total_time > 0:
+            await recent_performance_collection.update_one(
+                {'user_id': user_id},
+                {'$set': result},
+                upsert=True
+            )
+            print(f"[RECENT_PERF] 💾 Cached result for user {user_id}")
+        else:
+            print(f"[RECENT_PERF] ⏭️ Skipping cache — no time data yet")
 
         return result
 
