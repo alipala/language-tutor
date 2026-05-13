@@ -2354,25 +2354,38 @@ def build_beginner_topic_vocabulary(level: str, language: str) -> str:
 - Place questions: "Ga je naar huis? {emoji:home}"
 - Daily objects: "Heb je een telefoon? {emoji:phone}"
 
-**Available emoji names (use ONLY these names):**
+**Available emoji names (use ONLY these EXACT names — do NOT invent new ones):**
 - Food: coffee, bread, rice, apple, milk, water, pizza, hamburger, pasta, salad
 - Emotions: happy, smiling, sad, angry, tired, sick, confused, love
 - Places: home, office, school, store, restaurant, subway, church
 - Objects: phone, book, car, money, watch, clothes, bed, chair, tv, door, computer, books
-- Technology: computer, phone, tv, game, console
 - Weather: sunny, cloudy, rainy, snow
-- People: man, woman, family, baby
+- People: man, woman, family, baby, friends
+- Actions: running, sleeping, eating, walking, working
+- Transportation: bus, train, airplane, bicycle, taxi, scooter, car
+- Sports/Games: soccer, basketball, gaming, music, camera
+- Time: morning, night, calendar, alarm
+- Work: doctor, teacher, businessman, writing
+
+🚨 **CRITICAL: Do NOT invent emoji names like "football", "score", "goal", "trophy", "star" etc.**
+If a concept has no emoji in the list above, just skip the emoji entirely. Never use a name not on this list.
+For sports: use {emoji:soccer} or {emoji:basketball} — never {emoji:football}, {emoji:sport}, {emoji:score}, etc.
+
+**IMPORTANT: Emoji markers are for DISPLAY only — NEVER speak them aloud.**
+The {emoji:name} text is silently replaced by a picture on screen. Your spoken audio must NOT include the words "emoji", "football", "score" or any marker text. Just say the sentence naturally without mentioning the emoji at all.
 
 **More examples for A1:**
 ✅ "Ben je blij {emoji:happy} of verdrietig {emoji:sad}?"
 ✅ "Heb je brood? {emoji:bread}"
 ✅ "Ga je naar school? {emoji:school}"
+✅ "Speel je voetbal? {emoji:soccer}" ← use "soccer" not "football"
 
 **A1 Emoji Usage:**
 - Use 3-5 emojis per conversation (helps A1 learners!)
 - Add emoji AFTER the word it represents
 - Use for concrete nouns (food, objects, places)
 - ALWAYS use {emoji:name} format - NEVER use Unicode emojis
+- NEVER invent emoji names — only use names from the list above
 - Helps beginners connect words to meanings
 """
     else:  # A2
@@ -2389,23 +2402,35 @@ def build_beginner_topic_vocabulary(level: str, language: str) -> str:
 
 You CAN use emoji markers to help clarify meaning.
 
-**Available emoji names:**
+**Available emoji names (ONLY these — do NOT invent new ones):**
 - Food: coffee, bread, rice, apple, milk, water, pizza, hamburger, pasta, salad
 - Emotions: happy, smiling, sad, angry, tired, sick, confused, love
 - Places: home, office, school, store, restaurant, subway, church
 - Objects: phone, book, car, money, watch, clothes, bed, chair, tv, door, computer, books
-- Technology: computer, phone, tv, game, console
-- People: man, woman, family, baby
+- Weather: sunny, cloudy, rainy, snow
+- People: man, woman, family, baby, friends
+- Actions: running, sleeping, eating, walking, working
+- Transportation: bus, train, airplane, bicycle, taxi, scooter, car
+- Sports/Games: soccer, basketball, gaming, music, camera
+- Time: morning, night, calendar, alarm
+- Work: doctor, teacher, businessman, writing
+
+🚨 **Do NOT invent emoji names like "football", "score", "trophy" etc. If no emoji fits, skip it.**
+
+**IMPORTANT: Emoji markers are for DISPLAY only — NEVER speak them aloud.**
+The {emoji:name} text is silently replaced by a picture on screen. Your spoken audio must NOT include the words "emoji", "football", "score" or any marker text.
 
 **Examples:**
 ✅ "Do you like coffee? {emoji:coffee}"
 ✅ "Are you happy {emoji:happy} or sad {emoji:sad}?"
+✅ "Do you play soccer? {emoji:soccer}" ← use "soccer" not "football"
 
 **A2 Emoji Usage:**
 - Use emojis SPARINGLY (1-2 per conversation max)
 - Only for key vocabulary if needed
 - A2 learners need less visual support than A1
 - ALWAYS use {emoji:name} format - NEVER use Unicode emojis
+- NEVER invent emoji names not on the list above
 """
 
     return f"""
