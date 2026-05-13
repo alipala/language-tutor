@@ -57,7 +57,9 @@ import {
   BookOpen, Mic, Zap, Bot, CheckCircle, AlertTriangle, Clock,
   Upload, Download, Search, Filter, ChevronDown, ChevronUp,
   UserPlus, UserMinus, RefreshCw, Eye, X, MoreHorizontal,
-  Award, Activity, Target, Lightbulb, Flame, Star
+  Award, Activity, Target, Lightbulb, Flame, Star,
+  Settings, Building2, User, Lock, Bell, Shield,
+  Camera, MapPin, Phone, Link, Calendar, Save, KeyRound
 } from 'lucide-react';
 
 // Register ChartJS components
@@ -267,6 +269,427 @@ const ImportModal: React.FC<ImportModalProps> = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SettingsTab — Institution Profile + Admin Account
+// ─────────────────────────────────────────────────────────────────────────────
+const TIMEZONES = [
+  'UTC','Europe/Amsterdam','Europe/London','Europe/Berlin','Europe/Paris',
+  'Europe/Madrid','Europe/Rome','Europe/Istanbul','America/New_York',
+  'America/Chicago','America/Denver','America/Los_Angeles','America/Sao_Paulo',
+  'Asia/Dubai','Asia/Singapore','Asia/Tokyo','Asia/Shanghai','Australia/Sydney',
+];
+const ADMIN_LANGUAGES = [
+  { value: 'en', label: 'English' },
+  { value: 'tr', label: 'Türkçe' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'es', label: 'Español' },
+  { value: 'fr', label: 'Français' },
+  { value: 'pt', label: 'Português' },
+];
+const INSTITUTION_TYPES = [
+  { value: 'school',          label: 'School' },
+  { value: 'university',      label: 'University' },
+  { value: 'language_center', label: 'Language Center' },
+  { value: 'corporate',       label: 'Corporate' },
+];
+
+interface SettingsTabProps {
+  institutionId: string;
+  token: string;
+  onNotify: (type: 'success'|'error', title: string, message: string) => void;
+}
+
+const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, onNotify }) => {
+  const api = '/api';
+  const [section, setSection] = useState<'profile'|'admin'>('profile');
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+
+  // ── Profile state ──────────────────────────────────────────────────────────
+  const [profile, setProfile] = useState({
+    name: '', institution_type: 'school', website: '', phone: '',
+    address: '', logo_url: '', admin_language: 'en',
+    timezone: 'UTC', semester_start: '', semester_end: '',
+  });
+
+  // ── Admin state ────────────────────────────────────────────────────────────
+  const [admin, setAdmin] = useState({
+    admin_name: '', admin_email: '', admin_photo_url: '',
+    notify_daily_digest: false, notify_weekly_report: true,
+    notify_learner_alerts: true, two_factor_enabled: false,
+  });
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwSaving, setPwSaving]   = useState(false);
+  const [activityLog, setActivityLog] = useState<any[]>([]);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [pRes, aRes, lRes] = await Promise.all([
+          fetch(`${api}/institution/dashboard/${institutionId}/settings/profile`, { headers }),
+          fetch(`${api}/institution/dashboard/${institutionId}/settings/admin`,   { headers }),
+          fetch(`${api}/institution/dashboard/${institutionId}/settings/admin/activity-log`, { headers }),
+        ]);
+        if (pRes.ok) setProfile(await pRes.json());
+        if (aRes.ok) setAdmin(await aRes.json());
+        if (lRes.ok) { const d = await lRes.json(); setActivityLog(d.entries || []); }
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [institutionId, token]);
+
+  // ── Save profile ───────────────────────────────────────────────────────────
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${api}/institution/dashboard/${institutionId}/settings/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) onNotify('success', 'Profile saved', 'Institution profile updated successfully.');
+      else { const e = await res.json(); onNotify('error', 'Save failed', e.detail || 'Could not save profile.'); }
+    } finally { setSaving(false); }
+  };
+
+  // ── Save admin ─────────────────────────────────────────────────────────────
+  const saveAdmin = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${api}/institution/dashboard/${institutionId}/settings/admin`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_name: admin.admin_name,
+          admin_photo_url: admin.admin_photo_url,
+          notify_daily_digest: admin.notify_daily_digest,
+          notify_weekly_report: admin.notify_weekly_report,
+          notify_learner_alerts: admin.notify_learner_alerts,
+          two_factor_enabled: admin.two_factor_enabled,
+        }),
+      });
+      if (res.ok) onNotify('success', 'Settings saved', 'Admin account updated successfully.');
+      else { const e = await res.json(); onNotify('error', 'Save failed', e.detail || 'Could not save settings.'); }
+    } finally { setSaving(false); }
+  };
+
+  // ── Change password ────────────────────────────────────────────────────────
+  const changePassword = async () => {
+    if (pwForm.next !== pwForm.confirm) { onNotify('error', 'Mismatch', 'New passwords do not match.'); return; }
+    if (pwForm.next.length < 8) { onNotify('error', 'Too short', 'Password must be at least 8 characters.'); return; }
+    setPwSaving(true);
+    try {
+      const res = await fetch(`${api}/institution/dashboard/${institutionId}/settings/admin/change-password`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: pwForm.current, new_password: pwForm.next }),
+      });
+      if (res.ok) { onNotify('success', 'Password changed', 'Your password has been updated.'); setPwForm({ current: '', next: '', confirm: '' }); }
+      else { const e = await res.json(); onNotify('error', 'Failed', e.detail || 'Could not change password.'); }
+    } finally { setPwSaving(false); }
+  };
+
+  const btnCls = "flex items-center gap-2 px-5 py-2.5 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-40";
+  const inputCls = "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent";
+  const labelCls = "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5";
+  const cardCls  = "bg-white rounded-2xl shadow-sm border border-gray-100 p-6";
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-24">
+      <div className="w-10 h-10 border-4 border-[#4ECFBF]/30 border-t-[#4ECFBF] rounded-full animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      {/* Sub-tab navigation */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        {([
+          { key: 'profile', label: 'Institution Profile', icon: Building2 },
+          { key: 'admin',   label: 'Admin Account',       icon: User },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setSection(key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              section === key
+                ? 'bg-white text-[#4ECFBF] shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── INSTITUTION PROFILE ─────────────────────────────────────────────── */}
+      {section === 'profile' && (
+        <div className="space-y-6">
+          {/* Basic info */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[#4ECFBF]" /> Basic Information
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Institution Name *</label>
+                <input className={inputCls} value={profile.name}
+                  onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Institution Type</label>
+                <select className={inputCls} value={profile.institution_type}
+                  onChange={e => setProfile(p => ({ ...p, institution_type: e.target.value }))}>
+                  {INSTITUTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Logo URL</label>
+                <div className="relative">
+                  <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input className={`${inputCls} pl-9`} placeholder="https://..." value={profile.logo_url}
+                    onChange={e => setProfile(p => ({ ...p, logo_url: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Phone className="w-5 h-5 text-[#4ECFBF]" /> Contact Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Website</label>
+                <div className="relative">
+                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input className={`${inputCls} pl-9`} placeholder="https://..." value={profile.website}
+                    onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Phone</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input className={`${inputCls} pl-9`} placeholder="+31 20 000 0000" value={profile.phone}
+                    onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Address</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <textarea rows={2} className={`${inputCls} pl-9 resize-none`} placeholder="Street, City, Country"
+                    value={profile.address}
+                    onChange={e => setProfile(p => ({ ...p, address: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Localisation */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-[#4ECFBF]" /> Localisation
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Dashboard Language</label>
+                <select className={inputCls} value={profile.admin_language}
+                  onChange={e => setProfile(p => ({ ...p, admin_language: e.target.value }))}>
+                  {ADMIN_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Time Zone</label>
+                <select className={inputCls} value={profile.timezone}
+                  onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))}>
+                  {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Academic calendar */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#4ECFBF]" /> Academic Calendar
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Semester Start</label>
+                <input type="date" className={inputCls} value={profile.semester_start}
+                  onChange={e => setProfile(p => ({ ...p, semester_start: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Semester End</label>
+                <input type="date" className={inputCls} value={profile.semester_end}
+                  onChange={e => setProfile(p => ({ ...p, semester_end: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={saveProfile} disabled={saving} className={btnCls}>
+              {saving ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Saving...</> : <><Save className="w-4 h-4" />Save Profile</>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADMIN ACCOUNT ───────────────────────────────────────────────────── */}
+      {section === 'admin' && (
+        <div className="space-y-6">
+          {/* Identity */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <User className="w-5 h-5 text-[#4ECFBF]" /> Admin Identity
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Display Name</label>
+                <input className={inputCls} value={admin.admin_name}
+                  onChange={e => setAdmin(a => ({ ...a, admin_name: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Email (read-only)</label>
+                <input className={`${inputCls} bg-gray-50 text-gray-400 cursor-not-allowed`}
+                  value={admin.admin_email} readOnly />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Profile Photo URL</label>
+                <div className="flex gap-3 items-center">
+                  {admin.admin_photo_url
+                    ? <img src={admin.admin_photo_url} alt="avatar" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                    : <div className="w-10 h-10 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-[#4ECFBF]" />
+                      </div>
+                  }
+                  <div className="relative flex-1">
+                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input className={`${inputCls} pl-9`} placeholder="https://..." value={admin.admin_photo_url}
+                      onChange={e => setAdmin(a => ({ ...a, admin_photo_url: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[#4ECFBF]" /> Email Notifications
+            </h3>
+            <div className="space-y-4">
+              {([
+                { key: 'notify_daily_digest',   label: 'Daily digest',         desc: 'Summary of activity from the past 24 hours' },
+                { key: 'notify_weekly_report',  label: 'Weekly report',        desc: 'Full progress report every Monday morning' },
+                { key: 'notify_learner_alerts', label: 'Learner alerts',       desc: 'Alert when a learner is inactive for 7+ days' },
+              ] as const).map(({ key, label, desc }) => (
+                <label key={key} className="flex items-center justify-between cursor-pointer group">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 group-hover:text-gray-900">{label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                  </div>
+                  <div
+                    onClick={() => setAdmin(a => ({ ...a, [key]: !a[key] }))}
+                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin[key] ? 'bg-[#4ECFBF]' : 'bg-gray-200'}`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admin[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Security */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#4ECFBF]" /> Security
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">Two-factor authentication adds a second verification step at login.</p>
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Two-Factor Authentication</p>
+                <p className="text-xs text-gray-400 mt-0.5">{admin.two_factor_enabled ? 'Enabled — extra security active' : 'Disabled — login uses password only'}</p>
+              </div>
+              <div
+                onClick={() => setAdmin(a => ({ ...a, two_factor_enabled: !a.two_factor_enabled }))}
+                className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin.two_factor_enabled ? 'bg-[#4ECFBF]' : 'bg-gray-200'}`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admin.two_factor_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </label>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={saveAdmin} disabled={saving} className={btnCls}>
+              {saving ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Saving...</> : <><Save className="w-4 h-4" />Save Settings</>}
+            </button>
+          </div>
+
+          {/* Change password */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-[#4ECFBF]" /> Change Password
+            </h3>
+            <div className="space-y-4 max-w-sm">
+              {([
+                { key: 'current', label: 'Current password',     placeholder: '••••••••' },
+                { key: 'next',    label: 'New password',          placeholder: 'Min 8 characters' },
+                { key: 'confirm', label: 'Confirm new password',  placeholder: '••••••••' },
+              ] as const).map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className={labelCls}>{label}</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input type="password" className={`${inputCls} pl-9`} placeholder={placeholder}
+                      value={pwForm[key]}
+                      onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} />
+                  </div>
+                </div>
+              ))}
+              <button onClick={changePassword} disabled={pwSaving || !pwForm.current || !pwForm.next} className={btnCls}>
+                {pwSaving ? 'Updating...' : 'Update Password'}
+              </button>
+            </div>
+          </div>
+
+          {/* Activity log */}
+          {activityLog.length > 0 && (
+            <div className={cardCls}>
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-[#4ECFBF]" /> Recent Activity
+              </h3>
+              <div className="space-y-2">
+                {activityLog.map((entry, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-[#4ECFBF]" />
+                      <span className="text-sm text-gray-700 capitalize">{(entry.action || '').replace(/_/g, ' ')}</span>
+                      {entry.detail && <span className="text-xs text-gray-400">— {entry.detail}</span>}
+                    </div>
+                    <span className="text-xs text-gray-400 whitespace-nowrap ml-4">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const InstitutionDashboardComplete: React.FC = () => {
   const router = useRouter();
@@ -287,7 +710,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filteredTutors, setFilteredTutors] = useState<Tutor[]>([]);
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners' | 'settings'>('overview');
   const [showAddTutorModal, setShowAddTutorModal] = useState(false);
   const [showAddLearnerModal, setShowAddLearnerModal] = useState(false);
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
@@ -1172,9 +1595,15 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('learners')}
-              className={`py-4 border-b-2 flex items-center ${activeTab === 'learners' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
             >
               <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({learners.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`py-4 border-b-2 flex items-center whitespace-nowrap ml-auto ${activeTab === 'settings' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+            >
+              <Settings className="w-4 h-4 mr-1.5 inline-block" /> Settings
             </button>
           </nav>
         </div>
@@ -1776,6 +2205,17 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Settings Tab ────────────────────────────────────────────────── */}
+      {activeTab === 'settings' && (
+        <SettingsTab
+          institutionId={institutionId}
+          token={localStorage.getItem('institution_token') || ''}
+          onNotify={(type, title, message) =>
+            setNotification({ show: true, type, title, message })
+          }
+        />
       )}
 
       {/* ── Import Modal — Learners ─────────────────────────────────────── */}

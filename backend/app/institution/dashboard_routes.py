@@ -1448,3 +1448,204 @@ async def export_learners(institution_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to export learners: {str(e)}")
+
+
+# =============================================================================
+# SETTINGS ENDPOINTS
+# =============================================================================
+
+# ── Institution Profile ───────────────────────────────────────────────────────
+
+@router.get("/{institution_id}/settings/profile",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_profile_settings(institution_id: str) -> Dict[str, Any]:
+    """Return editable institution profile fields."""
+    from bson import ObjectId as OID
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {
+            "name":             inst.get("name", ""),
+            "institution_type": inst.get("institution_type", "school"),
+            "website":          inst.get("website") or "",
+            "phone":            inst.get("phone") or "",
+            "address":          inst.get("address") or "",
+            "logo_url":         inst.get("logo_url") or "",
+            "admin_language":   inst.get("admin_language") or "en",
+            "timezone":         inst.get("timezone") or "UTC",
+            "semester_start":   inst.get("semester_start") or "",
+            "semester_end":     inst.get("semester_end") or "",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{institution_id}/settings/profile",
+            dependencies=[Depends(check_feature_enabled)])
+async def update_profile_settings(
+    institution_id: str,
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Update editable institution profile fields."""
+    from bson import ObjectId as OID
+
+    ALLOWED = {
+        "name", "institution_type", "website", "phone",
+        "address", "logo_url", "admin_language", "timezone",
+        "semester_start", "semester_end",
+    }
+    INSTITUTION_TYPES = {"school", "university", "language_center", "corporate"}
+
+    update: Dict[str, Any] = {}
+    for field in ALLOWED:
+        if field in body:
+            update[field] = body[field]
+
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    if "institution_type" in update and update["institution_type"] not in INSTITUTION_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"institution_type must be one of {sorted(INSTITUTION_TYPES)}"
+        )
+
+    update["updated_at"] = datetime.utcnow()
+
+    try:
+        result = await database.institutions.update_one(
+            {"_id": OID(institution_id)},
+            {"$set": update}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {"message": "Profile updated successfully", "updated_fields": list(update.keys())}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Admin Account ─────────────────────────────────────────────────────────────
+
+@router.get("/{institution_id}/settings/admin",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_admin_settings(institution_id: str) -> Dict[str, Any]:
+    """Return admin account settings (never returns password)."""
+    from bson import ObjectId as OID
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {
+            "admin_name":    inst.get("admin_name", ""),
+            "admin_email":   inst.get("admin_email", ""),
+            "admin_photo_url": inst.get("admin_photo_url") or "",
+            "notify_daily_digest":  inst.get("notify_daily_digest", False),
+            "notify_weekly_report": inst.get("notify_weekly_report", True),
+            "notify_learner_alerts": inst.get("notify_learner_alerts", True),
+            "two_factor_enabled":   inst.get("two_factor_enabled", False),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{institution_id}/settings/admin",
+            dependencies=[Depends(check_feature_enabled)])
+async def update_admin_settings(
+    institution_id: str,
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Update admin name, photo URL, and notification preferences."""
+    from bson import ObjectId as OID
+
+    ALLOWED = {
+        "admin_name", "admin_photo_url",
+        "notify_daily_digest", "notify_weekly_report",
+        "notify_learner_alerts", "two_factor_enabled",
+    }
+    update: Dict[str, Any] = {k: body[k] for k in ALLOWED if k in body}
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    update["updated_at"] = datetime.utcnow()
+
+    try:
+        result = await database.institutions.update_one(
+            {"_id": OID(institution_id)},
+            {"$set": update}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Institution not found")
+        return {"message": "Admin settings updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{institution_id}/settings/admin/change-password",
+             dependencies=[Depends(check_feature_enabled)])
+async def change_admin_password(
+    institution_id: str,
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Change the admin password after verifying the current one."""
+    from bson import ObjectId as OID
+    import bcrypt
+
+    current  = body.get("current_password", "")
+    new_pass = body.get("new_password", "")
+
+    if not current or not new_pass:
+        raise HTTPException(status_code=400, detail="current_password and new_password are required")
+    if len(new_pass) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+
+        stored_hash = inst.get("admin_password", "")
+        if not bcrypt.checkpw(current.encode(), stored_hash.encode()):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+        new_hash = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+        await database.institutions.update_one(
+            {"_id": OID(institution_id)},
+            {"$set": {"admin_password": new_hash, "updated_at": datetime.utcnow()}}
+        )
+        # Record in activity log
+        await database.institution_activity_log.insert_one({
+            "institution_id": institution_id,
+            "action": "password_changed",
+            "detail": "Admin password changed",
+            "timestamp": datetime.utcnow(),
+            "ip": None,
+        })
+        return {"message": "Password changed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{institution_id}/settings/admin/activity-log",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_activity_log(institution_id: str) -> Dict[str, Any]:
+    """Return the last 20 admin activity log entries for this institution."""
+    try:
+        entries = await database.institution_activity_log.find(
+            {"institution_id": institution_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(20).to_list(length=20)
+
+        return {"entries": entries}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
