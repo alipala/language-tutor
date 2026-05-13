@@ -59,7 +59,7 @@ import {
   UserPlus, UserMinus, RefreshCw, Eye, X, MoreHorizontal,
   Award, Activity, Target, Lightbulb, Flame, Star,
   Settings, Building2, User, Lock, Bell, Shield,
-  MapPin, Phone, Globe, Calendar, Save, KeyRound
+  MapPin, Phone, Calendar, Save, KeyRound
 } from 'lucide-react';
 
 // Register ChartJS components
