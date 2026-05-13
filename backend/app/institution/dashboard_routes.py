@@ -330,6 +330,143 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
         raise HTTPException(status_code=500, detail=f"Failed to add tutor: {str(e)}")
 
 
+@router.post("/{institution_id}/tutors/bulk-import",
+             dependencies=[Depends(check_feature_enabled)])
+async def bulk_import_tutors(
+    institution_id: str,
+    file: UploadFile = File(...)
+) -> Dict[str, Any]:
+    """
+    Bulk import tutors from CSV file.
+    Expected CSV columns: name, email, bio, qualifications, specializations
+    Tutors are created with a temporary password — they must reset it on first login.
+    """
+    from app.tutor.tutor_auth import get_password_hash
+    import secrets, string
+
+    def _generate_temp_password(length: int = 16) -> str:
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+    try:
+        contents = await file.read()
+        csv_data = StringIO(contents.decode('utf-8'))
+        reader = csv.DictReader(csv_data)
+
+        success_count = 0
+        failed_count = 0
+        errors: List[str] = []
+
+        for row_num, row in enumerate(reader, start=2):  # start=2: row 1 is header
+            try:
+                name  = (row.get('name') or '').strip()
+                email = (row.get('email') or '').strip().lower()
+
+                if not name or not email:
+                    errors.append(f"Row {row_num}: missing name or email")
+                    failed_count += 1
+                    continue
+
+                # Reject duplicate within this institution
+                existing = await database.tutors.find_one({
+                    "email": email,
+                    "institution_id": institution_id
+                })
+                if existing:
+                    errors.append(f"Row {row_num}: {email} already exists in this institution")
+                    failed_count += 1
+                    continue
+
+                # Parse optional specializations (comma-separated within the cell)
+                raw_specs = (row.get('specializations') or '').strip()
+                specializations = [s.strip() for s in raw_specs.split(',') if s.strip()] if raw_specs else []
+
+                temp_password = _generate_temp_password()
+
+                tutor_doc = {
+                    "name": name,
+                    "email": email,
+                    "bio": (row.get('bio') or '').strip() or None,
+                    "qualifications": (row.get('qualifications') or '').strip() or None,
+                    "specializations": specializations,
+                    "institution_id": institution_id,
+                    "hashed_password": get_password_hash(temp_password),
+                    "must_reset_password": True,
+                    "assigned_learners": [],
+                    "is_active": True,
+                    "enrollment_method": "bulk_import",
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                await database.tutors.insert_one(tutor_doc)
+                success_count += 1
+
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+                failed_count += 1
+
+        return {
+            "message": "Bulk import completed",
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "errors": errors[:10]
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import tutors: {str(e)}")
+
+
+@router.get("/{institution_id}/tutors/export",
+            dependencies=[Depends(check_feature_enabled)])
+async def export_tutors(institution_id: str):
+    """
+    Export all active tutors for an institution as a downloadable CSV file.
+    Columns: name, email, bio, qualifications, specializations, learner_count,
+             is_active, created_at
+    """
+    from fastapi.responses import StreamingResponse
+
+    try:
+        tutors = await database.tutors.find(
+            {"institution_id": institution_id}
+        ).to_list(length=None)
+
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "name", "email", "bio", "qualifications", "specializations",
+            "learner_count", "is_active", "created_at"
+        ])
+
+        for tutor in tutors:
+            learner_count = await database.institutional_learners.count_documents({
+                "tutor_id": str(tutor["_id"]),
+                "institution_id": institution_id,
+                "is_active": True
+            })
+            writer.writerow([
+                tutor.get("name", ""),
+                tutor.get("email", ""),
+                tutor.get("bio") or "",
+                tutor.get("qualifications") or "",
+                ",".join(tutor.get("specializations") or []),
+                learner_count,
+                tutor.get("is_active", True),
+                str(tutor.get("created_at", ""))
+            ])
+
+        output.seek(0)
+        filename = f"tutors_{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export tutors: {str(e)}")
+
+
 @router.delete("/{institution_id}/tutors/{tutor_id}",
                dependencies=[Depends(check_feature_enabled)])
 async def remove_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
@@ -1143,46 +1280,55 @@ def generate_ai_insights(user, learning_plans, conversations):
 
 @router.get("/{institution_id}/learners/export",
             dependencies=[Depends(check_feature_enabled)])
-async def export_learners(institution_id: str) -> Dict[str, Any]:
+async def export_learners(institution_id: str):
     """
-    Export learner data as CSV format data
+    Export learner data as a downloadable CSV file.
+    Columns: name, email, language, level, tutor_email, enrolled_at, consent_given
     """
+    from fastapi.responses import StreamingResponse
+
     try:
         learners = await database.institutional_learners.find({
             "institution_id": institution_id,
             "is_active": True
         }).to_list(length=None)
-        
-        export_data = []
+
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["name", "email", "language", "level", "tutor_email", "enrolled_at", "consent_given"])
+
         for learner in learners:
             user_id = learner.get("user_id")
-            if user_id:
-                try:
-                    user = await database.users.find_one({"_id": ObjectId(user_id)})
-                    if user:
-                        # Get tutor info
-                        tutor_email = ""
-                        if learner.get("tutor_id"):
-                            tutor = await database.tutors.find_one({"_id": ObjectId(learner["tutor_id"])})
-                            if tutor:
-                                tutor_email = tutor.get("email", "")
-                        
-                        export_data.append({
-                            "name": user.get("name"),
-                            "email": user.get("email"),
-                            "language": user.get("preferred_language") or "",
-                            "level": user.get("preferred_level") or "",
-                            "tutor_email": tutor_email,
-                            "enrolled_at": str(learner.get("enrolled_at", "")),
-                            "consent_given": learner.get("consent_given", False)
-                        })
-                except:
-                    pass
-        
-        return {
-            "total_records": len(export_data),
-            "data": export_data
-        }
-        
+            if not user_id:
+                continue
+            try:
+                user = await database.users.find_one({"_id": ObjectId(user_id)})
+                if not user:
+                    continue
+                tutor_email = ""
+                if learner.get("tutor_id"):
+                    tutor = await database.tutors.find_one({"_id": ObjectId(learner["tutor_id"])})
+                    if tutor:
+                        tutor_email = tutor.get("email", "")
+                writer.writerow([
+                    user.get("name", ""),
+                    user.get("email", ""),
+                    user.get("preferred_language") or "",
+                    user.get("preferred_level") or "",
+                    tutor_email,
+                    str(learner.get("enrolled_at", "")),
+                    learner.get("consent_given", False)
+                ])
+            except Exception:
+                pass
+
+        output.seek(0)
+        filename = f"learners_{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to export learners: {str(e)}")

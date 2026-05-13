@@ -144,6 +144,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filterTutorSpecialization, setFilterTutorSpecialization] = useState('all');
   const [filterTutorLearnerCount, setFilterTutorLearnerCount] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingTutors, setIsExportingTutors] = useState(false);
+  const [showImportTutorCSVModal, setShowImportTutorCSVModal] = useState(false);
   const [selectedLearnerDetails, setSelectedLearnerDetails] = useState<any>(null);
   const [showLearnerDetailsModal, setShowLearnerDetailsModal] = useState(false);
   const [loadingLearnerDetails, setLoadingLearnerDetails] = useState(false);
@@ -735,57 +737,81 @@ export const InstitutionDashboardComplete: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        
-        // Convert to CSV
-        const csv = [
-          ['Name', 'Email', 'Language', 'Level', 'Tutor Email', 'Enrolled At', 'Consent Given'].join(','),
-          ...data.data.map((row: any) => [
-            row.name,
-            row.email,
-            row.language,
-            row.level,
-            row.tutor_email,
-            row.enrolled_at,
-            row.consent_given
-          ].join(','))
-        ].join('\n');
-
-        // Small delay for better UX
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Download
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `learners_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
-        
-        setNotification({
-          show: true,
-          type: 'success',
-          title: 'Export Successful!',
-          message: `Exported ${data.data.length} learners to CSV file.`
-        });
+        window.URL.revokeObjectURL(url);
+        setNotification({ show: true, type: 'success', title: 'Export Successful!', message: 'Learners exported to CSV.' });
       } else {
-        setNotification({
-          show: true,
-          type: 'error',
-          title: 'Export Failed',
-          message: 'Failed to export learners. Please try again.'
-        });
+        setNotification({ show: true, type: 'error', title: 'Export Failed', message: 'Failed to export learners. Please try again.' });
       }
     } catch (error) {
       console.error('Error exporting learners:', error);
-      setNotification({
-        show: true,
-        type: 'error',
-        title: 'Export Error',
-        message: 'An error occurred while exporting learners.'
-      });
+      setNotification({ show: true, type: 'error', title: 'Export Error', message: 'An error occurred while exporting learners.' });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportTutors = async () => {
+    setIsExportingTutors(true);
+    try {
+      const token = localStorage.getItem('institution_token');
+      const backendUrl = getApiBaseUrl();
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/export`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tutors_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        setNotification({ show: true, type: 'success', title: 'Export Successful!', message: 'Tutors exported to CSV.' });
+      } else {
+        setNotification({ show: true, type: 'error', title: 'Export Failed', message: 'Failed to export tutors. Please try again.' });
+      }
+    } catch (error) {
+      console.error('Error exporting tutors:', error);
+      setNotification({ show: true, type: 'error', title: 'Export Error', message: 'An error occurred while exporting tutors.' });
+    } finally {
+      setIsExportingTutors(false);
+    }
+  };
+
+  const handleImportTutorCSV = async (file: File) => {
+    try {
+      const token = localStorage.getItem('institution_token');
+      const backendUrl = getApiBaseUrl();
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/bulk-import`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setNotification({
+          show: true,
+          type: 'success',
+          title: 'Import Completed!',
+          message: `Successfully imported ${result.success_count} tutors. ${result.failed_count > 0 ? `${result.failed_count} failed.` : ''}`
+        });
+        setShowImportTutorCSVModal(false);
+        loadAllData();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        setNotification({ show: true, type: 'error', title: 'Import Failed', message: err.detail || 'Failed to import CSV file. Please check the format.' });
+      }
+    } catch (error) {
+      console.error('Error importing tutor CSV:', error);
+      setNotification({ show: true, type: 'error', title: 'Import Error', message: 'An error occurred while importing the CSV file.' });
     }
   };
 
@@ -1057,12 +1083,31 @@ export const InstitutionDashboardComplete: React.FC = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-2xl font-bold">Tutor Management</h2>
-              <button
-                onClick={() => setShowAddTutorModal(true)}
-                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center"
-              >
-                <UserPlus className="w-4 h-4 mr-1.5" /> Add Tutor
-              </button>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => setShowImportTutorCSVModal(true)}
+                  className="px-5 py-2.5 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center text-sm font-medium"
+                >
+                  <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+                </button>
+                <button
+                  onClick={handleExportTutors}
+                  disabled={isExportingTutors}
+                  className={`px-5 py-2.5 border-2 border-[#4ECFBF] rounded-lg transition-all flex items-center text-sm font-medium ${isExportingTutors ? 'bg-[#4ECFBF] text-white cursor-wait' : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'}`}
+                >
+                  {isExportingTutors ? (
+                    <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Exporting...</>
+                  ) : (
+                    <><Download className="w-4 h-4 mr-1.5" /> Export CSV</>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowAddTutorModal(true)}
+                  className="px-5 py-2.5 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                >
+                  <UserPlus className="w-4 h-4 mr-1.5" /> Add Tutor
+                </button>
+              </div>
             </div>
 
             {/* Tutors Filters */}
@@ -1599,6 +1644,32 @@ export const InstitutionDashboardComplete: React.FC = () => {
             />
             <button
               onClick={() => setShowImportCSVModal(false)}
+              className="w-full px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Import Tutor CSV Modal */}
+      {showImportTutorCSVModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
+            <h3 className="text-xl font-bold mb-2 text-gray-900">Import Tutors from CSV</h3>
+            <p className="text-sm text-gray-600 mb-1">Required columns: <code className="bg-gray-100 px-1 rounded">name</code>, <code className="bg-gray-100 px-1 rounded">email</code></p>
+            <p className="text-sm text-gray-500 mb-4">Optional: <code className="bg-gray-100 px-1 rounded">bio</code>, <code className="bg-gray-100 px-1 rounded">qualifications</code>, <code className="bg-gray-100 px-1 rounded">specializations</code> (comma-separated)</p>
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              ⚠️ Imported tutors will receive a temporary password. They must reset it on first login.
+            </p>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => { if (e.target.files?.[0]) handleImportTutorCSV(e.target.files[0]); }}
+              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-900"
+            />
+            <button
+              onClick={() => setShowImportTutorCSVModal(false)}
               className="w-full px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-medium transition-colors"
             >
               Cancel
