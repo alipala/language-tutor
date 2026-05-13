@@ -4,7 +4,7 @@ Handles sentence construction assessment, speaking assessment, and sentence eval
 """
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File, Form
 from bson import ObjectId
 
 from auth import get_optional_current_user_from_request
@@ -480,6 +480,31 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
                 print(f"🗑️ [ASSESSMENT] Cleaned up temp audio file: {temp_audio_path}")
             except Exception as cleanup_error:
                 print(f"⚠️ [ASSESSMENT] Failed to cleanup temp file: {cleanup_error}")
+
+@router.post("/api/speaking/assess-upload", response_model=SpeakingAssessmentResponse)
+async def assess_speaking_upload(
+    audio: UploadFile = File(...),
+    language: str = Form(...),
+    duration: int = Form(60),
+    prompt: Optional[str] = Form(None),
+    ui_locale: Optional[str] = Form(None),
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request),
+):
+    """Multipart upload variant of /api/speaking/assess — avoids large base64 JSON body."""
+    import base64
+    audio_bytes = await audio.read()
+    audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+    from speaking_assessment import SpeakingAssessmentRequest
+    req = SpeakingAssessmentRequest(
+        audio_base64=audio_base64,
+        language=language,
+        duration=duration,
+        prompt=prompt,
+        ui_locale=ui_locale,
+    )
+    return await assess_speaking(req, current_user)
+
 
 @router.get("/api/speaking/prompts")
 async def get_speaking_prompts(language: str, level: str, count: int = 3):
