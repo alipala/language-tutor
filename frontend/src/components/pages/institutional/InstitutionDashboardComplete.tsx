@@ -406,7 +406,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
   );
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 w-full">
       {/* Sub-tab navigation */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {([
@@ -462,13 +462,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Contact */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <Phone className="w-5 h-5 text-[#4ECFBF]" /> Contact Details
+              <MapPin className="w-5 h-5 text-[#4ECFBF]" /> Contact Details
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className={labelCls}>Website</label>
                 <div className="relative">
-                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input className={`${inputCls} pl-9`} placeholder="https://..." value={profile.website}
                     onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
                 </div>

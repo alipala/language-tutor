@@ -30,7 +30,7 @@ export default function InstitutionSettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-16">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-2xl md:max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page header */}
         <div className="mb-8">
           <button
