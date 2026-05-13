@@ -450,11 +450,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
               </div>
               <div>
                 <label className={labelCls}>Logo URL</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">IMG</span>
-                  <input className={`${inputCls} pl-11`} placeholder="https://logo.png" value={profile.logo_url}
-                    onChange={e => setProfile(p => ({ ...p, logo_url: e.target.value }))} />
-                </div>
+                <input className={inputCls} placeholder="https://logo.png" value={profile.logo_url}
+                  onChange={e => setProfile(p => ({ ...p, logo_url: e.target.value }))} />
               </div>
             </div>
           </div>
@@ -467,19 +464,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className={labelCls}>Website</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">URL</span>
-                  <input className={`${inputCls} pl-11`} placeholder="https://your-school.com" value={profile.website}
-                    onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
-                </div>
+                <input className={inputCls} placeholder="https://your-school.com" value={profile.website}
+                  onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
               </div>
               <div>
                 <label className={labelCls}>Phone</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">TEL</span>
-                  <input className={`${inputCls} pl-11`} placeholder="+31 20 000 0000" value={profile.phone}
-                    onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
-                </div>
+                <input className={inputCls} placeholder="+31 20 000 0000" value={profile.phone}
+                  onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls}>Address</label>
@@ -568,11 +559,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
                         <User className="w-5 h-5 text-[#4ECFBF]" />
                       </div>
                   }
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 select-none">IMG</span>
-                    <input className={`${inputCls} pl-11`} placeholder="https://photo.png" value={admin.admin_photo_url}
-                      onChange={e => setAdmin(a => ({ ...a, admin_photo_url: e.target.value }))} />
-                  </div>
+                  <input className={`${inputCls} flex-1`} placeholder="https://photo.png" value={admin.admin_photo_url}
+                    onChange={e => setAdmin(a => ({ ...a, admin_photo_url: e.target.value }))} />
                 </div>
               </div>
             </div>
