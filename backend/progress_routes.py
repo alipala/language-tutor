@@ -1380,10 +1380,29 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
 
         # 🔥 UNIFIED TOTALS: Combine both types of sessions
         total_sessions = conversation_total_sessions + learning_plan_total_sessions
-        total_minutes = conversation_total_minutes + learning_plan_total_minutes
+
+        # 🔥 FIX: Use practice_minutes_used from user document as the authoritative
+        # minutes source. This field is incremented by BulletproofTracker for ALL
+        # session types (complete, partial, abandoned, learning plan, freestyle, news).
+        # conversation_sessions only contain saved/completed sessions so their
+        # duration_minutes sum misses partial/abandoned sessions entirely.
+        from bson import ObjectId as ObjId
+        try:
+            user_doc = await users_collection.find_one(
+                {"_id": ObjId(current_user.id)},
+                {"practice_minutes_used": 1}
+            )
+            authoritative_minutes = float(user_doc.get("practice_minutes_used", 0.0)) if user_doc else 0.0
+        except Exception:
+            authoritative_minutes = conversation_total_minutes + learning_plan_total_minutes
+
+        # Use the larger of the two sources to never under-report
+        # (authoritative_minutes is the billing tracker; the session sum is a sanity check)
+        total_minutes = max(authoritative_minutes, conversation_total_minutes + learning_plan_total_minutes)
 
         print(f"[PROGRESS] 🎯 UNIFIED TOTALS: {total_sessions} sessions")
-        print(f"[PROGRESS] 🎯 TOTAL MINUTES (calculated from all sessions): {total_minutes} minutes")
+        print(f"[PROGRESS] 🎯 AUTHORITATIVE minutes (user.practice_minutes_used): {authoritative_minutes}")
+        print(f"[PROGRESS] 🎯 TOTAL MINUTES (authoritative): {total_minutes} minutes")
         
         # Calculate streak (still based on conversation sessions for now)
         current_streak, longest_streak = await calculate_streaks(current_user.id)
