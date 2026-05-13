@@ -468,7 +468,8 @@ def get_empty_recent_performance(days: int, start_date: Optional[str], end_date:
 async def get_recent_performance(
     user_id: str,
     days: int = 7,
-    timezone_str: str = "UTC"
+    timezone_str: str = "UTC",
+    force_refresh: bool = False
 ) -> Dict[str, Any]:
     """
     Get recent performance with caching.
@@ -490,7 +491,7 @@ async def get_recent_performance(
             'expires_at': {'$gt': datetime.utcnow()}
         })
 
-        if cached:
+        if cached and not force_refresh:
             # Don't serve a cached result that has zero total time — it may be stale from
             # before speaking_time_tracking was merged into daily_stats.
             cached_breakdown = cached.get('daily_breakdown', [])
@@ -500,6 +501,8 @@ async def get_recent_performance(
                 return cached
             else:
                 print(f"[RECENT_PERF] ♻️ Cache hit but all-zero time — recalculating")
+        elif force_refresh:
+            print(f"[RECENT_PERF] 🔄 Force refresh requested for user {user_id}")
 
         # Cache miss - calculate
         print(f"[RECENT_PERF] 🔄 Cache miss for user {user_id}, calculating...")

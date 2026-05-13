@@ -190,7 +190,8 @@ async def get_daily_stats(
 async def get_recent_performance_endpoint(
     current_user: UserInDB = Depends(get_current_user),
     days: int = Query(7, ge=1, le=30, description="Number of days to look back"),
-    timezone: Optional[str] = Query(None)
+    timezone: Optional[str] = Query(None),
+    refresh: bool = Query(False, description="Force cache bust and recalculate")
 ):
     """
     Get recent performance statistics (rolling window).
@@ -214,8 +215,8 @@ async def get_recent_performance_endpoint(
         # Import the service
         from services.recent_performance_service import get_recent_performance
 
-        # Get recent performance (with caching)
-        perf_data = await get_recent_performance(user_id, days, timezone)
+        # Get recent performance (with caching; refresh=True busts the cache)
+        perf_data = await get_recent_performance(user_id, days, timezone, force_refresh=refresh)
 
         # Format window dates
         window_start = perf_data['window_start']
