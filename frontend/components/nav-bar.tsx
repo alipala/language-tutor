@@ -462,8 +462,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                     </button>
                     <button
                       onClick={() => {
-                        // TODO: Implement settings page
                         setIsMenuOpen(false);
+                        window.location.href = '/institution/settings';
                       }}
                       className="block w-full text-left px-4 py-3 text-sm text-[#3a9e92] font-medium hover:bg-[#3a9e92]/10"
                     >

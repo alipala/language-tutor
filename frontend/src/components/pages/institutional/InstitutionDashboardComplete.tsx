@@ -299,7 +299,7 @@ interface SettingsTabProps {
   onNotify: (type: 'success'|'error', title: string, message: string) => void;
 }
 
-const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, onNotify }) => {
+export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, onNotify }) => {
   const api = '/api';
   const [section, setSection] = useState<'profile'|'admin'>('profile');
   const [loading, setLoading]   = useState(true);
@@ -710,7 +710,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [filteredTutors, setFilteredTutors] = useState<Tutor[]>([]);
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners'>('overview');
   const [showAddTutorModal, setShowAddTutorModal] = useState(false);
   const [showAddLearnerModal, setShowAddLearnerModal] = useState(false);
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
@@ -1599,12 +1599,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
             >
               <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({learners.length})
             </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`py-4 border-b-2 flex items-center whitespace-nowrap ml-auto ${activeTab === 'settings' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
-            >
-              <Settings className="w-4 h-4 mr-1.5 inline-block" /> Settings
-            </button>
           </nav>
         </div>
       </div>
@@ -2205,17 +2199,6 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── Settings Tab ────────────────────────────────────────────────── */}
-      {activeTab === 'settings' && (
-        <SettingsTab
-          institutionId={institutionId}
-          token={localStorage.getItem('institution_token') || ''}
-          onNotify={(type, title, message) =>
-            setNotification({ show: true, type, title, message })
-          }
-        />
       )}
 
       {/* ── Import Modal — Learners ─────────────────────────────────────── */}
