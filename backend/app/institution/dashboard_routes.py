@@ -2,7 +2,8 @@
 Enhanced Institution Dashboard APIs
 Provides analytics, tutor management, and learner management
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from bson import ObjectId
@@ -11,7 +12,8 @@ import csv
 
 from app.config.feature_flags import feature_flags
 from database import database
-from auth import create_access_token
+from auth import create_access_token, SECRET_KEY, ALGORITHM
+from redis_client import blocklist_token, is_token_blocklisted
 
 # ---------------------------------------------------------------------------
 # SHARED IMPORT HELPER
@@ -134,6 +136,7 @@ async def _parse_import_file(
     return rows
 
 router = APIRouter(prefix="/institution/dashboard", tags=["institution-dashboard"])
+_bearer = HTTPBearer(auto_error=False)
 
 def check_feature_enabled():
     """Check if institutional features are enabled"""
@@ -142,6 +145,25 @@ def check_feature_enabled():
             status_code=403,
             detail="Institutional features are not enabled"
         )
+
+
+@router.post("/logout", dependencies=[Depends(check_feature_enabled)])
+async def institution_logout(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
+    """Invalidate institution JWT by adding its JTI to the Redis blocklist."""
+    from jose import jwt as jose_jwt, JWTError
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jose_jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            remaining_ttl = max(1, int(exp - datetime.utcnow().timestamp()))
+            await blocklist_token(jti, remaining_ttl)
+    except JWTError as e:
+        print(f"[INSTITUTION_LOGOUT] Warning: could not decode token: {e}")
+    return {"message": "Logged out successfully"}
+
 
 # ============================================================================
 # ANALYTICS APIs

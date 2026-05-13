@@ -24,6 +24,7 @@ except Exception as _e:
     print(f"[TUTOR_ROUTES] OpenAI client unavailable: {_e}")
 
 from database import database
+from fastapi.security import HTTPBearer as _HTTPBearer, HTTPAuthorizationCredentials
 from app.tutor.tutor_auth import (
     TutorLoginRequest,
     TutorLoginResponse,
@@ -33,10 +34,14 @@ from app.tutor.tutor_auth import (
     get_current_tutor,
     verify_tutor_access,
     update_tutor_password,
-    validate_password_strength
+    validate_password_strength,
+    SECRET_KEY,
+    ALGORITHM,
 )
+from redis_client import blocklist_token
 
 router = APIRouter(prefix="/tutor", tags=["tutor-dashboard"])
+_tutor_bearer = _HTTPBearer(auto_error=False)
 
 
 # ============================================================================
@@ -131,6 +136,24 @@ async def change_password(
     except Exception as e:
         print(f"[CHANGE_PASSWORD] Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Password change failed")
+
+
+@router.post("/logout")
+async def tutor_logout(credentials: HTTPAuthorizationCredentials = Depends(_tutor_bearer)):
+    """Invalidate tutor JWT by adding its JTI to the Redis blocklist."""
+    from jose import jwt as jose_jwt, JWTError
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jose_jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            remaining_ttl = max(1, int(exp - datetime.utcnow().timestamp()))
+            await blocklist_token(jti, remaining_ttl)
+    except JWTError as e:
+        print(f"[TUTOR_LOGOUT] Warning: could not decode token: {e}")
+    return {"message": "Logged out successfully"}
 
 
 # ============================================================================

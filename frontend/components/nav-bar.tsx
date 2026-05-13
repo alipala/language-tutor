@@ -176,53 +176,54 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     };
   }, [isMenuOpen]);
 
-  const handleLogout = () => {
-    // Comprehensive session cleanup
+  const handleLogout = async () => {
     if (isTutorUser) {
-      // Tutor user logout
+      // Invalidate token server-side first (best-effort)
+      const token = localStorage.getItem('tutorToken');
+      if (token) {
+        try {
+          await fetch('/api/tutor/logout', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch { /* best-effort */ }
+      }
       localStorage.removeItem('tutorToken');
       localStorage.removeItem('tutorId');
       localStorage.removeItem('tutorName');
       localStorage.removeItem('tutorEmail');
       localStorage.removeItem('institutionId');
-      
-      // Clear all session storage
       sessionStorage.clear();
-      
-      // Close dialogs
       setShowLogoutConfirm(false);
       setIsMenuOpen(false);
-      
-      // Redirect to tutor login
       window.location.href = '/tutor/login';
+
     } else if (isInstitutionUser) {
-      // Institution user logout
+      // Invalidate token server-side first (best-effort)
+      const token = localStorage.getItem('institution_token');
+      if (token) {
+        try {
+          await fetch('/api/institution/dashboard/logout', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch { /* best-effort */ }
+      }
       localStorage.removeItem('institution_token');
       localStorage.removeItem('institution_id');
       localStorage.removeItem('institution_name');
       localStorage.removeItem('institution_code');
-      
-      // Clear all session storage
       sessionStorage.clear();
-      
-      // Close dialogs
       setShowLogoutConfirm(false);
       setIsMenuOpen(false);
-      
-      // Redirect to institution login
       window.location.href = '/institution/login';
+
     } else {
       // Regular user logout
-      logout(); // This already handles localStorage token removal
-      
-      // Clear all session storage
+      logout();
       sessionStorage.clear();
-      
-      // Close dialogs
       setShowLogoutConfirm(false);
       setIsMenuOpen(false);
-      
-      // Navigate to home page
       window.location.href = '/';
     }
   };

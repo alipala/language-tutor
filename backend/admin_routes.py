@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status
+import uuid
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel, EmailStr
 from database import database, users_collection, conversation_sessions_collection, learning_plans_collection
 from auth import get_password_hash, verify_password, SECRET_KEY, ALGORITHM
 from models import UserResponse
+from redis_client import blocklist_token, is_token_blocklisted
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 security = HTTPBearer()
@@ -62,7 +64,7 @@ def create_admin_access_token(data: dict, expires_delta: Optional[timedelta] = N
     else:
         expire = datetime.utcnow() + timedelta(hours=8)  # 8 hour sessions for admin
     
-    to_encode.update({"exp": expire, "type": "admin"})
+    to_encode.update({"exp": expire, "type": "admin", "jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -74,31 +76,34 @@ async def get_current_admin(token: str = Depends(security)):
         detail="Could not validate admin credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        # Extract token from Bearer format
         if hasattr(token, 'credentials'):
             token_str = token.credentials
         else:
             token_str = str(token)
-            
+
         payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
         admin_id = payload.get("sub")
         token_type = payload.get("type")
-        
+        jti = payload.get("jti")
+
         if admin_id is None or token_type != "admin":
             raise credentials_exception
-            
-        # Find admin user (in production, query from admin users table)
+
+        # Check blocklist (token invalidated by logout)
+        if jti and await is_token_blocklisted(jti):
+            raise credentials_exception
+
         admin_user = None
         for email, user_data in ADMIN_USERS.items():
             if user_data["id"] == admin_id:
                 admin_user = AdminUser(**user_data)
                 break
-                
+
         if admin_user is None:
             raise credentials_exception
-            
+
         return admin_user
     except jwt.JWTError:
         raise credentials_exception
@@ -151,6 +156,27 @@ async def admin_login(login_data: AdminLoginRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
+
+
+@router.post("/logout")
+async def admin_logout(
+    token: str = Depends(security),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Invalidate the admin JWT by adding its JTI to the Redis blocklist."""
+    from jose import jwt as jose_jwt
+    try:
+        token_str = token.credentials if hasattr(token, 'credentials') else str(token)
+        payload = jose_jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            remaining_ttl = max(1, int(exp - datetime.utcnow().timestamp()))
+            await blocklist_token(jti, remaining_ttl)
+    except Exception as e:
+        print(f"[ADMIN_LOGOUT] Warning: could not blocklist token: {e}")
+    return {"message": "Logged out successfully"}
+
 
 @router.get("/dashboard", response_model=DashboardMetrics)
 async def get_dashboard_metrics(current_admin: AdminUser = Depends(get_current_admin)):
@@ -1071,29 +1097,50 @@ async def fix_subscription_dates(
 @router.get("/institutions")
 async def list_institutions(current_admin: AdminUser = Depends(get_current_admin)):
     """List all institutions with stats"""
-    from bson import ObjectId
     institutions = await database.institutions.find({}).to_list(length=None)
+    if not institutions:
+        return {"total": 0, "institutions": []}
+
+    inst_ids = [str(inst["_id"]) for inst in institutions]
+    admin_emails = [inst.get("admin_email") for inst in institutions if inst.get("admin_email")]
+
+    # Bulk fetch learner counts
+    learner_pipeline = [
+        {"$match": {"institution_id": {"$in": inst_ids}, "is_active": True}},
+        {"$group": {"_id": "$institution_id", "count": {"$sum": 1}}}
+    ]
+    learner_counts = {r["_id"]: r["count"] async for r in database.institutional_learners.aggregate(learner_pipeline)}
+
+    # Bulk fetch tutor counts
+    tutor_pipeline = [
+        {"$match": {"institution_id": {"$in": inst_ids}, "is_active": True}},
+        {"$group": {"_id": "$institution_id", "count": {"$sum": 1}}}
+    ]
+    tutor_counts = {r["_id"]: r["count"] async for r in database.tutors.aggregate(tutor_pipeline)}
+
+    # Bulk fetch activation codes by email
+    act_codes_list = await database.activation_codes.find({
+        "$or": [
+            {"institution_email": {"$in": admin_emails}},
+            {"used_by_email": {"$in": admin_emails}}
+        ]
+    }).to_list(length=None)
+    act_codes_by_email = {}
+    for ac in act_codes_list:
+        email = ac.get("institution_email") or ac.get("used_by_email")
+        if email and email not in act_codes_by_email:
+            act_codes_by_email[email] = ac
+
     result = []
     for inst in institutions:
         inst_id = str(inst["_id"])
-        learner_count = await database.institutional_learners.count_documents({
-            "institution_id": inst_id, "is_active": True
-        })
-        tutor_count = await database.tutors.count_documents({
-            "institution_id": inst_id, "is_active": True
-        })
-        # Find linked activation code
-        act_code = await database.activation_codes.find_one({
-            "$or": [
-                {"institution_email": inst.get("admin_email")},
-                {"used_by_email": inst.get("admin_email")}
-            ]
-        })
+        email = inst.get("admin_email")
+        act_code = act_codes_by_email.get(email)
         result.append({
             "id": inst_id,
             "name": inst.get("name"),
             "institution_type": inst.get("institution_type"),
-            "admin_email": inst.get("admin_email"),
+            "admin_email": email,
             "admin_name": inst.get("admin_name"),
             "institution_code": inst.get("institution_code"),
             "subscription_plan": inst.get("subscription_plan"),
@@ -1101,8 +1148,8 @@ async def list_institutions(current_admin: AdminUser = Depends(get_current_admin
             "max_learners": inst.get("max_learners"),
             "is_active": inst.get("is_active", True),
             "created_at": inst.get("created_at").isoformat() if inst.get("created_at") else None,
-            "learner_count": learner_count,
-            "tutor_count": tutor_count,
+            "learner_count": learner_counts.get(inst_id, 0),
+            "tutor_count": tutor_counts.get(inst_id, 0),
             "activation_code": act_code.get("activation_code") if act_code else None,
             "activation_code_status": act_code.get("status") if act_code else None
         })

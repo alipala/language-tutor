@@ -232,6 +232,45 @@ async def get_cache_stats():
         logger.error(f"❌ Error getting cache stats: {str(e)}")
         return {"enabled": False, "error": str(e)}
 
+# ============================================================================
+# TOKEN BLOCKLIST (logout / session invalidation)
+# ============================================================================
+
+async def blocklist_token(jti: str, ttl_seconds: int) -> bool:
+    """
+    Add a token JTI to the blocklist so it cannot be reused after logout.
+    ttl_seconds should equal the token's remaining lifetime so Redis auto-expires the entry.
+    Returns True on success, False if Redis is unavailable (fail open — do not block auth).
+    """
+    if not redis_client:
+        logger.warning("⚠️  Redis unavailable — token blocklist skipped for JTI: %s", jti)
+        return False
+    try:
+        key = f"blocklist:{jti}"
+        await redis_client.setex(key, ttl_seconds, "1")
+        logger.info("🔒 Token blocklisted: %s (TTL %ds)", jti, ttl_seconds)
+        return True
+    except Exception as e:
+        logger.error("❌ Redis blocklist SET error for JTI %s: %s", jti, str(e))
+        return False
+
+
+async def is_token_blocklisted(jti: str) -> bool:
+    """
+    Returns True if the token JTI has been blocklisted (i.e. logged out).
+    Returns False if Redis is unavailable (fail open — never block valid users on cache outage).
+    """
+    if not redis_client:
+        return False
+    try:
+        key = f"blocklist:{jti}"
+        result = await redis_client.exists(key)
+        return bool(result)
+    except Exception as e:
+        logger.error("❌ Redis blocklist GET error for JTI %s: %s", jti, str(e))
+        return False
+
+
 # Export for use in other modules
 __all__ = [
     "redis_client",
@@ -241,5 +280,7 @@ __all__ = [
     "set_cached",
     "delete_cached",
     "delete_pattern",
-    "get_cache_stats"
+    "get_cache_stats",
+    "blocklist_token",
+    "is_token_blocklisted",
 ]

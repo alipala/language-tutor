@@ -3,6 +3,7 @@ Tutor Authentication Module
 Provides separate authentication system for tutors with JWT tokens
 """
 import os
+import uuid
 import secrets
 import hashlib
 from datetime import datetime, timedelta
@@ -178,43 +179,44 @@ def create_tutor_access_token(data: dict, expires_delta: Optional[timedelta] = N
     
     to_encode.update({
         "exp": expire,
-        "type": "tutor"  # Mark token as tutor token
+        "type": "tutor",
+        "jti": str(uuid.uuid4()),
     })
-    
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
 async def get_current_tutor(token: str = Depends(tutor_oauth2_scheme)) -> dict:
     """
-    Get current authenticated tutor from JWT token
-    
-    Raises:
-        HTTPException: If token is invalid or tutor not found
-    
-    Returns:
-        dict: Tutor document
+    Get current authenticated tutor from JWT token.
+    Raises HTTPException if token is invalid, blocklisted, or tutor not found.
     """
+    from redis_client import is_token_blocklisted
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        # Decode JWT token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         tutor_id: str = payload.get("sub")
         token_type: str = payload.get("type")
-        
-        # Validate token is for tutor
+        jti: str = payload.get("jti")
+
         if token_type != "tutor":
             print(f"[TUTOR_AUTH] Invalid token type: {token_type}")
             raise credentials_exception
-        
+
         if tutor_id is None:
             raise credentials_exception
-            
+
+        # Check blocklist
+        if jti and await is_token_blocklisted(jti):
+            print(f"[TUTOR_AUTH] Blocklisted token used: {jti}")
+            raise credentials_exception
+
     except JWTError as e:
         print(f"[TUTOR_AUTH] JWT Error: {str(e)}")
         raise credentials_exception
