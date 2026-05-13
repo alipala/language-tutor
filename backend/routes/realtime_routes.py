@@ -51,6 +51,7 @@ class TutorSessionRequest(BaseModel):
     learning_plan_data: Optional[Dict[str, Any]] = None  # Learning plan session context
     selected_duration: Optional[int] = 5  # Session duration in minutes (1, 3, or 5)
     disable_corrections: Optional[bool] = False  # Disable real-time grammar corrections (all levels)
+    session_mode: Optional[str] = "conversation"  # "conversation" | "roleplay"
 
 class RealtimeUsageData(BaseModel):
     user_id: Optional[str] = None
@@ -209,8 +210,11 @@ def build_universal_instructions(request: TutorSessionRequest) -> str:
     language = request.language.lower()
     level = request.level.upper()
 
-    # ROUTE A1/A2 BEGINNERS TO SPECIALIZED PROMPTS
-    if level in ['A1', 'A2']:
+    # Roleplay mode bypasses all specialized paths — handled at end of this function
+    _session_mode = getattr(request, 'session_mode', 'conversation') or 'conversation'
+
+    # ROUTE A1/A2 BEGINNERS TO SPECIALIZED PROMPTS (skipped in roleplay mode)
+    if level in ['A1', 'A2'] and _session_mode != 'roleplay':
         print(f"[BEGINNER_MODE] Routing {level} to specialized beginner instructions")
         from prompt_optimization_helpers import build_beginner_instructions
 
@@ -1125,6 +1129,74 @@ Example: "Let's talk about {topic_name}! {_arcs[0]['questions'][0] if _arcs else
 Keep the entire conversation focused on {topic_name}.
 Apply personalised feedback based on assessment results if available."""
 
+        # ── ROLEPLAY MODE — override with immersive scenario instructions ────
+        session_mode = _session_mode  # already resolved at top of function
+        if session_mode == 'roleplay':
+            print(f"[ROLEPLAY] ✅ Roleplay mode detected for topic={request.topic} level={level}")
+            from tutor_config import get_roleplay_scenario
+            scenario = get_roleplay_scenario(request.topic)
+            if scenario:
+                level_note = scenario.get('level_notes', {}).get(level, '')
+                roleplay_vocab = f"\nUSE THESE WORDS naturally in your speech: {', '.join(_vocab_words[:6])}" if _vocab_words else ""
+
+                # Level-aware complexity rules — placed at the very top so the model weights them first
+                complexity_rules = {
+                    'A1': (
+                        "CRITICAL — learner is A1 (complete beginner):\n"
+                        "- Use ONLY simple present tense: 'I go', 'you like', 'it is'\n"
+                        "- Maximum 6 words per sentence\n"
+                        "- Ask ONE yes/no question per turn, nothing more\n"
+                        "- Use the same simple words repeatedly — do not introduce complex vocabulary\n"
+                        "- Example good response: 'Hoi! Ben je nieuw? Leuk!'\n"
+                        "- Example bad response: 'Wat maakte dat je geïnteresseerd bent?' (TOO COMPLEX)"
+                    ),
+                    'A2': (
+                        "IMPORTANT — learner is A2 (elementary):\n"
+                        "- Use simple present and simple past tense only\n"
+                        "- Keep sentences short: maximum 8-10 words\n"
+                        "- Ask simple direct questions: 'Do you like...?', 'How often...?'\n"
+                        "- Avoid subordinate clauses, conditional tense, or abstract nouns"
+                    ),
+                    'B1': (
+                        "Learner is B1 (intermediate) — use natural everyday language.\n"
+                        "Mix tenses. Ask open questions. Keep it conversational."
+                    ),
+                    'B2': (
+                        "Learner is B2 (upper intermediate) — use rich natural language.\n"
+                        "Include idioms, varied tenses, nuanced questions."
+                    ),
+                    'C1': "Learner is C1 (advanced) — use sophisticated register, complex structures, idiomatic language.",
+                    'C2': "Learner is C2 (mastery) — use expert-level language, subtle nuance, full idiomatic range.",
+                }.get(level, '')
+
+                # Use level-specific opening line if available, fall back to default
+                opening = scenario.get('opening_line_by_level', {}).get(level, scenario['opening_line'])
+
+                instructions = f"""LANGUAGE LEVEL: {level} — READ THIS FIRST
+{complexity_rules}
+
+## YOUR CHARACTER
+You are {scenario['character']}.
+Location: {scenario['location']}.
+The learner has just arrived: {scenario['entry_action']}.
+{roleplay_vocab}
+
+## STRICT RULES
+- You are {scenario['character'].split(',')[0]}. Stay in character. You are NOT a teacher.
+- Speak ONLY in {language.capitalize()}. Never use English mid-scene.
+- {_pacing['response_sentences']} sentence(s) maximum per response.
+- ONE question per turn — never ask two things at once.
+- If learner makes a grammar error: restate correctly in your reply naturally, without commenting.
+
+## OPENING LINE — say this exactly, then wait:
+"{opening}"
+
+Never say you are a language tutor. Never explain grammar. Just be {scenario['character'].split(',')[0]}."""
+
+                print(f"[ROLEPLAY] Scenario: {scenario['character']} | Topic: {request.topic} | Level: {level}")
+                return instructions
+
+        # ── CONVERSATION MODE (default) ──────────────────────────────────────
         print(f"Regular topic instructions ({_selected_duration}min, {level}): {len(instructions)} characters")
         if _vocab_words:
             print(f"  Topic vocab injected: {_vocab_words[:5]}")
@@ -1492,6 +1564,7 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         print(f"[UNIVERSAL] Language: {request.language}")
         print(f"[UNIVERSAL] Level: {request.level}")
         print(f"[UNIVERSAL] Topic: {request.topic}")
+        print(f"[UNIVERSAL] Session mode: {getattr(request, 'session_mode', 'NOT_SENT')}")
         print(f"[DEBUG] news_context exists: {hasattr(request, 'news_context')}")
         if hasattr(request, 'news_context'):
             nc = request.news_context

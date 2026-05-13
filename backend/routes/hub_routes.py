@@ -88,6 +88,9 @@ class HubResponse(BaseModel):
     # Today's missions with live progress
     missions: List[Dict[str, Any]]
 
+    # Why the silver (challenge) mission was picked — e.g. "grammar"
+    silver_reason: str = ""
+
     # Path A — predicted forecast of tomorrow's missions (read-only).
     # Optional: absent if prediction failed (preview falls back to static copy).
     next_missions_preview: Optional[Dict[str, Any]] = None
@@ -272,8 +275,10 @@ async def _get_flashcard_sets(user_id: str) -> List[Dict]:
 
 async def _get_or_generate_missions(
     user_id: str, local_date: str, timezone: str, language: Optional[str]
-) -> List[Dict]:
-    """Load cached missions and attach live progress inline."""
+) -> tuple:
+    """Load cached missions and attach live progress inline.
+    Returns (missions_list, silver_reason) tuple.
+    """
     from routes.missions_routes import (
         _generate_missions_for_today,
         _hydrate_progress,
@@ -284,11 +289,15 @@ async def _get_or_generate_missions(
 
     if cached:
         raw = cached["missions"]
+        silver_reason: str = cached.get("silver_reason", "")
     else:
         raw = await _generate_missions_for_today(user_id, local_date, timezone, language)
+        # After generation the doc now exists — read the reason back
+        doc = await coll.find_one({"user_id": user_id, "local_date": local_date})
+        silver_reason = doc.get("silver_reason", "") if doc else ""
 
     hydrated = await _hydrate_progress(user_id, local_date, raw)
-    return [m.dict() for m in hydrated]
+    return [m.dict() for m in hydrated], silver_reason
 
 
 # ─────────────────────────────────────────────────────────────
@@ -346,7 +355,7 @@ async def get_hub_today(
             language = active.get("language")
 
     # DNA + missions can now run with resolved language
-    dna_summary, missions = await asyncio.gather(
+    dna_summary, (missions, silver_reason) = await asyncio.gather(
         _get_dna_summary(user_id, language),
         _get_or_generate_missions(user_id, local_date, tz, language),
     )
@@ -367,6 +376,7 @@ async def get_hub_today(
         dna_summary=dna_summary,
         flashcard_sets=flashcards,
         missions=missions,
+        silver_reason=silver_reason,
         next_missions_preview=next_preview,
         timezone=tz,
         local_date=local_date,

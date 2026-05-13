@@ -100,7 +100,7 @@ class MissionProgress(BaseModel):
 
 
 class DailyMission(BaseModel):
-    id: str                           # plan_session | challenge | flashcards
+    id: str                           # plan_session | challenge | flashcards | news_session | freestyle | challenge_gold
     tier: str                         # bronze | silver | gold
     title: str
     subtitle: Optional[str] = None   # e.g. "Dutch A1 · English A2" for flashcard mission
@@ -482,6 +482,109 @@ async def _resolve_language(user_id: str, language: Optional[str]) -> Optional[s
     return plan.get("language") if plan else None
 
 
+async def _get_today_freestyle_sessions(user_id: str, local_date: str) -> int:
+    """Count freestyle conversation sessions completed today."""
+    try:
+        day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        return await conversation_sessions_collection.count_documents({
+            "user_id": user_id,
+            "conversation_type": "freestyle",
+            "created_at": {"$gte": day_start},
+        })
+    except Exception:
+        return 0
+
+
+async def _resolve_gold_mission(
+    user_id: str,
+    silver_winner: str,
+    unreviewed: int,
+    has_any_flashcards: int,
+) -> Dict:
+    """
+    5-profile decision tree for the Gold (slot 3) mission.
+
+    Priority order:
+      P1  New learner (≤3 total conversations)         → freestyle
+      P2  Game-heavy (challenges > 2× conversations)   → news session
+      P3  Talk-heavy, avoids games (convs>5, games<3)  → second challenge
+      P4  Has unreviewed flashcard sets                 → flashcards (existing logic)
+      P5  Default / balanced                            → freestyle
+    """
+    try:
+        total_conversations, total_challenges = await asyncio.gather(
+            conversation_sessions_collection.count_documents({"user_id": user_id}),
+            challenge_sessions_collection.count_documents({"user_id": user_id}),
+        )
+    except Exception:
+        total_conversations, total_challenges = 0, 0
+
+    # P1 — brand new learner
+    if total_conversations <= 3:
+        return {
+            "id":             "freestyle",
+            "tier":           "gold",
+            "title":          "i18n:gold_freestyle_title",
+            "subtitle":       "i18n:gold_freestyle_sub_new",
+            "challenge_type": None,
+            "target":         1,
+        }
+
+    # P2 — plays games much more than speaking
+    if total_challenges > total_conversations * 2:
+        return {
+            "id":             "news_session",
+            "tier":           "gold",
+            "title":          "i18n:gold_news_title",
+            "subtitle":       "i18n:gold_news_sub",
+            "challenge_type": None,
+            "target":         1,
+        }
+
+    # P3 — speaks a lot but avoids games
+    if total_conversations > 5 and total_challenges < 3:
+        GOLD_FALLBACK_ORDER = [
+            "error_spotting", "native_check", "story_builder",
+            "brain_tickler", "micro_quiz", "smart_flashcard",
+        ]
+        gold_type = next(
+            (t for t in GOLD_FALLBACK_ORDER if t != silver_winner),
+            "micro_quiz",
+        )
+        gold_cfg = CHALLENGE_CFG.get(gold_type, CHALLENGE_CFG["micro_quiz"])
+        return {
+            "id":             "challenge_gold",
+            "tier":           "gold",
+            "title":          gold_cfg["title"],
+            "subtitle":       "i18n:gold_challenge_sub",
+            "challenge_type": gold_type,
+            "target":         gold_cfg["target"],
+        }
+
+    # P4 — has unreviewed flashcard sets
+    if unreviewed > 0:
+        flash_target = min(3, unreviewed)
+        title_key = "i18n:gold_flash_title_plural" if flash_target > 1 else "i18n:gold_flash_title"
+        return {
+            "id":             "flashcards",
+            "tier":           "gold",
+            "title":          f"{title_key}:{flash_target}",
+            "subtitle":       None,  # filled live in _hydrate_progress
+            "challenge_type": None,
+            "target":         flash_target,
+        }
+
+    # P5 — balanced / default
+    return {
+        "id":             "freestyle",
+        "tier":           "gold",
+        "title":          "i18n:gold_freestyle_title",
+        "subtitle":       "i18n:gold_freestyle_sub",
+        "challenge_type": None,
+        "target":         1,
+    }
+
+
 async def _build_missions(
     user_id: str,
     language: Optional[str],
@@ -515,16 +618,16 @@ async def _build_missions(
     if has_active_plan:
         bronze_id    = "plan_session"
         bronze_title = (
-            "Complete today's plan session"
+            "i18n:bronze_plan_title"
             if bronze_target == 1
-            else f"Complete {bronze_target} plan sessions today"
+            else f"i18n:bronze_plan_title_plural:{bronze_target}"
         )
     else:
         bronze_id    = "news_session"
         bronze_title = (
-            "Read & discuss today's news"
+            "i18n:bronze_news_title"
             if bronze_target == 1
-            else f"Read & discuss {bronze_target} news articles today"
+            else f"i18n:bronze_news_title_plural:{bronze_target}"
         )
 
     bronze = {
@@ -535,80 +638,16 @@ async def _build_missions(
         "target":         bronze_target,
     }
 
-    # ── Gold mission ──────────────────────────────────────────────
-    # If the user has unreviewed flashcard sets → flashcard mission.
-    # If the user has a plan but all sets reviewed → "all done" flashcard.
-    # If the user has NO flashcard sets at all (no plan yet, or plan but
-    #   no sessions completed yet) → replace with a second challenge using
-    #   a different type than silver so it's always completable.
+    # ── Gold mission — resolved via 5-profile decision tree ─────
     has_any_flashcards = await flashcard_sets_collection.count_documents(
         {"user_id": user_id}
     )
-
-    gold_mission: Dict
-    flash_subtitle = None
-
-    if unreviewed > 0:
-        # Standard: review N unreviewed sets
-        flash_target = min(3, unreviewed)
-        flash_title  = f"Review {flash_target} flashcard set{'s' if flash_target > 1 else ''}"
-        try:
-            unreviewed_sets = await flashcard_sets_collection.find(
-                {"user_id": user_id, "is_reviewed": {"$ne": True}},
-                {"language": 1, "level": 1}
-            ).limit(3).to_list(3)
-            parts, seen = [], set()
-            for s in unreviewed_sets:
-                lang = (s.get("language") or "").capitalize()
-                lvl  = (s.get("level") or "").upper()
-                if lang and lvl:
-                    key = f"{lang} {lvl}"
-                    if key not in seen:
-                        seen.add(key); parts.append(key)
-            if parts:
-                flash_subtitle = " · ".join(parts)
-        except Exception:
-            pass
-        gold_mission = {
-            "id":             "flashcards",
-            "tier":           "gold",
-            "title":          flash_title,
-            "subtitle":       flash_subtitle,
-            "challenge_type": None,
-            "target":         flash_target,
-        }
-
-    elif has_any_flashcards:
-        # Has sets but all reviewed today
-        gold_mission = {
-            "id":             "flashcards",
-            "tier":           "gold",
-            "title":          "All flashcard sets reviewed!",
-            "subtitle":       None,
-            "challenge_type": None,
-            "target":         1,
-        }
-
-    else:
-        # No flashcard sets at all — give a second completable challenge
-        # Pick a type different from silver to avoid duplication
-        GOLD_FALLBACK_ORDER = [
-            "error_spotting", "native_check", "story_builder",
-            "brain_tickler", "micro_quiz", "smart_flashcard",
-        ]
-        gold_type = next(
-            (t for t in GOLD_FALLBACK_ORDER if t != silver.winner),
-            "micro_quiz",
-        )
-        gold_cfg  = CHALLENGE_CFG.get(gold_type, CHALLENGE_CFG["micro_quiz"])
-        gold_mission = {
-            "id":             "challenge_gold",
-            "tier":           "gold",
-            "title":          gold_cfg["title"],
-            "subtitle":       "Bonus challenge",
-            "challenge_type": gold_type,
-            "target":         gold_cfg["target"],
-        }
+    gold_mission = await _resolve_gold_mission(
+        user_id=user_id,
+        silver_winner=silver.winner,
+        unreviewed=unreviewed,
+        has_any_flashcards=has_any_flashcards,
+    )
 
     missions: List[Dict] = [
         bronze,
@@ -616,6 +655,7 @@ async def _build_missions(
             "id":             "challenge",
             "tier":           "silver",
             "title":          silver_cfg["title"],
+            "subtitle":       "i18n:silver_subtitle",
             "challenge_type": silver.winner,
             "target":         silver_cfg["target"],
         },
@@ -733,12 +773,13 @@ async def _hydrate_progress(
         "micro_quiz",
     )
 
-    (today_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets) = \
+    (today_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle) = \
         await asyncio.gather(
             _get_today_sessions(user_id, local_date),
             _get_today_news_sessions(user_id, local_date),
             _get_completed_challenge_sessions_today(user_id, local_date, challenge_type),
             _get_reviewed_flashcard_count(user_id),
+            _get_today_freestyle_sessions(user_id, local_date),
         )
 
     # Build flashcard subtitle live (works from cache too)
@@ -777,15 +818,16 @@ async def _hydrate_progress(
             current = min(target, completed_challenge_sessions)
 
         elif m["id"] == "challenge_gold":
-            # Gold fallback challenge — count sessions of this specific type
             gold_challenge_type = m.get("challenge_type", "")
             gold_count = await _get_completed_challenge_sessions_today(
                 user_id, local_date, gold_challenge_type
             ) if gold_challenge_type else 0
             current = min(target, gold_count)
 
+        elif m["id"] == "freestyle":
+            current = min(target, today_freestyle)
+
         else:  # flashcards
-            # Always use actual reviewed count — never shortcut via title
             current = min(target, reviewed_sets)
 
         # Use live subtitle for flashcard mission; carry through stored subtitle for others
@@ -918,6 +960,107 @@ async def get_today_missions(
         all_complete=all_done,
         generated_at=generated,
     )
+
+
+# ─────────────────────────────────────────────────────────────
+# Mission XP award request model
+# ─────────────────────────────────────────────────────────────
+
+class MissionXpRequest(BaseModel):
+    tier: str        # "bronze" | "silver" | "gold"
+    xp:   int        # XP amount shown on the card (50 | 75 | 60)
+    local_date: str  # YYYY-MM-DD in user's timezone
+    timezone: str    # e.g. "Europe/Amsterdam"
+
+
+@router.post(
+    "/api/missions/xp",
+    summary="Award XP when a mission is completed",
+    tags=["Missions"],
+)
+async def award_mission_xp(
+    body: MissionXpRequest,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Awards XP to the user when a mission completes.
+
+    Idempotency guarantee: each tier can only be awarded once per local_date.
+    The awarded tiers are stored in the daily_missions doc under `xp_awarded_tiers`.
+    Calling this endpoint twice for the same tier on the same day is a safe no-op.
+
+    XP is incremented in:
+      - users.stats.lifetime.total_xp
+      - users.stats.lifetime.xp_by_source.missions
+      - daily_stats.total_xp  (so the hub top-bar counter updates immediately)
+    """
+    user_id    = str(current_user.id)
+    tier       = body.tier
+    xp         = max(0, body.xp)           # defensive clamp
+    local_date = body.local_date
+    timezone   = body.timezone
+
+    if tier not in ("bronze", "silver", "gold"):
+        return {"success": False, "reason": "invalid_tier"}
+    if xp <= 0:
+        return {"success": False, "reason": "invalid_xp"}
+
+    coll = _missions_coll()
+
+    # ── Idempotency check + atomic claim ─────────────────────
+    # addToSet is atomic: if tier already in xp_awarded_tiers the
+    # document doesn't change, so matched_count=1 but modified_count=0.
+    result = await coll.update_one(
+        {
+            "user_id":    user_id,
+            "local_date": local_date,
+            # Only update if this tier has NOT already been awarded
+            "xp_awarded_tiers": {"$ne": tier},
+        },
+        {"$addToSet": {"xp_awarded_tiers": tier}},
+    )
+
+    if result.modified_count == 0:
+        # Either missions doc doesn't exist or tier already awarded — safe no-op
+        return {"success": True, "awarded": False, "reason": "already_awarded_or_no_doc"}
+
+    # ── Award XP atomically ───────────────────────────────────
+    try:
+        from bson import ObjectId
+        await users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$inc": {
+                    "stats.lifetime.total_xp":               xp,
+                    "stats.lifetime.xp_by_source.missions":  xp,
+                }
+            },
+        )
+
+        # Also update daily_stats so the hub XP counter reflects it immediately.
+        # Use upsert so this works even if no session was played today.
+        day_start, _ = get_day_start_end(local_date, timezone)
+        await daily_stats_collection.update_one(
+            {"user_id": user_id, "local_date": local_date},
+            {
+                "$inc": {"total_xp": xp},
+                "$set": {"updated_at": datetime.utcnow()},
+                "$setOnInsert": {"created_at": datetime.utcnow()},
+            },
+            upsert=True,
+        )
+
+        print(f"[MISSIONS] ✅ Awarded {xp} XP ({tier}) to user {user_id} on {local_date}")
+        return {"success": True, "awarded": True, "xp": xp, "tier": tier}
+
+    except Exception as e:
+        print(f"[MISSIONS] ❌ Error awarding mission XP: {e}")
+        # Roll back the tier claim so it can be retried
+        await coll.update_one(
+            {"user_id": user_id, "local_date": local_date},
+            {"$pull": {"xp_awarded_tiers": tier}},
+        )
+        return {"success": False, "reason": "internal_error"}
 
 
 @router.post(

@@ -1692,3 +1692,188 @@ def get_subtopic_arcs(
     if not cfg:
         return []
     return cfg.get("subtopic_arcs", [])[:n]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROLEPLAY SCENARIOS
+# One immersive scenario per topic, level-aware.
+# Fields:
+#   character     — who the model plays
+#   location      — where the scene is set
+#   entry_action  — what the learner has just done (sets the scene)
+#   goal          — what the learner must accomplish
+#   opening_line  — model's first spoken line (in-character)
+#   level_notes   — how to adjust complexity per CEFR band
+# ─────────────────────────────────────────────────────────────────────────────
+
+ROLEPLAY_SCENARIOS: Dict[str, Dict[str, Any]] = {
+    "travel": {
+        "character":    "Alex, a friendly hotel receptionist",
+        "location":     "a hotel front desk in the city the learner wants to visit",
+        "entry_action": "The learner has just walked in with their luggage to check in",
+        "goal":         "Check in, ask about the room, find out about local attractions",
+        "opening_line": "Good afternoon! Welcome. Do you have a reservation with us?",
+        "level_notes": {
+            "A1": "Use only simple present tense. Ask one yes/no question at a time. Speak very slowly.",
+            "A2": "Use present and past tense. Ask about travel plans simply. Confirm what you understood.",
+            "B1": "Discuss room preferences, local tips, and transport options naturally.",
+            "B2": "Include details about hotel policies, area recommendations, cultural insights.",
+            "C1": "Use idiomatic hospitality language. Discuss sustainability, local hidden gems.",
+            "C2": "Full authentic register. Discuss travel philosophy, cultural nuances, complex requests.",
+        },
+    },
+    "food": {
+        "character":    "Marco, a warm waiter at a local restaurant",
+        "location":     "a bustling restaurant in the target-language country",
+        "entry_action": "The learner has just sat down and is looking at the menu",
+        "goal":         "Order a meal, ask about dishes, make special requests, pay the bill",
+        "opening_line": "Good evening! Here is our menu. Can I get you something to drink first?",
+        "level_notes": {
+            "A1": "Name dishes simply. Accept any attempt at ordering. Confirm each item clearly.",
+            "A2": "Describe 1-2 dishes. Ask about allergies simply. Confirm the full order.",
+            "B1": "Describe ingredients, cooking methods. Handle special requests naturally.",
+            "B2": "Discuss cuisine origins, chef specials, wine pairings, dietary philosophy.",
+            "C1": "Use culinary vocabulary richly. Discuss sourcing, seasonal menus, food culture.",
+            "C2": "Full sommelier-level discourse. Pair wines, discuss gastronomic trends.",
+        },
+    },
+    "work": {
+        "character":    "Sarah, a friendly HR manager conducting a job interview",
+        "location":     "a modern office meeting room",
+        "entry_action": "The learner has just entered for a job interview at their dream company",
+        "goal":         "Answer interview questions confidently, ask smart questions, negotiate",
+        "opening_line": "Hi, please have a seat! Thank you for coming in today. Tell me a little about yourself.",
+        "level_notes": {
+            "A1": "Ask only about name, job experience, and hobbies. Accept very short answers.",
+            "A2": "Ask about previous work and daily tasks. Keep questions simple and direct.",
+            "B1": "Discuss strengths, goals, and team experience. Follow up naturally.",
+            "B2": "Probe motivations, conflict resolution, leadership style.",
+            "C1": "Discuss strategy, culture fit, compensation. Use professional register.",
+            "C2": "Full executive-level dialogue. Negotiate terms, discuss vision and impact.",
+        },
+    },
+    "hobbies": {
+        "character":    "Jamie, an enthusiastic member of a local hobby club",
+        "location":     "a community centre where the club meets",
+        "entry_action": "The learner has just arrived to try the club for the first time",
+        "goal":         "Introduce yourself, learn about the hobby, decide if you want to join",
+        "opening_line": "Hey, welcome! Is this your first time here? What made you interested in joining us?",
+        "opening_line_by_level": {
+            "A1": "Hi! Welcome! Is this your first time?",
+            "A2": "Hey, welcome! Is this your first time here? Do you like this hobby?",
+            "B1": "Hey, welcome! Is this your first time here? What brought you to us today?",
+            "B2": "Hey, welcome! Is this your first time here? What made you interested in joining us?",
+            "C1": "Hey, welcome! Is this your first time here? What made you interested in joining us?",
+            "C2": "Hey, welcome! Is this your first time here? What made you interested in joining us?",
+        },
+        "level_notes": {
+            "A1": "Ask about name and basic likes. Use simple vocabulary about activities.",
+            "A2": "Discuss frequency and how to do the hobby. Use simple descriptions.",
+            "B1": "Explain the hobby's benefits, share personal stories, invite the learner to try.",
+            "B2": "Discuss skill levels, competitions, the community and its culture.",
+            "C1": "Explore the psychology of the hobby, its creative dimensions, niche aspects.",
+            "C2": "Debate the role of hobbies in identity, wellness, and modern society.",
+        },
+    },
+    "shopping": {
+        "character":    "Sofia, a helpful shop assistant",
+        "location":     "a clothing store in the city centre",
+        "entry_action": "The learner has just walked in looking for something specific",
+        "goal":         "Find the right item, ask about sizes and prices, make a purchase or return",
+        "opening_line": "Hi there! Can I help you find something today?",
+        "level_notes": {
+            "A1": "Point to items. Accept colour, size, price as the only vocabulary needed.",
+            "A2": "Discuss size, colour, price, and where to find items in the store.",
+            "B1": "Discuss style preferences, compare options, handle exchanges naturally.",
+            "B2": "Discuss brand quality, sustainable fashion choices, return policies.",
+            "C1": "Discuss fashion trends, ethical consumption, designer vs fast fashion.",
+            "C2": "Debate the economics of fashion, consumer psychology, global supply chains.",
+        },
+    },
+    "daily": {
+        "character":    "Lena, a friendly neighbour",
+        "location":     "outside the apartment building in the morning",
+        "entry_action": "The learner runs into their neighbour while leaving for the day",
+        "goal":         "Have a natural chat about daily routines, plans, and neighbourhood life",
+        "opening_line": "Oh hi! Early start today? I'm just heading to the café before work.",
+        "level_notes": {
+            "A1": "Discuss morning routines using simple present. One question at a time.",
+            "A2": "Talk about daily schedule, commute, and simple plans for the day.",
+            "B1": "Discuss work-life balance, weekend plans, neighbourhood events.",
+            "B2": "Debate remote work, productivity habits, urban vs rural lifestyle.",
+            "C1": "Explore the psychology of routines, digital detox, mindful living.",
+            "C2": "Analyse societal pace of life, burnout culture, modern urban experience.",
+        },
+    },
+    "health": {
+        "character":    "Dr. Chen, a calm and thorough GP",
+        "location":     "a doctor's consultation room",
+        "entry_action": "The learner has just sat down for a routine health check-up",
+        "goal":         "Describe symptoms, answer questions about lifestyle, receive advice",
+        "opening_line": "Good morning! So, what brings you in today? How have you been feeling?",
+        "level_notes": {
+            "A1": "Ask about basic symptoms using body part vocabulary. Keep it very simple.",
+            "A2": "Ask about pain, frequency, and daily habits. Use common health vocabulary.",
+            "B1": "Discuss lifestyle, diet, and exercise. Give clear recommendations.",
+            "B2": "Explore mental health, preventive care, and detailed medical history.",
+            "C1": "Discuss chronic conditions, treatment options, healthcare systems.",
+            "C2": "Debate public health policy, bioethics, pharmaceutical industry.",
+        },
+    },
+    "technology": {
+        "character":    "Sam, a patient tech support specialist",
+        "location":     "a tech support call (phone or chat)",
+        "entry_action": "The learner has just contacted support because their device isn't working",
+        "goal":         "Describe the problem, follow troubleshooting steps, resolve the issue",
+        "opening_line": "Hi, thank you for calling tech support! My name is Sam. What seems to be the problem today?",
+        "level_notes": {
+            "A1": "Use only the most basic device vocabulary. Confirm each step clearly.",
+            "A2": "Guide through simple steps. Name apps, buttons, settings simply.",
+            "B1": "Troubleshoot connectivity, software issues. Use clear technical language.",
+            "B2": "Discuss settings, security, data backup. Handle complex scenarios.",
+            "C1": "Discuss system architecture, privacy policies, digital security in depth.",
+            "C2": "Debate tech ethics, AI implications, digital rights and data sovereignty.",
+        },
+    },
+    "education": {
+        "character":    "Professor Rivera, a knowledgeable and encouraging academic",
+        "location":     "a university office during office hours",
+        "entry_action": "The learner has knocked on the door to ask for advice about their studies",
+        "goal":         "Discuss academic challenges, get study advice, explore course options",
+        "opening_line": "Come in! Great to see you. How are things going with your studies so far?",
+        "level_notes": {
+            "A1": "Ask about subjects and schedule using simple vocabulary. Be encouraging.",
+            "A2": "Discuss homework, exams, and study habits in simple terms.",
+            "B1": "Explore learning strategies, academic goals, and course options.",
+            "B2": "Discuss thesis topics, research methods, academic career paths.",
+            "C1": "Debate educational philosophy, academic freedom, interdisciplinary study.",
+            "C2": "Explore the future of education, AI in academia, knowledge production.",
+        },
+    },
+    "family": {
+        "character":    "Mia, a new colleague who is curious and friendly",
+        "location":     "a company lunch break in the office kitchen",
+        "entry_action": "The learner sits down next to Mia who starts a conversation",
+        "goal":         "Talk about family background, traditions, and personal life naturally",
+        "opening_line": "Mind if I join you? I'm Mia, I just started last week. Do you have family nearby?",
+        "level_notes": {
+            "A1": "Ask about family members and simple descriptions. Accept one-word answers.",
+            "A2": "Discuss family activities and traditions using simple past and present.",
+            "B1": "Share family stories, cultural traditions, and personal anecdotes.",
+            "B2": "Discuss family dynamics, generational differences, modern family structures.",
+            "C1": "Explore sociology of family, identity formation, cultural norms.",
+            "C2": "Debate kinship structures, family policy, evolving social contracts.",
+        },
+    },
+}
+
+
+def get_roleplay_scenario(topic_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Return the roleplay scenario for a given topic, or None if not found."""
+    if not topic_id:
+        return None
+    cfg = get_topic_config(topic_id)
+    if not cfg:
+        return None
+    canonical_id = cfg["id"]
+    return ROLEPLAY_SCENARIOS.get(canonical_id)
