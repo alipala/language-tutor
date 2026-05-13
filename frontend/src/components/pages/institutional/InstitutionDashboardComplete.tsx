@@ -269,6 +269,81 @@ const ImportModal: React.FC<ImportModalProps> = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ImageUpload — drag-drop or click-to-browse, base64 preview, no server needed
+// ─────────────────────────────────────────────────────────────────────────────
+interface ImageUploadProps {
+  value: string;
+  onChange: (dataUrlOrUrl: string) => void;
+  placeholder?: string;
+  token?: string;
+  round?: boolean;
+}
+
+const ImageUpload: React.FC<ImageUploadProps> = ({
+  value, onChange, placeholder = 'Drop image here or click to upload', round = false,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const processFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => { if (e.target?.result) onChange(e.target.result as string); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  };
+
+  const previewCls = round
+    ? 'w-20 h-20 rounded-full object-cover border-2 border-[#4ECFBF]/40'
+    : 'h-16 max-w-[160px] object-contain rounded-lg';
+
+  return (
+    <div
+      className={`relative border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
+        dragging ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' : 'border-gray-200 hover:border-[#4ECFBF]/50 hover:bg-gray-50'
+      }`}
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={handleDrop}
+      onClick={() => inputRef.current?.click()}
+    >
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { if (e.target.files?.[0]) processFile(e.target.files[0]); }} />
+
+      {value ? (
+        <div className="flex items-center gap-4 p-3">
+          <img src={value} alt="preview" className={previewCls} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-700">Image selected</p>
+            <p className="text-xs text-gray-400 mt-0.5">Click or drop to replace</p>
+          </div>
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(''); }}
+            className="flex-shrink-0 w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
+          >
+            <X className="w-3.5 h-3.5 text-red-500" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-1.5 py-6 px-4 text-center">
+          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+            <Upload className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-600">{placeholder}</p>
+          <p className="text-xs text-gray-400">PNG, JPG, SVG up to 5 MB</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SettingsTab — Institution Profile + Admin Account
 // ─────────────────────────────────────────────────────────────────────────────
 const TIMEZONES = [
@@ -449,9 +524,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Logo URL</label>
-                <input className={inputCls} placeholder="https://logo.png" value={profile.logo_url}
-                  onChange={e => setProfile(p => ({ ...p, logo_url: e.target.value }))} />
+                <label className={labelCls}>Logo</label>
+                <ImageUpload
+                  value={profile.logo_url}
+                  onChange={url => setProfile(p => ({ ...p, logo_url: url }))}
+                  placeholder="Drop logo here or click to upload"
+                  token={token}
+                />
               </div>
             </div>
           </div>
@@ -551,17 +630,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
                   value={admin.admin_email} readOnly />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>Profile Photo URL</label>
-                <div className="flex gap-3 items-center">
-                  {admin.admin_photo_url
-                    ? <img src={admin.admin_photo_url} alt="avatar" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
-                    : <div className="w-10 h-10 rounded-full bg-[#4ECFBF]/20 flex items-center justify-center flex-shrink-0">
-                        <User className="w-5 h-5 text-[#4ECFBF]" />
-                      </div>
-                  }
-                  <input className={`${inputCls} flex-1`} placeholder="https://photo.png" value={admin.admin_photo_url}
-                    onChange={e => setAdmin(a => ({ ...a, admin_photo_url: e.target.value }))} />
-                </div>
+                <label className={labelCls}>Profile Photo</label>
+                <ImageUpload
+                  value={admin.admin_photo_url}
+                  onChange={url => setAdmin(a => ({ ...a, admin_photo_url: url }))}
+                  placeholder="Drop photo here or click to upload"
+                  token={token}
+                  round
+                />
               </div>
             </div>
           </div>
