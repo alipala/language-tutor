@@ -30,8 +30,9 @@ const Research: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-20">
+    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -39,14 +40,15 @@ const Research: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-5xl font-bold mb-6">Research</h1>
-            <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+            <h1 className="text-5xl font-bold text-white mb-6">Research</h1>
+            <p className="text-xl text-white/60 max-w-3xl mx-auto leading-relaxed">
               Advancing the science of language learning through cutting-edge research in AI, linguistics, and educational technology.
             </p>
           </motion.div>
         </div>
       </div>
 
+      {/* Publications */}
       <div className="py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
@@ -55,8 +57,8 @@ const Research: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">Recent Publications</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-4xl font-bold text-white mb-6">Recent Publications</h2>
+            <p className="text-xl text-white/60 max-w-3xl mx-auto">
               Our research team publishes findings in top-tier academic journals and conferences.
             </p>
           </motion.div>
@@ -68,12 +70,13 @@ const Research: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
-                className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
+                className="rounded-2xl p-8 border border-white/[0.10]"
+                style={{ backgroundColor: '#13131F' }}
               >
-                <h3 className="text-2xl font-bold text-gray-800 mb-3">{pub.title}</h3>
-                <p className="text-gray-600 mb-2">{pub.authors}</p>
+                <h3 className="text-2xl font-bold text-white mb-3">{pub.title}</h3>
+                <p className="text-white/60 mb-2">{pub.authors}</p>
                 <p className="text-[#4ECFBF] font-medium mb-4">{pub.journal} ({pub.year})</p>
-                <p className="text-gray-600 leading-relaxed mb-4">{pub.abstract}</p>
+                <p className="text-white/60 leading-relaxed mb-4">{pub.abstract}</p>
                 <div className="flex gap-4">
                   <button className="flex items-center px-4 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
                     <Download className="w-4 h-4 mr-2" />
@@ -90,15 +93,16 @@ const Research: React.FC = () => {
         </div>
       </div>
 
-      <div className="py-20 bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10">
+      {/* Research Collaboration */}
+      <div className="py-20 border-t border-white/[0.08]" style={{ backgroundColor: '#0E0E1A' }}>
         <div className="max-w-4xl mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">Research Collaboration</h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold text-white mb-6">Research Collaboration</h2>
+            <p className="text-xl text-white/60 mb-8 max-w-2xl mx-auto">
               Interested in collaborating on language learning research? We welcome partnerships with academic institutions and researchers.
             </p>
             <a

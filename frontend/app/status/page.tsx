@@ -15,7 +15,7 @@ const SystemStatus: React.FC = () => {
     },
     {
       name: "AI Conversation Engine",
-      status: "operational", 
+      status: "operational",
       uptime: "99.8%",
       responseTime: "120ms",
       icon: Zap
@@ -59,7 +59,7 @@ const SystemStatus: React.FC = () => {
       description: "Users experienced slower response times during speech assessment. Issue was resolved by scaling up processing capacity."
     },
     {
-      date: "January 8, 2025", 
+      date: "January 8, 2025",
       title: "Brief API gateway timeout",
       status: "resolved",
       duration: "12 minutes",
@@ -70,31 +70,31 @@ const SystemStatus: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'operational':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-5 h-5 text-green-400" />;
       case 'degraded':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+        return <AlertCircle className="w-5 h-5 text-yellow-400" />;
       case 'down':
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-5 h-5 text-red-400" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-500" />;
+        return <Clock className="w-5 h-5 text-white/40" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'operational':
-        return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-green-400 bg-green-400/10 border-green-400/30';
       case 'degraded':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
       case 'down':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-red-400 bg-red-400/10 border-red-400/30';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-white/40 bg-white/5 border-white/10';
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
@@ -123,7 +123,7 @@ const SystemStatus: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-16"
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-8 text-center">Service Status</h2>
+            <h2 className="text-4xl font-bold text-white mb-8 text-center">Service Status</h2>
             <div className="space-y-4">
               {services.map((service, index) => (
                 <motion.div
@@ -131,7 +131,7 @@ const SystemStatus: React.FC = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
-                  className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
+                  className="bg-[#13131F] rounded-2xl p-6 border border-white/[0.10]"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -139,7 +139,7 @@ const SystemStatus: React.FC = () => {
                         <service.icon className="w-6 h-6 text-[#4ECFBF]" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-gray-800">{service.name}</h3>
+                        <h3 className="text-xl font-bold text-white">{service.name}</h3>
                         <div className="flex items-center mt-1">
                           {getStatusIcon(service.status)}
                           <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(service.status)}`}>
@@ -149,10 +149,10 @@ const SystemStatus: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-gray-500 mb-1">Uptime</div>
-                      <div className="text-lg font-bold text-gray-800">{service.uptime}</div>
-                      <div className="text-sm text-gray-500 mt-2">Response Time</div>
-                      <div className="text-lg font-bold text-gray-800">{service.responseTime}</div>
+                      <div className="text-sm text-white/40 mb-1">Uptime</div>
+                      <div className="text-lg font-bold text-white">{service.uptime}</div>
+                      <div className="text-sm text-white/40 mt-2">Response Time</div>
+                      <div className="text-lg font-bold text-white">{service.responseTime}</div>
                     </div>
                   </div>
                 </motion.div>
@@ -165,24 +165,24 @@ const SystemStatus: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-8 text-center">Recent Incidents</h2>
+            <h2 className="text-4xl font-bold text-white mb-8 text-center">Recent Incidents</h2>
             <div className="space-y-6">
               {incidents.map((incident, index) => (
-                <div key={index} className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                <div key={index} className="bg-[#13131F] rounded-2xl p-6 border border-white/[0.10]">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">{incident.title}</h3>
-                      <div className="flex items-center text-gray-500 text-sm">
+                      <h3 className="text-xl font-bold text-white mb-2">{incident.title}</h3>
+                      <div className="flex items-center text-white/40 text-sm">
                         <Clock className="w-4 h-4 mr-2" />
                         <span className="mr-4">{incident.date}</span>
                         <span className="mr-4">Duration: {incident.duration}</span>
-                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        <span className="px-2 py-1 bg-green-400/10 text-green-400 border border-green-400/30 rounded-full text-xs font-medium">
                           {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <p className="text-gray-600 leading-relaxed">{incident.description}</p>
+                  <p className="text-white/60 leading-relaxed">{incident.description}</p>
                 </div>
               ))}
             </div>
@@ -190,22 +190,22 @@ const SystemStatus: React.FC = () => {
         </div>
       </div>
 
-      <div className="py-20 bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10">
+      <div className="py-20 border-t border-white/[0.08]" style={{ backgroundColor: '#0E0E1A' }}>
         <div className="max-w-4xl mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">Subscribe to Updates</h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold text-white mb-6">Subscribe to Updates</h2>
+            <p className="text-xl text-white/60 mb-8 max-w-2xl mx-auto">
               Get notified about service updates, maintenance windows, and incident reports.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
+                className="flex-1 px-4 py-3 bg-[#13131F] border border-white/[0.10] rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
               />
               <button className="px-6 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300">
                 Subscribe

@@ -81,7 +81,7 @@ const HelpSupport: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-16">
         <div className="max-w-4xl mx-auto px-6">
@@ -110,7 +110,7 @@ const HelpSupport: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-16"
         >
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
           <div className="space-y-6">
             {faqs.map((faq, index) => (
               <motion.div
@@ -119,9 +119,9 @@ const HelpSupport: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
               >
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">{faq.question}</h3>
-                  <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+                  <h3 className="text-lg font-semibold text-white mb-3">{faq.question}</h3>
+                  <p className="text-white/60 leading-relaxed">{faq.answer}</p>
                 </div>
               </motion.div>
             ))}
@@ -135,7 +135,7 @@ const HelpSupport: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="mb-16"
         >
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Contact Support</h2>
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Contact Support</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {contactMethods.map((method, index) => (
               <motion.div
@@ -144,15 +144,15 @@ const HelpSupport: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * (index + 15) }}
               >
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200 hover:shadow-xl transition-shadow h-full">
+                <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8 hover:border-[#4ECFBF]/30 transition-colors h-full">
                   <div className="flex items-center mb-4">
                     <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
                       <method.icon className="w-6 h-6 text-[#4ECFBF]" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800">{method.title}</h3>
+                    <h3 className="text-xl font-bold text-white">{method.title}</h3>
                   </div>
-                  <p className="text-gray-600 leading-relaxed mb-4">{method.description}</p>
-                  <p className="text-sm text-gray-500 mb-4">{method.availability}</p>
+                  <p className="text-white/60 leading-relaxed mb-4">{method.description}</p>
+                  <p className="text-sm text-white/40 mb-4">{method.availability}</p>
                   <div className="text-[#4ECFBF] font-medium">
                     {method.info}
                   </div>
@@ -168,29 +168,29 @@ const HelpSupport: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.0 }}
         >
-          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Quick Tips for Better Learning</h2>
+          <div className="bg-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">Quick Tips for Better Learning</h2>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-[#4ECFBF]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">🎯</span>
                 </div>
-                <h3 className="font-semibold text-gray-800 mb-2">Practice Daily</h3>
-                <p className="text-gray-600 text-sm">Consistent 5-10 minute daily sessions are more effective than longer, infrequent practice.</p>
+                <h3 className="font-semibold text-white mb-2">Practice Daily</h3>
+                <p className="text-white/60 text-sm">Consistent 5-10 minute daily sessions are more effective than longer, infrequent practice.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 bg-[#4ECFBF]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">🎧</span>
                 </div>
-                <h3 className="font-semibold text-gray-800 mb-2">Use Good Audio</h3>
-                <p className="text-gray-600 text-sm">Ensure clear microphone quality for accurate speech recognition and better feedback.</p>
+                <h3 className="font-semibold text-white mb-2">Use Good Audio</h3>
+                <p className="text-white/60 text-sm">Ensure clear microphone quality for accurate speech recognition and better feedback.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 bg-[#4ECFBF]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">📱</span>
                 </div>
-                <h3 className="font-semibold text-gray-800 mb-2">Create Learning Plans</h3>
-                <p className="text-gray-600 text-sm">Take assessments and create personalized learning plans for structured progress.</p>
+                <h3 className="font-semibold text-white mb-2">Create Learning Plans</h3>
+                <p className="text-white/60 text-sm">Take assessments and create personalized learning plans for structured progress.</p>
               </div>
             </div>
           </div>

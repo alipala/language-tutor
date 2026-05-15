@@ -60,7 +60,7 @@ const GDPRCompliance: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-16">
         <div className="max-w-4xl mx-auto px-6">
@@ -93,14 +93,14 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-12"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Our Commitment to GDPR</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              Language Tutor is committed to protecting your personal data and respecting your privacy rights. 
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-4">Our Commitment to GDPR</h2>
+            <p className="text-white/60 leading-relaxed mb-4">
+              Language Tutor is committed to protecting your personal data and respecting your privacy rights.
               We comply with the General Data Protection Regulation (GDPR) and other applicable data protection laws.
             </p>
-            <p className="text-gray-600 leading-relaxed">
-              This page explains your rights under GDPR and how we ensure compliance with these important regulations 
+            <p className="text-white/60 leading-relaxed">
+              This page explains your rights under GDPR and how we ensure compliance with these important regulations
               that protect your personal information.
             </p>
           </div>
@@ -113,7 +113,7 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mb-12"
         >
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Your Data Protection Rights</h2>
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Your Data Protection Rights</h2>
           <div className="grid md:grid-cols-2 gap-8">
             {rights.map((right, index) => (
               <motion.div
@@ -122,14 +122,14 @@ const GDPRCompliance: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * (index + 4) }}
               >
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200 h-full">
+                <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8 h-full">
                   <div className="flex items-center mb-4">
                     <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
                       <right.icon className="w-6 h-6 text-[#4ECFBF]" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800">{right.title}</h3>
+                    <h3 className="text-xl font-bold text-white">{right.title}</h3>
                   </div>
-                  <p className="text-gray-600 leading-relaxed">{right.description}</p>
+                  <p className="text-white/60 leading-relaxed">{right.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -143,17 +143,17 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.7 }}
           className="mb-12"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Lawful Basis for Processing</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-6">Lawful Basis for Processing</h2>
+            <p className="text-white/60 leading-relaxed mb-6">
               Under GDPR, we must have a lawful basis for processing your personal data. We rely on the following lawful bases:
             </p>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
-              {lawfulBases.map((basis, index) => (
-                <div key={basis.title} className="border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{basis.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{basis.description}</p>
+              {lawfulBases.map((basis) => (
+                <div key={basis.title} className="border border-white/[0.08] rounded-xl p-6" style={{ backgroundColor: '#0E0E1A' }}>
+                  <h3 className="text-lg font-semibold text-white mb-2">{basis.title}</h3>
+                  <p className="text-white/60 leading-relaxed">{basis.description}</p>
                 </div>
               ))}
             </div>
@@ -167,38 +167,38 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="mb-12"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">How We Process Your Data</h2>
-            
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-6">How We Process Your Data</h2>
+
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Collection</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  We collect personal data only when necessary for providing our language learning services. 
+                <h3 className="text-lg font-semibold text-white mb-2">Data Collection</h3>
+                <p className="text-white/60 leading-relaxed">
+                  We collect personal data only when necessary for providing our language learning services.
                   This includes account information, learning progress, and usage analytics.
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Storage</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Your data is stored securely using industry-standard encryption and security measures. 
+                <h3 className="text-lg font-semibold text-white mb-2">Data Storage</h3>
+                <p className="text-white/60 leading-relaxed">
+                  Your data is stored securely using industry-standard encryption and security measures.
                   We retain data only for as long as necessary to provide our services or as required by law.
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Sharing</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  We do not sell your personal data. We may share data with trusted service providers who help us 
+                <h3 className="text-lg font-semibold text-white mb-2">Data Sharing</h3>
+                <p className="text-white/60 leading-relaxed">
+                  We do not sell your personal data. We may share data with trusted service providers who help us
                   operate our platform, but only under strict contractual obligations to protect your privacy.
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">International Transfers</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  If we transfer your data outside the EU, we ensure appropriate safeguards are in place, 
+                <h3 className="text-lg font-semibold text-white mb-2">International Transfers</h3>
+                <p className="text-white/60 leading-relaxed">
+                  If we transfer your data outside the EU, we ensure appropriate safeguards are in place,
                   such as adequacy decisions or standard contractual clauses.
                 </p>
               </div>
@@ -213,18 +213,18 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.9 }}
           className="mb-12"
         >
-          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">How to Exercise Your Rights</h2>
-            
+          <div className="bg-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20">
+            <h2 className="text-2xl font-bold text-white mb-6">How to Exercise Your Rights</h2>
+
             <div className="space-y-4">
-              <p className="text-gray-600 leading-relaxed">
-                To exercise any of your GDPR rights, please contact us using the information below. We will respond 
+              <p className="text-white/60 leading-relaxed">
+                To exercise any of your GDPR rights, please contact us using the information below. We will respond
                 to your request within one month, or sooner when possible.
               </p>
-              
-              <div className="bg-white rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">What to Include in Your Request</h3>
-                <ul className="space-y-2 text-gray-600">
+
+              <div className="bg-[#13131F] rounded-xl p-6 border border-white/[0.10]">
+                <h3 className="text-lg font-semibold text-white mb-3">What to Include in Your Request</h3>
+                <ul className="space-y-2 text-white/60">
                   <li className="flex items-start">
                     <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
                     <span>Your full name and email address associated with your account</span>
@@ -254,14 +254,14 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 1.0 }}
           className="mb-12"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Data Protection Officer</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              We have appointed a Data Protection Officer (DPO) to oversee our data protection practices and 
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-6">Data Protection Officer</h2>
+            <p className="text-white/60 leading-relaxed mb-4">
+              We have appointed a Data Protection Officer (DPO) to oversee our data protection practices and
               ensure compliance with GDPR requirements.
             </p>
-            <p className="text-gray-600 leading-relaxed">
-              You can contact our DPO directly for any data protection concerns or questions about how we 
+            <p className="text-white/60 leading-relaxed">
+              You can contact our DPO directly for any data protection concerns or questions about how we
               handle your personal information.
             </p>
           </div>
@@ -274,38 +274,38 @@ const GDPRCompliance: React.FC = () => {
           transition={{ duration: 0.6, delay: 1.1 }}
           className="mb-8"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Us</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-6">Contact Us</h2>
+            <p className="text-white/60 mb-6">
               For any GDPR-related questions or to exercise your rights, please contact us:
             </p>
-            
+
             <div className="grid md:grid-cols-3 gap-6">
               <div className="flex items-center">
                 <Mail className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">Email</p>
-                  <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] hover:underline">
+                  <p className="font-medium text-white">Email</p>
+                  <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] hover:text-white transition-colors">
                     hello@mytacoai.com
                   </a>
                 </div>
               </div>
-              
+
               <div className="flex items-center">
                 <Phone className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">Phone</p>
-                  <a href="tel:+31-0657126162" className="text-[#4ECFBF] hover:underline">
+                  <p className="font-medium text-white">Phone</p>
+                  <a href="tel:+31-0657126162" className="text-[#4ECFBF] hover:text-white transition-colors">
                     +31 0657126162
                   </a>
                 </div>
               </div>
-              
+
               <div className="flex items-center">
                 <MapPin className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">Address</p>
-                  <p className="text-gray-600">Amsterdam, Netherlands</p>
+                  <p className="font-medium text-white">Address</p>
+                  <p className="text-white/60">Amsterdam, Netherlands</p>
                 </div>
               </div>
             </div>
@@ -318,11 +318,11 @@ const GDPRCompliance: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.2 }}
         >
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">Right to Lodge a Complaint</h3>
-            <p className="text-blue-700">
-              If you believe we have not handled your personal data in accordance with GDPR, you have the right to 
-              lodge a complaint with your local data protection authority. However, we encourage you to contact us 
+          <div className="bg-[#4ECFBF]/5 border border-[#4ECFBF]/20 rounded-2xl p-6">
+            <h3 className="text-lg font-semibold text-[#4ECFBF] mb-2">Right to Lodge a Complaint</h3>
+            <p className="text-white/60">
+              If you believe we have not handled your personal data in accordance with GDPR, you have the right to
+              lodge a complaint with your local data protection authority. However, we encourage you to contact us
               first so we can try to resolve any concerns directly.
             </p>
           </div>

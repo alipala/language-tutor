@@ -10,6 +10,8 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  background: #0A0A0F;
+  color: #fff;
 }
 
 .section-background {
@@ -456,11 +458,68 @@
   .landing-third .animated-gradient-text {
     font-size: 2rem;
   }
-  
+
   /* Keep button text small on mobile */
   button .animated-gradient-text,
   .button .animated-gradient-text {
     font-size: 0.875rem !important;
     font-weight: 500 !important;
+  }
+}
+
+/* ── Headline shimmer (hero second line) ─────────────────── */
+.headline-shimmer {
+  background: linear-gradient(
+    100deg,
+    #4ECFBF 0%,
+    #7EEEE3 30%,
+    #ffffff 48%,
+    #7EEEE3 66%,
+    #7C3AED 100%
+  );
+  background-size: 220% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: headlineShimmer 5s linear infinite;
+}
+
+@keyframes headlineShimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 220% center; }
+}
+
+/* ── Mobile responsive fixes (375px – 480px) ──────────────── */
+@media (max-width: 480px) {
+  .section-content {
+    padding: 1rem;
+  }
+
+  .landing-first h1 {
+    font-size: 2rem;
+  }
+
+  .landing-first .section-description {
+    font-size: 1rem;
+  }
+
+  .feature-card {
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+
+  .app-download-image {
+    border-radius: 12px;
+  }
+}
+
+/* ── Tablet responsive fixes (481px – 768px) ───────────────── */
+@media (min-width: 481px) and (max-width: 768px) {
+  .section-content {
+    padding: 1.5rem;
+  }
+
+  .landing-first h1 {
+    font-size: 2.5rem;
   }
 }

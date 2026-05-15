@@ -181,7 +181,7 @@ export default function RootLayout({
               <SubscriptionProvider>
                 <LearningPlansProvider>
                   <PlanModalProvider>
-                  <div className="app-background min-h-screen w-full bg-white">
+                  <div className="app-background min-h-screen w-full" style={{ backgroundColor: '#0A0A0F' }}>
                     <NavBar />
                     <main id="main-content" tabIndex={-1} className="outline-none">
                       {children}

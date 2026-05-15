@@ -1,414 +1,321 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  MessageSquare, 
-  Globe, 
-  Shield, 
-  Users, 
-  BookOpen, 
-  Award,
-  Mail,
-  Phone,
-  MapPin,
-  Linkedin,
-  Youtube,
-  Instagram,
-  ChevronRight,
-  Heart,
-  Zap,
-  Star,
-  TrendingUp
-} from 'lucide-react';
 import { Logo } from './logo';
+import {
+  Mail, Phone, MapPin,
+  Linkedin, Youtube, Instagram,
+  ChevronRight, Heart, Shield,
+  Users, BookOpen, Globe, MessageSquare, Star, Zap,
+} from 'lucide-react';
 
-const Footer: React.FC = () => {
-  const currentYear = new Date().getFullYear();
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const [email, setEmail] = useState('');
+const NAV_SECTIONS = [
+  {
+    title: 'Company',
+    links: [
+      { name: 'About Us',   href: '/about',          icon: Users    },
+      { name: 'Press Kit',  href: '/press',           icon: Star     },
+      { name: 'Blog',       href: '/blog',            icon: BookOpen },
+      { name: 'Research',   href: '/research',        icon: Zap      },
+    ],
+  },
+  {
+    title: 'Product',
+    links: [
+      { name: 'For Schools',    href: '/institution/login', icon: Users   },
+      { name: 'Responsible AI', href: '/responsible-ai',    icon: Shield  },
+      { name: 'Help Center',    href: '/help',              icon: MessageSquare },
+      { name: 'System Status',  href: '/status',            icon: Globe   },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { name: 'Privacy Policy',  href: '/privacy', icon: Shield   },
+      { name: 'Terms of Service',href: '/terms',   icon: BookOpen },
+      { name: 'Cookie Policy',   href: '/cookies', icon: Globe    },
+      { name: 'GDPR',            href: '/gdpr',    icon: Shield   },
+    ],
+  },
+];
+
+const SOCIAL = [
+  { name: 'LinkedIn',  href: 'https://www.linkedin.com/company/mytaco-ai', icon: Linkedin  },
+  { name: 'Instagram', href: 'https://www.instagram.com/mytacoai/',        icon: Instagram },
+  { name: 'YouTube',   href: 'https://www.youtube.com/@MyTacoAI',          icon: Youtube   },
+];
+
+const STORE_LINKS = [
+  {
+    label: 'App Store',
+    href: 'https://apps.apple.com/br/app/mytaco/id6757149290?l=en-GB',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Google Play',
+    href: 'https://play.google.com/store/apps/details?id=com.bigdavinci.MyTacoAI',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3.18 23.76c.34.19.73.23 1.1.12l12.02-12.02-2.49-2.49L3.18 23.76zM20.54 10.23l-2.93-1.65-2.81 2.81 2.81 2.81 2.96-1.67c.84-.47.84-1.83-.03-2.3zM1.91.17C1.65.45 1.5.86 1.5 1.38v21.24c0 .52.15.93.41 1.21l.07.06L13.17 12 1.98.11l-.07.06zM14.38 12l2.49-2.49L4.28.23c-.35-.2-.73-.24-1.1-.14L14.38 12z" />
+      </svg>
+    ),
+  },
+];
+
+export default function Footer() {
+  const [email, setEmail]               = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [subscriptionMessage, setSubscriptionMessage] = useState('');
+  const [subscribeState, setSubscribeState] = useState<'idle' | 'success' | 'error'>('idle');
+  const [message, setMessage]           = useState('');
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const footer = document.querySelector('footer');
-      if (footer) {
-        const footerRect = footer.getBoundingClientRect();
-        const windowHeight = window.innerHeight;
-        
-        // Show button only when footer is visible (at least 100px of footer is visible)
-        const isFooterVisible = footerRect.top < windowHeight - 100;
-        setShowScrollButton(isFooterVisible);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Check initial state
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Handle newsletter subscription
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email.trim()) {
-      setSubscriptionMessage('Please enter your email address');
-      return;
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setSubscriptionMessage('Please enter a valid email address');
-      return;
-    }
+    if (!email.trim()) return;
 
     setIsSubscribing(true);
-    
     try {
-      // Get the API URL based on environment
-      const apiUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://taco.up.railway.app' 
+      const apiUrl = process.env.NODE_ENV === 'production'
+        ? 'https://taco.up.railway.app'
         : 'http://localhost:8000';
-      
-      console.log('🔄 Newsletter subscription attempt:', {
-        email: email.trim(),
-        apiUrl,
-        timestamp: new Date().toISOString()
-      });
-      
-      const response = await fetch(`${apiUrl}/api/subscribe`, {
+
+      const res  = await fetch(`${apiUrl}/api/subscribe`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       });
+      const data = await res.json();
 
-      console.log('📡 API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
-      const data = await response.json();
-      console.log('📊 Response data:', data);
-
-      if (response.ok && data.success) {
-        if (data.already_subscribed) {
-          setSubscriptionMessage('You are already subscribed to our newsletter!');
-        } else {
-          setSubscriptionMessage('Successfully subscribed! Thank you for joining our newsletter.');
-        }
-        setEmail(''); // Clear the email input
-        setShowSuccessModal(true);
-        
-        // Auto-hide modal after 5 seconds
-        setTimeout(() => {
-          setShowSuccessModal(false);
-        }, 5000);
+      if (res.ok && data.success) {
+        setSubscribeState('success');
+        setMessage(data.already_subscribed ? 'Already subscribed!' : 'You\'re in! Welcome to the community.');
+        setEmail('');
       } else {
-        setSubscriptionMessage(data.detail || 'Failed to subscribe. Please try again.');
+        setSubscribeState('error');
+        setMessage(data.detail || 'Something went wrong. Try again.');
       }
-    } catch (error) {
-      console.error('Subscription error:', error);
-      setSubscriptionMessage('Network error. Please check your connection and try again.');
+    } catch {
+      setSubscribeState('error');
+      setMessage('Network error. Check your connection.');
     } finally {
       setIsSubscribing(false);
+      setTimeout(() => setSubscribeState('idle'), 5000);
     }
   };
 
-  const footerSections = [
-    {
-      title: "Company",
-      links: [
-        { name: "About Us", href: "/about", icon: Users },
-        { name: "Press Kit", href: "/press", icon: Star },
-        { name: "Blog", href: "/blog", icon: BookOpen },
-        { name: "Research", href: "/research", icon: Zap }
-      ]
-    },
-    {
-      title: "For Schools",
-      links: [
-        { name: "School Access", href: "/institution/login", icon: Users }
-      ]
-    },
-    {
-      title: "Responsible AI",
-      links: [
-        { name: "What We Think", href: "/responsible-ai", icon: Shield }
-      ]
-    },
-    {
-      title: "Legal",
-      links: [
-        { name: "Privacy Policy", href: "/privacy", icon: Shield },
-        { name: "Terms of Service", href: "/terms", icon: BookOpen },
-        { name: "Cookie Policy", href: "/cookies", icon: Globe },
-        { name: "GDPR Compliance", href: "/gdpr", icon: Shield }
-      ]
-    },
-    {
-      title: "Support",
-      links: [
-        { name: "Help Center", href: "/help", icon: MessageSquare },
-        { name: "Community", href: "/community", icon: Users },
-        { name: "System Status", href: "/status", icon: Shield }
-      ]
-    }
-  ];
-
-  const socialLinks = [
-    { name: "LinkedIn", href: "https://www.linkedin.com/company/mytaco-ai", icon: Linkedin },
-    { name: "Instagram", href: "https://www.instagram.com/mytacoai/", icon: Instagram },
-    { name: "YouTube", href: "https://www.youtube.com/@MyTacoAI", icon: Youtube }
-  ];
-
-  const legalLinks = [
-    { name: "Privacy Policy", href: "/privacy" },
-    { name: "Terms of Service", href: "/terms" },
-    { name: "Cookie Policy", href: "/cookies" },
-    { name: "GDPR Compliance", href: "/gdpr" }
-  ];
-
-  const stats = [
-    { label: "Active Learners", value: "50K+", icon: Users },
-    { label: "Languages Supported", value: "6", icon: Globe },
-    { label: "Conversations Daily", value: "10K+", icon: MessageSquare },
-    { label: "Success Rate", value: "94%", icon: Award }
-  ];
-
   return (
-    <footer className="relative bg-[#4ecfbf] text-white overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
-        <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="footer-pattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-              <circle cx="30" cy="30" r="1.5" fill="currentColor" opacity="0.2"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#footer-pattern)"/>
-        </svg>
-      </div>
+    <footer
+      className="relative border-t overflow-hidden"
+      style={{ background: '#080810', borderColor: 'rgba(255,255,255,0.06)' }}
+    >
+      {/* Ambient top glow */}
+      <div
+        className="pointer-events-none absolute top-0 inset-x-0 h-px"
+        style={{
+          background: 'linear-gradient(to right, transparent 0%, rgba(78,207,191,0.5) 30%, rgba(124,58,237,0.4) 70%, transparent 100%)',
+          boxShadow: '0 0 40px 6px rgba(78,207,191,0.15)',
+        }}
+      />
 
-      {/* Main Footer Content */}
-      <div className="relative max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-12">
-          {/* Company Info */}
-          <div className="lg:col-span-2">
-            <div className="mb-6">
-              <div className="scale-75 origin-left">
-                <Logo 
-                  variant="full" 
-                  context="footer"
-                />
-              </div>
+      {/* ── Main grid ─────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12">
+
+          {/* Brand column */}
+          <div className="md:col-span-2 lg:col-span-4">
+            <div className="mb-5 scale-90 origin-left">
+              <Logo variant="full" context="footer" />
             </div>
-            
-            <p className="text-white/70 mb-6 leading-relaxed">
-              Revolutionizing language learning through AI-powered conversations, personalized feedback, 
-              and adaptive learning experiences. Master any language with confidence.
+
+            <p className="text-white/40 text-sm leading-relaxed mb-8 max-w-xs">
+              AI-powered language learning built from your Voice DNA.
+              Personalised plans, daily missions, and real conversations
+              that evolve with every word you speak.
             </p>
 
-            {/* Contact Info */}
+            {/* Contact */}
             <div className="space-y-3 mb-8">
-              <div className="flex items-center text-white/70 hover:text-white transition-colors">
-                <Mail className="w-5 h-5 mr-3 text-white/90" />
-                <a href="mailto:hello@mytacoai.com" className="hover:underline">
-                  hello@mytacoai.com
-                </a>
-              </div>
-              <div className="flex items-center text-white/70 hover:text-white transition-colors">
-                <Phone className="w-5 h-5 mr-3 text-white/90" />
-                <a href="tel:+31657126162" className="hover:underline">
-                  +31(6)57 126 162
-                </a>
-              </div>
-              <div className="flex items-center text-white/70">
-                <MapPin className="w-5 h-5 mr-3 text-white/90" />
-                <span>Amsterdam, NL</span>
-              </div>
+              {[
+                { icon: Mail,    text: 'hello@mytacoai.com',  href: 'mailto:hello@mytacoai.com'  },
+                { icon: Phone,   text: '+31 6 21 18 55 93',   href: 'tel:+31621185593'            },
+                { icon: MapPin,  text: 'Amsterdam, NL',       href: null                          },
+              ].map(({ icon: Icon, text, href }) => (
+                <div key={text} className="flex items-center gap-3 text-sm">
+                  <Icon className="w-4 h-4 text-[#4ECFBF] shrink-0" />
+                  {href
+                    ? <a href={href} className="text-white/40 hover:text-white/80 transition-colors">{text}</a>
+                    : <span className="text-white/40">{text}</span>
+                  }
+                </div>
+              ))}
             </div>
 
-            {/* Social Links */}
-            <div className="flex space-x-4">
-              {socialLinks.map((social) => (
+            {/* Social icons */}
+            <div className="flex gap-3">
+              {SOCIAL.map(s => (
                 <a
-                  key={social.name}
-                  href={social.href}
+                  key={s.name}
+                  href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 bg-white/10 hover:bg-[#4ECFBF] rounded-lg flex items-center justify-center transition-all duration-300 group hover:scale-110 active:scale-95"
+                  aria-label={s.name}
+                  className="w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] flex items-center justify-center text-white/40 hover:text-white hover:border-[#4ECFBF]/40 hover:bg-[#4ECFBF]/10 transition-all duration-200"
                 >
-                  <social.icon className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
+                  <s.icon className="w-4 h-4" />
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Footer Links */}
-          {footerSections.map((section, sectionIndex) => (
-            <div
-              key={section.title}
-              className="lg:col-span-1"
-            >
-              <h4 className="text-lg font-semibold mb-6 text-white">
-                {section.title}
-              </h4>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.name}>
-                    <a
-                      href={link.href}
-                      className="group flex items-center text-white/70 hover:text-white transition-all duration-300"
-                    >
-                      <link.icon className="w-4 h-4 mr-3 opacity-60 group-hover:opacity-100 transition-opacity" />
-                      <span className="group-hover:translate-x-1 transition-transform duration-300">
+          {/* Nav columns */}
+          <div className="md:col-span-2 lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+            {NAV_SECTIONS.map(section => (
+              <div key={section.title}>
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30 mb-5">
+                  {section.title}
+                </h4>
+                <ul className="space-y-3">
+                  {section.links.map(link => (
+                    <li key={link.name}>
+                      <a
+                        href={link.href}
+                        className="group flex items-center gap-2 text-sm text-white/45 hover:text-white transition-colors duration-200"
+                      >
+                        <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-1 transition-all duration-200 group-hover:translate-x-0.5 text-[#4ECFBF]" />
                         {link.name}
-                      </span>
-                      <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
 
-        {/* Newsletter Signup */}
-        <div className="mt-16 p-8 bg-white rounded-2xl border border-gray-200 shadow-lg">
-          <div className="max-w-2xl mx-auto text-center">
-            <h4 className="text-xl font-bold mb-3 text-gray-800">Stay Updated</h4>
-            <p className="text-gray-600 mb-6">
-              Get the latest language learning tips, feature updates, and exclusive content delivered to your inbox.
+          {/* Newsletter + Store */}
+          <div className="md:col-span-2 lg:col-span-3">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30 mb-5">
+              Stay Updated
+            </h4>
+            <p className="text-sm text-white/40 mb-4 leading-relaxed">
+              Language tips, feature drops, and exclusive content.
             </p>
-            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isSubscribing}
-                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                required
-              />
-              <button 
-                type="submit"
-                disabled={isSubscribing}
-                className="px-6 py-3 bg-white border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] text-[#4ECFBF] hover:text-white font-medium rounded-lg transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubscribing ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-[#4ECFBF] border-t-transparent rounded-full mr-2"></div>
-                    Subscribing...
-                  </>
-                ) : (
-                  <>
-                    Subscribe
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
 
-      {/* Bottom Bar */}
-      <div className="relative border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            {/* Copyright */}
-            <div className="flex flex-col items-start text-white/70">
-              <div className="flex items-center mb-1">
-                <span>© {currentYear} My TaCo. Made with</span>
-                <Heart className="w-4 h-4 mx-2 text-red-400 fill-current" />
-                <span>for language learners worldwide.</span>
-              </div>
-              <div className="text-sm">
-                <span>Big Davinci • KVK: 90200004</span>
-              </div>
-            </div>
-
-            {/* Legal Links */}
-            <div className="flex flex-wrap items-center gap-6">
-              {legalLinks.map((link, index) => (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className="text-white/70 hover:text-[#4ECFBF] transition-colors duration-300 text-sm"
-                >
-                  {link.name}
-                </a>
-              ))}
-            </div>
-
-            {/* Security Badge */}
-            <div className="flex items-center text-white/70">
-              <Shield className="w-4 h-4 mr-2 text-[#4ECFBF]" />
-              <span className="text-sm">SOC 2 Compliant</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Action Button - Only visible when footer is in view */}
-      <AnimatePresence>
-        {showScrollButton && (
-          <button
-            className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform duration-300 z-50"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          >
-            <ChevronRight className="w-6 h-6 rotate-[-90deg]" />
-          </button>
-        )}
-      </AnimatePresence>
-
-      {/* Success Modal */}
-      <AnimatePresence>
-        {showSuccessModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4"
-            onClick={() => setShowSuccessModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.5 }}
-              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Success!</h3>
-                <p className="text-gray-600 mb-6">{subscriptionMessage}</p>
+            <form onSubmit={handleSubscribe} className="mb-6">
+              <div className="flex flex-col gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  disabled={isSubscribing}
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 border border-white/[0.08] bg-white/[0.04] focus:outline-none focus:border-[#4ECFBF]/50 focus:bg-white/[0.06] transition-all duration-200 disabled:opacity-50"
+                />
                 <button
-                  onClick={() => setShowSuccessModal(false)}
-                  className="px-6 py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors duration-300"
+                  type="submit"
+                  disabled={isSubscribing}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#4ECFBF] text-[#080810] hover:bg-[#3dc4b5] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Close
+                  {isSubscribing ? 'Subscribing…' : 'Subscribe'}
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              <AnimatePresence>
+                {subscribeState !== 'idle' && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className={`mt-2 text-xs ${subscribeState === 'success' ? 'text-[#10B981]' : 'text-[#EF4444]'}`}
+                  >
+                    {message}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </form>
+
+            {/* App store badges */}
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">
+              Download the App
+            </h4>
+            <div className="flex flex-col gap-2">
+              {STORE_LINKS.map(s => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-semibold text-white/70 hover:text-white hover:border-[#4ECFBF]/30 hover:bg-[#4ECFBF]/08 transition-all duration-200 group"
+                  style={{ backgroundColor: 'rgba(78,207,191,0)' }}
+                >
+                  <span className="text-[#4ECFBF] group-hover:scale-110 transition-transform">{s.icon}</span>
+                  {s.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Divider ────────────────────────────────────────────── */}
+      <div
+        className="mx-6"
+        style={{ height: 1, background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0.06) 80%, transparent)' }}
+      />
+
+      {/* ── Bottom bar ─────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+
+          <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 text-xs text-white/25">
+            <span className="flex items-center gap-1.5">
+              © {new Date().getFullYear()} MyTaco AI · Made with
+              <Heart className="w-3 h-3 text-[#EF4444] fill-current" />
+              for language learners worldwide
+            </span>
+            <span className="hidden sm:inline opacity-40">·</span>
+            <span>Big Davinci · KVK 90200004</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            {[
+              { label: 'Privacy',  href: '/privacy' },
+              { label: 'Terms',    href: '/terms'   },
+              { label: 'Cookies',  href: '/cookies' },
+              { label: 'GDPR',     href: '/gdpr'    },
+            ].map(l => (
+              <a
+                key={l.label}
+                href={l.href}
+                className="text-xs text-white/25 hover:text-white/60 transition-colors duration-200"
+              >
+                {l.label}
+              </a>
+            ))}
+            <span className="hidden sm:flex items-center gap-1.5 text-xs text-white/25">
+              <Shield className="w-3 h-3 text-[#4ECFBF]" />
+              SOC 2
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Scroll-to-top button */}
+      <motion.button
+        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-10 h-10 rounded-full border border-[#4ECFBF]/30 bg-[#4ECFBF]/10 backdrop-blur-md flex items-center justify-center text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+        aria-label="Scroll to top"
+      >
+        <ChevronRight className="w-4 h-4 -rotate-90" />
+      </motion.button>
     </footer>
   );
-};
-
-export default Footer;
+}

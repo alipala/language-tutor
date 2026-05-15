@@ -1,719 +1,875 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { useNavigation } from '@/lib/navigation';
 import NavBar from '@/components/nav-bar';
-import { TypeAnimation } from 'react-type-animation';
 import FAQSection from '@/components/faq-section';
 import LearningPlanDashboard from '@/components/dashboard/LearningPlanDashboard';
 import ProjectKnowledgeChatbot from '@/components/project-knowledge-chatbot';
 import SubscriptionPlans from '@/components/subscription-plans';
 import SoundWaveLoader from '@/components/sound-wave-loader';
-import './landing-sections.css';
-import { motion } from 'framer-motion';
-import { prefetchCriticalData } from '@/lib/api-service';
+import { motion, AnimatePresence } from 'framer-motion';
+import LearningJourneySection from '@/components/learning-journey-section';
 
-// Export the main component
+/**
+ * SectionDivider — layered separator between dark sections.
+ *
+ * Three layers rendered in a 64px tall container:
+ *  1. Top closing gradient — the outgoing section fades to transparent.
+ *  2. Hairline — full-width line that fades at both edges via a horizontal gradient,
+ *     with its full-width glow spread via box-shadow.
+ *  3. Centered orb — a soft radial glow at the midpoint that acts as a
+ *     focal "light source", making the transition feel physical not decorative.
+ *  4. Bottom opening gradient — the incoming section opens from transparent.
+ */
+function SectionDivider({ accent = '#4ECFBF' }: { accent?: string }) {
+  return (
+    <div className="relative w-full pointer-events-none select-none" style={{ height: 64, overflow: 'visible' }}>
+      {/* Layer 1: closing gradient — top half fades the outgoing section */}
+      <div
+        className="absolute inset-x-0 top-0"
+        style={{
+          height: 32,
+          background: `linear-gradient(to bottom, transparent, rgba(255,255,255,0.015))`,
+        }}
+      />
+
+      {/* Layer 2: hairline + wide glow */}
+      <div
+        className="absolute inset-x-0"
+        style={{
+          top: 31,
+          height: 1,
+          background: `linear-gradient(to right, transparent 0%, ${accent}55 20%, ${accent}99 50%, ${accent}55 80%, transparent 100%)`,
+          boxShadow: `0 0 18px 4px ${accent}30, 0 0 48px 12px ${accent}14`,
+        }}
+      />
+
+      {/* Layer 3: centered orb — tiny bright point at the middle of the line */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2"
+        style={{
+          top: 28,
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: accent,
+          opacity: 0.9,
+          boxShadow: `0 0 12px 4px ${accent}80, 0 0 32px 10px ${accent}40, 0 0 64px 20px ${accent}18`,
+        }}
+      />
+
+      {/* Layer 4: opening gradient — bottom half opens the incoming section */}
+      <div
+        className="absolute inset-x-0 bottom-0"
+        style={{
+          height: 32,
+          background: `linear-gradient(to top, transparent, rgba(255,255,255,0.015))`,
+        }}
+      />
+    </div>
+  );
+}
+
+// Fix 2 — VoiceWaveform with fixed height container (no layout shift)
+function VoiceWaveform({ bars = 40, className = '' }: { bars?: number; className?: string }) {
+  return (
+    <div className={`flex items-end gap-[3px] h-12 flex-shrink-0 ${className}`}>
+      {Array.from({ length: bars }).map((_, i) => {
+        const heights = [8, 16, 24, 32, 20, 28, 12, 36, 18, 30];
+        const baseH = heights[i % heights.length];
+        return (
+          <motion.div
+            key={i}
+            className="w-[3px] rounded-full bg-gradient-to-t from-[#4ECFBF] to-[#7EEEE3] flex-shrink-0"
+            style={{ height: baseH }}
+            animate={{ height: [baseH, baseH * 1.8, baseH * 0.6, baseH] }}
+            transition={{ duration: 1.4 + (i % 5) * 0.2, repeat: Infinity, delay: i * 0.05, ease: 'easeInOut' }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// Fix 4 — Proper hexagonal SVG Radar Chart (replaces DNAStrandMini in the DNA bento card)
+function RadarChart() {
+  const strands = [
+    { label: 'Rhythm', value: 82, color: '#4ECFBF', angle: -90 },
+    { label: 'Confidence', value: 74, color: '#7C3AED', angle: -30 },
+    { label: 'Vocabulary', value: 91, color: '#F59E0B', angle: 30 },
+    { label: 'Accuracy', value: 68, color: '#EF4444', angle: 90 },
+    { label: 'Learning', value: 85, color: '#10B981', angle: 150 },
+    { label: 'Emotional', value: 77, color: '#EC4899', angle: 210 },
+  ];
+  const cx = 110, cy = 110, r = 75;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const point = (angle: number, pct: number) => ({
+    x: cx + r * pct * Math.cos(toRad(angle)),
+    y: cy + r * pct * Math.sin(toRad(angle)),
+  });
+  const polygon = strands.map(s => point(s.angle, s.value / 100));
+  const polygonStr = polygon.map(p => `${p.x},${p.y}`).join(' ');
+  const rings = [0.25, 0.5, 0.75, 1.0];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <svg width="220" height="220" viewBox="0 0 220 220">
+        <defs>
+          <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#4ECFBF" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.15" />
+          </radialGradient>
+        </defs>
+        {/* Grid rings */}
+        {rings.map((ring, ri) => {
+          const pts = strands.map(s => point(s.angle, ring));
+          return (
+            <polygon
+              key={ri}
+              points={pts.map(p => `${p.x},${p.y}`).join(' ')}
+              fill="none"
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth="1"
+            />
+          );
+        })}
+        {/* Axis lines */}
+        {strands.map((s, i) => {
+          const outer = point(s.angle, 1.0);
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={outer.x}
+              y2={outer.y}
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+          );
+        })}
+        {/* Filled area */}
+        <polygon
+          points={polygonStr}
+          fill="url(#radarFill)"
+          stroke="#4ECFBF"
+          strokeWidth="1.5"
+          strokeOpacity="0.6"
+        />
+        {/* Data points */}
+        {strands.map((s, i) => {
+          const p = point(s.angle, s.value / 100);
+          return <circle key={i} cx={p.x} cy={p.y} r="4" fill={s.color} />;
+        })}
+        {/* Labels */}
+        {strands.map((s, i) => {
+          const labelR = r + 22;
+          const lx = cx + labelR * Math.cos(toRad(s.angle));
+          const ly = cy + labelR * Math.sin(toRad(s.angle));
+          const anchor = lx < cx - 5 ? 'end' : lx > cx + 5 ? 'start' : 'middle';
+          return (
+            <g key={i}>
+              <text x={lx} y={ly - 4} textAnchor={anchor} fontSize="9" fill={s.color} fontWeight="600">
+                {s.label}
+              </text>
+              <text x={lx} y={ly + 8} textAnchor={anchor} fontSize="9" fill="rgba(255,255,255,0.4)">
+                {s.value}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+
+// Floating stat chip
+function StatChip({ value, label, delay = 0 }: { value: string; label: string; delay?: number }) {
+  return (
+    <motion.div
+      className="inline-flex items-center gap-2 bg-white/[0.07] backdrop-blur-md border border-white/10 rounded-full px-4 py-2"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.5 }}
+    >
+      <span className="text-[#4ECFBF] font-bold text-xs sm:text-sm">{value}</span>
+      <span className="text-white/50 text-[10px] sm:text-xs">{label}</span>
+    </motion.div>
+  );
+}
+
+// Scroll-reveal wrapper
+function Reveal({
+  children,
+  delay = 0,
+  className = '',
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 32 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function Home() {
+  const WORDS = ['Confident', 'Fluent', 'Natural', 'Unstoppable'];
   const { user, loading: authLoading } = useAuth();
-  const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Institution/Tutor user detection
+  const [wordIndex, setWordIndex] = useState(0);
   const [isInstitutionUser, setIsInstitutionUser] = useState(false);
   const [isTutorUser, setIsTutorUser] = useState(false);
 
-  // For automatic navigation if needed
-  const [shouldAutoNavigate, setShouldAutoNavigate] = useState(false);
-  const [maxRedirectAttempts] = useState(3);
-  const redirectAttemptsRef = useRef(0);
+  useEffect(() => {
+    const id = setInterval(() => setWordIndex(i => (i + 1) % WORDS.length), 2800);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Video player state
-  const [showVideo, setShowVideo] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  
-  // Scroll to section function
-  const scrollToSection = (sectionId: string) => {
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-  
-  // Handle automatic navigation based on conditions
-  const handleAutomaticNavigation = () => {
-    redirectAttemptsRef.current += 1;
-    
-    if (redirectAttemptsRef.current > maxRedirectAttempts) {
-      console.log('Hit max redirect attempts, showing manual navigation options');
-      setShouldAutoNavigate(false);
-      setIsLoading(false);
-      return;
-    }
-    
-    // Check for active practice session
-    const hasPendingPractice = localStorage.getItem('pendingPractice') === 'true';
-    if (hasPendingPractice && user) {
-      console.log('User has pending practice, redirecting to profile');
-      // Use an available navigation method
-      navigation.navigateToProfile();
-      return;
-    }
-    
-    // More navigation logic can be added here
-    
-    // If no automatic navigation is needed
-    setShouldAutoNavigate(false);
-    setIsLoading(false);
-  };
-  
-  // Handle start learning button click
-  const handleStartLearning = () => {
-    setIsLoading(true);
-    
-    // Clear any previous selections
-    sessionStorage.removeItem('selectedLanguage');
-    sessionStorage.removeItem('selectedLevel');
-    sessionStorage.removeItem('selectedTopic');
-    sessionStorage.removeItem('customTopicPrompt');
-    
-    // Set a flag to prevent automatic redirects
-    sessionStorage.setItem('manualNavigation', 'true');
-    
-    // Navigate to language selection
-    try {
-      navigation.navigateToLanguageSelection();
-    } catch (err) {
-      console.error('Navigation failed:', err);
-      setError('Navigation failed. Please try again or refresh the page.');
-      setIsLoading(false);
-    }
-  };
-  
-  // Handle sign in button click
-  const handleSignIn = () => {
-    setIsLoading(true);
-    
-    // Set a flag to prevent automatic redirects
-    sessionStorage.setItem('manualNavigation', 'true');
-    
-    // Navigate to login page
-    try {
-      navigation.navigateToLogin();
-    } catch (err) {
-      console.error('Navigation failed:', err);
-      setError('Navigation failed. Please try again or refresh the page.');
-      setIsLoading(false);
-    }
-  };
-  
-  // Check for B2B user detection (Institution/Tutor)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const institutionToken = localStorage.getItem('institution_token');
-      const tutorToken = localStorage.getItem('tutorToken');
-      setIsInstitutionUser(!!institutionToken);
-      setIsTutorUser(!!tutorToken);
+      setIsInstitutionUser(!!localStorage.getItem('institution_token'));
+      setIsTutorUser(!!localStorage.getItem('tutorToken'));
     }
   }, []);
 
-  // Initial useEffect for auth checking and redirects
   useEffect(() => {
-    // Only run in browser
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || authLoading) return;
+    setIsLoading(false);
+  }, [authLoading, user]);
 
-    // Wait for auth to be checked
-    if (authLoading) return;
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    // Log environment information for debugging
-    console.log('Home page loaded at:', new Date().toISOString());
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('Auth status:', user ? 'Logged in' : 'Not logged in');
-    console.log('Institution user:', isInstitutionUser, 'Tutor user:', isTutorUser);
-    console.log('Current pathname:', window.location.pathname);
-
-    // Check if we should continue with normal page loading
-    if (shouldAutoNavigate) {
-      handleAutomaticNavigation();
-    } else {
-      // Clear loading state if we're not redirecting
-      setIsLoading(false);
-    }
-  }, [authLoading, user, shouldAutoNavigate, isInstitutionUser, isTutorUser]);
-
-  // Show dashboard for authenticated users
+  // Authenticated users see their dashboard
   if (!authLoading && user) {
     return (
       <div className="min-h-screen overflow-x-hidden w-full">
         <NavBar />
         <LearningPlanDashboard />
-        {/* Project Knowledge Chatbot - Available for authenticated users too */}
         <ProjectKnowledgeChatbot />
       </div>
     );
   }
-  
-  // Show landing page for guests
+
   return (
-    <div className="min-h-screen overflow-x-hidden w-full">
+    <div className="min-h-screen overflow-x-hidden w-full bg-[#0A0A0F]">
       <NavBar />
-      
+
       {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-white">
-          <SoundWaveLoader 
-            size="lg"
-            color="#4ECFBF"
-            text="Loading..."
-            subtext="Preparing your language learning experience"
-          />
+        <div className="min-h-screen flex items-center justify-center bg-[#0A0A0F]">
+          <SoundWaveLoader size="lg" color="#4ECFBF" text="Loading..." subtext="Preparing your experience" />
         </div>
       ) : (
         <main className="start-screen">
-          {/* First Section */}
-          <section id="features" className="landing-section landing-first">
-            <div className="section-background"></div>
-            <div className="section-content">
-              <div className="bg-white rounded-xl p-10 border-2 border-gray-200 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] w-[125%] max-w-none -mx-[12.5%] py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                  {/* Left Column - Content */}
-                  <div className="text-left">
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-left">
-                    <span className="block mb-2 text-gray-800">Hey there! 👋</span>
-                    <span className="animated-gradient-text">Speak Fluently in 5 Minutes Daily</span>
-                  </h1>
 
-                  <div className="section-description max-w-xl text-left mb-8 text-gray-600 text-lg font-medium">
-                    Master any language through real-time AI conversations that adapt to your schedule. From beginner to confident speaker in weeks, not years.
-                  </div>
-
-                  {/* Only show CTA buttons for non-B2B users (regular guests) */}
-                  {!isInstitutionUser && !isTutorUser && (
-                    <div className="flex flex-col sm:flex-row justify-start gap-4 mb-8 w-full">
-                      {/* PRIMARY BUTTON - Start Speaking Today */}
-                      <button
-                        onClick={() => window.location.href = '/flow'}
-                        className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-white bg-[#4ECFBF] border-2 border-[#4ECFBF] rounded-xl hover:bg-[#3a9e92] hover:border-[#3a9e92] transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <>
-                            <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                            <span>Loading...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Start Speaking Today</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                          </>
-                        )}
-                      </button>
-
-                      {/* SECONDARY BUTTON - See How It Works */}
-                      <button
-                        onClick={() => scrollToSection('how-it-works')}
-                        className="inline-flex items-center justify-center px-5 py-3 min-h-[48px] w-full sm:w-fit text-base font-medium text-[#4ECFBF] bg-white border-2 border-[#4ECFBF] rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
-                      >
-                        <span>See How It Works</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-6 text-sm text-gray-600">
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/>
-                      </svg>
-                      <span>Real-time voice conversations</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-[#4ECFBF]" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/>
-                      </svg>
-                      <span>6 languages available</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-[#4ECFBF]" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/>
-                      </svg>
-                      <span>Available 24/7</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/>
-                      </svg>
-                      <span>Personalized learning plans</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/>
-                      </svg>
-                      <span>Instant feedback & corrections</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Right Column - Conversation Demo with Video */}
-                <div 
-                  className="hidden md:block rounded-xl bg-white border border-gray-200 p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_60px_-15px_rgba(58,158,146,0.25)] transition-all duration-300 transform scale-110 -mt-8 relative cursor-pointer group"
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                  onClick={() => setShowVideo(true)}
-                >
-                  <div className="bg-gray-100 rounded-t-lg p-2 border-b border-gray-200 flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-[#FF5F57] mr-2"></div>
-                      <div className="w-3 h-3 rounded-full bg-[#FFBD2E] mr-2"></div>
-                      <div className="w-3 h-3 rounded-full bg-[#28CA41]"></div>
-                    </div>
-                    <div className="text-center text-sm text-gray-700 font-medium">
-                      {showVideo ? 'Live Demo Video' : 'Realtime Conversation'}
-                    </div>
-                    <div className="w-12"></div>
-                  </div>
-                  
-                  {!showVideo ? (
-                    <>
-                      {/* Conversation Demo Content */}
-                      <div className="h-80 overflow-hidden p-3 space-y-2 relative">
-                        {/* Coach Message */}
-                        <div className="flex items-start">
-                          <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
-                            <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
-                          </div>
-                          <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
-                            <p className="text-sm">Hi there! Let's talk about your hobbies. What do you enjoy doing?</p>
-                          </div>
-                        </div>
-                        
-                        {/* User Message */}
-                        <div className="flex items-start justify-end">
-                          <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
-                            <p className="text-sm">I enjoy playing tennis and reading history books.</p>
-                          </div>
-                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
-                            You
-                          </div>
-                        </div>
-                        
-                        {/* Feedback */}
-                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                          <div className="text-xs text-gray-600 font-medium mb-1">Feedback:</div>
-                          <div className="grid grid-cols-3 gap-1 text-xs">
-                            <div>
-                              <span className="text-green-600 font-medium">Pronunciation: </span>
-                              <span className="text-gray-700">90%</span>
-                            </div>
-                            <div>
-                              <span className="text-amber-600 font-medium">Grammar: </span>
-                              <span className="text-gray-700">85%</span>
-                            </div>
-                            <div>
-                              <span className="text-blue-600 font-medium">Vocabulary: </span>
-                              <span className="text-gray-700">80%</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Coach Reply */}
-                        <div className="flex items-start">
-                          <div className="w-6 h-6 rounded-full bg-[#3a9e92] flex items-center justify-center shrink-0 mr-2 overflow-hidden">
-                            <img src="/images/tutors/alloy.svg" alt="Alloy" className="w-full h-full object-cover" />
-                          </div>
-                          <div className="bg-[#e6f7f5] rounded-lg p-2 text-gray-700 max-w-[75%] border border-[#3a9e92]/20">
-                            <p className="text-sm">Great! What period of history interests you most?</p>
-                          </div>
-                        </div>
-                        
-                        {/* User Reply */}
-                        <div className="flex items-start justify-end">
-                          <div className="bg-[#edf2fd] rounded-lg p-2 text-gray-700 max-w-[75%] mr-2 border border-blue-500/20">
-                            <p className="text-sm">I'm fascinated by ancient Rome and medieval Europe.</p>
-                          </div>
-                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0 text-xs">
-                            You
-                          </div>
-                        </div>
-                        
-                        {/* Input Area */}
-                        <div className="mt-auto border-t border-gray-200 pt-2">
-                          <div className="bg-gray-100 rounded-full flex items-center p-1 pr-2 w-1/2">
-                            <div className="relative">
-                              <button className="w-6 h-6 rounded-full bg-[#F75A5A] flex items-center justify-center text-white mr-2 relative z-10">
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                </svg>
-                              </button>
-                              {/* Sound Circle Animation */}
-                              <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-30 animate-ping"></div>
-                              <div className="absolute inset-0 rounded-full bg-[#F75A5A] opacity-20 animate-pulse" style={{animationDelay: '0.5s'}}></div>
-                            </div>
-                            <div className="text-gray-500 text-xs">Press to speak...</div>
-                          </div>
-                        </div>
-                        
-                        {/* Video Play Button Overlay */}
-                        <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm rounded-lg flex items-center justify-center transition-all duration-300 ${
-                          isHovering ? 'opacity-100' : 'opacity-0'
-                        }`}>
-                          <div className="bg-white/90 backdrop-blur-sm rounded-full p-6 shadow-2xl transform transition-all duration-300 hover:scale-110 group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)]">
-                            <svg className="w-12 h-12 text-[#4ECFBF] ml-1" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z"/>
-                            </svg>
-                          </div>
-                          <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg">
-                            <p className="text-sm font-medium text-gray-800 whitespace-nowrap">
-                              🎥 Watch Live Demo
-                            </p>
-                            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 w-2 h-2 bg-white/90 rotate-45"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    /* YouTube Video Player */
-                    <div className="h-80 relative">
-                      <iframe
-                        src="https://www.youtube.com/embed/64N7w2dFfDw?autoplay=1&rel=0&modestbranding=1"
-                        title="Language Tutor Demo"
-                        className="w-full h-full rounded-b-lg"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                      
-                      {/* Close Video Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowVideo(false);
-                        }}
-                        className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 z-10"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-                </div>
-              </div>
-            </div>
-            
+          {/* ─── HERO ─────────────────────────────────────────── */}
+          <section
+            id="features"
+            className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 pt-28 sm:pt-32 pb-12 sm:pb-16"
+            style={{ background: '#0A0A0F' }}
+          >
+            {/* Mesh gradient blobs */}
             <div
-              className="flex flex-col items-center justify-center mt-8 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
-              onClick={() => scrollToSection('how-it-works')}
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(78,207,191,0.18) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(124,58,237,0.12) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 10% 90%, rgba(16,185,129,0.08) 0%, transparent 60%)',
+              }}
+            />
+
+            {/* Eyebrow badge */}
+            <motion.div
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#4ECFBF]/30 bg-[#4ECFBF]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#4ECFBF]"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
             >
-              <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
-                <svg
-                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </div>
-
-              <span className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300">
-                Discover How It Works
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ECFBF] opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#4ECFBF]" />
               </span>
+              Voice · AI · Language Learning
+            </motion.div>
 
-              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
-            </div>
-          </section>
-
-          {/* App Download Section */}
-          <section id="app-download" className="landing-section landing-app-download">
-            <div className="section-background"></div>
-            <div className="section-content">
-              <motion.a
-                href="https://apps.apple.com/nl/app/mytaco/id6757149290?l=en-GB"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="app-download-link w-[125%] max-w-none -mx-[12.5%] block"
-                initial={{ opacity: 0, y: 60, scale: 0.95 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{
-                  duration: 1.2,
-                  ease: [0.25, 0.1, 0.25, 1],
-                  opacity: { duration: 0.8 },
-                  scale: { duration: 1 }
-                }}
-                whileHover={{ scale: 1.02 }}
+            <div className="text-center max-w-4xl mx-auto">
+              <motion.div
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-center mb-4 sm:mb-6"
+                style={{ lineHeight: 1.08 }}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
               >
-                <img
-                  src="/App-Download2.png"
-                  alt="AI Speaking Gym - Download our mobile app on App Store"
-                  className="app-download-image border-2 border-gray-200"
-                />
-              </motion.a>
+                {/* Line 1 — static */}
+                <span className="block text-white">Become</span>
+
+                {/* Line 2 — rotating word, fixed height, overflow hidden so exit never bleeds */}
+                <span
+                  className="relative block overflow-hidden"
+                  style={{ height: '1.08em' }}
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={WORDS[wordIndex]}
+                      className="absolute inset-0 flex items-center justify-center font-extrabold"
+                      style={{
+                        background: 'linear-gradient(135deg, #4ECFBF 0%, #7EEEE3 45%, #a78bfa 100%)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}
+                      initial={{ opacity: 0, filter: 'blur(12px)', scale: 0.94 }}
+                      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+                      exit={{ opacity: 0, filter: 'blur(12px)', scale: 1.04 }}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {WORDS[wordIndex]}
+                    </motion.span>
+                  </AnimatePresence>
+                </span>
+
+                {/* Line 3 — static */}
+                <span className="block text-white">From Your Voice DNA</span>
+              </motion.div>
+
+              <motion.p
+                className="text-base sm:text-lg md:text-xl text-white/55 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2 sm:px-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.7 }}
+              >
+                MyTaco AI listens to how you actually speak — rhythm, confidence, vocabulary, accuracy —
+                and builds a personalised path that evolves with every conversation.
+              </motion.p>
+
+              {/* CTAs */}
+              {!isInstitutionUser && !isTutorUser && (
+                <motion.div
+                  className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.55, duration: 0.6 }}
+                >
+                  <a
+                    href="https://apps.apple.com/br/app/mytaco/id6757149290?l=en-GB"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Download on the App Store"
+                    className="group flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-[#0A0A0F] font-semibold text-sm shadow-lg hover:shadow-[0_0_32px_rgba(78,207,191,0.35)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                  >
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                    </svg>
+                    <span>Download on App Store</span>
+                  </a>
+
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.bigdavinci.MyTacoAI"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Get it on Google Play"
+                    className="group flex items-center gap-3 rounded-2xl border border-white/20 bg-white/[0.06] backdrop-blur-md px-6 py-3.5 text-white font-semibold text-sm hover:bg-white/10 hover:border-[#4ECFBF]/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                  >
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3.18 23.76c.34.19.73.23 1.1.12l12.02-12.02-2.49-2.49L3.18 23.76zM20.54 10.23l-2.93-1.65-2.81 2.81 2.81 2.81 2.96-1.67c.84-.47.84-1.83-.03-2.3zM1.91.17C1.65.45 1.5.86 1.5 1.38v21.24c0 .52.15.93.41 1.21l.07.06L13.17 12 1.98.11l-.07.06zM14.38 12l2.49-2.49L4.28.23c-.35-.2-.73-.24-1.1-.14L14.38 12z" />
+                    </svg>
+                    <span>Get it on Google Play</span>
+                  </a>
+                </motion.div>
+              )}
+
+              {/* Social proof chips */}
+              <motion.div
+                className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10 sm:mb-16 px-4 sm:px-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.75, duration: 0.6 }}
+              >
+                <StatChip value="289+" label="conversations" delay={0.8} />
+                <StatChip value="6" label="languages" delay={0.9} />
+                <StatChip value="15K+" label="practice challenges" delay={1.0} />
+                <StatChip value="24/7" label="AI available" delay={1.1} />
+              </motion.div>
             </div>
 
-            <div
-              className="flex flex-col items-center justify-center mt-8 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
-              onClick={() => scrollToSection('how-it-works')}
+            {/* Hero waveform visual */}
+            <motion.div
+              className="relative w-full max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
-                <svg
-                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
+              {/* Hero UI card — solid elevated */}
+              <div className="relative rounded-3xl border border-white/[0.12] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.7)]" style={{ backgroundColor: '#13131F' }}>
+                {/* Mac-style traffic lights */}
+                <div className="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+                  <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
+                  <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
+                  <div className="w-3 h-3 rounded-full bg-[#28CA41]" />
+                  <span className="ml-auto text-xs text-white/30 font-medium">MyTaco AI · Live Session</span>
+                </div>
+
+                <div className="px-4 sm:px-6 py-4 sm:py-5">
+                  {/* Waveform — fixed height via VoiceWaveform component */}
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 rounded-full bg-[#4ECFBF]/20 border border-[#4ECFBF]/30 flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-[#4ECFBF] animate-pulse" />
+                    </div>
+                    <VoiceWaveform bars={28} className="flex-1" />
+                    <span className="text-xs text-white/30 font-mono shrink-0">0:43</span>
+                  </div>
+
+                  {/* Chat messages */}
+                  <div className="space-y-3 mb-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] flex items-center justify-center shrink-0">
+                        <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        </svg>
+                      </div>
+                      <div className="rounded-2xl rounded-tl-sm bg-white/[0.07] border border-white/[0.08] px-4 py-2.5 text-sm text-white/80 max-w-[75%]">
+                        What was the most challenging part of learning Dutch for you?
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 flex-row-reverse">
+                      <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-[10px] text-white/60 font-semibold">
+                        You
+                      </div>
+                      <div className="rounded-2xl rounded-tr-sm bg-[#4ECFBF]/15 border border-[#4ECFBF]/20 px-4 py-2.5 text-sm text-white/80 max-w-[75%]">
+                        The word order was very confusing for me at first.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI feedback scores */}
+                  <div className="rounded-xl border border-white/[0.10] px-4 py-3" style={{ backgroundColor: '#0E0E1A' }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-2.5">
+                      Voice DNA · Session Feedback
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Pronunciation', score: 92, color: '#4ECFBF' },
+                        { label: 'Grammar', score: 85, color: '#7C3AED' },
+                        { label: 'Fluency', score: 78, color: '#F59E0B' },
+                      ].map((m) => (
+                        <div key={m.label} className="text-center">
+                          <div className="text-xl font-bold" style={{ color: m.color }}>
+                            {m.score}
+                          </div>
+                          <div className="text-[10px] text-white/40">{m.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <span className="mt-4 text-gray-600 text-sm font-medium tracking-wide group-hover:text-gray-800 transition-colors duration-300">
-                Discover How It Works
-              </span>
+              {/* Floating DNA badge */}
+              <motion.div
+                className="absolute -top-4 right-2 sm:-right-6 rounded-2xl bg-[#0A0A0F] border border-[#7C3AED]/40 px-3 py-2 shadow-lg backdrop-blur-xl"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <div className="text-[10px] uppercase tracking-wider text-[#7C3AED] font-semibold mb-1">
+                  Speaking DNA
+                </div>
+                <div className="text-sm font-bold text-white">Identified ✓</div>
+              </motion.div>
 
-              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-gray-400 to-transparent"></div>
+              {/* Floating streak badge */}
+              <motion.div
+                className="absolute -bottom-4 left-2 sm:-left-6 rounded-2xl bg-[#0A0A0F] border border-[#F59E0B]/40 px-3 py-2 shadow-lg"
+                animate={{ y: [0, 6, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              >
+                <div className="text-xs font-bold text-[#F59E0B]">🔥 12-day streak</div>
+                <div className="text-[10px] text-white/50">Keep going!</div>
+              </motion.div>
+            </motion.div>
+
+            {/* Scroll indicator */}
+            <motion.div
+              className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
+              onClick={() => scrollTo('bento-features')}
+              animate={{ y: [0, 6, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <span className="text-xs text-white/30 tracking-widest uppercase">Scroll</span>
+              <div className="w-[1px] h-8 bg-gradient-to-b from-white/30 to-transparent" />
+            </motion.div>
+          </section>
+
+          <SectionDivider accent="#4ECFBF" />
+
+          {/* ─── BENTO FEATURES ───────────────────────────────── */}
+          <section
+            id="bento-features"
+            className="relative py-24 px-4"
+            style={{ background: '#0D0D18' }}
+          >
+            <div className="max-w-6xl mx-auto">
+              <Reveal className="text-center mb-16">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
+                  What makes MyTaco different
+                </p>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight tracking-tight">
+                  A learning experience{' '}
+                  <br className="hidden sm:block" />
+                  <span
+                    style={{
+                      background: 'linear-gradient(90deg, #4ECFBF, #7C3AED)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    built from your voice
+                  </span>
+                </h2>
+              </Reveal>
+
+              {/* Fix 3 — Bento grid: DNA in ONE card only; other cards have distinct visuals */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-auto">
+
+                {/* Fix 3+4 — Big card: Speaking DNA with RadarChart (not waveform/bar) */}
+                <Reveal delay={0} className="sm:col-span-2 lg:col-span-2">
+                  <div className="relative rounded-3xl border border-[#4ECFBF]/25 bg-[#13131F] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#4ECFBF]/50 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(78,207,191,0.35) inset' }}>
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-40 group-hover:opacity-70 transition-opacity duration-500"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse at 20% 0%, rgba(78,207,191,0.07) 0%, transparent 60%)',
+                      }}
+                    />
+                    <div className="relative z-10 flex flex-col gap-6 items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v1m0 16v1M15 3v1m0 16v1M3 9h1m16 0h1M3 15h1m16 0h1M6.343 6.343l.707.707m9.9 9.9.707.707M6.343 17.657l.707-.707m9.9-9.9.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+                          </div>
+                          <div>
+                            <div className="text-white font-bold text-lg leading-tight">Speaking DNA</div>
+                            <div className="text-white/40 text-xs">Your unique voice fingerprint</div>
+                          </div>
+                          <div className="ml-auto">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider bg-[#4ECFBF]/10 text-[#4ECFBF] border border-[#4ECFBF]/20 rounded-full px-3 py-1">
+                              Standout Feature
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-white/50 text-sm mb-5 leading-relaxed max-w-lg">
+                          Every voice is unique. MyTaco analyses 6 dimensions of your speech — rhythm, confidence,
+                          vocabulary, accuracy, learning speed, and emotional expression — to create a profile that&apos;s
+                          entirely yours.
+                        </p>
+                        {/* Strand legend with colored dots */}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
+                          {[
+                            { label: 'Rhythm', color: '#4ECFBF', value: 82 },
+                            { label: 'Confidence', color: '#7C3AED', value: 74 },
+                            { label: 'Vocabulary', color: '#F59E0B', value: 91 },
+                            { label: 'Accuracy', color: '#EF4444', value: 68 },
+                            { label: 'Learning', color: '#10B981', value: 85 },
+                            { label: 'Emotional', color: '#EC4899', value: 77 },
+                          ].map(s => (
+                            <div key={s.label} className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                              <span className="text-[11px] text-white/50">{s.label}</span>
+                              <span className="text-[11px] font-semibold" style={{ color: s.color }}>{s.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Fix 4 — RadarChart replacing DNAStrandMini here */}
+                      <div className="shrink-0 self-center w-full sm:w-auto flex justify-center">
+                        <RadarChart />
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Daily Missions — distinct visual: mission tier checklist */}
+                <Reveal delay={0.08}>
+                  <div className="relative rounded-3xl border border-[#F59E0B]/20 bg-[#13131F] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#F59E0B]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(245,158,11,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#F59E0B]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    </div>
+                    <div className="text-white font-bold text-lg mb-2">Daily Missions</div>
+                    <p className="text-white/45 text-sm leading-relaxed mb-5">
+                      Bronze, Silver, and Gold missions every day. Complete your plan session, a challenge,
+                      and review flashcards — all in under 10 minutes.
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        { tier: 'Bronze', label: "Complete today's plan session", color: '#CD7F32', done: true },
+                        { tier: 'Silver', label: 'Play Native Check challenge', color: '#C0C0C0', done: true },
+                        { tier: 'Gold', label: 'Review 3 flashcard sets', color: '#FFD700', done: false },
+                      ].map((m) => (
+                        <div key={m.tier} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E0E1A] px-3 py-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: m.color }}
+                          />
+                          <span className={`text-xs flex-1 ${m.done ? 'text-white/40 line-through' : 'text-white/80'}`}>
+                            {m.label}
+                          </span>
+                          {m.done ? (
+                            <span className="text-[10px] text-[#4ECFBF] font-bold">✓</span>
+                          ) : (
+                            <span className="text-[10px] text-white/25">...</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* 7 Challenges — distinct visual: challenge pill grid */}
+                <Reveal delay={0.12}>
+                  <div className="relative rounded-3xl border border-[#7C3AED]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#7C3AED]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(124,58,237,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#7C3AED]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <div className="text-white font-bold text-lg mb-2">7 Challenge Types</div>
+                    <p className="text-white/45 text-sm leading-relaxed mb-4">
+                      15,000+ curated exercises across Error Spotting, Micro Quiz, Brain Tickler, Story Builder and more.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { name: 'Error Spot', color: '#EF4444' },
+                        { name: 'Micro Quiz', color: '#7C3AED' },
+                        { name: 'Brain Tickler', color: '#F59E0B' },
+                        { name: 'Native Check', color: '#4ECFBF' },
+                        { name: 'Story Builder', color: '#EC4899' },
+                        { name: 'Smart Card', color: '#10B981' },
+                        { name: 'Swipe Fix', color: '#3B82F6' },
+                      ].map((c) => (
+                        <span
+                          key={c.name}
+                          className="text-[10px] border rounded-full px-2.5 py-1 font-medium"
+                          style={{ borderColor: `${c.color}40`, color: c.color, backgroundColor: `${c.color}12` }}
+                        >
+                          {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Heart system — distinct visual: animated heart row */}
+                <Reveal delay={0.16}>
+                  <div className="relative rounded-3xl border border-[#EF4444]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EF4444]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(239,68,68,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#EF4444]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#EF4444]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    </div>
+                    <div className="text-white font-bold text-lg mb-2">Heart System</div>
+                    <p className="text-white/45 text-sm leading-relaxed mb-4">
+                      Stay sharp with limited hearts per challenge. Build a streak shield and protect your progress.
+                    </p>
+                    <div className="flex gap-2 items-center mb-3">
+                      {[true, true, true, true, false].map((full, i) => (
+                        <motion.span
+                          key={i}
+                          className="text-2xl"
+                          animate={full ? { scale: [1, 1.15, 1] } : {}}
+                          transition={{ duration: 0.6, delay: i * 0.1, repeat: Infinity, repeatDelay: 3 }}
+                        >
+                          {full ? '❤️' : '🖤'}
+                        </motion.span>
+                      ))}
+                      <span className="ml-2 text-[10px] text-[#4ECFBF] font-semibold">4 / 5 left</span>
+                    </div>
+                    <div className="text-[10px] text-white/30 flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+                      Streak shield active · refills at midnight
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* News Sessions — distinct visual: live feed cards */}
+                <Reveal delay={0.2}>
+                  <div className="relative rounded-3xl border border-[#10B981]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#10B981]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(16,185,129,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#10B981]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#10B981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                    </div>
+                    <div className="text-white font-bold text-lg mb-2">News Sessions</div>
+                    <p className="text-white/45 text-sm leading-relaxed mb-3">
+                      Practice with today&apos;s real news — curated in your target language at your CEFR level.
+                      Then start an AI conversation about the article.
+                    </p>
+                    <div className="space-y-1.5">
+                      {['🇩🇪 Aktuelle Nachrichten · B2', '🇪🇸 Noticias de hoy · A2', '🇫🇷 Infos du jour · C1'].map(item => (
+                        <div key={item} className="text-[11px] text-white/40 bg-[#0E0E1A] border border-white/[0.08] rounded-lg px-3 py-1.5 flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse shrink-0" />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Real-Time AI Conversation — wide; distinct visual: chat bubbles, no waveform */}
+                <Reveal delay={0.24} className="sm:col-span-2 lg:col-span-2">
+                  <div className="relative rounded-3xl border border-[#4ECFBF]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#4ECFBF]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(78,207,191,0.25) inset' }}>
+                    <div className="flex flex-col sm:flex-row gap-6 items-start">
+                      <div className="flex-1 shrink-0">
+                        <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center mb-4">
+                          <svg className="w-5 h-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                        </div>
+                        <div className="text-white font-bold text-lg mb-2">Real-Time Conversation</div>
+                        <p className="text-white/45 text-sm leading-relaxed max-w-sm">
+                          WebRTC-powered voice sessions with your AI tutor. No typing, no delays — just speak.
+                          Get corrections, hints, and vocabulary tips as you go.
+                        </p>
+                      </div>
+                      {/* Distinct visual: mini live transcript */}
+                      <div className="w-full sm:w-64 shrink-0 sm:ml-auto space-y-2">
+                        {[
+                          { from: 'AI', text: 'How was your weekend?', teal: true },
+                          { from: 'You', text: 'Ich war... uh, im Park?', teal: false },
+                          { from: 'AI', text: '✓ Ich war im Park. Great use of Akkusativ!', teal: true },
+                        ].map((msg, i) => (
+                          <motion.div
+                            key={i}
+                            className={`rounded-2xl px-3 py-2 text-xs ${msg.teal
+                              ? 'bg-[#4ECFBF]/10 border border-[#4ECFBF]/20 text-white/70'
+                              : 'bg-white/[0.06] border border-white/[0.08] text-white/60 ml-4'
+                            }`}
+                            initial={{ opacity: 0, x: msg.teal ? -8 : 8 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.15 * i, duration: 0.4 }}
+                            viewport={{ once: true }}
+                          >
+                            <span className="font-semibold text-[10px] block mb-0.5" style={{ color: msg.teal ? '#4ECFBF' : 'rgba(255,255,255,0.3)' }}>{msg.from}</span>
+                            {msg.text}
+                          </motion.div>
+                        ))}
+                        <div className="text-center text-[10px] text-white/20 mt-1">Live audio · real-time analysis</div>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Story Worlds — distinct visual: genre cards */}
+                <Reveal delay={0.28}>
+                  <div className="relative rounded-3xl border border-[#EC4899]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EC4899]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(236,72,153,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#EC4899]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#EC4899]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    </div>
+                    <div className="text-white font-bold text-lg mb-2">Story Worlds</div>
+                    <p className="text-white/45 text-sm leading-relaxed mb-3">
+                      Collaborate with other learners to build stories in your target language. 26 worlds — mystery,
+                      romance, sci-fi and more.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {[
+                        { emoji: '🔮', genre: 'Mystery' },
+                        { emoji: '🚀', genre: 'Sci-Fi' },
+                        { emoji: '🏰', genre: 'Fantasy' },
+                        { emoji: '🌊', genre: 'Adventure' },
+                        { emoji: '💘', genre: 'Romance' },
+                        { emoji: '🌿', genre: 'Nature' },
+                      ].map((w) => (
+                        <div key={w.genre} className="flex flex-col items-center gap-1 rounded-xl bg-[#0E0E1A] border border-white/[0.09] py-2">
+                          <span className="text-lg">{w.emoji}</span>
+                          <span className="text-[9px] text-white/35">{w.genre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+              </div>
             </div>
           </section>
 
-          {/* How It Works Section */}
-          <section id="how-it-works" className="landing-section landing-second">
-            <div className="section-background"></div>
-            <div className="section-content">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                How It Works
-              </h2>
-              
-              
-              {/* Learning Journey Flow */}
-              <div className="max-w-7xl mx-auto mb-20">
-                {/* Assessment Path */}
-                <div className="mb-16">
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-3">🎯 Assessment Mode</h3>
-                    <p className="text-gray-600 text-lg">Discover your current level with AI-powered speaking assessment</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">Speak Naturally</h4>
-                      <p className="text-gray-600 text-sm">Record yourself speaking for 15-60 seconds on any topic</p>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">AI Analysis</h4>
-                      <p className="text-gray-600 text-sm">Advanced AI evaluates pronunciation, grammar, vocabulary & fluency</p>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">CEFR Level</h4>
-                      <p className="text-gray-600 text-sm">Get your official language level from A1 (beginner) to C2 (native)</p>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">Start Practicing</h4>
-                      <p className="text-gray-600 text-sm">Begin personalized conversations based on your assessed level</p>
-                    </div>
-                  </div>
-                </div>
+          <SectionDivider accent="#7C3AED" />
 
-                {/* Practice Mode Path */}
-                <div className="mb-16">
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-3">💬 Practice Mode</h3>
-                    <p className="text-gray-600 text-lg">Engage in real-time conversations with your AI language tutor</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 12h6m-6 4h6" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">Choose Your Topic</h4>
-                      <p className="text-gray-600 text-sm">Select from popular topics like travel, food, work, or create your own custom conversation theme</p>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">Real-Time Conversation</h4>
-                      <p className="text-gray-600 text-sm">Speak naturally with our AI tutor using WebRTC technology for instant voice interaction - just like talking to a real person</p>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">Instant Feedback</h4>
-                      <p className="text-gray-600 text-sm">Get immediate corrections and suggestions as you speak, with detailed analysis of your pronunciation, grammar, and vocabulary</p>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 text-center shadow-lg">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                      </div>
-                      <h4 className="text-gray-800 font-semibold mb-2">Adaptive Learning</h4>
-                      <p className="text-gray-600 text-sm">Personalized lessons that adapt to your learning pace and style</p>
-                    </div>
-                  </div>
-                </div>
+          {/* ─── YOUR LEARNING JOURNEY ────────────────────────── */}
+          <LearningJourneySection scrollTo={scrollTo} />
 
-                {/* Progress Tracking */}
-                <div>
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-3">📊 Progress Tracking</h3>
-                    <p className="text-gray-600 text-lg">Monitor your improvement with detailed analytics and achievements</p>
-                  </div>
-                  
-                  <div className="bg-white/90 backdrop-blur-sm rounded-xl p-8 border border-gray-200 shadow-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                          </svg>
-                        </div>
-                        <h4 className="text-gray-800 font-semibold mb-2">Conversation History</h4>
-                        <p className="text-gray-600 text-sm">Save and review all your practice sessions with AI-generated summaries</p>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                          </svg>
-                        </div>
-                        <h4 className="text-gray-800 font-semibold mb-2">Learning Streaks</h4>
-                        <p className="text-gray-600 text-sm">Build daily practice habits and maintain your learning momentum</p>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                          </svg>
-                        </div>
-                        <h4 className="text-gray-800 font-semibold mb-2">Achievements</h4>
-                        <p className="text-gray-600 text-sm">Unlock badges and milestones as you reach your language learning goals</p>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </div>
-                        <h4 className="text-gray-800 font-semibold mb-2">Detailed Analytics</h4>
-                        <p className="text-gray-600 text-sm">Track your speaking time, complexity growth, and improvement areas</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-            </div>
-            
-            <div
-              className="flex flex-col items-center justify-center mt-8 cursor-pointer group hover:scale-105 active:scale-95 transition-transform duration-300"
-              onClick={() => scrollToSection('pricing')}
-            >
-              <div className="relative bg-white/10 backdrop-blur-md rounded-full p-4 border border-white/20 shadow-lg group-hover:bg-white/20 transition-all duration-300">
-                <svg
-                  className="w-6 h-6 text-[#4ECFBF] group-hover:text-[#3a9e92]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </div>
+          <SectionDivider accent="#4ECFBF" />
 
-              <span className="mt-4 text-white/80 text-sm font-medium tracking-wide group-hover:text-white transition-colors duration-300">
-                Explore Our Plans
-              </span>
-
-              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
-            </div>
-          </section>
-
-          {/* Pricing Section - New Subscription Plans Component */}
+          {/* Pricing — all styling lives inside SubscriptionPlans */}
           <SubscriptionPlans />
 
-          {/* Final Section with FAQ */}
-          <section id="faq" className="landing-section landing-third">
-            <div className="section-background"></div>
-            <div className="section-content">
-              {/* FAQ Section */}
+          <SectionDivider accent="#F59E0B" />
+
+          {/* ─── FAQ ──────────────────────────────────────────── */}
+          <section
+            id="faq"
+            className="relative py-24 px-4"
+            style={{ background: '#0D0D18' }}
+          >
+            <div className="max-w-3xl mx-auto">
+              <Reveal className="text-center mb-12">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
+                  Got questions?
+                </p>
+                <h2 className="text-4xl sm:text-5xl font-extrabold text-white">
+                  FAQ
+                </h2>
+              </Reveal>
               <FAQSection />
-              
-              <button
-                className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors shadow-md flex items-center mx-auto border-2 border-white hover:scale-105 active:scale-98"
-                onClick={handleStartLearning}
-                disabled={isLoading}
-                style={{ marginTop: '2rem' }}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    <span>Navigating...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Get Started Now</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+
+              {/* Final download CTA */}
+              <Reveal delay={0.2} className="text-center mt-16">
+                <p className="text-white/40 text-sm mb-6">Ready to speak with confidence?</p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <a
+                    href="https://apps.apple.com/br/app/mytaco/id6757149290?l=en-GB"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-[#0A0A0F] font-semibold text-sm hover:shadow-[0_0_32px_rgba(78,207,191,0.3)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
                     </svg>
-                  </>
-                )}
-              </button>
-              
-              {error && (
-                <div className="p-4 glass-card rounded-lg mt-8 border border-white/20 max-w-md mx-auto">
-                  <p className="text-sm text-white/80">
-                    {error}
-                  </p>
+                    App Store
+                  </a>
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.bigdavinci.MyTacoAI"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-3.5 text-white font-semibold text-sm hover:border-[#4ECFBF]/40 hover:bg-white/[0.08] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3.18 23.76c.34.19.73.23 1.1.12l12.02-12.02-2.49-2.49L3.18 23.76zM20.54 10.23l-2.93-1.65-2.81 2.81 2.81 2.81 2.96-1.67c.84-.47.84-1.83-.03-2.3zM1.91.17C1.65.45 1.5.86 1.5 1.38v21.24c0 .52.15.93.41 1.21l.07.06L13.17 12 1.98.11l-.07.06zM14.38 12l2.49-2.49L4.28.23c-.35-.2-.73-.24-1.1-.14L14.38 12z" />
+                    </svg>
+                    Google Play
+                  </a>
                 </div>
-              )}
+              </Reveal>
             </div>
           </section>
+
+          {/* Footer rendered globally via layout.tsx → ConditionalFooter → footer.tsx */}
         </main>
       )}
-      
-      {/* Project Knowledge Chatbot - Available on all pages */}
+
       <ProjectKnowledgeChatbot />
     </div>
   );
