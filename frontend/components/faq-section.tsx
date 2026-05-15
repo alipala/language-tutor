@@ -37,8 +37,9 @@ export default function FAQSection() {
           return (
             <motion.div
               key={i}
-              className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden"
-              animate={{ borderColor: isOpen ? 'rgba(78,207,191,0.3)' : 'rgba(255,255,255,0.08)' }}
+              className="rounded-2xl border overflow-hidden"
+              style={{ backgroundColor: '#13131F' }}
+              animate={{ borderColor: isOpen ? 'rgba(78,207,191,0.4)' : 'rgba(255,255,255,0.10)' }}
               transition={{ duration: 0.2 }}
             >
               <button

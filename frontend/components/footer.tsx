@@ -141,7 +141,7 @@ export default function Footer() {
             <div className="space-y-3 mb-8">
               {[
                 { icon: Mail,    text: 'hello@mytacoai.com',  href: 'mailto:hello@mytacoai.com'  },
-                { icon: Phone,   text: '+31 (6) 57 126 162',  href: 'tel:+31657126162'            },
+                { icon: Phone,   text: '+31 6 21 18 55 93',   href: 'tel:+31621185593'            },
                 { icon: MapPin,  text: 'Amsterdam, NL',       href: null                          },
               ].map(({ icon: Icon, text, href }) => (
                 <div key={text} className="flex items-center gap-3 text-sm">

@@ -143,27 +143,27 @@ const STRIPE_PRICES = {
   },
 };
 
-// Card accent colors per plan
+// Unified card style — same frame for all plans, only CTA and badge differ
 const PLAN_ACCENT: Record<string, { border: string; glow: string; badge: string; cta: string; ctaText: string }> = {
   'Try & Learn': {
-    border: 'border-white/[0.08]',
+    border: 'border-white/[0.12]',
     glow: '',
     badge: '',
-    cta: 'bg-white/[0.08] hover:bg-white/[0.14] text-white/80',
+    cta: 'bg-white/[0.10] hover:bg-white/[0.18] text-white/80',
     ctaText: '',
   },
   'Fluency Builder': {
-    border: 'border-[#4ECFBF]/40',
-    glow: '0 0 40px rgba(78,207,191,0.15)',
-    badge: 'bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92]',
+    border: 'border-white/[0.12]',
+    glow: '',
+    badge: 'bg-[#4ECFBF]',
     cta: 'bg-[#4ECFBF] hover:bg-[#3dc4b5] text-[#0A0A0F]',
     ctaText: '',
   },
   'Language Mastery': {
-    border: 'border-[#7C3AED]/30',
-    glow: '0 0 40px rgba(124,58,237,0.12)',
+    border: 'border-white/[0.12]',
+    glow: '',
     badge: '',
-    cta: 'border border-[#7C3AED]/50 text-[#a78bfa] hover:bg-[#7C3AED]/15',
+    cta: 'bg-white/[0.10] hover:bg-white/[0.18] text-white/80',
     ctaText: '',
   },
 };
@@ -261,10 +261,10 @@ export default function SubscriptionPlans() {
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.08 }}
-                  className={`relative flex flex-col rounded-3xl border ${accent.border} bg-white/[0.03] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
+                  className={`relative flex flex-col rounded-3xl border ${accent.border} overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
                     plan.popular ? 'lg:scale-[1.04]' : ''
                   }`}
-                  style={accent.glow ? { boxShadow: accent.glow } : {}}
+                  style={{ backgroundColor: '#13131F' }}
                 >
                   {/* Popular badge */}
                   {plan.popular && (
@@ -370,7 +370,8 @@ export default function SubscriptionPlans() {
 
         {/* Money-back + enterprise strip */}
         <motion.div
-          className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 sm:px-8 py-5 sm:py-6"
+          className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 rounded-2xl border border-white/[0.12] px-4 sm:px-8 py-5 sm:py-6"
+          style={{ backgroundColor: '#13131F' }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}

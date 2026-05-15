@@ -120,7 +120,7 @@ function JourneyCard({
   children,
 }: {
   step: string;
-  icon: string;
+  icon: React.ReactNode;
   accent: string;
   title: string;
   subtitle: string;
@@ -128,14 +128,18 @@ function JourneyCard({
 }) {
   return (
     <motion.div
-      className="rounded-2xl border bg-white/[0.03] backdrop-blur-sm p-4 sm:p-5 md:p-6"
-      style={{ borderColor: `${accent}28` }}
+      className="rounded-2xl border p-4 sm:p-5 md:p-6"
+      style={{
+        backgroundColor: '#13131F',
+        borderColor: `${accent}30`,
+        boxShadow: `0 1px 0 0 ${accent}28 inset`,
+      }}
       whileHover={{ borderColor: `${accent}55`, transition: { duration: 0.2 } }}
     >
       <div className="flex items-center gap-3 mb-3">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-          style={{ backgroundColor: `${accent}18` }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${accent}18`, color: accent }}
         >
           {icon}
         </div>
@@ -173,7 +177,7 @@ function CEFRScore() {
     { label: 'Fluency',       pct: 71, color: '#10B981' },
   ];
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4 space-y-2">
+    <div className="rounded-xl border border-white/[0.10] bg-[#0E0E1A] p-4 space-y-2">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] uppercase tracking-wider text-white/30">CEFR Score</span>
         <span className="text-xs font-bold text-[#4ECFBF]">B1 → Assigned</span>
@@ -207,7 +211,7 @@ function MissionList() {
   return (
     <div className="space-y-2">
       {missions.map(m => (
-        <div key={m.tier} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
+        <div key={m.tier} className="flex items-center gap-3 rounded-xl border border-white/[0.09] bg-[#0E0E1A] px-3 py-2">
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
           <span className={`text-xs flex-1 ${m.done ? 'line-through text-white/30' : 'text-white/70'}`}>
             {m.label}
@@ -255,7 +259,7 @@ function AssessmentBranch() {
     <div className="grid grid-cols-2 gap-3 mt-4">
       <motion.div
         className="rounded-xl border border-[#10B981]/30 p-4"
-        style={{ backgroundColor: 'rgba(16,185,129,0.07)' }}
+        style={{ backgroundColor: '#0E1A14' }}
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
@@ -266,7 +270,7 @@ function AssessmentBranch() {
       </motion.div>
       <motion.div
         className="rounded-xl border border-[#F59E0B]/30 p-4"
-        style={{ backgroundColor: 'rgba(245,158,11,0.06)' }}
+        style={{ backgroundColor: '#1A1508' }}
         initial={{ opacity: 0, x: 20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
@@ -327,7 +331,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
           <div className="space-y-4">
 
             <JourneyRow accent="#4ECFBF" dotDelay={0.1} cardDelay={0}>
-              <JourneyCard step="Start" icon="🎙️" accent="#4ECFBF"
+              <JourneyCard step="Start" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>} accent="#4ECFBF"
                 title="Speaking Assessment"
                 subtitle="Speak for 60 seconds on any topic. No script. Our AI records and analyses your natural voice across 6 dimensions."
               >
@@ -341,7 +345,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
             </JourneyRow>
 
             <JourneyRow accent="#7C3AED" dotDelay={0.18} cardDelay={0.08}>
-              <JourneyCard step="Auto-created" icon="🗺️" accent="#7C3AED"
+              <JourneyCard step="Auto-created" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>} accent="#7C3AED"
                 title="Your Learning Plan"
                 subtitle="Based on your CEFR score, a personalised week-by-week plan is instantly created — targeting your exact weak spots."
               >
@@ -362,7 +366,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
             </JourneyRow>
 
             <JourneyRow accent="#4ECFBF" dotDelay={0.26} cardDelay={0.16}>
-              <JourneyCard step="Every day" icon="📅" accent="#4ECFBF"
+              <JourneyCard step="Every day" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} accent="#4ECFBF"
                 title="Daily Plan Session"
                 subtitle="Each session follows a 3-step flow: DNA Voice Check → guided conversation tied to your plan → post-session analysis."
               >
@@ -371,7 +375,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
             </JourneyRow>
 
             <JourneyRow accent="#F59E0B" dotDelay={0.34} cardDelay={0.24}>
-              <JourneyCard step="Daily" icon="🎯" accent="#F59E0B"
+              <JourneyCard step="Daily" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} accent="#F59E0B"
                 title="Missions Support Your Plan"
                 subtitle="Bronze, Silver, and Gold missions generated every day — chosen to reinforce the current week's focus area."
               >
@@ -380,7 +384,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
             </JourneyRow>
 
             <JourneyRow accent="#7C3AED" dotDelay={0.42} cardDelay={0.32}>
-              <JourneyCard step="Mid-plan" icon="📊" accent="#7C3AED"
+              <JourneyCard step="Mid-plan" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} accent="#7C3AED"
                 title="Intermediate Assessment"
                 subtitle="Halfway through, a progress check re-scores your 6 strands. Your plan adapts — harder or softer — based on results."
               >
@@ -393,7 +397,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
             </JourneyRow>
 
             <JourneyRow accent="#10B981" dotDelay={0.50} cardDelay={0.40}>
-              <JourneyCard step="Plan end" icon="🏆" accent="#10B981"
+              <JourneyCard step="Plan end" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>} accent="#10B981"
                 title="Final Assessment"
                 subtitle="At the end of your plan, a full speaking assessment determines whether you advance to the next CEFR level."
               >

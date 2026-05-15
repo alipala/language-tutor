@@ -416,8 +416,8 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* Glassy UI card */}
-              <div className="relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
+              {/* Hero UI card — solid elevated */}
+              <div className="relative rounded-3xl border border-white/[0.12] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.7)]" style={{ backgroundColor: '#13131F' }}>
                 {/* Mac-style traffic lights */}
                 <div className="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-white/[0.06]">
                   <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
@@ -459,7 +459,7 @@ export default function Home() {
                   </div>
 
                   {/* AI feedback scores */}
-                  <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-3">
+                  <div className="rounded-xl border border-white/[0.10] px-4 py-3" style={{ backgroundColor: '#0E0E1A' }}>
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-2.5">
                       Voice DNA · Session Feedback
                     </div>
@@ -550,19 +550,20 @@ export default function Home() {
 
                 {/* Fix 3+4 — Big card: Speaking DNA with RadarChart (not waveform/bar) */}
                 <Reveal delay={0} className="sm:col-span-2 lg:col-span-2">
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#4ECFBF]/30 hover:bg-white/[0.05] transition-all duration-300">
+                  <div className="relative rounded-3xl border border-[#4ECFBF]/25 bg-[#13131F] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#4ECFBF]/50 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(78,207,191,0.35) inset' }}>
                     <div
-                      className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      className="pointer-events-none absolute inset-0 opacity-40 group-hover:opacity-70 transition-opacity duration-500"
                       style={{
                         background:
-                          'radial-gradient(ellipse at 20% 50%, rgba(78,207,191,0.08) 0%, transparent 60%)',
+                          'radial-gradient(ellipse at 20% 0%, rgba(78,207,191,0.07) 0%, transparent 60%)',
                       }}
                     />
                     <div className="relative z-10 flex flex-col gap-6 items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center text-xl">
-                            🧬
+                          <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v1m0 16v1M15 3v1m0 16v1M3 9h1m16 0h1M3 15h1m16 0h1M6.343 6.343l.707.707m9.9 9.9.707.707M6.343 17.657l.707-.707m9.9-9.9.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
                           </div>
                           <div>
                             <div className="text-white font-bold text-lg leading-tight">Speaking DNA</div>
@@ -607,8 +608,11 @@ export default function Home() {
 
                 {/* Daily Missions — distinct visual: mission tier checklist */}
                 <Reveal delay={0.08}>
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#F59E0B]/30 transition-all duration-300">
-                    <div className="text-3xl mb-4">🎯</div>
+                  <div className="relative rounded-3xl border border-[#F59E0B]/20 bg-[#13131F] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#F59E0B]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(245,158,11,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#F59E0B]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    </div>
                     <div className="text-white font-bold text-lg mb-2">Daily Missions</div>
                     <p className="text-white/45 text-sm leading-relaxed mb-5">
                       Bronze, Silver, and Gold missions every day. Complete your plan session, a challenge,
@@ -620,7 +624,7 @@ export default function Home() {
                         { tier: 'Silver', label: 'Play Native Check challenge', color: '#C0C0C0', done: true },
                         { tier: 'Gold', label: 'Review 3 flashcard sets', color: '#FFD700', done: false },
                       ].map((m) => (
-                        <div key={m.tier} className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
+                        <div key={m.tier} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E0E1A] px-3 py-2">
                           <div
                             className="w-2.5 h-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: m.color }}
@@ -641,8 +645,11 @@ export default function Home() {
 
                 {/* 7 Challenges — distinct visual: challenge pill grid */}
                 <Reveal delay={0.12}>
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#7C3AED]/30 transition-all duration-300">
-                    <div className="text-3xl mb-4">⚡</div>
+                  <div className="relative rounded-3xl border border-[#7C3AED]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#7C3AED]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(124,58,237,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#7C3AED]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
                     <div className="text-white font-bold text-lg mb-2">7 Challenge Types</div>
                     <p className="text-white/45 text-sm leading-relaxed mb-4">
                       15,000+ curated exercises across Error Spotting, Micro Quiz, Brain Tickler, Story Builder and more.
@@ -671,8 +678,11 @@ export default function Home() {
 
                 {/* Heart system — distinct visual: animated heart row */}
                 <Reveal delay={0.16}>
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EF4444]/30 transition-all duration-300">
-                    <div className="text-3xl mb-4">❤️</div>
+                  <div className="relative rounded-3xl border border-[#EF4444]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EF4444]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(239,68,68,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#EF4444]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#EF4444]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    </div>
                     <div className="text-white font-bold text-lg mb-2">Heart System</div>
                     <p className="text-white/45 text-sm leading-relaxed mb-4">
                       Stay sharp with limited hearts per challenge. Build a streak shield and protect your progress.
@@ -699,8 +709,11 @@ export default function Home() {
 
                 {/* News Sessions — distinct visual: live feed cards */}
                 <Reveal delay={0.2}>
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#10B981]/30 transition-all duration-300">
-                    <div className="text-3xl mb-4">📰</div>
+                  <div className="relative rounded-3xl border border-[#10B981]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#10B981]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(16,185,129,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#10B981]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#10B981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                    </div>
                     <div className="text-white font-bold text-lg mb-2">News Sessions</div>
                     <p className="text-white/45 text-sm leading-relaxed mb-3">
                       Practice with today&apos;s real news — curated in your target language at your CEFR level.
@@ -708,7 +721,7 @@ export default function Home() {
                     </p>
                     <div className="space-y-1.5">
                       {['🇩🇪 Aktuelle Nachrichten · B2', '🇪🇸 Noticias de hoy · A2', '🇫🇷 Infos du jour · C1'].map(item => (
-                        <div key={item} className="text-[11px] text-white/40 bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-1.5 flex items-center gap-2">
+                        <div key={item} className="text-[11px] text-white/40 bg-[#0E0E1A] border border-white/[0.08] rounded-lg px-3 py-1.5 flex items-center gap-2">
                           <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse shrink-0" />
                           {item}
                         </div>
@@ -719,10 +732,13 @@ export default function Home() {
 
                 {/* Real-Time AI Conversation — wide; distinct visual: chat bubbles, no waveform */}
                 <Reveal delay={0.24} className="sm:col-span-2 lg:col-span-2">
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#4ECFBF]/25 transition-all duration-300">
+                  <div className="relative rounded-3xl border border-[#4ECFBF]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#4ECFBF]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(78,207,191,0.25) inset' }}>
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
                       <div className="flex-1 shrink-0">
-                        <div className="text-3xl mb-4">🎙️</div>
+                        <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center mb-4">
+                          <svg className="w-5 h-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                        </div>
                         <div className="text-white font-bold text-lg mb-2">Real-Time Conversation</div>
                         <p className="text-white/45 text-sm leading-relaxed max-w-sm">
                           WebRTC-powered voice sessions with your AI tutor. No typing, no delays — just speak.
@@ -759,8 +775,11 @@ export default function Home() {
 
                 {/* Story Worlds — distinct visual: genre cards */}
                 <Reveal delay={0.28}>
-                  <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EC4899]/30 transition-all duration-300">
-                    <div className="text-3xl mb-4">📖</div>
+                  <div className="relative rounded-3xl border border-[#EC4899]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EC4899]/45 transition-all duration-300"
+                    style={{ boxShadow: '0 1px 0 0 rgba(236,72,153,0.3) inset' }}>
+                    <div className="w-10 h-10 rounded-2xl bg-[#EC4899]/15 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5 text-[#EC4899]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    </div>
                     <div className="text-white font-bold text-lg mb-2">Story Worlds</div>
                     <p className="text-white/45 text-sm leading-relaxed mb-3">
                       Collaborate with other learners to build stories in your target language. 26 worlds — mystery,
@@ -775,7 +794,7 @@ export default function Home() {
                         { emoji: '💘', genre: 'Romance' },
                         { emoji: '🌿', genre: 'Nature' },
                       ].map((w) => (
-                        <div key={w.genre} className="flex flex-col items-center gap-1 rounded-xl bg-white/[0.04] border border-white/[0.06] py-2">
+                        <div key={w.genre} className="flex flex-col items-center gap-1 rounded-xl bg-[#0E0E1A] border border-white/[0.09] py-2">
                           <span className="text-lg">{w.emoji}</span>
                           <span className="text-[9px] text-white/35">{w.genre}</span>
                         </div>
