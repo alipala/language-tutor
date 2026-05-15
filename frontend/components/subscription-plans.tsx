@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
@@ -28,122 +28,148 @@ interface PricingCard {
 
 const monthlyPlans: PricingCard[] = [
   {
-    name: "Try & Learn",
-    price: "Free",
-    priceNote: "",
-    description: "Perfect for exploring AI language learning",
+    name: 'Try & Learn',
+    price: 'Free',
+    priceNote: '',
+    description: 'Explore AI language learning at no cost',
     features: [
-      { text: "15 minutes monthly speaking time", included: true },
-      { text: "Sessions tracked for progress (unlimited)", included: true },
-      { text: "1 speaking assessment monthly", included: true },
-      { text: "Basic progress tracking", included: true },
-      { text: "Core conversation topics only", included: true },
-      { text: "Mobile app access", included: true },
-      { text: "Community support", included: true }
+      { text: '15 min monthly speaking time', included: true },
+      { text: 'Unlimited session tracking', included: true },
+      { text: '1 speaking assessment / month', included: true },
+      { text: 'Basic progress dashboard', included: true },
+      { text: 'Core conversation topics', included: true },
+      { text: 'Mobile app access', included: true },
+      { text: 'Advanced analytics', included: false },
     ],
-    ctaButton: "Start Free",
-    popular: false
+    ctaButton: 'Start Free',
+    popular: false,
   },
   {
-    name: "Fluency Builder",
-    price: "€19.99",
-    priceNote: "/month",
-    description: "Perfect for consistent learners",
+    name: 'Fluency Builder',
+    price: '€9.99',
+    priceNote: '/month',
+    description: 'For consistent learners ready to level up',
     features: [
-      { text: "🎉 3-day free trial included", included: true },
-      { text: "150 minutes monthly speaking time", included: true },
-      { text: "2 speaking assessments monthly", included: true },
-      { text: "10 hearts for challenges", included: true },
-      { text: "Refills every 1 hour", included: true },
-      { text: "Advanced progress tracking", included: true },
-      { text: "All conversation topics", included: true }
+      { text: '3-day free trial included', included: true },
+      { text: 'Speaking minutes monthly', included: true },
+      { text: 'Personalised learning plan', included: true },
+      { text: 'Voice DNA analysis', included: true },
+      { text: '10 hearts for challenges', included: true },
+      { text: 'Advanced progress tracking', included: true },
+      { text: 'All conversation topics', included: true },
     ],
-    ctaButton: "Start Free Trial",
-    popular: true
+    ctaButton: 'Start Free Trial',
+    popular: true,
   },
   {
-    name: "Language Mastery",
-    price: "€39.99",
-    priceNote: "/month",
-    description: "Ultimate learning experience",
+    name: 'Language Mastery',
+    price: '€17.99',
+    priceNote: '/month',
+    description: 'The ultimate immersive experience',
     features: [
-      { text: "🎉 3-day free trial included", included: true },
-      { text: "UNLIMITED speaking", included: true },
-      { text: "UNLIMITED assessments", included: true },
-      { text: "UNLIMITED hearts", included: true },
-      { text: "Instant heart refills", included: true },
-      { text: "Premium learning plans", included: true },
-      { text: "Advanced analytics", included: true }
+      { text: '3-day free trial included', included: true },
+      { text: 'UNLIMITED speaking time', included: true },
+      { text: 'Personalised learning plan', included: true },
+      { text: 'DNA acoustic analysis', included: true },
+      { text: 'UNLIMITED hearts & games', included: true },
+      { text: 'Instant heart refills', included: true },
+      { text: 'Advanced analytics & DNA reports', included: true },
     ],
-    ctaButton: "Start Free Trial",
-    popular: false
-  }
+    ctaButton: 'Start Free Trial',
+    popular: false,
+  },
 ];
 
 const annualPlans: PricingCard[] = [
   {
-    name: "Try & Learn",
-    price: "Free",
-    priceNote: "",
-    description: "Perfect for exploring AI language learning",
+    name: 'Try & Learn',
+    price: 'Free',
+    priceNote: '',
+    description: 'Explore AI language learning at no cost',
     features: [
-      { text: "15 minutes monthly speaking time", included: true },
-      { text: "Sessions tracked for progress (unlimited)", included: true },
-      { text: "1 speaking assessment monthly", included: true },
-      { text: "Basic progress tracking", included: true },
-      { text: "Core conversation topics only", included: true },
-      { text: "Mobile app access", included: true },
-      { text: "Community support", included: true }
+      { text: '15 min monthly speaking time', included: true },
+      { text: 'Unlimited session tracking', included: true },
+      { text: '1 speaking assessment / month', included: true },
+      { text: 'Basic progress dashboard', included: true },
+      { text: 'Core conversation topics', included: true },
+      { text: 'Mobile app access', included: true },
+      { text: 'Advanced analytics', included: false },
     ],
-    ctaButton: "Start Free",
-    popular: false
+    ctaButton: 'Start Free',
+    popular: false,
   },
   {
-    name: "Fluency Builder",
-    price: "€119.00",
-    priceNote: "/year",
-    savings: "Save €120.88",
-    description: "Perfect for consistent learners",
+    name: 'Fluency Builder',
+    price: '€59.99',
+    priceNote: '/year',
+    savings: 'Save €59.89 · ~€5/month',
+    description: 'For consistent learners ready to level up',
     features: [
-      { text: "1,800 minutes annually speaking time", included: true },
-      { text: "24 speaking assessments annually", included: true },
-      { text: "10 hearts for challenges", included: true },
-      { text: "Refills every 1 hour", included: true },
-      { text: "Advanced progress tracking", included: true },
-      { text: "All conversation topics", included: true }
+      { text: '3-day free trial included', included: true },
+      { text: 'Speaking minutes annually', included: true },
+      { text: 'Personalised learning plan', included: true },
+      { text: 'Voice DNA analysis', included: true },
+      { text: '10 hearts for challenges', included: true },
+      { text: 'Advanced progress tracking', included: true },
+      { text: 'All conversation topics', included: true },
     ],
-    ctaButton: "Get Started",
-    popular: true
+    ctaButton: 'Get Started',
+    popular: true,
   },
   {
-    name: "Language Mastery",
-    price: "€239.00",
-    priceNote: "/year",
-    savings: "Save €240.88",
-    description: "Ultimate learning experience",
+    name: 'Language Mastery',
+    price: '€107.88',
+    priceNote: '/year',
+    savings: 'Save €107.99 · ~€9/month',
+    description: 'The ultimate immersive experience',
     features: [
-      { text: "UNLIMITED speaking", included: true },
-      { text: "UNLIMITED assessments", included: true },
-      { text: "UNLIMITED hearts", included: true },
-      { text: "Instant heart refills", included: true },
-      { text: "Premium learning plans", included: true },
-      { text: "Advanced analytics", included: true }
+      { text: '3-day free trial included', included: true },
+      { text: 'UNLIMITED speaking time', included: true },
+      { text: 'Personalised learning plan', included: true },
+      { text: 'DNA acoustic analysis', included: true },
+      { text: 'UNLIMITED hearts & games', included: true },
+      { text: 'Instant heart refills', included: true },
+      { text: 'Advanced analytics & DNA reports', included: true },
     ],
-    ctaButton: "Get Started",
-    popular: false
-  }
+    ctaButton: 'Get Started',
+    popular: false,
+  },
 ];
 
-// Stripe price IDs from environment variables
 const STRIPE_PRICES = {
   monthly: {
-    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || "price_1RdxNjJcquSiYwWN2XQMwwYW",
-    team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || "price_1RdxlGJcquSiYwWNWvyEgmgL"
+    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_MONTHLY || 'price_1RdxNjJcquSiYwWN2XQMwwYW',
+    team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_MONTHLY || 'price_1RdxlGJcquSiYwWNWvyEgmgL',
   },
   annual: {
-    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || "price_1SoQw4JcquSiYwWNzi2zSgXt",
-    team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || "price_1SoQy8JcquSiYwWNalBlWPEQ"
-  }
+    fluency_builder: process.env.NEXT_PUBLIC_STRIPE_PRICE_FLUENCY_BUILDER_YEARLY || 'price_1SoQw4JcquSiYwWNzi2zSgXt',
+    team_mastery: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAM_MASTERY_YEARLY || 'price_1SoQy8JcquSiYwWNalBlWPEQ',
+  },
+};
+
+// Card accent colors per plan
+const PLAN_ACCENT: Record<string, { border: string; glow: string; badge: string; cta: string; ctaText: string }> = {
+  'Try & Learn': {
+    border: 'border-white/[0.08]',
+    glow: '',
+    badge: '',
+    cta: 'bg-white/[0.08] hover:bg-white/[0.14] text-white/80',
+    ctaText: '',
+  },
+  'Fluency Builder': {
+    border: 'border-[#4ECFBF]/40',
+    glow: '0 0 40px rgba(78,207,191,0.15)',
+    badge: 'bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92]',
+    cta: 'bg-[#4ECFBF] hover:bg-[#3dc4b5] text-[#0A0A0F]',
+    ctaText: '',
+  },
+  'Language Mastery': {
+    border: 'border-[#7C3AED]/30',
+    glow: '0 0 40px rgba(124,58,237,0.12)',
+    badge: '',
+    cta: 'border border-[#7C3AED]/50 text-[#a78bfa] hover:bg-[#7C3AED]/15',
+    ctaText: '',
+  },
 };
 
 export default function SubscriptionPlans() {
@@ -159,265 +185,263 @@ export default function SubscriptionPlans() {
     try {
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           price_id: priceId,
           success_url: `${window.location.origin}/profile?checkout=success`,
           cancel_url: `${window.location.origin}/profile?checkout=canceled`,
         }),
       });
-
       const { url } = await response.json();
-
-      // Redirect to Stripe Checkout
       window.location.href = url;
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
+    } catch {
       setIsLoading(false);
     }
   };
 
   const handleCTAClick = async (plan: PricingCard) => {
-    if (plan.ctaButton === "Start Free") {
-      // Navigate to sign up flow
+    if (plan.ctaButton === 'Start Free') {
       router.push('/auth/signup');
-    } else if (plan.ctaButton === "Get Started" || plan.ctaButton === "Start Free Trial") {
-      // Determine plan ID
-      let planId = '';
-      if (plan.name === "Fluency Builder") {
-        planId = 'fluency_builder';
-      } else if (plan.name === "Language Mastery") {
-        planId = 'team_mastery'; // Keep using team_mastery price ID for Stripe
-      }
+      return;
+    }
 
-      if (planId) {
-        const period = isAnnual ? 'annual' : 'monthly';
-        
-        if (!user) {
-          // Store plan selection for after signup/login
-          sessionStorage.setItem('selectedPlan', JSON.stringify({
-            name: plan.name,
-            planId: planId,
-            period: period
-          }));
-          
-          // Redirect directly to login page
-          router.push('/auth/login?from=pricing');
-        } else {
-          // User is authenticated - proceed directly to checkout
-          router.push(`/checkout?plan=${planId}&period=${period}`);
-        }
-      }
-    } else if (plan.ctaButton === "Contact Sales") {
-      // Open contact form or email
-      window.location.href = 'mailto:sales@mytacoai.com?subject=Team Mastery Plan Inquiry';
+    let planId = '';
+    if (plan.name === 'Fluency Builder') planId = 'fluency_builder';
+    else if (plan.name === 'Language Mastery') planId = 'team_mastery';
+    if (!planId) return;
+
+    const period = isAnnual ? 'annual' : 'monthly';
+
+    if (!user) {
+      sessionStorage.setItem('selectedPlan', JSON.stringify({ name: plan.name, planId, period }));
+      router.push('/auth/login?from=pricing');
+    } else {
+      router.push(`/checkout?plan=${planId}&period=${period}`);
     }
   };
 
   return (
-    <section id="pricing" className="py-20 bg-gradient-to-br from-gray-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="pricing"
+      style={{ background: 'linear-gradient(to bottom, #0D0D18, #0A0A0F)' }}
+      className="py-24 px-4"
+    >
+      <div className="max-w-6xl mx-auto">
+
         {/* Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+        <motion.div
+          className="text-center mb-14"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
+            Simple &amp; transparent
+          </p>
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
             Choose Your Plan
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12">
-            Start your language learning journey with our AI-powered tutor.
-            Choose the plan that fits your learning goals and budget.
+          <p className="text-white/40 text-base max-w-lg mx-auto">
+            Start free. Upgrade when you&apos;re ready. Cancel anytime.
           </p>
+        </motion.div>
 
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center mb-12">
-            <span className={`text-lg font-medium transition-colors duration-300 ${!isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
-              Monthly
-            </span>
-            <button
-              onClick={() => setIsAnnual(!isAnnual)}
-              className="mx-4 relative inline-flex h-8 w-14 items-center rounded-full bg-gray-200 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
-              style={{ backgroundColor: isAnnual ? '#4ECFBF' : '#e5e7eb' }}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${isAnnual ? 'translate-x-7' : 'translate-x-1'
-                  }`}
-              />
-            </button>
-            <span className={`text-lg font-medium transition-colors duration-300 ${isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
-              Annual
-            </span>
+        {/* Billing toggle */}
+        <motion.div
+          className="flex items-center justify-center gap-4 mb-12"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+        >
+          <span className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-white' : 'text-white/35'}`}>
+            Monthly
+          </span>
+          <button
+            onClick={() => setIsAnnual(!isAnnual)}
+            aria-label="Toggle billing period"
+            className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none"
+            style={{ backgroundColor: isAnnual ? '#4ECFBF' : 'rgba(255,255,255,0.12)' }}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-300 ${
+                isAnnual ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <span className={`text-sm font-medium transition-colors ${isAnnual ? 'text-white' : 'text-white/35'}`}>
+            Annual
+          </span>
+          <AnimatePresence>
             {isAnnual && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full"
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8, x: -6 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.8, x: -6 }}
+                transition={{ duration: 0.2 }}
+                className="text-[11px] font-bold bg-[#10B981]/15 border border-[#10B981]/30 text-[#10B981] rounded-full px-3 py-1"
               >
                 Save 50%
-              </motion.div>
+              </motion.span>
             )}
-          </div>
-        </div>
+          </AnimatePresence>
+        </motion.div>
 
-        {/* Pricing Cards */}
+        {/* Cards */}
         <AnimatePresence mode="wait">
           <motion.div
             key={isAnnual ? 'annual' : 'monthly'}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12"
+            className="grid grid-cols-1 md:grid-cols-3 gap-5"
           >
-            {currentPlans.map((plan, index) => (
-              <motion.div
-                key={`${plan.name}-${isAnnual ? 'annual' : 'monthly'}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={`relative bg-white rounded-2xl shadow-xl border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full ${plan.popular
-                    ? 'border-[#4ECFBF] ring-4 ring-[#4ECFBF]/20 scale-105'
-                    : 'border-gray-200 hover:border-[#4ECFBF]/50'
+            {currentPlans.map((plan, index) => {
+              const accent = PLAN_ACCENT[plan.name];
+              return (
+                <motion.div
+                  key={`${plan.name}-${isAnnual ? 'annual' : 'monthly'}`}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.08 }}
+                  className={`relative flex flex-col rounded-3xl border ${accent.border} bg-white/[0.03] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
+                    plan.popular ? 'md:scale-[1.04]' : ''
                   }`}
-              >
-                {/* Popular Badge */}
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
-                      MOST POPULAR
+                  style={accent.glow ? { boxShadow: accent.glow } : {}}
+                >
+                  {/* Popular badge */}
+                  {plan.popular && (
+                    <div className="absolute top-0 inset-x-0 flex justify-center">
+                      <div className={`${accent.badge} text-white text-[10px] font-bold uppercase tracking-widest px-5 py-1.5 rounded-b-xl`}>
+                        Most Popular
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="p-8 flex flex-col h-full">
-                  {/* Plan Header */}
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  {/* Subtle top glow for popular */}
+                  {plan.popular && (
+                    <div
+                      className="pointer-events-none absolute inset-0 rounded-3xl"
+                      style={{
+                        background: 'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(78,207,191,0.1) 0%, transparent 70%)',
+                      }}
+                    />
+                  )}
 
-                    {/* Pricing */}
-                    <div className="mb-4">
-                      {plan.originalPrice && (
-                        <div className="text-sm text-gray-500 line-through mb-1">
-                          {plan.originalPrice}
-                        </div>
-                      )}
-                      <div className="flex items-end justify-center">
-                        <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
+                  <div className={`flex flex-col flex-1 p-7 ${plan.popular ? 'pt-12' : 'pt-8'}`}>
+                    {/* Plan name & description */}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
+                      <p className="text-white/40 text-sm leading-snug">{plan.description}</p>
+                    </div>
+
+                    {/* Price */}
+                    <div className="mb-6">
+                      <div className="flex items-end gap-1.5">
+                        <span className="text-4xl font-extrabold text-white tracking-tight">{plan.price}</span>
                         {plan.priceNote && (
-                          <span className="text-gray-600 ml-2 mb-2">{plan.priceNote}</span>
+                          <span className="text-white/35 text-sm mb-1.5">{plan.priceNote}</span>
                         )}
                       </div>
                       {plan.savings && (
-                        <div className="text-green-600 font-semibold text-sm mt-2">
-                          {plan.savings}
-                        </div>
+                        <div className="mt-1.5 text-[11px] font-semibold text-[#10B981]">{plan.savings}</div>
                       )}
-                      {plan.monthlyEquivalent && (
-                        <div className="text-gray-600 text-sm mt-1">
-                          {plan.monthlyEquivalent}
+                      {/* Payment methods for paid plans */}
+                      {plan.price !== 'Free' && (
+                        <div className="mt-2 flex items-center gap-2 text-[11px] text-white/25">
+                          <span>💳 Card</span>
+                          <span>·</span>
+                          <span>🇳🇱 iDEAL</span>
                         </div>
                       )}
                     </div>
 
-                    <p className="text-gray-600">{plan.description}</p>
+                    {/* Divider */}
+                    <div className="h-px bg-white/[0.07] mb-6" />
 
-                    {/* Payment Methods - Only show for paid plans */}
-                    {plan.price !== "Free" && (
-                      <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
-                        <span className="inline-flex items-center">
-                          💳 Card
-                        </span>
-                        <span>•</span>
-                        <span className="inline-flex items-center">
-                          🇳🇱 iDEAL
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                    {/* Features */}
+                    <ul className="flex-1 space-y-3 mb-8">
+                      {plan.features.map((feature, fi) => (
+                        <li key={fi} className="flex items-start gap-3">
+                          {feature.included ? (
+                            <svg className="w-4 h-4 mt-0.5 shrink-0 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <div className="w-4 h-4 mt-0.5 shrink-0 flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                            </div>
+                          )}
+                          <span className={`text-sm leading-snug ${feature.included ? 'text-white/75' : 'text-white/25'}`}>
+                            {feature.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
 
-                  {/* Features */}
-                  <ul className="space-y-4 mb-8 flex-grow">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-start">
-                        <svg
-                          className={`w-5 h-5 mt-0.5 mr-3 flex-shrink-0 ${feature.included ? 'text-[#4ECFBF]' : 'text-gray-300'
-                            }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        <span className={feature.included ? 'text-gray-700' : 'text-gray-400'}>
-                          {feature.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Note - Move above button for Team Mastery */}
-                  {plan.note && (
-                    <p className="text-xs text-gray-500 mb-4 text-center">
-                      {plan.note}
-                    </p>
-                  )}
-
-                  {/* CTA Button - This will be pushed to the bottom */}
-                  <div className="mt-auto">
+                    {/* CTA */}
                     <button
                       onClick={() => handleCTAClick(plan)}
                       disabled={isLoading}
-                      className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${plan.popular
-                          ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] focus:ring-[#4ECFBF] shadow-lg'
-                          : plan.name === "Try & Learn"
-                            ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300'
-                            : 'bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white focus:ring-[#4ECFBF]'
-                        } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      className={`w-full py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none ${accent.cta} ${
+                        isLoading ? 'opacity-60 cursor-not-allowed' : ''
+                      }`}
                     >
                       {isLoading ? (
-                        <div className="flex items-center justify-center">
-                          <LoadingSpinner size="sm" className="mr-2" />
-                          <span>Processing...</span>
-                        </div>
+                        <span className="flex items-center justify-center gap-2">
+                          <LoadingSpinner size="sm" />
+                          Processing...
+                        </span>
                       ) : (
                         plan.ctaButton
                       )}
                     </button>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </motion.div>
         </AnimatePresence>
 
-        {/* Bottom CTA */}
-        <div className="text-center mt-16">
-          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Need a custom solution?
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Contact us for enterprise pricing and customized language training programs
-              for larger organizations with specific requirements.
-            </p>
-            <button
-              onClick={() => window.location.href = 'mailto:hello@mytacoai.com?subject=Enterprise Plan Inquiry'}
-              className="inline-flex items-center px-8 py-3 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Contact Enterprise Sales
-            </button>
+        {/* Money-back + enterprise strip */}
+        <motion.div
+          className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-8 py-6"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center text-lg">
+              🛡️
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-white">Cancel anytime</div>
+              <div className="text-xs text-white/35">No long-term commitment required</div>
+            </div>
           </div>
-        </div>
-      </div>
+          <div className="hidden sm:block w-px h-8 bg-white/[0.08]" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center text-lg">
+              ⚡
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-white">Free trial on paid plans</div>
+              <div className="text-xs text-white/35">3 days free, no credit card required</div>
+            </div>
+          </div>
+          <div className="hidden sm:block w-px h-8 bg-white/[0.08]" />
+          <button
+            onClick={() => { window.location.href = 'mailto:hello@mytacoai.com?subject=Enterprise Plan Inquiry'; }}
+            className="text-sm font-semibold text-[#4ECFBF] hover:text-white transition-colors duration-200 underline underline-offset-4 decoration-[#4ECFBF]/40"
+          >
+            Need enterprise? Contact us →
+          </button>
+        </motion.div>
 
+      </div>
     </section>
   );
 }

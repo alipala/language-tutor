@@ -302,10 +302,19 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   }, []);
 
-  // Keep the navbar fixed with appropriate styling - compact height with large logo
-  let navbarClass = `w-full backdrop-blur-sm transition-all duration-500 fixed left-0 right-0 z-50 ${isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90'} ${activeSection ? 'navbar-section1' : ''}`;
+  // Navbar background: transparent dark glass on landing page, teal everywhere else
+  const isLandingGuest = isLandingPage && !user && !isInstitutionUser && !isTutorUser;
+  let navbarBg: string;
+  if (isLandingGuest) {
+    navbarBg = isScrolled
+      ? 'bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-white/[0.08] shadow-none'
+      : 'bg-transparent border-b border-white/[0.04]';
+  } else {
+    navbarBg = isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90';
+  }
+  let navbarClass = `w-full backdrop-blur-sm transition-all duration-300 fixed left-0 right-0 z-50 ${navbarBg} ${activeSection ? 'navbar-section1' : ''}`;
   navbarClass += isScrolled ? ' py-1' : ' py-2';
-  
+
   // Add hide/show animation for mobile on speech pages
   if (isMobile && window.location.pathname.includes('/speech')) {
     navbarClass += isNavHidden ? ' -top-20 opacity-0' : ' top-0 opacity-100';
@@ -348,31 +357,21 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
         <div className="hidden md:flex items-center space-x-6">
           {/* Landing page navigation items - only show when not logged in */}
           {isLandingPage && !user && (
-            <div className="flex items-center space-x-6 mr-4">
-              <button 
-                onClick={() => scrollToSection('features')}
-                className="text-white/90 hover:text-[#FFD63A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFD63A]/70 hover:bg-[#FFD63A]/10 hover:shadow-lg"
-              >
-                Features
-              </button>
-              <button 
-                onClick={() => scrollToSection('how-it-works')}
-                className="text-white/90 hover:text-[#F75A5A] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#F75A5A]/70 hover:bg-[#F75A5A]/10 hover:shadow-lg"
-              >
-                How It Works
-              </button>
-              <button 
-                onClick={() => scrollToSection('pricing')}
-                className="text-white/90 hover:text-[#FFA955] transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-[#FFA955]/70 hover:bg-[#FFA955]/10 hover:shadow-lg"
-              >
-                Pricing
-              </button>
-              <button 
-                onClick={() => scrollToSection('faq')}
-                className="text-white/90 hover:text-white transition-all duration-300 font-medium px-3 py-2 rounded-md hover:border hover:border-white/50 hover:bg-white/10 hover:shadow-lg"
-              >
-                FAQ
-              </button>
+            <div className="flex items-center space-x-1 mr-4">
+              {[
+                { label: 'Features', id: 'features' },
+                { label: 'How It Works', id: 'how-it-works' },
+                { label: 'Pricing', id: 'pricing' },
+                { label: 'FAQ', id: 'faq' },
+              ].map(({ label, id }) => (
+                <button
+                  key={id}
+                  onClick={() => scrollToSection(id)}
+                  className="text-white/70 hover:text-white transition-colors duration-200 font-medium px-4 py-2 rounded-xl hover:bg-white/[0.08] text-sm"
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           )}
           
@@ -571,7 +570,11 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             <div className="flex items-center">
               <button
                 onClick={() => navigateTo('/auth/login')}
-                className="login-button px-4 py-2 rounded-lg transition-all duration-300"
+                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isLandingGuest
+                    ? 'border border-white/20 text-white hover:bg-white/10 hover:border-white/40'
+                    : 'login-button'
+                }`}
               >
                 Login
               </button>
@@ -605,7 +608,11 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
       {/* Mobile Menu - Enhanced for better mobile UX */}
       {isMenuOpen && (
-        <div className="block md:hidden bg-white/10 backdrop-blur-md border border-white/20 shadow-lg mt-2 mx-4 rounded-lg overflow-hidden mobile-menu-container">
+        <div className={`block md:hidden backdrop-blur-xl border shadow-lg mt-2 mx-4 rounded-2xl overflow-hidden mobile-menu-container ${
+          isLandingGuest
+            ? 'bg-[#0E0E1A]/95 border-white/[0.08]'
+            : 'bg-white/10 border-white/20'
+        }`}>
           {/* Landing page menu items on mobile - only show when not logged in */}
           {isLandingPage && !user && (
             <>
