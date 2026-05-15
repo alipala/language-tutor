@@ -9,6 +9,7 @@ import ProjectKnowledgeChatbot from '@/components/project-knowledge-chatbot';
 import SubscriptionPlans from '@/components/subscription-plans';
 import SoundWaveLoader from '@/components/sound-wave-loader';
 import { motion, AnimatePresence } from 'framer-motion';
+import LearningJourneySection from '@/components/learning-journey-section';
 
 /**
  * SectionDivider — layered separator between dark sections.
@@ -320,7 +321,7 @@ export default function Home() {
           {/* ─── HERO ─────────────────────────────────────────── */}
           <section
             id="features"
-            className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 pt-24 pb-16"
+            className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 pt-32 pb-16"
             style={{ background: '#0A0A0F' }}
           >
             {/* Mesh gradient blobs */}
@@ -826,146 +827,8 @@ export default function Home() {
 
           <SectionDivider accent="#7C3AED" />
 
-          {/* ─── HOW IT WORKS ─────────────────────────────────── */}
-          <section
-            id="how-it-works"
-            className="relative py-24 px-4"
-            style={{ background: '#0B0B14' }}
-          >
-            <div className="max-w-5xl mx-auto">
-              <Reveal className="text-center mb-20">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
-                  Simple by design
-                </p>
-                <h2 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight">
-                  From first word to fluency
-                </h2>
-              </Reveal>
-
-              <div className="relative">
-                {/* Vertical connector line (desktop) */}
-                <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
-
-                <div className="space-y-16 lg:space-y-24">
-                  {[
-                    {
-                      step: '01',
-                      icon: '🎙️',
-                      title: 'Speak for 60 seconds',
-                      body: 'Say anything — introduce yourself, talk about your week. Our AI listens to your natural speech, not a scripted phrase.',
-                      aside: (
-                        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                          <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Recording</div>
-                          <VoiceWaveform bars={20} />
-                          <div className="mt-2 text-center font-mono text-sm text-[#4ECFBF]">0:43 / 1:00</div>
-                        </div>
-                      ),
-                    },
-                    {
-                      step: '02',
-                      icon: '🧬',
-                      title: 'Your Voice DNA is created',
-                      body: 'We map 6 unique dimensions of your speech into a profile that\'s as personal as a fingerprint. No two learners are alike.',
-                      aside: <DNAStrandMini />,
-                      reverse: true,
-                    },
-                    {
-                      step: '03',
-                      icon: '🗺️',
-                      title: 'A plan built just for you',
-                      body: 'Your AI tutor generates a week-by-week learning plan, missions, and challenge types that target your weakest strands first.',
-                      aside: (
-                        <div className="space-y-2">
-                          {['Week 1 · Rhythm & Intonation', 'Week 2 · Vocabulary Depth', 'Week 3 · Grammar Confidence'].map(
-                            (w) => (
-                              <div
-                                key={w}
-                                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-2.5"
-                              >
-                                <div className="w-1.5 h-1.5 rounded-full bg-[#4ECFBF]" />
-                                <span className="text-sm text-white/60">{w}</span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      ),
-                    },
-                    {
-                      step: '04',
-                      icon: '🚀',
-                      title: 'Practise daily, evolve faster',
-                      body: 'Daily missions, real news articles, 7 challenge types, and live voice sessions keep every day fresh. Your DNA profile updates with every session.',
-                      aside: (
-                        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-center">
-                          <div className="text-3xl font-extrabold text-[#4ECFBF]">+14%</div>
-                          <div className="text-[11px] text-white/40 mb-3">Fluency improvement · 30 days</div>
-                          <div className="flex items-center justify-center gap-1">
-                            {Array.from({ length: 7 }).map((_, i) => (
-                              <div
-                                key={i}
-                                className="w-5 rounded-sm"
-                                style={{
-                                  height: `${20 + (i * 7 % 30)}px`,
-                                  background: i < 5 ? '#4ECFBF' : 'rgba(255,255,255,0.1)',
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <div className="text-[10px] text-white/25 mt-2">Last 7 days</div>
-                        </div>
-                      ),
-                      reverse: true,
-                    },
-                  ].map((item) => (
-                    <Reveal key={item.step}>
-                      <div
-                        className={`flex flex-col ${
-                          item.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'
-                        } gap-8 lg:gap-16 items-center`}
-                      >
-                        {/* Text side */}
-                        <div className="flex-1 flex flex-col items-start">
-                          <div className="flex items-center gap-4 mb-5">
-                            <div className="text-4xl">{item.icon}</div>
-                            <div
-                              className="text-5xl font-black leading-none"
-                              style={{
-                                background: 'linear-gradient(135deg, rgba(78,207,191,0.15), rgba(78,207,191,0.05))',
-                                backgroundClip: 'text',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                              }}
-                            >
-                              {item.step}
-                            </div>
-                          </div>
-                          <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-snug">
-                            {item.title}
-                          </h3>
-                          <p className="text-white/50 text-base leading-relaxed">{item.body}</p>
-                        </div>
-                        {/* Visual side */}
-                        <div className="w-full lg:w-80 shrink-0">{item.aside}</div>
-                      </div>
-                    </Reveal>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* CTA into pricing */}
-            <Reveal delay={0.2} className="text-center mt-24">
-              <button
-                onClick={() => scrollTo('pricing')}
-                className="inline-flex items-center gap-2 rounded-2xl bg-[#4ECFBF] px-8 py-4 text-[#0A0A0F] font-bold text-base hover:bg-[#3dc4b5] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 shadow-[0_0_40px_rgba(78,207,191,0.3)]"
-              >
-                See plans & pricing
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </button>
-            </Reveal>
-          </section>
+          {/* ─── YOUR LEARNING JOURNEY ────────────────────────── */}
+          <LearningJourneySection scrollTo={scrollTo} />
 
           <SectionDivider accent="#4ECFBF" />
 
@@ -1022,24 +885,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ─── FOOTER STRIP ─────────────────────────────────── */}
-          <footer className="border-t border-white/[0.06] bg-[#0A0A0F] py-8 px-4 mt-0">
-            <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-              <span className="text-white/25 text-xs">© {new Date().getFullYear()} MyTaco AI. All rights reserved.</span>
-              <div className="flex gap-6">
-                {[
-                  { label: 'Privacy', href: '/privacy' },
-                  { label: 'Terms', href: '/terms' },
-                  { label: 'GDPR', href: '/gdpr' },
-                  { label: 'Help', href: '/help' },
-                ].map((l) => (
-                  <a key={l.label} href={l.href} className="text-white/25 hover:text-white/60 text-xs transition-colors duration-150">
-                    {l.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </footer>
+          {/* Footer rendered globally via layout.tsx → ConditionalFooter → footer.tsx */}
         </main>
       )}
 

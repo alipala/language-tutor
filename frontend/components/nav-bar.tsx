@@ -374,6 +374,7 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
               ))}
             </div>
           )}
+
           
           
           {/* User Menu (when logged in) or Loading State */}
@@ -566,20 +567,14 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
               )}
             </div>
           </div>
-          ) : (
+          ) : null /* Login button hidden — restore by replacing null with:
             <div className="flex items-center">
-              <button
-                onClick={() => navigateTo('/auth/login')}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  isLandingGuest
-                    ? 'border border-white/20 text-white hover:bg-white/10 hover:border-white/40'
-                    : 'login-button'
-                }`}
-              >
+              <button onClick={() => navigateTo('/auth/login')}
+                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${isLandingGuest ? 'border border-white/20 text-white hover:bg-white/10 hover:border-white/40' : 'login-button'}`}>
                 Login
               </button>
             </div>
-          )}
+          */}
         </div>
 
         {/* Mobile Menu Button - Enhanced for better touch targets */}
@@ -614,35 +609,35 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             : 'bg-white/10 border-white/20'
         }`}>
           {/* Landing page menu items on mobile - only show when not logged in */}
-          {isLandingPage && !user && (
+          {isLandingPage && !user ? (
             <>
               <button
                 onClick={() => scrollToSection('features')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-[#FFD63A] hover:bg-[#FFD63A]/10 hover:border hover:border-[#FFD63A]/70 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('how-it-works')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-[#F75A5A] hover:bg-[#F75A5A]/10 hover:border hover:border-[#F75A5A]/70 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
               >
                 How It Works
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-[#FFA955] hover:bg-[#FFA955]/10 hover:border hover:border-[#FFA955]/70 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
               >
                 Pricing
               </button>
               <button
                 onClick={() => scrollToSection('faq')}
-                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 hover:border hover:border-white/50 transition-all duration-300 touch-target"
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
               >
                 FAQ
               </button>
-              <div className="border-t border-white/10 mx-2 my-2"></div>
+              <div className="border-t border-white/10 mx-2 my-2" />
             </>
-          )}
+          ) : null}
           
           {authLoading ? (
             <>

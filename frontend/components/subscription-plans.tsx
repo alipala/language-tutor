@@ -2,10 +2,6 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../lib/auth';
-import { LoadingSpinner } from './ui/loading-spinner';
-import { usePlanModal } from './modals/plan-modal-context';
 
 interface PricingFeature {
   text: string;
@@ -174,51 +170,10 @@ const PLAN_ACCENT: Record<string, { border: string; glow: string; badge: string;
 
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const currentPlans = isAnnual ? annualPlans : monthlyPlans;
-  const router = useRouter();
-  const { user } = useAuth();
-  const { openPlanModal } = usePlanModal();
 
-  const createCheckoutSession = async (priceId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          price_id: priceId,
-          success_url: `${window.location.origin}/profile?checkout=success`,
-          cancel_url: `${window.location.origin}/profile?checkout=canceled`,
-        }),
-      });
-      const { url } = await response.json();
-      window.location.href = url;
-    } catch {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCTAClick = async (plan: PricingCard) => {
-    if (plan.ctaButton === 'Start Free') {
-      router.push('/auth/signup');
-      return;
-    }
-
-    let planId = '';
-    if (plan.name === 'Fluency Builder') planId = 'fluency_builder';
-    else if (plan.name === 'Language Mastery') planId = 'team_mastery';
-    if (!planId) return;
-
-    const period = isAnnual ? 'annual' : 'monthly';
-
-    if (!user) {
-      sessionStorage.setItem('selectedPlan', JSON.stringify({ name: plan.name, planId, period }));
-      router.push('/auth/login?from=pricing');
-    } else {
-      router.push(`/checkout?plan=${planId}&period=${period}`);
-    }
-  };
+  const APP_STORE_URL = 'https://apps.apple.com/br/app/mytaco/id6757149290?l=en-GB';
+  const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.bigdavinci.MyTacoAI';
 
   return (
     <section
@@ -381,23 +336,31 @@ export default function SubscriptionPlans() {
                       ))}
                     </ul>
 
-                    {/* CTA */}
-                    <button
-                      onClick={() => handleCTAClick(plan)}
-                      disabled={isLoading}
-                      className={`w-full py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none ${accent.cta} ${
-                        isLoading ? 'opacity-60 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <LoadingSpinner size="sm" />
-                          Processing...
-                        </span>
-                      ) : (
-                        plan.ctaButton
-                      )}
-                    </button>
+                    {/* CTA — both store links */}
+                    <div className="space-y-2">
+                      <a
+                        href={APP_STORE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`w-full py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${accent.cta}`}
+                      >
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                        </svg>
+                        Download on App Store
+                      </a>
+                      <a
+                        href={PLAY_STORE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 rounded-2xl text-xs font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20"
+                      >
+                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3.18 23.76c.34.19.73.23 1.1.12l12.02-12.02-2.49-2.49L3.18 23.76zM20.54 10.23l-2.93-1.65-2.81 2.81 2.81 2.81 2.96-1.67c.84-.47.84-1.83-.03-2.3zM1.91.17C1.65.45 1.5.86 1.5 1.38v21.24c0 .52.15.93.41 1.21l.07.06L13.17 12 1.98.11l-.07.06zM14.38 12l2.49-2.49L4.28.23c-.35-.2-.73-.24-1.1-.14L14.38 12z" />
+                        </svg>
+                        Also on Google Play
+                      </a>
+                    </div>
                   </div>
                 </motion.div>
               );
