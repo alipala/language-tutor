@@ -57,6 +57,7 @@ class LearningPlanRequest(BaseModel):
     assessment_data: Optional[Dict[str, Any]] = None
     from_final_assessment: Optional[bool] = None
     previous_plan_id: Optional[str] = None
+    preferred_session_duration: Optional[int] = None  # Minutes per session chosen at plan creation (1, 3, or 5)
 
 class LearningPlan(BaseModel):
     id: str
@@ -75,13 +76,14 @@ class LearningPlan(BaseModel):
     progress_percentage: Optional[float] = 0.0
     practice_minutes_used: Optional[float] = 0.0
     session_summaries: Optional[List[str]] = []
-    # NEW: Final Assessment Fields
     status: Optional[str] = "in_progress"  # "in_progress" | "awaiting_final_assessment" | "completed" | "failed_assessment"
-    final_assessment: Optional[Dict[str, Any]] = None  # Assessment requirements and attempts
-    all_sessions_completed_at: Optional[str] = None  # When last session was completed
-    # NEW: Plan Lineage Fields
-    from_final_assessment: Optional[bool] = None  # Created from final assessment
-    previous_plan_id: Optional[str] = None  # ID of the plan this was created from
+    final_assessment: Optional[Dict[str, Any]] = None
+    all_sessions_completed_at: Optional[str] = None
+    from_final_assessment: Optional[bool] = None
+    previous_plan_id: Optional[str] = None
+    preferred_session_duration: Optional[int] = None  # Minutes per session chosen at plan creation (1, 3, or 5)
+    voice_check_schedule: Optional[List[int]] = None
+    voice_checks_completed: Optional[List[int]] = None
 
 # Initialize learning goals collection
 learning_goals_collection = database.learning_goals
@@ -442,9 +444,8 @@ async def create_learning_plan(
                             "Explore artistic and literary language"
                         ]
                 
-                # CRITICAL FIX: Initialize session_details array properly
                 session_details = []
-                sessions_per_week = 2  # Default 2 sessions per week
+                sessions_per_week = 4  # 4 sessions per week
                 
                 # Create placeholder session objects for each session in the week
                 for session_idx in range(sessions_per_week):
@@ -543,8 +544,8 @@ async def create_learning_plan(
             ],
             "progress_tracking": {
                 "total_weeks": len(weekly_schedule),
-                "sessions_per_week": 2,
-                "total_sessions": len(weekly_schedule) * 2,
+                "sessions_per_week": 4,
+                "total_sessions": len(weekly_schedule) * 4,
                 "milestone_weeks": [4, 8, 12, 24, 36, 48] if plan_request.duration_months >= 12 else [4, 8, 12]
             }
         }
@@ -714,7 +715,7 @@ Speaking DNA Profile:
             )
             session_capacity_note = (
                 f"This plan has {total_sessions_available} sessions total "
-                f"({plan_request.duration_months} month(s) × 2 sessions/week). "
+                f"({plan_request.duration_months} month(s) × 4 sessions/week). "
                 f"{_capacity_advice}"
             )
 
@@ -928,6 +929,7 @@ Using ALL the information above, provide:
             "from_final_assessment": plan_request.from_final_assessment if plan_request.from_final_assessment else None,
             "previous_plan_id": plan_request.previous_plan_id if plan_request.previous_plan_id else None,
             # Voice check fields for Speaking DNA acoustic analysis (premium feature)
+            "preferred_session_duration": plan_request.preferred_session_duration,
             "voice_check_schedule": voice_check_schedule,
             "voice_checks_completed": []
         }
@@ -1469,8 +1471,8 @@ async def save_session_summary_OLD_DEPRECATED(
         
         # Get current progress
         current_completed = learning_plan.get("completed_sessions", 0)
-        total_sessions = learning_plan.get("total_sessions", 96)
-        sessions_per_week = 2
+        total_sessions = learning_plan.get("total_sessions", 192)
+        sessions_per_week = 4
         
         # Calculate which week and session this belongs to
         session_number = current_completed + 1  # Next session to be completed
