@@ -470,7 +470,7 @@ Plan Details:
 
             else:
                 # Regular learning plan session (not final assessment)
-                sessions_per_week = 2
+                sessions_per_week = 4
                 current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
                 current_session_in_week = (completed_sessions % sessions_per_week) + 1
 

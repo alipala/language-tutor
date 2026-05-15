@@ -48,8 +48,8 @@ class LearningPlanSessionCompletionService:
             
             # Get current progress
             current_completed = plan.get("completed_sessions", 0)
-            total_sessions = plan.get("total_sessions", 24)
-            sessions_per_week = 2
+            total_sessions = plan.get("total_sessions", 48)
+            sessions_per_week = 4
             
             # Calculate which week and session this belongs to
             session_number = current_completed + 1  # Next session to be completed

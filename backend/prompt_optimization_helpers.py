@@ -2842,7 +2842,7 @@ Use emojis to keep students engaged and reduce anxiety!
 """
             else:
                 # Regular learning plan session
-                sessions_per_week = 2
+                sessions_per_week = 4
                 current_week_number = min((completed_sessions // sessions_per_week) + 1, len(plan_content.get('weekly_schedule', [])))
 
                 weekly_schedule = plan_content.get('weekly_schedule', [])

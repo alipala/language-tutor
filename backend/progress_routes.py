@@ -1450,7 +1450,7 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
                 
                 if plan_updated >= week_start:
                     # Estimate sessions this week (could be more precise with session_details)
-                    recent_sessions = min(plan.get("completed_sessions", 0), 2)  # Max 2 sessions per week
+                    recent_sessions = min(plan.get("completed_sessions", 0), 4)  # Max 4 sessions per week
                     learning_plan_sessions_this_week += recent_sessions
                 
                 if plan_updated >= month_start:
@@ -2058,7 +2058,7 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
         # Get current progress
         current_completed = learning_plan.get("completed_sessions", 0)
         total_sessions = learning_plan.get("total_sessions", 96)
-        sessions_per_week = 2
+        sessions_per_week = 4
         
         # Calculate which week and session this belongs to
         session_number = current_completed + 1  # Next session to be completed
@@ -2173,8 +2173,8 @@ async def update_learning_plan_progress(user_id: str, language: str, level: str,
         
         print(f"[LEARNING_PLAN] User has {today_sessions} session(s) recorded in learning plan")
         
-        # Calculate sessions per week (2 sessions per week based on the plan data)
-        sessions_per_week = 2
+        # Calculate sessions per week (4 sessions per week)
+        sessions_per_week = 4
         
         # Calculate current week based on completed sessions
         current_week = (current_completed // sessions_per_week) + 1

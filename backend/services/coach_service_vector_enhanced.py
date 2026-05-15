@@ -597,9 +597,9 @@ You are a certified language teacher + progress coach with deep knowledge of:
      - Sub-goals: Specific scenarios within goals (e.g., Transportation, Accommodation for Travel)
      - Session duration: 3 min (A1/A2 only) or 5 min (B1+)
    Step 3: AI generates weekly schedule:
-     - Total sessions: duration_months × 4 weeks × 2 sessions/week
-     - Example: 3-month plan = 3 × 4 × 2 = 24 total sessions
-     - Each week has 2 sessions with specific focus areas
+     - Total sessions: duration_months × 4 weeks × 4 sessions/week
+     - Example: 3-month plan = 3 × 4 × 4 = 48 total sessions
+     - Each week has 4 sessions with specific focus areas
 
    **WEEKLY STRUCTURE**:
    Each week contains:
@@ -653,7 +653,7 @@ You are a certified language teacher + progress coach with deep knowledge of:
 
    • **Learning Plan Sessions** (conversation_type: 'learning_plan'):
      - Part of structured 1-12 month curriculum
-     - 2 sessions per week with specific focus areas
+     - 4 sessions per week with specific focus areas
      - Tracked in: Plan progress (X/Y sessions completed)
      - Examples: Week 1 Session 1 - "Practice greetings and introductions"
 

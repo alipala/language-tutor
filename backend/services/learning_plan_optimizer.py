@@ -168,8 +168,8 @@ class LearningPlanOptimizer:
         if not weekly_schedule:
             return {"error": "No weekly schedule found in plan"}
 
-        # Calculate current week (2 sessions per week)
-        current_week_index = min(completed_sessions // 2, len(weekly_schedule) - 1)
+        # Calculate current week (4 sessions per week)
+        current_week_index = min(completed_sessions // 4, len(weekly_schedule) - 1)
 
         # Don't update past weeks, only upcoming weeks
         upcoming_weeks = weekly_schedule[current_week_index + 1:]
@@ -617,7 +617,7 @@ class LearningPlanOptimizer:
         weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
 
         # Calculate next week to update
-        current_week_index = min(completed_sessions // 2, len(weekly_schedule) - 1)
+        current_week_index = min(completed_sessions // 4, len(weekly_schedule) - 1)
         next_week_index = min(current_week_index + 1, len(weekly_schedule) - 1)
 
         if next_week_index >= len(weekly_schedule):

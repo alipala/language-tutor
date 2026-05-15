@@ -605,7 +605,7 @@ async def get_user_progress_data(user_id: str, assessment_id: Optional[str], lea
                 progress_percentage = learning_plan.get("progress_percentage", 0)
                 
                 # Calculate weeks completed
-                sessions_per_week = 2
+                sessions_per_week = 4
                 weeks_completed = completed_sessions // sessions_per_week
                 total_weeks = learning_plan.get("duration_months", 6) * 4
                 
@@ -849,7 +849,7 @@ async def get_user_weeks(
                 return {"completed_weeks": [], "total_weeks": 0, "completed_sessions": 0}
             
             completed_sessions = specific_plan.get("completed_sessions", 0)
-            sessions_per_week = 2
+            sessions_per_week = 4
             plan_completed_weeks = completed_sessions // sessions_per_week
             plan_total_weeks = specific_plan.get("duration_months", 6) * 4
             plan_language = specific_plan.get("language", "unknown")
@@ -898,7 +898,7 @@ async def get_user_weeks(
             
             for plan in all_plans:
                 completed_sessions = plan.get("completed_sessions", 0)
-                sessions_per_week = 2
+                sessions_per_week = 4
                 plan_completed_weeks = completed_sessions // sessions_per_week
                 plan_total_weeks = plan.get("duration_months", 6) * 4
                 plan_language = plan.get("language", "unknown")

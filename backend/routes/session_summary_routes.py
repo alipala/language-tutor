@@ -185,7 +185,7 @@ async def generate_structured_session_summary(
     """
     language = plan.get("language", "english")
     level = plan.get("proficiency_level", "B1")
-    sessions_per_week = 2
+    sessions_per_week = 4
     week_index = (session_number - 1) // sessions_per_week
     weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
     current_week = weekly_schedule[week_index] if week_index < len(weekly_schedule) else {}
@@ -314,7 +314,7 @@ async def _persist_structured_summary_background(
             plan.get("plan_content", {}).get("weekly_schedule", [])
         )
 
-        sessions_per_week = 2
+        sessions_per_week = 4
         week_index = (session_number - 1) // sessions_per_week
         session_in_week = ((session_number - 1) % sessions_per_week)  # 0-based index
 
@@ -645,7 +645,7 @@ async def generate_comprehensive_session_summary(plan, conversation_data, basic_
         completed_sessions = plan.get("completed_sessions", 0) + 1
 
         # Get current week focus
-        sessions_per_week = 2
+        sessions_per_week = 4
         current_week = ((completed_sessions - 1) // sessions_per_week) + 1
         weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
         current_week_data = weekly_schedule[current_week - 1] if current_week <= len(weekly_schedule) else None
@@ -785,7 +785,7 @@ Continue practicing the weekly focus areas and maintain consistent engagement wi
         level = plan.get("proficiency_level", "B1")
         completed_sessions = plan.get("completed_sessions", 0) + 1
 
-        sessions_per_week = 2
+        sessions_per_week = 4
         current_week = ((completed_sessions - 1) // sessions_per_week) + 1
         weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
         current_week_data = weekly_schedule[current_week - 1] if current_week <= len(weekly_schedule) else None
@@ -1005,7 +1005,7 @@ async def store_session_summary(
         progress_percentage = min((completed_sessions / total_sessions) * 100, 100.0)
 
         # Calculate which week this session belongs to
-        sessions_per_week = 2
+        sessions_per_week = 4
         new_week = ((completed_sessions - 1) // sessions_per_week) + 1
         sessions_in_week = ((completed_sessions - 1) % sessions_per_week) + 1
 
@@ -1198,7 +1198,7 @@ async def store_session_summary(
                     duration_minutes = conversation_data.get("duration_minutes", 5.0)
 
                 # Calculate LIGHTWEIGHT session_number and week_number (FAST)
-                sessions_per_week = 2
+                sessions_per_week = 4
                 session_number = completed_sessions
                 week_number = ((completed_sessions - 1) // sessions_per_week) + 1
 

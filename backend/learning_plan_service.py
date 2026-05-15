@@ -252,15 +252,15 @@ class LearningPlanService:
             if session_details:
                 total += len(session_details)
             else:
-                # Default to 2 sessions per week if no session_details
-                total += 2
+                # Default to 4 sessions per week if no session_details
+                total += 4
         return total
     
     @staticmethod
     def ensure_session_structure(weekly_schedule: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Ensure each week in the schedule has proper session_details structure"""
         
-        sessions_per_week = 2  # Default sessions per week
+        sessions_per_week = 4  # 4 sessions per week
         
         for week_idx, week in enumerate(weekly_schedule):
             # Initialize session_details if not present

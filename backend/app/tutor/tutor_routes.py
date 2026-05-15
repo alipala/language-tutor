@@ -458,7 +458,7 @@ def calculate_progress_status(learning_plan: dict, days_since_activity: int, lea
     
     # At Risk: Behind schedule OR low engagement
     completed_sessions = learning_plan.get("completed_sessions", 0)
-    expected_sessions = weeks_elapsed * 2  # 2 sessions per week
+    expected_sessions = weeks_elapsed * 4  # 4 sessions per week
     
     if (actual_progress < (expected_progress - 15) or  # More than 15% behind
         (days_since_activity > 7 and days_since_activity <= 14) or  # 7-14 days inactive

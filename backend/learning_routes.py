@@ -901,7 +901,7 @@ Using ALL the information above, provide:
         print(f"[LEARNING_PLAN] ✅ Generated weekly schedule:")
         print(f"[LEARNING_PLAN]    Total weeks: {len(weekly_schedule)}")
         print(f"[LEARNING_PLAN]    Total sessions: {total_sessions}")
-        print(f"[LEARNING_PLAN]    Sessions per week: 2")
+        print(f"[LEARNING_PLAN]    Sessions per week: 4")
         
         # Calculate voice check schedule for Speaking DNA acoustic analysis
         voice_check_schedule = voice_check_service.calculate_voice_check_schedule(plan_request.duration_months)
@@ -1115,15 +1115,15 @@ async def get_learning_plan(
     # Ensure backward compatibility - add missing progress fields for existing plans
     if "total_sessions" not in plan or plan.get("total_sessions") is None:
         def calculate_total_sessions(duration_months: int) -> int:
-            """Calculate total sessions based on duration"""
+            """Calculate total sessions based on duration (4 sessions/week × 4 weeks/month)"""
             session_mapping = {
-                1: 8,   # 1 month = 4 weeks, 8 sessions
-                2: 16,  # 2 months = 8 weeks, 16 sessions
-                3: 24,  # 3 months = 12 weeks, 24 sessions
-                6: 48,  # 6 months = 24 weeks, 48 sessions
-                12: 96  # 12 months = 48 weeks, 96 sessions
+                1: 16,   # 1 month = 4 weeks × 4 sessions/week
+                2: 32,   # 2 months = 8 weeks × 4 sessions/week
+                3: 48,   # 3 months = 12 weeks × 4 sessions/week
+                6: 96,   # 6 months = 24 weeks × 4 sessions/week
+                12: 192  # 12 months = 48 weeks × 4 sessions/week
             }
-            return session_mapping.get(duration_months, duration_months * 8)  # Default: 8 sessions per month
+            return session_mapping.get(duration_months, duration_months * 16)  # Default: 16 sessions per month
 
         total_sessions = calculate_total_sessions(plan.get("duration_months", 1))
         completed_sessions = plan.get("completed_sessions", 0)
@@ -1268,15 +1268,15 @@ async def get_user_learning_plans(
         
         # Ensure backward compatibility - add missing progress fields for existing plans
         def calculate_total_sessions(duration_months: int) -> int:
-            """Calculate total sessions based on duration"""
+            """Calculate total sessions based on duration (4 sessions/week × 4 weeks/month)"""
             session_mapping = {
-                1: 8,   # 1 month = 4 weeks, 8 sessions
-                2: 16,  # 2 months = 8 weeks, 16 sessions
-                3: 24,  # 3 months = 12 weeks, 24 sessions
-                6: 48,  # 6 months = 24 weeks, 48 sessions
-                12: 96  # 12 months = 48 weeks, 96 sessions
+                1: 16,   # 1 month = 4 weeks × 4 sessions/week
+                2: 32,   # 2 months = 8 weeks × 4 sessions/week
+                3: 48,   # 3 months = 12 weeks × 4 sessions/week
+                6: 96,   # 6 months = 24 weeks × 4 sessions/week
+                12: 192  # 12 months = 48 weeks × 4 sessions/week
             }
-            return session_mapping.get(duration_months, duration_months * 8)  # Default: 8 sessions per month
+            return session_mapping.get(duration_months, duration_months * 16)  # Default: 16 sessions per month
         
         updated_plans = []
         for plan in plans:
