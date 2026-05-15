@@ -213,7 +213,10 @@ class LearningPlanSessionCompletionService:
                         '$inc': {
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
-                            'total_sessions': 1,  # drives plan_session mission progress
+                            # Only count toward missions when the session was fully completed,
+                            # not when the user quit early (partial). This prevents the
+                            # plan_session mission from being marked done on an incomplete session.
+                            **({"total_sessions": 1} if session_status == "completed" else {}),
                         },
                         '$set': {
                             'user_timezone': 'UTC',
