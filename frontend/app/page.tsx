@@ -8,18 +8,62 @@ import LearningPlanDashboard from '@/components/dashboard/LearningPlanDashboard'
 import ProjectKnowledgeChatbot from '@/components/project-knowledge-chatbot';
 import SubscriptionPlans from '@/components/subscription-plans';
 import SoundWaveLoader from '@/components/sound-wave-loader';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Section divider — glowing hairline between dark sections
+/**
+ * SectionDivider — layered separator between dark sections.
+ *
+ * Three layers rendered in a 64px tall container:
+ *  1. Top closing gradient — the outgoing section fades to transparent.
+ *  2. Hairline — full-width line that fades at both edges via a horizontal gradient,
+ *     with its full-width glow spread via box-shadow.
+ *  3. Centered orb — a soft radial glow at the midpoint that acts as a
+ *     focal "light source", making the transition feel physical not decorative.
+ *  4. Bottom opening gradient — the incoming section opens from transparent.
+ */
 function SectionDivider({ accent = '#4ECFBF' }: { accent?: string }) {
   return (
-    <div className="relative h-px w-full overflow-visible">
-      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.04)' }} />
+    <div className="relative w-full pointer-events-none select-none" style={{ height: 64, overflow: 'visible' }}>
+      {/* Layer 1: closing gradient — top half fades the outgoing section */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 h-px w-64"
+        className="absolute inset-x-0 top-0"
         style={{
-          background: `radial-gradient(ellipse at center, ${accent}60 0%, transparent 70%)`,
-          filter: 'blur(1px)',
+          height: 32,
+          background: `linear-gradient(to bottom, transparent, rgba(255,255,255,0.015))`,
+        }}
+      />
+
+      {/* Layer 2: hairline + wide glow */}
+      <div
+        className="absolute inset-x-0"
+        style={{
+          top: 31,
+          height: 1,
+          background: `linear-gradient(to right, transparent 0%, ${accent}55 20%, ${accent}99 50%, ${accent}55 80%, transparent 100%)`,
+          boxShadow: `0 0 18px 4px ${accent}30, 0 0 48px 12px ${accent}14`,
+        }}
+      />
+
+      {/* Layer 3: centered orb — tiny bright point at the middle of the line */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2"
+        style={{
+          top: 28,
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: accent,
+          opacity: 0.9,
+          boxShadow: `0 0 12px 4px ${accent}80, 0 0 32px 10px ${accent}40, 0 0 64px 20px ${accent}18`,
+        }}
+      />
+
+      {/* Layer 4: opening gradient — bottom half opens the incoming section */}
+      <div
+        className="absolute inset-x-0 bottom-0"
+        style={{
+          height: 32,
+          background: `linear-gradient(to top, transparent, rgba(255,255,255,0.015))`,
         }}
       />
     </div>
@@ -222,10 +266,18 @@ function Reveal({
 }
 
 export default function Home() {
+  const WORDS = ['Confident', 'Fluent', 'Natural', 'Unstoppable'];
   const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [wordIndex, setWordIndex] = useState(0);
   const [isInstitutionUser, setIsInstitutionUser] = useState(false);
   const [isTutorUser, setIsTutorUser] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setWordIndex(i => (i + 1) % WORDS.length), 2800);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -294,16 +346,44 @@ export default function Home() {
               Voice · AI · Language Learning
             </motion.div>
 
-            {/* Headline — two calm lines, shimmer gradient on the second */}
             <div className="text-center max-w-4xl mx-auto">
               <motion.div
-                className="text-5xl sm:text-6xl md:text-7xl font-extrabold leading-[1.1] tracking-tight text-center mb-6"
+                className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-center mb-6"
+                style={{ lineHeight: 1.08 }}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.1 }}
               >
-                <span className="block text-white mb-2">Speak any language</span>
-                <span className="block headline-shimmer">from your Voice DNA</span>
+                {/* Line 1 — static */}
+                <span className="block text-white">Become</span>
+
+                {/* Line 2 — rotating word, fixed height, overflow hidden so exit never bleeds */}
+                <span
+                  className="relative block overflow-hidden"
+                  style={{ height: '1.08em' }}
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={WORDS[wordIndex]}
+                      className="absolute inset-0 flex items-center justify-center font-extrabold"
+                      style={{
+                        background: 'linear-gradient(135deg, #4ECFBF 0%, #7EEEE3 45%, #a78bfa 100%)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}
+                      initial={{ opacity: 0, filter: 'blur(12px)', scale: 0.94 }}
+                      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+                      exit={{ opacity: 0, filter: 'blur(12px)', scale: 1.04 }}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {WORDS[wordIndex]}
+                    </motion.span>
+                  </AnimatePresence>
+                </span>
+
+                {/* Line 3 — static */}
+                <span className="block text-white">From Your Voice DNA</span>
               </motion.div>
 
               <motion.p
