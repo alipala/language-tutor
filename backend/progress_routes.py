@@ -2081,49 +2081,55 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
         if 'session_details' not in week:
             week['session_details'] = []
         
-        # 🆕 UPDATED: Use selected_duration as threshold
-        integer_duration = selected_duration if duration_minutes >= selected_duration else max(1, int(round(duration_minutes)))
-        
+        # Determine if session is completed or partial based on duration threshold
+        session_status = "completed" if duration_minutes >= selected_duration else "partial"
+        integer_duration = selected_duration if session_status == "completed" else max(1, int(round(duration_minutes)))
+
+        print(f"[SESSION_SUMMARY] Duration: {duration_minutes:.1f}min, threshold: {selected_duration}min → status: {session_status}")
+        print(f"[SESSION_SUMMARY] Duration enforced as INTEGER: {duration_minutes} → {integer_duration} minutes")
+
         # Create session detail object
         session_detail = {
             "session_number": session_in_week,
             "global_session_number": session_number,
             "summary": session_summary,
             "completed_at": datetime.utcnow().isoformat(),
-            "status": "completed",
-            "selected_duration": selected_duration,  # 🆕 Store selected duration
-            "duration_minutes": integer_duration,  # ALWAYS integer (5, 4, 3, 2, 1)
+            "status": session_status,
+            "selected_duration": selected_duration,
+            "duration_minutes": integer_duration,
             "message_count": len(conversation_messages)
         }
-        
-        print(f"[SESSION_SUMMARY] Duration enforced as INTEGER: {duration_minutes} → {integer_duration} minutes")
-        
+
         # Add to session_details
         week['session_details'].append(session_detail)
-        
-        # Update sessions_completed for this week
-        week['sessions_completed'] = len(week['session_details'])
-        
-        # Calculate new progress
-        new_completed = session_number
-        progress_percentage = (new_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
-        
+
+        # Only count fully completed sessions toward plan progress and missions
+        completed_in_week = sum(1 for s in week['session_details'] if s.get('status') == 'completed')
+        week['sessions_completed'] = completed_in_week
+
+        # Calculate new progress using only completed sessions
+        total_completed = sum(w.get('sessions_completed', 0) for w in weekly_schedule)
+        progress_percentage = (total_completed / total_sessions) * 100 if total_sessions > 0 else 0.0
+
+        update_fields: dict = {
+            "plan_content.weekly_schedule": weekly_schedule,
+            "progress_percentage": progress_percentage,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+
+        # Only advance completed_sessions counter for fully completed sessions
+        if session_status == "completed":
+            update_fields["completed_sessions"] = total_completed
+
         # Update the learning plan
         result = await learning_plans_collection.update_one(
             {"_id": learning_plan["_id"]},
-            {
-                "$set": {
-                    "plan_content.weekly_schedule": weekly_schedule,
-                    "completed_sessions": new_completed,
-                    "progress_percentage": progress_percentage,
-                    "updated_at": datetime.utcnow().isoformat()
-                }
-            }
+            {"$set": update_fields}
         )
-        
+
         if result.modified_count > 0:
-            print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week}")
-            print(f"[SESSION_SUMMARY] ✅ Updated progress: {new_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
+            print(f"[SESSION_SUMMARY] ✅ Session summary saved to Week {week_index + 1}, Session {session_in_week} [{session_status}]")
+            print(f"[SESSION_SUMMARY] ✅ Updated progress: {total_completed}/{total_sessions} sessions ({progress_percentage:.1f}%)")
         else:
             print(f"[SESSION_SUMMARY] ❌ Failed to save session summary")
             

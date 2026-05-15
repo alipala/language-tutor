@@ -17,15 +17,19 @@ class VoiceCheckScheduleService:
     """
     Calculates and tracks voice check schedules for learning plans.
 
-    Voice checks are adaptive based on plan duration:
-    - 1-month (8 sessions): Every 3 sessions → 3 voice samples
-    - 2-month (16 sessions): Every 5 sessions → 4 voice samples
-    - 3-month (24 sessions): Every 6 sessions → 5 voice samples
-    - 6-month (48 sessions): Every 8 sessions → 7 voice samples
-    - 12-month (96 sessions): Every 10 sessions → 11 voice samples
+    Plans use 4 sessions/week. Voice checks are spaced ~monthly (every ~16 sessions)
+    so each check feels like a real progress milestone, not an interruption.
 
     Session 1 is always the Speaking Assessment (initial baseline).
     """
+
+    # Sessions per week — must match the plan creation constant
+    SESSIONS_PER_WEEK = 4
+    WEEKS_PER_MONTH = 4
+
+    @classmethod
+    def _total_sessions(cls, duration_months: int) -> int:
+        return duration_months * cls.WEEKS_PER_MONTH * cls.SESSIONS_PER_WEEK
 
     @staticmethod
     def calculate_voice_check_schedule(duration_months: int) -> List[int]:
@@ -33,41 +37,32 @@ class VoiceCheckScheduleService:
         Calculate voice check sessions based on plan duration.
 
         Design principles:
-        - NO check on session 1: the learning plan is created right after a full
-          Speaking Assessment, so session 1 already has a fresh acoustic baseline.
-        - NO check on the final session: it already ends with a full Speaking
-          Assessment that generates the next learning plan.
-        - Checks are placed at natural mid-plan milestones so they feel like
-          progress snapshots, not interruptions (~2-3 per month max).
+        - Plans are 3, 6, 9, or 12 months at 4 sessions/week.
+        - Voice checks occur roughly once per month (every ~16 sessions).
+        - NO check on session 1 (initial Speaking Assessment baseline).
+        - NO check on the final session (ends with full Speaking Assessment).
 
-        Args:
-            duration_months: Learning plan duration (1, 2, 3, 6, or 12 months)
-
-        Returns:
-            List of session numbers where voice checks should occur
-
-        Schedules:
-            1-month  (8 sessions):  [3, 6]              – 2 checks
-            2-month  (16 sessions): [4, 8, 12]          – 3 checks
-            3-month  (24 sessions): [6, 12, 18]         – 3 checks
-            6-month  (48 sessions): [8, 16, 24, 32, 40] – 5 checks
-            12-month (96 sessions): [12,24,36,48,60,72,84] – 7 checks
+        Schedules (4 sessions/week × 4 weeks = 16 sessions/month):
+            3-month  (48 sessions):  [12, 24, 36]                    – 3 checks
+            6-month  (96 sessions):  [12, 24, 36, 48, 60, 72, 84]   – 7 checks
+            9-month  (144 sessions): [16, 32, 48, 64, 80, 96, 112, 128] – 8 checks
+            12-month (192 sessions): [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176] – 11 checks
         """
-        total_sessions = duration_months * 8
+        SESSIONS_PER_MONTH = 16  # 4 sessions/week × 4 weeks
 
-        if total_sessions <= 8:       # 1-month
-            schedule = [3, 6]
-        elif total_sessions <= 16:    # 2-month
-            schedule = [4, 8, 12]
-        elif total_sessions <= 24:    # 3-month
-            schedule = [6, 12, 18]
-        elif total_sessions <= 48:    # 6-month
-            schedule = [8, 16, 24, 32, 40]
-        else:                         # 12-month
+        total_sessions = duration_months * SESSIONS_PER_MONTH
+
+        if duration_months <= 3:      # 3-month (48 sessions)
+            schedule = [12, 24, 36]
+        elif duration_months <= 6:    # 6-month (96 sessions)
             schedule = [12, 24, 36, 48, 60, 72, 84]
+        elif duration_months <= 9:    # 9-month (144 sessions)
+            schedule = [16, 32, 48, 64, 80, 96, 112, 128]
+        else:                         # 12-month (192 sessions)
+            schedule = [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176]
 
-        # Safety: remove any entry that equals the final session or exceeds it
-        schedule = [s for s in schedule if s < total_sessions]
+        # Safety: exclude session 1 and the final session
+        schedule = [s for s in schedule if 1 < s < total_sessions]
 
         return schedule
 
