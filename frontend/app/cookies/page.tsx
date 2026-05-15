@@ -55,7 +55,7 @@ const CookiePolicy: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-16">
         <div className="max-w-4xl mx-auto px-6">
@@ -88,14 +88,14 @@ const CookiePolicy: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-12"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">What Are Cookies?</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              Cookies are small text files that are placed on your computer or mobile device when you visit our website. 
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-4">What Are Cookies?</h2>
+            <p className="text-white/60 leading-relaxed mb-4">
+              Cookies are small text files that are placed on your computer or mobile device when you visit our website.
               They are widely used to make websites work more efficiently and to provide information to website owners.
             </p>
-            <p className="text-gray-600 leading-relaxed">
-              We use cookies and similar technologies to enhance your experience on Language Tutor, remember your preferences, 
+            <p className="text-white/60 leading-relaxed">
+              We use cookies and similar technologies to enhance your experience on Language Tutor, remember your preferences,
               and provide personalized content and advertisements.
             </p>
           </div>
@@ -109,7 +109,7 @@ const CookiePolicy: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mb-8"
           >
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Types of Cookies We Use</h2>
+            <h2 className="text-3xl font-bold text-white mb-6 text-center">Types of Cookies We Use</h2>
           </motion.div>
 
           {cookieTypes.map((cookieType, index) => (
@@ -120,34 +120,34 @@ const CookiePolicy: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.1 * (index + 4) }}
               className="mb-8"
             >
-              <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+              <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center">
                     <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
                       <cookieType.icon className="w-6 h-6 text-[#4ECFBF]" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-800">{cookieType.title}</h3>
+                    <h3 className="text-2xl font-bold text-white">{cookieType.title}</h3>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    cookieType.canDisable 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                    cookieType.canDisable
+                      ? 'bg-[#4ECFBF]/10 text-[#4ECFBF] border-[#4ECFBF]/30'
+                      : 'bg-red-500/10 text-red-400 border-red-500/30'
                   }`}>
                     {cookieType.canDisable ? 'Optional' : 'Required'}
                   </div>
                 </div>
-                
-                <p className="text-gray-600 leading-relaxed mb-4">
+
+                <p className="text-white/60 leading-relaxed mb-4">
                   {cookieType.description}
                 </p>
-                
+
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3">Examples:</h4>
+                  <h4 className="text-lg font-semibold text-white mb-3">Examples:</h4>
                   <ul className="space-y-2">
                     {cookieType.examples.map((example, exampleIndex) => (
                       <li key={exampleIndex} className="flex items-start">
                         <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                        <span className="text-gray-600">{example}</span>
+                        <span className="text-white/60">{example}</span>
                       </li>
                     ))}
                   </ul>
@@ -164,35 +164,35 @@ const CookiePolicy: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="mb-8"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
             <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
-                <Settings className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
+                <Settings className="w-6 h-6 text-[#4ECFBF]" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">Managing Your Cookie Preferences</h2>
+              <h2 className="text-2xl font-bold text-white">Managing Your Cookie Preferences</h2>
             </div>
-            
+
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Browser Settings</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  You can control and/or delete cookies as you wish. You can delete all cookies that are already on your 
+                <h3 className="text-lg font-semibold text-white mb-2">Browser Settings</h3>
+                <p className="text-white/60 leading-relaxed">
+                  You can control and/or delete cookies as you wish. You can delete all cookies that are already on your
                   computer and you can set most browsers to prevent them from being placed.
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Cookie Consent</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  When you first visit our website, you'll see a cookie consent banner. You can choose which types of 
+                <h3 className="text-lg font-semibold text-white mb-2">Cookie Consent</h3>
+                <p className="text-white/60 leading-relaxed">
+                  When you first visit our website, you'll see a cookie consent banner. You can choose which types of
                   cookies to accept or reject. You can change your preferences at any time through our cookie settings.
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Impact of Disabling Cookies</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Please note that if you disable cookies, some features of our website may not function properly, 
+                <h3 className="text-lg font-semibold text-white mb-2">Impact of Disabling Cookies</h3>
+                <p className="text-white/60 leading-relaxed">
+                  Please note that if you disable cookies, some features of our website may not function properly,
                   and your user experience may be affected.
                 </p>
               </div>
@@ -207,39 +207,39 @@ const CookiePolicy: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.9 }}
           className="mb-8"
         >
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Third-Party Cookies</h2>
-            
+          <div className="bg-[#13131F] rounded-2xl border border-white/[0.10] p-8">
+            <h2 className="text-2xl font-bold text-white mb-6">Third-Party Cookies</h2>
+
             <div className="space-y-4">
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-white/60 leading-relaxed">
                 We may also use third-party services that set cookies on our website. These include:
               </p>
-              
+
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
                   <div>
-                    <span className="font-medium text-gray-800">Google Analytics:</span>
-                    <span className="text-gray-600 ml-2">For website analytics and performance monitoring</span>
+                    <span className="font-medium text-white">Google Analytics:</span>
+                    <span className="text-white/60 ml-2">For website analytics and performance monitoring</span>
                   </div>
                 </li>
                 <li className="flex items-start">
                   <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
                   <div>
-                    <span className="font-medium text-gray-800">Social Media Platforms:</span>
-                    <span className="text-gray-600 ml-2">For social sharing and login functionality</span>
+                    <span className="font-medium text-white">Social Media Platforms:</span>
+                    <span className="text-white/60 ml-2">For social sharing and login functionality</span>
                   </div>
                 </li>
                 <li className="flex items-start">
                   <span className="w-2 h-2 bg-[#4ECFBF] rounded-full mt-2 mr-3 flex-shrink-0"></span>
                   <div>
-                    <span className="font-medium text-gray-800">Payment Processors:</span>
-                    <span className="text-gray-600 ml-2">For secure payment processing</span>
+                    <span className="font-medium text-white">Payment Processors:</span>
+                    <span className="text-white/60 ml-2">For secure payment processing</span>
                   </div>
                 </li>
               </ul>
-              
-              <p className="text-gray-600 leading-relaxed">
+
+              <p className="text-white/60 leading-relaxed">
                 These third parties have their own privacy policies and cookie policies, which we encourage you to review.
               </p>
             </div>
@@ -253,38 +253,38 @@ const CookiePolicy: React.FC = () => {
           transition={{ duration: 0.6, delay: 1.0 }}
           className="mb-8"
         >
-          <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10 rounded-2xl p-8 border border-[#4ECFBF]/20">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Us</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20">
+            <h2 className="text-2xl font-bold text-white mb-6">Contact Us</h2>
+            <p className="text-white/60 mb-6">
               If you have any questions about our use of cookies, please contact us:
             </p>
-            
+
             <div className="grid md:grid-cols-3 gap-6">
               <div className="flex items-center">
                 <Mail className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">Email</p>
-                  <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] hover:underline">
+                  <p className="font-medium text-white">Email</p>
+                  <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] hover:text-white transition-colors">
                     hello@mytacoai.com
                   </a>
                 </div>
               </div>
-              
+
               <div className="flex items-center">
                 <Phone className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">Phone</p>
-                  <a href="tel:+31-0657126162" className="text-[#4ECFBF] hover:underline">
+                  <p className="font-medium text-white">Phone</p>
+                  <a href="tel:+31-0657126162" className="text-[#4ECFBF] hover:text-white transition-colors">
                     +31 0657126162
                   </a>
                 </div>
               </div>
-              
+
               <div className="flex items-center">
                 <MapPin className="w-5 h-5 text-[#4ECFBF] mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">Address</p>
-                  <p className="text-gray-600">Amsterdam, Netherlands</p>
+                  <p className="font-medium text-white">Address</p>
+                  <p className="text-white/60">Amsterdam, Netherlands</p>
                 </div>
               </div>
             </div>
@@ -297,11 +297,11 @@ const CookiePolicy: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.1 }}
         >
-          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-orange-800 mb-2">Policy Updates</h3>
-            <p className="text-orange-700">
-              We may update this Cookie Policy from time to time to reflect changes in our practices or for other 
-              operational, legal, or regulatory reasons. Please revisit this page regularly to stay informed about 
+          <div className="bg-[#4ECFBF]/5 border border-[#4ECFBF]/20 rounded-2xl p-6">
+            <h3 className="text-lg font-semibold text-[#4ECFBF] mb-2">Policy Updates</h3>
+            <p className="text-white/60">
+              We may update this Cookie Policy from time to time to reflect changes in our practices or for other
+              operational, legal, or regulatory reasons. Please revisit this page regularly to stay informed about
               our use of cookies.
             </p>
           </div>

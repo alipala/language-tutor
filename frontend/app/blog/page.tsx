@@ -32,7 +32,7 @@ const Blog: React.FC = () => {
     {
       title: "How EmotionPrompt Revolutionizes LLM Performance in Language Learning",
       excerpt: "Exploring how emotional intelligence in AI prompts can dramatically improve language learning outcomes and create more engaging educational experiences.",
-      author: "Ali Pala", 
+      author: "Ali Pala",
       date: "January 8, 2025",
       readTime: "5 min read",
       category: "Prompt Engineering",
@@ -53,7 +53,7 @@ const Blog: React.FC = () => {
       title: "Moravec's Paradox: The Fascinating Divide Between Human and AI Intelligence",
       excerpt: "What this paradox reveals about language learning and why human-AI collaboration is the future of education technology.",
       author: "Ali Pala",
-      date: "January 3, 2025", 
+      date: "January 3, 2025",
       readTime: "6 min read",
       category: "AI Philosophy",
       icon: Zap,
@@ -64,7 +64,7 @@ const Blog: React.FC = () => {
       excerpt: "Understanding the Model Context Protocol and its implications for building more sophisticated AI language tutoring systems.",
       author: "Ali Pala",
       date: "December 30, 2024",
-      readTime: "7 min read", 
+      readTime: "7 min read",
       category: "AI Infrastructure",
       icon: Globe,
       link: "https://artofai.hashnode.dev/all-you-need-about-mcp"
@@ -117,14 +117,14 @@ const Blog: React.FC = () => {
     window.open(link, '_blank', 'noopener,noreferrer');
   };
 
-  const filteredPosts = selectedCategory === "All" 
-    ? posts 
+  const filteredPosts = selectedCategory === "All"
+    ? posts
     : posts.filter(post => post.category === selectedCategory);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-20">
+      <div className="bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -132,9 +132,9 @@ const Blog: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-5xl font-bold mb-6">MyTaco AI Blog</h1>
-            <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-              Insights from the cutting edge of AI-powered language learning. Explore the latest trends in 
+            <h1 className="text-5xl font-bold text-white mb-6">MyTaco AI Blog</h1>
+            <p className="text-xl text-white/60 max-w-3xl mx-auto leading-relaxed">
+              Insights from the cutting edge of AI-powered language learning. Explore the latest trends in
               generative AI, voice technology, and personalized education from our expert team.
             </p>
           </motion.div>
@@ -148,7 +148,8 @@ const Blog: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 cursor-pointer hover:shadow-xl transition-shadow duration-300"
+            className="rounded-2xl overflow-hidden border border-white/[0.10] cursor-pointer hover:border-[#4ECFBF]/30 transition-all duration-300"
+            style={{ backgroundColor: '#13131F' }}
             onClick={() => handlePostClick(featuredPost.link)}
           >
             <div className="grid lg:grid-cols-2 gap-8">
@@ -157,15 +158,15 @@ const Blog: React.FC = () => {
               </div>
               <div className="p-8 lg:p-12 flex flex-col justify-center">
                 <div className="flex items-center mb-4">
-                  <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] rounded-full text-sm font-medium">
+                  <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] border border-[#4ECFBF]/20 rounded-full text-sm font-medium">
                     {featuredPost.category}
                   </span>
-                  <span className="ml-2 text-gray-500 text-sm">Featured</span>
+                  <span className="ml-2 text-white/40 text-sm">Featured</span>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-4">{featuredPost.title}</h2>
-                <p className="text-gray-600 leading-relaxed mb-6">{featuredPost.excerpt}</p>
+                <h2 className="text-3xl font-bold text-white mb-4">{featuredPost.title}</h2>
+                <p className="text-white/60 leading-relaxed mb-6">{featuredPost.excerpt}</p>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center text-gray-500 text-sm">
+                  <div className="flex items-center text-white/40 text-sm">
                     <User className="w-4 h-4 mr-2" />
                     <span className="mr-4">{featuredPost.author}</span>
                     <Calendar className="w-4 h-4 mr-2" />
@@ -173,7 +174,7 @@ const Blog: React.FC = () => {
                     <Clock className="w-4 h-4 mr-2" />
                     <span>{featuredPost.readTime}</span>
                   </div>
-                  <div className="flex items-center text-[#4ECFBF] hover:text-[#3a9e92] font-medium">
+                  <div className="flex items-center text-[#4ECFBF] hover:text-white font-medium transition-colors duration-200">
                     Read More <ExternalLink className="w-4 h-4 ml-2" />
                   </div>
                 </div>
@@ -195,10 +196,11 @@ const Blog: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.1 * index }}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${
-                  selectedCategory === category 
-                    ? "bg-[#4ECFBF] text-white" 
-                    : "bg-white text-gray-600 hover:bg-[#4ECFBF]/10 hover:text-[#4ECFBF] border border-gray-200"
+                  selectedCategory === category
+                    ? "bg-[#4ECFBF] text-white"
+                    : "text-white/60 hover:text-[#4ECFBF] border border-white/[0.10] hover:border-[#4ECFBF]/40"
                 }`}
+                style={selectedCategory !== category ? { backgroundColor: '#13131F' } : {}}
               >
                 {category}
               </motion.button>
@@ -217,23 +219,24 @@ const Blog: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
-                className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                className="rounded-2xl border border-white/[0.10] overflow-hidden hover:border-[#4ECFBF]/30 transition-all duration-300 cursor-pointer group"
+                style={{ backgroundColor: '#13131F' }}
                 onClick={() => handlePostClick(post.link)}
               >
-                <div className="bg-gradient-to-br from-[#4ECFBF]/20 to-[#3a9e92]/20 p-8 flex items-center justify-center group-hover:from-[#4ECFBF]/30 group-hover:to-[#3a9e92]/30 transition-all duration-300">
+                <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#3a9e92]/10 p-8 flex items-center justify-center group-hover:from-[#4ECFBF]/20 group-hover:to-[#3a9e92]/20 transition-all duration-300">
                   <post.icon className="w-16 h-16 text-[#4ECFBF] group-hover:scale-110 transition-transform duration-300" />
                 </div>
                 <div className="p-6">
                   <div className="flex items-center mb-3">
-                    <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] rounded-full text-sm font-medium">
+                    <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] border border-[#4ECFBF]/20 rounded-full text-sm font-medium">
                       {post.category}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-[#4ECFBF] transition-colors duration-300">
                     {post.title}
                   </h3>
-                  <p className="text-gray-600 leading-relaxed mb-4">{post.excerpt}</p>
-                  <div className="flex items-center justify-between text-gray-500 text-sm">
+                  <p className="text-white/60 leading-relaxed mb-4">{post.excerpt}</p>
+                  <div className="flex items-center justify-between text-white/40 text-sm">
                     <div className="flex items-center">
                       <User className="w-4 h-4 mr-1" />
                       <span>{post.author}</span>
@@ -251,11 +254,11 @@ const Blog: React.FC = () => {
               </motion.div>
             ))}
           </div>
-          
+
           {/* No posts message */}
           {filteredPosts.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No posts found in this category.</p>
+              <p className="text-white/40 text-lg">No posts found in this category.</p>
             </div>
           )}
         </div>
