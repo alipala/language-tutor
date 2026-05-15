@@ -122,11 +122,11 @@ export default function Footer() {
       />
 
       {/* ── Main grid ─────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 pt-16 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12">
 
           {/* Brand column */}
-          <div className="lg:col-span-4">
+          <div className="md:col-span-2 lg:col-span-4">
             <div className="mb-5 scale-90 origin-left">
               <Logo variant="full" context="footer" />
             </div>
@@ -172,7 +172,7 @@ export default function Footer() {
           </div>
 
           {/* Nav columns */}
-          <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-8">
+          <div className="md:col-span-2 lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {NAV_SECTIONS.map(section => (
               <div key={section.title}>
                 <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30 mb-5">
@@ -196,7 +196,7 @@ export default function Footer() {
           </div>
 
           {/* Newsletter + Store */}
-          <div className="lg:col-span-3">
+          <div className="md:col-span-2 lg:col-span-3">
             <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30 mb-5">
               Stay Updated
             </h4>
@@ -268,7 +268,7 @@ export default function Footer() {
       />
 
       {/* ── Bottom bar ─────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
 
           <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 text-xs text-white/25">
@@ -281,7 +281,7 @@ export default function Footer() {
             <span>Big Davinci · KVK 90200004</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {[
               { label: 'Privacy',  href: '/privacy' },
               { label: 'Terms',    href: '/terms'   },
@@ -307,7 +307,7 @@ export default function Footer() {
 
       {/* Scroll-to-top button */}
       <motion.button
-        className="fixed bottom-8 right-8 w-10 h-10 rounded-full border border-[#4ECFBF]/30 bg-[#4ECFBF]/10 backdrop-blur-md flex items-center justify-center text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
+        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-10 h-10 rounded-full border border-[#4ECFBF]/30 bg-[#4ECFBF]/10 backdrop-blur-md flex items-center justify-center text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

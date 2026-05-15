@@ -128,7 +128,7 @@ function JourneyCard({
 }) {
   return (
     <motion.div
-      className="rounded-2xl border bg-white/[0.03] backdrop-blur-sm p-5 sm:p-6"
+      className="rounded-2xl border bg-white/[0.03] backdrop-blur-sm p-4 sm:p-5 md:p-6"
       style={{ borderColor: `${accent}28` }}
       whileHover={{ borderColor: `${accent}55`, transition: { duration: 0.2 } }}
     >
@@ -146,7 +146,7 @@ function JourneyCard({
           {step}
         </span>
       </div>
-      <h3 className="text-base sm:text-lg font-bold text-white mb-1">{title}</h3>
+      <h3 className="text-sm sm:text-base md:text-lg font-bold text-white mb-1">{title}</h3>
       <p className="text-white/45 text-sm leading-relaxed mb-4">{subtitle}</p>
       {children}
     </motion.div>
@@ -286,7 +286,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
   return (
     <section
       id="how-it-works"
-      className="relative py-24 px-4 overflow-hidden"
+      className="relative py-16 sm:py-24 px-4 overflow-hidden"
       style={{ background: '#0B0B14' }}
     >
       {/* Ambient glow */}
@@ -311,7 +311,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
             Your path to fluency
           </p>
-          <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
             A guided journey,<br />not just lessons
           </h2>
           <p className="text-white/40 text-base max-w-md mx-auto">

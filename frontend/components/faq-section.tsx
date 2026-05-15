@@ -30,7 +30,7 @@ export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-0">
       <div className="space-y-2">
         {FAQS.map((faq, i) => {
           const isOpen = openIndex === i;
@@ -43,7 +43,7 @@ export default function FAQSection() {
             >
               <button
                 onClick={() => setOpenIndex(isOpen ? null : i)}
-                className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
+                className="w-full flex items-center justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 text-left"
               >
                 <span className="text-sm sm:text-base font-semibold text-white/85">{faq.q}</span>
                 <motion.div
@@ -64,7 +64,7 @@ export default function FAQSection() {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <div className="px-6 pb-5 text-sm text-white/50 leading-relaxed border-t border-white/[0.06] pt-4">
+                    <div className="px-4 sm:px-6 pb-4 sm:pb-5 text-sm text-white/50 leading-relaxed border-t border-white/[0.06] pt-4">
                       {faq.a}
                     </div>
                   </motion.div>

@@ -179,7 +179,7 @@ export default function SubscriptionPlans() {
     <section
       id="pricing"
       style={{ background: 'linear-gradient(to bottom, #0D0D18, #0A0A0F)' }}
-      className="py-24 px-4"
+      className="py-16 sm:py-24 px-4"
     >
       <div className="max-w-6xl mx-auto">
 
@@ -251,7 +251,7 @@ export default function SubscriptionPlans() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-5"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
           >
             {currentPlans.map((plan, index) => {
               const accent = PLAN_ACCENT[plan.name];
@@ -262,7 +262,7 @@ export default function SubscriptionPlans() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.08 }}
                   className={`relative flex flex-col rounded-3xl border ${accent.border} bg-white/[0.03] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
-                    plan.popular ? 'md:scale-[1.04]' : ''
+                    plan.popular ? 'lg:scale-[1.04]' : ''
                   }`}
                   style={accent.glow ? { boxShadow: accent.glow } : {}}
                 >
@@ -370,7 +370,7 @@ export default function SubscriptionPlans() {
 
         {/* Money-back + enterprise strip */}
         <motion.div
-          className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-8 py-6"
+          className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 sm:px-8 py-5 sm:py-6"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}

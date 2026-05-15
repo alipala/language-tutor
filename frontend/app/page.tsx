@@ -189,44 +189,6 @@ function RadarChart() {
   );
 }
 
-// DNAStrandMini kept for "How it Works" step 02 aside
-function DNAStrandMini() {
-  const strands = [
-    { label: 'Rhythm', pct: 82, color: '#4ECFBF' },
-    { label: 'Confidence', pct: 74, color: '#7C3AED' },
-    { label: 'Vocabulary', pct: 91, color: '#F59E0B' },
-    { label: 'Accuracy', pct: 68, color: '#EF4444' },
-    { label: 'Learning', pct: 85, color: '#10B981' },
-    { label: 'Emotional', pct: 77, color: '#EC4899' },
-  ];
-  return (
-    <div className="space-y-2">
-      {strands.map((s, i) => (
-        <motion.div
-          key={s.label}
-          className="flex items-center gap-2"
-          initial={{ opacity: 0, x: -10 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.08, duration: 0.4 }}
-          viewport={{ once: true }}
-        >
-          <span className="text-[10px] text-white/60 w-16 shrink-0">{s.label}</span>
-          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ backgroundColor: s.color }}
-              initial={{ width: 0 }}
-              whileInView={{ width: `${s.pct}%` }}
-              transition={{ delay: 0.3 + i * 0.08, duration: 0.8, ease: 'easeOut' }}
-              viewport={{ once: true }}
-            />
-          </div>
-          <span className="text-[10px] text-white/50 w-6 text-right">{s.pct}</span>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
 
 // Floating stat chip
 function StatChip({ value, label, delay = 0 }: { value: string; label: string; delay?: number }) {
@@ -237,8 +199,8 @@ function StatChip({ value, label, delay = 0 }: { value: string; label: string; d
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
     >
-      <span className="text-[#4ECFBF] font-bold text-sm">{value}</span>
-      <span className="text-white/50 text-xs">{label}</span>
+      <span className="text-[#4ECFBF] font-bold text-xs sm:text-sm">{value}</span>
+      <span className="text-white/50 text-[10px] sm:text-xs">{label}</span>
     </motion.div>
   );
 }
@@ -321,7 +283,7 @@ export default function Home() {
           {/* ─── HERO ─────────────────────────────────────────── */}
           <section
             id="features"
-            className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 pt-32 pb-16"
+            className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 pt-28 sm:pt-32 pb-12 sm:pb-16"
             style={{ background: '#0A0A0F' }}
           >
             {/* Mesh gradient blobs */}
@@ -349,7 +311,7 @@ export default function Home() {
 
             <div className="text-center max-w-4xl mx-auto">
               <motion.div
-                className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-center mb-6"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-center mb-4 sm:mb-6"
                 style={{ lineHeight: 1.08 }}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -388,7 +350,7 @@ export default function Home() {
               </motion.div>
 
               <motion.p
-                className="text-lg sm:text-xl text-white/55 max-w-2xl mx-auto mb-10 leading-relaxed"
+                className="text-base sm:text-lg md:text-xl text-white/55 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2 sm:px-0"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.7 }}
@@ -435,7 +397,7 @@ export default function Home() {
 
               {/* Social proof chips */}
               <motion.div
-                className="flex flex-wrap items-center justify-center gap-3 mb-16"
+                className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10 sm:mb-16 px-4 sm:px-0"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.75, duration: 0.6 }}
@@ -464,13 +426,13 @@ export default function Home() {
                   <span className="ml-auto text-xs text-white/30 font-medium">MyTaco AI · Live Session</span>
                 </div>
 
-                <div className="px-6 py-5">
+                <div className="px-4 sm:px-6 py-4 sm:py-5">
                   {/* Waveform — fixed height via VoiceWaveform component */}
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-8 h-8 rounded-full bg-[#4ECFBF]/20 border border-[#4ECFBF]/30 flex items-center justify-center shrink-0">
                       <div className="w-2 h-2 rounded-full bg-[#4ECFBF] animate-pulse" />
                     </div>
-                    <VoiceWaveform bars={50} className="flex-1" />
+                    <VoiceWaveform bars={28} className="flex-1" />
                     <span className="text-xs text-white/30 font-mono shrink-0">0:43</span>
                   </div>
 
@@ -521,7 +483,7 @@ export default function Home() {
 
               {/* Floating DNA badge */}
               <motion.div
-                className="absolute -top-4 -right-4 sm:-right-8 rounded-2xl bg-[#0A0A0F] border border-[#7C3AED]/40 px-4 py-3 shadow-lg backdrop-blur-xl"
+                className="absolute -top-4 right-2 sm:-right-6 rounded-2xl bg-[#0A0A0F] border border-[#7C3AED]/40 px-3 py-2 shadow-lg backdrop-blur-xl"
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
               >
@@ -533,7 +495,7 @@ export default function Home() {
 
               {/* Floating streak badge */}
               <motion.div
-                className="absolute -bottom-4 -left-4 sm:-left-8 rounded-2xl bg-[#0A0A0F] border border-[#F59E0B]/40 px-4 py-3 shadow-lg"
+                className="absolute -bottom-4 left-2 sm:-left-6 rounded-2xl bg-[#0A0A0F] border border-[#F59E0B]/40 px-3 py-2 shadow-lg"
                 animate={{ y: [0, 6, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               >
@@ -567,7 +529,7 @@ export default function Home() {
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
                   What makes MyTaco different
                 </p>
-                <h2 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight tracking-tight">
                   A learning experience{' '}
                   <br className="hidden sm:block" />
                   <span
@@ -596,7 +558,7 @@ export default function Home() {
                           'radial-gradient(ellipse at 20% 50%, rgba(78,207,191,0.08) 0%, transparent 60%)',
                       }}
                     />
-                    <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-start">
+                    <div className="relative z-10 flex flex-col gap-6 items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center text-xl">
@@ -636,7 +598,7 @@ export default function Home() {
                         </div>
                       </div>
                       {/* Fix 4 — RadarChart replacing DNAStrandMini here */}
-                      <div className="shrink-0 self-center">
+                      <div className="shrink-0 self-center w-full sm:w-auto flex justify-center">
                         <RadarChart />
                       </div>
                     </div>
@@ -804,7 +766,7 @@ export default function Home() {
                       Collaborate with other learners to build stories in your target language. 26 worlds — mystery,
                       romance, sci-fi and more.
                     </p>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                       {[
                         { emoji: '🔮', genre: 'Mystery' },
                         { emoji: '🚀', genre: 'Sci-Fi' },
