@@ -395,6 +395,7 @@ class SaveConversationRequest(BaseModel):
     #   +5  fluency burst (2 consecutive clean turns with no correction)
     # Max possible: 15. Validated server-side: clamped to [0, 15].
     correction_bonus_xp: Optional[int] = 0
+    user_timezone: Optional[str] = 'UTC'
 
 class ConversationStats(BaseModel):
     total_sessions: int

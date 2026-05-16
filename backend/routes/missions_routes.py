@@ -483,13 +483,17 @@ async def _resolve_language(user_id: str, language: Optional[str]) -> Optional[s
 
 
 async def _get_today_freestyle_sessions(user_id: str, local_date: str) -> int:
-    """Count freestyle conversation sessions completed today."""
+    """Count freestyle/practice conversation sessions completed today.
+    The mobile saves free conversations as conversation_type='practice' (the default
+    when no explicit sessionType is passed). Both 'freestyle' and 'practice' count.
+    Uses the user's local date window to avoid UTC-midnight timezone mismatch.
+    """
     try:
-        day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        day_start, day_end = get_day_start_end(local_date, "UTC")
         return await conversation_sessions_collection.count_documents({
             "user_id": user_id,
-            "conversation_type": "freestyle",
-            "created_at": {"$gte": day_start},
+            "conversation_type": {"$in": ["freestyle", "practice"]},
+            "created_at": {"$gte": day_start, "$lte": day_end},
         })
     except Exception:
         return 0
@@ -773,12 +777,12 @@ async def _hydrate_progress(
         "micro_quiz",
     )
 
-    (today_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle) = \
+    (today_learning_plan_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle) = \
         await asyncio.gather(
-            _get_today_sessions(user_id, local_date),
+            _get_today_learning_plan_sessions(user_id, local_date),
             _get_today_news_sessions(user_id, local_date),
             _get_completed_challenge_sessions_today(user_id, local_date, challenge_type),
-            _get_reviewed_flashcard_count(user_id),
+            _get_reviewed_flashcard_count(user_id, local_date),
             _get_today_freestyle_sessions(user_id, local_date),
         )
 
@@ -809,7 +813,7 @@ async def _hydrate_progress(
         target = m["target"]
 
         if m["id"] == "plan_session":
-            current = min(1, max(0, today_sessions - today_news_sessions))
+            current = min(1, today_learning_plan_sessions)
 
         elif m["id"] == "news_session":
             current = min(1, today_news_sessions)
@@ -849,12 +853,12 @@ async def _hydrate_progress(
     return result
 
 
-async def _get_today_sessions(user_id: str, local_date: str) -> int:
+async def _get_today_learning_plan_sessions(user_id: str, local_date: str) -> int:
     doc = await daily_stats_collection.find_one(
         {"user_id": user_id, "local_date": local_date},
-        {"total_sessions": 1},
+        {"learning_plan_sessions": 1},
     )
-    return int(doc.get("total_sessions", 0)) if doc else 0
+    return int(doc.get("learning_plan_sessions", 0)) if doc else 0
 
 
 async def _get_today_news_sessions(user_id: str, local_date: str) -> int:
@@ -895,15 +899,15 @@ async def _get_completed_challenge_sessions_today(
     })
 
 
-async def _get_reviewed_flashcard_count(user_id: str) -> int:
+async def _get_reviewed_flashcard_count(user_id: str, local_date: str) -> int:
     """Count flashcard sets reviewed TODAY — not all-time — so the mission
     resets properly each day and can't be pre-completed by past activity."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    day_start, day_end = get_day_start_end(local_date, "UTC")
     return await flashcard_sets_collection.count_documents(
         {
             "user_id": user_id,
             "is_reviewed": True,
-            "reviewed_at": {"$gte": today_start},
+            "reviewed_at": {"$gte": day_start, "$lte": day_end},
         }
     )
 

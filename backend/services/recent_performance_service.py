@@ -67,9 +67,9 @@ async def calculate_recent_performance(
 
         daily_stats_list = await cursor.to_list(length=None)
 
-        # Merge speaking_time_tracking records so sessions that bypassed daily_stats
-        # (partial exits, older sessions) are still counted in the daily bars.
-        daily_stats_list = await _merge_tracking_minutes(user_id, start_date, end_date, daily_stats_list)
+        # NOTE: _merge_tracking_minutes removed — all session endpoints now write to
+        # daily_stats directly. Merging from speaking_time_tracking caused double-counting
+        # since both the session endpoint AND BulletproofTracker wrote time to daily_stats.
 
         if not daily_stats_list:
             print(f"[RECENT_PERF] No data found for user {user_id} in date range")

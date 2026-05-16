@@ -965,7 +965,7 @@ async def save_conversation(
 
             # Update daily_stats + lifetime XP (existing session path)
             try:
-                local_date = get_current_local_date(timezone_str='UTC')
+                local_date = get_current_local_date(timezone_str=getattr(request, 'user_timezone', None) or 'UTC')
                 time_seconds = integer_duration * 60
                 # xp_earned_total already computed above when building update_data
                 await daily_stats_collection.update_one(
@@ -1069,9 +1069,6 @@ async def save_conversation(
                 )
                 print(f"[BATCH_SAVE] 🚀 Scheduled background analysis for job {analysis_job_id}")
 
-            # Update learning plan progress if this is a learning plan session
-            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
-
             # Deduct minutes from user subscription quota (server-side, idempotent)
             await _deduct_practice_minutes(
                 user_id=str(current_user.id),
@@ -1162,7 +1159,7 @@ async def save_conversation(
 
             # Update daily_stats + lifetime XP (new session path)
             try:
-                local_date = get_current_local_date(timezone_str='UTC')
+                local_date = get_current_local_date(timezone_str=getattr(request, 'user_timezone', None) or 'UTC')
                 time_seconds = integer_duration * 60
                 # xp_earned_total already computed above when building session_dict
                 await daily_stats_collection.update_one(
@@ -1278,9 +1275,6 @@ async def save_conversation(
                 background_analyses=background_analyses
             )
             print(f"[SESSION_STATS_CACHE] 🚀 Scheduled statistics caching for session {result.inserted_id}")
-
-            # Update learning plan progress if this is a learning plan session
-            await update_learning_plan_progress(current_user.id, request.language, request.level, request.topic)
 
             # Deduct minutes from user subscription quota (server-side, idempotent)
             await _deduct_practice_minutes(

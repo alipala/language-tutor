@@ -278,44 +278,17 @@ class BulletproofSubscriptionServiceNoTransactions:
                     user_id, session_id, speaking_minutes, session_completed
                 )
 
-            # Step 11: Update daily_stats so "This Week" / daily bars reflect partial & completed sessions
+            # Step 11: Bust the recent_performance cache so next profile load recalculates fresh.
+            # NOTE: daily_stats time/session counters are written by the session endpoints
+            # (session_summary_routes.py for LP sessions, progress_routes.py for practice/news).
+            # BulletproofTracker must NOT write to daily_stats — doing so causes double-counting
+            # since every session endpoint already writes the correct time before calling the tracker.
             try:
-                local_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-                time_seconds = speaking_minutes * 60
-                await daily_stats_collection.update_one(
-                    {
-                        'user_id': str(user_id),
-                        'local_date': local_date
-                    },
-                    {
-                        '$inc': {
-                            'conversation_time_seconds': time_seconds,
-                            'total_time_seconds': time_seconds,
-                            'total_sessions': 1 if session_completed else 0,
-                        },
-                        '$set': {
-                            'user_timezone': 'UTC',
-                            'updated_at': datetime.now(timezone.utc),
-                        },
-                        '$setOnInsert': {
-                            'created_at': datetime.now(timezone.utc),
-                            'is_streak_day': True,
-                            'total_challenges': 0,
-                            'correct_challenges': 0,
-                            'incorrect_challenges': 0,
-                            'total_xp': 0,
-                        }
-                    },
-                    upsert=True
-                )
-                logger.info(f"[BULLETPROOF_TRACKING] ✅ daily_stats updated: +{speaking_minutes} min for {local_date}")
-
-                # Bust the recent_performance cache so next profile load recalculates fresh
                 recent_performance_collection = database["recent_performance"]
                 await recent_performance_collection.delete_one({'user_id': user_id})
                 logger.info(f"[BULLETPROOF_TRACKING] 🗑️ recent_performance cache cleared for user {user_id}")
             except Exception as ds_err:
-                logger.error(f"[BULLETPROOF_TRACKING] ⚠️ daily_stats update failed: {ds_err}")
+                logger.error(f"[BULLETPROOF_TRACKING] ⚠️ cache clear failed: {ds_err}")
 
             logger.info(f"[BULLETPROOF_TRACKING] ✅ SUCCESS: Deducted {deducted_amount} minutes")
             logger.info(f"[BULLETPROOF_TRACKING] ✅ User {user_id}: {current_remaining} → {new_remaining} minutes")
@@ -399,7 +372,7 @@ class BulletproofSubscriptionServiceNoTransactions:
                 return
             
             # Create conversation session document
-            integer_minutes = min(5, max(2, int(round(minutes))))  # Enforce 2-5 minute range
+            integer_minutes = min(5, max(1, int(round(minutes))))  # Enforce 1-5 minute range
             
             session_doc = {
                 "user_id": user_object_id,

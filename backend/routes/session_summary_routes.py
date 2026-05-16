@@ -1017,7 +1017,12 @@ async def store_session_summary(
                 weekly_schedule[week_index]["sessions_completed"] = sessions_in_week
                 print(f"[SESSION_SUMMARY] Updated week {new_week} sessions_completed to {sessions_in_week}")
 
-        selected_duration = conversation_data.get("selected_duration", 5) if conversation_data else 5
+        # Always use the plan's stored preferred_session_duration as the completion threshold.
+        # This is the authoritative value — it reflects any update the user made via the
+        # plan card after the initial plan creation. The client-supplied selected_duration
+        # is only a fallback for legacy plans that pre-date the preferred_session_duration field.
+        selected_duration = int(plan.get("preferred_session_duration") or
+                                (conversation_data.get("selected_duration", 5) if conversation_data else 5))
         session_duration_minutes = conversation_data.get("duration_minutes", selected_duration) if conversation_data else selected_duration
         # Cap at selected_duration; anything over is a frontend timer glitch
         session_duration_minutes = min(float(session_duration_minutes), float(selected_duration))
@@ -1088,7 +1093,6 @@ async def store_session_summary(
                             "progress_percentage": progress_percentage,
                             "plan_content.weekly_schedule": weekly_schedule,
                             "session_history": session_history,
-                            "practice_minutes_used": new_practice_minutes,
                             "updated_at": datetime.now(timezone.utc)
                         }
                     }
@@ -1111,7 +1115,8 @@ async def store_session_summary(
             # 🔥 NEW: Update daily_stats for weekly practice chart + XP
             try:
                 from database import daily_stats_collection
-                local_date = get_current_local_date(timezone_str='UTC')
+                user_tz = (conversation_data.get("user_timezone") if conversation_data else None) or getattr(current_user, 'timezone', None) or 'UTC'
+                local_date = get_current_local_date(timezone_str=user_tz)
                 time_seconds = session_duration_minutes * 60
                 # XP: base for session duration + correction engagement bonus
                 # selected_duration is already validated/clamped above; get_session_xp handles unknowns.
@@ -1130,6 +1135,7 @@ async def store_session_summary(
                             'conversation_time_seconds': time_seconds,
                             'total_time_seconds': time_seconds,
                             'total_sessions': 1,
+                            'learning_plan_sessions': 1,
                             'total_xp': total_xp_delta,
                         },
                         '$set': {

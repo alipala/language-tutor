@@ -216,7 +216,7 @@ class LearningPlanSessionCompletionService:
                             # Only count toward missions when the session was fully completed,
                             # not when the user quit early (partial). This prevents the
                             # plan_session mission from being marked done on an incomplete session.
-                            **({"total_sessions": 1} if session_status == "completed" else {}),
+                            **({"total_sessions": 1, "learning_plan_sessions": 1} if session_status == "completed" else {}),
                         },
                         '$set': {
                             'user_timezone': 'UTC',

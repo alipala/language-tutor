@@ -2152,6 +2152,39 @@ async def add_spoken_time(
 
         print(f"[ADD_SPOKEN_TIME] ✅ Plan {plan_id}: {current_minutes} + {capped_minutes} = {new_minutes} min (early exit)")
 
+        # Write to daily_stats so the weekly bar chart stays in sync with the minutes card.
+        # The partial exit doesn't go through session_summary_routes so daily_stats
+        # would otherwise miss this time, causing a mismatch between the two sources.
+        try:
+            from database import daily_stats_collection
+            from services.timezone_utils import get_current_local_date
+            local_date = get_current_local_date(user_timezone=getattr(current_user, 'timezone', None) or 'UTC')
+            time_seconds = capped_minutes * 60
+            await daily_stats_collection.update_one(
+                {"user_id": str(current_user.id), "local_date": local_date},
+                {
+                    "$inc": {
+                        "conversation_time_seconds": time_seconds,
+                        "total_time_seconds": time_seconds,
+                    },
+                    "$set": {"updated_at": datetime.utcnow()},
+                    "$setOnInsert": {
+                        "created_at": datetime.utcnow(),
+                        "is_streak_day": False,
+                        "total_sessions": 0,
+                        "learning_plan_sessions": 0,
+                        "total_challenges": 0,
+                        "correct_challenges": 0,
+                        "incorrect_challenges": 0,
+                        "total_xp": 0,
+                    }
+                },
+                upsert=True
+            )
+            print(f"[ADD_SPOKEN_TIME] ✅ daily_stats updated: +{capped_minutes} min for {local_date}")
+        except Exception as stats_err:
+            print(f"[ADD_SPOKEN_TIME] ⚠️ daily_stats update failed (non-fatal): {stats_err}")
+
         return {
             "success": True,
             "practice_minutes_used": new_minutes,
@@ -2166,3 +2199,107 @@ async def add_spoken_time(
             status_code=500,
             detail=f"Error adding spoken time: {str(e)}"
         )
+
+
+# Allowed durations per CEFR tier
+_ALLOWED_DURATIONS: dict[str, list[int]] = {
+    "A1": [1, 3],
+    "A2": [1, 3],
+    "B1": [3, 5],
+    "B2": [3, 5],
+    "C1": [3, 5],
+    "C2": [3, 5],
+}
+
+
+@router.patch("/plan/{plan_id}/session-duration")
+async def update_session_duration(
+    plan_id: str,
+    new_duration: int,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Update the preferred session duration for a learning plan.
+
+    Allowed transitions (CEFR-gated):
+      A1 / A2  → 1 min  ↔  3 min
+      B1+      → 3 min  ↔  5 min
+
+    Recalculates total_practice_minutes = total_sessions × new_duration.
+    Does NOT touch completed_sessions, practice_minutes_used, or voice_check_schedule.
+    Cannot be changed once all sessions are completed.
+    """
+    try:
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        if not plan:
+            raise HTTPException(status_code=404, detail="Learning plan not found")
+
+        if str(plan.get("user_id")) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Guard: plan must not be completed
+        if plan.get("status") in ("completed", "awaiting_final_assessment"):
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot change session duration after all sessions are completed"
+            )
+
+        level = (plan.get("proficiency_level") or "A1").upper()
+        allowed = _ALLOWED_DURATIONS.get(level, [3, 5])
+
+        if new_duration not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid duration {new_duration} min for level {level}. Allowed: {allowed}"
+            )
+
+        current_duration = plan.get("preferred_session_duration") or allowed[0]
+        if new_duration == current_duration:
+            return {
+                "success": True,
+                "preferred_session_duration": current_duration,
+                "total_practice_minutes": plan.get("total_practice_minutes"),
+                "message": "No change — duration already set to this value"
+            }
+
+        # Guard: cannot downgrade if already have completed sessions with the higher duration
+        # (e.g. completed 3-min sessions, then trying to switch to 1 min would make progress inconsistent)
+        completed = plan.get("completed_sessions", 0)
+        if completed > 0 and new_duration < current_duration:
+            # Allow downgrade but warn — existing sessions recorded at the old duration are not
+            # retroactively changed. Only future sessions use the new duration.
+            logger.info(
+                f"[SESSION_DURATION] Downgrade on plan {plan_id}: "
+                f"{current_duration}→{new_duration} min with {completed} sessions already done"
+            )
+
+        total_sessions = plan.get("total_sessions", 48)
+        new_total_practice_minutes = float(total_sessions * new_duration)
+
+        await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$set": {
+                "preferred_session_duration": new_duration,
+                "total_practice_minutes": new_total_practice_minutes,
+                "updated_at": datetime.utcnow().isoformat()
+            }}
+        )
+
+        logger.info(
+            f"[SESSION_DURATION] Plan {plan_id}: {current_duration}→{new_duration} min, "
+            f"total_practice_minutes={new_total_practice_minutes}"
+        )
+
+        return {
+            "success": True,
+            "preferred_session_duration": new_duration,
+            "total_practice_minutes": new_total_practice_minutes,
+            "previous_duration": current_duration,
+            "completed_sessions_kept": completed
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[SESSION_DURATION] Error updating session duration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error updating session duration: {str(e)}")
