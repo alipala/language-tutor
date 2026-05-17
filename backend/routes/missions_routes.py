@@ -216,9 +216,13 @@ async def _pick_silver_pick(user_id: str, language: Optional[str]) -> SilverPick
             sort=[("created_at", -1)],
         ),
 
-        # P3: most recent learning plan with assessment_data
+        # P3: most recent learning plan with assessment_data, scoped to language
         learning_plans_collection.find_one(
-            {"user_id": user_id, "assessment_data": {"$exists": True, "$ne": {}}},
+            {
+                "user_id": user_id,
+                "assessment_data": {"$exists": True, "$ne": {}},
+                **({"language": language.lower()} if language else {}),
+            },
             sort=[("updated_at", -1)],
         ),
 
@@ -604,15 +608,19 @@ async def _build_missions(
       - Unreviewed flashcards count (drives Gold target)
       - Active-plan presence (decides Bronze id)
     """
+    # Build the plan filter scoped to the requested language so bronze mission
+    # reflects THIS language's plan, not plans from other languages.
+    plan_filter: dict = {"user_id": user_id, "status": {"$in": ["in_progress", "active", None]}}
+    if language:
+        plan_filter["language"] = language.lower()
+
     silver, current_streak, unreviewed, has_active_plan = await asyncio.gather(
         _resolve_silver(user_id, language, local_date),
         _get_current_streak(user_id),
         flashcard_sets_collection.count_documents(
             {"user_id": user_id, "is_reviewed": {"$ne": True}}
         ),
-        learning_plans_collection.count_documents(
-            {"user_id": user_id, "status": {"$in": ["in_progress", "active", None]}}
-        ),
+        learning_plans_collection.count_documents(plan_filter),
     )
 
     silver_cfg = CHALLENGE_CFG.get(silver.winner, CHALLENGE_CFG["micro_quiz"])
@@ -684,18 +692,22 @@ async def _generate_missions_for_today(
     language = await _resolve_language(user_id, language)
     missions, silver, bronze_id = await _build_missions(user_id, language, local_date)
 
+    MISSIONS_CACHE_VERSION = 2  # must match hub_routes.py
+
+    lang_key = (language or "").lower()
     await _missions_coll().replace_one(
-        {"user_id": user_id, "local_date": local_date},
+        {"user_id": user_id, "local_date": local_date, "language": lang_key},
         {
-            "user_id":      user_id,
-            "local_date":   local_date,
-            "timezone":     timezone,
-            "language":     language,
-            "missions":     missions,
-            "silver_reason":silver.reason,
-            "silver_source":silver.source,
-            "generated_at": datetime.utcnow(),
-            "expires_at":   datetime.utcnow() + timedelta(days=3),
+            "user_id":       user_id,
+            "local_date":    local_date,
+            "timezone":      timezone,
+            "language":      lang_key,
+            "missions":      missions,
+            "silver_reason": silver.reason,
+            "silver_source": silver.source,
+            "cache_version": MISSIONS_CACHE_VERSION,
+            "generated_at":  datetime.utcnow(),
+            "expires_at":    datetime.utcnow() + timedelta(days=3),
         },
         upsert=True,
     )
