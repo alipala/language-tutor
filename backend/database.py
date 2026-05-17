@@ -294,10 +294,17 @@ async def init_db():
         # TTL index: Delete old digest messages after 30 days
         await daily_digest_messages_collection.create_index("generated_at", expireAfterSeconds=30 * 24 * 60 * 60)
 
-        # Daily missions: unique per user+date, TTL after 3 days
+        # Daily missions: unique per user+date+language, TTL after 3 days
+        # Drop the old (user_id, local_date) unique index if it exists — it was
+        # replaced by the compound (user_id, local_date, language) index to support
+        # per-language mission sets when users switch languages.
         daily_missions_collection = database.daily_missions
+        try:
+            await daily_missions_collection.drop_index("user_id_1_local_date_1")
+        except Exception:
+            pass  # index didn't exist — that's fine
         await daily_missions_collection.create_index(
-            [("user_id", 1), ("local_date", 1)], unique=True
+            [("user_id", 1), ("local_date", 1), ("language", 1)], unique=True
         )
         await daily_missions_collection.create_index(
             "expires_at", expireAfterSeconds=0

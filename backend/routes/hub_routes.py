@@ -279,22 +279,35 @@ async def _get_or_generate_missions(
 ) -> tuple:
     """Load cached missions and attach live progress inline.
     Returns (missions_list, silver_reason) tuple.
+
+    Cache versioning: bump MISSIONS_CACHE_VERSION whenever mission generation
+    logic changes so existing cached docs are automatically regenerated.
     """
     from routes.missions_routes import (
         _generate_missions_for_today,
         _hydrate_progress,
     )
 
-    coll = get_missions_collection()
-    cached = await coll.find_one({"user_id": user_id, "local_date": local_date})
+    MISSIONS_CACHE_VERSION = 2  # bump when mission generation logic changes
 
-    if cached:
+    coll = get_missions_collection()
+    lang_key = (language or "").lower()
+    cached = await coll.find_one({"user_id": user_id, "local_date": local_date, "language": lang_key})
+
+    cache_valid = (
+        cached is not None and
+        cached.get("cache_version", 1) >= MISSIONS_CACHE_VERSION
+    )
+
+    if cache_valid:
         raw = cached["missions"]
         silver_reason: str = cached.get("silver_reason", "")
     else:
+        if cached:
+            print(f"[MISSIONS] Cache version mismatch for {user_id} lang={lang_key} — regenerating")
         raw = await _generate_missions_for_today(user_id, local_date, timezone, language)
         # After generation the doc now exists — read the reason back
-        doc = await coll.find_one({"user_id": user_id, "local_date": local_date})
+        doc = await coll.find_one({"user_id": user_id, "local_date": local_date, "language": lang_key})
         silver_reason = doc.get("silver_reason", "") if doc else ""
 
     hydrated = await _hydrate_progress(user_id, local_date, raw)
@@ -313,6 +326,7 @@ async def _get_or_generate_missions(
 )
 async def get_hub_today(
     timezone: Optional[str] = Query(None, description="User timezone e.g. Europe/Amsterdam"),
+    language: Optional[str] = Query(None, description="Active practice language selected by the user"),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """
@@ -327,7 +341,6 @@ async def get_hub_today(
     user_id    = str(current_user.id)
     tz         = timezone or getattr(current_user, "timezone", None) or "UTC"
     local_date = get_current_local_date(tz)
-    language   = getattr(current_user, "preferred_language", None)
 
     # ── Fire ALL queries in parallel ──────────────────────────
     (
@@ -346,7 +359,9 @@ async def get_hub_today(
         _get_flashcard_sets(user_id),
     )
 
-    # Resolve active language from plans if not on user profile
+    # Resolve active language: query param wins, then user profile, then most-recent plan
+    if not language:
+        language = getattr(current_user, "preferred_language", None)
     if not language and plans:
         active = next(
             (p for p in plans if p.get("status") in ("in_progress", "active") or not p.get("status")),
