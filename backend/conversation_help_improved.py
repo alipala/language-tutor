@@ -158,14 +158,40 @@ Analyze the AI tutor's intent and respond ONLY in this JSON format:
         INTENT_CACHE[cache_key] = fallback_intent
         return fallback_intent
 
+def build_level_constraints(proficiency_level: str) -> str:
+    """Return concrete vocabulary and sentence length rules for the student's level."""
+    level = (proficiency_level or "").upper()
+    if level == "A1":
+        return """STRICT A1 LANGUAGE RULES — MUST FOLLOW:
+- Maximum 5 words per response
+- Use ONLY the 500 most common words (yes, no, I, like, want, go, eat, drink, work, home, good, bad, big, small, happy, sad)
+- ONE simple sentence only — no clauses, no conjunctions like "because", "although", "while"
+- NO questions back to the tutor — only statements or single-word answers
+- ✅ Good: "Yes, I like it." / "No." / "I go home."
+- ❌ Bad: "No, I don't know much about it. Have you heard any interesting stories?" (too long, too complex)"""
+    elif level == "A2":
+        return """STRICT A2 LANGUAGE RULES — MUST FOLLOW:
+- Maximum 8 words per response
+- Use only common everyday vocabulary — no idioms, no complex grammar
+- ONE or TWO simple sentences — basic connectors (and, but, or) only
+- Past simple tense is okay, but no perfect tenses or conditionals
+- ✅ Good: "I went to the store yesterday." / "I like coffee but not tea."
+- ❌ Bad: "Have you ever heard any interesting stories about ancient treasures?" (too complex)"""
+    else:
+        return ""  # B1+ get no hard constraints
+
+
 def build_context_aware_prompt(request: EnhancedConversationHelpRequest, intent: TutorIntent) -> str:
     """Build specialized prompts based on tutor intent"""
-    
+
+    level_constraints = build_level_constraints(request.proficiency_level)
+
     base_context = f"""<student_profile>
 Target Language: {request.target_language}
 Proficiency Level: {request.proficiency_level}
 Native Language: {request.user_language}
 </student_profile>
+{f"<level_constraints>{level_constraints}</level_constraints>" if level_constraints else ""}
 
 <conversation_context>
 {format_conversation_context(request.conversation_context)}
@@ -315,10 +341,10 @@ Key Focus: {intent.key_focus}
 </scenario_analysis>
 
 <response_guidelines>
-- Provide natural, conversational responses
-- Match the tone and topic of the tutor's message
-- Use appropriate complexity for the student's level
-- Keep the conversation engaging and flowing
+- Provide a natural, conversational response to what the tutor just said
+- Match the topic of the tutor's message directly — do NOT introduce new topics or ask complex follow-up questions
+- STRICTLY respect the level constraints above — this is the most important rule
+- The response must be something the student can actually say at their level
 - Show personality while practicing the language
 </response_guidelines>
 

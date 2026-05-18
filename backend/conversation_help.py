@@ -169,11 +169,21 @@ async def generate_conversation_help_fast(request: ConversationHelpRequest) -> O
 
         # Ultra-minimal prompt for maximum speed
         truncated_response = smart_truncate(request.ai_response, 100)
-        
+
+        # Inject hard vocabulary/sentence limits for beginner levels
+        level = (request.proficiency_level or "").upper()
+        if level == "A1":
+            level_rule = "RULE: Max 5 words. Only the 500 most common words. One simple statement, no questions back."
+        elif level == "A2":
+            level_rule = "RULE: Max 8 words. Everyday vocabulary only. One or two simple sentences, no complex grammar."
+        else:
+            level_rule = ""
+
         prompt = f"""AI tutor said: "{truncated_response}"
 Target language: {request.target_language}
 Student level: {request.proficiency_level}
 Help language: {request.user_language}
+{level_rule}
 
 CRITICAL: You MUST include the "translation" field! It is MANDATORY!
 Generate 1 contextual response in JSON:
