@@ -204,10 +204,13 @@ async def _pick_silver_pick(user_id: str, language: Optional[str]) -> SilverPick
     # Fire all reads concurrently
     three_days_ago = datetime.utcnow() - timedelta(days=3)
 
+    # Build language filter — scope P1 errors and P2 session to THIS language
+    lang_filter = {"language": language.lower()} if language else {}
+
     (sentence_errors, last_session, active_plan, dna_doc) = await asyncio.gather(
-        # P1: sentence errors from last 3 days
+        # P1: sentence errors from last 3 days, scoped to current language
         _sentence_collection().find(
-            {"user_id": user_id, "created_at": {"$gte": three_days_ago}}
+            {"user_id": user_id, "created_at": {"$gte": three_days_ago}, **lang_filter}
         ).to_list(length=20),
 
         # P2: most recent conversation session with enhanced_analysis
@@ -508,26 +511,33 @@ async def _resolve_gold_mission(
     silver_winner: str,
     unreviewed: int,
     has_any_flashcards: int,
+    language: Optional[str] = None,
 ) -> Dict:
     """
     5-profile decision tree for the Gold (slot 3) mission.
 
     Priority order:
-      P1  New learner (≤3 total conversations)         → freestyle
-      P2  Game-heavy (challenges > 2× conversations)   → news session
-      P3  Talk-heavy, avoids games (convs>5, games<3)  → second challenge
-      P4  Has unreviewed flashcard sets                 → flashcards (existing logic)
-      P5  Default / balanced                            → freestyle
+      P1  New to THIS language (≤3 conversations in language) → freestyle
+      P2  Game-heavy in this language (challenges > 2× convs) → news session
+      P3  Talk-heavy, avoids games (convs>5, games<3)         → second challenge
+      P4  Has unreviewed flashcard sets                        → flashcards
+      P5  Default / balanced                                   → freestyle
+
+    All conversation/challenge counts are scoped to `language` so that activity
+    in Dutch does not contaminate mission selection for Spanish or Portuguese.
     """
+    # Build language filter — scope counts to THIS language only
+    lang_filter = {"language": language.lower()} if language else {}
+
     try:
         total_conversations, total_challenges = await asyncio.gather(
-            conversation_sessions_collection.count_documents({"user_id": user_id}),
-            challenge_sessions_collection.count_documents({"user_id": user_id}),
+            conversation_sessions_collection.count_documents({"user_id": user_id, **lang_filter}),
+            challenge_sessions_collection.count_documents({"user_id": user_id, **lang_filter}),
         )
     except Exception:
         total_conversations, total_challenges = 0, 0
 
-    # P1 — brand new learner
+    # P1 — new to this language (≤3 conversations in this specific language)
     if total_conversations <= 3:
         return {
             "id":             "freestyle",
@@ -659,6 +669,7 @@ async def _build_missions(
         silver_winner=silver.winner,
         unreviewed=unreviewed,
         has_any_flashcards=has_any_flashcards,
+        language=language,
     )
 
     missions: List[Dict] = [

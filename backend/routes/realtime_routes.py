@@ -1826,10 +1826,25 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 }
             ]
 
+        # Strip {emoji:name} markers from the instructions text that goes to audio.
+        # The model sometimes reads these aloud literally ("emoji book") which sounds
+        # ridiculous. Markers are display-only and must never appear in spoken audio.
+        import re as _re
+        audio_safe_instructions = _re.sub(r'\{emoji:[^}]+\}', '', instructions)
+
+        # Prepend a hard-stop rule at the very top of instructions where the model
+        # is most likely to attend to it — before any other content.
+        audio_safe_instructions = (
+            "CRITICAL AUDIO RULE: Your responses will be spoken aloud. "
+            "NEVER say the words 'emoji', 'bracket', '{', '}', or any emoji name. "
+            "If you want to express emotion or illustrate a concept, use natural words only.\n\n"
+            + audio_safe_instructions
+        )
+
         payload = {
             "model": model,
             "voice": selected_voice,
-            "instructions": instructions,
+            "instructions": audio_safe_instructions,
             "modalities": ["audio", "text"],
             "input_audio_transcription": {
                 "model": "gpt-4o-transcribe" if os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true" else "whisper-1",
