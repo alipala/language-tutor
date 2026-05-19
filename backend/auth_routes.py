@@ -57,7 +57,16 @@ from auth import (
     get_user_by_apple_id
 )
 from email_service import send_welcome_email, send_password_reset_email
-from database import users_collection, tutors_collection, institutions_collection
+from database import (
+    users_collection, tutors_collection, institutions_collection,
+    conversation_sessions_collection, learning_plans_collection,
+    challenge_sessions_collection, daily_stats_collection,
+    notification_preferences_collection, user_achievements_collection,
+    flashcard_sets_collection, flashcards_collection, assessments_collection,
+    speaking_dna_profiles_collection, speaking_dna_history_collection,
+    heart_events_collection, speaking_time_tracking_collection,
+    session_feedback_collection, session_completions_collection,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -1070,35 +1079,65 @@ async def update_password(request: PasswordUpdateRequest, current_user: UserResp
 @router.post("/deactivate-account", status_code=status.HTTP_204_NO_CONTENT)
 async def deactivate_account(current_user: UserResponse = Depends(get_current_user)):
     """
-    Deactivate user account by setting is_active to false
+    Permanently delete user account and all associated data.
     """
-    # Get the current user from database
-    user = await get_user_by_id(str(current_user.id))
+    from cache_helpers import invalidate_user_cache
+    from bson import ObjectId as BsonObjectId
+
+    user_id_str = str(current_user.id)
+
+    user = await get_user_by_id(user_id_str)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
-    # Check if account is already deactivated
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account is already deactivated"
-        )
-    
-    # Deactivate the account by setting is_active to false
-    result = await users_collection.update_one(
-        {"_id": user.id},
-        {"$set": {"is_active": False}}
-    )
-    
-    if result.modified_count == 0:
+
+    try:
+        user_object_id = BsonObjectId(user_id_str) if BsonObjectId.is_valid(user_id_str) else None
+        query_id = user_object_id or user_id_str
+
+        # Delete all user data across collections
+        collections_to_clean = [
+            conversation_sessions_collection,
+            learning_plans_collection,
+            challenge_sessions_collection,
+            daily_stats_collection,
+            notification_preferences_collection,
+            user_achievements_collection,
+            flashcard_sets_collection,
+            flashcards_collection,
+            assessments_collection,
+            speaking_dna_profiles_collection,
+            speaking_dna_history_collection,
+            heart_events_collection,
+            speaking_time_tracking_collection,
+            session_feedback_collection,
+            session_completions_collection,
+        ]
+        for col in collections_to_clean:
+            if col is not None:
+                await col.delete_many({"user_id": user_id_str})
+
+        # Delete the user document
+        result = await users_collection.delete_one({"_id": query_id})
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete account"
+            )
+
+        # Invalidate Redis cache so the token can no longer resolve this user
+        await invalidate_user_cache(user_id_str)
+
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to deactivate account"
+            detail=f"Failed to delete account: {str(e)}"
         )
-    
+
     return None
 
 # Email verification endpoints
