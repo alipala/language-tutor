@@ -69,6 +69,7 @@ class PronunciationAssessmentService:
             'german': 'de-DE',
             'dutch': 'nl-NL',
             'portuguese': 'pt-PT',
+            'turkish': 'tr-TR',
         }
 
         return language_map.get(language.lower(), 'en-US')

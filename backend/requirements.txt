@@ -76,6 +76,9 @@ librosa==0.10.1
 soundfile==0.12.1
 praat-parselmouth==0.4.3
 
+# Azure Speech SDK for pronunciation assessment
+azure-cognitiveservices-speech==1.41.1
+
 # Redis caching for performance optimization
 redis==5.0.1
 async-timeout>=4.0.2
