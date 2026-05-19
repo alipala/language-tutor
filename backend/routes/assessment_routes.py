@@ -241,7 +241,7 @@ async def get_assessment_prompt(
     }
 
 
-@router.post("/api/speaking/assess", response_model=SpeakingAssessmentResponse)
+@router.post("/api/speaking/assess")
 async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     temp_audio_path = None  # Initialize early so finally block is safe regardless of exit path
     try:
@@ -481,7 +481,7 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
             except Exception as cleanup_error:
                 print(f"⚠️ [ASSESSMENT] Failed to cleanup temp file: {cleanup_error}")
 
-@router.post("/api/speaking/assess-upload", response_model=SpeakingAssessmentResponse)
+@router.post("/api/speaking/assess-upload")
 async def assess_speaking_upload(
     audio: UploadFile = File(...),
     language: str = Form(...),

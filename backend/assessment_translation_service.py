@@ -129,7 +129,13 @@ async def translate_assessment(
             f"3. Keep technical terms (CEFR levels like A1, B2, etc.) unchanged.\n"
             f"4. Match the tone: encouraging, direct, Gen-Z friendly.\n"
             f"5. Return ONLY valid JSON with the exact same keys.\n"
-            f"6. Do NOT add explanations or markdown."
+            f"6. Do NOT add explanations or markdown.\n"
+            f"7. For 'dna_speaker_archetype' (personality label like 'The Thoughtful Builder'): "
+            f"   adapt it culturally, not literally. The result must feel natural and motivating "
+            f"   as a personality archetype in {lang_name}. Keep the 'The ...' article pattern "
+            f"   if it fits the target language, otherwise use the most natural equivalent.\n"
+            f"8. For feedback, strengths, and improvement areas: use natural, conversational "
+            f"   {lang_name} as if a friendly coach is speaking directly to the learner."
         )
 
         user_content = json.dumps(payload, ensure_ascii=False)
