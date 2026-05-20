@@ -8,15 +8,7 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 
-const TARGET = __ENV.TARGET_URL;
-
-if (!TARGET) {
-  throw new Error(
-    '[scenarios.js] TARGET_URL environment variable is not set.\n' +
-    'Set it in Grafana Cloud environment variables: the full Railway production URL\n' +
-    '(e.g. https://your-service.up.railway.app).'
-  );
-}
+const TARGET = __ENV.TARGET_URL || 'https://mytacoai.com';
 
 /** Shared headers builder */
 function authHeaders(token) {
