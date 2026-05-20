@@ -13,8 +13,8 @@ NEW FEATURES:
 import logging
 import json
 import asyncio
-import openai
 import os
+from openai_client import get_async_openai
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 
@@ -33,8 +33,6 @@ from services.capability_cards_formatter import capability_cards_formatter  # Ca
 
 logger = logging.getLogger(__name__)
 
-# OpenAI client
-openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class VectorEnhancedCoachService(BaseCoachService):
@@ -381,7 +379,7 @@ class VectorEnhancedCoachService(BaseCoachService):
 
             start_time = datetime.now()
 
-            response = openai_client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature,
