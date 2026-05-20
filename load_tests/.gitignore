@@ -1,0 +1,6 @@
+# Load test result archives — never commit
+results/
+*.json.gz
+
+# Local overrides
+*.local.js
