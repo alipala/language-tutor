@@ -1,38 +1,25 @@
 /**
  * Load-test user pool — shared k6 library.
  *
- * Reads LOAD_TEST_USERS_JSON from the Grafana Cloud environment variable
- * and assigns one of the 50 load-test users to each VU in a stable,
- * round-robin fashion.
+ * Reads users from the bundled data/users.json file (included automatically
+ * by k6 cloud when you run `k6 cloud run` from the load_tests/ directory).
+ *
+ * No Grafana environment variable needed — k6 bundles the file at upload time.
  *
  * Usage:
  *   import { getUser } from '../lib/users.js';
  *   const user = getUser(__VU);   // {user_id, email, jwt}
  */
 
-const raw = __ENV.LOAD_TEST_USERS_JSON;
+import { SharedArray } from 'k6/data';
 
-if (!raw) {
-  throw new Error(
-    '[users.js] LOAD_TEST_USERS_JSON environment variable is not set.\n' +
-    'Set it in Grafana Cloud: Performance → Default project → Settings → Environment variables.\n' +
-    'Value should be the minified contents of /test_credentials/load_test_users.json.'
-  );
-}
+const _pool = new SharedArray('loadTestUsers', function () {
+  const raw = open('../data/users.json');
+  return JSON.parse(raw).users;
+});
 
-let _pool;
-try {
-  const parsed = JSON.parse(raw);
-  _pool = parsed.users;
-} catch (e) {
-  throw new Error(
-    '[users.js] Failed to parse LOAD_TEST_USERS_JSON: ' + e.message + '\n' +
-    'Ensure the value is valid JSON (minified contents of load_test_users.json).'
-  );
-}
-
-if (!Array.isArray(_pool) || _pool.length === 0) {
-  throw new Error('[users.js] LOAD_TEST_USERS_JSON parsed but contains no users.');
+if (!_pool || _pool.length === 0) {
+  throw new Error('[users.js] data/users.json loaded but contains no users.');
 }
 
 /**
@@ -44,9 +31,8 @@ if (!Array.isArray(_pool) || _pool.length === 0) {
  */
 export function getUser(vuId) {
   const idx = (vuId - 1) % _pool.length;
-  const u = _pool[idx];
-  return { user_id: u.user_id, email: u.email, jwt: u.jwt };
+  return _pool[idx];
 }
 
-/** Total number of users in the pool (useful for assertions). */
+/** Total number of users in the pool. */
 export const poolSize = _pool.length;
