@@ -16,8 +16,8 @@ import logging
 from typing import Dict, List, Any
 from datetime import datetime, timedelta, timezone
 from bson import ObjectId
-import openai
 import os
+from openai_client import get_async_openai
 
 from database import (
     users_collection,
@@ -36,8 +36,6 @@ from database import (
 
 logger = logging.getLogger(__name__)
 
-# OpenAI client
-openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class CoachService:
@@ -420,7 +418,7 @@ class CoachService:
             # Content moderation check (skip for system messages like greetings)
             if not user_message.startswith("start_greeting"):
                 try:
-                    moderation = openai_client.moderations.create(input=user_message)
+                    moderation = await get_async_openai().moderations.create(input=user_message)
                     if moderation.results[0].flagged:
                         logger.warning(f"[COACH] Message flagged by moderation: {user_message[:50]}...")
                         # Return polite refusal in user's language
@@ -489,7 +487,7 @@ class CoachService:
             # - temperature=1 only (default)
             # - reasoning_effort="low" for faster responses (was "medium")
             # - response_format for structured output
-            response = openai_client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model=self.model,
                 messages=messages
             )
