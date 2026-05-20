@@ -60,3 +60,6 @@ cron-service/phase2-crewai/crewai_challenges_*.log
 cron-service/phase2-crewai/crewai_usage_report_*.json
 cron-service/phase2-crewai/venv/
 backend/backend.log
+
+# Phase 0 — test user credentials (contains JWTs, never commit)
+test_credentials/

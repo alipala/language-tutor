@@ -191,6 +191,35 @@ def reference_generation_job_wrapper() -> None:
 
 
 # ==============================================================================
+# NEWS GENERATION JOB
+# ==============================================================================
+
+def news_generation_job_wrapper() -> None:
+    """
+    Daily news generation job.
+    Runs at 00:00 UTC (= 01:00 CET winter / 02:00 CEST summer).
+    Generates news articles in 7 languages × 6 CEFR levels via news_generation module.
+    Idempotent: news_generator uses upsert on date — safe to retry if it fails.
+    """
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 📰 News Generation Triggered at {timestamp}")
+
+    event_loop = get_or_create_event_loop()
+
+    try:
+        from news_generation.news_generator import generate_daily_news
+        result = event_loop.run_until_complete(generate_daily_news())
+        if result.get("success"):
+            print(f"[SCHEDULER] ✅ News generation completed: {result.get('article_count')} articles in {result.get('duration_seconds', 0):.1f}s")
+        else:
+            print(f"[SCHEDULER] ❌ News generation reported failure: {result}")
+    except Exception as e:
+        print(f"[SCHEDULER] ❌ News generation error: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+
+
+# ==============================================================================
 # DEPRECATED JOB (kept for reference)
 # ==============================================================================
 
@@ -265,6 +294,7 @@ def run_scheduler() -> None:
     print(f"  📚 Practice reminders: Every hour")
     print(f"  🆓 Free user monthly reset: Daily at 02:30 AM UTC")
     print(f"  📖 Reference generation: {reference_freq} at 03:00 AM UTC")
+    print(f"  📰 News generation: Daily at 00:00 AM UTC (01:00 CET)")
 
     print("\n[SCHEDULER] ⚙️ Configuration:")
     print(f"  🤖 AI Generator: {'CrewAI' if use_crewai else 'Simple AI'}")
@@ -298,7 +328,12 @@ def run_scheduler() -> None:
     # Drives user retention
     schedule.every().hour.do(practice_reminder_job_wrapper)
 
-    # 5. [DEPRECATED] User pool replenishment
+    # 5. News generation (daily at 00:00 UTC = 01:00 CET)
+    # Moved from API process (APScheduler) to scheduler service (Phase B)
+    # Idempotent: uses upsert on date field, safe to retry
+    schedule.every().day.at("00:00").do(news_generation_job_wrapper)
+
+    # 7. [DEPRECATED] User pool replenishment
     # Only schedule if explicitly not disabled (for migration period)
     if user_pool_freq != "disabled":
         print("[SCHEDULER] ⚠️ Scheduling deprecated user pool job (should be disabled)\n")

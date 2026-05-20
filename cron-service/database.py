@@ -75,6 +75,9 @@ try:
     usage_logs_collection = database.realtime_usage_logs
     reference_challenges_collection = database.reference_challenges
     challenge_pool_collection = database.challenge_pool
+    # NEWS FEATURE: News generation collections (used by news_generation/ module)
+    news_batches_collection = database.news_batches
+    news_articles_collection = database.news_articles
 except Exception as e:
     print(f"Error initializing MongoDB client: {str(e)}")
     # Don't crash the app immediately, let the startup event handle connection issues
@@ -87,6 +90,8 @@ except Exception as e:
     conversation_sessions_collection = None
     reference_challenges_collection = None
     challenge_pool_collection = None
+    news_batches_collection = None
+    news_articles_collection = None
 
 # Initialize TTL index for sessions (expire after 7 days)
 async def init_db():
