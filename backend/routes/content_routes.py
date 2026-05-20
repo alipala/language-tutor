@@ -8,29 +8,10 @@ import traceback
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 
 # Initialize router
 router = APIRouter()
-
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-# Initialize OpenAI client with error handling
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully (content_routes)")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method (content_routes)")
-    else:
-        print(f"Error initializing OpenAI client: {str(e)}")
-        raise
 
 # Pydantic Models
 class SummarizeRequest(BaseModel):
@@ -57,7 +38,7 @@ async def summarize_conversation(request: SummarizeRequest):
             raise HTTPException(status_code=400, detail="Transcript too short for summarization")
 
         # Use gpt-4o-mini for cost-effective summarization
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -108,7 +89,7 @@ async def research_custom_topic(request: CustomTopicRequest):
 
         # Try gpt-4o-search-preview first, fallback to gpt-4o if not available
         try:
-            search_response = client.chat.completions.create(
+            search_response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-search-preview",
                 messages=[
                     {
@@ -146,7 +127,7 @@ IMPORTANT: Always search for the most current information available online. Do n
             print(f"[RESEARCH] Falling back to gpt-4o model for research")
 
             # Fallback to regular gpt-4o model
-            search_response = client.chat.completions.create(
+            search_response = await get_async_openai().chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
@@ -192,7 +173,7 @@ Note: Provide the best information available from your training data, and acknow
             print(f"[RESEARCH] Detected generic response, attempting fallback search...")
 
             # Try a more direct search approach
-            fallback_response = client.chat.completions.create(
+            fallback_response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-search-preview",
                 messages=[
                     {
