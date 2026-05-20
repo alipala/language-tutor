@@ -344,7 +344,7 @@ Remember: Better to under-assess than over-assess. Most learners are NOT B2-C1.
 
     # Call GPT-4o with strict prompt
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[
@@ -540,7 +540,7 @@ async def generate_speaking_prompts(language: str) -> Dict[str, List[str]]:
         Return the translations in JSON format with the same structure as the input.
         """
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[
