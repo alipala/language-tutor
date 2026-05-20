@@ -4,34 +4,11 @@ import numpy as np
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
-
-# Initialize OpenAI client with Railway-compatible method
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables for vector chatbot")
-
-client = None
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully for vector chatbot")
-except Exception as e:
-    print(f"Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-    try:
-        # Alternative initialization method for Railway environment
-        client = OpenAI(
-            api_key=api_key,
-            http_client=httpx.Client()
-        )
-        print("OpenAI client initialized with alternative method for vector chatbot")
-    except Exception as e2:
-        print(f"Error initializing OpenAI client with alternative method: {str(e2)}")
-        client = None
 
 class VectorChatRequest(BaseModel):
     query: str
@@ -1135,7 +1112,7 @@ Click "Upgrade" in your profile or visit the pricing page to start your free tri
             return [[0.0] * 1536 for _ in texts]  # Dummy embeddings
         
         try:
-            response = client.embeddings.create(
+            response = await get_async_openai().embeddings.create(
                 model="text-embedding-3-small",  # Cheaper and faster than ada-002
                 input=texts
             )
@@ -1257,7 +1234,7 @@ Context from My Taco AI user guides:
 """
         
         try:
-            response = client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt + context},
