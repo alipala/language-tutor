@@ -9,12 +9,9 @@ Key Changes:
 4. Added explicit anti-repetition guards throughout
 """
 
-from openai import OpenAI
 import os
 from typing import Dict, Any
-
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from openai_client import get_async_openai
 
 
 def build_personality_tone_section(language: str, level: str) -> str:
@@ -142,7 +139,7 @@ Keep all phrases concise and conversational.
 """
 
 
-def compress_session_summary(summary: str) -> str:
+async def compress_session_summary(summary: str) -> str:
     """
     Compress session summary to 30-50 tokens using gpt-4o-mini.
     
@@ -164,7 +161,7 @@ def compress_session_summary(summary: str) -> str:
     try:
         print(f"[COMPRESSION] Compressing summary: {len(summary)} chars")
         
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o-mini",
             messages=[{
                 "role": "user",

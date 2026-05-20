@@ -735,7 +735,7 @@ Make it detailed and educational, focusing on the learning objectives and expect
 
             # PHASE 0 OPTIMIZATION: Compress summary for prompt usage
             from prompt_optimization_helpers import compress_session_summary
-            compressed_summary = compress_session_summary(comprehensive_summary)
+            compressed_summary = await compress_session_summary(comprehensive_summary)
 
             print(f"[SESSION_SUMMARY] Compressed summary: {len(compressed_summary)} characters")
 
@@ -769,7 +769,7 @@ This session addressed the current week's objective: {week_focus}
 Continue practicing the weekly focus areas and maintain consistent engagement with the learning plan objectives."""
 
             from prompt_optimization_helpers import compress_session_summary
-            fallback_compressed = compress_session_summary(fallback_full)
+            fallback_compressed = await compress_session_summary(fallback_full)
 
             return {
                 "full": fallback_full,
@@ -812,7 +812,7 @@ Completed a {basic_summary if basic_summary else 'conversation session'} in {lan
 This session contributed to the overall learning journey and weekly objectives."""
 
         from prompt_optimization_helpers import compress_session_summary
-        error_fallback_compressed = compress_session_summary(error_fallback_full)
+        error_fallback_compressed = await compress_session_summary(error_fallback_full)
 
         return {
             "full": error_fallback_full,
