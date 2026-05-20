@@ -20,7 +20,7 @@ import asyncio
 from typing import Dict, List, Any
 from datetime import datetime, timedelta, timezone
 from bson import ObjectId
-import openai
+from openai_client import get_async_openai
 import os
 
 from database import (
@@ -57,8 +57,6 @@ from cache_helpers import get_taalcoach_context_cached
 
 logger = logging.getLogger(__name__)
 
-# OpenAI client
-openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Try to import Redis, but don't fail if not available
 try:
@@ -131,7 +129,7 @@ class CoachService:
         try:
             logger.info(f"[COACH] Detecting intent with AI: '{user_message[:50]}...'")
 
-            response = openai_client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-mini",  # Fast & cheap ($0.15 per 1M input tokens)
                 messages=[{
                     "role": "system",
@@ -1390,7 +1388,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             # Content moderation check
             if not user_message.startswith("start_greeting"):
                 try:
-                    moderation = openai_client.moderations.create(input=user_message)
+                    moderation = await get_async_openai().moderations.create(input=user_message)
                     if moderation.results[0].flagged:
                         logger.warning(f"[COACH] Message flagged by moderation")
                         return self._get_moderation_refusal(language)
@@ -1435,7 +1433,7 @@ Respond with ONLY ONE WORD: the category name. No explanation, no punctuation.""
             # P0 & P1: Call OpenAI with gpt-5.4-mini
             # Note: reasoning_effort, verbosity, store parameters require SDK v2.15+
             # Currently using SDK v2.14.0, so using supported parameters only
-            response = openai_client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model=self.model,  # gpt-5.4-mini (2x faster)
                 messages=messages,
                 temperature=self.temperature,  # P0: Lower for consistency

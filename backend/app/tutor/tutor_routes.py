@@ -11,17 +11,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from bson import ObjectId
 
-try:
-    from openai import OpenAI
-    import httpx
-    _api_key = os.getenv("OPENAI_API_KEY")
-    try:
-        _openai_client = OpenAI(api_key=_api_key)
-    except TypeError:
-        _openai_client = OpenAI(api_key=_api_key, http_client=httpx.Client())
-except Exception as _e:
-    _openai_client = None
-    print(f"[TUTOR_ROUTES] OpenAI client unavailable: {_e}")
+from openai_client import get_async_openai
 
 from database import database
 from fastapi.security import HTTPBearer as _HTTPBearer, HTTPAuthorizationCredentials
@@ -1501,7 +1491,7 @@ Flags: 2-4 items. Mix of warnings and positives."""
 
     # 5. Call GPT-4.1-mini
     try:
-        response = _openai_client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": system_prompt},

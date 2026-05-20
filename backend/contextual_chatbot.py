@@ -4,8 +4,7 @@ import numpy as np
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 from auth import get_optional_current_user
@@ -18,27 +17,6 @@ from cache_helpers import get_taalcoach_context_cached, invalidate_taalcoach_con
 
 router = APIRouter(prefix="/api/chat", tags=["contextual-chat"])
 
-# Initialize OpenAI client with Railway-compatible method
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables for contextual chatbot")
-
-client = None
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully for contextual chatbot")
-except Exception as e:
-    print(f"Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-    try:
-        # Alternative initialization method for Railway environment
-        client = OpenAI(
-            api_key=api_key,
-            http_client=httpx.Client()
-        )
-        print("OpenAI client initialized with alternative method for contextual chatbot")
-    except Exception as e2:
-        print(f"Error initializing OpenAI client with alternative method: {str(e2)}")
-        client = None
 
 class ContextualChatRequest(BaseModel):
     query: str
@@ -67,8 +45,9 @@ class ContextualVectorChatbot:
             self.embeddings_file = "contextual_chatbot_embeddings.pkl"
             self.documents_file = "contextual_chatbot_documents.json"
         
-        # Load or create embeddings
-        self.load_or_create_embeddings()
+        # Load embeddings from disk (sync). If file missing, stays empty until
+        # async load_or_create_embeddings() is called explicitly.
+        self._load_embeddings_from_disk()
     
     def get_user_guides(self) -> List[Dict[str, Any]]:
         """Get all user guide documents with enhanced contextual information"""
@@ -404,14 +383,10 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
             print(f"Error getting user context: {e}")
             return {"user_type": "registered", "subscription_plan": "try_learn"}
     
-    def create_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def create_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Create embeddings for a list of texts using OpenAI's embedding model"""
-        if not client:
-            print("OpenAI client not available, using dummy embeddings")
-            return [[0.0] * 1536 for _ in texts]  # Dummy embeddings
-        
         try:
-            response = client.embeddings.create(
+            response = await get_async_openai().embeddings.create(
                 model="text-embedding-3-small",  # Cheaper and faster than ada-002
                 input=texts
             )
@@ -420,21 +395,30 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
             print(f"Error creating embeddings: {e}")
             return [[0.0] * 1536 for _ in texts]  # Fallback to dummy embeddings
     
-    def load_or_create_embeddings(self):
-        """Load existing embeddings or create new ones"""
-        # Check if embeddings file exists
+    def _load_embeddings_from_disk(self):
+        """Sync: load embeddings from disk only. Called from __init__."""
         if os.path.exists(self.embeddings_file) and os.path.exists(self.documents_file):
             try:
-                # Load existing embeddings
                 with open(self.embeddings_file, 'rb') as f:
                     data = pickle.load(f)
                     self.embeddings = data['embeddings']
                     self.document_metadata = data['metadata']
-                
-                # Load documents
                 with open(self.documents_file, 'r') as f:
                     self.documents = json.load(f)
-                
+                print(f"Loaded {len(self.documents)} contextual documents with embeddings")
+            except Exception as e:
+                print(f"Error loading contextual embeddings from disk: {e}")
+
+    async def load_or_create_embeddings(self):
+        """Async: load from disk or create via OpenAI if file missing."""
+        if os.path.exists(self.embeddings_file) and os.path.exists(self.documents_file):
+            try:
+                with open(self.embeddings_file, 'rb') as f:
+                    data = pickle.load(f)
+                    self.embeddings = data['embeddings']
+                    self.document_metadata = data['metadata']
+                with open(self.documents_file, 'r') as f:
+                    self.documents = json.load(f)
                 print(f"Loaded {len(self.documents)} contextual documents with embeddings")
                 return
             except Exception as e:
@@ -459,7 +443,7 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
             })
         
         # Create embeddings
-        self.embeddings = self.create_embeddings(self.documents)
+        self.embeddings = await self.create_embeddings(self.documents)
         
         # Save embeddings and documents
         try:
@@ -476,13 +460,13 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
         except Exception as e:
             print(f"Error saving contextual embeddings: {e}")
     
-    def search_similar_documents(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    async def search_similar_documents(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """Search for similar documents using vector similarity"""
         if not self.embeddings:
             return []
         
         # Create embedding for the query
-        query_embedding = self.create_embeddings([query])[0]
+        query_embedding = (await self.create_embeddings([query]))[0]
         
         # Calculate cosine similarity
         similarities = cosine_similarity([query_embedding], self.embeddings)[0]
@@ -583,11 +567,8 @@ The Enhanced Analysis System is our advanced AI-powered feature that provides co
         print(f"🎯 [SUGGESTIONS] Generated {len(suggestions)} suggestions: {suggestions}")
         return suggestions[:3]  # Return top 3 suggestions
     
-    def generate_contextual_response(self, query: str, context_docs: List[Dict[str, Any]], user_context: Dict[str, Any]) -> str:
+    async def generate_contextual_response(self, query: str, context_docs: List[Dict[str, Any]], user_context: Dict[str, Any]) -> str:
         """Generate a contextual response using GPT with user context"""
-        if not client:
-            return "I'm sorry, I'm having trouble processing your question right now. Please try again later."
-        
         if not context_docs:
             return "I'm sorry, I couldn't find specific information about that. Please try asking about getting started, pricing, features, or technical support."
         
@@ -638,7 +619,7 @@ Context from My Taco AI user guides:
 """
         
         try:
-            response = client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt + context},
@@ -679,7 +660,7 @@ async def get_contextual_knowledge(
         print(f"👤 [CONTEXTUAL-CHATBOT] User Context: {user_context}")
         
         # Search for similar documents
-        similar_docs = contextual_vector_chatbot.search_similar_documents(request.query, top_k=3)
+        similar_docs = await contextual_vector_chatbot.search_similar_documents(request.query, top_k=3)
         
         if not similar_docs:
             print(f"❌ [CONTEXTUAL-CHATBOT] No relevant documents found for query: '{request.query}'")
@@ -700,7 +681,7 @@ async def get_contextual_knowledge(
             print(f"   {i}. {title} (similarity: {similarity:.3f}, category: {category})")
         
         # Generate contextual response
-        response_text = contextual_vector_chatbot.generate_contextual_response(
+        response_text = await contextual_vector_chatbot.generate_contextual_response(
             request.query, similar_docs, user_context
         )
         

@@ -4,34 +4,11 @@ import numpy as np
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
-
-# Initialize OpenAI client with Railway-compatible method
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables for vector chatbot")
-
-client = None
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully for vector chatbot")
-except Exception as e:
-    print(f"Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-    try:
-        # Alternative initialization method for Railway environment
-        client = OpenAI(
-            api_key=api_key,
-            http_client=httpx.Client()
-        )
-        print("OpenAI client initialized with alternative method for vector chatbot")
-    except Exception as e2:
-        print(f"Error initializing OpenAI client with alternative method: {str(e2)}")
-        client = None
 
 class VectorChatRequest(BaseModel):
     query: str
@@ -57,8 +34,9 @@ class VectorChatbot:
             self.embeddings_file = "chatbot_embeddings.pkl"
             self.documents_file = "chatbot_documents.json"
         
-        # Load or create embeddings
-        self.load_or_create_embeddings()
+        # Load embeddings from disk (sync). If file is missing, embeddings stay empty
+        # and will be created lazily on first async call via initialize().
+        self._load_embeddings_from_disk()
     
     def get_user_guides(self) -> List[Dict[str, Any]]:
         """Get all user guide documents"""
@@ -1128,14 +1106,11 @@ Click "Upgrade" in your profile or visit the pricing page to start your free tri
             }
         ]
     
-    def create_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def create_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Create embeddings for a list of texts using OpenAI's embedding model"""
-        if not client:
-            print("OpenAI client not available, using dummy embeddings")
-            return [[0.0] * 1536 for _ in texts]  # Dummy embeddings
         
         try:
-            response = client.embeddings.create(
+            response = await get_async_openai().embeddings.create(
                 model="text-embedding-3-small",  # Cheaper and faster than ada-002
                 input=texts
             )
@@ -1144,12 +1119,24 @@ Click "Upgrade" in your profile or visit the pricing page to start your free tri
             print(f"Error creating embeddings: {e}")
             return [[0.0] * 1536 for _ in texts]  # Fallback to dummy embeddings
     
-    def load_or_create_embeddings(self):
-        """Load existing embeddings or create new ones"""
-        # Check if embeddings file exists
+    def _load_embeddings_from_disk(self):
+        """Sync: load embeddings from disk. Called from __init__. No OpenAI calls."""
         if os.path.exists(self.embeddings_file) and os.path.exists(self.documents_file):
             try:
-                # Load existing embeddings
+                with open(self.embeddings_file, 'rb') as f:
+                    data = pickle.load(f)
+                    self.embeddings = data['embeddings']
+                    self.document_metadata = data['metadata']
+                with open(self.documents_file, 'r') as f:
+                    self.documents = json.load(f)
+                print(f"Loaded {len(self.documents)} documents with embeddings")
+            except Exception as e:
+                print(f"Error loading embeddings from disk: {e}")
+
+    async def load_or_create_embeddings(self):
+        """Async: load from disk or create via OpenAI if file missing."""
+        if os.path.exists(self.embeddings_file) and os.path.exists(self.documents_file):
+            try:
                 with open(self.embeddings_file, 'rb') as f:
                     data = pickle.load(f)
                     self.embeddings = data['embeddings']
@@ -1183,7 +1170,7 @@ Click "Upgrade" in your profile or visit the pricing page to start your free tri
             })
         
         # Create embeddings
-        self.embeddings = self.create_embeddings(self.documents)
+        self.embeddings = await self.create_embeddings(self.documents)
         
         # Save embeddings and documents
         try:
@@ -1200,13 +1187,13 @@ Click "Upgrade" in your profile or visit the pricing page to start your free tri
         except Exception as e:
             print(f"Error saving embeddings: {e}")
     
-    def search_similar_documents(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    async def search_similar_documents(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """Search for similar documents using vector similarity"""
         if not self.embeddings:
             return []
         
         # Create embedding for the query
-        query_embedding = self.create_embeddings([query])[0]
+        query_embedding = (await self.create_embeddings([query]))[0]
         
         # Calculate cosine similarity
         similarities = cosine_similarity([query_embedding], self.embeddings)[0]
@@ -1225,11 +1212,8 @@ Click "Upgrade" in your profile or visit the pricing page to start your free tri
         
         return results
     
-    def generate_response(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
+    async def generate_response(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
         """Generate a response using GPT with the retrieved context"""
-        if not client:
-            return "I'm sorry, I'm having trouble processing your question right now. Please try again later."
-        
         if not context_docs:
             return "I'm sorry, I couldn't find specific information about that. Please try asking about getting started, taking assessments, practicing conversations, saving progress, account help, mobile tips, or exporting data."
         
@@ -1257,7 +1241,7 @@ Context from My Taco AI user guides:
 """
         
         try:
-            response = client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt + context},
@@ -1290,7 +1274,7 @@ async def get_vector_knowledge(request: VectorChatRequest):
         print("="*80)
         
         # Search for similar documents
-        similar_docs = vector_chatbot.search_similar_documents(request.query, top_k=3)
+        similar_docs = await vector_chatbot.search_similar_documents(request.query, top_k=3)
         
         if not similar_docs:
             print(f"❌ [CHATBOT] No relevant documents found for query: '{request.query}'")
@@ -1309,7 +1293,7 @@ async def get_vector_knowledge(request: VectorChatRequest):
             print(f"   {i}. {title} (similarity: {similarity:.3f}, category: {category})")
         
         # Generate response
-        response_text = vector_chatbot.generate_response(request.query, similar_docs)
+        response_text = await vector_chatbot.generate_response(request.query, similar_docs)
         
         # Extract sources and scores
         sources = [doc['metadata']['title'] for doc in similar_docs]

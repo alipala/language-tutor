@@ -270,7 +270,7 @@ async def evaluate_sentence_worthiness(text: str, language: str, level: str, con
             - isMetaConversational (boolean): true only if about conversation management, not topic content
             """
 
-            response = client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model="gpt-4o-mini",
                 response_format={"type": "json_object"},
                 messages=[
@@ -436,7 +436,7 @@ async def evaluate_sentence_worthiness(text: str, language: str, level: str, con
         - confidence (float): 0-1 confidence
         """
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             response_format={"type": "json_object"},
             messages=[
@@ -621,7 +621,7 @@ Return JSON object with "analyses" array containing analysis for each sentence."
     try:
         client = create_openai_client()
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",  # Using GPT-4o-mini for cost optimization (94% cheaper)
             response_format={"type": "json_object"},
             messages=[

@@ -208,7 +208,7 @@ async def get_assessment_prompt(
         if language.lower() != "english":
             from sentence_assessment import create_openai_client
             _client = create_openai_client()
-            tr_resp = _client.chat.completions.create(
+            tr_resp = await _client.chat.completions.create(
                 model="gpt-4.1-mini",
                 messages=[
                     {

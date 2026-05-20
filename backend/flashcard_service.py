@@ -5,7 +5,7 @@ import os
 import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-import openai
+from openai_client import get_async_openai
 from models import Flashcard, FlashcardSet, FlashcardGenerationRequest
 
 class FlashcardService:
@@ -17,14 +17,6 @@ class FlashcardService:
         Generate flashcards from a speaking session using GPT-4o
         """
         try:
-            # Get OpenAI API key
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            if not openai_api_key:
-                raise Exception("OpenAI API key not configured")
-
-            # Initialize OpenAI client
-            client = openai.OpenAI(api_key=openai_api_key)
-
             # Prepare context for flashcard generation
             context = FlashcardService._build_generation_context(request)
 
@@ -34,7 +26,7 @@ class FlashcardService:
             print(f"[FLASHCARD_GEN] Generating {request.count} flashcards for session {request.session_id}")
             print(f"[FLASHCARD_GEN] Language: {request.language}, Level: {request.level}")
 
-            response = client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model="gpt-4o-mini",  # Using GPT-4o-mini for cost optimization (94% cheaper)
                 messages=[
                     {

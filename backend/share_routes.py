@@ -7,28 +7,9 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Response
 from pydantic import BaseModel
-from openai import OpenAI
-
 from auth import get_current_user
 from models import UserResponse
 from database import database
-
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully in share_routes")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method in share_routes")
-    else:
-        print(f"Error initializing OpenAI client in share_routes: {str(e)}")
-        raise
 
 router = APIRouter(prefix="/api/share", tags=["share"])
 

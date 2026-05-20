@@ -6,25 +6,11 @@ import os
 import json
 import re
 from fastapi import HTTPException
-import openai
-import httpx
+from openai_client import get_async_openai
 
-# Helper function to create OpenAI client with proper error handling
 def create_openai_client():
-    """Create an OpenAI client with proper error handling for the 'proxies' issue."""
-    try:
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        return client
-    except TypeError as e:
-        if "proxies" in str(e):
-            print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-            # Alternative initialization without proxies
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"), http_client=httpx.Client())
-            print("OpenAI client initialized with alternative method")
-            return client
-        else:
-            print(f"Error initializing OpenAI client: {str(e)}")
-            raise
+    """Backwards-compat shim — returns the shared AsyncOpenAI singleton."""
+    return get_async_openai()
 
 # Request model
 class SentenceAssessmentRequest(BaseModel):
@@ -106,7 +92,7 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
             if USE_GPT4O_TRANSCRIBE:
                 try:
                     # 🚀 FIXED: gpt-4o-transcribe with proper parameters (no language param!)
-                    transcript = client.audio.transcriptions.create(
+                    transcript = await client.audio.transcriptions.create(
                         model="gpt-4o-transcribe",
                         file=audio_file,
                         response_format="text",
@@ -123,7 +109,7 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
                     audio_file.seek(0)
                     
                     # Fallback to whisper-1
-                    transcript = client.audio.transcriptions.create(
+                    transcript = await client.audio.transcriptions.create(
                         model="whisper-1",
                         file=audio_file,
                         language=speech_language,
@@ -133,7 +119,7 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
                     return transcript
             else:
                 # Use whisper-1 directly when GPT-4o transcribe is disabled
-                transcript = client.audio.transcriptions.create(
+                transcript = await client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     language=speech_language,
@@ -278,7 +264,7 @@ async def analyze_sentence(text: str, language: str, level: str, exercise_type: 
     
     # Call OpenAI for analysis
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[
@@ -352,7 +338,7 @@ async def generate_exercises(language: str, level: str, exercise_type: str, targ
     """
     
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[

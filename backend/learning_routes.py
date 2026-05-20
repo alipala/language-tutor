@@ -2,8 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, ValidationError
 import os
-import openai
-from openai import OpenAI
 import uuid
 import logging
 import json
@@ -12,32 +10,12 @@ from bson import ObjectId
 from auth import get_current_user
 from models import UserResponse
 from database import database, users_collection
-import httpx
+from openai_client import get_async_openai
 from services.voice_check_service import voice_check_service
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Initialize OpenAI client with error handling
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    logger.warning("Warning: OPENAI_API_KEY not found in environment variables")
-
-try:
-    openai_client = OpenAI(api_key=api_key)
-    logger.info("OpenAI client initialized successfully (learning_routes)")
-except TypeError as e:
-    if "'proxies'" in str(e):
-        logger.info("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        openai_client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        logger.info("OpenAI client initialized with alternative method (learning_routes)")
-    else:
-        logger.error(f"Error initializing OpenAI client: {str(e)}")
-        openai_client = None
-except Exception as e:
-    logger.error(f"Error initializing OpenAI client: {str(e)}")
-    openai_client = None
 
 # Initialize router
 router = APIRouter(prefix="/api/learning", tags=["learning"])
@@ -816,7 +794,7 @@ Using ALL the information above, provide:
             }
 
             try:
-                gpt_response = openai_client.chat.completions.create(
+                gpt_response = await get_async_openai().chat.completions.create(
                     model="gpt-4.1",
                     tools=[{"type": "function", "function": plan_content_function}],
                     tool_choice={"type": "function", "function": {"name": "set_plan_content"}},

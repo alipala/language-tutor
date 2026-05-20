@@ -14,8 +14,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request, Depends, BackgroundTasks
 from pydantic import BaseModel
 from bson import ObjectId
-import httpx
-from openai import OpenAI
+from openai_client import get_async_openai
 
 from auth import get_current_user
 from models import UserResponse, get_session_xp
@@ -29,23 +28,6 @@ logger = logging.getLogger(__name__)
 # Initialize router
 router = APIRouter()
 
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-# Initialize OpenAI client with error handling
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully (session_summary_routes)")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method (session_summary_routes)")
-    else:
-        print(f"Error initializing OpenAI client: {str(e)}")
-        raise
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -227,7 +209,7 @@ async def generate_structured_session_summary(
             key_phrases=key_phrases,
         )
 
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4.1-mini",
             tools=[{"type": "function", "function": _STRUCTURED_SUMMARY_FUNCTION}],
             tool_choice={"type": "function", "function": {"name": "store_session_summary"}},
@@ -719,7 +701,7 @@ Make it detailed and educational, focusing on the learning objectives and expect
 
         print(f"[SESSION_SUMMARY] Sending prompt to OpenAI (length: {len(prompt)} chars)")
 
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert language learning analyst. Create detailed, insightful summaries of student progress that are educational and encouraging."},
@@ -735,7 +717,7 @@ Make it detailed and educational, focusing on the learning objectives and expect
 
             # PHASE 0 OPTIMIZATION: Compress summary for prompt usage
             from prompt_optimization_helpers import compress_session_summary
-            compressed_summary = compress_session_summary(comprehensive_summary)
+            compressed_summary = await compress_session_summary(comprehensive_summary)
 
             print(f"[SESSION_SUMMARY] Compressed summary: {len(compressed_summary)} characters")
 
@@ -769,7 +751,7 @@ This session addressed the current week's objective: {week_focus}
 Continue practicing the weekly focus areas and maintain consistent engagement with the learning plan objectives."""
 
             from prompt_optimization_helpers import compress_session_summary
-            fallback_compressed = compress_session_summary(fallback_full)
+            fallback_compressed = await compress_session_summary(fallback_full)
 
             return {
                 "full": fallback_full,
@@ -812,7 +794,7 @@ Completed a {basic_summary if basic_summary else 'conversation session'} in {lan
 This session contributed to the overall learning journey and weekly objectives."""
 
         from prompt_optimization_helpers import compress_session_summary
-        error_fallback_compressed = compress_session_summary(error_fallback_full)
+        error_fallback_compressed = await compress_session_summary(error_fallback_full)
 
         return {
             "full": error_fallback_full,
