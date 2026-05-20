@@ -51,11 +51,11 @@ class TestLearningGoals:
 class TestLearningPlanCreation:
     """Test learning plan creation functionality."""
     
-    @patch('learning_routes.client.chat.completions.create')
-    async def test_create_learning_plan_basic(self, mock_openai, client: AsyncClient, sample_learning_plan):
+    @patch('openai_client._client')
+    async def test_create_learning_plan_basic(self, mock_openai_client, client: AsyncClient, sample_learning_plan):
         """Test basic learning plan creation."""
-        # Mock OpenAI response (though the current implementation uses mock data)
-        mock_openai.return_value = MagicMock()
+        from unittest.mock import AsyncMock
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=MagicMock())
         
         response = await client.post("/learning/plan", json=sample_learning_plan)
         
