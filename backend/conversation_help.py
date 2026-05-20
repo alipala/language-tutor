@@ -1,32 +1,9 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from openai import OpenAI
 import os
 import json
-import httpx
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-# Initialize OpenAI client with error handling
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully in conversation_help")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        # Alternative initialization without proxies
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method in conversation_help")
-    else:
-        print(f"Error initializing OpenAI client in conversation_help: {str(e)}")
-        raise
+from openai_client import get_async_openai
 
 class ConversationHelpRequest(BaseModel):
     ai_response: str
@@ -195,7 +172,7 @@ Example: If text="Ja, natuurlijk!" and user_language="english", then translation
         print(f"[CONVERSATION_HELP] 📤 Sending optimized prompt to OpenAI...")
         
         # Maximum speed OpenAI call
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
