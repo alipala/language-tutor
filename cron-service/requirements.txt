@@ -11,6 +11,10 @@ crewai-tools==1.7.1
 pymongo==4.6.1
 motor==3.3.2
 
+# News generation dependencies (news_generation/ module)
+pytz>=2024.1       # Timezone handling for CET scheduler
+requests>=2.31.0   # NewsAPI HTTP calls in news_tools.py
+
 # Note: CrewAI automatically includes its dependencies:
 # - openai (compatible version)
 # - python-dotenv

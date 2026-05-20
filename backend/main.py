@@ -280,16 +280,8 @@ app.include_router(guest_analysis_router)
 app.include_router(final_assessment_router)
 
 
-# NEWS FEATURE: Initialize news scheduler (optional - separate Railway service)
-try:
-    from news_generation.news_scheduler import init_news_scheduler, stop_news_scheduler
-    NEWS_SCHEDULER_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ News scheduler not available (missing dependencies): {e}")
-    print("⚠️ News generation should run as a separate Railway service")
-    NEWS_SCHEDULER_AVAILABLE = False
-    init_news_scheduler = None
-    stop_news_scheduler = None
+# NEWS FEATURE: News generation runs in the scheduler Railway service (run_scheduler.py).
+# It was removed from this process in Phase B to prevent N×duplication under multi-worker.
 
 # Initialize MongoDB on startup
 @app.on_event("startup")
@@ -314,17 +306,7 @@ async def startup_db_client():
         await init_redis()
         print("Redis cache initialization complete")
 
-        # NEWS FEATURE: Initialize news generation scheduler (if available)
-        if NEWS_SCHEDULER_AVAILABLE:
-            try:
-                init_news_scheduler()
-                print("📰 News generation scheduler initialized successfully")
-            except Exception as scheduler_error:
-                print(f"⚠️ Warning: Could not initialize news scheduler: {str(scheduler_error)}")
-                print("News generation will not run automatically")
-        else:
-            print("📰 News generation runs as separate Railway service (like challenge generation)")
-            print("📰 News API endpoints are available for reading existing news")
+        print("📰 News generation runs in scheduler Railway service (run_scheduler.py)")
 
         # Email verification migration (DISABLED - run manually if needed)
         # This was automatically marking all users as verified on every startup
@@ -356,13 +338,7 @@ async def shutdown_app():
     # Close Redis connection
     await close_redis()
 
-    if NEWS_SCHEDULER_AVAILABLE and stop_news_scheduler:
-        try:
-            # NEWS FEATURE: Stop news scheduler
-            stop_news_scheduler()
-            print("📰 News scheduler stopped")
-        except Exception as e:
-            print(f"Warning: Error stopping news scheduler: {str(e)}")
+    # News scheduler runs in separate Railway service — nothing to stop here.
 
 
 # Enhanced monitoring middleware with Slack integration
