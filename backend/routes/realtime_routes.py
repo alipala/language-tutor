@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 import httpx
-from openai import OpenAI
+from openai_client import get_async_openai
 
 from auth import get_optional_current_user_from_request
 from models import UserResponse
@@ -19,23 +19,6 @@ from models import UserResponse
 # Initialize router
 router = APIRouter()
 
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-# Initialize OpenAI client with error handling
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully (realtime_routes)")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method (realtime_routes)")
-    else:
-        print(f"Error initializing OpenAI client: {str(e)}")
-        raise
 
 # Pydantic Models
 class TutorSessionRequest(BaseModel):
@@ -196,7 +179,7 @@ def get_level_appropriate_topics(level: str) -> str:
     }
     return topics_by_level.get(level.upper(), topics_by_level['B1'])
 
-def build_universal_instructions(request: TutorSessionRequest) -> str:
+async def build_universal_instructions(request: TutorSessionRequest) -> str:
     """
     Build instructions that work reliably on all browsers.
 
@@ -802,7 +785,7 @@ Remember: You're having an engaging conversation about news, using it as a vehic
         else:
             # Fallback research — use gpt-4.1-mini with language+level context
             try:
-                response = client.chat.completions.create(
+                response = await get_async_openai().chat.completions.create(
                     model="gpt-4.1-mini",
                     messages=[
                         {
@@ -1744,7 +1727,7 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             request.learning_plan_data = learning_plan_data
 
         # Build instructions (now with learning plan context if available)
-        instructions = build_universal_instructions(request)
+        instructions = await build_universal_instructions(request)
         print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
 
         # DEBUG: Check if emoji instructions are included (for A1/A2)
