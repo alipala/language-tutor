@@ -82,7 +82,7 @@ async def get_user_flashcard_sets(
     try:
         # Find all flashcard sets for the user
         sets_cursor = flashcard_sets_collection.find({"user_id": str(current_user.id)})
-        sets_docs = await sets_cursor.to_list(length=None)
+        sets_docs = await sets_cursor.to_list(length=500)
 
         # Convert to FlashcardSet objects with populated flashcards
         flashcard_sets = []
@@ -105,7 +105,7 @@ async def get_user_flashcard_sets(
                         "id": {"$in": flashcard_ids},
                         "user_id": str(current_user.id)
                     })
-                    flashcard_docs = await flashcards_cursor.to_list(length=None)
+                    flashcard_docs = await flashcards_cursor.to_list(length=5000)
 
                     # Convert to Flashcard objects
                     for card_doc in flashcard_docs:
@@ -185,7 +185,7 @@ async def get_flashcard_set(
             "session_id": set_doc["session_id"],
             "user_id": str(current_user.id)
         })
-        flashcard_docs = await flashcards_cursor.to_list(length=None)
+        flashcard_docs = await flashcards_cursor.to_list(length=5000)
 
         # Convert flashcards to Flashcard objects
         flashcards = []
@@ -404,7 +404,7 @@ async def get_flashcards_for_session(
             ]
         })
 
-        flashcard_docs = await flashcards_cursor.to_list(length=None)
+        flashcard_docs = await flashcards_cursor.to_list(length=5000)
 
         # Convert to Flashcard objects
         flashcards = []

@@ -550,7 +550,7 @@ async def _get_flashcard_sets_internal(current_user: UserResponse):
     """Internal function to get flashcard sets without HTTP dependencies"""
     try:
         sets_cursor = database.flashcard_sets.find({"user_id": str(current_user.id)})
-        sets_docs = await sets_cursor.to_list(length=None)
+        sets_docs = await sets_cursor.to_list(length=500)
         
         flashcard_sets = []
         for doc in sets_docs:
@@ -564,7 +564,7 @@ async def _get_flashcard_sets_internal(current_user: UserResponse):
                         "id": {"$in": flashcard_ids},
                         "user_id": str(current_user.id)
                     })
-                    flashcard_docs = await flashcards_cursor.to_list(length=None)
+                    flashcard_docs = await flashcards_cursor.to_list(length=5000)
                     
                     for card_doc in flashcard_docs:
                         card_doc.pop("_id", None)
@@ -616,7 +616,7 @@ async def _get_learning_plans_internal(current_user: UserResponse):
         from learning_routes import LearningPlan
         
         plans_cursor = database.learning_plans.find({"user_id": current_user.id})
-        plans_docs = await plans_cursor.to_list(length=None)
+        plans_docs = await plans_cursor.to_list(length=200)
         
         learning_plans = []
         for doc in plans_docs:
@@ -1326,7 +1326,7 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
         
         # Get conversation sessions (practice sessions)
         sessions_cursor = conversation_sessions_collection.find({"user_id": current_user.id})
-        conversation_sessions = await sessions_cursor.to_list(length=None)
+        conversation_sessions = await sessions_cursor.to_list(length=2000)
         
         conversation_total_sessions = len(conversation_sessions)
         conversation_total_minutes = sum(session.get('duration_minutes', 0) for session in conversation_sessions)
@@ -1338,7 +1338,7 @@ async def get_progress_stats(current_user: UserResponse = Depends(get_current_us
         from bson import ObjectId
         learning_plans_collection = database["learning_plans"]
         learning_plans_cursor = learning_plans_collection.find({"user_id": current_user.id})
-        learning_plans = await learning_plans_cursor.to_list(length=None)
+        learning_plans = await learning_plans_cursor.to_list(length=200)
 
         learning_plan_total_sessions = 0
         learning_plan_total_minutes = 0.0
@@ -1889,7 +1889,7 @@ async def calculate_streaks(user_id: str) -> tuple[int, int]:
             {"user_id": user_id}
         ).sort("local_date", 1)
 
-        daily_stats = await daily_stats_cursor.to_list(length=None)
+        daily_stats = await daily_stats_cursor.to_list(length=1000)
 
         if not daily_stats:
             return 0, 0

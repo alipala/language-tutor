@@ -310,6 +310,40 @@ async def init_db():
             "expires_at", expireAfterSeconds=0
         )
 
+        # ── PHASE E: Capacity scaling indexes ────────────────────────────────
+        # conversation_sessions: user dashboard + per-language filtering
+        await conversation_sessions_collection.create_index(
+            [("user_id", 1), ("created_at", -1)], background=True
+        )
+        await conversation_sessions_collection.create_index(
+            [("user_id", 1), ("language", 1), ("created_at", -1)], background=True
+        )
+
+        # flashcards: set membership + due-date queries
+        await flashcard_sets_collection.create_index(
+            [("user_id", 1)], background=True
+        )
+        await flashcards_collection.create_index(
+            [("user_id", 1), ("set_id", 1)], background=True
+        )
+        await flashcards_collection.create_index(
+            [("user_id", 1), ("due_date", 1)], background=True
+        )
+
+        # learning_plans: user plan list (already exists but ensure it's there)
+        await learning_plans_collection.create_index(
+            [("user_id", 1), ("created_at", -1)], background=True
+        )
+
+        # realtime_usage_logs: user query + 90-day TTL auto-purge
+        await usage_logs_collection.create_index(
+            [("user_id", 1), ("created_at", -1)], background=True
+        )
+        await usage_logs_collection.create_index(
+            "created_at", expireAfterSeconds=90 * 24 * 60 * 60, background=True
+        )
+        # ── END PHASE E ───────────────────────────────────────────────────────
+
         print("Database indexes initialized successfully")
     except Exception as e:
         print(f"ERROR initializing database indexes: {str(e)}")
