@@ -611,7 +611,7 @@ FINAL CHECK before responding:
     # and 1M context window for full transcripts. response_format json_object is
     # reliable on gpt-4.1 for chat completions (not the Assistants API).
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4.1",
             response_format={"type": "json_object"},
             messages=[
@@ -901,7 +901,7 @@ async def generate_speaking_prompts(language: str) -> Dict[str, List[str]]:
         Return the translations in JSON format with the same structure as the input.
         """
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[
