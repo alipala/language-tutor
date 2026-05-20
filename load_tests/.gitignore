@@ -4,4 +4,5 @@ results/
 
 # Local overrides
 *.local.js
-data/
+# data/users.json intentionally NOT gitignored — k6 bundles it for cloud runs
+# It contains short-lived JWTs for dedicated load-test accounts only
