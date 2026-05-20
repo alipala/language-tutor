@@ -5,9 +5,8 @@ import traceback
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from openai import OpenAI
+from openai_client import get_async_openai
 from bson import ObjectId
-import httpx
 
 from auth import get_current_user
 from models import (
@@ -40,24 +39,6 @@ def sanitize_dict(obj: Any) -> Any:
         # Return primitive values as-is
         return obj
 
-# Initialize OpenAI client with error handling
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-# Initialize OpenAI client with error handling for Railway deployment
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully in progress_routes")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        # Alternative initialization without proxies
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method in progress_routes")
-    else:
-        print(f"Error initializing OpenAI client in progress_routes: {str(e)}")
-        raise
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
@@ -1861,7 +1842,7 @@ Conversation:
 
 Summary:"""
         
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a language learning assistant. Create brief, helpful summaries of student conversations."},
