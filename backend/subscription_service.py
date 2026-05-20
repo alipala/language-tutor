@@ -291,7 +291,7 @@ class SubscriptionService:
                             subscription_status = "trialing"
                             is_in_trial = True
                             if stripe_subscription.trial_end:
-                                trial_end_date = datetime.fromtimestamp(stripe_subscription.trial_end)
+                                trial_end_date = datetime.fromtimestamp(stripe_subscription.trial_end, tz=timezone.utc)
                                 trial_days_remaining = max(0, (trial_end_date - now).days)
                                 
                                 # Update user with trial info

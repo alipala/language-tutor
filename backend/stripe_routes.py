@@ -776,11 +776,12 @@ async def link_guest_subscription(
         
         # Get the plan details
         try:
-            if subscription.items and len(subscription.items.data) > 0:
-                price = subscription.items.data[0].price
+            sub_items = subscription.get("items")
+            if sub_items and sub_items.get("data") and len(sub_items["data"]) > 0:
+                price = sub_items["data"][0].get("price")
                 if price:
                     update_data["subscription_price_id"] = price.id
-                    
+
                     # Get product details
                     product = stripe.Product.retrieve(price.product)
                     update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
@@ -1328,8 +1329,9 @@ async def handle_subscription_trial_will_end(subscription):
             update_data["current_period_end"] = datetime.fromtimestamp(fresh_subscription.current_period_end, tz=timezone.utc)
         
         # Get plan details if missing
-        if fresh_subscription.items and len(fresh_subscription.items.data) > 0:
-            price = fresh_subscription.items.data[0].price
+        sub_items = fresh_subscription.get("items")
+        if sub_items and sub_items.get("data") and len(sub_items["data"]) > 0:
+            price = sub_items["data"][0].get("price")
             if price:
                 update_data["subscription_price_id"] = price.id
                 
@@ -1499,8 +1501,9 @@ async def handle_invoice_payment_succeeded(invoice):
                 logger.info(f"[FIRST_SUBSCRIPTION] Reset usage counters for user {user['_id']}")
 
         # Get the plan details
-        if hasattr(subscription.items, 'data') and len(subscription.items.data) > 0:
-            price = subscription.items.data[0].price
+        sub_items = subscription.get("items")
+        if sub_items and sub_items.get("data") and len(sub_items["data"]) > 0:
+            price = sub_items["data"][0].get("price")
             if price:
                 update_data["subscription_price_id"] = price.id
 
@@ -1652,11 +1655,12 @@ async def handle_invoice_payment_paid(invoice_payment):
             update_data["current_period_end"] = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
         
         # Get the plan details if missing
-        if not user.get("subscription_plan") and subscription.items and len(subscription.items.data) > 0:
-            price = subscription.items.data[0].price
+        sub_items = subscription.get("items")
+        if not user.get("subscription_plan") and sub_items and sub_items.get("data") and len(sub_items["data"]) > 0:
+            price = sub_items["data"][0].get("price")
             if price:
                 update_data["subscription_price_id"] = price.id
-                
+
                 # Get product details
                 product = stripe.Product.retrieve(price.product)
                 update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
@@ -1730,11 +1734,12 @@ async def handle_payment_intent_succeeded(payment_intent):
                 update_data["assessments_used"] = 0
             
             # Get the plan details if missing
-            if not user.get("subscription_plan") and subscription.items and len(subscription.items.data) > 0:
-                price = subscription.items.data[0].price
+            sub_items = subscription.get("items")
+            if not user.get("subscription_plan") and sub_items and sub_items.get("data") and len(sub_items["data"]) > 0:
+                price = sub_items["data"][0].get("price")
                 if price:
                     update_data["subscription_price_id"] = price.id
-                    
+
                     # Get product details
                     product = stripe.Product.retrieve(price.product)
                     update_data["subscription_plan"] = map_stripe_product_to_plan_id(product.name)
