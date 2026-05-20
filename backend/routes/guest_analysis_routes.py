@@ -9,28 +9,10 @@ import os
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 
 # Initialize router
 router = APIRouter()
-
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully (guest_analysis_routes)")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method (guest_analysis_routes)")
-    else:
-        print(f"Error initializing OpenAI client: {str(e)}")
-        raise
 
 # Pydantic Models
 class GuestMessage(BaseModel):
@@ -127,7 +109,7 @@ Create a brief, encouraging summary (max 150 words) that includes:
 
 Be positive and specific. This is their first session as a guest."""
 
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o-mini",  # Use mini model for cost efficiency
             messages=[
                 {"role": "system", "content": "You are an encouraging language learning coach. Create brief, motivating summaries."},
@@ -191,7 +173,7 @@ Return ONLY valid JSON in this format:
   "immediate_actions": ["...", "..."]
 }}"""
 
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a language learning analyst. Return only valid JSON."},
