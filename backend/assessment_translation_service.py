@@ -140,7 +140,7 @@ async def translate_assessment(
 
         user_content = json.dumps(payload, ensure_ascii=False)
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",      # cheap + fast enough for translation
             response_format={"type": "json_object"},
             messages=[
