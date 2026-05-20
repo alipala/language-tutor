@@ -61,8 +61,9 @@ try:
         MONGODB_URL,
 
         # Connection pool optimization
-        maxPoolSize=100,           # Max connections per replica (default: 100)
-        minPoolSize=10,            # Keep 10 connections warm for faster responses
+        # 50 per worker: 8 workers × 50 = 400 total, well within MongoDB capacity
+        maxPoolSize=50,            # Max connections per worker (was 100 pre-Phase F)
+        minPoolSize=5,             # Keep 5 connections warm per worker
         maxIdleTimeMS=45000,       # Close idle connections after 45 seconds
         waitQueueTimeoutMS=5000,   # Fail fast (5s) if pool is exhausted
 
@@ -77,7 +78,7 @@ try:
     )
     database = client[DATABASE_NAME]
     print("MongoDB client initialized successfully with optimized connection pool")
-    print(f"Connection pool: maxPoolSize=100, minPoolSize=10, maxIdleTime=45s")
+    print(f"Connection pool: maxPoolSize=50, minPoolSize=5, maxIdleTime=45s")
     
     # Collections - initialize only if database connection was successful
     users_collection = database.users

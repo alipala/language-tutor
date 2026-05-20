@@ -7,4 +7,8 @@ if [ -z "$PORT" ]; then
 fi
 
 echo "Starting application on port $PORT"
-exec python -m uvicorn main:app --host 0.0.0.0 --port "$PORT"
+echo "Workers: ${UVICORN_WORKERS:-1}"
+exec python -m uvicorn main:app \
+  --host 0.0.0.0 \
+  --port "$PORT" \
+  --workers "${UVICORN_WORKERS:-1}"
