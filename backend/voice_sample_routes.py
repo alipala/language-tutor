@@ -6,29 +6,10 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import httpx
-from openai import OpenAI
 from auth import get_optional_current_user_from_request
 from models import UserResponse
 
 router = APIRouter()
-
-# Initialize OpenAI client with error handling (same pattern as other files)
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables for voice_sample_routes")
-
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully in voice_sample_routes")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        # Alternative initialization without proxies
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method in voice_sample_routes")
-    else:
-        print(f"Error initializing OpenAI client in voice_sample_routes: {str(e)}")
-        raise
 
 class VoiceSampleRequest(BaseModel):
     voice_id: str
