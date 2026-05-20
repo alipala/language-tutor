@@ -1,0 +1,13 @@
+{
+  "language": "nl",
+  "level": "B1",
+  "duration_minutes": 3,
+  "selected_duration": 3,
+  "messages": [
+    {"role": "user", "content": "Hallo, hoe gaat het?"},
+    {"role": "assistant", "content": "Goed, dank je! Wat heb je vandaag gedaan?"},
+    {"role": "user", "content": "Ik ben naar de markt gegaan en heb groenten gekocht."}
+  ],
+  "session_id": "phase-d-test-session",
+  "user_timezone": "Europe/Amsterdam"
+}
