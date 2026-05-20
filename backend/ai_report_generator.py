@@ -3,8 +3,7 @@ import json
 import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 from bson import ObjectId
 import statistics
 from collections import defaultdict, Counter
@@ -14,19 +13,6 @@ from database import (
     conversation_sessions_collection, 
     learning_plans_collection
 )
-
-# Initialize OpenAI client
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
-
-try:
-    client = OpenAI(api_key=api_key)
-except TypeError as e:
-    if "proxies" in str(e):
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-    else:
-        raise
 
 class AIReportGenerator:
     """Advanced AI-powered report generation service"""
@@ -775,7 +761,7 @@ class AIReportGenerator:
             Make the analysis professional, specific, and actionable. Focus on data-driven insights and concrete recommendations.
             """
             
-            response = client.chat.completions.create(
+            response = await get_async_openai().chat.completions.create(
                 model="gpt-4o",
                 response_format={"type": "json_object"},
                 messages=[
